@@ -6,7 +6,7 @@ LL |     type Value;
 LL |     type ChildKey;
    |     ------------- `ChildKey` defined here
 LL |     type Children = dyn Index<Self::ChildKey, Output = dyn Hierarchy>;
-   |     ------------- `Children` defined here                  ^^^^^^^^^ help: specify the associated types: `Hierarchy<Value = Type, ChildKey = Type, Children = Type>`
+   |     ------------- `Children` defined here                  ^^^^^^^^^ help: specify the associated types: `Hierarchy<Value = /* Type */, ChildKey = /* Type */, Children = /* Type */>`
 
 error: aborting due to 1 previous error
 

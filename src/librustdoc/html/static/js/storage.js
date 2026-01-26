@@ -319,21 +319,22 @@ updateTheme();
 if (getSettingValue("source-sidebar-show") === "true") {
     addClass(document.documentElement, "src-sidebar-expanded");
 }
-if (getSettingValue("hide-sidebar") === "true") {
-    addClass(document.documentElement, "hide-sidebar");
-}
-if (getSettingValue("hide-toc") === "true") {
-    addClass(document.documentElement, "hide-toc");
-}
-if (getSettingValue("hide-modnav") === "true") {
-    addClass(document.documentElement, "hide-modnav");
-}
-if (getSettingValue("sans-serif-fonts") === "true") {
-    addClass(document.documentElement, "sans-serif");
-}
-if (getSettingValue("word-wrap-source-code") === "true") {
-    addClass(document.documentElement, "word-wrap-source-code");
-}
+(function() {
+    const settings = [
+        "hide-sidebar",
+        "hide-toc",
+        "hide-modnav",
+        "word-wrap-source-code",
+        "hide-deprecated-items",
+        "sans-serif-fonts",
+    ];
+    for (const setting of settings) {
+        if (getSettingValue(setting) === "true") {
+            addClass(document.documentElement, setting);
+        }
+    }
+})();
+
 function updateSidebarWidth() {
     const desktopSidebarWidth = getSettingValue("desktop-sidebar-width");
     if (desktopSidebarWidth && desktopSidebarWidth !== "null") {

@@ -10,7 +10,6 @@
 // synthesizing parentheses indiscriminately; only where necessary.
 
 #![feature(if_let_guard)]
-#[macro_use]
 extern crate std;
 #[prelude_import]
 use std::prelude::rust_2024::*;

@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use rustc_abi::FieldIdx;
 use rustc_middle::mir::*;
+use rustc_middle::span_bug;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
@@ -39,58 +40,44 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_pairs: &mut Vec<MatchPairTree<'tcx>>,
         extra_data: &mut PatternExtraData<'tcx>,
         place: &PlaceBuilder<'tcx>,
+        array_len: Option<u64>,
         prefix: &[Pat<'tcx>],
         opt_slice: &Option<Box<Pat<'tcx>>>,
         suffix: &[Pat<'tcx>],
     ) {
-        let tcx = self.tcx;
-        let (min_length, exact_size) = if let Some(place_resolved) = place.try_to_place(self) {
-            let place_ty = place_resolved.ty(&self.local_decls, tcx).ty;
-            match place_ty.kind() {
-                ty::Array(_, length) => {
-                    if let Some(length) = length.try_to_target_usize(tcx) {
-                        (length, true)
-                    } else {
-                        // This can happen when the array length is a generic const
-                        // expression that couldn't be evaluated (e.g., due to an error).
-                        // Since there's already a compilation error, we use a fallback
-                        // to avoid an ICE.
-                        tcx.dcx().span_delayed_bug(
-                            tcx.def_span(self.def_id),
-                            "array length in pattern couldn't be evaluated",
-                        );
-                        ((prefix.len() + suffix.len()).try_into().unwrap(), false)
-                    }
-                }
-                _ => ((prefix.len() + suffix.len()).try_into().unwrap(), false),
-            }
-        } else {
-            ((prefix.len() + suffix.len()).try_into().unwrap(), false)
+        let prefix_len = u64::try_from(prefix.len()).unwrap();
+        let suffix_len = u64::try_from(suffix.len()).unwrap();
+
+        // For slice patterns with a `..` followed by 0 or more suffix subpatterns,
+        // the actual slice index of those subpatterns isn't statically known, so
+        // we have to index them relative to the end of the slice.
+        //
+        // For array patterns, all subpatterns are indexed relative to the start.
+        let (min_length, is_array) = match array_len {
+            Some(len) => (len, true),
+            None => (prefix_len + suffix_len, false),
         };
 
-        for (idx, subpattern) in prefix.iter().enumerate() {
-            let elem =
-                ProjectionElem::ConstantIndex { offset: idx as u64, min_length, from_end: false };
+        for (offset, subpattern) in (0u64..).zip(prefix) {
+            let elem = ProjectionElem::ConstantIndex { offset, min_length, from_end: false };
             let place = place.clone_project(elem);
             MatchPairTree::for_pattern(place, subpattern, self, match_pairs, extra_data)
         }
 
         if let Some(subslice_pat) = opt_slice {
-            let suffix_len = suffix.len() as u64;
             let subslice = place.clone_project(PlaceElem::Subslice {
-                from: prefix.len() as u64,
-                to: if exact_size { min_length - suffix_len } else { suffix_len },
-                from_end: !exact_size,
+                from: prefix_len,
+                to: if is_array { min_length - suffix_len } else { suffix_len },
+                from_end: !is_array,
             });
             MatchPairTree::for_pattern(subslice, subslice_pat, self, match_pairs, extra_data);
         }
 
-        for (idx, subpattern) in suffix.iter().rev().enumerate() {
-            let end_offset = (idx + 1) as u64;
+        for (end_offset, subpattern) in (1u64..).zip(suffix.iter().rev()) {
             let elem = ProjectionElem::ConstantIndex {
-                offset: if exact_size { min_length - end_offset } else { end_offset },
+                offset: if is_array { min_length - end_offset } else { end_offset },
                 min_length,
-                from_end: !exact_size,
+                from_end: !is_array,
             };
             let place = place.clone_project(elem);
             MatchPairTree::for_pattern(place, subpattern, self, match_pairs, extra_data)
@@ -132,6 +119,20 @@ impl<'tcx> MatchPairTree<'tcx> {
         }
 
         let place = place_builder.try_to_place(cx);
+
+        // Apply any type ascriptions to the value at `match_pair.place`.
+        if let Some(place) = place
+            && let Some(extra) = &pattern.extra
+        {
+            for &Ascription { ref annotation, variance } in &extra.ascriptions {
+                extra_data.ascriptions.push(super::Ascription {
+                    source: place,
+                    annotation: annotation.clone(),
+                    variance,
+                });
+            }
+        }
+
         let mut subpairs = Vec::new();
         let testable_case = match pattern.kind {
             PatKind::Missing | PatKind::Wild | PatKind::Error(_) => None,
@@ -159,10 +160,7 @@ impl<'tcx> MatchPairTree<'tcx> {
             }
 
             PatKind::Constant { value } => {
-                // CAUTION: The type of the pattern node (`pattern.ty`) is
-                // _often_ the same as the type of the const value (`value.ty`),
-                // but there are some cases where those types differ
-                // (e.g. when `deref!(..)` patterns interact with `String`).
+                assert_eq!(pattern.ty, value.ty);
 
                 // Classify the constant-pattern into further kinds, to
                 // reduce the number of ad-hoc type tests needed later on.
@@ -173,35 +171,15 @@ impl<'tcx> MatchPairTree<'tcx> {
                     PatConstKind::IntOrChar
                 } else if pat_ty.is_floating_point() {
                     PatConstKind::Float
+                } else if pat_ty.is_str() {
+                    PatConstKind::String
                 } else {
                     // FIXME(Zalathar): This still covers several different
-                    // categories (e.g. raw pointer, string, pattern-type)
+                    // categories (e.g. raw pointer, pattern-type)
                     // which could be split out into their own kinds.
                     PatConstKind::Other
                 };
                 Some(TestableCase::Constant { value, kind: const_kind })
-            }
-
-            PatKind::AscribeUserType {
-                ascription: Ascription { ref annotation, variance },
-                ref subpattern,
-                ..
-            } => {
-                MatchPairTree::for_pattern(
-                    place_builder,
-                    subpattern,
-                    cx,
-                    &mut subpairs,
-                    extra_data,
-                );
-
-                // Apply the type ascription to the value at `match_pair.place`
-                if let Some(source) = place {
-                    let annotation = annotation.clone();
-                    extra_data.ascriptions.push(super::Ascription { source, annotation, variance });
-                }
-
-                None
             }
 
             PatKind::Binding { mode, var, is_shorthand, ref subpattern, .. } => {
@@ -250,20 +228,37 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            PatKind::ExpandedConstant { subpattern: ref pattern, .. } => {
-                MatchPairTree::for_pattern(place_builder, pattern, cx, &mut subpairs, extra_data);
-                None
-            }
-
             PatKind::Array { ref prefix, ref slice, ref suffix } => {
-                cx.prefix_slice_suffix(
-                    &mut subpairs,
-                    extra_data,
-                    &place_builder,
-                    prefix,
-                    slice,
-                    suffix,
-                );
+                // Determine the statically-known length of the array type being matched.
+                // This should always succeed for legal programs, but could fail for
+                // erroneous programs (e.g. the type is `[u8; const { panic!() }]`),
+                // so take care not to ICE if this fails.
+                let array_len = match pattern.ty.kind() {
+                    ty::Array(_, len) => len.try_to_target_usize(cx.tcx),
+                    _ => None,
+                };
+                if let Some(array_len) = array_len {
+                    cx.prefix_slice_suffix(
+                        &mut subpairs,
+                        extra_data,
+                        &place_builder,
+                        Some(array_len),
+                        prefix,
+                        slice,
+                        suffix,
+                    );
+                } else {
+                    // If the array length couldn't be determined, ignore the
+                    // subpatterns and delayed-assert that compilation will fail.
+                    cx.tcx.dcx().span_delayed_bug(
+                        pattern.span,
+                        format!(
+                            "array length in pattern couldn't be determined for ty={:?}",
+                            pattern.ty
+                        ),
+                    );
+                }
+
                 None
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
@@ -271,6 +266,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                     &mut subpairs,
                     extra_data,
                     &place_builder,
+                    None,
                     prefix,
                     slice,
                     suffix,
@@ -319,23 +315,24 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            // FIXME: Pin-patterns should probably have their own pattern kind,
-            // instead of overloading `PatKind::Deref` via the pattern type.
-            PatKind::Deref { ref subpattern }
-                if let Some(ref_ty) = pattern.ty.pinned_ty()
-                    && ref_ty.is_ref() =>
-            {
+            PatKind::Deref { pin: Pinnedness::Pinned, ref subpattern } => {
+                let pinned_ref_ty = match pattern.ty.pinned_ty() {
+                    Some(p_ty) if p_ty.is_ref() => p_ty,
+                    _ => span_bug!(pattern.span, "bad type for pinned deref: {:?}", pattern.ty),
+                };
                 MatchPairTree::for_pattern(
-                    place_builder.field(FieldIdx::ZERO, ref_ty).deref(),
+                    // Project into the `Pin(_)` struct, then deref the inner `&` or `&mut`.
+                    place_builder.field(FieldIdx::ZERO, pinned_ref_ty).deref(),
                     subpattern,
                     cx,
                     &mut subpairs,
                     extra_data,
                 );
+
                 None
             }
 
-            PatKind::Deref { ref subpattern }
+            PatKind::Deref { pin: Pinnedness::Not, ref subpattern }
             | PatKind::DerefPattern { ref subpattern, borrow: DerefPatBorrowMode::Box } => {
                 MatchPairTree::for_pattern(
                     place_builder.deref(),

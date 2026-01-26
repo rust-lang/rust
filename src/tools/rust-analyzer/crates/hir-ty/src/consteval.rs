@@ -7,9 +7,9 @@ use base_db::Crate;
 use hir_def::{
     ConstId, EnumVariantId, GeneralConstId, HasModule, StaticId,
     attrs::AttrFlags,
+    builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     expr_store::Body,
-    hir::{Expr, ExprId},
-    type_ref::LiteralConstRef,
+    hir::{Expr, ExprId, Literal},
 };
 use hir_expand::Lookup;
 use rustc_type_ir::inherent::IntoKind;
@@ -23,7 +23,7 @@ use crate::{
     mir::{MirEvalError, MirLowerError},
     next_solver::{
         Const, ConstBytes, ConstKind, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs,
-        ParamEnv, StoredConst, StoredGenericArgs, Ty, ValueConst,
+        StoredConst, StoredGenericArgs, Ty, ValueConst,
     },
     traits::StoredParamEnvAndCrate,
 };
@@ -81,47 +81,122 @@ impl From<MirEvalError> for ConstEvalError {
 /// Interns a constant scalar with the given type
 pub fn intern_const_ref<'a>(
     db: &'a dyn HirDatabase,
-    value: &LiteralConstRef,
+    value: &Literal,
     ty: Ty<'a>,
-    krate: Crate,
+    _krate: Crate,
 ) -> Const<'a> {
     let interner = DbInterner::new_no_crate(db);
-    let layout = db
-        .layout_of_ty(ty.store(), ParamEnvAndCrate { param_env: ParamEnv::empty(), krate }.store());
     let kind = match value {
-        LiteralConstRef::Int(i) => {
-            // FIXME: We should handle failure of layout better.
-            let size = layout.map(|it| it.size.bytes_usize()).unwrap_or(16);
+        &Literal::Uint(i, builtin_ty)
+            if builtin_ty.is_none() || ty.as_builtin() == builtin_ty.map(BuiltinType::Uint) =>
+        {
+            let memory = match ty.as_builtin() {
+                Some(BuiltinType::Uint(builtin_uint)) => match builtin_uint {
+                    BuiltinUint::U8 => Box::new([i as u8]) as Box<[u8]>,
+                    BuiltinUint::U16 => Box::new((i as u16).to_le_bytes()),
+                    BuiltinUint::U32 => Box::new((i as u32).to_le_bytes()),
+                    BuiltinUint::U64 => Box::new((i as u64).to_le_bytes()),
+                    BuiltinUint::U128 => Box::new((i).to_le_bytes()),
+                    BuiltinUint::Usize => Box::new((i as usize).to_le_bytes()),
+                },
+                _ => return Const::new(interner, rustc_type_ir::ConstKind::Error(ErrorGuaranteed)),
+            };
             rustc_type_ir::ConstKind::Value(ValueConst::new(
                 ty,
-                ConstBytes {
-                    memory: i.to_le_bytes()[0..size].into(),
-                    memory_map: MemoryMap::default(),
-                },
+                ConstBytes { memory, memory_map: MemoryMap::default() },
             ))
         }
-        LiteralConstRef::UInt(i) => {
-            let size = layout.map(|it| it.size.bytes_usize()).unwrap_or(16);
+        &Literal::Int(i, None)
+            if ty
+                .as_builtin()
+                .is_some_and(|builtin_ty| matches!(builtin_ty, BuiltinType::Uint(_))) =>
+        {
+            let memory = match ty.as_builtin() {
+                Some(BuiltinType::Uint(builtin_uint)) => match builtin_uint {
+                    BuiltinUint::U8 => Box::new([i as u8]) as Box<[u8]>,
+                    BuiltinUint::U16 => Box::new((i as u16).to_le_bytes()),
+                    BuiltinUint::U32 => Box::new((i as u32).to_le_bytes()),
+                    BuiltinUint::U64 => Box::new((i as u64).to_le_bytes()),
+                    BuiltinUint::U128 => Box::new((i as u128).to_le_bytes()),
+                    BuiltinUint::Usize => Box::new((i as usize).to_le_bytes()),
+                },
+                _ => return Const::new(interner, rustc_type_ir::ConstKind::Error(ErrorGuaranteed)),
+            };
             rustc_type_ir::ConstKind::Value(ValueConst::new(
                 ty,
-                ConstBytes {
-                    memory: i.to_le_bytes()[0..size].into(),
-                    memory_map: MemoryMap::default(),
-                },
+                ConstBytes { memory, memory_map: MemoryMap::default() },
             ))
         }
-        LiteralConstRef::Bool(b) => rustc_type_ir::ConstKind::Value(ValueConst::new(
+        &Literal::Int(i, builtin_ty)
+            if builtin_ty.is_none() || ty.as_builtin() == builtin_ty.map(BuiltinType::Int) =>
+        {
+            let memory = match ty.as_builtin() {
+                Some(BuiltinType::Int(builtin_int)) => match builtin_int {
+                    BuiltinInt::I8 => Box::new([i as u8]) as Box<[u8]>,
+                    BuiltinInt::I16 => Box::new((i as i16).to_le_bytes()),
+                    BuiltinInt::I32 => Box::new((i as i32).to_le_bytes()),
+                    BuiltinInt::I64 => Box::new((i as i64).to_le_bytes()),
+                    BuiltinInt::I128 => Box::new((i).to_le_bytes()),
+                    BuiltinInt::Isize => Box::new((i as isize).to_le_bytes()),
+                },
+                _ => return Const::new(interner, rustc_type_ir::ConstKind::Error(ErrorGuaranteed)),
+            };
+            rustc_type_ir::ConstKind::Value(ValueConst::new(
+                ty,
+                ConstBytes { memory, memory_map: MemoryMap::default() },
+            ))
+        }
+        Literal::Float(float_type_wrapper, builtin_float)
+            if builtin_float.is_none()
+                || ty.as_builtin() == builtin_float.map(BuiltinType::Float) =>
+        {
+            let memory = match ty.as_builtin().unwrap() {
+                BuiltinType::Float(builtin_float) => match builtin_float {
+                    // FIXME:
+                    hir_def::builtin_type::BuiltinFloat::F16 => Box::new([0u8; 2]) as Box<[u8]>,
+                    hir_def::builtin_type::BuiltinFloat::F32 => {
+                        Box::new(float_type_wrapper.to_f32().to_le_bytes())
+                    }
+                    hir_def::builtin_type::BuiltinFloat::F64 => {
+                        Box::new(float_type_wrapper.to_f64().to_le_bytes())
+                    }
+                    // FIXME:
+                    hir_def::builtin_type::BuiltinFloat::F128 => Box::new([0; 16]),
+                },
+                _ => unreachable!(),
+            };
+            rustc_type_ir::ConstKind::Value(ValueConst::new(
+                ty,
+                ConstBytes { memory, memory_map: MemoryMap::default() },
+            ))
+        }
+        Literal::Bool(b) if ty.is_bool() => rustc_type_ir::ConstKind::Value(ValueConst::new(
             ty,
             ConstBytes { memory: Box::new([*b as u8]), memory_map: MemoryMap::default() },
         )),
-        LiteralConstRef::Char(c) => rustc_type_ir::ConstKind::Value(ValueConst::new(
+        Literal::Char(c) if ty.is_char() => rustc_type_ir::ConstKind::Value(ValueConst::new(
             ty,
             ConstBytes {
                 memory: (*c as u32).to_le_bytes().into(),
                 memory_map: MemoryMap::default(),
             },
         )),
-        LiteralConstRef::Unknown => rustc_type_ir::ConstKind::Error(ErrorGuaranteed),
+        Literal::String(symbol) if ty.is_str() => rustc_type_ir::ConstKind::Value(ValueConst::new(
+            ty,
+            ConstBytes {
+                memory: symbol.as_str().as_bytes().into(),
+                memory_map: MemoryMap::default(),
+            },
+        )),
+        Literal::ByteString(items) if ty.as_slice().is_some_and(|ty| ty.is_u8()) => {
+            rustc_type_ir::ConstKind::Value(ValueConst::new(
+                ty,
+                ConstBytes { memory: items.clone(), memory_map: MemoryMap::default() },
+            ))
+        }
+        // FIXME
+        Literal::CString(_items) => rustc_type_ir::ConstKind::Error(ErrorGuaranteed),
+        _ => rustc_type_ir::ConstKind::Error(ErrorGuaranteed),
     };
     Const::new(interner, kind)
 }
@@ -130,7 +205,15 @@ pub fn intern_const_ref<'a>(
 pub fn usize_const<'db>(db: &'db dyn HirDatabase, value: Option<u128>, krate: Crate) -> Const<'db> {
     intern_const_ref(
         db,
-        &value.map_or(LiteralConstRef::Unknown, LiteralConstRef::UInt),
+        &match value {
+            Some(value) => Literal::Uint(value, Some(BuiltinUint::Usize)),
+            None => {
+                return Const::new(
+                    DbInterner::new_no_crate(db),
+                    rustc_type_ir::ConstKind::Error(ErrorGuaranteed),
+                );
+            }
+        },
         Ty::new_uint(DbInterner::new_no_crate(db), rustc_type_ir::UintTy::Usize),
         krate,
     )

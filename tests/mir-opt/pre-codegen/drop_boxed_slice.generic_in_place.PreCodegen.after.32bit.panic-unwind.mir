@@ -12,50 +12,64 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
             scope 3 {
                 let _8: std::ptr::alignment::AlignmentEnum;
                 scope 4 {
-                    scope 12 (inlined Layout::size) {
+                    scope 17 (inlined Layout::size) {
                     }
-                    scope 13 (inlined Unique::<[T]>::cast::<u8>) {
-                        scope 14 (inlined NonNull::<[T]>::cast::<u8>) {
-                            scope 15 (inlined NonNull::<[T]>::as_ptr) {
+                    scope 18 (inlined std::ptr::Unique::<[T]>::cast::<u8>) {
+                        scope 19 (inlined NonNull::<[T]>::cast::<u8>) {
+                            scope 20 (inlined NonNull::<[T]>::as_ptr) {
                             }
                         }
                     }
-                    scope 16 (inlined <NonNull<u8> as From<Unique<u8>>>::from) {
-                        scope 17 (inlined Unique::<u8>::as_non_null_ptr) {
+                    scope 21 (inlined <NonNull<u8> as From<std::ptr::Unique<u8>>>::from) {
+                        scope 22 (inlined std::ptr::Unique::<u8>::as_non_null_ptr) {
                         }
                     }
-                    scope 18 (inlined <std::alloc::Global as Allocator>::deallocate) {
-                        let mut _9: *mut u8;
-                        scope 19 (inlined Layout::size) {
-                        }
-                        scope 20 (inlined NonNull::<u8>::as_ptr) {
-                        }
-                        scope 21 (inlined std::alloc::dealloc) {
-                            let mut _10: usize;
-                            scope 22 (inlined Layout::size) {
-                            }
-                            scope 23 (inlined Layout::align) {
-                                scope 24 (inlined std::ptr::Alignment::as_usize) {
+                    scope 23 (inlined <std::alloc::Global as Allocator>::deallocate) {
+                        scope 24 (inlined std::alloc::Global::deallocate_impl) {
+                            scope 25 (inlined std::alloc::Global::deallocate_impl_runtime) {
+                                let mut _9: *mut u8;
+                                scope 26 (inlined Layout::size) {
+                                }
+                                scope 27 (inlined NonNull::<u8>::as_ptr) {
+                                }
+                                scope 28 (inlined std::alloc::dealloc) {
+                                    let mut _10: usize;
+                                    scope 29 (inlined Layout::size) {
+                                    }
+                                    scope 30 (inlined Layout::align) {
+                                        scope 31 (inlined std::ptr::Alignment::as_usize) {
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                scope 5 (inlined Unique::<[T]>::as_ptr) {
+                scope 5 (inlined std::ptr::Unique::<[T]>::as_ptr) {
                     scope 6 (inlined NonNull::<[T]>::as_ptr) {
                     }
                 }
                 scope 7 (inlined Layout::for_value_raw::<[T]>) {
                     let mut _5: usize;
-                    let mut _6: usize;
+                    let mut _7: std::ptr::Alignment;
                     scope 8 {
-                        scope 11 (inlined #[track_caller] Layout::from_size_align_unchecked) {
-                            let mut _7: std::ptr::Alignment;
+                        scope 16 (inlined #[track_caller] Layout::from_size_alignment_unchecked) {
                         }
                     }
                     scope 9 (inlined size_of_val_raw::<[T]>) {
                     }
-                    scope 10 (inlined align_of_val_raw::<[T]>) {
+                    scope 10 (inlined std::ptr::Alignment::of_val_raw::<[T]>) {
+                        let _6: usize;
+                        scope 11 {
+                            scope 13 (inlined #[track_caller] std::ptr::Alignment::new_unchecked) {
+                                scope 14 (inlined core::ub_checks::check_language_ub) {
+                                    scope 15 (inlined core::ub_checks::check_language_ub::runtime) {
+                                    }
+                                }
+                            }
+                        }
+                        scope 12 (inlined align_of_val_raw::<[T]>) {
+                        }
                     }
                 }
             }
@@ -68,17 +82,17 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
         StorageLive(_4);
         _3 = copy _2 as *mut [T] (Transmute);
         _4 = copy _2 as *const [T] (Transmute);
-        StorageLive(_6);
+        StorageLive(_7);
         _5 = std::intrinsics::size_of_val::<[T]>(move _4) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
+        StorageLive(_6);
         _6 = const <T as std::mem::SizedTypeProperties>::ALIGN;
-        StorageLive(_7);
         _7 = copy _6 as std::ptr::Alignment (Transmute);
-        _8 = move (_7.0: std::ptr::alignment::AlignmentEnum);
-        StorageDead(_7);
         StorageDead(_6);
+        _8 = copy (_7.0: std::ptr::alignment::AlignmentEnum);
+        StorageDead(_7);
         StorageDead(_4);
         switchInt(copy _5) -> [0: bb4, otherwise: bb2];
     }

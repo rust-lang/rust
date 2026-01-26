@@ -50,7 +50,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
     //
     // For instance, `//@ ignore-stage1` will not work at all.
     Config {
-        mode: TestMode::Rustdoc,
+        mode: TestMode::RustdocHtml,
         // E.g. this has no sensible default tbh.
         suite: TestSuite::Ui,
 
@@ -139,5 +139,6 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         default_codegen_backend: CodegenBackend::Llvm,
         override_codegen_backend: None,
         bypass_ignore_backends: Default::default(),
+        jobs: Default::default(),
     }
 }

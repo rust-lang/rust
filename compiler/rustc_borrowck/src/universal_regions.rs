@@ -11,9 +11,6 @@
 //! The code in this file doesn't *do anything* with those results; it
 //! just returns them for other code to use.
 
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
-
 use std::cell::Cell;
 use std::iter;
 
@@ -207,10 +204,10 @@ struct UniversalRegionIndices<'tcx> {
     /// `ty::Region` to the internal `RegionVid` we are using. This is
     /// used because trait matching and type-checking will feed us
     /// region constraints that reference those regions and we need to
-    /// be able to map them to our internal `RegionVid`. This is
-    /// basically equivalent to an `GenericArgs`, except that it also
-    /// contains an entry for `ReStatic` -- it might be nice to just
-    /// use an args, and then handle `ReStatic` another way.
+    /// be able to map them to our internal `RegionVid`.
+    ///
+    /// This is similar to just using `GenericArgs`, except that it contains
+    /// an entry for `'static`, and also late bound parameters in scope.
     indices: FxIndexMap<ty::Region<'tcx>, RegionVid>,
 
     /// The vid assigned to `'static`. Used only for diagnostics.
@@ -543,37 +540,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             &indices,
         );
 
-        let (unnormalized_output_ty, mut unnormalized_input_tys) =
+        let (unnormalized_output_ty, unnormalized_input_tys) =
             inputs_and_output.split_last().unwrap();
-
-        // C-variadic fns also have a `VaList` input that's not listed in the signature
-        // (as it's created inside the body itself, not passed in from outside).
-        if let DefiningTy::FnDef(def_id, _) = defining_ty {
-            if self.infcx.tcx.fn_sig(def_id).skip_binder().c_variadic() {
-                let va_list_did = self
-                    .infcx
-                    .tcx
-                    .require_lang_item(LangItem::VaList, self.infcx.tcx.def_span(self.mir_def));
-
-                let reg_vid = self
-                    .infcx
-                    .next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
-                        RegionCtxt::Free(sym::c_dash_variadic)
-                    })
-                    .as_var();
-
-                let region = ty::Region::new_var(self.infcx.tcx, reg_vid);
-                let va_list_ty = self
-                    .infcx
-                    .tcx
-                    .type_of(va_list_did)
-                    .instantiate(self.infcx.tcx, &[region.into()]);
-
-                unnormalized_input_tys = self.infcx.tcx.mk_type_list_from_iter(
-                    unnormalized_input_tys.iter().copied().chain(iter::once(va_list_ty)),
-                );
-            }
-        }
 
         let fr_fn_body = self
             .infcx
@@ -816,7 +784,40 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             DefiningTy::FnDef(def_id, _) => {
                 let sig = tcx.fn_sig(def_id).instantiate_identity();
                 let sig = indices.fold_to_region_vids(tcx, sig);
-                sig.inputs_and_output()
+                let inputs_and_output = sig.inputs_and_output();
+
+                // C-variadic fns also have a `VaList` input that's not listed in the signature
+                // (as it's created inside the body itself, not passed in from outside).
+                if self.infcx.tcx.fn_sig(def_id).skip_binder().c_variadic() {
+                    let va_list_did = self
+                        .infcx
+                        .tcx
+                        .require_lang_item(LangItem::VaList, self.infcx.tcx.def_span(self.mir_def));
+
+                    let reg_vid = self
+                        .infcx
+                        .next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
+                            RegionCtxt::Free(sym::c_dash_variadic)
+                        })
+                        .as_var();
+
+                    let region = ty::Region::new_var(self.infcx.tcx, reg_vid);
+                    let va_list_ty = self
+                        .infcx
+                        .tcx
+                        .type_of(va_list_did)
+                        .instantiate(self.infcx.tcx, &[region.into()]);
+
+                    // The signature needs to follow the order [input_tys, va_list_ty, output_ty]
+                    return inputs_and_output.map_bound(|tys| {
+                        let (output_ty, input_tys) = tys.split_last().unwrap();
+                        tcx.mk_type_list_from_iter(
+                            input_tys.iter().copied().chain([va_list_ty, *output_ty]),
+                        )
+                    });
+                }
+
+                inputs_and_output
             }
 
             DefiningTy::Const(def_id, _) => {

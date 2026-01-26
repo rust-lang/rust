@@ -12,29 +12,33 @@ thread_local! {
     static CURSOR: Cell<usize> = const { Cell::new(0) };
     /// Width of the terminal
     static WIDTH: Cell<usize> = const { Cell::new(DEFAULT_COLUMN_WIDTH) };
+
 }
 
-/// Print to terminal output to a buffer
-pub(crate) fn entrypoint(stream: &MdStream<'_>, buf: &mut Vec<u8>) -> io::Result<()> {
-    #[cfg(not(test))]
-    if let Some((w, _)) = termize::dimensions() {
-        WIDTH.set(std::cmp::min(w, DEFAULT_COLUMN_WIDTH));
-    }
-    write_stream(stream, buf, None, 0)?;
+/// Print to the terminal output to a buffer
+/// optionally with a formatter for code blocks
+pub(crate) fn entrypoint(
+    stream: &MdStream<'_>,
+    buf: &mut Vec<u8>,
+    formatter: Option<&(dyn Fn(&str, &mut Vec<u8>) -> io::Result<()> + 'static)>,
+) -> io::Result<()> {
+    write_stream(stream, buf, None, 0, formatter)?;
     buf.write_all(b"\n")
 }
-/// Write the buffer, reset to the default style after each
+
+/// Write the buffer, reset to the default style after each,
+/// optionally with a formatter for code blocks
 fn write_stream(
     MdStream(stream): &MdStream<'_>,
     buf: &mut Vec<u8>,
+
     default: Option<Style>,
     indent: usize,
+    formatter: Option<&(dyn Fn(&str, &mut Vec<u8>) -> io::Result<()> + 'static)>,
 ) -> io::Result<()> {
     for tt in stream {
-        write_tt(tt, buf, default, indent)?;
+        write_tt(tt, buf, default, indent, formatter)?;
     }
-    reset_opt_style(buf, default)?;
-
     Ok(())
 }
 
@@ -43,12 +47,17 @@ fn write_tt(
     buf: &mut Vec<u8>,
     default: Option<Style>,
     indent: usize,
+    formatter: Option<&(dyn Fn(&str, &mut Vec<u8>) -> io::Result<()> + 'static)>,
 ) -> io::Result<()> {
     match tt {
         MdTree::CodeBlock { txt, lang: _ } => {
             reset_opt_style(buf, default)?;
-            let style = Style::new().effects(Effects::DIMMED);
-            write!(buf, "{style}{txt}{style:#}")?;
+            if let Some(formatter) = formatter {
+                formatter(txt, buf)?;
+            } else {
+                let style = Style::new().effects(Effects::DIMMED);
+                write!(buf, "{style}{txt}{style:#}")?;
+            }
             render_opt_style(buf, default)?;
         }
         MdTree::CodeInline(txt) => {
@@ -105,7 +114,7 @@ fn write_tt(
             };
             reset_opt_style(buf, default)?;
             write!(buf, "{cs}")?;
-            write_stream(stream, buf, Some(cs), 0)?;
+            write_stream(stream, buf, Some(cs), 0, None)?;
             write!(buf, "{cs:#}")?;
             render_opt_style(buf, default)?;
             buf.write_all(b"\n")?;
@@ -113,12 +122,12 @@ fn write_tt(
         MdTree::OrderedListItem(n, stream) => {
             let base = format!("{n}. ");
             write_wrapping(buf, &format!("{base:<4}"), indent, None, None)?;
-            write_stream(stream, buf, None, indent + 4)?;
+            write_stream(stream, buf, None, indent + 4, None)?;
         }
         MdTree::UnorderedListItem(stream) => {
             let base = "* ";
             write_wrapping(buf, &format!("{base:<4}"), indent, None, None)?;
-            write_stream(stream, buf, None, indent + 4)?;
+            write_stream(stream, buf, None, indent + 4, None)?;
         }
         // Patterns popped in previous step
         MdTree::Comment(_) | MdTree::LinkDef { .. } | MdTree::RefLink { .. } => unreachable!(),

@@ -636,7 +636,7 @@ impl CString {
         Self { inner: v.into_boxed_slice() }
     }
 
-    /// Attempts to converts a <code>[Vec]<[u8]></code> to a [`CString`].
+    /// Attempts to convert a <code>[Vec]<[u8]></code> to a [`CString`].
     ///
     /// Runtime checks are present to ensure there is only one nul byte in the
     /// [`Vec`], its last element.

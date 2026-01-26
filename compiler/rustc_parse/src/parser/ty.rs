@@ -658,9 +658,7 @@ impl<'a> Parser<'a> {
         };
 
         let ty = if self.eat(exp!(Semi)) {
-            let mut length = if self.token.is_keyword(kw::Const)
-                && self.look_ahead(1, |t| *t == token::OpenBrace)
-            {
+            let mut length = if self.eat_keyword(exp!(Const)) {
                 // While we could just disambiguate `Direct` from `AnonConst` by
                 // treating all const block exprs as `AnonConst`, that would
                 // complicate the DefCollector and likely all other visitors.
@@ -1490,14 +1488,44 @@ impl<'a> Parser<'a> {
             return Ok(());
         }
 
+        let snapshot = if self.parsing_generics {
+            // The snapshot is only relevant if we're parsing the generics of an `fn` to avoid
+            // incorrect recovery.
+            Some(self.create_snapshot_for_diagnostic())
+        } else {
+            None
+        };
         // Parse `(T, U) -> R`.
         let inputs_lo = self.token.span;
         let mode =
             FnParseMode { req_name: |_, _| false, context: FnContext::Free, req_body: false };
-        let inputs: ThinVec<_> =
-            self.parse_fn_params(&mode)?.into_iter().map(|input| input.ty).collect();
+        let params = match self.parse_fn_params(&mode) {
+            Ok(params) => params,
+            Err(err) => {
+                if let Some(snapshot) = snapshot {
+                    self.restore_snapshot(snapshot);
+                    err.cancel();
+                    return Ok(());
+                } else {
+                    return Err(err);
+                }
+            }
+        };
+        let inputs: ThinVec<_> = params.into_iter().map(|input| input.ty).collect();
         let inputs_span = inputs_lo.to(self.prev_token.span);
-        let output = self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)?;
+        let output = match self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)
+        {
+            Ok(output) => output,
+            Err(err) => {
+                if let Some(snapshot) = snapshot {
+                    self.restore_snapshot(snapshot);
+                    err.cancel();
+                    return Ok(());
+                } else {
+                    return Err(err);
+                }
+            }
+        };
         let args = ast::ParenthesizedArgs {
             span: fn_path_segment.span().to(self.prev_token.span),
             inputs,
@@ -1505,6 +1533,17 @@ impl<'a> Parser<'a> {
             output,
         }
         .into();
+
+        if let Some(snapshot) = snapshot
+            && ![token::Comma, token::Gt, token::Plus].contains(&self.token.kind)
+        {
+            // We would expect another bound or the end of type params by now. Most likely we've
+            // encountered a `(` *not* representing `Trait()`, but rather the start of the `fn`'s
+            // argument list where the generic param list wasn't properly closed.
+            self.restore_snapshot(snapshot);
+            return Ok(());
+        }
+
         *fn_path_segment = ast::PathSegment {
             ident: fn_path_segment.ident,
             args: Some(args),

@@ -21,7 +21,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
@@ -46,6 +45,7 @@ mod expect;
 mod for_loops_over_fallibles;
 mod foreign_modules;
 mod function_cast_as_integer;
+mod gpukernel_abi;
 mod if_let_rescope;
 mod impl_trait_overcaptures;
 mod interior_mutable_consts;
@@ -92,6 +92,7 @@ use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
 use function_cast_as_integer::*;
+use gpukernel_abi::*;
 use if_let_rescope::IfLetRescope;
 use impl_trait_overcaptures::ImplTraitOvercaptures;
 use interior_mutable_consts::*;
@@ -196,6 +197,7 @@ late_lint_methods!(
             DerefIntoDynSupertrait: DerefIntoDynSupertrait,
             DropForgetUseless: DropForgetUseless,
             ImproperCTypesLint: ImproperCTypesLint,
+            ImproperGpuKernelLint: ImproperGpuKernelLint,
             InvalidFromUtf8: InvalidFromUtf8,
             VariantSizeDifferences: VariantSizeDifferences,
             PathStatements: PathStatements,
@@ -652,8 +654,6 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_mod_pass(|_| Box::new(TyTyKind));
     store.register_lints(&TypeIr::lint_vec());
     store.register_late_mod_pass(|_| Box::new(TypeIr));
-    store.register_lints(&Diagnostics::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(Diagnostics));
     store.register_lints(&BadOptAccess::lint_vec());
     store.register_late_mod_pass(|_| Box::new(BadOptAccess));
     store.register_lints(&PassByValue::lint_vec());
@@ -664,10 +664,6 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_mod_pass(|_| Box::new(SymbolInternStringLiteral));
     store.register_lints(&ImplicitSysrootCrateImport::lint_vec());
     store.register_early_pass(|| Box::new(ImplicitSysrootCrateImport));
-    // FIXME(davidtwco): deliberately do not include `UNTRANSLATABLE_DIAGNOSTIC` and
-    // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and
-    // these lints will trigger all of the time - change this once migration to diagnostic structs
-    // and translation is completed
     store.register_group(
         false,
         "rustc::internal",

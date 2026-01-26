@@ -242,7 +242,7 @@ impl DebugContext {
         let generics = tcx.generics_of(enclosing_fn_def_id);
         let args = instance.args.truncate_to(tcx, generics);
 
-        type_names::push_generic_params(
+        type_names::push_generic_args(
             tcx,
             tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), args),
             &mut name,

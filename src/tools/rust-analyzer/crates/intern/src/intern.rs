@@ -334,7 +334,7 @@ impl<T: ?Sized> InternStorage<T> {
 
 impl<T: Internable + ?Sized> InternStorage<T> {
     pub(crate) fn get(&self) -> &InternMap<T> {
-        self.map.get_or_init(DashMap::default)
+        self.map.get_or_init(|| DashMap::with_capacity_and_hasher(1024, Default::default()))
     }
 }
 

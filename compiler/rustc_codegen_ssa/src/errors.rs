@@ -137,39 +137,6 @@ pub(crate) struct RequiresRustAbi {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_expected_name_value_pair)]
-pub(crate) struct ExpectedNameValuePair {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_unexpected_parameter_name)]
-pub(crate) struct UnexpectedParameterName {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub prefix_nops: Symbol,
-    pub entry_nops: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_invalid_literal_value)]
-pub(crate) struct InvalidLiteralValue {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_out_of_range_integer)]
-pub(crate) struct OutOfRangeInteger {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_copy_path_buf)]
 pub(crate) struct CopyPathBuf {
     pub source_file: PathBuf,
@@ -661,7 +628,7 @@ pub(crate) struct RlibArchiveBuildFailure {
 }
 
 #[derive(Diagnostic)]
-// Public for rustc_codegen_llvm::back::archive
+// Public for ArchiveBuilderBuilder::extract_bundled_libs
 pub enum ExtractBundledLibsError<'a> {
     #[diag(codegen_ssa_extract_bundled_libs_open_file)]
     OpenFile { rlib: &'a Path, error: Box<dyn std::error::Error> },
@@ -700,18 +667,20 @@ pub(crate) struct UnsupportedLinkSelfContained;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_archive_build_failure)]
-// Public for rustc_codegen_llvm::back::archive
-pub struct ArchiveBuildFailure {
+pub(crate) struct ArchiveBuildFailure {
     pub path: PathBuf,
     pub error: std::io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unknown_archive_kind)]
-// Public for rustc_codegen_llvm::back::archive
-pub struct UnknownArchiveKind<'a> {
+pub(crate) struct UnknownArchiveKind<'a> {
     pub kind: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_bpf_staticlib_not_supported)]
+pub(crate) struct BpfStaticlibNotSupported;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_multiple_main_functions)]

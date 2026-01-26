@@ -13,7 +13,7 @@ error[E0277]: `(u32) is 1..` is not a valid base type for range patterns
 LL | const BAD_NESTING: pattern_type!(pattern_type!(u32 is 1..) is 0..) = todo!();
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^ only integer types and `char` are supported
    |
-   = help: the trait `core::pat::RangePattern` is not implemented for `(u32) is 1..`
+   = help: the nightly-only, unstable trait `core::pat::RangePattern` is not implemented for `(u32) is 1..`
    = help: the following other types implement trait `core::pat::RangePattern`:
              char
              i128
@@ -31,7 +31,7 @@ error[E0277]: `(i32) is 1..` is not a valid base type for range patterns
 LL | const BAD_NESTING2: pattern_type!(pattern_type!(i32 is 1..) is ..=-1) = todo!();
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ only integer types and `char` are supported
    |
-   = help: the trait `core::pat::RangePattern` is not implemented for `(i32) is 1..`
+   = help: the nightly-only, unstable trait `core::pat::RangePattern` is not implemented for `(i32) is 1..`
    = help: the following other types implement trait `core::pat::RangePattern`:
              char
              i128
@@ -55,7 +55,7 @@ error[E0277]: `(i32) is 1..` is not a valid base type for range patterns
 LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!();
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ only integer types and `char` are supported
    |
-   = help: the trait `core::pat::RangePattern` is not implemented for `(i32) is 1..`
+   = help: the nightly-only, unstable trait `core::pat::RangePattern` is not implemented for `(i32) is 1..`
    = help: the following other types implement trait `core::pat::RangePattern`:
              char
              i128
@@ -92,7 +92,7 @@ error[E0277]: `(i32) is 1..` is not a valid base type for range patterns
 LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!();
    |                                                                  ^ only integer types and `char` are supported
    |
-   = help: the trait `core::pat::RangePattern` is not implemented for `(i32) is 1..`
+   = help: the nightly-only, unstable trait `core::pat::RangePattern` is not implemented for `(i32) is 1..`
    = help: the following other types implement trait `core::pat::RangePattern`:
              char
              i128
@@ -110,7 +110,7 @@ error[E0277]: `()` is not a valid base type for range patterns
 LL | const BAD_NESTING4: pattern_type!(() is ..0) = todo!();
    |                                   ^^ only integer types and `char` are supported
    |
-   = help: the trait `core::pat::RangePattern` is not implemented for `()`
+   = help: the nightly-only, unstable trait `core::pat::RangePattern` is not implemented for `()`
    = help: the following other types implement trait `core::pat::RangePattern`:
              char
              i128
@@ -145,7 +145,7 @@ error[E0277]: `()` is not a valid base type for range patterns
 LL | const BAD_NESTING4: pattern_type!(() is ..0) = todo!();
    |                                           ^ only integer types and `char` are supported
    |
-   = help: the trait `core::pat::RangePattern` is not implemented for `()`
+   = help: the nightly-only, unstable trait `core::pat::RangePattern` is not implemented for `()`
    = help: the following other types implement trait `core::pat::RangePattern`:
              char
              i128
@@ -163,7 +163,7 @@ error[E0277]: `f32` is not a valid base type for range patterns
 LL | const BAD_NESTING5: pattern_type!(f32 is 1.0 .. 2.0) = todo!();
    |                                                 ^^^ only integer types and `char` are supported
    |
-   = help: the trait `core::pat::RangePattern` is not implemented for `f32`
+   = help: the nightly-only, unstable trait `core::pat::RangePattern` is not implemented for `f32`
    = help: the following other types implement trait `core::pat::RangePattern`:
              i128
              i16

@@ -4,7 +4,7 @@ error[E0277]: the trait bound `NotAValidResultType: VisitorResult` is not satisf
 LL |     type Result = NotAValidResultType;
    |                   ^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
-help: the trait `VisitorResult` is not implemented for `NotAValidResultType`
+help: the nightly-only, unstable trait `VisitorResult` is not implemented for `NotAValidResultType`
   --> $DIR/rustc-dev-remap.rs:LL:COL
    |
 LL | struct NotAValidResultType;

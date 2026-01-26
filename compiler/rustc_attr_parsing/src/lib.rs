@@ -99,6 +99,7 @@ mod interface;
 /// like lists or name-value pairs.
 pub mod parser;
 
+mod early_parsed;
 mod safety;
 mod session_diagnostics;
 mod target_checking;

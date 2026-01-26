@@ -1,5 +1,5 @@
 error: this iterator reduction never loops (closure always diverges)
-  --> tests/ui/never_loop_iterator_reduction.rs:6:5
+  --> tests/ui/never_loop_iterator_reduction.rs:7:5
    |
 LL | /     [0, 1].into_iter().for_each(|x| {
 LL | |

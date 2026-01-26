@@ -1,12 +1,10 @@
-error: `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
+error: `#[must_not_suspend]` attribute cannot be used on functions
   --> $DIR/return.rs:5:1
    |
-LL |   #[must_not_suspend]
-   |   ^^^^^^^^^^^^^^^^^^^
-LL | / fn foo() -> i32 {
-LL | |     0
-LL | | }
-   | |_- is not a struct, enum, union, or trait
+LL | #[must_not_suspend]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[must_not_suspend]` can be applied to data types, traits, and unions
 
 error: aborting due to 1 previous error
 

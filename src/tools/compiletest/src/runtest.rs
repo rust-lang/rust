@@ -18,7 +18,7 @@ use crate::common::{
     TestSuite, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG,
     UI_WINDOWS_SVG, expected_output_path, incremental_dir, output_base_dir, output_base_name,
 };
-use crate::directives::TestProps;
+use crate::directives::{AuxCrate, TestProps};
 use crate::errors::{Error, ErrorKind, load_errors};
 use crate::output_capture::ConsoleOut;
 use crate::read2::{Truncated, read2_abbreviated};
@@ -269,7 +269,7 @@ impl<'test> TestCx<'test> {
             TestMode::Pretty => self.run_pretty_test(),
             TestMode::DebugInfo => self.run_debuginfo_test(),
             TestMode::Codegen => self.run_codegen_test(),
-            TestMode::Rustdoc => self.run_rustdoc_test(),
+            TestMode::RustdocHtml => self.run_rustdoc_html_test(),
             TestMode::RustdocJson => self.run_rustdoc_json_test(),
             TestMode::CodegenUnits => self.run_codegen_units_test(),
             TestMode::Incremental => self.run_incremental_test(),
@@ -1277,23 +1277,36 @@ impl<'test> TestCx<'test> {
                 .replace('-', "_")
         };
 
-        let add_extern =
-            |rustc: &mut Command, aux_name: &str, aux_path: &str, aux_type: AuxType| {
-                let lib_name = get_lib_name(&path_to_crate_name(aux_path), aux_type);
-                if let Some(lib_name) = lib_name {
-                    rustc.arg("--extern").arg(format!("{}={}/{}", aux_name, aux_dir, lib_name));
-                }
-            };
+        let add_extern = |rustc: &mut Command,
+                          extern_modifiers: Option<&str>,
+                          aux_name: &str,
+                          aux_path: &str,
+                          aux_type: AuxType| {
+            let lib_name = get_lib_name(&path_to_crate_name(aux_path), aux_type);
+            if let Some(lib_name) = lib_name {
+                let modifiers_and_name = match extern_modifiers {
+                    Some(modifiers) => format!("{modifiers}:{aux_name}"),
+                    None => aux_name.to_string(),
+                };
+                rustc.arg("--extern").arg(format!("{modifiers_and_name}={aux_dir}/{lib_name}"));
+            }
+        };
 
-        for (aux_name, aux_path) in &self.props.aux.crates {
-            let aux_type = self.build_auxiliary(&aux_path, &aux_dir, None);
-            add_extern(rustc, aux_name, aux_path, aux_type);
+        for AuxCrate { extern_modifiers, name, path } in &self.props.aux.crates {
+            let aux_type = self.build_auxiliary(&path, &aux_dir, None);
+            add_extern(rustc, extern_modifiers.as_deref(), name, path, aux_type);
         }
 
         for proc_macro in &self.props.aux.proc_macros {
             self.build_auxiliary(proc_macro, &aux_dir, Some(AuxType::ProcMacro));
             let crate_name = path_to_crate_name(proc_macro);
-            add_extern(rustc, &crate_name, proc_macro, AuxType::ProcMacro);
+            add_extern(
+                rustc,
+                None, // `extern_modifiers`
+                &crate_name,
+                proc_macro,
+                AuxType::ProcMacro,
+            );
         }
 
         // Build any `//@ aux-codegen-backend`, and pass the resulting library
@@ -1758,7 +1771,7 @@ impl<'test> TestCx<'test> {
             }
             TestMode::Pretty
             | TestMode::DebugInfo
-            | TestMode::Rustdoc
+            | TestMode::RustdocHtml
             | TestMode::RustdocJson
             | TestMode::RunMake
             | TestMode::RustdocJs => {

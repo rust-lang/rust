@@ -8,7 +8,7 @@ extern crate use_by_macro;
 use use_by_macro::*;
 
 my_struct!(define);
-//~^ ERROR the name `MyStruct` is defined multiple times
 my_struct!(define);
+//~^ ERROR the name `MyStruct` is defined multiple times
 
 fn main() {}

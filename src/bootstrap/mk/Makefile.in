@@ -53,6 +53,11 @@ check-aux:
 		src/tools/cargotest \
 		src/tools/test-float-parse \
 		$(BOOTSTRAP_ARGS)
+	# The build-std suite is off by default because it is uncommonly slow
+	# and memory-hungry.
+	$(Q)$(BOOTSTRAP) test --stage 2 \
+		build-std \
+		$(BOOTSTRAP_ARGS)
 	# Run standard library tests in Miri.
 	$(Q)MIRIFLAGS="-Zmiri-strict-provenance" \
 		$(BOOTSTRAP) miri --stage 2 \

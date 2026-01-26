@@ -1563,7 +1563,7 @@ impl String {
     /// assert_eq!("bna", s);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "string_remove_matches", reason = "new API", issue = "72826")]
+    #[unstable(feature = "string_remove_matches", issue = "72826")]
     pub fn remove_matches<P: Pattern>(&mut self, pat: P) {
         use core::str::pattern::Searcher;
 

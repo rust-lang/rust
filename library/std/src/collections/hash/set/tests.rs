@@ -504,7 +504,9 @@ fn from_array() {
 #[test]
 fn const_with_hasher() {
     const X: HashSet<(), ()> = HashSet::with_hasher(());
+    const Y: HashSet<(), ()> = Default::default();
     assert_eq!(X.len(), 0);
+    assert_eq!(Y.len(), 0);
 }
 
 #[test]

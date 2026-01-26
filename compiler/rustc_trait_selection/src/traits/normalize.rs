@@ -433,7 +433,12 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
     #[instrument(skip(self), level = "debug")]
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         let tcx = self.selcx.tcx();
-        if tcx.features().generic_const_exprs() || !needs_normalization(self.selcx.infcx, &ct) {
+
+        if tcx.features().generic_const_exprs()
+            // Normalize type_const items even with feature `generic_const_exprs`.
+            && !matches!(ct.kind(), ty::ConstKind::Unevaluated(uv) if tcx.is_type_const(uv.def))
+            || !needs_normalization(self.selcx.infcx, &ct)
+        {
             return ct;
         }
 

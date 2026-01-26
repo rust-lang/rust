@@ -6,20 +6,33 @@ LL |     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE:
-   = note: inside `<fn() as std::ops::FnOnce<()>>::call_once - shim(fn())` at RUSTLIB/core/src/ops/function.rs:LL:CC
-   = note: inside `std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
-   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
-   = note: inside `std::ops::function::impls::<impl std::ops::FnOnce<()> for &dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe>::call_once` at RUSTLIB/core/src/ops/function.rs:LL:CC
-   = note: inside `std::panicking::catch_unwind::do_call::<&dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe, i32>` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panicking::catch_unwind::<i32, &dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe>` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panic::catch_unwind::<&dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe, i32>` at RUSTLIB/std/src/panic.rs:LL:CC
-   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
-   = note: inside `std::panicking::catch_unwind::do_call::<{closure@std::rt::lang_start_internal::{closure#0}}, isize>` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panicking::catch_unwind::<isize, {closure@std::rt::lang_start_internal::{closure#0}}>` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panic::catch_unwind::<{closure@std::rt::lang_start_internal::{closure#0}}, isize>` at RUSTLIB/std/src/panic.rs:LL:CC
-   = note: inside `std::rt::lang_start_internal` at RUSTLIB/std/src/rt.rs:LL:CC
-   = note: inside `std::rt::lang_start::<()>` at RUSTLIB/std/src/rt.rs:LL:CC
+   = note: stack backtrace:
+           0: <fn() as std::ops::FnOnce<()>>::call_once - shim(fn())
+               at RUSTLIB/core/src/ops/function.rs:LL:CC
+           1: std::sys::backtrace::__rust_begin_short_backtrace
+               at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
+           2: std::rt::lang_start::{closure#0}
+               at RUSTLIB/std/src/rt.rs:LL:CC
+           3: std::ops::function::impls::call_once
+               at RUSTLIB/core/src/ops/function.rs:LL:CC
+           4: std::panicking::catch_unwind::do_call
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           5: std::panicking::catch_unwind
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           6: std::panic::catch_unwind
+               at RUSTLIB/std/src/panic.rs:LL:CC
+           7: std::rt::lang_start_internal::{closure#0}
+               at RUSTLIB/std/src/rt.rs:LL:CC
+           8: std::panicking::catch_unwind::do_call
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           9: std::panicking::catch_unwind
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           10: std::panic::catch_unwind
+               at RUSTLIB/std/src/panic.rs:LL:CC
+           11: std::rt::lang_start_internal
+               at RUSTLIB/std/src/rt.rs:LL:CC
+           12: std::rt::lang_start
+               at RUSTLIB/std/src/rt.rs:LL:CC
 
 error: aborting due to 1 previous error
 

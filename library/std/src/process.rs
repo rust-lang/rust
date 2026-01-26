@@ -167,7 +167,7 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::num::NonZero;
 use crate::path::Path;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, process as imp};
-use crate::{fmt, fs, str};
+use crate::{fmt, format_args_nl, fs, str};
 
 /// Representation of a running or exited child process.
 ///

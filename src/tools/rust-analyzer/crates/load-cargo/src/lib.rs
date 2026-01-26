@@ -11,15 +11,16 @@ extern crate rustc_driver as _;
 use std::{any::Any, collections::hash_map::Entry, mem, path::Path, sync};
 
 use crossbeam_channel::{Receiver, unbounded};
-use hir_expand::proc_macro::{
-    ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
-    ProcMacrosBuilder,
+use hir_expand::{
+    db::ExpandDatabase,
+    proc_macro::{
+        ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
+        ProcMacrosBuilder,
+    },
 };
 use ide_db::{
     ChangeWithProcMacros, FxHashMap, RootDatabase,
-    base_db::{
-        CrateGraphBuilder, Env, ProcMacroLoadingError, SourceDatabase, SourceRoot, SourceRootId,
-    },
+    base_db::{CrateGraphBuilder, Env, ProcMacroLoadingError, SourceRoot, SourceRootId},
     prime_caches,
 };
 use itertools::Itertools;
@@ -31,7 +32,8 @@ use proc_macro_api::{
     },
 };
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
-use span::Span;
+use span::{Span, SpanAnchor, SyntaxContext};
+use tt::{TextRange, TextSize};
 use vfs::{
     AbsPath, AbsPathBuf, FileId, VfsPath,
     file_set::FileSetConfig,
@@ -530,7 +532,7 @@ struct Expander(proc_macro_api::ProcMacro);
 impl ProcMacroExpander for Expander {
     fn expand(
         &self,
-        db: &dyn SourceDatabase,
+        db: &dyn ExpandDatabase,
         subtree: &tt::TopSubtree,
         attrs: Option<&tt::TopSubtree>,
         env: &Env,
@@ -540,11 +542,44 @@ impl ProcMacroExpander for Expander {
         current_dir: String,
     ) -> Result<tt::TopSubtree, ProcMacroExpansionError> {
         let mut cb = |req| match req {
-            SubRequest::SourceText { file_id, start, end } => {
-                let file = FileId::from_raw(file_id);
-                let text = db.file_text(file).text(db);
-                let slice = text.get(start as usize..end as usize).map(ToOwned::to_owned);
-                Ok(SubResponse::SourceTextResult { text: slice })
+            SubRequest::LocalFilePath { file_id } => {
+                let file_id = FileId::from_raw(file_id);
+                let source_root_id = db.file_source_root(file_id).source_root_id(db);
+                let source_root = db.source_root(source_root_id).source_root(db);
+                let name = source_root
+                    .path_for_file(&file_id)
+                    .and_then(|path| path.as_path())
+                    .map(|path| path.to_string());
+
+                Ok(SubResponse::LocalFilePathResult { name })
+            }
+            SubRequest::SourceText { file_id, ast_id, start, end } => {
+                let ast_id = span::ErasedFileAstId::from_raw(ast_id);
+                let editioned_file_id = span::EditionedFileId::from_raw(file_id);
+                let span = Span {
+                    range: TextRange::new(TextSize::from(start), TextSize::from(end)),
+                    anchor: SpanAnchor { file_id: editioned_file_id, ast_id },
+                    ctx: SyntaxContext::root(editioned_file_id.edition()),
+                };
+                let range = db.resolve_span(span);
+                let source = db.file_text(range.file_id.file_id(db)).text(db);
+                let text = source
+                    .get(usize::from(range.range.start())..usize::from(range.range.end()))
+                    .map(ToOwned::to_owned);
+
+                Ok(SubResponse::SourceTextResult { text })
+            }
+            SubRequest::FilePath { file_id } => {
+                let file_id = FileId::from_raw(file_id);
+                let source_root_id = db.file_source_root(file_id).source_root_id(db);
+                let source_root = db.source_root(source_root_id).source_root(db);
+                let name = source_root
+                    .path_for_file(&file_id)
+                    .and_then(|path| path.as_path())
+                    .map(|path| path.to_string())
+                    .unwrap_or_default();
+
+                Ok(SubResponse::FilePathResult { name })
             }
         };
         match self.0.expand(

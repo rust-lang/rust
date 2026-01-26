@@ -19,14 +19,14 @@ pub(crate) fn emit_inline_always_target_feature_diagnostic<'a, 'tcx>(
     caller_def_id: DefId,
     callee_only: &[&'a str],
 ) {
-    let callee = tcx.def_path_str(callee_def_id);
-    let caller = tcx.def_path_str(caller_def_id);
-
     tcx.node_span_lint(
         lint::builtin::INLINE_ALWAYS_MISMATCHING_TARGET_FEATURES,
         tcx.local_def_id_to_hir_id(caller_def_id.as_local().unwrap()),
         call_span,
         |lint| {
+            let callee = tcx.def_path_str(callee_def_id);
+            let caller = tcx.def_path_str(caller_def_id);
+
             lint.primary_message(format!(
                 "call to `#[inline(always)]`-annotated `{callee}` \
                 requires the same target features to be inlined"
@@ -323,7 +323,7 @@ impl<'a> LintDiagnostic<'a, ()> for MustNotSupend<'_, '_> {
 pub(crate) struct MustNotSuspendReason {
     #[primary_span]
     pub span: Span,
-    pub reason: String,
+    pub reason: Symbol,
 }
 
 #[derive(Diagnostic)]

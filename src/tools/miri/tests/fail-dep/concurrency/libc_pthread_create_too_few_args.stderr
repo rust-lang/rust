@@ -6,6 +6,7 @@ LL |             libc::pthread_create(&mut native, ptr::null(), thread_start, pt
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: this is on thread `unnamed-ID`
    = note: this error occurred while pushing a call frame onto an empty stack
    = note: the span indicates which code caused the function to be called, but may not be the literal call site
 

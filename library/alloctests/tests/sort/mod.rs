@@ -12,6 +12,7 @@ pub trait Sort {
 
 mod ffi_types;
 mod known_good_stable_sort;
+mod partial;
 mod patterns;
 mod tests;
 mod zipf;

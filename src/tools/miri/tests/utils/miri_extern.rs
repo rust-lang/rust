@@ -156,6 +156,19 @@ extern "Rust" {
     /// Blocks the current execution if the argument is false
     pub fn miri_genmc_assume(condition: bool);
 
+    /// Miri-provided extern function to spawn a new thread in the interpreter.
+    ///
+    /// Returns the thread id.
+    ///
+    /// This is useful when no fundamental way of spawning threads is available, e.g. when using
+    /// `no_std`.
+    pub fn miri_thread_spawn(t: extern "Rust" fn(*mut ()), data: *mut ()) -> usize;
+
+    /// Miri-provided extern function to join a thread that was spawned by Miri.
+    pub fn miri_thread_join(thread_id: usize) -> bool;
+
     /// Indicate to Miri that this thread is busy-waiting in a spin loop.
+    ///
+    /// As far as Miri is concerned, this is equivalent to `yield_now`.
     pub fn miri_spin_loop();
 }

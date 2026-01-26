@@ -1,0 +1,34 @@
+error: unresolved link to `define_sql_function`
+  --> $DIR/deprecated-note-from-reexported.rs:12:25
+   |
+LL |     #[deprecated(note = "Use [`define_sql_function`] instead")]
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the link appears in this line:
+           
+           Use [`define_sql_function`] instead
+                ^^^^^^^^^^^^^^^^^^^^^
+   = note: no item named `define_sql_function` in scope
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+note: the lint level is defined here
+  --> $DIR/deprecated-note-from-reexported.rs:4:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unresolved link to `define_sql_function`
+  --> $DIR/deprecated-note-from-reexported.rs:12:25
+   |
+LL |     #[deprecated(note = "Use [`define_sql_function`] instead")]
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the link appears in this line:
+           
+           Use [`define_sql_function`] instead
+                ^^^^^^^^^^^^^^^^^^^^^
+   = note: no item named `define_sql_function` in scope
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

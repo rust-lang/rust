@@ -1,9 +1,7 @@
 use std::collections::hash_map::Entry::*;
 
 use rustc_abi::{CanonAbi, X86Call};
-use rustc_ast::expand::allocator::{
-    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name,
-};
+use rustc_ast::expand::allocator::{AllocatorKind, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
@@ -21,6 +19,7 @@ use rustc_target::spec::{Arch, Os, TlsModel};
 use tracing::debug;
 
 use crate::back::symbol_export;
+use crate::base::allocator_shim_contents;
 
 fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(tcx.crate_types())
@@ -28,7 +27,7 @@ fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
 
 fn crate_export_threshold(crate_type: CrateType) -> SymbolExportLevel {
     match crate_type {
-        CrateType::Executable | CrateType::Staticlib | CrateType::ProcMacro | CrateType::Cdylib => {
+        CrateType::Executable | CrateType::StaticLib | CrateType::ProcMacro | CrateType::Cdylib => {
             SymbolExportLevel::C
         }
         CrateType::Rlib | CrateType::Dylib | CrateType::Sdylib => SymbolExportLevel::Rust,
@@ -474,15 +473,15 @@ fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: LocalDefId)
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    providers.reachable_non_generics = reachable_non_generics_provider;
-    providers.is_reachable_non_generic = is_reachable_non_generic_provider_local;
-    providers.exported_non_generic_symbols = exported_non_generic_symbols_provider_local;
-    providers.exported_generic_symbols = exported_generic_symbols_provider_local;
-    providers.upstream_monomorphizations = upstream_monomorphizations_provider;
-    providers.is_unreachable_local_definition = is_unreachable_local_definition_provider;
-    providers.upstream_drop_glue_for = upstream_drop_glue_for_provider;
-    providers.upstream_async_drop_glue_for = upstream_async_drop_glue_for_provider;
-    providers.wasm_import_module_map = wasm_import_module_map;
+    providers.queries.reachable_non_generics = reachable_non_generics_provider;
+    providers.queries.is_reachable_non_generic = is_reachable_non_generic_provider_local;
+    providers.queries.exported_non_generic_symbols = exported_non_generic_symbols_provider_local;
+    providers.queries.exported_generic_symbols = exported_generic_symbols_provider_local;
+    providers.queries.upstream_monomorphizations = upstream_monomorphizations_provider;
+    providers.queries.is_unreachable_local_definition = is_unreachable_local_definition_provider;
+    providers.queries.upstream_drop_glue_for = upstream_drop_glue_for_provider;
+    providers.queries.upstream_async_drop_glue_for = upstream_async_drop_glue_for_provider;
+    providers.queries.wasm_import_module_map = wasm_import_module_map;
     providers.extern_queries.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
     providers.extern_queries.upstream_monomorphizations_for =
         upstream_monomorphizations_for_provider;
@@ -490,14 +489,12 @@ pub(crate) fn provide(providers: &mut Providers) {
 
 pub(crate) fn allocator_shim_symbols(
     tcx: TyCtxt<'_>,
+    kind: AllocatorKind,
 ) -> impl Iterator<Item = (String, SymbolExportKind)> {
-    ALLOCATOR_METHODS
-        .iter()
+    allocator_shim_contents(tcx, kind)
+        .into_iter()
         .map(move |method| mangle_internal_symbol(tcx, global_fn_name(method.name).as_str()))
-        .chain([
-            mangle_internal_symbol(tcx, global_fn_name(ALLOC_ERROR_HANDLER).as_str()),
-            mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
-        ])
+        .chain([mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE)])
         .map(move |symbol_name| {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 

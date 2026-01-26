@@ -1,4 +1,3 @@
-use std::assert_matches::assert_matches;
 use std::cmp::Ordering;
 use std::ffi::c_uint;
 use std::ptr;
@@ -13,6 +12,7 @@ use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphizati
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::assert_matches;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir};
 use rustc_middle::mir::BinOp;
@@ -30,7 +30,7 @@ use tracing::debug;
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
-use crate::builder::gpu_offload::{gen_call_handling, gen_define_handling};
+use crate::builder::gpu_offload::{OffloadKernelDims, gen_call_handling, gen_define_handling};
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
 use crate::errors::{
@@ -269,14 +269,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return Ok(());
             }
             sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[], &[]),
-            sym::va_copy => {
-                let dest = args[0].immediate();
-                self.call_intrinsic(
-                    "llvm.va_copy",
-                    &[self.val_ty(dest)],
-                    &[dest, args[1].immediate()],
-                )
-            }
             sym::va_arg => {
                 match result.layout.backend_repr {
                     BackendRepr::Scalar(scalar) => {
@@ -558,6 +550,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
                 // We have copied the value to `result` already.
                 return Ok(());
+            }
+
+            sym::amdgpu_dispatch_ptr => {
+                let val = self.call_intrinsic("llvm.amdgcn.dispatch.ptr", &[], &[]);
+                // Relying on `LLVMBuildPointerCast` to produce an addrspacecast
+                self.pointercast(val, self.type_ptr())
             }
 
             _ if name.as_str().starts_with("simd_") => {
@@ -1384,10 +1382,12 @@ fn codegen_offload<'ll, 'tcx>(
         }
     };
 
-    let args = get_args_from_tuple(bx, args[1], fn_target);
+    let offload_dims = OffloadKernelDims::from_operands(bx, &args[1], &args[2]);
+    let args = get_args_from_tuple(bx, args[3], fn_target);
     let target_symbol = symbol_name_for_instance_in_crate(tcx, fn_target, LOCAL_CRATE);
 
-    let sig = tcx.fn_sig(fn_target.def_id()).skip_binder().skip_binder();
+    let sig = tcx.fn_sig(fn_target.def_id()).skip_binder();
+    let sig = tcx.instantiate_bound_regions_with_erased(sig);
     let inputs = sig.inputs();
 
     let metadata = inputs.iter().map(|ty| OffloadMetadata::from_ty(tcx, *ty)).collect::<Vec<_>>();
@@ -1402,8 +1402,8 @@ fn codegen_offload<'ll, 'tcx>(
             return;
         }
     };
-    let offload_data = gen_define_handling(&cx, &metadata, &types, target_symbol, offload_globals);
-    gen_call_handling(bx, &offload_data, &args, &types, &metadata, offload_globals);
+    let offload_data = gen_define_handling(&cx, &metadata, target_symbol, offload_globals);
+    gen_call_handling(bx, &offload_data, &args, &types, &metadata, offload_globals, &offload_dims);
 }
 
 fn get_args_from_tuple<'ll, 'tcx>(
@@ -1579,6 +1579,31 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let m_im = bx.trunc(mask, im);
         let m_i1s = bx.bitcast(m_im, i1xn);
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
+    }
+
+    if name == sym::simd_splat {
+        let (_out_len, out_ty) = require_simd!(ret_ty, SimdReturn);
+
+        require!(
+            args[0].layout.ty == out_ty,
+            InvalidMonomorphization::ExpectedVectorElementType {
+                span,
+                name,
+                expected_element: out_ty,
+                vector_type: ret_ty,
+            }
+        );
+
+        // `insertelement <N x elem> poison, elem %x, i32 0`
+        let poison_vec = bx.const_poison(llret_ty);
+        let idx0 = bx.const_i32(0);
+        let v0 = bx.insert_element(poison_vec, args[0].immediate(), idx0);
+
+        // `shufflevector <N x elem> v0, <N x elem> poison, <N x i32> zeroinitializer`
+        // The masks is all zeros, so this splats lane 0 (which has our element in it).
+        let splat = bx.shuffle_vector(v0, poison_vec, bx.const_null(llret_ty));
+
+        return Ok(splat);
     }
 
     // every intrinsic below takes a SIMD vector as its first argument

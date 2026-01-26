@@ -442,7 +442,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
                 }
             }
-            self.note_two_crate_versions(expected_did, span, err);
+            self.note_two_crate_versions(expected_did.krate, span, err);
             err.help("you can use `cargo tree` to explore your dependency tree");
         }
         suggested

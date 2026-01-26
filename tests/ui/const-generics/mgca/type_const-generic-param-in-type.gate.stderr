@@ -1,0 +1,38 @@
+error: anonymous constants referencing generics are not yet supported
+  --> $DIR/type_const-generic-param-in-type.rs:9:53
+   |
+LL | const FOO<T: core::marker::ConstParamTy_>: [T; 0] = const { [] };
+   |                                                     ^^^^^^^^^^^^
+
+error: anonymous constants referencing generics are not yet supported
+  --> $DIR/type_const-generic-param-in-type.rs:14:38
+   |
+LL | const BAR<const N: usize>: [(); N] = const { [] };
+   |                                      ^^^^^^^^^^^^
+
+error: anonymous constants with lifetimes in their type are not yet supported
+  --> $DIR/type_const-generic-param-in-type.rs:19:30
+   |
+LL | const BAZ<'a>: [&'a (); 0] = const { [] };
+   |                              ^^^^^^^^^^^^
+
+error: anonymous constants referencing generics are not yet supported
+  --> $DIR/type_const-generic-param-in-type.rs:39:59
+   |
+LL |     const ASSOC<T: core::marker::ConstParamTy_>: [T; 0] = const { [] };
+   |                                                           ^^^^^^^^^^^^
+
+error: anonymous constants referencing generics are not yet supported
+  --> $DIR/type_const-generic-param-in-type.rs:44:50
+   |
+LL |     const ASSOC_CONST<const N: usize>: [(); N] = const { [] };
+   |                                                  ^^^^^^^^^^^^
+
+error: anonymous constants with lifetimes in their type are not yet supported
+  --> $DIR/type_const-generic-param-in-type.rs:49:39
+   |
+LL |     const ASSOC_LT<'a>: [&'a (); 0] = const { [] };
+   |                                       ^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

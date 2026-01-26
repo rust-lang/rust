@@ -111,13 +111,14 @@ The third point is also somewhat subtle, by not inheriting any of the where clau
 
 This also makes it much more likely that the compiler will ICE or atleast incidentally emit some kind of error if we *do* accidentally allow generic parameters in an anon const, as the anon const will have none of the necessary information in its environment to properly handle the generic parameters.
 
+#### Array repeat expressions
+The one exception to all of the above is repeat counts of array expressions. As a *backwards compatibility hack* we allow the repeat count const argument to use generic parameters.
+
 ```rust
 fn foo<T: Sized>() {
-    let a = [1_u8;  size_of::<*mut T>()];
+    let a = [1_u8; size_of::<T>()];
 }
 ```
-
-The one exception to all of the above is repeat counts of array expressions. As a *backwards compatibility hack* we allow the repeat count const argument to use generic parameters.
 
 However, to avoid most of the problems involved in allowing generic parameters in anon const const arguments we require that the constant be evaluated before monomorphization (e.g. during type checking). In some sense we only allow generic parameters here when they are semantically unused.
 

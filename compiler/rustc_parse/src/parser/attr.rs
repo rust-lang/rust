@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_ast::token::{self, MetaVarKind};
 use rustc_ast::tokenstream::ParserRange;
-use rustc_ast::{Attribute, attr};
+use rustc_ast::{AttrItemKind, Attribute, attr};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, PResult};
 use rustc_span::{BytePos, Span};
@@ -9,7 +9,8 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use super::{
-    AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle, Trailing, UsePreAttrPos,
+    AllowConstBlockItems, AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle,
+    Trailing, UsePreAttrPos,
 };
 use crate::parser::FnContext;
 use crate::{errors, exp, fluent_generated as fluent};
@@ -203,6 +204,7 @@ impl<'a> Parser<'a> {
             false,
             FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true },
             ForceCollect::No,
+            AllowConstBlockItems::Yes,
         ) {
             Ok(Some(item)) => {
                 // FIXME(#100717)
@@ -313,7 +315,7 @@ impl<'a> Parser<'a> {
                 this.expect(exp!(CloseParen))?;
             }
             Ok((
-                ast::AttrItem { unsafety, path, args, tokens: None },
+                ast::AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args), tokens: None },
                 Trailing::No,
                 UsePreAttrPos::No,
             ))

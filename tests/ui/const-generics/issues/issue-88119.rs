@@ -1,5 +1,4 @@
-//@ known-bug: #110395
-//@ compile-flags: -Znext-solver
+//@ check-pass
 #![allow(incomplete_features)]
 #![feature(const_trait_impl, generic_const_exprs)]
 

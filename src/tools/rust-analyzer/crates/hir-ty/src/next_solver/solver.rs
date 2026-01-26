@@ -232,8 +232,8 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
     fn is_transmutable(
         &self,
-        _dst: Ty<'db>,
         _src: Ty<'db>,
+        _dst: Ty<'db>,
         _assume: <Self::Interner as rustc_type_ir::Interner>::Const,
     ) -> Result<Certainty, NoSolution> {
         // It's better to return some value while not fully implement

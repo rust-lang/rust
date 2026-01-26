@@ -13,14 +13,14 @@ fn get<S: Stage>(
     name: Symbol,
     param_span: Span,
     arg: &ArgParser,
-    item: &Option<Symbol>,
-) -> Option<Symbol> {
+    item: Option<Symbol>,
+) -> Option<Ident> {
     if item.is_some() {
         cx.duplicate_key(param_span, name);
         return None;
     }
     if let Some(v) = arg.name_value() {
-        if let Some(value_str) = v.value_as_str() {
+        if let Some(value_str) = v.value_as_ident() {
             Some(value_str)
         } else {
             cx.expected_string_literal(v.value_span, Some(&v.value_as_lit()));
@@ -72,7 +72,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
         let features = cx.features();
 
         let mut since = None;
-        let mut note = None;
+        let mut note: Option<Ident> = None;
         let mut suggestion = None;
 
         let is_rustc = features.staged_api();
@@ -92,10 +92,16 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
 
                     match ident_name {
                         Some(name @ sym::since) => {
-                            since = Some(get(cx, name, param.span(), param.args(), &since)?);
+                            since = Some(get(cx, name, param.span(), param.args(), since)?.name);
                         }
                         Some(name @ sym::note) => {
-                            note = Some(get(cx, name, param.span(), param.args(), &note)?);
+                            note = Some(get(
+                                cx,
+                                name,
+                                param.span(),
+                                param.args(),
+                                note.map(|ident| ident.name),
+                            )?);
                         }
                         Some(name @ sym::suggestion) => {
                             if !features.deprecated_suggestion() {
@@ -107,7 +113,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
                             }
 
                             suggestion =
-                                Some(get(cx, name, param.span(), param.args(), &suggestion)?);
+                                Some(get(cx, name, param.span(), param.args(), suggestion)?.name);
                         }
                         _ => {
                             cx.expected_specific_argument(
@@ -124,7 +130,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
                 }
             }
             ArgParser::NameValue(v) => {
-                let Some(value) = v.value_as_str() else {
+                let Some(value) = v.value_as_ident() else {
                     cx.expected_string_literal(v.value_span, Some(v.value_as_lit()));
                     return None;
                 };

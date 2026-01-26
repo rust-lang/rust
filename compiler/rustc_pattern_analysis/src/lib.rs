@@ -3,9 +3,8 @@
 //! [`rustc`] module.
 
 // tidy-alphabetical-start
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
 #![allow(unused_crate_dependencies)]
+#![cfg_attr(feature = "rustc", feature(if_let_guard))]
 // tidy-alphabetical-end
 
 pub(crate) mod checks;

@@ -1,5 +1,6 @@
 // Checks that the "copy code" button is not triggering JS error and its display
 // isn't broken.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 
 define-function: (
@@ -47,15 +48,15 @@ assert: |copy_height| > 0 && |copy_width| > 0
 
 // First we ensure that the clipboard is empty.
 assert-clipboard: ""
+
 // We make the line numbers appear.
-click: "rustdoc-toolbar .settings-menu"
-wait-for-css: ("#settings", {"display": "block"})
-// We make the line numbers appear.
+call-function: ("open-settings-menu", {})
 click: "#line-numbers"
 wait-for-local-storage: {"rustdoc-line-numbers": "true" }
+
 // We close the settings menu.
-click: "rustdoc-toolbar .settings-menu"
-wait-for-css-false: ("#settings", {"display": "block"})
+call-function: ("close-settings-menu", {})
+
 // We ensure that there are actually line numbers generated in the DOM.
 assert-text: (".example-wrap pre.rust code span[data-nosnippet]", "1")
 // We make the copy button appear.

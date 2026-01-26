@@ -13,3 +13,6 @@ cc = "1.2.16"
 cmake = "0.1.54"
 git2 = { version = "0.20.2", default-features = false, features = ["https"] }
 cxx-build = { version = "1.0.173", features = ["parallel"] }
+
+[features]
+check_only = []

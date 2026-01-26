@@ -6,7 +6,7 @@ const fn failure() {
 const fn print() {
     println!("{:?}", 0);
     //~^ ERROR cannot call non-const formatting macro in constant functions
-    //~| ERROR cannot call non-const function `_print` in constant functions
+    //~| ERROR cannot call non-const function `std::io::_print` in constant functions
 }
 
 const fn format_args() {

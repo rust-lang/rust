@@ -258,7 +258,7 @@ impl Printer<'_> {
                 w!(self, "trait {} {{ ... }}", name.display(self.db, self.edition));
             }
             ModItemId::Impl(ast_id) => {
-                let Impl {} = &self.tree[ast_id];
+                let Impl { is_trait_impl: _ } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 w!(self, "impl {{ ... }}");
             }

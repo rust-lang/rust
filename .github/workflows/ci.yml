@@ -11,11 +11,9 @@ name: CI
 on:
   push:
     branches:
-      - auto
-      - try
-      - try-perf
-      - automation/bors/try
       - automation/bors/auto
+      - automation/bors/try
+      - try-perf
   pull_request:
     branches:
       - "**"
@@ -33,9 +31,10 @@ defaults:
 
 concurrency:
   # For a given workflow, if we push to the same branch, cancel all previous builds on that branch.
-  # We add an exception for try builds (try branch) and unrolled rollup builds (try-perf), which
-  # are all triggered on the same branch, but which should be able to run concurrently.
-  group: ${{ github.workflow }}-${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try') && github.sha) || github.ref }}
+  # We add an exception for try builds (automation/bors/try branch) and unrolled rollup builds
+  # (try-perf), which are all triggered on the same branch, but which should be able to run
+  # concurrently.
+  group: ${{ github.workflow }}-${{ ((github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try') && github.sha) || github.ref }}
   cancel-in-progress: true
 env:
   TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
@@ -57,7 +56,7 @@ jobs:
       - name: Test citool
         # Only test citool on the auto branch, to reduce latency of the calculate matrix job
         # on PR/try builds.
-        if: ${{ github.ref == 'refs/heads/auto' || github.ref == 'refs/heads/automation/bors/auto' }}
+        if: ${{ github.ref == 'refs/heads/automation/bors/auto' }}
         run: |
           cd src/ci/citool
           CARGO_INCREMENTAL=0 cargo test
@@ -80,7 +79,7 @@ jobs:
     # access the environment.
     #
     # We only enable the environment for the rust-lang/rust repository, so that CI works on forks.
-    environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try' || github.ref == 'refs/heads/auto' || github.ref == 'refs/heads/automation/bors/auto')) && 'bors') || '' }}
+    environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try' || github.ref == 'refs/heads/automation/bors/auto')) && 'bors') || '' }}
     env:
       CI_JOB_NAME: ${{ matrix.name }}
       CI_JOB_DOC_URL: ${{ matrix.doc_url }}
@@ -289,7 +288,7 @@ jobs:
           fi
 
           # Get closest bors merge commit
-          PARENT_COMMIT=`git rev-list --author='bors <bors@rust-lang.org>' -n1 --first-parent HEAD^1`
+          PARENT_COMMIT=`git rev-list --author='bors@rust-lang.org' --author='122020455+rust-bors\[bot\]@users.noreply.github.com' -n1 --first-parent HEAD^1`
 
           ./build/citool/debug/citool postprocess-metrics \
               --job-name ${CI_JOB_NAME} \
@@ -306,30 +305,22 @@ jobs:
           DD_GITHUB_JOB_NAME: ${{ matrix.full_name }}
         run: ./build/citool/debug/citool upload-build-metrics build/cpu-usage.csv
 
-  # This job isused to tell bors the final status of the build, as there is no practical way to detect
-  # when a workflow is successful listening to webhooks only in our current bors implementation (homu).
+  # This job is used to publish toolstate for successful auto builds.
   outcome:
-    name: bors build finished
+    name: publish toolstate
     runs-on: ubuntu-24.04
     needs: [ calculate_matrix, job ]
-    # !cancelled() executes the job regardless of whether the previous jobs passed or failed
-    if: ${{ !cancelled() && contains(fromJSON('["auto", "try"]'), needs.calculate_matrix.outputs.run_type) }}
-    environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try' || github.ref == 'refs/heads/auto' || github.ref == 'refs/heads/automation/bors/auto')) && 'bors') || '' }}
+    if: ${{ needs.calculate_matrix.outputs.run_type == 'auto' }}
+    environment: ${{ (github.repository == 'rust-lang/rust' && 'bors') || '' }}
     steps:
       - name: checkout the source code
         uses: actions/checkout@v5
         with:
           fetch-depth: 2
-      # Calculate the exit status of the whole CI workflow.
-      # If all dependent jobs were successful, this exits with 0 (and the outcome job continues successfully).
-      # If a some dependent job has failed, this exits with 1.
-      - name: calculate the correct exit status
-        run: jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< '${{ toJson(needs) }}'
       # Publish the toolstate if an auto build succeeds (just before push to the default branch)
       - name: publish toolstate
         run: src/ci/publish_toolstate.sh
         shell: bash
-        if: needs.calculate_matrix.outputs.run_type == 'auto'
         env:
           TOOLSTATE_ISSUES_API_URL: https://api.github.com/repos/rust-lang/rust/issues
           TOOLSTATE_PUBLISH: 1

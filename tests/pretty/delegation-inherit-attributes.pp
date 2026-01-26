@@ -6,7 +6,6 @@
 
 #![allow(incomplete_features)]
 #![feature(fn_delegation)]
-#[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 #[prelude_import]
 use std::prelude::rust_2021::*;
@@ -22,8 +21,8 @@ mod to_reuse {
     #[attr = Cold]
     fn foo_no_reason(x: usize) -> usize { x }
 
-    #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
     #[attr = Cold]
+    #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
     fn bar(x: usize) -> usize { x }
 }
 

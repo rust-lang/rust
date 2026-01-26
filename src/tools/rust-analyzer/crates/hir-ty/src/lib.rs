@@ -230,6 +230,7 @@ pub enum FnAbi {
     Win64,
     Win64Unwind,
     X86Interrupt,
+    RustPreserveNone,
     Unknown,
 }
 
@@ -271,6 +272,7 @@ impl FnAbi {
             s if *s == sym::riscv_dash_interrupt_dash_s => FnAbi::RiscvInterruptS,
             s if *s == sym::rust_dash_call => FnAbi::RustCall,
             s if *s == sym::rust_dash_cold => FnAbi::RustCold,
+            s if *s == sym::rust_dash_preserve_dash_none => FnAbi::RustPreserveNone,
             s if *s == sym::rust_dash_intrinsic => FnAbi::RustIntrinsic,
             s if *s == sym::Rust => FnAbi::Rust,
             s if *s == sym::stdcall_dash_unwind => FnAbi::StdcallUnwind,
@@ -314,6 +316,7 @@ impl FnAbi {
             FnAbi::Rust => "Rust",
             FnAbi::RustCall => "rust-call",
             FnAbi::RustCold => "rust-cold",
+            FnAbi::RustPreserveNone => "rust-preserve-none",
             FnAbi::RustIntrinsic => "rust-intrinsic",
             FnAbi::Stdcall => "stdcall",
             FnAbi::StdcallUnwind => "stdcall-unwind",

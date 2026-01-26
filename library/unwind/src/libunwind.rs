@@ -78,8 +78,8 @@ pub const unwinder_private_data_size: usize = 20;
 #[cfg(all(target_arch = "wasm32", target_os = "linux"))]
 pub const unwinder_private_data_size: usize = 2;
 
-#[cfg(all(target_arch = "hexagon", target_os = "linux"))]
-pub const unwinder_private_data_size: usize = 35;
+#[cfg(target_arch = "hexagon")]
+pub const unwinder_private_data_size: usize = 5;
 
 #[cfg(any(target_arch = "loongarch32", target_arch = "loongarch64"))]
 pub const unwinder_private_data_size: usize = 2;

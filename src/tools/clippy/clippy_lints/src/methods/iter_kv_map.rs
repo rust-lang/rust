@@ -2,7 +2,7 @@ use super::ITER_KV_MAP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::{pat_is_wild, sym};
 use rustc_hir::{Body, Expr, ExprKind, PatKind};
 use rustc_lint::LateContext;
@@ -58,6 +58,8 @@ pub(super) fn check<'tcx>(
                 applicability,
             );
         } else {
+            let (body_snippet, _) =
+                snippet_with_context(cx, body_expr.span, expr.span.ctxt(), "..", &mut applicability);
             span_lint_and_sugg(
                 cx,
                 ITER_KV_MAP,
@@ -65,9 +67,8 @@ pub(super) fn check<'tcx>(
                 format!("iterating on a map's {replacement_kind}s"),
                 "try",
                 format!(
-                    "{recv_snippet}.{into_prefix}{replacement_kind}s().map(|{}{bound_ident}| {})",
+                    "{recv_snippet}.{into_prefix}{replacement_kind}s().map(|{}{bound_ident}| {body_snippet})",
                     annotation.prefix_str(),
-                    snippet_with_applicability(cx, body_expr.span, "/* body */", &mut applicability)
                 ),
                 applicability,
             );

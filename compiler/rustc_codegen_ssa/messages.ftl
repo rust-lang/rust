@@ -10,6 +10,8 @@ codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$erro
 
 codegen_ssa_binary_output_to_tty = option `-o` or `--emit` is used to write binary output type `{$shorthand}` to stdout, but stdout is a tty
 
+codegen_ssa_bpf_staticlib_not_supported = linking static libraries is not supported for BPF
+
 codegen_ssa_cgu_not_recorded =
     CGU-reuse for `{$cgu_user_name}` is (mangled: `{$cgu_name}`) was not recorded
 
@@ -45,8 +47,6 @@ codegen_ssa_error_creating_remark_dir = failed to create remark directory: {$err
 
 codegen_ssa_error_writing_def_file =
     error writing .DEF file: {$error}
-
-codegen_ssa_expected_name_value_pair = expected name value pair
 
 codegen_ssa_extern_funcs_not_found = some `extern` functions couldn't be found; some native libraries may need to be installed or have their path specified
 
@@ -87,9 +87,6 @@ codegen_ssa_incorrect_cgu_reuse_type =
     }`{$expected_reuse}`
 
 codegen_ssa_insufficient_vs_code_product = VS Code is a different product, and is not sufficient.
-
-codegen_ssa_invalid_literal_value = invalid literal value
-    .label = value must be an integer between `0` and `255`
 
 codegen_ssa_invalid_monomorphization_basic_float_type = invalid monomorphization of `{$name}` intrinsic: expected basic float type, found `{$ty}`
 
@@ -223,9 +220,6 @@ codegen_ssa_no_natvis_directory = error enumerating natvis directory: {$error}
 
 codegen_ssa_no_saved_object_file = cached cgu {$cgu_name} should have an object file, but doesn't
 
-codegen_ssa_out_of_range_integer = integer value out of range
-    .label = value must be between `0` and `255`
-
 codegen_ssa_processing_dymutil_failed = processing debug info with `dsymutil` failed: {$status}
     .note = {$output}
 
@@ -354,9 +348,6 @@ codegen_ssa_unable_to_run = unable to run `{$util}`: {$error}
 codegen_ssa_unable_to_run_dsymutil = unable to run `dsymutil`: {$error}
 
 codegen_ssa_unable_to_write_debugger_visualizer = unable to write debugger visualizer file `{$path}`: {$error}
-
-codegen_ssa_unexpected_parameter_name = unexpected parameter name
-    .label = expected `{$prefix_nops}` or `{$entry_nops}`
 
 codegen_ssa_unknown_archive_kind =
     don't know how to build archive of type: {$kind}

@@ -40,6 +40,11 @@ lint_atomic_ordering_load = atomic loads cannot have `Release` or `AcqRel` order
 lint_atomic_ordering_store = atomic stores cannot have `Acquire` or `AcqRel` ordering
     .help = consider using ordering modes `Release`, `SeqCst` or `Relaxed`
 
+lint_attr_crate_level =
+    this attribute can only be applied at the crate level
+    .suggestion = to apply to the crate, use an inner attribute
+    .note = read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
+
 lint_bad_attribute_argument = bad attribute argument
 
 lint_bad_opt_access = {$msg}
@@ -231,9 +236,6 @@ lint_deprecated_where_clause_location = where clause not allowed here
     .note = see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
     .suggestion_move_to_end = move it to the end of the type declaration
     .suggestion_remove_where = remove this `where`
-
-lint_diag_out_of_impl =
-    diagnostics should only be created in `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls
 
 lint_doc_alias_duplicated = doc alias is duplicated
     .label = first defined here
@@ -472,6 +474,12 @@ lint_improper_ctypes_union_non_exhaustive = this union is non-exhaustive
 
 lint_improper_ctypes_unsafe_binder = unsafe binders are incompatible with foreign function interfaces
 
+lint_improper_gpu_kernel_arg = passing type `{$ty}` to a function with "gpu-kernel" ABI may have unexpected behavior
+    .help = use primitive types and raw pointers to get reliable behavior
+
+lint_incorrect_do_not_recommend_args =
+    `#[diagnostic::do_not_recommend]` does not expect any arguments
+
 lint_int_to_ptr_transmutes = transmuting an integer to a pointer creates a pointer without provenance
     .note = this is dangerous because dereferencing the resulting pointer is undefined behavior
     .note_exposed_provenance = exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
@@ -494,6 +502,9 @@ lint_invalid_asm_label_named = avoid using named labels in inline assembly
     .help = only local labels of the form `<number>:` should be used in inline asm
     .note = see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 lint_invalid_asm_label_no_span = the label may be declared in the expansion of a macro
+
+lint_invalid_crate_type_value = invalid `crate_type` value
+    .suggestion = did you mean
 
 # FIXME: we should ordinalize $valid_up_to when we add support for doing so
 lint_invalid_from_utf8_checked = calls to `{$method}` with an invalid literal always return an error
@@ -531,7 +542,7 @@ lint_invalid_style = {$is_used_as_inner ->
         [false] crate-level attribute should be an inner attribute: add an exclamation mark: `#![{$name}]`
         *[other] the `#![{$name}]` attribute can only be used at the crate root
     }
-    .note = This attribute does not have an `!`, which means it is applied to this {$target}
+    .note = this attribute does not have an `!`, which means it is applied to this {$target}
 
 lint_invalid_target = `#[{$name}]` attribute cannot be used on {$target}
     .warn = {-lint_previously_accepted}
@@ -598,6 +609,10 @@ lint_mismatched_lifetime_syntaxes_suggestion_mixed =
 
 lint_mismatched_lifetime_syntaxes_suggestion_mixed_only_paths =
     use `'_` for type paths
+
+lint_missing_gpu_kernel_export_name = function with the "gpu-kernel" ABI has a mangled name
+    .note = mangled names make it hard to find the kernel, this is usually not intended
+    .help = use `unsafe(no_mangle)` or `unsafe(export_name = "<name>")`
 
 lint_mixed_script_confusables =
     the usage of Script Group `{$set}` in this crate consists solely of mixed script confusables
@@ -976,8 +991,6 @@ lint_unsafe_attr_outside_unsafe = unsafe attribute used without unsafe
 lint_unsafe_attr_outside_unsafe_suggestion = wrap the attribute in `unsafe(...)`
 
 lint_unsupported_group = `{$lint_group}` lint group is not supported with ´--force-warn´
-
-lint_untranslatable_diag = diagnostics should be created using translatable messages
 
 lint_unused_allocation = unnecessary allocation, use `&` instead
 lint_unused_allocation_mut = unnecessary allocation, use `&mut` instead

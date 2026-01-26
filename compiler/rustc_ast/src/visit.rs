@@ -366,6 +366,7 @@ macro_rules! common_visitor_and_walkers {
             crate::token::LitKind,
             crate::tokenstream::LazyAttrTokenStream,
             crate::tokenstream::TokenStream,
+            EarlyParsedAttribute,
             Movability,
             Mutability,
             Pinnedness,
@@ -424,6 +425,7 @@ macro_rules! common_visitor_and_walkers {
             ByRef,
             Closure,
             Const,
+            ConstBlockItem,
             ConstItem,
             ConstItemRhs,
             Defaultness,
@@ -457,6 +459,7 @@ macro_rules! common_visitor_and_walkers {
             ModSpans,
             MutTy,
             NormalAttr,
+            AttrItemKind,
             Parens,
             ParenthesizedArgs,
             PatFieldsRest,
@@ -487,7 +490,7 @@ macro_rules! common_visitor_and_walkers {
             WhereEqPredicate,
             WhereRegionPredicate,
             YieldKind,
-            EiiExternTarget,
+            EiiDecl,
             EiiImpl,
         );
 
@@ -822,6 +825,8 @@ macro_rules! common_visitor_and_walkers {
                     ItemKind::Use(use_tree) =>
                         visit_visitable!($($mut)? vis, use_tree),
                     ItemKind::Static(item) =>
+                        visit_visitable!($($mut)? vis, item),
+                    ItemKind::ConstBlock(item) =>
                         visit_visitable!($($mut)? vis, item),
                     ItemKind::Const(item) =>
                         visit_visitable!($($mut)? vis, item),

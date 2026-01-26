@@ -163,6 +163,7 @@ impl Target {
         forward!(relro_level);
         forward!(archive_format);
         forward!(allow_asm);
+        forward!(static_initializer_must_be_acyclic);
         forward!(main_needs_argc_argv);
         forward!(has_thread_local);
         forward!(obj_is_bitcode);
@@ -360,6 +361,7 @@ impl ToJson for Target {
         target_option_val!(relro_level);
         target_option_val!(archive_format);
         target_option_val!(allow_asm);
+        target_option_val!(static_initializer_must_be_acyclic);
         target_option_val!(main_needs_argc_argv);
         target_option_val!(has_thread_local);
         target_option_val!(obj_is_bitcode);
@@ -581,6 +583,7 @@ struct TargetSpecJson {
     relro_level: Option<RelroLevel>,
     archive_format: Option<StaticCow<str>>,
     allow_asm: Option<bool>,
+    static_initializer_must_be_acyclic: Option<bool>,
     main_needs_argc_argv: Option<bool>,
     has_thread_local: Option<bool>,
     obj_is_bitcode: Option<bool>,

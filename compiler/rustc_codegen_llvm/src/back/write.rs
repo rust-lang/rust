@@ -9,15 +9,16 @@ use libc::{c_char, c_int, c_void, size_t};
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::back::write::{
-    BitcodeSection, CodegenContext, EmitObj, InlineAsmError, ModuleConfig,
+    BitcodeSection, CodegenContext, EmitObj, InlineAsmError, ModuleConfig, SharedEmitter,
     TargetMachineFactoryConfig, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::base::wants_wasm_eh;
+use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_errors::{DiagCtxtHandle, Level};
+use rustc_errors::{DiagCtxt, DiagCtxtHandle, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -33,6 +34,8 @@ use crate::back::owned_target_machine::OwnedTargetMachine;
 use crate::back::profiling::{
     LlvmSelfProfiler, selfprofile_after_pass_callback, selfprofile_before_pass_callback,
 };
+use crate::builder::SBuilder;
+use crate::builder::gpu_offload::scalar_width;
 use crate::common::AsCCharPtr;
 use crate::errors::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
@@ -250,7 +253,7 @@ pub(crate) fn target_machine_factory(
 
     let use_emulated_tls = matches!(sess.tls_model(), TlsModel::Emulated);
 
-    let debuginfo_compression = match sess.opts.debuginfo_compression {
+    let debuginfo_compression = match sess.opts.unstable_opts.debuginfo_compression {
         config::DebugInfoCompression::None => llvm::CompressionKind::None,
         config::DebugInfoCompression::Zlib => {
             if llvm::LLVMRustLLVMHasZlibCompression() {
@@ -271,6 +274,8 @@ pub(crate) fn target_machine_factory(
     };
 
     let use_wasm_eh = wants_wasm_eh(sess);
+
+    let large_data_threshold = sess.opts.unstable_opts.large_data_threshold.unwrap_or(0);
 
     let prof = SelfProfilerRef::clone(&sess.prof);
     Arc::new(move |config: TargetMachineFactoryConfig| {
@@ -313,6 +318,7 @@ pub(crate) fn target_machine_factory(
             debuginfo_compression,
             use_emulated_tls,
             use_wasm_eh,
+            large_data_threshold,
         )
     })
 }
@@ -353,7 +359,7 @@ pub(crate) enum CodegenDiagnosticsStage {
 }
 
 pub(crate) struct DiagnosticHandlers<'a> {
-    data: *mut (&'a CodegenContext<LlvmCodegenBackend>, DiagCtxtHandle<'a>),
+    data: *mut (&'a CodegenContext<LlvmCodegenBackend>, &'a SharedEmitter),
     llcx: &'a llvm::Context,
     old_handler: Option<&'a llvm::DiagnosticHandler>,
 }
@@ -361,7 +367,7 @@ pub(crate) struct DiagnosticHandlers<'a> {
 impl<'a> DiagnosticHandlers<'a> {
     pub(crate) fn new(
         cgcx: &'a CodegenContext<LlvmCodegenBackend>,
-        dcx: DiagCtxtHandle<'a>,
+        shared_emitter: &'a SharedEmitter,
         llcx: &'a llvm::Context,
         module: &ModuleCodegen<ModuleLlvm>,
         stage: CodegenDiagnosticsStage,
@@ -395,8 +401,8 @@ impl<'a> DiagnosticHandlers<'a> {
             })
             .and_then(|dir| dir.to_str().and_then(|p| CString::new(p).ok()));
 
-        let pgo_available = cgcx.opts.cg.profile_use.is_some();
-        let data = Box::into_raw(Box::new((cgcx, dcx)));
+        let pgo_available = cgcx.module_config.pgo_use.is_some();
+        let data = Box::into_raw(Box::new((cgcx, shared_emitter)));
         unsafe {
             let old_handler = llvm::LLVMRustContextGetDiagnosticHandler(llcx);
             llvm::LLVMRustContextConfigureDiagnosticHandler(
@@ -458,12 +464,16 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
     if user.is_null() {
         return;
     }
-    let (cgcx, dcx) =
-        unsafe { *(user as *const (&CodegenContext<LlvmCodegenBackend>, DiagCtxtHandle<'_>)) };
+    let (cgcx, shared_emitter) =
+        unsafe { *(user as *const (&CodegenContext<LlvmCodegenBackend>, &SharedEmitter)) };
+
+    let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
+    let dcx = dcx.handle();
 
     match unsafe { llvm::diagnostic::Diagnostic::unpack(info) } {
         llvm::diagnostic::InlineAsm(inline) => {
-            cgcx.diag_emitter.inline_asm_error(report_inline_asm(
+            // FIXME use dcx
+            shared_emitter.inline_asm_error(report_inline_asm(
                 cgcx,
                 inline.message,
                 inline.level,
@@ -669,7 +679,17 @@ pub(crate) unsafe fn llvm_optimize(
         // Create the new parameter list, with ptr as the first argument
         let mut new_param_types = Vec::with_capacity(old_param_count as usize + 1);
         new_param_types.push(cx.type_ptr());
-        new_param_types.extend(old_param_types);
+
+        // This relies on undocumented LLVM knowledge that scalars must be passed as i64
+        for &old_ty in &old_param_types {
+            let new_ty = match cx.type_kind(old_ty) {
+                TypeKind::Half | TypeKind::Float | TypeKind::Double | TypeKind::Integer => {
+                    cx.type_i64()
+                }
+                _ => old_ty,
+            };
+            new_param_types.push(new_ty);
+        }
 
         // Create the new function type
         let ret_ty = unsafe { llvm::LLVMGetReturnType(old_fn_ty) };
@@ -682,10 +702,33 @@ pub(crate) unsafe fn llvm_optimize(
         let a0 = llvm::get_param(new_fn, 0);
         llvm::set_value_name(a0, CString::new("dyn_ptr").unwrap().as_bytes());
 
+        let bb = SBuilder::append_block(cx, new_fn, "entry");
+        let mut builder = SBuilder::build(cx, bb);
+
+        let mut old_args_rebuilt = Vec::with_capacity(old_param_types.len());
+
+        for (i, &old_ty) in old_param_types.iter().enumerate() {
+            let new_arg = llvm::get_param(new_fn, (i + 1) as u32);
+
+            let rebuilt = match cx.type_kind(old_ty) {
+                TypeKind::Half | TypeKind::Float | TypeKind::Double | TypeKind::Integer => {
+                    let num_bits = scalar_width(cx, old_ty);
+
+                    let trunc = builder.trunc(new_arg, cx.type_ix(num_bits));
+                    builder.bitcast(trunc, old_ty)
+                }
+                _ => new_arg,
+            };
+
+            old_args_rebuilt.push(rebuilt);
+        }
+
+        builder.ret_void();
+
         // Here we map the old arguments to the new arguments, with an offset of 1 to make sure
         // that we don't use the newly added `%dyn_ptr`.
         unsafe {
-            llvm::LLVMRustOffloadMapper(old_fn, new_fn);
+            llvm::LLVMRustOffloadMapper(old_fn, new_fn, old_args_rebuilt.as_ptr());
         }
 
         llvm::set_linkage(new_fn, llvm::get_linkage(old_fn));
@@ -740,7 +783,7 @@ pub(crate) unsafe fn llvm_optimize(
             &*module.module_llvm.tm.raw(),
             to_pass_builder_opt_level(opt_level),
             opt_stage,
-            cgcx.opts.cg.linker_plugin_lto.enabled(),
+            cgcx.use_linker_plugin_lto,
             config.no_prepopulate_passes,
             config.verify_llvm_ir,
             config.lint_llvm_ir,
@@ -851,14 +894,18 @@ pub(crate) unsafe fn llvm_optimize(
 // Unsafe due to LLVM calls.
 pub(crate) fn optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    dcx: DiagCtxtHandle<'_>,
+    shared_emitter: &SharedEmitter,
     module: &mut ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
 ) {
     let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_optimize", &*module.name);
 
+    let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
+    let dcx = dcx.handle();
+
     let llcx = &*module.module_llvm.llcx;
-    let _handlers = DiagnosticHandlers::new(cgcx, dcx, llcx, module, CodegenDiagnosticsStage::Opt);
+    let _handlers =
+        DiagnosticHandlers::new(cgcx, shared_emitter, llcx, module, CodegenDiagnosticsStage::Opt);
 
     if config.emit_no_opt_bc {
         let out = cgcx.output_filenames.temp_path_ext_for_cgu(
@@ -875,7 +922,7 @@ pub(crate) fn optimize(
         let opt_stage = match cgcx.lto {
             Lto::Fat => llvm::OptStage::PreLinkFatLTO,
             Lto::Thin | Lto::ThinLocal => llvm::OptStage::PreLinkThinLTO,
-            _ if cgcx.opts.cg.linker_plugin_lto.enabled() => llvm::OptStage::PreLinkThinLTO,
+            _ if cgcx.use_linker_plugin_lto => llvm::OptStage::PreLinkThinLTO,
             _ => llvm::OptStage::PreLinkNoLTO,
         };
 
@@ -938,19 +985,26 @@ pub(crate) fn optimize(
 
 pub(crate) fn codegen(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
+    shared_emitter: &SharedEmitter,
     module: ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
 ) -> CompiledModule {
-    let dcx = cgcx.create_dcx();
+    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_codegen", &*module.name);
+
+    let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
 
-    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_codegen", &*module.name);
     {
         let llmod = module.module_llvm.llmod();
         let llcx = &*module.module_llvm.llcx;
         let tm = &*module.module_llvm.tm;
-        let _handlers =
-            DiagnosticHandlers::new(cgcx, dcx, llcx, &module, CodegenDiagnosticsStage::Codegen);
+        let _handlers = DiagnosticHandlers::new(
+            cgcx,
+            shared_emitter,
+            llcx,
+            &module,
+            CodegenDiagnosticsStage::Codegen,
+        );
 
         if cgcx.msvc_imps_needed {
             create_msvc_imps(cgcx, llcx, llmod);

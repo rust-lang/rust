@@ -109,6 +109,7 @@ define_symbols! {
     vectorcall_dash_unwind = "vectorcall-unwind",
     win64_dash_unwind = "win64-unwind",
     x86_dash_interrupt = "x86-interrupt",
+    rust_dash_preserve_dash_none = "preserve-none",
 
     @PLAIN:
     __ra_fixup,
@@ -297,6 +298,7 @@ define_symbols! {
     iterator,
     keyword,
     lang,
+    lang_items,
     le,
     Left,
     len,
@@ -441,7 +443,6 @@ define_symbols! {
     rustc_skip_array_during_method_dispatch,
     rustc_skip_during_method_dispatch,
     rustc_force_inline,
-    semitransparent,
     shl_assign,
     shl,
     shr_assign,

@@ -16,13 +16,11 @@ help: <TAG> is this argument
    |
 LL | fn inner(x: *mut i32, _y: &mut i32) {
    |                       ^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `inner` at tests/fail/stacked_borrows/invalidate_against_protector1.rs:LL:CC
-note: inside `main`
-  --> tests/fail/stacked_borrows/invalidate_against_protector1.rs:LL:CC
-   |
-LL |     inner(xraw, xref);
-   |     ^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: inner
+               at tests/fail/stacked_borrows/invalidate_against_protector1.rs:LL:CC
+           1: main
+               at tests/fail/stacked_borrows/invalidate_against_protector1.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

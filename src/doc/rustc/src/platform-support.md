@@ -100,6 +100,7 @@ target | notes
 [`i686-pc-windows-gnu`](platform-support/windows-gnu.md) | 32-bit MinGW (Windows 10+, Windows Server 2016+, Pentium 4) [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
 `powerpc-unknown-linux-gnu` | PowerPC Linux (kernel 3.2+, glibc 2.17)
 `powerpc64-unknown-linux-gnu` | PPC64 Linux (kernel 3.2+, glibc 2.17)
+[`powerpc64-unknown-linux-musl`](platform-support/powerpc64-unknown-linux-musl.md) | PPC64 Linux (kernel 4.19+, musl 1.2.5)
 [`powerpc64le-unknown-linux-gnu`](platform-support/powerpc64le-unknown-linux-gnu.md) | PPC64LE Linux (kernel 3.10+, glibc 2.17)
 [`powerpc64le-unknown-linux-musl`](platform-support/powerpc64le-unknown-linux-musl.md) | PPC64LE Linux (kernel 4.19+, musl 1.2.5)
 [`riscv64gc-unknown-linux-gnu`](platform-support/riscv64gc-unknown-linux-gnu.md) | RISC-V Linux (kernel 4.20+, glibc 2.29)
@@ -206,6 +207,7 @@ target | std | notes
 [`x86_64-apple-ios-macabi`](platform-support/apple-ios-macabi.md) | ✓ | Mac Catalyst on x86_64
 [`x86_64-fortanix-unknown-sgx`](platform-support/x86_64-fortanix-unknown-sgx.md) | ✓ | [Fortanix ABI] for 64-bit Intel SGX
 [`x86_64-linux-android`](platform-support/android.md) | ✓ | 64-bit x86 Android
+[`x86_64-unknown-linux-gnuasan`](platform-support/x86_64-unknown-linux-gnuasan.md) | ✓ | 64-bit Linux (kernel 3.2+, glibc 2.17+) with ASAN enabled by default
 [`x86_64-unknown-fuchsia`](platform-support/fuchsia.md) | ✓ | 64-bit x86 Fuchsia
 `x86_64-unknown-linux-gnux32` | ✓ | 64-bit Linux (x32 ABI) (kernel 4.15+, glibc 2.27)
 [`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * | Freestanding/bare-metal x86_64, softfloat
@@ -291,6 +293,8 @@ target | std | host | notes
 `armv4t-unknown-linux-gnueabi` | ? |  | Armv4T Linux
 [`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Bare Armv5TE
 `armv5te-unknown-linux-uclibceabi` | ? |  | Armv5TE Linux with uClibc
+[`armv6-none-eabi`](platform-support/armv6-none-eabi.md) | * | | Bare Armv6
+[`armv6-none-eabihf`](platform-support/armv6-none-eabi.md) | * | | Bare Armv6, hardfloat
 [`armv6-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | Armv6 FreeBSD
 [`armv6-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | Armv6 NetBSD w/hard-float
 [`armv6k-nintendo-3ds`](platform-support/armv6k-nintendo-3ds.md) | ? |  | Armv6k Nintendo 3DS, Horizon (Requires devkitARM toolchain)
@@ -370,7 +374,6 @@ target | std | host | notes
 [`powerpc-wrs-vxworks-spe`](platform-support/vxworks.md) | ✓ |  |
 [`powerpc64-ibm-aix`](platform-support/aix.md) | ? |  | 64-bit AIX (7.2 and newer)
 [`powerpc64-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | PPC64 FreeBSD (ELFv2)
-[`powerpc64-unknown-linux-musl`](platform-support/powerpc64-unknown-linux-musl.md) | ✓ | ✓ | PPC64 Linux (kernel 4.19, musl 1.2.5)
 [`powerpc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/powerpc64
 [`powerpc64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 [`powerpc64le-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | PPC64LE FreeBSD
@@ -409,18 +412,24 @@ target | std | host | notes
 [`sparc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/sparc64
 [`thumbv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Thumb-mode Bare Armv4T
 [`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Thumb-mode Bare Armv5TE
+[`thumbv6-none-eabi`](platform-support/armv6-none-eabi.md) | * | | Thumb-mode Bare Armv6
 [`thumbv6m-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv6M with NuttX
-`thumbv7a-pc-windows-msvc` |  |  |
-[`thumbv7a-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) |  |  |
+[`thumbv7a-none-eabi`](platform-support/armv7a-none-eabi.md) | * |  | Thumb-mode Bare Armv7-A
+[`thumbv7a-none-eabihf`](platform-support/armv7a-none-eabi.md) | * |  | Thumb-mode Bare Armv7-A, hardfloat
 [`thumbv7a-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX
 [`thumbv7a-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX, hardfloat
+`thumbv7a-pc-windows-msvc` |  |  |
+[`thumbv7a-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) |  |  |
 [`thumbv7em-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7EM with NuttX
 [`thumbv7em-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv7EM with NuttX, hardfloat
 [`thumbv7m-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7M with NuttX
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode Armv7-A Linux with NEON, musl 1.2.5
+[`thumbv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * |  | Thumb-mode Bare Armv7-R
+[`thumbv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * |  | Thumb-mode Bare Armv7-R, hardfloat
 [`thumbv8m.base-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv8M Baseline with NuttX
 [`thumbv8m.main-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv8M Mainline with NuttX
 [`thumbv8m.main-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv8M Mainline with NuttX, hardfloat
+[`thumbv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * |  | Thumb-mode Bare Armv8-R, hardfloat
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 [`wasm32-wali-linux-musl`](platform-support/wasm32-wali-linux.md) | ? |  | WebAssembly with [WALI](https://github.com/arjunr2/WALI)
 [`wasm32-wasip3`](platform-support/wasm32-wasip3.md) | ✓ |  | WebAssembly with WASIp3

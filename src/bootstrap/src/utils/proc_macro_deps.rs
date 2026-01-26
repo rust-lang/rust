@@ -22,6 +22,7 @@ pub static CRATES: &[&str] = &[
     "fluent-langneg",
     "fluent-syntax",
     "fnv",
+    "foldhash",
     "generic-array",
     "hashbrown",
     "heck",

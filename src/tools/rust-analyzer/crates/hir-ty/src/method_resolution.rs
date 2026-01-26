@@ -609,12 +609,7 @@ impl InherentImpls {
             map: &mut FxHashMap<SimplifiedType, Vec<ImplId>>,
         ) {
             for (_module_id, module_data) in def_map.modules() {
-                for impl_id in module_data.scope.impls() {
-                    let data = db.impl_signature(impl_id);
-                    if data.target_trait.is_some() {
-                        continue;
-                    }
-
+                for impl_id in module_data.scope.inherent_impls() {
                     let interner = DbInterner::new_no_crate(db);
                     let self_ty = db.impl_self_ty(impl_id);
                     let self_ty = self_ty.instantiate_identity();
@@ -730,7 +725,11 @@ impl TraitImpls {
             map: &mut FxHashMap<TraitId, OneTraitImplsBuilder>,
         ) {
             for (_module_id, module_data) in def_map.modules() {
-                for impl_id in module_data.scope.impls() {
+                for impl_id in module_data.scope.trait_impls() {
+                    let trait_ref = match db.impl_trait(impl_id) {
+                        Some(tr) => tr.instantiate_identity(),
+                        None => continue,
+                    };
                     // Reservation impls should be ignored during trait resolution, so we never need
                     // them during type analysis. See rust-lang/rust#64631 for details.
                     //
@@ -742,10 +741,6 @@ impl TraitImpls {
                     {
                         continue;
                     }
-                    let trait_ref = match db.impl_trait(impl_id) {
-                        Some(tr) => tr.instantiate_identity(),
-                        None => continue,
-                    };
                     let self_ty = trait_ref.self_ty();
                     let interner = DbInterner::new_no_crate(db);
                     let entry = map.entry(trait_ref.def_id.0).or_default();

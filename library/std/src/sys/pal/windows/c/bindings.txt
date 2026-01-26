@@ -2170,7 +2170,6 @@ GetFileType
 GETFINALPATHNAMEBYHANDLE_FLAGS
 GetFinalPathNameByHandleW
 GetFullPathNameW
-GetHostNameW
 GetLastError
 GetModuleFileNameW
 GetModuleHandleA

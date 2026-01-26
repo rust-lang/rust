@@ -375,9 +375,6 @@ macro_rules! float_test {
     };
 }
 
-mod f128;
-mod f16;
-
 float_test! {
     name: num,
     attrs: {
@@ -394,7 +391,7 @@ float_test! {
     }
 }
 
-// FIXME(f16_f128): merge into `num` once the required `fmodl`/`fmodf128` function is available on
+// FIXME(f128): merge into `num` once the required `fmodl`/`fmodf128` function is available on
 // all platforms.
 float_test! {
     name: num_rem,
@@ -1360,15 +1357,11 @@ float_test! {
     }
 }
 
-// FIXME(f16): Tests involving sNaN are disabled because without optimizations, `total_cmp` is
-// getting incorrectly lowered to code that includes a `extend`/`trunc` round trip, which quiets
-// sNaNs. See: https://github.com/llvm/llvm-project/issues/104915
-
 float_test! {
     name: total_cmp_s_nan,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(miri)],
+        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1582,3 +1575,78 @@ float_test! {
         assert_biteq!((flt(-3.2)).mul_add(2.4, neg_inf), neg_inf);
     }
 }
+
+float_test! {
+    name: from,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        assert_biteq!(Float::from(false), Float::ZERO);
+        assert_biteq!(Float::from(true), Float::ONE);
+
+        assert_biteq!(Float::from(u8::MIN), Float::ZERO);
+        assert_biteq!(Float::from(42_u8), 42.0);
+        assert_biteq!(Float::from(u8::MAX), 255.0);
+
+        assert_biteq!(Float::from(i8::MIN), -128.0);
+        assert_biteq!(Float::from(42_i8), 42.0);
+        assert_biteq!(Float::from(i8::MAX), 127.0);
+    }
+}
+
+float_test! {
+    name: from_u16_i16,
+    attrs: {
+        f16: #[cfg(false)],
+        const f16: #[cfg(false)],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        assert_biteq!(Float::from(u16::MIN), Float::ZERO);
+        assert_biteq!(Float::from(42_u16), 42.0);
+        assert_biteq!(Float::from(u16::MAX), 65535.0);
+        assert_biteq!(Float::from(i16::MIN), -32768.0);
+        assert_biteq!(Float::from(42_i16), 42.0);
+        assert_biteq!(Float::from(i16::MAX), 32767.0);
+    }
+}
+
+float_test! {
+    name: from_u32_i32,
+    attrs: {
+        f16: #[cfg(false)],
+        const f16: #[cfg(false)],
+        f32: #[cfg(false)],
+        const f32: #[cfg(false)],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        assert_biteq!(Float::from(u32::MIN), Float::ZERO);
+        assert_biteq!(Float::from(42_u32), 42.0);
+        assert_biteq!(Float::from(u32::MAX), 4294967295.0);
+        assert_biteq!(Float::from(i32::MIN), -2147483648.0);
+        assert_biteq!(Float::from(42_i32), 42.0);
+        assert_biteq!(Float::from(i32::MAX), 2147483647.0);
+    }
+}
+
+// FIXME(f128): Uncomment and adapt these tests once the From<{u64,i64}> impls are added.
+// float_test! {
+//     name: from_u64_i64,
+//     attrs: {
+//         f16: #[cfg(false)],
+//         f32: #[cfg(false)],
+//         f64: #[cfg(false)],
+//         f128: #[cfg(any(miri, target_has_reliable_f128))],
+//     },
+//     test<Float> {
+//         assert_biteq!(Float::from(u64::MIN), Float::ZERO);
+//         assert_biteq!(Float::from(42_u64), 42.0);
+//         assert_biteq!(Float::from(u64::MAX), 18446744073709551615.0);
+//         assert_biteq!(Float::from(i64::MIN), -9223372036854775808.0);
+//         assert_biteq!(Float::from(42_i64), 42.0);
+//         assert_biteq!(Float::from(i64::MAX), 9223372036854775807.0);
+//     }
+// }

@@ -287,12 +287,12 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
                 "cmpxchg16b" => Some(LLVMFeature::new("cx16")),
                 "lahfsahf" => Some(LLVMFeature::new("sahf")),
                 // Enable the evex512 target feature if an avx512 target feature is enabled.
-                s if s.starts_with("avx512") => Some(LLVMFeature::with_dependencies(
+                s if s.starts_with("avx512") && major < 22 => Some(LLVMFeature::with_dependencies(
                     s,
                     smallvec![TargetFeatureFoldStrength::EnableOnly("evex512")],
                 )),
-                "avx10.1" => Some(LLVMFeature::new("avx10.1-512")),
-                "avx10.2" => Some(LLVMFeature::new("avx10.2-512")),
+                "avx10.1" if major < 22 => Some(LLVMFeature::new("avx10.1-512")),
+                "avx10.2" if major < 22 => Some(LLVMFeature::new("avx10.2-512")),
                 "apxf" => Some(LLVMFeature::with_dependencies(
                     "egpr",
                     smallvec![
@@ -379,19 +379,19 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         {
             false
         }
-        // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
-        (Arch::Arm64EC, _) => false,
+        // Unsupported <https://github.com/llvm/llvm-project/issues/94434> (fixed in llvm22)
+        (Arch::Arm64EC, _) if major < 22 => false,
         // Selection failure <https://github.com/llvm/llvm-project/issues/50374> (fixed in llvm21)
         (Arch::S390x, _) if major < 21 => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
         (Arch::X86_64, Os::Windows) if *target_env == Env::Gnu && *target_abi != Abi::Llvm => false,
         // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
-        (Arch::CSky, _) => false,
+        (Arch::CSky, _) if major < 22 => false, // (fixed in llvm22)
         (Arch::Hexagon, _) if major < 21 => false, // (fixed in llvm21)
         (Arch::LoongArch32 | Arch::LoongArch64, _) if major < 21 => false, // (fixed in llvm21)
-        (Arch::PowerPC | Arch::PowerPC64, _) => false,
-        (Arch::Sparc | Arch::Sparc64, _) => false,
-        (Arch::Wasm32 | Arch::Wasm64, _) => false,
+        (Arch::PowerPC | Arch::PowerPC64, _) if major < 22 => false, // (fixed in llvm22)
+        (Arch::Sparc | Arch::Sparc64, _) if major < 22 => false, // (fixed in llvm22)
+        (Arch::Wasm32 | Arch::Wasm64, _) if major < 22 => false, // (fixed in llvm22)
         // `f16` support only requires that symbols converting to and from `f32` are available. We
         // provide these in `compiler-builtins`, so `f16` should be available on all platforms that
         // do not have other ABI issues or LLVM crashes.

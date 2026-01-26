@@ -2,12 +2,12 @@ use rustc_ast::token::Token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, NodeId, token};
 use rustc_feature::{AttributeTemplate, Features};
-use rustc_hir::AttrPath;
 use rustc_hir::attrs::CfgEntry;
+use rustc_hir::{AttrPath, Target};
 use rustc_parse::exp;
 use rustc_parse::parser::Parser;
 use rustc_session::Session;
-use rustc_span::{ErrorGuaranteed, Ident, Span};
+use rustc_span::{ErrorGuaranteed, Span, sym};
 
 use crate::parser::MetaItemOrLitParser;
 use crate::{AttributeParser, ParsedDescription, ShouldEmit, parse_cfg_entry};
@@ -78,24 +78,24 @@ pub fn parse_cfg_select(
                 }
             }
         } else {
-            let meta = MetaItemOrLitParser::parse_single(p, ShouldEmit::ErrorsAndLints)
-                .map_err(|diag| diag.emit())?;
+            let meta =
+                MetaItemOrLitParser::parse_single(p, ShouldEmit::ErrorsAndLints { recover: true })
+                    .map_err(|diag| diag.emit())?;
             let cfg_span = meta.span();
             let cfg = AttributeParser::parse_single_args(
                 sess,
                 cfg_span,
                 cfg_span,
                 AttrStyle::Inner,
-                AttrPath {
-                    segments: vec![Ident::from_str("cfg_select")].into_boxed_slice(),
-                    span: cfg_span,
-                },
+                AttrPath { segments: vec![sym::cfg_select].into_boxed_slice(), span: cfg_span },
                 None,
                 ParsedDescription::Macro,
                 cfg_span,
                 lint_node_id,
+                // Doesn't matter what the target actually is here.
+                Target::Crate,
                 features,
-                ShouldEmit::ErrorsAndLints,
+                ShouldEmit::ErrorsAndLints { recover: true },
                 &meta,
                 parse_cfg_entry,
                 &AttributeTemplate::default(),

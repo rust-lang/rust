@@ -1,0 +1,70 @@
+error: expected `:`, found `>`
+  --> $DIR/incorrect-const-param.rs:26:16
+   |
+LL | impl<T, const N> From<[T; N]> for VecWrapper<T>
+   |                ^ expected `:`
+   |
+help: you likely meant to write the type of the const parameter here
+   |
+LL | impl<T, const N: /* Type */> From<[T; N]> for VecWrapper<T>
+   |                ++++++++++++
+
+error[E0423]: expected value, found type parameter `N`
+  --> $DIR/incorrect-const-param.rs:16:28
+   |
+LL | impl<T, N: usize> From<[T; N]> for VecWrapper<T>
+   |         -                  ^ not a value
+   |         |
+   |         found this type parameter
+
+error[E0404]: expected trait, found builtin type `usize`
+  --> $DIR/incorrect-const-param.rs:16:12
+   |
+LL | impl<T, N: usize> From<[T; N]> for VecWrapper<T>
+   |            ^^^^^ not a trait
+   |
+help: you might have meant to write a const parameter here
+   |
+LL | impl<T, const N: usize> From<[T; N]> for VecWrapper<T>
+   |         +++++
+
+error[E0423]: expected value, found type parameter `N`
+  --> $DIR/incorrect-const-param.rs:20:24
+   |
+LL | impl<T, N: usize> From<[T; N]> for VecWrapper<T>
+   |         - found this type parameter
+...
+LL |     fn from(slice: [T; N]) -> Self {
+   |                        ^ not a value
+
+error[E0423]: expected value, found type parameter `N`
+  --> $DIR/incorrect-const-param.rs:36:21
+   |
+LL | impl<T, N> From<[T; N]> for VecWrapper<T>
+   |         -           ^ not a value
+   |         |
+   |         found this type parameter
+   |
+help: you might have meant to write a const parameter here
+   |
+LL | impl<T, const N: /* Type */> From<[T; N]> for VecWrapper<T>
+   |         +++++  ++++++++++++
+
+error[E0423]: expected value, found type parameter `N`
+  --> $DIR/incorrect-const-param.rs:40:24
+   |
+LL | impl<T, N> From<[T; N]> for VecWrapper<T>
+   |         - found this type parameter
+...
+LL |     fn from(slice: [T; N]) -> Self {
+   |                        ^ not a value
+   |
+help: you might have meant to write a const parameter here
+   |
+LL | impl<T, const N: /* Type */> From<[T; N]> for VecWrapper<T>
+   |         +++++  ++++++++++++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0404, E0423.
+For more information about an error, try `rustc --explain E0404`.

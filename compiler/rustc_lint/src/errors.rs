@@ -35,7 +35,6 @@ impl Subdiagnostic for OverruledAttributeSub {
             OverruledAttributeSub::NodeSource { span, reason } => {
                 diag.span_label(span, fluent::lint_node_source);
                 if let Some(rationale) = reason {
-                    #[allow(rustc::untranslatable_diagnostic)]
                     diag.note(rationale.to_string());
                 }
             }

@@ -9,7 +9,7 @@ use rustc_feature::{
 };
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::lints::AttributeLintKind;
-use rustc_hir::{AttrPath, RustcVersion};
+use rustc_hir::{AttrPath, RustcVersion, Target};
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
@@ -94,7 +94,6 @@ pub fn parse_cfg_entry<S: Stage>(
             LitKind::Bool(b) => CfgEntry::Bool(b, lit.span),
             _ => return Err(cx.expected_identifier(lit.span)),
         },
-        MetaItemOrLitParser::Err(_, err) => return Err(*err),
     })
 }
 
@@ -294,11 +293,9 @@ pub fn parse_cfg_attr(
     sess: &Session,
     features: Option<&Features>,
 ) -> Option<(CfgEntry, Vec<(AttrItem, Span)>)> {
-    match cfg_attr.get_normal_item().args {
-        ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, ref tokens })
-            if !tokens.is_empty() =>
-        {
-            check_cfg_attr_bad_delim(&sess.psess, dspan, delim);
+    match cfg_attr.get_normal_item().args.unparsed_ref().unwrap() {
+        ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, tokens }) if !tokens.is_empty() => {
+            check_cfg_attr_bad_delim(&sess.psess, *dspan, *delim);
             match parse_in(&sess.psess, tokens.clone(), "`cfg_attr` input", |p| {
                 parse_cfg_attr_internal(p, sess, features, cfg_attr)
             }) {
@@ -322,7 +319,7 @@ pub fn parse_cfg_attr(
         }
         _ => {
             let (span, reason) = if let ast::AttrArgs::Delimited(ast::DelimArgs { dspan, .. }) =
-                cfg_attr.get_normal_item().args
+                cfg_attr.get_normal_item().args.unparsed_ref()?
             {
                 (dspan.entire(), AttributeParseErrorReason::ExpectedAtLeastOneArgument)
             } else {
@@ -363,7 +360,8 @@ fn parse_cfg_attr_internal<'a>(
 ) -> PResult<'a, (CfgEntry, Vec<(ast::AttrItem, Span)>)> {
     // Parse cfg predicate
     let pred_start = parser.token.span;
-    let meta = MetaItemOrLitParser::parse_single(parser, ShouldEmit::ErrorsAndLints)?;
+    let meta =
+        MetaItemOrLitParser::parse_single(parser, ShouldEmit::ErrorsAndLints { recover: true })?;
     let pred_span = pred_start.with_hi(parser.token.span.hi());
 
     let cfg_predicate = AttributeParser::parse_single_args(
@@ -371,19 +369,14 @@ fn parse_cfg_attr_internal<'a>(
         attribute.span,
         attribute.get_normal_item().span(),
         attribute.style,
-        AttrPath {
-            segments: attribute
-                .ident_path()
-                .expect("cfg_attr is not a doc comment")
-                .into_boxed_slice(),
-            span: attribute.span,
-        },
+        AttrPath { segments: attribute.path().into_boxed_slice(), span: attribute.span },
         Some(attribute.get_normal_item().unsafety),
         ParsedDescription::Attribute,
         pred_span,
         CRATE_NODE_ID,
+        Target::Crate,
         features,
-        ShouldEmit::ErrorsAndLints,
+        ShouldEmit::ErrorsAndLints { recover: true },
         &meta,
         parse_cfg_entry,
         &CFG_ATTR_TEMPLATE,
@@ -420,7 +413,6 @@ fn try_gate_cfg(name: Symbol, span: Span, sess: &Session, features: Option<&Feat
     }
 }
 
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &Session, features: &Features) {
     let (cfg, feature, has_feature) = gated_cfg;
     if !has_feature(features) && !cfg_span.allows_unstable(*feature) {

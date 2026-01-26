@@ -2,7 +2,7 @@
 pub struct Memory<'rom> {
     rom: &'rom [u8],
     ram: [u8; Self::SIZE],
-    //~^ ERROR: generic `Self` types are currently not permitted in anonymous constants
+    //~^ ERROR: generic `Self`
 }
 
 impl<'rom> Memory<'rom> {

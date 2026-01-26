@@ -27,7 +27,7 @@ note: for a trait to be dyn compatible it needs to allow building a vtable
 LL | trait MapLike<K, V> {
    |       ------- this trait is not dyn compatible...
 LL |     type VRefCont<'a>: RefCont<'a, V>
-   |          ^^^^^^^^ ...because it contains the generic associated type `VRefCont`
+   |          ^^^^^^^^ ...because it contains generic associated type `VRefCont`
    = help: consider moving `VRefCont` to another trait
 
 error: aborting due to 2 previous errors

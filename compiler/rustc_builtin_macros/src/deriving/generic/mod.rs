@@ -807,24 +807,29 @@ impl<'a> TraitDef<'a> {
                     rustc_ast::AttrItem {
                         unsafety: Safety::Default,
                         path: rustc_const_unstable,
-                        args: AttrArgs::Delimited(DelimArgs {
-                            dspan: DelimSpan::from_single(self.span),
-                            delim: rustc_ast::token::Delimiter::Parenthesis,
-                            tokens: [
-                                TokenKind::Ident(sym::feature, IdentIsRaw::No),
-                                TokenKind::Eq,
-                                TokenKind::lit(LitKind::Str, sym::derive_const, None),
-                                TokenKind::Comma,
-                                TokenKind::Ident(sym::issue, IdentIsRaw::No),
-                                TokenKind::Eq,
-                                TokenKind::lit(LitKind::Str, sym::derive_const_issue, None),
-                            ]
-                            .into_iter()
-                            .map(|kind| {
-                                TokenTree::Token(Token { kind, span: self.span }, Spacing::Alone)
-                            })
-                            .collect(),
-                        }),
+                        args: rustc_ast::ast::AttrItemKind::Unparsed(AttrArgs::Delimited(
+                            DelimArgs {
+                                dspan: DelimSpan::from_single(self.span),
+                                delim: rustc_ast::token::Delimiter::Parenthesis,
+                                tokens: [
+                                    TokenKind::Ident(sym::feature, IdentIsRaw::No),
+                                    TokenKind::Eq,
+                                    TokenKind::lit(LitKind::Str, sym::derive_const, None),
+                                    TokenKind::Comma,
+                                    TokenKind::Ident(sym::issue, IdentIsRaw::No),
+                                    TokenKind::Eq,
+                                    TokenKind::lit(LitKind::Str, sym::derive_const_issue, None),
+                                ]
+                                .into_iter()
+                                .map(|kind| {
+                                    TokenTree::Token(
+                                        Token { kind, span: self.span },
+                                        Spacing::Alone,
+                                    )
+                                })
+                                .collect(),
+                            },
+                        )),
                         tokens: None,
                     },
                     self.span,
@@ -981,16 +986,6 @@ impl<'a> MethodDef<'a> {
         f(cx, span, &substructure)
     }
 
-    fn get_ret_ty(
-        &self,
-        cx: &ExtCtxt<'_>,
-        trait_: &TraitDef<'_>,
-        generics: &Generics,
-        type_ident: Ident,
-    ) -> Box<ast::Ty> {
-        self.ret_ty.to_ty(cx, trait_.span, type_ident, generics)
-    }
-
     fn is_static(&self) -> bool {
         !self.explicit_self
     }
@@ -1063,10 +1058,14 @@ impl<'a> MethodDef<'a> {
             self_arg.into_iter().chain(nonself_args).collect()
         };
 
-        let ret_type = self.get_ret_ty(cx, trait_, generics, type_ident);
+        let ret_type = if let Ty::Unit = &self.ret_ty {
+            ast::FnRetTy::Default(span)
+        } else {
+            ast::FnRetTy::Ty(self.ret_ty.to_ty(cx, span, type_ident, generics))
+        };
 
         let method_ident = Ident::new(self.name, span);
-        let fn_decl = cx.fn_decl(args, ast::FnRetTy::Ty(ret_type));
+        let fn_decl = cx.fn_decl(args, ret_type);
         let body_block = body.into_block(cx, span);
 
         let trait_lo_sp = span.shrink_to_lo();

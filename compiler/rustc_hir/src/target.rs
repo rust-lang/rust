@@ -171,6 +171,7 @@ impl Target {
             ast::ItemKind::Use(..) => Target::Use,
             ast::ItemKind::Static { .. } => Target::Static,
             ast::ItemKind::Const(..) => Target::Const,
+            ast::ItemKind::ConstBlock(..) => Target::Const,
             ast::ItemKind::Fn { .. } => Target::Fn,
             ast::ItemKind::Mod(..) => Target::Mod,
             ast::ItemKind::ForeignMod { .. } => Target::ForeignMod,

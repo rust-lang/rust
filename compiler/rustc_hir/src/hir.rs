@@ -423,7 +423,7 @@ impl<'hir> ConstItemRhs<'hir> {
     pub fn span<'tcx>(&self, tcx: impl crate::intravisit::HirTyCtxt<'tcx>) -> Span {
         match self {
             ConstItemRhs::Body(body_id) => tcx.hir_body(*body_id).value.span,
-            ConstItemRhs::TypeConst(ct_arg) => ct_arg.span(),
+            ConstItemRhs::TypeConst(ct_arg) => ct_arg.span,
         }
     }
 }
@@ -440,13 +440,14 @@ impl<'hir> ConstItemRhs<'hir> {
 /// versus const args that are literals or have arbitrary computations (e.g., `{ 1 + 3 }`).
 ///
 /// For an explanation of the `Unambig` generic parameter see the dev-guide:
-/// <https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html>
+/// <https://rustc-dev-guide.rust-lang.org/ambig-unambig-ty-and-consts.html>
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 #[repr(C)]
 pub struct ConstArg<'hir, Unambig = ()> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub kind: ConstArgKind<'hir, Unambig>,
+    pub span: Span,
 }
 
 impl<'hir> ConstArg<'hir, AmbigArg> {
@@ -475,7 +476,7 @@ impl<'hir> ConstArg<'hir> {
     /// Functions accepting ambiguous consts will not handle the [`ConstArgKind::Infer`] variant, if
     /// infer consts are relevant to you then care should be taken to handle them separately.
     pub fn try_as_ambig_ct(&self) -> Option<&ConstArg<'hir, AmbigArg>> {
-        if let ConstArgKind::Infer(_, ()) = self.kind {
+        if let ConstArgKind::Infer(()) = self.kind {
             return None;
         }
 
@@ -494,22 +495,13 @@ impl<'hir, Unambig> ConstArg<'hir, Unambig> {
             _ => None,
         }
     }
-
-    pub fn span(&self) -> Span {
-        match self.kind {
-            ConstArgKind::Struct(path, _) => path.span(),
-            ConstArgKind::Path(path) => path.span(),
-            ConstArgKind::Anon(anon) => anon.span,
-            ConstArgKind::Error(span, _) => span,
-            ConstArgKind::Infer(span, _) => span,
-        }
-    }
 }
 
 /// See [`ConstArg`].
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 #[repr(u8, C)]
 pub enum ConstArgKind<'hir, Unambig = ()> {
+    Tup(&'hir [&'hir ConstArg<'hir, Unambig>]),
     /// **Note:** Currently this is only used for bare const params
     /// (`N` where `fn foo<const N: usize>(...)`),
     /// not paths to any const (`N` where `const N: usize = ...`).
@@ -519,11 +511,16 @@ pub enum ConstArgKind<'hir, Unambig = ()> {
     Anon(&'hir AnonConst),
     /// Represents construction of struct/struct variants
     Struct(QPath<'hir>, &'hir [&'hir ConstArgExprField<'hir>]),
+    /// Tuple constructor variant
+    TupleCall(QPath<'hir>, &'hir [&'hir ConstArg<'hir>]),
+    /// Array literal argument
+    Array(&'hir ConstArgArrayExpr<'hir>),
     /// Error const
-    Error(Span, ErrorGuaranteed),
+    Error(ErrorGuaranteed),
     /// This variant is not always used to represent inference consts, sometimes
     /// [`GenericArg::Infer`] is used instead.
-    Infer(Span, Unambig),
+    Infer(Unambig),
+    Literal(LitKind),
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -532,6 +529,12 @@ pub struct ConstArgExprField<'hir> {
     pub span: Span,
     pub field: Ident,
     pub expr: &'hir ConstArg<'hir>,
+}
+
+#[derive(Clone, Copy, Debug, HashStable_Generic)]
+pub struct ConstArgArrayExpr<'hir> {
+    pub span: Span,
+    pub elems: &'hir [&'hir ConstArg<'hir>],
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -569,7 +572,7 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(l) => l.ident.span,
             GenericArg::Type(t) => t.span,
-            GenericArg::Const(c) => c.span(),
+            GenericArg::Const(c) => c.span,
             GenericArg::Infer(i) => i.span,
         }
     }
@@ -1196,7 +1199,7 @@ pub enum AttrArgs {
 
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
 pub struct AttrPath {
-    pub segments: Box<[Ident]>,
+    pub segments: Box<[Symbol]>,
     pub span: Span,
 }
 
@@ -1212,7 +1215,7 @@ impl AttrPath {
             segments: path
                 .segments
                 .iter()
-                .map(|i| Ident { name: i.ident.name, span: lower_span(i.ident.span) })
+                .map(|i| i.ident.name)
                 .collect::<Vec<_>>()
                 .into_boxed_slice(),
             span: lower_span(path.span),
@@ -1222,7 +1225,11 @@ impl AttrPath {
 
 impl fmt::Display for AttrPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", join_path_idents(&self.segments))
+        write!(
+            f,
+            "{}",
+            join_path_idents(self.segments.iter().map(|i| Ident { name: *i, span: DUMMY_SP }))
+        )
     }
 }
 
@@ -1327,7 +1334,7 @@ impl AttributeExt for Attribute {
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     #[inline]
-    fn ident(&self) -> Option<Ident> {
+    fn name(&self) -> Option<Symbol> {
         match &self {
             Attribute::Unparsed(n) => {
                 if let [ident] = n.path.segments.as_ref() {
@@ -1343,7 +1350,7 @@ impl AttributeExt for Attribute {
     #[inline]
     fn path_matches(&self, name: &[Symbol]) -> bool {
         match &self {
-            Attribute::Unparsed(n) => n.path.segments.iter().map(|ident| &ident.name).eq(name),
+            Attribute::Unparsed(n) => n.path.segments.iter().eq(name),
             _ => false,
         }
     }
@@ -1364,6 +1371,7 @@ impl AttributeExt for Attribute {
             // FIXME: should not be needed anymore when all attrs are parsed
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::CfgTrace(cfgs)) => cfgs[0].1,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }
@@ -1379,10 +1387,17 @@ impl AttributeExt for Attribute {
     }
 
     #[inline]
-    fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
+    fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
         match &self {
             Attribute::Unparsed(n) => Some(n.path.segments.iter().copied().collect()),
             _ => None,
+        }
+    }
+
+    fn path_span(&self) -> Option<Span> {
+        match &self {
+            Attribute::Unparsed(attr) => Some(attr.path.span),
+            Attribute::Parsed(_) => None,
         }
     }
 
@@ -1390,6 +1405,14 @@ impl AttributeExt for Attribute {
     fn doc_str(&self) -> Option<Symbol> {
         match &self {
             Attribute::Parsed(AttributeKind::DocComment { comment, .. }) => Some(*comment),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    fn deprecation_note(&self) -> Option<Ident> {
+        match &self {
+            Attribute::Parsed(AttributeKind::Deprecation { deprecation, .. }) => deprecation.note,
             _ => None,
         }
     }
@@ -1466,11 +1489,6 @@ impl Attribute {
     }
 
     #[inline]
-    pub fn ident(&self) -> Option<Ident> {
-        AttributeExt::ident(self)
-    }
-
-    #[inline]
     pub fn path_matches(&self, name: &[Symbol]) -> bool {
         AttributeExt::path_matches(self, name)
     }
@@ -1503,11 +1521,6 @@ impl Attribute {
     #[inline]
     pub fn path(&self) -> SmallVec<[Symbol; 1]> {
         AttributeExt::path(self)
-    }
-
-    #[inline]
-    pub fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
-        AttributeExt::ident_path(self)
     }
 
     #[inline]
@@ -2620,6 +2633,12 @@ impl Expr<'_> {
                 // them being used only for its side-effects.
                 base.can_have_side_effects()
             }
+            ExprKind::Binary(_, lhs, rhs) => {
+                // This isn't exactly true for all `Binary`, but we are using this
+                // method exclusively for diagnostics and there's a *cultural* pressure against
+                // them being used only for its side-effects.
+                lhs.can_have_side_effects() || rhs.can_have_side_effects()
+            }
             ExprKind::Struct(_, fields, init) => {
                 let init_side_effects = match init {
                     StructTailExpr::Base(init) => init.can_have_side_effects(),
@@ -2642,13 +2661,13 @@ impl Expr<'_> {
                 },
                 args,
             ) => args.iter().any(|arg| arg.can_have_side_effects()),
+            ExprKind::Repeat(arg, _) => arg.can_have_side_effects(),
             ExprKind::If(..)
             | ExprKind::Match(..)
             | ExprKind::MethodCall(..)
             | ExprKind::Call(..)
             | ExprKind::Closure { .. }
             | ExprKind::Block(..)
-            | ExprKind::Repeat(..)
             | ExprKind::Break(..)
             | ExprKind::Continue(..)
             | ExprKind::Ret(..)
@@ -2659,7 +2678,6 @@ impl Expr<'_> {
             | ExprKind::InlineAsm(..)
             | ExprKind::AssignOp(..)
             | ExprKind::ConstBlock(..)
-            | ExprKind::Binary(..)
             | ExprKind::Yield(..)
             | ExprKind::DropTemps(..)
             | ExprKind::Err(_) => true,
@@ -3294,7 +3312,7 @@ pub enum ImplItemKind<'hir> {
 /// * the `G<Ty> = Ty` in `Trait<G<Ty> = Ty>`
 /// * the `A: Bound` in `Trait<A: Bound>`
 /// * the `RetTy` in `Trait(ArgTy, ArgTy) -> RetTy`
-/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `associated_const_equality`)
+/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `min_generic_const_args`)
 /// * the `f(..): Bound` in `Trait<f(..): Bound>` (feature `return_type_notation`)
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct AssocItemConstraint<'hir> {
@@ -3374,7 +3392,7 @@ pub enum AmbigArg {}
 /// Represents a type in the `HIR`.
 ///
 /// For an explanation of the `Unambig` generic parameter see the dev-guide:
-/// <https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html>
+/// <https://rustc-dev-guide.rust-lang.org/ambig-unambig-ty-and-consts.html>
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 #[repr(C)]
 pub struct Ty<'hir, Unambig = ()> {
@@ -3713,7 +3731,7 @@ pub enum InferDelegationKind {
 /// The various kinds of types recognized by the compiler.
 ///
 /// For an explanation of the `Unambig` generic parameter see the dev-guide:
-/// <https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html>
+/// <https://rustc-dev-guide.rust-lang.org/ambig-unambig-ty-and-consts.html>
 // SAFETY: `repr(u8)` is required so that `TyKind<()>` and `TyKind<!>` are layout compatible
 #[repr(u8, C)]
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -4507,6 +4525,26 @@ impl ItemKind<'_> {
             _ => return None,
         })
     }
+
+    pub fn recovered(&self) -> bool {
+        match self {
+            ItemKind::Struct(
+                _,
+                _,
+                VariantData::Struct { recovered: ast::Recovered::Yes(_), .. },
+            ) => true,
+            ItemKind::Union(
+                _,
+                _,
+                VariantData::Struct { recovered: ast::Recovered::Yes(_), .. },
+            ) => true,
+            ItemKind::Enum(_, _, def) => def.variants.iter().any(|v| match v.data {
+                VariantData::Struct { recovered: ast::Recovered::Yes(_), .. } => true,
+                _ => false,
+            }),
+            _ => false,
+        }
+    }
 }
 
 // The bodies for items are stored "out of line", in a separate
@@ -4577,6 +4615,11 @@ pub struct Upvar {
 pub struct TraitCandidate {
     pub def_id: DefId,
     pub import_ids: SmallVec<[LocalDefId; 1]>,
+    // Indicates whether this trait candidate is ambiguously glob imported
+    // in it's scope. Related to the AMBIGUOUS_GLOB_IMPORTED_TRAITS lint.
+    // If this is set to true and the trait is used as a result of method lookup, this
+    // lint is thrown.
+    pub lint_ambiguous: bool,
 }
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]

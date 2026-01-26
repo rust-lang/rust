@@ -93,7 +93,7 @@ LL | #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, traits, and unions
 
-error: `#[must_use]` attribute cannot be used on function params
+error: `#[must_use]` attribute cannot be used on type parameters
   --> $DIR/unused_attributes-must_use.rs:77:8
    |
 LL | fn qux<#[must_use] T>(_: T) {}
