@@ -77,26 +77,23 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
 
     #[allow(rustc::potential_query_instability)]
     for span in missing_footnote_references {
-        let (ref_span, precise) =
-            source_span_for_markdown_range(tcx, dox, &span, &item.attrs.doc_strings)
-                .map(|(span, _)| (span, true))
-                .unwrap_or_else(|| (item.attr_span(tcx), false));
+        let ref_span = source_span_for_markdown_range(tcx, dox, &span, &item.attrs.doc_strings)
+            .map(|(span, _)| span)
+            .unwrap_or_else(|| item.attr_span(tcx));
 
-        if precise {
-            tcx.emit_node_span_lint(
-                crate::lint::BROKEN_FOOTNOTE,
-                hir_id,
-                ref_span,
-                DiagDecorator(|lint| {
-                    lint.primary_message("no footnote definition matching this footnote");
-                    lint.span_suggestion(
-                        ref_span.shrink_to_lo(),
-                        "if it should not be a footnote, escape it",
-                        "\\",
-                        Applicability::MaybeIncorrect,
-                    );
-                }),
-            );
-        }
+        tcx.emit_node_span_lint(
+            crate::lint::BROKEN_FOOTNOTE,
+            hir_id,
+            ref_span,
+            DiagDecorator(|lint| {
+                lint.primary_message("no footnote definition matching this footnote");
+                lint.span_suggestion(
+                    ref_span.shrink_to_lo(),
+                    "if it should not be a footnote, escape it",
+                    "\\",
+                    Applicability::MaybeIncorrect,
+                );
+            }),
+        );
     }
 }

@@ -1,4 +1,4 @@
-// This test ensures that the rustdoc `unused_footnote` is working as expected.
+// This test ensures that the `rustdoc::unused_footnote` lint is working as expected.
 
 #![deny(rustdoc::unused_footnote_definition)]
 
