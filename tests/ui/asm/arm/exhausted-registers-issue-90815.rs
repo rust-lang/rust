@@ -3,6 +3,7 @@
 //@ compile-flags: --target armv7-unknown-linux-gnueabihf
 //@ needs-llvm-components: arm
 //@ ignore-backends: gcc
+//@ error-pattern: inline assembly requires more registers than available
 
 // Regression test for issue #90815.
 // Ensure that we emit a proper error message when inline assembly requests
@@ -35,7 +36,6 @@ pub unsafe fn exhausted_registers() {
     let r15: u32;
 
     asm!(
-        //~^ ERROR inline assembly requires more registers than available
         "mov {0}, r0",
         "mov {1}, r1",
         "mov {2}, r2",
