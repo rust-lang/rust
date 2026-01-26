@@ -323,42 +323,4 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 .and(type_op::ascribe_user_type::AscribeUserType { mir_ty, user_ty }),
         );
     }
-
-    /// *Incorrectly* skips the WF checks we normally do in `ascribe_user_type`.
-    ///
-    /// FIXME(#104478, #104477): This is a hack for backward-compatibility.
-    #[instrument(skip(self), level = "debug")]
-    pub(super) fn ascribe_user_type_skip_wf(
-        &mut self,
-        mir_ty: Ty<'tcx>,
-        user_ty: ty::UserType<'tcx>,
-        span: Span,
-    ) {
-        let ty::UserTypeKind::Ty(user_ty) = user_ty.kind else { bug!() };
-
-        // A fast path for a common case with closure input/output types.
-        if let ty::Infer(_) = user_ty.kind() {
-            self.eq_types(user_ty, mir_ty, Locations::All(span), ConstraintCategory::Boring)
-                .unwrap();
-            return;
-        }
-
-        // FIXME: Ideally MIR types are normalized, but this is not always true.
-        let mir_ty = self.normalize(mir_ty, Locations::All(span));
-
-        let cause = ObligationCause::dummy_with_span(span);
-        let param_env = self.infcx.param_env;
-        let _: Result<_, ErrorGuaranteed> = self.fully_perform_op(
-            Locations::All(span),
-            ConstraintCategory::Boring,
-            type_op::custom::CustomTypeOp::new(
-                |ocx| {
-                    let user_ty = ocx.normalize(&cause, param_env, user_ty);
-                    ocx.eq(&cause, param_env, user_ty, mir_ty)?;
-                    Ok(())
-                },
-                "ascribe_user_type_skip_wf",
-            ),
-        );
-    }
 }
