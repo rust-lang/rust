@@ -13,7 +13,7 @@ use std::ops::{Bound, Range};
 use std::sync::Once;
 use std::{fmt, marker, mem, panic, thread};
 
-use crate::{Delimiter, Level, Spacing};
+use crate::{Delimiter, Level};
 
 /// Higher-order macro describing the server RPC API, allowing automatic
 /// generation of type-safe Rust APIs, both client-side and server-side.
@@ -187,12 +187,6 @@ impl<'a, T, M> Unmark for &'a Marked<T, M> {
         &self.value
     }
 }
-impl<'a, T, M> Unmark for &'a mut Marked<T, M> {
-    type Unmarked = &'a mut T;
-    fn unmark(self) -> Self::Unmarked {
-        &mut self.value
-    }
-}
 
 impl<T: Mark> Mark for Vec<T> {
     type Unmarked = Vec<T::Unmarked>;
@@ -230,8 +224,6 @@ macro_rules! mark_noop {
 mark_noop! {
     (),
     bool,
-    char,
-    &'_ [u8],
     &'_ str,
     String,
     u8,
@@ -239,7 +231,6 @@ mark_noop! {
     Delimiter,
     LitKind,
     Level,
-    Spacing,
 }
 
 rpc_encode_decode!(
@@ -256,12 +247,6 @@ rpc_encode_decode!(
         Warning,
         Note,
         Help,
-    }
-);
-rpc_encode_decode!(
-    enum Spacing {
-        Alone,
-        Joint,
     }
 );
 

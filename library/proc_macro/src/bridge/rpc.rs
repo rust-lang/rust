@@ -135,18 +135,6 @@ impl<S> Decode<'_, '_, S> for bool {
     }
 }
 
-impl<S> Encode<S> for char {
-    fn encode(self, w: &mut Buffer, s: &mut S) {
-        (self as u32).encode(w, s);
-    }
-}
-
-impl<S> Decode<'_, '_, S> for char {
-    fn decode(r: &mut &[u8], s: &mut S) -> Self {
-        char::from_u32(u32::decode(r, s)).unwrap()
-    }
-}
-
 impl<S> Encode<S> for NonZero<u32> {
     fn encode(self, w: &mut Buffer, s: &mut S) {
         self.get().encode(w, s);
@@ -174,31 +162,20 @@ impl<'a, S, A: for<'s> Decode<'a, 's, S>, B: for<'s> Decode<'a, 's, S>> Decode<'
     }
 }
 
-impl<S> Encode<S> for &[u8] {
-    fn encode(self, w: &mut Buffer, s: &mut S) {
-        self.len().encode(w, s);
-        w.write_all(self).unwrap();
-    }
-}
-
-impl<'a, S> Decode<'a, '_, S> for &'a [u8] {
-    fn decode(r: &mut &'a [u8], s: &mut S) -> Self {
-        let len = usize::decode(r, s);
-        let xs = &r[..len];
-        *r = &r[len..];
-        xs
-    }
-}
-
 impl<S> Encode<S> for &str {
     fn encode(self, w: &mut Buffer, s: &mut S) {
-        self.as_bytes().encode(w, s);
+        let bytes = self.as_bytes();
+        bytes.len().encode(w, s);
+        w.write_all(bytes).unwrap();
     }
 }
 
 impl<'a, S> Decode<'a, '_, S> for &'a str {
     fn decode(r: &mut &'a [u8], s: &mut S) -> Self {
-        str::from_utf8(<&[u8]>::decode(r, s)).unwrap()
+        let len = usize::decode(r, s);
+        let xs = &r[..len];
+        *r = &r[len..];
+        str::from_utf8(xs).unwrap()
     }
 }
 
