@@ -450,6 +450,17 @@ where
 }
 
 pub trait OutlivesHandlingDelegate<'tcx> {
+    /// Subtle: this trait exists to abstract the outlives handling between
+    /// regular regionck and NLL. Unfortunately, NLL and regionck don't agree
+    /// on how subtyping works.
+    ///
+    /// In NLL `'a sub 'b` means `'a outlives 'b`.
+    /// In regionck `'a sub 'b` means the set of locations `'a` is live at is a subset
+    /// of the locations that `'b` is, or in other words, `'b outlives 'a`.
+    ///
+    /// This method will be called with the regionck meaning of subtyping. i.e. if
+    /// there is some `&'b u32: 'static` constraint, we will give a `'b sub 'static`
+    /// constraint.
     fn push_sub_region_constraint(
         &mut self,
         origin: SubregionOrigin<'tcx>,
