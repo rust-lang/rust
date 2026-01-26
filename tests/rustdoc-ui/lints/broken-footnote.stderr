@@ -1,5 +1,5 @@
 error: no footnote definition matching this footnote
-  --> $DIR/broken-footnote.rs:4:45
+  --> $DIR/broken-footnote.rs:3:45
    |
 LL | //! Footnote referenced [^1]. And [^2]. And [^bla].
    |                                             -^^^^^
@@ -13,7 +13,7 @@ LL | #![deny(rustdoc::broken_footnote)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: no footnote definition matching this footnote
-  --> $DIR/broken-footnote.rs:4:35
+  --> $DIR/broken-footnote.rs:3:35
    |
 LL | //! Footnote referenced [^1]. And [^2]. And [^bla].
    |                                   -^^^

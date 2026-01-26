@@ -1,5 +1,4 @@
 #![deny(rustdoc::broken_footnote)]
-#![allow(rustdoc::unportable_markdown)]
 
 //! Footnote referenced [^1]. And [^2]. And [^bla].
 //!

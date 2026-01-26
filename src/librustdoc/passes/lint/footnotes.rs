@@ -71,20 +71,18 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
 
     #[allow(rustc::potential_query_instability)]
     for span in missing_footnote_references {
-        let (ref_span, precise) =
+        let (ref_span, _) =
             source_span_for_markdown_range(tcx, dox, &span, &item.attrs.doc_strings)
                 .unwrap_or_else(|| (item.attr_span(tcx), false));
 
-        if precise {
-            tcx.node_span_lint(crate::lint::BROKEN_FOOTNOTE, hir_id, ref_span, |lint| {
-                lint.primary_message("no footnote definition matching this footnote");
-                lint.span_suggestion(
-                    ref_span.shrink_to_lo(),
-                    "if it should not be a footnote, escape it",
-                    "\\",
-                    Applicability::MaybeIncorrect,
-                );
-            });
-        }
+        tcx.node_span_lint(crate::lint::BROKEN_FOOTNOTE, hir_id, ref_span, |lint| {
+            lint.primary_message("no footnote definition matching this footnote");
+            lint.span_suggestion(
+                ref_span.shrink_to_lo(),
+                "if it should not be a footnote, escape it",
+                "\\",
+                Applicability::MaybeIncorrect,
+            );
+        });
     }
 }
