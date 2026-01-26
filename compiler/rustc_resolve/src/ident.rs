@@ -58,7 +58,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         orig_ctxt: Span,
         derive_fallback_lint_id: Option<NodeId>,
         mut visitor: impl FnMut(
-            &mut CmResolver<'r, 'ra, 'tcx>,
+            CmResolver<'_, 'ra, 'tcx>,
             Scope<'ra>,
             UsePrelude,
             Span,
@@ -165,7 +165,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if visit {
                 let use_prelude = if use_prelude { UsePrelude::Yes } else { UsePrelude::No };
                 if let ControlFlow::Break(break_result) =
-                    visitor(&mut self, scope, use_prelude, ctxt)
+                    visitor(self.reborrow(), scope, use_prelude, ctxt)
                 {
                     return Some(break_result);
                 }
@@ -438,7 +438,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             parent_scope,
             orig_ident.span,
             derive_fallback_lint_id,
-            |this, scope, use_prelude, ctxt| {
+            |mut this, scope, use_prelude, ctxt| {
                 let ident = Ident::new(orig_ident.name, ctxt);
                 // The passed `ctxt` is already normalized, so avoid expensive double normalization.
                 let ident = Macros20NormalizedIdent(ident);
