@@ -1,4 +1,7 @@
 //@ build-pass
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 
 // Ensures that we don't regress on "implementation is not general enough" when
 // normalizating under binders. Unlike `normalization-generality.rs`, this also produces
