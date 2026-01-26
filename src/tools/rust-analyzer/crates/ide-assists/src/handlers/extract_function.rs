@@ -120,7 +120,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
             let params = body.extracted_function_params(ctx, &container_info, locals_used);
 
-            let name = make_function_name(&semantics_scope);
+            let name = make_function_name(&semantics_scope, &body);
 
             let fun = Function {
                 name,
@@ -241,7 +241,10 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     )
 }
 
-fn make_function_name(semantics_scope: &hir::SemanticsScope<'_>) -> ast::NameRef {
+fn make_function_name(
+    semantics_scope: &hir::SemanticsScope<'_>,
+    body: &FunctionBody,
+) -> ast::NameRef {
     let mut names_in_scope = vec![];
     semantics_scope.process_all_names(&mut |name, _| {
         names_in_scope.push(
@@ -252,7 +255,10 @@ fn make_function_name(semantics_scope: &hir::SemanticsScope<'_>) -> ast::NameRef
 
     let default_name = "fun_name";
 
-    let mut name = default_name.to_owned();
+    let mut name = body
+        .suggest_name()
+        .filter(|name| name.len() > 2)
+        .unwrap_or_else(|| default_name.to_owned());
     let mut counter = 0;
     while names_in_scope.contains(&name) {
         counter += 1;
@@ -778,6 +784,16 @@ impl FunctionBody {
 
     fn contains_node(&self, node: &SyntaxNode) -> bool {
         self.contains_range(node.text_range())
+    }
+
+    fn suggest_name(&self) -> Option<String> {
+        if let Some(ast::Pat::IdentPat(pat)) = self.parent().and_then(ast::LetStmt::cast)?.pat()
+            && let Some(name) = pat.name().and_then(|it| it.ident_token())
+        {
+            Some(name.text().to_owned())
+        } else {
+            None
+        }
     }
 }
 
@@ -5430,12 +5446,12 @@ impl Struct {
 
 impl Trait for Struct {
     fn bar(&self) -> i32 {
-        let three_squared = fun_name();
+        let three_squared = three_squared();
         self.0 + three_squared
     }
 }
 
-fn $0fun_name() -> i32 {
+fn $0three_squared() -> i32 {
     3 * 3
 }
 "#,
