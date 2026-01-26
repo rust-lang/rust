@@ -270,6 +270,7 @@ symbols! {
         Into,
         IntoFuture,
         IntoIterator,
+        IntoIteratorItem,
         IoBufRead,
         IoLines,
         IoRead,
