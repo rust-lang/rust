@@ -10,6 +10,7 @@ Thir {
                 span: $DIR/str-patterns.rs:11:9: 11:16 (#0),
                 extra: None,
                 kind: Deref {
+                    pin: Not,
                     subpattern: Pat {
                         ty: str,
                         span: $DIR/str-patterns.rs:11:9: 11:16 (#0),
@@ -50,6 +51,7 @@ Thir {
                     },
                 ),
                 kind: Deref {
+                    pin: Not,
                     subpattern: Pat {
                         ty: str,
                         span: $DIR/str-patterns.rs:12:9: 12:17 (#0),

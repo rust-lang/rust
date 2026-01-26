@@ -20,7 +20,7 @@ use rustc_public::{
     ty::{Abi, ForeignItemKind},
     *,
 };
-use std::assert_matches::assert_matches;
+use std::assert_matches;
 use std::io::Write;
 use std::ops::ControlFlow;
 

@@ -18,7 +18,7 @@ use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::{self, IsTerminal, Read, Write};
-use std::panic::{self, PanicHookInfo, catch_unwind};
+use std::panic::{self, PanicHookInfo};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::sync::OnceLock;
@@ -32,15 +32,17 @@ use rustc_codegen_ssa::{CodegenErrors, CodegenResults};
 use rustc_data_structures::profiling::{
     TimePassesFormat, get_resident_set_size, print_time_passes_entry,
 };
+pub use rustc_errors::catch_fatal_errors;
 use rustc_errors::emitter::stderr_destination;
 use rustc_errors::registry::Registry;
 use rustc_errors::translation::Translator;
-use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, FatalError, PResult, markdown};
+use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, PResult, markdown};
 use rustc_feature::find_gated_cfg;
 // This avoids a false positive with `-Wunused_crate_dependencies`.
 // `rust_index` isn't used in this crate's code, but it must be named in the
 // `Cargo.toml` for the `rustc_randomized_layouts` feature.
 use rustc_index as _;
+use rustc_interface::passes::collect_crate_types;
 use rustc_interface::util::{self, get_codegen_backend};
 use rustc_interface::{Linker, create_and_enter_global_ctxt, interface, passes};
 use rustc_lint::unerased_lint_store;
@@ -55,10 +57,10 @@ use rustc_session::config::{
 };
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
-use rustc_session::output::{CRATE_TYPES, collect_crate_types, invalid_output_for_target};
+use rustc_session::output::invalid_output_for_target;
 use rustc_session::{EarlyDiagCtxt, Session, config};
-use rustc_span::FileName;
 use rustc_span::def_id::LOCAL_CRATE;
+use rustc_span::{DUMMY_SP, FileName};
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
 use tracing::trace;
@@ -697,6 +699,7 @@ fn print_crate_info(
                     &codegen_backend.supported_crate_types(sess),
                     codegen_backend.name(),
                     attrs,
+                    DUMMY_SP,
                 );
                 for &style in &crate_types {
                     let fname = rustc_session::output::filename_for_input(
@@ -848,7 +851,7 @@ fn print_crate_info(
                 }
             }
             SupportedCrateTypes => {
-                let supported_crate_types = CRATE_TYPES
+                let supported_crate_types = CrateType::all()
                     .iter()
                     .filter(|(_, crate_type)| !invalid_output_for_target(sess, *crate_type))
                     .filter(|(_, crate_type)| *crate_type != CrateType::Sdylib)
@@ -1377,21 +1380,6 @@ fn parse_crate_attrs<'a>(sess: &'a Session) -> PResult<'a, ast::AttrVec> {
     parser.parse_inner_attributes()
 }
 
-/// Runs a closure and catches unwinds triggered by fatal errors.
-///
-/// The compiler currently unwinds with a special sentinel value to abort
-/// compilation on fatal errors. This function catches that sentinel and turns
-/// the panic into a `Result` instead.
-pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, FatalError> {
-    catch_unwind(panic::AssertUnwindSafe(f)).map_err(|value| {
-        if value.is::<rustc_errors::FatalErrorMarker>() {
-            FatalError
-        } else {
-            panic::resume_unwind(value);
-        }
-    })
-}
-
 /// Variant of `catch_fatal_errors` for the `interface::Result` return type
 /// that also computes the exit code.
 pub fn catch_with_exit_code(f: impl FnOnce()) -> i32 {
@@ -1548,10 +1536,11 @@ fn report_ice(
     using_internal_features: &AtomicBool,
 ) {
     let translator = default_translator();
-    let emitter = Box::new(rustc_errors::emitter::HumanEmitter::new(
-        stderr_destination(rustc_errors::ColorConfig::Auto),
-        translator,
-    ));
+    let emitter =
+        Box::new(rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter::new(
+            stderr_destination(rustc_errors::ColorConfig::Auto),
+            translator,
+        ));
     let dcx = rustc_errors::DiagCtxt::new(emitter);
     let dcx = dcx.handle();
 

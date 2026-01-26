@@ -75,7 +75,7 @@ book!(
     EditionGuide, "src/doc/edition-guide", "edition-guide", &[];
     EmbeddedBook, "src/doc/embedded-book", "embedded-book", &[];
     Nomicon, "src/doc/nomicon", "nomicon", &[];
-    RustByExample, "src/doc/rust-by-example", "rust-by-example", &["es", "ja", "zh"];
+    RustByExample, "src/doc/rust-by-example", "rust-by-example", &["es", "ja", "zh", "ko"];
     RustdocBook, "src/doc/rustdoc", "rustdoc", &[];
     StyleGuide, "src/doc/style-guide", "style-guide", &[];
 );

@@ -6,10 +6,7 @@
     unused_lifetimes,
     unused_qualifications
 )]
-#![allow(
-    clippy::must_use_candidate,
-    clippy::missing_panics_doc,
-)]
+#![allow(clippy::must_use_candidate, clippy::missing_panics_doc)]
 #![deny(clippy::derive_deserialize_allowing_unknown)]
 
 extern crate rustc_data_structures;

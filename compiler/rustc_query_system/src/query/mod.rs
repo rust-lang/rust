@@ -20,6 +20,18 @@ mod config;
 mod job;
 mod plumbing;
 
+/// How a particular query deals with query cycle errors.
+///
+/// Inspected by the code that actually handles cycle errors, to decide what
+/// approach to use.
+#[derive(Copy, Clone)]
+pub enum CycleErrorHandling {
+    Error,
+    Fatal,
+    DelayBug,
+    Stash,
+}
+
 /// Description of a frame in the query stack.
 ///
 /// This is mostly used in case of cycles for error reporting.

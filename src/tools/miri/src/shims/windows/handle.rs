@@ -314,7 +314,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "`DuplicateHandle` called on a thread handle, which is unsupported"
                 );
             }
-            Handle::Pseudo(pseudo) => Handle::Pseudo(pseudo),
+            Handle::Pseudo(_) => {
+                throw_unsup_format!(
+                    "`DuplicateHandle` called on a pseudo handle, which is unsupported"
+                );
+            }
             Handle::Null | Handle::Invalid => this.invalid_handle("DuplicateHandle")?,
         };
 

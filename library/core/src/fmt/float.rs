@@ -236,7 +236,7 @@ floating! { f32 f64 }
 #[cfg(target_has_reliable_f16)]
 floating! { f16 }
 
-// FIXME(f16_f128): A fallback is used when the backend+target does not support f16 well, in order
+// FIXME(f16): A fallback is used when the backend+target does not support f16 well, in order
 // to avoid ICEs.
 
 #[cfg(not(target_has_reliable_f16))]

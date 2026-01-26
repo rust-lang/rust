@@ -12,7 +12,7 @@ use rustc_ast::{self as ast, PatKind, visit};
 use rustc_ast_pretty::pprust::item_to_string;
 use rustc_data_structures::assert_matches;
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
-use rustc_errors::emitter::{HumanEmitter, OutputTheme};
+use rustc_errors::emitter::OutputTheme;
 use rustc_errors::translation::Translator;
 use rustc_errors::{AutoStream, DiagCtxt, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
@@ -22,7 +22,7 @@ use rustc_span::{
 };
 
 use crate::lexer::StripTokens;
-use crate::parser::{ForceCollect, Parser};
+use crate::parser::{AllowConstBlockItems, ForceCollect, Parser};
 use crate::{new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 
 fn psess() -> ParseSess {
@@ -49,20 +49,12 @@ fn create_test_handler(theme: OutputTheme) -> (DiagCtxt, Arc<SourceMap>, Arc<Mut
     let translator = Translator::with_fallback_bundle(vec![crate::DEFAULT_LOCALE_RESOURCE], false);
     let shared: Box<dyn Write + Send> = Box::new(Shared { data: output.clone() });
     let auto_stream = AutoStream::never(shared);
-    let dcx = DiagCtxt::new(match theme {
-        OutputTheme::Ascii => Box::new(
-            HumanEmitter::new(auto_stream, translator)
-                .sm(Some(source_map.clone()))
-                .diagnostic_width(Some(140))
-                .theme(theme),
-        ),
-        OutputTheme::Unicode => Box::new(
-            AnnotateSnippetEmitter::new(auto_stream, translator)
-                .sm(Some(source_map.clone()))
-                .diagnostic_width(Some(140))
-                .theme(theme),
-        ),
-    });
+    let dcx = DiagCtxt::new(Box::new(
+        AnnotateSnippetEmitter::new(auto_stream, translator)
+            .sm(Some(source_map.clone()))
+            .diagnostic_width(Some(140))
+            .theme(theme),
+    ));
     (dcx, source_map, output)
 }
 
@@ -2241,7 +2233,7 @@ fn parse_item_from_source_str(
     psess: &ParseSess,
 ) -> PResult<'_, Option<Box<ast::Item>>> {
     unwrap_or_emit_fatal(new_parser_from_source_str(psess, name, source, StripTokens::Nothing))
-        .parse_item(ForceCollect::No)
+        .parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
 }
 
 // Produces a `rustc_span::span`.
@@ -2256,7 +2248,9 @@ fn string_to_expr(source_str: String) -> Box<ast::Expr> {
 
 /// Parses a string, returns an item.
 fn string_to_item(source_str: String) -> Option<Box<ast::Item>> {
-    with_error_checking_parse(source_str, &psess(), |p| p.parse_item(ForceCollect::No))
+    with_error_checking_parse(source_str, &psess(), |p| {
+        p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
+    })
 }
 
 #[test]

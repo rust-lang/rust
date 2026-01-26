@@ -1,0 +1,36 @@
+// Targets the Little-endian Cortex-R52 processor (ARMv8-R)
+
+use crate::spec::{Abi, Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base};
+
+pub(crate) fn target() -> Target {
+    Target {
+        llvm_target: "thumbv8r-none-eabihf".into(),
+        metadata: TargetMetadata {
+            description: Some("Thumb-mode Bare Armv8-R, hardfloat".into()),
+            tier: Some(2),
+            host_tools: Some(false),
+            std: Some(false),
+        },
+        pointer_width: 32,
+        data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
+        arch: Arch::Arm,
+
+        options: TargetOptions {
+            abi: Abi::EabiHf,
+            llvm_floatabi: Some(FloatAbi::Hard),
+            // Armv8-R requires a minimum set of floating-point features equivalent to:
+            // fp-armv8, SP-only, with 16 DP (32 SP) registers
+            // LLVM defines Armv8-R to include these features automatically.
+            //
+            // The Cortex-R52 supports these default features and optionally includes:
+            // neon-fp-armv8, SP+DP, with 32 DP registers
+            //
+            // Reference:
+            // Arm Cortex-R52 Processor Technical Reference Manual
+            // - Chapter 15 Advanced SIMD and floating-point support
+            max_atomic_width: Some(64),
+            has_thumb_interworking: true,
+            ..base::arm_none::opts()
+        },
+    }
+}

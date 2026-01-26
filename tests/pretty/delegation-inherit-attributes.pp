@@ -21,8 +21,8 @@ mod to_reuse {
     #[attr = Cold]
     fn foo_no_reason(x: usize) -> usize { x }
 
-    #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
     #[attr = Cold]
+    #[attr = Deprecation {deprecation: Deprecation {since: Unspecified}}]
     fn bar(x: usize) -> usize { x }
 }
 

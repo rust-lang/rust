@@ -1596,8 +1596,11 @@ supported_targets! {
     ("armebv7r-none-eabi", armebv7r_none_eabi),
     ("armebv7r-none-eabihf", armebv7r_none_eabihf),
     ("armv7r-none-eabi", armv7r_none_eabi),
+    ("thumbv7r-none-eabi", thumbv7r_none_eabi),
     ("armv7r-none-eabihf", armv7r_none_eabihf),
+    ("thumbv7r-none-eabihf", thumbv7r_none_eabihf),
     ("armv8r-none-eabihf", armv8r_none_eabihf),
+    ("thumbv8r-none-eabihf", thumbv8r_none_eabihf),
 
     ("armv7-rtems-eabihf", armv7_rtems_eabihf),
 
@@ -1649,7 +1652,9 @@ supported_targets! {
     ("thumbv8m.main-none-eabihf", thumbv8m_main_none_eabihf),
 
     ("armv7a-none-eabi", armv7a_none_eabi),
+    ("thumbv7a-none-eabi", thumbv7a_none_eabi),
     ("armv7a-none-eabihf", armv7a_none_eabihf),
+    ("thumbv7a-none-eabihf", thumbv7a_none_eabihf),
     ("armv7a-nuttx-eabi", armv7a_nuttx_eabi),
     ("armv7a-nuttx-eabihf", armv7a_nuttx_eabihf),
     ("armv7a-vex-v5", armv7a_vex_v5),
@@ -1741,10 +1746,14 @@ supported_targets! {
     ("mipsel-unknown-none", mipsel_unknown_none),
     ("mips-mti-none-elf", mips_mti_none_elf),
     ("mipsel-mti-none-elf", mipsel_mti_none_elf),
-    ("thumbv4t-none-eabi", thumbv4t_none_eabi),
+
     ("armv4t-none-eabi", armv4t_none_eabi),
-    ("thumbv5te-none-eabi", thumbv5te_none_eabi),
     ("armv5te-none-eabi", armv5te_none_eabi),
+    ("armv6-none-eabi", armv6_none_eabi),
+    ("armv6-none-eabihf", armv6_none_eabihf),
+    ("thumbv4t-none-eabi", thumbv4t_none_eabi),
+    ("thumbv5te-none-eabi", thumbv5te_none_eabi),
+    ("thumbv6-none-eabi", thumbv6_none_eabi),
 
     ("aarch64_be-unknown-linux-gnu", aarch64_be_unknown_linux_gnu),
     ("aarch64-unknown-linux-gnu_ilp32", aarch64_unknown_linux_gnu_ilp32),

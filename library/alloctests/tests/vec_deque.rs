@@ -1,6 +1,6 @@
 use core::cell::Cell;
 use core::num::NonZero;
-use std::assert_matches::assert_matches;
+use std::assert_matches;
 use std::collections::TryReserveErrorKind::*;
 use std::collections::VecDeque;
 use std::collections::vec_deque::Drain;

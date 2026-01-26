@@ -1,0 +1,17 @@
+#![warn(clippy::duration_suboptimal_units)]
+// The duration_constructors feature enables `Duration::from_days` and `Duration::from_weeks`, so we
+// should suggest them
+#![feature(duration_constructors)]
+
+use std::time::Duration;
+
+fn main() {
+    let dur = Duration::from_mins(1);
+    //~^ duration_suboptimal_units
+
+    let dur = Duration::from_days(1);
+    //~^ duration_suboptimal_units
+
+    let dur = Duration::from_weeks(13);
+    //~^ duration_suboptimal_units
+}

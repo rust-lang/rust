@@ -1,0 +1,11 @@
+error: associated constant binding in trait object type mentions `Self`
+  --> $DIR/dyn-compat-const-projection-behind-trait-alias-mentions-self.rs:21:12
+   |
+LL | trait Bound = Trait<Y = { Hold::<Self> }>;
+   |                     -------------------- this binding mentions `Self`
+...
+LL |     let _: dyn Bound;
+   |            ^^^^^^^^^ contains a mention of `Self`
+
+error: aborting due to 1 previous error
+

@@ -528,6 +528,12 @@ LLVMRustCreateAttrNoValue(LLVMContextRef C, LLVMRustAttributeKind RustAttr) {
                                 CaptureComponents::ReadProvenance)));
   }
 #endif
+#if LLVM_VERSION_GE(23, 0)
+  if (RustAttr == LLVMRustAttributeKind::DeadOnReturn) {
+    return wrap(Attribute::getWithDeadOnReturnInfo(*unwrap(C),
+                                                   llvm::DeadOnReturnInfo()));
+  }
+#endif
   return wrap(Attribute::get(*unwrap(C), fromRust(RustAttr)));
 }
 

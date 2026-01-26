@@ -82,17 +82,16 @@ pub fn test_bool_not() {
     }
 }
 
+const fn zero() -> i32 {
+    0
+}
+
 #[test]
 fn test_bool_to_option() {
     assert_eq!(false.then_some(0), None);
     assert_eq!(true.then_some(0), Some(0));
     assert_eq!(false.then(|| 0), None);
     assert_eq!(true.then(|| 0), Some(0));
-
-    /* FIXME(#110395)
-    const fn zero() -> i32 {
-        0
-    }
 
     const A: Option<i32> = false.then_some(0);
     const B: Option<i32> = true.then_some(0);
@@ -103,7 +102,6 @@ fn test_bool_to_option() {
     assert_eq!(B, Some(0));
     assert_eq!(C, None);
     assert_eq!(D, Some(0));
-    */
 }
 
 #[test]
@@ -112,4 +110,14 @@ fn test_bool_to_result() {
     assert_eq!(true.ok_or(0), Ok(()));
     assert_eq!(false.ok_or_else(|| 0), Err(0));
     assert_eq!(true.ok_or_else(|| 0), Ok(()));
+
+    const A: Result<(), i32> = false.ok_or(0);
+    const B: Result<(), i32> = true.ok_or(0);
+    const C: Result<(), i32> = false.ok_or_else(zero);
+    const D: Result<(), i32> = true.ok_or_else(zero);
+
+    assert_eq!(A, Err(0));
+    assert_eq!(B, Ok(()));
+    assert_eq!(C, Err(0));
+    assert_eq!(D, Ok(()));
 }

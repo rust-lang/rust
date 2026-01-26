@@ -115,6 +115,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
             && !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, block.hir_id)
             && !is_unsafe_from_proc_macro(cx, block.span)
             && !block_has_safety_comment(cx, block.span, self.accept_comment_above_attributes)
+            && !block_has_inner_safety_comment(cx, block.span)
             && !block_parents_have_safety_comment(
                 self.accept_comment_above_statement,
                 self.accept_comment_above_attributes,
@@ -839,6 +840,23 @@ fn text_has_safety_comment(
             }
         }
     }
+    // Check for a comment that appears after other code on the same line (e.g., `let x = // SAFETY:`)
+    // This handles cases in macros where the comment is on the same line as preceding code.
+    // We only check the first (immediate preceding) line for this pattern.
+    // Only whitespace is allowed between the comment marker and `SAFETY:`.
+    if let Some(comment_start) = [line.find("//"), line.find("/*")].into_iter().flatten().min()
+        && let after_marker = &line[comment_start + 2..] // skip marker
+        && let trimmed = after_marker.trim_start() // skip whitespace
+        && trimmed.get(..7).is_some_and(|s| s.eq_ignore_ascii_case("SAFETY:"))
+    {
+        let safety_offset = 2 + (after_marker.len() - trimmed.len());
+        return HasSafetyComment::Yes(
+            start_pos
+                + BytePos(u32::try_from(line_start).unwrap())
+                + BytePos(u32::try_from(comment_start + safety_offset).unwrap()),
+            false,
+        );
+    }
     // No line comments; look for the start of a block comment.
     // This will only find them if they are at the start of a line.
     let (mut line_start, mut line) = (line_start, line);
@@ -893,4 +911,21 @@ fn is_const_or_static(node: &Node<'_>) -> bool {
             ..
         })
     )
+}
+
+fn block_has_inner_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
+    let source_map = cx.sess().source_map();
+    if let Ok(src) = source_map.span_to_snippet(span)
+        && let Some(after_brace) = src
+            .strip_prefix("unsafe")
+            .and_then(|s| s.trim_start().strip_prefix('{'))
+        && let Some(comment) = after_brace
+            .trim_start()
+            .strip_prefix("//")
+            .or_else(|| after_brace.trim_start().strip_prefix("/*"))
+    {
+        comment.trim_start().to_ascii_uppercase().starts_with("SAFETY:")
+    } else {
+        false
+    }
 }

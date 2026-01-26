@@ -509,6 +509,12 @@ impl Step for RustAnalyzer {
         cargo.arg("--workspace");
         cargo.arg("--exclude=xtask");
 
+        if build_compiler.stage == 0 {
+            // This builds a proc macro against the bootstrap libproc_macro, which is not ABI
+            // compatible with the ABI proc-macro-srv expects to load.
+            cargo.arg("--exclude=proc-macro-srv");
+        }
+
         let mut skip_tests = vec![];
 
         // NOTE: the following test skips is a bit cheeky in that it assumes there are no
@@ -927,8 +933,9 @@ impl Step for Clippy {
 
         cargo.env("RUSTC_TEST_SUITE", builder.rustc(build_compiler));
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(build_compiler));
-        let host_libs =
-            builder.stage_out(build_compiler, Mode::ToolRustcPrivate).join(builder.cargo_dir());
+        let host_libs = builder
+            .stage_out(build_compiler, Mode::ToolRustcPrivate)
+            .join(builder.cargo_dir(Mode::ToolRustcPrivate));
         cargo.env("HOST_LIBS", host_libs);
 
         // Build the standard library that the tests can use.

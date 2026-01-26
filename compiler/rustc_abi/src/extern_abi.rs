@@ -42,6 +42,13 @@ pub enum ExternAbi {
     /// in a platform-agnostic way.
     RustInvalid,
 
+    /// Preserves no registers.
+    ///
+    /// Note, that this ABI is not stable in the registers it uses, is intended as an optimization
+    /// and may fall-back to a more conservative calling convention if the backend does not support
+    /// forcing callers to save all registers.
+    RustPreserveNone,
+
     /// Unstable impl detail that directly uses Rust types to describe the ABI to LLVM.
     /// Even normally-compatible Rust types can become ABI-incompatible with this ABI!
     Unadjusted,
@@ -163,6 +170,7 @@ abi_impls! {
             RustCall =><= "rust-call",
             RustCold =><= "rust-cold",
             RustInvalid =><= "rust-invalid",
+            RustPreserveNone =><= "rust-preserve-none",
             Stdcall { unwind: false } =><= "stdcall",
             Stdcall { unwind: true } =><= "stdcall-unwind",
             System { unwind: false } =><= "system",
@@ -243,7 +251,7 @@ impl ExternAbi {
     /// - are subject to change between compiler versions
     pub fn is_rustic_abi(self) -> bool {
         use ExternAbi::*;
-        matches!(self, Rust | RustCall | RustCold)
+        matches!(self, Rust | RustCall | RustCold | RustPreserveNone)
     }
 
     /// Returns whether the ABI supports C variadics. This only controls whether we allow *imports*
@@ -315,7 +323,8 @@ impl ExternAbi {
             | Self::Thiscall { .. }
             | Self::Vectorcall { .. }
             | Self::SysV64 { .. }
-            | Self::Win64 { .. } => true,
+            | Self::Win64 { .. }
+            | Self::RustPreserveNone => true,
         }
     }
 }

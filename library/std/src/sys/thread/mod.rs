@@ -91,7 +91,7 @@ cfg_select! {
     }
     target_os = "vexos" => {
         mod vexos;
-        pub use vexos::{sleep, yield_now};
+        pub use vexos::{sleep, sleep_until, yield_now};
         #[expect(dead_code)]
         mod unsupported;
         pub use unsupported::{Thread, available_parallelism, current_os_id, set_name, DEFAULT_MIN_STACK_SIZE};
@@ -135,13 +135,22 @@ cfg_select! {
     target_os = "vxworks",
     target_os = "wasi",
     target_vendor = "apple",
+    target_os = "motor",
+    target_os = "vexos"
 )))]
 pub fn sleep_until(deadline: crate::time::Instant) {
     use crate::time::Instant;
 
-    let now = Instant::now();
-
-    if let Some(delay) = deadline.checked_duration_since(now) {
+    // The clock source used for `sleep` might not be the same used for `Instant`.
+    // Since this function *must not* return before the deadline, we recheck the
+    // time after every call to `sleep`. See #149935 for an example of this
+    // occurring on older Windows systems.
+    while let Some(delay) = deadline.checked_duration_since(Instant::now()) {
+        // Sleep for the estimated time remaining until the deadline.
+        //
+        // If your system has a better way of estimating the delay time or
+        // provides a way to sleep until an absolute time, specialize this
+        // function for your system.
         sleep(delay);
     }
 }

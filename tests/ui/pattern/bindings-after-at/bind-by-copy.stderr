@@ -20,20 +20,12 @@ LL |     y.d.c = 30;
    = help: maybe it is overwritten before being read?
 
 warning: value assigned to `x` is never read
-  --> $DIR/bind-by-copy.rs:57:13
+  --> $DIR/bind-by-copy.rs:56:13
    |
 LL |             x = E::NotE;
    |             ^^^^^^^^^^^
    |
    = help: maybe it is overwritten before being read?
 
-warning: value assigned to `a` is never read
-  --> $DIR/bind-by-copy.rs:55:23
-   |
-LL |         mut x @ E::E{ a, e: C { mut c } } => {
-   |                       ^
-   |
-   = help: maybe it is overwritten before being read?
-
-warning: 4 warnings emitted
+warning: 3 warnings emitted
 

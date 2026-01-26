@@ -155,11 +155,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;
             }
-            "readdir" | "readdir@FBSD_1.0" => {
-                // FIXME: This does not have a direct test (#3179).
+            "readdir@FBSD_1.0" => {
                 let [dirp] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.readdir64("dirent", dirp)?;
-                this.write_scalar(result, dest)?;
+                this.readdir(dirp, dest)?;
             }
             // Miscellaneous
             "__error" => {

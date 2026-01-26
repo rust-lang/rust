@@ -124,6 +124,8 @@ macro_rules! assert_ne {
     };
 }
 
+// FIXME add back debug_assert_matches doc link after bootstrap.
+
 /// Asserts that an expression matches the provided pattern.
 ///
 /// This macro is generally preferable to `assert!(matches!(value, pattern))`, because it can print
@@ -135,10 +137,8 @@ macro_rules! assert_ne {
 /// otherwise this macro will panic.
 ///
 /// Assertions are always checked in both debug and release builds, and cannot
-/// be disabled. See [`debug_assert_matches!`] for assertions that are disabled in
+/// be disabled. See `debug_assert_matches!` for assertions that are disabled in
 /// release builds by default.
-///
-/// [`debug_assert_matches!`]: crate::assert_matches::debug_assert_matches
 ///
 /// On panic, this macro will print the value of the expression with its debug representation.
 ///
@@ -149,7 +149,7 @@ macro_rules! assert_ne {
 /// ```
 /// #![feature(assert_matches)]
 ///
-/// use std::assert_matches::assert_matches;
+/// use std::assert_matches;
 ///
 /// let a = Some(345);
 /// let b = Some(56);
@@ -382,7 +382,7 @@ macro_rules! debug_assert_ne {
 /// ```
 /// #![feature(assert_matches)]
 ///
-/// use std::assert_matches::debug_assert_matches;
+/// use std::debug_assert_matches;
 ///
 /// let a = Some(345);
 /// let b = Some(56);
@@ -404,7 +404,7 @@ macro_rules! debug_assert_ne {
 #[rustc_macro_transparency = "semiopaque"]
 pub macro debug_assert_matches($($arg:tt)*) {
     if $crate::cfg!(debug_assertions) {
-        $crate::assert_matches::assert_matches!($($arg)*);
+        $crate::assert_matches!($($arg)*);
     }
 }
 

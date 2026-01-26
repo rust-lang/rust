@@ -78,8 +78,9 @@ pub fn parse_cfg_select(
                 }
             }
         } else {
-            let meta = MetaItemOrLitParser::parse_single(p, ShouldEmit::ErrorsAndLints)
-                .map_err(|diag| diag.emit())?;
+            let meta =
+                MetaItemOrLitParser::parse_single(p, ShouldEmit::ErrorsAndLints { recover: true })
+                    .map_err(|diag| diag.emit())?;
             let cfg_span = meta.span();
             let cfg = AttributeParser::parse_single_args(
                 sess,
@@ -94,7 +95,7 @@ pub fn parse_cfg_select(
                 // Doesn't matter what the target actually is here.
                 Target::Crate,
                 features,
-                ShouldEmit::ErrorsAndLints,
+                ShouldEmit::ErrorsAndLints { recover: true },
                 &meta,
                 parse_cfg_entry,
                 &AttributeTemplate::default(),

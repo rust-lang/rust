@@ -12,7 +12,7 @@ use windows_sys::Win32::System::Threading::{INFINITE, WaitForSingleObject};
 
 // XXX HACK: This is how miri represents the handle for thread 0.
 // This value can be "legitimately" obtained by using `GetCurrentThread` with `DuplicateHandle`
-// but miri does not implement `DuplicateHandle` yet. (FIXME: it does now.)
+// but miri does not implement `DuplicateHandle` for pseudo handles yet.
 const MAIN_THREAD: HANDLE = (2i32 << 29) as HANDLE;
 
 fn main() {

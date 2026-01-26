@@ -456,7 +456,7 @@ fn parse_source(
     span: Span,
 ) -> Result<ParseSourceInfo, ()> {
     use rustc_errors::DiagCtxt;
-    use rustc_errors::emitter::HumanEmitter;
+    use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
     use rustc_span::source_map::FilePathMapping;
 
     let mut info =
@@ -476,7 +476,7 @@ fn parse_source(
     info.supports_color = supports_color;
     // Any errors in parsing should also appear when the doctest is compiled for real, so just
     // send all the errors that the parser emits directly into a `Sink` instead of stderr.
-    let emitter = HumanEmitter::new(AutoStream::never(Box::new(io::sink())), translator);
+    let emitter = AnnotateSnippetEmitter::new(AutoStream::never(Box::new(io::sink())), translator);
 
     // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
     let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
@@ -539,7 +539,10 @@ fn parse_source(
 
     let mut prev_span_hi = 0;
     let not_crate_attrs = &[sym::forbid, sym::allow, sym::warn, sym::deny, sym::expect];
-    let parsed = parser.parse_item(rustc_parse::parser::ForceCollect::No);
+    let parsed = parser.parse_item(
+        rustc_parse::parser::ForceCollect::No,
+        rustc_parse::parser::AllowConstBlockItems::No,
+    );
 
     let result = match parsed {
         Ok(Some(ref item))

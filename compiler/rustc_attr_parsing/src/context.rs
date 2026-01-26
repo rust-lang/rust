@@ -23,14 +23,15 @@ use crate::attributes::cfi_encoding::CfiEncodingParser;
 use crate::attributes::codegen_attrs::{
     ColdParser, CoverageParser, EiiForeignItemParser, ExportNameParser, ForceTargetFeatureParser,
     NakedParser, NoMangleParser, ObjcClassParser, ObjcSelectorParser, OptimizeParser,
-    RustcPassIndirectlyInNonRusticAbisParser, SanitizeParser, TargetFeatureParser,
-    ThreadLocalParser, TrackCallerParser, UsedParser,
+    PatchableFunctionEntryParser, RustcPassIndirectlyInNonRusticAbisParser, SanitizeParser,
+    TargetFeatureParser, ThreadLocalParser, TrackCallerParser, UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::crate_level::{
-    CrateNameParser, MoveSizeLimitParser, NoCoreParser, NoMainParser, NoStdParser,
-    PatternComplexityLimitParser, RecursionLimitParser, RustcCoherenceIsCoreParser,
-    TypeLengthLimitParser, WindowsSubsystemParser,
+    CrateNameParser, CrateTypeParser, MoveSizeLimitParser, NeedsPanicRuntimeParser,
+    NoBuiltinsParser, NoCoreParser, NoMainParser, NoStdParser, PanicRuntimeParser,
+    PatternComplexityLimitParser, ProfilerRuntimeParser, RecursionLimitParser,
+    RustcCoherenceIsCoreParser, TypeLengthLimitParser, WindowsSubsystemParser,
 };
 use crate::attributes::debugger::DebuggerViualizerParser;
 use crate::attributes::deprecation::DeprecationParser;
@@ -40,8 +41,9 @@ use crate::attributes::dummy::DummyParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
 use crate::attributes::instruction_set::InstructionSetParser;
 use crate::attributes::link_attrs::{
-    ExportStableParser, FfiConstParser, FfiPureParser, LinkNameParser, LinkOrdinalParser,
-    LinkParser, LinkSectionParser, LinkageParser, NeedsAllocatorParser, StdInternalSymbolParser,
+    CompilerBuiltinsParser, ExportStableParser, FfiConstParser, FfiPureParser, LinkNameParser,
+    LinkOrdinalParser, LinkParser, LinkSectionParser, LinkageParser, NeedsAllocatorParser,
+    StdInternalSymbolParser,
 };
 use crate::attributes::lint_helpers::{
     AsPtrParser, AutomaticallyDerivedParser, PassByValueParser, PubTransparentParser,
@@ -85,11 +87,13 @@ use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
 };
-use crate::attributes::test_attrs::{IgnoreParser, ShouldPanicParser};
+use crate::attributes::test_attrs::{
+    IgnoreParser, RustcVarianceOfOpaquesParser, RustcVarianceParser, ShouldPanicParser,
+};
 use crate::attributes::traits::{
     AllowIncoherentImplParser, CoinductiveParser, DenyExplicitImplParser,
-    DoNotImplementViaObjectParser, FundamentalParser, MarkerParser, ParenSugarParser,
-    PointeeParser, SkipDuringMethodDispatchParser, SpecializationTraitParser, TypeConstParser,
+    DynIncompatibleTraitParser, FundamentalParser, MarkerParser, ParenSugarParser, PointeeParser,
+    SkipDuringMethodDispatchParser, SpecializationTraitParser, TypeConstParser,
     UnsafeSpecializationMarkerParser,
 };
 use crate::attributes::transparency::TransparencyParser;
@@ -103,18 +107,18 @@ type GroupType<S> = LazyLock<GroupTypeInner<S>>;
 
 pub(super) struct GroupTypeInner<S: Stage> {
     pub(super) accepters: BTreeMap<&'static [Symbol], Vec<GroupTypeInnerAccept<S>>>,
-    pub(super) finalizers: Vec<FinalizeFn<S>>,
 }
 
 pub(super) struct GroupTypeInnerAccept<S: Stage> {
     pub(super) template: AttributeTemplate,
     pub(super) accept_fn: AcceptFn<S>,
     pub(super) allowed_targets: AllowedTargets,
+    pub(super) finalizer: FinalizeFn<S>,
 }
 
-type AcceptFn<S> =
+pub(crate) type AcceptFn<S> =
     Box<dyn for<'sess, 'a> Fn(&mut AcceptContext<'_, 'sess, S>, &ArgParser) + Send + Sync>;
-type FinalizeFn<S> =
+pub(crate) type FinalizeFn<S> =
     Box<dyn Send + Sync + Fn(&mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind>>;
 
 macro_rules! attribute_parsers {
@@ -142,8 +146,7 @@ macro_rules! attribute_parsers {
         @[$stage: ty] pub(crate) static $name: ident = [$($names: ty),* $(,)?];
     ) => {
         pub(crate) static $name: GroupType<$stage> = LazyLock::new(|| {
-            let mut accepts = BTreeMap::<_, Vec<GroupTypeInnerAccept<$stage>>>::new();
-            let mut finalizes = Vec::<FinalizeFn<$stage>>::new();
+            let mut accepters = BTreeMap::<_, Vec<GroupTypeInnerAccept<$stage>>>::new();
             $(
                 {
                     thread_local! {
@@ -151,7 +154,7 @@ macro_rules! attribute_parsers {
                     };
 
                     for (path, template, accept_fn) in <$names>::ATTRIBUTES {
-                        accepts.entry(*path).or_default().push(GroupTypeInnerAccept {
+                        accepters.entry(*path).or_default().push(GroupTypeInnerAccept {
                             template: *template,
                             accept_fn: Box::new(|cx, args| {
                                 STATE_OBJECT.with_borrow_mut(|s| {
@@ -159,17 +162,16 @@ macro_rules! attribute_parsers {
                                 })
                             }),
                             allowed_targets: <$names as crate::attributes::AttributeParser<$stage>>::ALLOWED_TARGETS,
+                            finalizer: Box::new(|cx| {
+                                let state = STATE_OBJECT.take();
+                                state.finalize(cx)
+                            }),
                         });
                     }
-
-                    finalizes.push(Box::new(|cx| {
-                        let state = STATE_OBJECT.take();
-                        state.finalize(cx)
-                    }));
                 }
             )*
 
-            GroupTypeInner { accepters:accepts, finalizers:finalizes }
+            GroupTypeInner { accepters }
         });
     };
 }
@@ -191,6 +193,7 @@ attribute_parsers!(
         // tidy-alphabetical-start
         Combine<AllowConstFnUnstableParser>,
         Combine<AllowInternalUnstableParser>,
+        Combine<CrateTypeParser>,
         Combine<DebuggerViualizerParser>,
         Combine<ForceTargetFeatureParser>,
         Combine<LinkParser>,
@@ -223,6 +226,7 @@ attribute_parsers!(
         Single<ObjcClassParser>,
         Single<ObjcSelectorParser>,
         Single<OptimizeParser>,
+        Single<PatchableFunctionEntryParser>,
         Single<PathAttributeParser>,
         Single<PatternComplexityLimitParser>,
         Single<ProcMacroDeriveParser>,
@@ -250,11 +254,12 @@ attribute_parsers!(
         Single<WithoutArgs<AutomaticallyDerivedParser>>,
         Single<WithoutArgs<CoinductiveParser>>,
         Single<WithoutArgs<ColdParser>>,
+        Single<WithoutArgs<CompilerBuiltinsParser>>,
         Single<WithoutArgs<ConstContinueParser>>,
         Single<WithoutArgs<ConstStabilityIndirectParser>>,
         Single<WithoutArgs<CoroutineParser>>,
         Single<WithoutArgs<DenyExplicitImplParser>>,
-        Single<WithoutArgs<DoNotImplementViaObjectParser>>,
+        Single<WithoutArgs<DynIncompatibleTraitParser>>,
         Single<WithoutArgs<EiiForeignItemParser>>,
         Single<WithoutArgs<ExportStableParser>>,
         Single<WithoutArgs<FfiConstParser>>,
@@ -265,6 +270,8 @@ attribute_parsers!(
         Single<WithoutArgs<MarkerParser>>,
         Single<WithoutArgs<MayDangleParser>>,
         Single<WithoutArgs<NeedsAllocatorParser>>,
+        Single<WithoutArgs<NeedsPanicRuntimeParser>>,
+        Single<WithoutArgs<NoBuiltinsParser>>,
         Single<WithoutArgs<NoCoreParser>>,
         Single<WithoutArgs<NoImplicitPreludeParser>>,
         Single<WithoutArgs<NoLinkParser>>,
@@ -272,12 +279,14 @@ attribute_parsers!(
         Single<WithoutArgs<NoMangleParser>>,
         Single<WithoutArgs<NoStdParser>>,
         Single<WithoutArgs<NonExhaustiveParser>>,
+        Single<WithoutArgs<PanicRuntimeParser>>,
         Single<WithoutArgs<ParenSugarParser>>,
         Single<WithoutArgs<PassByValueParser>>,
         Single<WithoutArgs<PinV2Parser>>,
         Single<WithoutArgs<PointeeParser>>,
         Single<WithoutArgs<ProcMacroAttributeParser>>,
         Single<WithoutArgs<ProcMacroParser>>,
+        Single<WithoutArgs<ProfilerRuntimeParser>>,
         Single<WithoutArgs<PubTransparentParser>>,
         Single<WithoutArgs<RustcAllocatorParser>>,
         Single<WithoutArgs<RustcAllocatorZeroedParser>>,
@@ -300,6 +309,8 @@ attribute_parsers!(
         Single<WithoutArgs<RustcPassIndirectlyInNonRusticAbisParser>>,
         Single<WithoutArgs<RustcReallocatorParser>>,
         Single<WithoutArgs<RustcShouldNotBeCalledOnConstItems>>,
+        Single<WithoutArgs<RustcVarianceOfOpaquesParser>>,
+        Single<WithoutArgs<RustcVarianceParser>>,
         Single<WithoutArgs<SpecializationTraitParser>>,
         Single<WithoutArgs<StdInternalSymbolParser>>,
         Single<WithoutArgs<ThreadLocalParser>>,
@@ -370,7 +381,7 @@ impl Stage for Late {
     }
 
     fn should_emit(&self) -> ShouldEmit {
-        ShouldEmit::ErrorsAndLints
+        ShouldEmit::ErrorsAndLints { recover: true }
     }
 }
 
@@ -427,7 +438,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     pub(crate) fn emit_lint(&mut self, lint: &'static Lint, kind: AttributeLintKind, span: Span) {
         if !matches!(
             self.stage.should_emit(),
-            ShouldEmit::ErrorsAndLints | ShouldEmit::EarlyFatal { also_emit_lints: true }
+            ShouldEmit::ErrorsAndLints { .. } | ShouldEmit::EarlyFatal { also_emit_lints: true }
         ) {
             return;
         }
@@ -501,6 +512,18 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
 
     pub(crate) fn expected_integer_literal(&self, span: Span) -> ErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedIntegerLiteral)
+    }
+
+    pub(crate) fn expected_integer_literal_in_range(
+        &self,
+        span: Span,
+        lower_bound: isize,
+        upper_bound: isize,
+    ) -> ErrorGuaranteed {
+        self.emit_parse_error(
+            span,
+            AttributeParseErrorReason::ExpectedIntegerLiteralInRange { lower_bound, upper_bound },
+        )
     }
 
     pub(crate) fn expected_list(&self, span: Span, args: &ArgParser) -> ErrorGuaranteed {
@@ -742,9 +765,18 @@ pub enum ShouldEmit {
     EarlyFatal { also_emit_lints: bool },
     /// The operation will emit errors and lints.
     /// This is usually what you need.
-    ErrorsAndLints,
-    /// The operation will emit *not* errors and lints.
-    /// Use this if you are *sure* that this operation will be called at a different time with `ShouldEmit::ErrorsAndLints`.
+    ErrorsAndLints {
+        /// Whether [`ArgParser`] will attempt to recover from errors.
+        ///
+        /// If true, it will attempt to recover from bad input (like an invalid literal). Setting
+        /// this to false will instead return early, and not raise errors except at the top level
+        /// (in [`ArgParser::from_attr_args`]).
+        recover: bool,
+    },
+    /// The operation will *not* emit errors and lints.
+    ///
+    /// The parser can still call `delay_bug`, so you *must* ensure that this operation will also be
+    /// called with `ShouldEmit::ErrorsAndLints`.
     Nothing,
 }
 
@@ -753,7 +785,7 @@ impl ShouldEmit {
         match self {
             ShouldEmit::EarlyFatal { .. } if diag.level() == Level::DelayedBug => diag.emit(),
             ShouldEmit::EarlyFatal { .. } => diag.upgrade_to_fatal().emit(),
-            ShouldEmit::ErrorsAndLints => diag.emit(),
+            ShouldEmit::ErrorsAndLints { .. } => diag.emit(),
             ShouldEmit::Nothing => diag.delay_as_bug(),
         }
     }

@@ -205,6 +205,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             | ItemKind::Use(..)
             | ItemKind::Static(..)
             | ItemKind::Const(..)
+            | ItemKind::ConstBlock(..)
             | ItemKind::Mod(..)
             | ItemKind::ForeignMod(..)
             | ItemKind::GlobalAsm(..)
@@ -282,8 +283,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_define_opaque(hir_id, define_opaque);
                 hir::ItemKind::Static(*m, ident, ty, body_id)
             }
-            ItemKind::Const(box ast::ConstItem {
-                ident, generics, ty, rhs, define_opaque, ..
+            ItemKind::Const(box ConstItem {
+                defaultness: _,
+                ident,
+                generics,
+                ty,
+                rhs,
+                define_opaque,
             }) => {
                 let ident = self.lower_ident(*ident);
                 let (generics, (ty, rhs)) = self.lower_generics(
@@ -302,6 +308,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_define_opaque(hir_id, &define_opaque);
                 hir::ItemKind::Const(ident, generics, ty, rhs)
             }
+            ItemKind::ConstBlock(ConstBlockItem { span, id, block }) => hir::ItemKind::Const(
+                self.lower_ident(ConstBlockItem::IDENT),
+                hir::Generics::empty(),
+                self.arena.alloc(self.ty_tup(DUMMY_SP, &[])),
+                hir::ConstItemRhs::Body({
+                    let body = hir::Expr {
+                        hir_id: self.lower_node_id(*id),
+                        kind: hir::ExprKind::Block(self.lower_block(block, false), None),
+                        span: self.lower_span(*span),
+                    };
+                    self.record_body(&[], body)
+                }),
+            ),
             ItemKind::Fn(box Fn {
                 sig: FnSig { decl, header, span: fn_sig_span },
                 ident,

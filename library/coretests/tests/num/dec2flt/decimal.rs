@@ -7,7 +7,6 @@ const FPATHS_F32: &[FPath<f32>] =
 const FPATHS_F64: &[FPath<f64>] =
     &[((0, 0, false, false), Some(0.0)), ((0, 0, false, false), Some(0.0))];
 
-// FIXME(f16_f128): enable on all targets once possible.
 #[test]
 #[cfg(target_has_reliable_f16)]
 fn check_fast_path_f16() {

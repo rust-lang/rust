@@ -626,12 +626,6 @@ pub fn std_cargo(
         CompilerBuiltins::BuildRustOnly => "",
     };
 
-    // `libtest` uses this to know whether or not to support
-    // `-Zunstable-options`.
-    if !builder.unstable_features() {
-        cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
-    }
-
     for krate in crates {
         cargo.args(["-p", krate]);
     }
@@ -680,13 +674,6 @@ pub fn std_cargo(
         }
     }
 
-    // By default, rustc uses `-Cembed-bitcode=yes`, and Cargo overrides that
-    // with `-Cembed-bitcode=no` for non-LTO builds. However, libstd must be
-    // built with bitcode so that the produced rlibs can be used for both LTO
-    // builds (which use bitcode) and non-LTO builds (which use object code).
-    // So we override the override here!
-    cargo.rustflag("-Cembed-bitcode=yes");
-
     if builder.config.rust_lto == RustcLto::Off {
         cargo.rustflag("-Clto=off");
     }
@@ -700,11 +687,6 @@ pub fn std_cargo(
     if target.contains("riscv") {
         cargo.rustflag("-Cforce-unwind-tables=yes");
     }
-
-    // Enable frame pointers by default for the library. Note that they are still controlled by a
-    // separate setting for the compiler.
-    cargo.rustflag("-Zunstable-options");
-    cargo.rustflag("-Cforce-frame-pointers=non-leaf");
 
     let html_root =
         format!("-Zcrate-attr=doc(html_root_url=\"{}/\")", builder.doc_rust_lang_org_channel(),);

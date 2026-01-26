@@ -807,12 +807,22 @@ pub enum PatKind<'tcx> {
         subpatterns: Vec<FieldPat<'tcx>>,
     },
 
-    /// `box P`, `&P`, `&mut P`, etc.
+    /// Explicit or implicit `&P` or `&mut P`, for some subpattern `P`.
+    ///
+    /// Implicit `&`/`&mut` patterns can be inserted by match-ergonomics.
+    ///
+    /// With `feature(pin_ergonomics)`, this can also be `&pin const P` or
+    /// `&pin mut P`, as indicated by the `pin` field.
     Deref {
+        #[type_visitable(ignore)]
+        pin: hir::Pinnedness,
         subpattern: Box<Pat<'tcx>>,
     },
 
-    /// Deref pattern, written `box P` for now.
+    /// Explicit or implicit `deref!(..)` pattern, under `feature(deref_patterns)`.
+    /// Represents a call to `Deref` or `DerefMut`, or a deref-move of `Box`.
+    ///
+    /// `box P` patterns also lower to this, under `feature(box_patterns)`.
     DerefPattern {
         subpattern: Box<Pat<'tcx>>,
         /// Whether the pattern scrutinee needs to be borrowed in order to call `Deref::deref` or
