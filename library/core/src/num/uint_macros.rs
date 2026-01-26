@@ -507,15 +507,15 @@ macro_rules! uint_impl {
         /// #![feature(uint_gather_scatter_bits)]
         #[doc = concat!("let n: ", stringify!($SelfT), " = 0b1011_1100;")]
         ///
-        /// assert_eq!(n.gather_bits(0b0010_0100), 0b0000_0011);
-        /// assert_eq!(n.gather_bits(0xF0), 0b0000_1011);
+        /// assert_eq!(n.extract_bits(0b0010_0100), 0b0000_0011);
+        /// assert_eq!(n.extract_bits(0xF0), 0b0000_1011);
         /// ```
         #[unstable(feature = "uint_gather_scatter_bits", issue = "149069")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn gather_bits(self, mask: Self) -> Self {
-            crate::num::int_bits::$ActualT::gather_impl(self as $ActualT, mask as $ActualT) as $SelfT
+        pub const fn extract_bits(self, mask: Self) -> Self {
+            crate::num::int_bits::$ActualT::extract_impl(self as $ActualT, mask as $ActualT) as $SelfT
         }
 
         /// Returns an integer with the least significant bits of `self`
@@ -524,15 +524,15 @@ macro_rules! uint_impl {
         /// #![feature(uint_gather_scatter_bits)]
         #[doc = concat!("let n: ", stringify!($SelfT), " = 0b1010_1101;")]
         ///
-        /// assert_eq!(n.scatter_bits(0b0101_0101), 0b0101_0001);
-        /// assert_eq!(n.scatter_bits(0xF0), 0b1101_0000);
+        /// assert_eq!(n.deposit_bits(0b0101_0101), 0b0101_0001);
+        /// assert_eq!(n.deposit_bits(0xF0), 0b1101_0000);
         /// ```
         #[unstable(feature = "uint_gather_scatter_bits", issue = "149069")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn scatter_bits(self, mask: Self) -> Self {
-            crate::num::int_bits::$ActualT::scatter_impl(self as $ActualT, mask as $ActualT) as $SelfT
+        pub const fn deposit_bits(self, mask: Self) -> Self {
+            crate::num::int_bits::$ActualT::deposit_impl(self as $ActualT, mask as $ActualT) as $SelfT
         }
 
         /// Reverses the order of bits in the integer. The least significant bit becomes the most significant bit,
