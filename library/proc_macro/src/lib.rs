@@ -110,12 +110,12 @@ impl !Sync for TokenStream {}
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 #[non_exhaustive]
 #[derive(Debug)]
-pub struct LexError;
+pub struct LexError(String);
 
 #[stable(feature = "proc_macro_lexerror_impls", since = "1.44.0")]
 impl fmt::Display for LexError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("cannot parse string into token stream")
+        f.write_str(&self.0)
     }
 }
 
@@ -194,7 +194,7 @@ impl FromStr for TokenStream {
     type Err = LexError;
 
     fn from_str(src: &str) -> Result<TokenStream, LexError> {
-        Ok(TokenStream(Some(BridgeMethods::ts_from_str(src))))
+        Ok(TokenStream(Some(BridgeMethods::ts_from_str(src).map_err(LexError)?)))
     }
 }
 
@@ -1569,7 +1569,7 @@ impl FromStr for Literal {
     fn from_str(src: &str) -> Result<Self, LexError> {
         match BridgeMethods::literal_from_str(src) {
             Ok(literal) => Ok(Literal(literal)),
-            Err(()) => Err(LexError),
+            Err(msg) => Err(LexError(msg)),
         }
     }
 }
