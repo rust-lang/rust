@@ -1322,6 +1322,7 @@ impl OutputFilenames {
 pub(crate) fn parse_remap_path_scope(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
+    unstable_opts: &UnstableOptions,
 ) -> RemapPathScopeComponents {
     if let Some(v) = matches.opt_str("remap-path-scope") {
         let mut slot = RemapPathScopeComponents::empty();
@@ -1329,11 +1330,18 @@ pub(crate) fn parse_remap_path_scope(
             slot |= match s {
                 "macro" => RemapPathScopeComponents::MACRO,
                 "diagnostics" => RemapPathScopeComponents::DIAGNOSTICS,
+                "documentation" => {
+                    if !unstable_opts.unstable_options {
+                        early_dcx.early_fatal("remapping `documentation` path scope requested but `-Zunstable-options` not specified");
+                    }
+
+                    RemapPathScopeComponents::DOCUMENTATION
+                },
                 "debuginfo" => RemapPathScopeComponents::DEBUGINFO,
                 "coverage" => RemapPathScopeComponents::COVERAGE,
                 "object" => RemapPathScopeComponents::OBJECT,
                 "all" => RemapPathScopeComponents::all(),
-                _ => early_dcx.early_fatal("argument for `--remap-path-scope` must be a comma separated list of scopes: `macro`, `diagnostics`, `debuginfo`, `coverage`, `object`, `all`"),
+                _ => early_dcx.early_fatal("argument for `--remap-path-scope` must be a comma separated list of scopes: `macro`, `diagnostics`, `documentation`, `debuginfo`, `coverage`, `object`, `all`"),
             }
         }
         slot
@@ -2677,7 +2685,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let externs = parse_externs(early_dcx, matches, &unstable_opts);
 
     let remap_path_prefix = parse_remap_path_prefix(early_dcx, matches, &unstable_opts);
-    let remap_path_scope = parse_remap_path_scope(early_dcx, matches);
+    let remap_path_scope = parse_remap_path_scope(early_dcx, matches, &unstable_opts);
 
     let pretty = parse_pretty(early_dcx, &unstable_opts);
 

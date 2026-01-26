@@ -124,7 +124,7 @@ impl CoverageCalculator<'_, '_> {
             &self
                 .items
                 .iter()
-                .map(|(k, v)| (k.prefer_local_unconditionally().to_string(), v))
+                .map(|(k, v)| (k.display(RemapPathScopeComponents::COVERAGE).to_string(), v))
                 .collect::<BTreeMap<String, &ItemCount>>(),
         )
         .expect("failed to convert JSON data to string")
@@ -168,9 +168,7 @@ impl CoverageCalculator<'_, '_> {
             if let Some(percentage) = count.percentage() {
                 print_table_record(
                     &limit_filename_len(
-                        file.display(RemapPathScopeComponents::DIAGNOSTICS)
-                            .to_string_lossy()
-                            .into(),
+                        file.display(RemapPathScopeComponents::COVERAGE).to_string(),
                     ),
                     count,
                     percentage,

@@ -57,7 +57,7 @@ walkdir = "2.4"
 xz2 = "0.1"
 
 # Dependencies needed by the build-metrics feature
-sysinfo = { version = "0.37.0", default-features = false, optional = true, features = ["system"] }
+sysinfo = { version = "0.38.0", default-features = false, optional = true, features = ["system"] }
 
 # Dependencies needed by the `tracing` feature
 chrono = { version = "0.4", default-features = false, optional = true, features = ["now", "std"] }
