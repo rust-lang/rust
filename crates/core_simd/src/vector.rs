@@ -1,5 +1,7 @@
+use core::intrinsics::simd::SimdAlign;
+
 use crate::simd::{
-    Mask, MaskElement, Swizzle,
+    Mask, MaskElement,
     cmp::SimdPartialOrd,
     num::SimdUint,
     ptr::{SimdConstPtr, SimdMutPtr},
@@ -147,28 +149,8 @@ where
     #[inline]
     #[rustc_const_unstable(feature = "portable_simd", issue = "86656")]
     pub const fn splat(value: T) -> Self {
-        const fn splat_const<T, const N: usize>(value: T) -> Simd<T, N>
-        where
-            T: SimdElement,
-        {
-            Simd::from_array([value; N])
-        }
-
-        fn splat_rt<T, const N: usize>(value: T) -> Simd<T, N>
-        where
-            T: SimdElement,
-        {
-            // This is preferred over `[value; N]`, since it's explicitly a splat:
-            // https://github.com/rust-lang/rust/issues/97804
-            struct Splat;
-            impl<const N: usize> Swizzle<N> for Splat {
-                const INDEX: [usize; N] = [0; N];
-            }
-
-            Splat::swizzle::<T, 1>(Simd::<T, 1>::from([value]))
-        }
-
-        core::intrinsics::const_eval_select((value,), splat_const, splat_rt)
+        // SAFETY: T is a SimdElement, and the item type of Self.
+        unsafe { core::intrinsics::simd::simd_splat(value) }
     }
 
     /// Returns an array reference containing the entire SIMD vector.
@@ -464,7 +446,7 @@ where
     /// value from `or` is passed through.
     ///
     /// # Safety
-    /// Enabled `ptr` elements must be safe to read as if by `std::ptr::read`.
+    /// Enabled `ptr` elements must be safe to read as if by `core::ptr::read`.
     #[must_use]
     #[inline]
     pub unsafe fn load_select_ptr(
@@ -473,7 +455,13 @@ where
         or: Self,
     ) -> Self {
         // SAFETY: The safety of reading elements through `ptr` is ensured by the caller.
-        unsafe { core::intrinsics::simd::simd_masked_load(enable.to_simd(), ptr, or) }
+        unsafe {
+            core::intrinsics::simd::simd_masked_load::<_, _, _, { SimdAlign::Element }>(
+                enable.to_simd(),
+                ptr,
+                or,
+            )
+        }
     }
 
     /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
@@ -722,7 +710,13 @@ where
     #[inline]
     pub unsafe fn store_select_ptr(self, ptr: *mut T, enable: Mask<<T as SimdElement>::Mask, N>) {
         // SAFETY: The safety of writing elements through `ptr` is ensured by the caller.
-        unsafe { core::intrinsics::simd::simd_masked_store(enable.to_simd(), ptr, self) }
+        unsafe {
+            core::intrinsics::simd::simd_masked_store::<_, _, _, { SimdAlign::Element }>(
+                enable.to_simd(),
+                ptr,
+                self,
+            )
+        }
     }
 
     /// Writes the values in a SIMD vector to potentially discontiguous indices in `slice`.
