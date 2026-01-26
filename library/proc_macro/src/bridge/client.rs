@@ -106,7 +106,7 @@ macro_rules! define_client_side {
                     let mut buf = bridge.cached_buffer.take();
 
                     buf.clear();
-                    api_tags::Method::$method.encode(&mut buf, &mut ());
+                    ApiTags::$method.encode(&mut buf, &mut ());
                     $($arg.encode(&mut buf, &mut ());)*
 
                     buf = bridge.dispatch.call(buf);

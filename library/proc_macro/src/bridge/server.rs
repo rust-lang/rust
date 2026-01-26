@@ -95,8 +95,8 @@ macro_rules! define_server_dispatcher_impl {
                 let Dispatcher { handle_store, server } = self;
 
                 let mut reader = &buf[..];
-                match api_tags::Method::decode(&mut reader, &mut ()) {
-                    $(api_tags::Method::$method => {
+                match ApiTags::decode(&mut reader, &mut ()) {
+                    $(ApiTags::$method => {
                         let mut call_method = || {
                             $(let $arg = <$arg_ty>::decode(&mut reader, handle_store).unmark();)*
                             let r = server.$method($($arg),*);

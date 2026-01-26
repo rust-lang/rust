@@ -135,24 +135,18 @@ pub struct BridgeConfig<'a> {
 impl !Send for BridgeConfig<'_> {}
 impl !Sync for BridgeConfig<'_> {}
 
-#[forbid(unsafe_code)]
-#[allow(non_camel_case_types)]
-mod api_tags {
-    use super::buffer::Buffer;
-    use super::rpc::{Decode, Encode};
-
-    macro_rules! declare_tags {
-        (
-            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
-        ) => {
-            pub(super) enum Method {
-                $($method),*
-            }
-            rpc_encode_decode!(enum Method { $($method),* });
+macro_rules! declare_tags {
+    (
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+    ) => {
+        #[allow(non_camel_case_types)]
+        pub(super) enum ApiTags {
+            $($method),*
         }
+        rpc_encode_decode!(enum ApiTags { $($method),* });
     }
-    with_api!(self, declare_tags);
 }
+with_api!(self, declare_tags);
 
 /// Helper to wrap associated types to allow trait impl dispatch.
 /// That is, normally a pair of impls for `T::Foo` and `T::Bar`

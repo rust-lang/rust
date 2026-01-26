@@ -56,7 +56,9 @@ macro_rules! rpc_encode_decode {
             fn encode(self, w: &mut Buffer, s: &mut S) {
                 // HACK(eddyb): `Tag` enum duplicated between the
                 // two impls as there's no other place to stash it.
-                #[repr(u8)] enum Tag { $($variant),* }
+                #[allow(non_camel_case_types)]
+                #[repr(u8)]
+                enum Tag { $($variant),* }
 
                 match self {
                     $($name::$variant $(($field))* => {
@@ -73,7 +75,7 @@ macro_rules! rpc_encode_decode {
             fn decode(r: &mut &'a [u8], s: &mut S) -> Self {
                 // HACK(eddyb): `Tag` enum duplicated between the
                 // two impls as there's no other place to stash it.
-                #[allow(non_upper_case_globals)]
+                #[allow(non_upper_case_globals, non_camel_case_types)]
                 mod tag {
                     #[repr(u8)] enum Tag { $($variant),* }
 
