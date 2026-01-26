@@ -1176,7 +1176,7 @@ pub const fn _mm_set_epi8(
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set1_epi64x(a: i64) -> __m128i {
-    _mm_set_epi64x(a, a)
+    i64x2::splat(a).as_m128i()
 }
 
 /// Broadcasts 32-bit integer `a` to all elements.
@@ -1188,7 +1188,7 @@ pub const fn _mm_set1_epi64x(a: i64) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set1_epi32(a: i32) -> __m128i {
-    _mm_set_epi32(a, a, a, a)
+    i32x4::splat(a).as_m128i()
 }
 
 /// Broadcasts 16-bit integer `a` to all elements.
@@ -1200,7 +1200,7 @@ pub const fn _mm_set1_epi32(a: i32) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set1_epi16(a: i16) -> __m128i {
-    _mm_set_epi16(a, a, a, a, a, a, a, a)
+    i16x8::splat(a).as_m128i()
 }
 
 /// Broadcasts 8-bit integer `a` to all elements.
@@ -1212,7 +1212,7 @@ pub const fn _mm_set1_epi16(a: i16) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set1_epi8(a: i8) -> __m128i {
-    _mm_set_epi8(a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a)
+    i8x16::splat(a).as_m128i()
 }
 
 /// Sets packed 32-bit integers with the supplied values in reverse order.

@@ -932,7 +932,7 @@ pub const fn _mm_set_ss(a: f32) -> __m128 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_set1_ps(a: f32) -> __m128 {
-    __m128([a, a, a, a])
+    f32x4::splat(a).as_m128()
 }
 
 /// Alias for [`_mm_set1_ps`](fn._mm_set1_ps.html)

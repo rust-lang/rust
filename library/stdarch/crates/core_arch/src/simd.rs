@@ -50,14 +50,10 @@ impl<T: SimdElement, const N: usize> Simd<T, N> {
         Self(elements)
     }
 
-    // FIXME: Workaround rust@60637
-    #[inline(always)]
+    #[inline]
     #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
     pub(crate) const fn splat(value: T) -> Self {
-        let one = Simd([value]);
-        // SAFETY: 0 is always in-bounds because we're shuffling
-        // a simd type with exactly one element.
-        unsafe { simd_shuffle!(one, one, [0; N]) }
+        unsafe { crate::intrinsics::simd::simd_splat(value) }
     }
 
     /// Extract the element at position `index`. Note that `index` is not a constant so this
@@ -182,14 +178,10 @@ impl<T: SimdElement, const N: usize> SimdM<T, N> {
         [zeros, ones][x as usize]
     }
 
-    // FIXME: Workaround rust@60637
-    #[inline(always)]
+    #[inline]
     #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
     pub(crate) const fn splat(value: bool) -> Self {
-        let one = SimdM([Self::bool_to_internal(value)]);
-        // SAFETY: 0 is always in-bounds because we're shuffling
-        // a simd type with exactly one element.
-        unsafe { simd_shuffle!(one, one, [0; N]) }
+        unsafe { crate::intrinsics::simd::simd_splat(value) }
     }
 
     #[inline]
