@@ -13,7 +13,6 @@ LL |     println!("{:?}", 0);
    |     ^^^^^^^^^^^^^^^^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0015]: cannot call non-const function `std::io::_print` in constant functions
   --> $DIR/format.rs:7:5
@@ -24,7 +23,6 @@ LL |     println!("{:?}", 0);
 note: function `_print` is not const
   --> $SRC_DIR/std/src/io/stdio.rs:LL:COL
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0015]: cannot call non-const formatting macro in constant functions
   --> $DIR/format.rs:13:5
