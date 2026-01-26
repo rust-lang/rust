@@ -255,6 +255,13 @@ enum Emit {
     LinkArgsAsm,
 }
 
+/// Indicates whether we are using `rustc` or `rustdoc` to compile an input file.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CompilerKind {
+    Rustc,
+    Rustdoc,
+}
+
 impl<'test> TestCx<'test> {
     /// Code executed for each revision in turn (or, if there are no
     /// revisions, exactly once, with revision == None).
@@ -958,6 +965,8 @@ impl<'test> TestCx<'test> {
         local_pm: Option<PassMode>,
         passes: Vec<String>,
     ) -> ProcRes {
+        let compiler_kind = self.compiler_kind_for_non_aux();
+
         // Only use `make_exe_name` when the test ends up being executed.
         let output_file = match will_execute {
             WillExecute::Yes => TargetLocation::ThisFile(self.make_exe_name()),
@@ -973,7 +982,7 @@ impl<'test> TestCx<'test> {
                 // want to actually assert warnings about all this code. Instead
                 // let's just ignore unused code warnings by defaults and tests
                 // can turn it back on if needed.
-                if !self.is_rustdoc()
+                if compiler_kind == CompilerKind::Rustc
                     // Note that we use the local pass mode here as we don't want
                     // to set unused to allow if we've overridden the pass mode
                     // via command line flags.
@@ -988,6 +997,7 @@ impl<'test> TestCx<'test> {
         };
 
         let rustc = self.make_compile_args(
+            compiler_kind,
             &self.testpaths.file,
             output_file,
             emit,
@@ -1347,6 +1357,7 @@ impl<'test> TestCx<'test> {
     fn build_minicore(&self) -> Utf8PathBuf {
         let output_file_path = self.output_base_dir().join("libminicore.rlib");
         let mut rustc = self.make_compile_args(
+            CompilerKind::Rustc,
             &self.config.minicore_path,
             TargetLocation::ThisFile(output_file_path.clone()),
             Emit::None,
@@ -1404,6 +1415,8 @@ impl<'test> TestCx<'test> {
         // Create the directory for the stdout/stderr files.
         create_dir_all(aux_cx.output_base_dir()).unwrap();
         let mut aux_rustc = aux_cx.make_compile_args(
+            // Always use `rustc` for aux crates, even in rustdoc tests.
+            CompilerKind::Rustc,
             &aux_path,
             aux_output,
             Emit::None,
@@ -1554,15 +1567,41 @@ impl<'test> TestCx<'test> {
         result
     }
 
-    fn is_rustdoc(&self) -> bool {
-        matches!(
-            self.config.suite,
-            TestSuite::RustdocUi | TestSuite::RustdocJs | TestSuite::RustdocJson
-        )
+    /// Choose a compiler kind (rustc or rustdoc) for compiling test files,
+    /// based on the test suite being tested.
+    fn compiler_kind_for_non_aux(&self) -> CompilerKind {
+        match self.config.suite {
+            TestSuite::RustdocJs | TestSuite::RustdocJson | TestSuite::RustdocUi => {
+                CompilerKind::Rustdoc
+            }
+
+            // Exhaustively match all other suites.
+            // Note that some suites never actually use this method, so the
+            // return value for those suites is not necessarily meaningful.
+            TestSuite::AssemblyLlvm
+            | TestSuite::BuildStd
+            | TestSuite::CodegenLlvm
+            | TestSuite::CodegenUnits
+            | TestSuite::Coverage
+            | TestSuite::CoverageRunRustdoc
+            | TestSuite::Crashes
+            | TestSuite::Debuginfo
+            | TestSuite::Incremental
+            | TestSuite::MirOpt
+            | TestSuite::Pretty
+            | TestSuite::RunMake
+            | TestSuite::RunMakeCargo
+            | TestSuite::RustdocGui
+            | TestSuite::RustdocHtml
+            | TestSuite::RustdocJsStd
+            | TestSuite::Ui
+            | TestSuite::UiFullDeps => CompilerKind::Rustc,
+        }
     }
 
     fn make_compile_args(
         &self,
+        compiler_kind: CompilerKind,
         input_file: &Utf8Path,
         output_file: TargetLocation,
         emit: Emit,
@@ -1570,12 +1609,12 @@ impl<'test> TestCx<'test> {
         link_to_aux: LinkToAux,
         passes: Vec<String>, // Vec of passes under mir-opt test to be dumped
     ) -> Command {
-        let is_aux = input_file.components().map(|c| c.as_os_str()).any(|c| c == "auxiliary");
-        let is_rustdoc = self.is_rustdoc() && !is_aux;
-        let mut rustc = if !is_rustdoc {
-            Command::new(&self.config.rustc_path)
-        } else {
-            Command::new(&self.config.rustdoc_path.clone().expect("no rustdoc built yet"))
+        let is_rustdoc = compiler_kind == CompilerKind::Rustdoc;
+        let mut rustc = match compiler_kind {
+            CompilerKind::Rustc => Command::new(&self.config.rustc_path),
+            CompilerKind::Rustdoc => {
+                Command::new(&self.config.rustdoc_path.clone().expect("no rustdoc built yet"))
+            }
         };
         rustc.arg(input_file);
 
@@ -2127,6 +2166,7 @@ impl<'test> TestCx<'test> {
         let output_path = self.output_base_name().with_extension("ll");
         let input_file = &self.testpaths.file;
         let rustc = self.make_compile_args(
+            CompilerKind::Rustc,
             input_file,
             TargetLocation::ThisFile(output_path.clone()),
             Emit::LlvmIr,
