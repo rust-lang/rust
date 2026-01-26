@@ -25,8 +25,6 @@ LL |     println!("{}", e.0.0.m.x);
 LL |
 LL |     c();
    |     - mutable borrow later used here
-   |
-   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0506]: cannot assign to `e.0.0.m.x` because it is borrowed
   --> $DIR/box.rs:55:5
