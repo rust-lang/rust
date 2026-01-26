@@ -5,12 +5,12 @@ use std::marker::PhantomData;
 
 use super::*;
 
-pub(super) struct HandleStore<S: Types> {
+pub(super) struct HandleStore<S: Server> {
     token_stream: handle::OwnedStore<Marked<S::TokenStream, client::TokenStream>>,
     span: handle::InternedStore<Marked<S::Span, client::Span>>,
 }
 
-impl<S: Types> HandleStore<S> {
+impl<S: Server> HandleStore<S> {
     fn new(handle_counters: &'static client::HandleCounters) -> Self {
         HandleStore {
             token_stream: handle::OwnedStore::new(&handle_counters.token_stream),
@@ -19,19 +19,19 @@ impl<S: Types> HandleStore<S> {
     }
 }
 
-impl<S: Types> Encode<HandleStore<S>> for Marked<S::TokenStream, client::TokenStream> {
+impl<S: Server> Encode<HandleStore<S>> for Marked<S::TokenStream, client::TokenStream> {
     fn encode(self, w: &mut Writer, s: &mut HandleStore<S>) {
         s.token_stream.alloc(self).encode(w, s);
     }
 }
 
-impl<S: Types> Decode<'_, '_, HandleStore<S>> for Marked<S::TokenStream, client::TokenStream> {
+impl<S: Server> Decode<'_, '_, HandleStore<S>> for Marked<S::TokenStream, client::TokenStream> {
     fn decode(r: &mut Reader<'_>, s: &mut HandleStore<S>) -> Self {
         s.token_stream.take(handle::Handle::decode(r, &mut ()))
     }
 }
 
-impl<'s, S: Types> Decode<'_, 's, HandleStore<S>>
+impl<'s, S: Server> Decode<'_, 's, HandleStore<S>>
     for &'s Marked<S::TokenStream, client::TokenStream>
 {
     fn decode(r: &mut Reader<'_>, s: &'s mut HandleStore<S>) -> Self {
@@ -39,32 +39,32 @@ impl<'s, S: Types> Decode<'_, 's, HandleStore<S>>
     }
 }
 
-impl<S: Types> Encode<HandleStore<S>> for Marked<S::Span, client::Span> {
+impl<S: Server> Encode<HandleStore<S>> for Marked<S::Span, client::Span> {
     fn encode(self, w: &mut Writer, s: &mut HandleStore<S>) {
         s.span.alloc(self).encode(w, s);
     }
 }
 
-impl<S: Types> Decode<'_, '_, HandleStore<S>> for Marked<S::Span, client::Span> {
+impl<S: Server> Decode<'_, '_, HandleStore<S>> for Marked<S::Span, client::Span> {
     fn decode(r: &mut Reader<'_>, s: &mut HandleStore<S>) -> Self {
         s.span.copy(handle::Handle::decode(r, &mut ()))
     }
 }
 
-pub trait Types {
-    type TokenStream: 'static + Clone;
-    type Span: 'static + Copy + Eq + Hash;
-    type Symbol: 'static;
+struct Dispatcher<S: Server> {
+    handle_store: HandleStore<S>,
+    server: S,
 }
 
-macro_rules! declare_server_traits {
+macro_rules! define_server_dispatcher_impl {
     (
-        Methods {
-            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
-        },
-        $($name:ident),* $(,)?
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
     ) => {
-        pub trait Server: Types {
+        pub trait Server {
+            type TokenStream: 'static + Clone;
+            type Span: 'static + Copy + Eq + Hash;
+            type Symbol: 'static;
+
             fn globals(&mut self) -> ExpnGlobals<Self::Span>;
 
             /// Intern a symbol received from RPC
@@ -75,32 +75,21 @@ macro_rules! declare_server_traits {
 
             $(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?;)*
         }
-    }
-}
-with_api!(Self, self_, declare_server_traits);
 
-struct Dispatcher<S: Types> {
-    handle_store: HandleStore<S>,
-    server: S,
-}
-
-macro_rules! define_dispatcher_impl {
-    (
-        Methods {
-            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
-        },
-        $($name:ident),* $(,)?
-    ) => {
         // FIXME(eddyb) `pub` only for `ExecutionStrategy` below.
         pub trait DispatcherTrait {
             // HACK(eddyb) these are here to allow `Self::$name` to work below.
-            $(type $name;)*
+            type TokenStream;
+            type Span;
+            type Symbol;
 
             fn dispatch(&mut self, buf: Buffer) -> Buffer;
         }
 
         impl<S: Server> DispatcherTrait for Dispatcher<S> {
-            $(type $name = Marked<S::$name, client::$name>;)*
+            type TokenStream = Marked<S::TokenStream, client::TokenStream>;
+            type Span = Marked<S::Span, client::Span>;
+            type Symbol = Marked<S::Symbol, client::Symbol>;
 
             fn dispatch(&mut self, mut buf: Buffer) -> Buffer {
                 let Dispatcher { handle_store, server } = self;
@@ -136,7 +125,7 @@ macro_rules! define_dispatcher_impl {
         }
     }
 }
-with_api!(Self, self_, define_dispatcher_impl);
+with_api!(Self, define_server_dispatcher_impl);
 
 pub trait ExecutionStrategy {
     fn run_bridge_and_client(

@@ -458,13 +458,11 @@ impl<'a, 'b> Rustc<'a, 'b> {
     }
 }
 
-impl server::Types for Rustc<'_, '_> {
+impl server::Server for Rustc<'_, '_> {
     type TokenStream = TokenStream;
     type Span = Span;
     type Symbol = Symbol;
-}
 
-impl server::Server for Rustc<'_, '_> {
     fn globals(&mut self) -> ExpnGlobals<Self::Span> {
         ExpnGlobals {
             def_site: self.def_site,
