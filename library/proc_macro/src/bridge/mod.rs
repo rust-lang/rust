@@ -155,11 +155,6 @@ with_api!(self, declare_tags);
 trait Mark {
     type Unmarked;
     fn mark(unmarked: Self::Unmarked) -> Self;
-}
-
-/// Unwrap types wrapped by `Mark::mark` (see `Mark` for details).
-trait Unmark {
-    type Unmarked;
     fn unmark(self) -> Self::Unmarked;
 }
 
@@ -174,15 +169,15 @@ impl<T, M> Mark for Marked<T, M> {
     fn mark(unmarked: Self::Unmarked) -> Self {
         Marked { value: unmarked, _marker: marker::PhantomData }
     }
-}
-impl<T, M> Unmark for Marked<T, M> {
-    type Unmarked = T;
     fn unmark(self) -> Self::Unmarked {
         self.value
     }
 }
-impl<'a, T, M> Unmark for &'a Marked<T, M> {
+impl<'a, T, M> Mark for &'a Marked<T, M> {
     type Unmarked = &'a T;
+    fn mark(_: Self::Unmarked) -> Self {
+        unreachable!()
+    }
     fn unmark(self) -> Self::Unmarked {
         &self.value
     }
@@ -194,9 +189,6 @@ impl<T: Mark> Mark for Vec<T> {
         // Should be a no-op due to std's in-place collect optimizations.
         unmarked.into_iter().map(T::mark).collect()
     }
-}
-impl<T: Unmark> Unmark for Vec<T> {
-    type Unmarked = Vec<T::Unmarked>;
     fn unmark(self) -> Self::Unmarked {
         // Should be a no-op due to std's in-place collect optimizations.
         self.into_iter().map(T::unmark).collect()
@@ -211,9 +203,6 @@ macro_rules! mark_noop {
                 fn mark(unmarked: Self::Unmarked) -> Self {
                     unmarked
                 }
-            }
-            impl Unmark for $ty {
-                type Unmarked = Self;
                 fn unmark(self) -> Self::Unmarked {
                     self
                 }
@@ -294,13 +283,9 @@ macro_rules! mark_compound {
                     $($field: Mark::mark(unmarked.$field)),*
                 }
             }
-        }
-
-        impl<$($T: Unmark),+> Unmark for $name <$($T),+> {
-            type Unmarked = $name <$($T::Unmarked),+>;
             fn unmark(self) -> Self::Unmarked {
                 $name {
-                    $($field: Unmark::unmark(self.$field)),*
+                    $($field: Mark::unmark(self.$field)),*
                 }
             }
         }
@@ -315,14 +300,10 @@ macro_rules! mark_compound {
                     })*
                 }
             }
-        }
-
-        impl<$($T: Unmark),+> Unmark for $name <$($T),+> {
-            type Unmarked = $name <$($T::Unmarked),+>;
             fn unmark(self) -> Self::Unmarked {
                 match self {
                     $($name::$variant $(($field))? => {
-                        $name::$variant $((Unmark::unmark($field)))?
+                        $name::$variant $((Mark::unmark($field)))?
                     })*
                 }
             }
