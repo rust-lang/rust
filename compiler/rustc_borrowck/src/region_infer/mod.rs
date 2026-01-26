@@ -837,8 +837,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         lub
     }
 
-    /// Tests if `test` is true when applied to `lower_bound` at
-    /// `point`.
+    /// Tests if `generic_ty: lower_bound` holds by evaluating `verify_bound`
     fn eval_verify_bound(
         &self,
         infcx: &InferCtxt<'tcx>,

@@ -7,12 +7,8 @@ use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::region_constraints::VerifyIfEq;
 use crate::infer::{GenericKind, VerifyBound};
 
-/// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
-/// obligation into a series of `'a: 'b` constraints and "verifys", as
-/// described on the module comment. The final constraints are emitted
-/// via a "delegate" of type `D` -- this is usually the `infcx`, which
-/// accrues them into the `region_obligations` code, but for NLL we
-/// use something else.
+/// Context used for constructing a [`VerifyBound`].
+/// See [`super::obligations`] for more information.
 pub(crate) struct VerifyBoundCx<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
@@ -121,7 +117,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         let definition_bounds =
             self.declared_bounds_from_definition(alias_ty).map(|r| VerifyBound::OutlivedBy(r));
 
-        // see the extensive comment in projection_must_outlive
+        // see the extensive comment in alias_ty_must_outlive
         let recursive_bound = {
             let kind = alias_ty.kind(self.tcx);
             let components = compute_alias_components_recursive(self.tcx, kind, alias_ty);
