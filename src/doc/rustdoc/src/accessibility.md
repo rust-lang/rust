@@ -46,7 +46,6 @@
 ## Known Accessibility Issues in Rustdoc
 
 1. There are some contrast issues with certain parts of the webpage (see [#151422](https://github.com/rust-lang/rust/issues/151422))
-2. WCAG 4.1.3 Status Messages is not implemented yet.
 
 ## Where to Get Help
 
