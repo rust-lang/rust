@@ -3684,3 +3684,22 @@ pub(crate) struct ImplReuseInherentImpl {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_struct_literal_placeholder_path)]
+pub(crate) struct StructLiteralPlaceholderPath {
+    #[primary_span]
+    #[label]
+    #[suggestion(applicability = "has-placeholders", code = "/* Type */", style = "verbose")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_struct_literal_body_without_path_late)]
+pub(crate) struct StructLiteralWithoutPathLate {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[suggestion(applicability = "has-placeholders", code = "/* Type */ ", style = "verbose")]
+    pub suggestion_span: Span,
+}
