@@ -1082,6 +1082,53 @@ fn dereference_indexing(array: [u8; 2], index: usize) {
     opaque(*a);
 }
 
+// EMIT_MIR gvn.dereference_reborrow.GVN.diff
+fn dereference_reborrow(mut_a: &mut u8) {
+    // CHECK-LABEL: fn dereference_reborrow(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug b => [[b:_.*]];
+    // CHECK: debug c => [[c:_.*]];
+    // CHECK: [[a]] = &(*_1);
+    // CHECK: [[b]] = copy (*[[a]]);
+    // CHECK: [[c]] = copy [[b]];
+    let a = &*mut_a;
+    let b = *a;
+    let c = *a;
+}
+
+struct FieldBorrow<'a>(&'a u8);
+
+// EMIT_MIR gvn.field_borrow.GVN.diff
+fn field_borrow(a: &FieldBorrow<'_>) {
+    // CHECK-LABEL: fn field_borrow(
+    // CHECK: debug b => [[b:_.*]];
+    // CHECK: debug c => [[c:_.*]];
+    // CHECK: [[b]] = copy ((*_1).0: &u8);
+    // CHECK: [[c]] = copy [[b]];
+    let b = a.0;
+    let c = a.0;
+}
+
+// EMIT_MIR gvn.field_borrow_2.GVN.diff
+fn field_borrow_2(a: &&FieldBorrow<'_>) {
+    // CHECK-LABEL: fn field_borrow_2(
+    // CHECK: debug b => [[b:_.*]];
+    // CHECK: debug c => [[c:_.*]];
+    // CHECK: debug d => [[d:_.*]];
+    // CHECK: debug e => [[e:_.*]];
+    // CHECK: debug f => [[f:_.*]];
+    // CHECK: [[b]] = copy (*_1);
+    // CHECK: [[c]] = copy ((*[[b]]).0: &u8);
+    // CHECK: [[d]] = copy (*_1);
+    // CHECK: [[e]] = copy ((*[[d]]).0: &u8);
+    // CHECK: [[f]] = copy [[e]];
+    let b = *a;
+    let c = b.0;
+    let d = *a;
+    let e = d.0;
+    let f = d.0;
+}
+
 // CHECK-LABEL: fn main(
 fn main() {
     subexpression_elimination(2, 4, 5);
@@ -1111,6 +1158,9 @@ fn main() {
     meta_of_ref_to_slice(&42);
     slice_from_raw_parts_as_ptr(&123, 456);
     dereference_indexing([129, 14], 5);
+    dereference_reborrow(&mut 5);
+    field_borrow(&FieldBorrow(&0));
+    field_borrow(&&FieldBorrow(&0));
 }
 
 #[inline(never)]

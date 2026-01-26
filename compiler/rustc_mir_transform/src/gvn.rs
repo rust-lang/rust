@@ -799,6 +799,18 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     {
                         return Some((projection_ty, value));
                     }
+                    // DO NOT reason the pointer value.
+                    // We cannot unify two pointers that dereference same local, because they may
+                    // have different lifetimes.
+                    // ```
+                    // let b: &T = *a;
+                    // ... `a` is allowed to be modified. `c` and `b` have different borrowing lifetime.
+                    // Unifying them will extend the lifetime of `b`.
+                    // let c: &T = *a;
+                    // ```
+                    if projection_ty.ty.is_ref() {
+                        return None;
+                    }
 
                     // An immutable borrow `_x` always points to the same value for the
                     // lifetime of the borrow, so we can merge all instances of `*_x`.
