@@ -6,7 +6,7 @@ LL |     #[rustc_non_const_trait_method]
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: the `#[rustc_non_const_trait_method]` attribute is an internal implementation detail that will never be stable
-   = note: `#[rustc_non_const_trait_method]` should only used by the standard library to mark trait methods as non-const to allow large traits to easier transition to const
+   = note: `#[rustc_non_const_trait_method]` should only used by the standard library to mark trait methods as non-const to allow large traits an easier transition to const
 
 error: aborting due to 1 previous error
 

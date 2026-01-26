@@ -774,8 +774,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // Attempting to call a trait method?
                 if let Some(trait_did) = tcx.trait_of_assoc(callee) {
-                    // We can't determine the actual callee here, so we have to do different checks
-                    // than usual.
+                    // We can't determine the actual callee (the underlying impl of the trait) here, so we have
+                    // to do different checks than usual.
 
                     trace!("attempting to call a trait method");
                     let is_const = tcx.constness(callee) == hir::Constness::Const;

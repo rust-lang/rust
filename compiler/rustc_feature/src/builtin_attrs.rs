@@ -1333,7 +1333,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_non_const_trait_method, AttributeType::Normal, template!(Word),
         ErrorFollowing, EncodeCrossCrate::No,
         "`#[rustc_non_const_trait_method]` should only used by the standard library to mark trait methods \
-        as non-const to allow large traits to easier transition to const"
+        as non-const to allow large traits an easier transition to const"
     ),
 
     BuiltinAttribute {

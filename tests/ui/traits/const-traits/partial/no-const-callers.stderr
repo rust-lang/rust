@@ -1,5 +1,15 @@
+error[E0015]: cannot call non-const function `std::io::_print` in constant functions
+  --> $DIR/no-const-callers.rs:15:14
+   |
+LL |     fn b() { println!("hello"); }
+   |              ^^^^^^^^^^^^^^^^^
+   |
+note: function `_print` is not const
+  --> $SRC_DIR/std/src/io/stdio.rs:LL:COL
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
 error[E0015]: cannot call non-const associated function `<T as A>::b` in constant functions
-  --> $DIR/no-const-callers.rs:15:5
+  --> $DIR/no-const-callers.rs:26:5
    |
 LL |     T::b();
    |     ^^^^^^
@@ -7,13 +17,29 @@ LL |     T::b();
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error[E0015]: cannot call non-const associated function `<() as A>::b` in constant functions
-  --> $DIR/no-const-callers.rs:18:5
+  --> $DIR/no-const-callers.rs:29:5
    |
 LL |     <()>::b();
    |     ^^^^^^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error: aborting due to 2 previous errors
+error[E0015]: cannot call non-const associated function `<u8 as A>::b` in constant functions
+  --> $DIR/no-const-callers.rs:32:5
+   |
+LL |     u8::b();
+   |     ^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot call non-const associated function `<i8 as A>::b` in constant functions
+  --> $DIR/no-const-callers.rs:35:5
+   |
+LL |     i8::b();
+   |     ^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0015`.
