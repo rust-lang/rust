@@ -25,6 +25,13 @@ pub struct AuxCrate {
     pub path: String,
 }
 
+/// The value of a `proc-macro` directive.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct ProcMacro {
+    /// With `proc-macro: bar.rs` this will be `bar.rs`.
+    pub path: String,
+}
+
 /// Properties parsed from `aux-*` test directives.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct AuxProps {
@@ -37,7 +44,7 @@ pub(crate) struct AuxProps {
     /// to build and pass with the `--extern` flag.
     pub(crate) crates: Vec<AuxCrate>,
     /// Same as `builds`, but for proc-macros.
-    pub(crate) proc_macros: Vec<String>,
+    pub(crate) proc_macros: Vec<ProcMacro>,
     /// Similar to `builds`, but also uses the resulting dylib as a
     /// `-Zcodegen-backend` when compiling the test file.
     pub(crate) codegen_backend: Option<String>,
@@ -53,7 +60,7 @@ impl AuxProps {
             .chain(builds.iter().map(String::as_str))
             .chain(bins.iter().map(String::as_str))
             .chain(crates.iter().map(|c| c.path.as_str()))
-            .chain(proc_macros.iter().map(String::as_str))
+            .chain(proc_macros.iter().map(|p| p.path.as_str()))
             .chain(codegen_backend.iter().map(String::as_str))
     }
 }
@@ -74,8 +81,8 @@ pub(super) fn parse_and_update_aux(
     config.push_name_value_directive(ln, AUX_BUILD, &mut aux.builds, |r| r.trim().to_string());
     config.push_name_value_directive(ln, AUX_BIN, &mut aux.bins, |r| r.trim().to_string());
     config.push_name_value_directive(ln, AUX_CRATE, &mut aux.crates, parse_aux_crate);
-    config
-        .push_name_value_directive(ln, PROC_MACRO, &mut aux.proc_macros, |r| r.trim().to_string());
+    config.push_name_value_directive(ln, PROC_MACRO, &mut aux.proc_macros, parse_proc_macro);
+
     if let Some(r) = config.parse_name_value_directive(ln, AUX_CODEGEN_BACKEND) {
         aux.codegen_backend = Some(r.trim().to_owned());
     }
@@ -98,4 +105,8 @@ fn parse_aux_crate(r: String) -> AuxCrate {
     let path = caps["path"].to_string();
 
     AuxCrate { extern_modifiers: modifiers, name, path }
+}
+
+fn parse_proc_macro(r: String) -> ProcMacro {
+    ProcMacro { path: r.trim().to_string() }
 }

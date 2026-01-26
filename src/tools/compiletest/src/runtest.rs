@@ -1298,13 +1298,13 @@ impl<'test> TestCx<'test> {
         }
 
         for proc_macro in &self.props.aux.proc_macros {
-            self.build_auxiliary(proc_macro, &aux_dir, Some(AuxType::ProcMacro));
-            let crate_name = path_to_crate_name(proc_macro);
+            self.build_auxiliary(&proc_macro.path, &aux_dir, Some(AuxType::ProcMacro));
+            let crate_name = path_to_crate_name(&proc_macro.path);
             add_extern(
                 rustc,
                 None, // `extern_modifiers`
                 &crate_name,
-                proc_macro,
+                &proc_macro.path,
                 AuxType::ProcMacro,
             );
         }
