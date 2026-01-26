@@ -53,7 +53,7 @@ path = [
 ]
 precedence = "override"
 SPDX-FileCopyrightText = "The Rust Project Developers (see https://thanks.rust-lang.org)"
-SPDX-License-Identifier = "MIT or Apache-2.0"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
 
 [[annotations]]
 path = "compiler/rustc_llvm/llvm-wrapper/SymbolWrapper.cpp"
