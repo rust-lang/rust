@@ -13,15 +13,15 @@
 /// Verify `is_ascii` generates efficient code on different architectures:
 ///
 /// - x86_64: Must NOT use `kshiftrd`/`kshiftrq` (broken AVX-512 auto-vectorization).
-///   The fix uses explicit SSE2 intrinsics (`pmovmskb`/`vpmovmskb`).
-///   See: https://github.com/llvm/llvm-project/issues/176906
+///   Good version uses explicit SSE2 intrinsics (`pmovmskb`/`vpmovmskb`).
 ///
 /// - loongarch64: Should use `vmskltz.b` instruction for the fast-path.
-///   This architecture still relies on LLVM auto-vectorization.
 
 // X86_64-LABEL: test_is_ascii
 // X86_64-NOT: kshiftrd
 // X86_64-NOT: kshiftrq
+// X86_64: {{vpor|por}}
+// X86_64: {{vpmovmskb|pmovmskb}}
 
 // LA64-LABEL: test_is_ascii
 // LA64: vmskltz.b

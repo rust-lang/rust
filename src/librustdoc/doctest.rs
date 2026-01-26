@@ -957,8 +957,10 @@ impl ScrapedDocTest {
         if !item_path.is_empty() {
             item_path.push(' ');
         }
-        let name =
-            format!("{} - {item_path}(line {line})", filename.prefer_remapped_unconditionally());
+        let name = format!(
+            "{} - {item_path}(line {line})",
+            filename.display(RemapPathScopeComponents::DOCUMENTATION)
+        );
 
         Self { filename, line, langstr, text, name, span, global_crate_attrs }
     }
@@ -969,9 +971,12 @@ impl ScrapedDocTest {
     fn no_run(&self, opts: &RustdocOptions) -> bool {
         self.langstr.no_run || opts.no_run
     }
+
     fn path(&self) -> PathBuf {
         match &self.filename {
-            FileName::Real(name) => name.path(RemapPathScopeComponents::DIAGNOSTICS).to_path_buf(),
+            FileName::Real(name) => {
+                name.path(RemapPathScopeComponents::DOCUMENTATION).to_path_buf()
+            }
             _ => PathBuf::from(r"doctest.rs"),
         }
     }
@@ -1016,9 +1021,12 @@ impl CreateRunnableDocTests {
 
     fn add_test(&mut self, scraped_test: ScrapedDocTest, dcx: Option<DiagCtxtHandle<'_>>) {
         // For example `module/file.rs` would become `module_file_rs`
+        //
+        // Note that we are kind-of extending the definition of the MACRO scope here, but
+        // after all `#[doc]` is kind-of a macro.
         let file = scraped_test
             .filename
-            .prefer_local_unconditionally()
+            .display(RemapPathScopeComponents::MACRO)
             .to_string_lossy()
             .chars()
             .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })

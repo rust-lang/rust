@@ -367,7 +367,7 @@ impl<'tcx> Context<'tcx> {
         let file = match span.filename(self.sess()) {
             FileName::Real(ref path) => path
                 .local_path()
-                .unwrap_or(path.path(RemapPathScopeComponents::MACRO))
+                .unwrap_or(path.path(RemapPathScopeComponents::DOCUMENTATION))
                 .to_path_buf(),
             _ => return None,
         };
@@ -503,7 +503,11 @@ impl<'tcx> Context<'tcx> {
 
         let src_root = match krate.src(tcx) {
             FileName::Real(ref p) => {
-                match p.local_path().unwrap_or(p.path(RemapPathScopeComponents::MACRO)).parent() {
+                match p
+                    .local_path()
+                    .unwrap_or(p.path(RemapPathScopeComponents::DOCUMENTATION))
+                    .parent()
+                {
                     Some(p) => p.to_path_buf(),
                     None => PathBuf::new(),
                 }

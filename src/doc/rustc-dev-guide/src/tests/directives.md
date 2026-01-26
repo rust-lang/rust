@@ -200,6 +200,8 @@ The following directives will check rustc build settings and target settings:
   on `wasm32-unknown-unknown` target because the target does not support the
   `proc-macro` crate type.
 - `needs-target-std` — ignores if target platform does not have std support.
+  - See also [`#![no_std]`/`#![no_core]` and implied `needs-target-std` for
+    codegen tests](./compiletest.md#codegen-tests).
 - `ignore-backends` — ignores the listed backends, separated by whitespace characters.
   Please note
   that this directive can be overriden with the `--bypass-ignore-backends=[BACKEND]` command line
