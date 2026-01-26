@@ -2526,7 +2526,7 @@ struct Finalize {
     used: Used = Used::Other,
     /// Finalizing early or late resolution.
     stage: Stage = Stage::Early,
-    /// Nominal visibility of the import item, in case we are resolving and import's final segment.
+    /// Nominal visibility of the import item, in case we are resolving an import's final segment.
     import_vis: Option<Visibility> = None,
 }
 
