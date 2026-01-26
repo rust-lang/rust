@@ -1,11 +1,9 @@
-use std::hash::BuildHasherDefault;
-
 pub use ena::unify::{NoError, UnifyKey, UnifyValue};
-use rustc_hash::FxHasher;
+use rustc_hash::FxBuildHasher;
 pub use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
-pub type IndexMap<K, V> = indexmap::IndexMap<K, V, BuildHasherDefault<FxHasher>>;
-pub type IndexSet<V> = indexmap::IndexSet<V, BuildHasherDefault<FxHasher>>;
+pub type IndexMap<K, V> = indexmap::IndexMap<K, V, FxBuildHasher>;
+pub type IndexSet<V> = indexmap::IndexSet<V, FxBuildHasher>;
 
 mod delayed_map;
 

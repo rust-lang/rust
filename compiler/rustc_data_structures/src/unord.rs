@@ -8,10 +8,10 @@ use std::hash::Hash;
 use std::iter::{Product, Sum};
 use std::ops::Index;
 
-use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 
 use crate::fingerprint::Fingerprint;
+use crate::fx::{FxBuildHasher, FxHashMap, FxHashSet};
 use crate::stable_hasher::{HashStable, StableCompare, StableHasher, ToStableHashKey};
 
 /// `UnordItems` is the order-less version of `Iterator`. It only contains methods
