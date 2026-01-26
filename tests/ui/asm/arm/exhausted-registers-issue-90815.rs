@@ -3,7 +3,6 @@
 //@ compile-flags: --target armv7-unknown-linux-gnueabihf
 //@ needs-llvm-components: arm
 //@ ignore-backends: gcc
-//@ error-pattern: inline assembly requires more registers than available
 
 // Regression test for issue #90815.
 // Ensure that we emit a proper error message when inline assembly requests
