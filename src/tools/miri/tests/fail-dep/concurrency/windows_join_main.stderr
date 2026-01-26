@@ -31,7 +31,6 @@ LL | |             assert_eq!(WaitForSingleObject(MAIN_THREAD, INFINITE), WAIT_O
 LL | |         }
 LL | |     })
    | |______^
-   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
