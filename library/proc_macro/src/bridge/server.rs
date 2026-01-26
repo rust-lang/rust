@@ -6,8 +6,8 @@ use std::marker::PhantomData;
 use super::*;
 
 pub(super) struct HandleStore<S: Server> {
-    token_stream: handle::OwnedStore<Marked<S::TokenStream, client::TokenStream>>,
-    span: handle::InternedStore<Marked<S::Span, client::Span>>,
+    token_stream: handle::OwnedStore<MarkedTokenStream<S>>,
+    span: handle::InternedStore<MarkedSpan<S>>,
 }
 
 impl<S: Server> HandleStore<S> {
@@ -19,33 +19,35 @@ impl<S: Server> HandleStore<S> {
     }
 }
 
-impl<S: Server> Encode<HandleStore<S>> for Marked<S::TokenStream, client::TokenStream> {
+pub(super) type MarkedTokenStream<S> = Marked<<S as Server>::TokenStream, client::TokenStream>;
+pub(super) type MarkedSpan<S> = Marked<<S as Server>::Span, client::Span>;
+pub(super) type MarkedSymbol<S> = Marked<<S as Server>::Symbol, client::Symbol>;
+
+impl<S: Server> Encode<HandleStore<S>> for MarkedTokenStream<S> {
     fn encode(self, w: &mut Buffer, s: &mut HandleStore<S>) {
         s.token_stream.alloc(self).encode(w, s);
     }
 }
 
-impl<S: Server> Decode<'_, '_, HandleStore<S>> for Marked<S::TokenStream, client::TokenStream> {
+impl<S: Server> Decode<'_, '_, HandleStore<S>> for MarkedTokenStream<S> {
     fn decode(r: &mut &[u8], s: &mut HandleStore<S>) -> Self {
         s.token_stream.take(handle::Handle::decode(r, &mut ()))
     }
 }
 
-impl<'s, S: Server> Decode<'_, 's, HandleStore<S>>
-    for &'s Marked<S::TokenStream, client::TokenStream>
-{
+impl<'s, S: Server> Decode<'_, 's, HandleStore<S>> for &'s MarkedTokenStream<S> {
     fn decode(r: &mut &[u8], s: &'s mut HandleStore<S>) -> Self {
         &s.token_stream[handle::Handle::decode(r, &mut ())]
     }
 }
 
-impl<S: Server> Encode<HandleStore<S>> for Marked<S::Span, client::Span> {
+impl<S: Server> Encode<HandleStore<S>> for MarkedSpan<S> {
     fn encode(self, w: &mut Buffer, s: &mut HandleStore<S>) {
         s.span.alloc(self).encode(w, s);
     }
 }
 
-impl<S: Server> Decode<'_, '_, HandleStore<S>> for Marked<S::Span, client::Span> {
+impl<S: Server> Decode<'_, '_, HandleStore<S>> for MarkedSpan<S> {
     fn decode(r: &mut &[u8], s: &mut HandleStore<S>) -> Self {
         s.span.copy(handle::Handle::decode(r, &mut ()))
     }
@@ -87,9 +89,9 @@ macro_rules! define_server_dispatcher_impl {
         }
 
         impl<S: Server> DispatcherTrait for Dispatcher<S> {
-            type TokenStream = Marked<S::TokenStream, client::TokenStream>;
-            type Span = Marked<S::Span, client::Span>;
-            type Symbol = Marked<S::Symbol, client::Symbol>;
+            type TokenStream = MarkedTokenStream<S>;
+            type Span = MarkedSpan<S>;
+            type Symbol = MarkedSymbol<S>;
 
             fn dispatch(&mut self, mut buf: Buffer) -> Buffer {
                 let Dispatcher { handle_store, server } = self;
@@ -292,7 +294,7 @@ fn run_server<
     let globals = dispatcher.server.globals();
 
     let mut buf = Buffer::new();
-    (<ExpnGlobals<Marked<S::Span, client::Span>> as Mark>::mark(globals), input)
+    (<ExpnGlobals<MarkedSpan<S>> as Mark>::mark(globals), input)
         .encode(&mut buf, &mut dispatcher.handle_store);
 
     buf = strategy.run_bridge_and_client(&mut dispatcher, buf, run_client, force_show_panics);
@@ -317,13 +319,11 @@ impl client::Client<crate::TokenStream, crate::TokenStream> {
             strategy,
             handle_counters,
             server,
-            <Marked<S::TokenStream, client::TokenStream>>::mark(input),
+            <MarkedTokenStream<S>>::mark(input),
             run,
             force_show_panics,
         )
-        .map(|s| {
-            <Option<Marked<S::TokenStream, client::TokenStream>>>::unmark(s).unwrap_or_default()
-        })
+        .map(|s| <Option<MarkedTokenStream<S>>>::unmark(s).unwrap_or_default())
     }
 }
 
@@ -345,15 +345,10 @@ impl client::Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream
             strategy,
             handle_counters,
             server,
-            (
-                <Marked<S::TokenStream, client::TokenStream>>::mark(input),
-                <Marked<S::TokenStream, client::TokenStream>>::mark(input2),
-            ),
+            (<MarkedTokenStream<S>>::mark(input), <MarkedTokenStream<S>>::mark(input2)),
             run,
             force_show_panics,
         )
-        .map(|s| {
-            <Option<Marked<S::TokenStream, client::TokenStream>>>::unmark(s).unwrap_or_default()
-        })
+        .map(|s| <Option<MarkedTokenStream<S>>>::unmark(s).unwrap_or_default())
     }
 }

@@ -99,13 +99,13 @@ impl<S> Encode<S> for Symbol {
     }
 }
 
-impl<S: server::Server> Decode<'_, '_, server::HandleStore<S>> for Marked<S::Symbol, Symbol> {
+impl<S: server::Server> Decode<'_, '_, server::HandleStore<S>> for server::MarkedSymbol<S> {
     fn decode(r: &mut &[u8], s: &mut server::HandleStore<S>) -> Self {
         Mark::mark(S::intern_symbol(<&str>::decode(r, s)))
     }
 }
 
-impl<S: server::Server> Encode<server::HandleStore<S>> for Marked<S::Symbol, Symbol> {
+impl<S: server::Server> Encode<server::HandleStore<S>> for server::MarkedSymbol<S> {
     fn encode(self, w: &mut Buffer, s: &mut server::HandleStore<S>) {
         S::with_symbol_string(&self.unmark(), |sym| sym.encode(w, s))
     }
