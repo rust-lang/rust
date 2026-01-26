@@ -257,7 +257,7 @@ fn make_function_name(
 
     let mut name = body
         .suggest_name()
-        .filter(|name| name.contains('_'))
+        .filter(|name| name.len() > 2)
         .unwrap_or_else(|| default_name.to_owned());
     let mut counter = 0;
     while names_in_scope.contains(&name) {
