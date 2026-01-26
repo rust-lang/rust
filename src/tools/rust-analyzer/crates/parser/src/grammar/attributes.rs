@@ -70,7 +70,7 @@ pub(super) fn meta(p: &mut Parser<'_>) {
     paths::attr_path(p);
 
     match p.current() {
-        T![=] => {
+        T![=] if !p.at(T![=>]) && !p.at(T![==]) => {
             p.bump(T![=]);
             if expressions::expr(p).is_none() {
                 p.error("expected expression");
