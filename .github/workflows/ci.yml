@@ -244,5 +244,7 @@ jobs:
       PROPTEST_CASES: 16
     steps:
       - uses: actions/checkout@v4
+      - name: Install cargo-nextest
+        run: cargo install cargo-nextest --locked
       - name: Test (Miri)
-        run: cargo miri test
+        run: cargo miri nextest run -j4
