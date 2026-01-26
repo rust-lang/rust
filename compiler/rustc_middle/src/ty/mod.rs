@@ -2181,7 +2181,9 @@ impl<'tcx> TyCtxt<'tcx> {
                         self.constness(def_id) == hir::Constness::Const
                     }
                     DefKind::Impl { of_trait: true } => {
-                        let Some(trait_method_did) = self.trait_item_of(def_id) else { return false; };
+                        let Some(trait_method_did) = self.trait_item_of(def_id) else {
+                            return false;
+                        };
                         self.constness(trait_method_did) == hir::Constness::Const
                             && self.is_conditionally_const(parent_def_id)
                     }
