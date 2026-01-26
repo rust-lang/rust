@@ -210,6 +210,24 @@ body {
 	color: var(--main-color);
 }
 
+/* Skip navigation link for keyboard users (WCAG 2.4.1) */
+.skip-main-content {
+	position: absolute;
+	left: 0;
+	top: -100%;
+	z-index: 1000;
+	padding: 0.5rem 1rem;
+	background-color: var(--main-background-color);
+	color: var(--main-color);
+	text-decoration: none;
+	font-weight: 500;
+	border-bottom-right-radius: 4px;
+	outline: 2px solid var(--search-input-focused-border-color);
+}
+.skip-main-content:focus {
+	top: 0;
+}
+
 h1 {
 	font-size: 1.5rem; /* 24px */
 }
@@ -1114,6 +1132,7 @@ pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 
 #main-content {
 	position: relative;
+	outline: none;
 }
 
 .docblock table {
@@ -3267,7 +3286,7 @@ by default.
 	--headings-border-bottom-color: #d2d2d2;
 	--border-color: #e0e0e0;
 	--button-background-color: #f0f0f0;
-	--right-side-color: grey;
+	--right-side-color: #d0d0d0;
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: invert(100%);

@@ -1827,9 +1827,9 @@ fn exported_symbols_for_non_proc_macro(
     // Mark allocator shim symbols as exported only if they were generated.
     if export_threshold == SymbolExportLevel::Rust
         && needs_allocator_shim_for_linking(tcx.dependency_formats(()), crate_type)
-        && tcx.allocator_kind(()).is_some()
+        && let Some(kind) = tcx.allocator_kind(())
     {
-        symbols.extend(allocator_shim_symbols(tcx));
+        symbols.extend(allocator_shim_symbols(tcx, kind));
     }
 
     symbols
@@ -1857,7 +1857,7 @@ pub(crate) fn linked_symbols(
         | CrateType::Cdylib
         | CrateType::Dylib
         | CrateType::Sdylib => (),
-        CrateType::Staticlib | CrateType::Rlib => {
+        CrateType::StaticLib | CrateType::Rlib => {
             // These are not linked, so no need to generate symbols.o for them.
             return Vec::new();
         }

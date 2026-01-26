@@ -10,13 +10,13 @@ use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 use std::sync::LazyLock;
-use std::{cmp, fmt, fs, iter};
+use std::{cmp, fs, iter};
 
 use externs::{ExternOpt, split_extern_opt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::{StableHasher, StableOrd, ToStableHashKey};
 use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, DiagArgValue, DiagCtxtFlags, IntoDiagArg};
+use rustc_errors::{ColorConfig, DiagCtxtFlags};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
@@ -1529,29 +1529,7 @@ pub enum EntryFnType {
     },
 }
 
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, BlobDecodable)]
-#[derive(HashStable_Generic)]
-pub enum CrateType {
-    Executable,
-    Dylib,
-    Rlib,
-    Staticlib,
-    Cdylib,
-    ProcMacro,
-    Sdylib,
-}
-
-impl CrateType {
-    pub fn has_metadata(self) -> bool {
-        match self {
-            CrateType::Rlib | CrateType::Dylib | CrateType::ProcMacro => true,
-            CrateType::Executable
-            | CrateType::Cdylib
-            | CrateType::Staticlib
-            | CrateType::Sdylib => false,
-        }
-    }
-}
+pub use rustc_hir::attrs::CrateType;
 
 #[derive(Clone, Hash, Debug, PartialEq, Eq)]
 pub enum Passes {
@@ -1593,10 +1571,6 @@ pub struct BranchProtection {
     pub bti: bool,
     pub pac_ret: Option<PacRet>,
     pub gcs: bool,
-}
-
-pub(crate) const fn default_lib_output() -> CrateType {
-    CrateType::Rlib
 }
 
 pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
@@ -2873,9 +2847,9 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
     for unparsed_crate_type in &list_list {
         for part in unparsed_crate_type.split(',') {
             let new_part = match part {
-                "lib" => default_lib_output(),
+                "lib" => CrateType::default(),
                 "rlib" => CrateType::Rlib,
-                "staticlib" => CrateType::Staticlib,
+                "staticlib" => CrateType::StaticLib,
                 "dylib" => CrateType::Dylib,
                 "cdylib" => CrateType::Cdylib,
                 "bin" => CrateType::Executable,
@@ -2966,26 +2940,6 @@ pub mod nightly_options {
                 if nightly_options_on_stable > 1 { "s" } else { "" }
             ));
         }
-    }
-}
-
-impl fmt::Display for CrateType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            CrateType::Executable => "bin".fmt(f),
-            CrateType::Dylib => "dylib".fmt(f),
-            CrateType::Rlib => "rlib".fmt(f),
-            CrateType::Staticlib => "staticlib".fmt(f),
-            CrateType::Cdylib => "cdylib".fmt(f),
-            CrateType::ProcMacro => "proc-macro".fmt(f),
-            CrateType::Sdylib => "sdylib".fmt(f),
-        }
-    }
-}
-
-impl IntoDiagArg for CrateType {
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        self.to_string().into_diag_arg(&mut None)
     }
 }
 

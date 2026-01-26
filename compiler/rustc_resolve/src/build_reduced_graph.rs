@@ -959,7 +959,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
 
             // These items do not add names to modules.
-            ItemKind::Impl { .. } | ItemKind::ForeignMod(..) | ItemKind::GlobalAsm(..) => {}
+            ItemKind::Impl { .. }
+            | ItemKind::ForeignMod(..)
+            | ItemKind::GlobalAsm(..)
+            | ItemKind::ConstBlock(..) => {}
 
             ItemKind::MacroDef(..) | ItemKind::MacCall(_) | ItemKind::DelegationMac(..) => {
                 unreachable!()

@@ -470,11 +470,34 @@ mod in_macro {
         }
     }
 
-    // no lint on external macro
+    // no lint on external macro (standalone function)
     external! {
         fn needless_lifetime<'a>(x: &'a u8) -> &'a u8 {
             unimplemented!()
         }
+    }
+
+    // no lint on external macro (method in impl block)
+    external! {
+        struct ExternalStruct;
+
+        impl ExternalStruct {
+            fn needless_lifetime_method<'a>(x: &'a u8) -> &'a u8 {
+                unimplemented!()
+            }
+        }
+    }
+
+    // no lint on external macro (trait method)
+    external! {
+        trait ExternalTrait {
+            fn needless_lifetime_trait_method<'a>(x: &'a u8) -> &'a u8;
+        }
+    }
+
+    // no lint on external macro (extra unused lifetimes in function)
+    external! {
+        fn extra_unused_lifetime<'a>(x: u8) {}
     }
 
     inline! {

@@ -630,7 +630,7 @@ checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
 
 [[package]]
 name = "clippy"
-version = "0.1.94"
+version = "0.1.95"
 dependencies = [
  "anstream",
  "askama",
@@ -657,7 +657,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.94"
+version = "0.1.95"
 dependencies = [
  "clippy_utils",
  "itertools",
@@ -681,7 +681,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.94"
+version = "0.1.95"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.18.1",
@@ -713,7 +713,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.94"
+version = "0.1.95"
 dependencies = [
  "arrayvec",
  "itertools",
@@ -1117,7 +1117,7 @@ dependencies = [
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.94"
+version = "0.1.95"
 
 [[package]]
 name = "derive-where"
@@ -3356,9 +3356,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-demangle"
-version = "0.1.26"
+version = "0.1.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56f7d92ca342cea22a06f2121d944b4fd82af56988c270852495420f961d4ace"
+checksum = "b50b8869d9fc858ce7266cce0194bd74df58b9d0e3f6df3a9fc8eb470d95c09d"
 
 [[package]]
 name = "rustc-hash"
@@ -3865,7 +3865,6 @@ dependencies = [
  "rustc_fluent_macro",
  "rustc_hashes",
  "rustc_index",
- "rustc_lexer",
  "rustc_lint_defs",
  "rustc_macros",
  "rustc_serialize",

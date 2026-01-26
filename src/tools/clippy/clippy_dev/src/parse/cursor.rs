@@ -219,6 +219,22 @@ impl<'txt> Cursor<'txt> {
         }
     }
 
+    /// Consume the returns the position of the next non-whitespace token if it's an
+    /// identifier. Returns `None` otherwise.
+    pub fn match_ident(&mut self, s: &str) -> Option<u32> {
+        loop {
+            match self.next_token.kind {
+                TokenKind::Ident if s == self.peek_text() => {
+                    let pos = self.pos;
+                    self.step();
+                    return Some(pos);
+                },
+                TokenKind::Whitespace => self.step(),
+                _ => return None,
+            }
+        }
+    }
+
     /// Continually attempt to match the pattern on subsequent tokens until a match is
     /// found. Returns whether the pattern was successfully matched.
     ///

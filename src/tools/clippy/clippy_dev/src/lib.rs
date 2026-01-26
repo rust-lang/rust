@@ -23,13 +23,12 @@ extern crate rustc_arena;
 extern crate rustc_driver;
 extern crate rustc_lexer;
 
-pub mod deprecate_lint;
 pub mod dogfood;
+pub mod edit_lints;
 pub mod fmt;
 pub mod lint;
 pub mod new_lint;
 pub mod release;
-pub mod rename_lint;
 pub mod serve;
 pub mod setup;
 pub mod sync;

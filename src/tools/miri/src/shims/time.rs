@@ -347,7 +347,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     assert_eq!(unblock, UnblockKind::TimedOut);
                     interp_ok(())
                 }
-            )
+            ),
         );
 
         interp_ok(Scalar::from_i32(0)) // KERN_SUCCESS

@@ -7,8 +7,7 @@ pub use rustc_error_messages::{FluentArgs, LazyFallbackBundle};
 use tracing::{debug, trace};
 
 use crate::error::{TranslateError, TranslateErrorKind};
-use crate::snippet::Style;
-use crate::{DiagArg, DiagMessage, FluentBundle};
+use crate::{DiagArg, DiagMessage, FluentBundle, Style};
 
 /// Convert diagnostic arguments (a rustc internal type that exists to implement
 /// `Encodable`/`Decodable`) into `FluentArgs` which is necessary to perform translation.

@@ -325,7 +325,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             ConstArgKind::Infer(..) => chain!(self, "let ConstArgKind::Infer(..) = {const_arg}.kind"),
             ConstArgKind::Error(..) => chain!(self, "let ConstArgKind::Error(..) = {const_arg}.kind"),
             ConstArgKind::Tup(..) => chain!(self, "let ConstArgKind::Tup(..) = {const_arg}.kind"),
-            ConstArgKind::Literal(..) => chain!(self, "let ConstArgKind::Literal(..) = {const_arg}.kind")
+            ConstArgKind::Literal(..) => chain!(self, "let ConstArgKind::Literal(..) = {const_arg}.kind"),
         }
     }
 

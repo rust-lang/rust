@@ -391,7 +391,7 @@ float_test! {
     }
 }
 
-// FIXME(f16_f128): merge into `num` once the required `fmodl`/`fmodf128` function is available on
+// FIXME(f128): merge into `num` once the required `fmodl`/`fmodf128` function is available on
 // all platforms.
 float_test! {
     name: num_rem,
@@ -1357,15 +1357,11 @@ float_test! {
     }
 }
 
-// FIXME(f16): Tests involving sNaN are disabled because without optimizations, `total_cmp` is
-// getting incorrectly lowered to code that includes a `extend`/`trunc` round trip, which quiets
-// sNaNs. See: https://github.com/llvm/llvm-project/issues/104915
-
 float_test! {
     name: total_cmp_s_nan,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(miri)],
+        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1636,7 +1632,7 @@ float_test! {
     }
 }
 
-// FIXME(f16_f128): Uncomment and adapt these tests once the From<{u64,i64}> impls are added.
+// FIXME(f128): Uncomment and adapt these tests once the From<{u64,i64}> impls are added.
 // float_test! {
 //     name: from_u64_i64,
 //     attrs: {

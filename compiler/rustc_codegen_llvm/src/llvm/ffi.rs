@@ -167,6 +167,7 @@ pub(crate) enum CallConv {
     PreserveMost = 14,
     PreserveAll = 15,
     Tail = 18,
+    PreserveNone = 21,
     X86StdcallCallConv = 64,
     X86FastcallCallConv = 65,
     ArmAapcsCallConv = 67,
@@ -2347,6 +2348,7 @@ unsafe extern "C" {
         DebugInfoCompression: CompressionKind,
         UseEmulatedTls: bool,
         UseWasmEH: bool,
+        LargeDataThreshold: u64,
     ) -> *mut TargetMachine;
 
     pub(crate) fn LLVMRustAddLibraryInfo<'a>(

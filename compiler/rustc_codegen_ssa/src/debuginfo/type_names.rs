@@ -109,14 +109,14 @@ fn push_debuginfo_type_name<'tcx>(
                     ty_and_layout,
                     &|output, visited| {
                         push_item_name(tcx, def.did(), true, output);
-                        push_generic_params_internal(tcx, args, output, visited);
+                        push_generic_args_internal(tcx, args, output, visited);
                     },
                     output,
                     visited,
                 );
             } else {
                 push_item_name(tcx, def.did(), qualified, output);
-                push_generic_params_internal(tcx, args, output, visited);
+                push_generic_args_internal(tcx, args, output, visited);
             }
         }
         ty::Tuple(component_types) => {
@@ -253,19 +253,18 @@ fn push_debuginfo_type_name<'tcx>(
                 );
                 push_item_name(tcx, principal.def_id, qualified, output);
                 let principal_has_generic_params =
-                    push_generic_params_internal(tcx, principal.args, output, visited);
+                    push_generic_args_internal(tcx, principal.args, output, visited);
 
                 let projection_bounds: SmallVec<[_; 4]> = trait_data
                     .projection_bounds()
                     .map(|bound| {
                         let ExistentialProjection { def_id: item_def_id, term, .. } =
                             tcx.instantiate_bound_regions_with_erased(bound);
-                        // FIXME(mgca): allow for consts here
-                        (item_def_id, term.expect_type())
+                        (item_def_id, term)
                     })
                     .collect();
 
-                if projection_bounds.len() != 0 {
+                if !projection_bounds.is_empty() {
                     if principal_has_generic_params {
                         // push_generic_params_internal() above added a `>` but we actually
                         // want to add more items to that list, so remove that again...
@@ -279,17 +278,17 @@ fn push_debuginfo_type_name<'tcx>(
                         output.push('<');
                     }
 
-                    for (item_def_id, ty) in projection_bounds {
+                    for (item_def_id, term) in projection_bounds {
                         if cpp_like_debuginfo {
                             output.push_str("assoc$<");
                             push_item_name(tcx, item_def_id, false, output);
                             push_arg_separator(cpp_like_debuginfo, output);
-                            push_debuginfo_type_name(tcx, ty, true, output, visited);
+                            push_debuginfo_term_name(tcx, term, true, output, visited);
                             push_close_angle_bracket(cpp_like_debuginfo, output);
                         } else {
                             push_item_name(tcx, item_def_id, false, output);
                             output.push('=');
-                            push_debuginfo_type_name(tcx, ty, true, output, visited);
+                            push_debuginfo_term_name(tcx, term, true, output, visited);
                         }
                         push_arg_separator(cpp_like_debuginfo, output);
                     }
@@ -533,7 +532,7 @@ pub fn compute_debuginfo_vtable_name<'tcx>(
             tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), trait_ref);
         push_item_name(tcx, trait_ref.def_id, true, &mut vtable_name);
         visited.clear();
-        push_generic_params_internal(tcx, trait_ref.args, &mut vtable_name, &mut visited);
+        push_generic_args_internal(tcx, trait_ref.args, &mut vtable_name, &mut visited);
     } else {
         vtable_name.push('_');
     }
@@ -631,7 +630,13 @@ fn push_unqualified_item_name(
     };
 }
 
-fn push_generic_params_internal<'tcx>(
+pub fn push_generic_args<'tcx>(tcx: TyCtxt<'tcx>, args: GenericArgsRef<'tcx>, output: &mut String) {
+    let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
+    let mut visited = FxHashSet::default();
+    push_generic_args_internal(tcx, args, output, &mut visited);
+}
+
+fn push_generic_args_internal<'tcx>(
     tcx: TyCtxt<'tcx>,
     args: GenericArgsRef<'tcx>,
     output: &mut String,
@@ -646,14 +651,10 @@ fn push_generic_params_internal<'tcx>(
 
     output.push('<');
 
-    for type_parameter in args {
-        match type_parameter {
-            GenericArgKind::Type(type_parameter) => {
-                push_debuginfo_type_name(tcx, type_parameter, true, output, visited);
-            }
-            GenericArgKind::Const(ct) => {
-                push_const_param(tcx, ct, output);
-            }
+    for arg in args {
+        match arg {
+            GenericArgKind::Type(ty) => push_debuginfo_type_name(tcx, ty, true, output, visited),
+            GenericArgKind::Const(ct) => push_debuginfo_const_name(tcx, ct, output),
             other => bug!("Unexpected non-erasable generic: {:?}", other),
         }
 
@@ -665,7 +666,20 @@ fn push_generic_params_internal<'tcx>(
     true
 }
 
-fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut String) {
+fn push_debuginfo_term_name<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    term: ty::Term<'tcx>,
+    qualified: bool,
+    output: &mut String,
+    visited: &mut FxHashSet<Ty<'tcx>>,
+) {
+    match term.kind() {
+        ty::TermKind::Ty(ty) => push_debuginfo_type_name(tcx, ty, qualified, output, visited),
+        ty::TermKind::Const(ct) => push_debuginfo_const_name(tcx, ct, output),
+    }
+}
+
+fn push_debuginfo_const_name<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut String) {
     match ct.kind() {
         ty::ConstKind::Param(param) => {
             write!(output, "{}", param.name)
@@ -715,16 +729,6 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
     .unwrap();
 }
 
-pub fn push_generic_params<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    args: GenericArgsRef<'tcx>,
-    output: &mut String,
-) {
-    let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
-    let mut visited = FxHashSet::default();
-    push_generic_params_internal(tcx, args, output, &mut visited);
-}
-
 fn push_closure_or_coroutine_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
@@ -767,7 +771,7 @@ fn push_closure_or_coroutine_name<'tcx>(
     // FIXME(async_closures): This is probably not going to be correct w.r.t.
     // multiple coroutine flavors. Maybe truncate to (parent + 1)?
     let args = args.truncate_to(tcx, generics);
-    push_generic_params_internal(tcx, args, output, visited);
+    push_generic_args_internal(tcx, args, output, visited);
 }
 
 fn push_close_angle_bracket(cpp_like_debuginfo: bool, output: &mut String) {

@@ -18,7 +18,7 @@ use core::cmp::Ordering::{self, Less};
 use core::mem::MaybeUninit;
 #[cfg(not(no_global_oom_handling))]
 use core::ptr;
-#[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "array_windows", since = "1.94.0")]
 pub use core::slice::ArrayWindows;
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 pub use core::slice::EscapeAscii;
@@ -444,13 +444,16 @@ impl<T> [T] {
         impl<T: TrivialClone> ConvertVec for T {
             #[inline]
             fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
-                let mut v = Vec::with_capacity_in(s.len(), alloc);
+                let len = s.len();
+                let mut v = Vec::with_capacity_in(len, alloc);
                 // SAFETY:
                 // allocated above with the capacity of `s`, and initialize to `s.len()` in
                 // ptr::copy_to_non_overlapping below.
-                unsafe {
-                    s.as_ptr().copy_to_nonoverlapping(v.as_mut_ptr(), s.len());
-                    v.set_len(s.len());
+                if len > 0 {
+                    unsafe {
+                        s.as_ptr().copy_to_nonoverlapping(v.as_mut_ptr(), len);
+                        v.set_len(len);
+                    }
                 }
                 v
             }

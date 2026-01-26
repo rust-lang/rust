@@ -432,6 +432,7 @@ pub enum CallConvention {
     Cold,
     PreserveMost,
     PreserveAll,
+    PreserveNone,
 
     Custom,
 

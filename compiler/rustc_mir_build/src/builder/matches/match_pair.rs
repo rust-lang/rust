@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use rustc_abi::FieldIdx;
 use rustc_middle::mir::*;
+use rustc_middle::span_bug;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
@@ -314,23 +315,24 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            // FIXME: Pin-patterns should probably have their own pattern kind,
-            // instead of overloading `PatKind::Deref` via the pattern type.
-            PatKind::Deref { ref subpattern }
-                if let Some(ref_ty) = pattern.ty.pinned_ty()
-                    && ref_ty.is_ref() =>
-            {
+            PatKind::Deref { pin: Pinnedness::Pinned, ref subpattern } => {
+                let pinned_ref_ty = match pattern.ty.pinned_ty() {
+                    Some(p_ty) if p_ty.is_ref() => p_ty,
+                    _ => span_bug!(pattern.span, "bad type for pinned deref: {:?}", pattern.ty),
+                };
                 MatchPairTree::for_pattern(
-                    place_builder.field(FieldIdx::ZERO, ref_ty).deref(),
+                    // Project into the `Pin(_)` struct, then deref the inner `&` or `&mut`.
+                    place_builder.field(FieldIdx::ZERO, pinned_ref_ty).deref(),
                     subpattern,
                     cx,
                     &mut subpairs,
                     extra_data,
                 );
+
                 None
             }
 
-            PatKind::Deref { ref subpattern }
+            PatKind::Deref { pin: Pinnedness::Not, ref subpattern }
             | PatKind::DerefPattern { ref subpattern, borrow: DerefPatBorrowMode::Box } => {
                 MatchPairTree::for_pattern(
                     place_builder.deref(),

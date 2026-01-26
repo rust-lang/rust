@@ -24,6 +24,7 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, fold_regions,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
+use rustc_span::source_map::Spanned;
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
@@ -190,6 +191,12 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 if tcx.def_kind(tcx.local_parent(def_id)) == DefKind::ForeignMod) =>
         {
             tcx.dcx().emit_err(errors::TooLargeStatic { span });
+            return;
+        }
+        // SIMD types with invalid layout (e.g., zero-length) should emit an error
+        Err(e @ LayoutError::InvalidSimd { .. }) => {
+            let ty_span = tcx.ty_span(def_id);
+            tcx.dcx().emit_err(Spanned { span: ty_span, node: e.into_diagnostic() });
             return;
         }
         // Generic statics are rejected, but we still reach this case.

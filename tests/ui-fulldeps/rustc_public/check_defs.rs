@@ -19,7 +19,7 @@ use mir::{TerminatorKind::*, mono::Instance};
 use rustc_public::mir::mono::InstanceKind;
 use rustc_public::ty::{RigidTy, Ty, TyKind, UintTy};
 use rustc_public::*;
-use std::assert_matches::assert_matches;
+use std::assert_matches;
 use std::io::Write;
 use std::ops::ControlFlow;
 

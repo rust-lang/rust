@@ -38,7 +38,7 @@ use rustc_hir::definitions::{DefPathData, Definitions, DisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
-use rustc_hir::{self as hir, Attribute, HirId, Node, TraitCandidate, find_attr};
+use rustc_hir::{self as hir, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
 use rustc_query_system::cache::WithDepNode;
 use rustc_query_system::dep_graph::DepNodeIndex;
@@ -49,7 +49,7 @@ use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 pub use rustc_type_ir::lift::Lift;
@@ -59,7 +59,7 @@ use rustc_type_ir::{
 use tracing::{debug, instrument};
 
 use crate::arena::Arena;
-use crate::dep_graph::{DepGraph, DepKindStruct};
+use crate::dep_graph::{DepGraph, DepKindVTable};
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind, CanonicalVarKinds};
 use crate::lint::lint_level;
 use crate::metadata::ModChild;
@@ -707,10 +707,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn trait_is_fundamental(self, def_id: DefId) -> bool {
         self.trait_def(def_id).is_fundamental
-    }
-
-    fn trait_may_be_implemented_via_object(self, trait_def_id: DefId) -> bool {
-        self.trait_def(trait_def_id).implement_via_object
     }
 
     fn trait_is_unsafe(self, trait_def_id: Self::DefId) -> bool {
@@ -1584,7 +1580,7 @@ pub struct GlobalCtxt<'tcx> {
     untracked: Untracked,
 
     pub query_system: QuerySystem<'tcx>,
-    pub(crate) query_kinds: &'tcx [DepKindStruct<'tcx>],
+    pub(crate) dep_kind_vtables: &'tcx [DepKindVTable<'tcx>],
 
     // Internal caches for metadata decoding. No need to track deps on this.
     pub ty_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
@@ -1805,7 +1801,7 @@ impl<'tcx> TyCtxt<'tcx> {
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
         untracked: Untracked,
         dep_graph: DepGraph,
-        query_kinds: &'tcx [DepKindStruct<'tcx>],
+        dep_kind_vtables: &'tcx [DepKindVTable<'tcx>],
         query_system: QuerySystem<'tcx>,
         hooks: crate::hooks::Providers,
         current_gcx: CurrentGcx,
@@ -1835,7 +1831,7 @@ impl<'tcx> TyCtxt<'tcx> {
             consts: common_consts,
             untracked,
             query_system,
-            query_kinds,
+            dep_kind_vtables,
             ty_rcache: Default::default(),
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
@@ -1984,7 +1980,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn needs_metadata(self) -> bool {
         self.crate_types().iter().any(|ty| match *ty {
             CrateType::Executable
-            | CrateType::Staticlib
+            | CrateType::StaticLib
             | CrateType::Cdylib
             | CrateType::Sdylib => false,
             CrateType::Rlib | CrateType::Dylib | CrateType::ProcMacro => true,
@@ -2283,7 +2279,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.crate_types().iter().any(|crate_type| {
             match crate_type {
                 CrateType::Executable
-                | CrateType::Staticlib
+                | CrateType::StaticLib
                 | CrateType::ProcMacro
                 | CrateType::Cdylib
                 | CrateType::Sdylib => false,
@@ -3564,16 +3560,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
 pub fn provide(providers: &mut Providers) {
     providers.is_panic_runtime =
-        |tcx, LocalCrate| contains_name(tcx.hir_krate_attrs(), sym::panic_runtime);
+        |tcx, LocalCrate| find_attr!(tcx.hir_krate_attrs(), AttributeKind::PanicRuntime);
     providers.is_compiler_builtins =
-        |tcx, LocalCrate| contains_name(tcx.hir_krate_attrs(), sym::compiler_builtins);
+        |tcx, LocalCrate| find_attr!(tcx.hir_krate_attrs(), AttributeKind::CompilerBuiltins);
     providers.has_panic_handler = |tcx, LocalCrate| {
         // We want to check if the panic handler was defined in this crate
         tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())
     };
     providers.source_span = |tcx, def_id| tcx.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP);
-}
-
-pub fn contains_name(attrs: &[Attribute], name: Symbol) -> bool {
-    attrs.iter().any(|x| x.has_name(name))
 }

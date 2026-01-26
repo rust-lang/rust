@@ -835,26 +835,26 @@ mod crate_name {
 
 #[crate_type = "0800"]
 //~^ WARN crate-level attribute should be an inner attribute
-//~| HELP add a `!`
 mod crate_type {
+//~^ NOTE this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![crate_type="0800"] }
-//~^ WARN crate-level attribute should be in the root module
+//~^ WARN the `#![crate_type]` attribute can only be used at the crate root
 
     #[crate_type = "0800"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this function
 
     #[crate_type = "0800"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this struct
 
     #[crate_type = "0800"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this type alias
 
     #[crate_type = "0800"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 #[feature(x0600)]
@@ -908,26 +908,26 @@ mod no_main_1 {
 
 #[no_builtins]
 //~^ WARN crate-level attribute should be an inner attribute
-//~| HELP add a `!`
 mod no_builtins {
+    //~^ NOTE: this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![no_builtins] }
-    //~^ WARN crate-level attribute should be in the root module
+    //~^ WARN the `#![no_builtins]` attribute can only be used at the crate root
 
     #[no_builtins] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this function
 
     #[no_builtins] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this struct
 
     #[no_builtins] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this type alias
 
     #[no_builtins] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this implementation
 }
 
 #[recursion_limit="0200"]

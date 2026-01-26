@@ -15,10 +15,9 @@ use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use tracing::debug;
 
-use crate::snippet::Style;
 use crate::{
     CodeSuggestion, DiagCtxtHandle, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
-    MultiSpan, StashKey, SubdiagMessage, Substitution, SubstitutionPart, SuggestionStyle,
+    MultiSpan, StashKey, Style, SubdiagMessage, Substitution, SubstitutionPart, SuggestionStyle,
     Suggestions,
 };
 

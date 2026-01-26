@@ -12,7 +12,7 @@ use rustc_session::Session;
 use rustc_session::lint::{BuiltinLintDiag, LintId};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
-use crate::context::{AcceptContext, FinalizeContext, SharedContext, Stage};
+use crate::context::{AcceptContext, FinalizeContext, FinalizeFn, SharedContext, Stage};
 use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
 use crate::parser::{ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
@@ -270,6 +270,8 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut early_parsed_state = EarlyParsedState::default();
 
+        let mut finalizers: Vec<&FinalizeFn<S>> = Vec::with_capacity(attrs.len());
+
         for attr in attrs {
             // If we're only looking for a single attribute, skip all the ones we don't care about.
             if let Some(expected) = self.parse_only {
@@ -383,6 +385,8 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             };
 
                             (accept.accept_fn)(&mut cx, &args);
+                            finalizers.push(&accept.finalizer);
+
                             if !matches!(cx.stage.should_emit(), ShouldEmit::Nothing) {
                                 Self::check_target(&accept.allowed_targets, target, &mut cx);
                             }
@@ -417,7 +421,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         }
 
         early_parsed_state.finalize_early_parsed_attributes(&mut attributes);
-        for f in &S::parsers().finalizers {
+        for f in &finalizers {
             if let Some(attr) = f(&mut FinalizeContext {
                 shared: SharedContext { cx: self, target_span, target, emit_lint: &mut emit_lint },
                 all_attrs: &attr_paths,
