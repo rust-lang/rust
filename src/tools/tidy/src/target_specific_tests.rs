@@ -98,7 +98,7 @@ fn arch_to_llvm_component(arch: &str) -> String {
     // enough for the purpose of this tidy check.
     match arch {
         "amdgcn" => "amdgpu".into(),
-        "aarch64_be" | "arm64_32" | "arm64e" | "arm64ec" => "aarch64".into(),
+        "aarch64v8r" | "aarch64_be" | "arm64_32" | "arm64e" | "arm64ec" => "aarch64".into(),
         "i386" | "i586" | "i686" | "x86" | "x86_64" | "x86_64h" => "x86".into(),
         "loongarch32" | "loongarch64" => "loongarch".into(),
         "nvptx64" => "nvptx".into(),
