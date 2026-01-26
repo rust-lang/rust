@@ -250,7 +250,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub(crate) fn alias_bound(&self, alias_ty: ty::AliasTy<'tcx>) -> VerifyBound<'tcx> {
+    pub(crate) fn alias_ty_bound(&self, alias_ty: ty::AliasTy<'tcx>) -> VerifyBound<'tcx> {
         // Search the env for where clauses like `P: 'a`.
         let env_bounds = self.approx_declared_bounds_from_env(alias_ty).into_iter().map(|binder| {
             if let Some(ty::OutlivesPredicate(ty, r)) = binder.no_bound_vars()
@@ -307,7 +307,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             Component::Placeholder(placeholder_ty) => {
                 self.param_or_placeholder_bound(Ty::new_placeholder(self.tcx, placeholder_ty))
             }
-            Component::Alias(alias_ty) => self.alias_bound(alias_ty),
+            Component::Alias(alias_ty) => self.alias_ty_bound(alias_ty),
             Component::EscapingAlias(ref components) => self.bound_from_components(components),
             Component::UnresolvedInferenceVariable(v) => {
                 // Ignore this, we presume it will yield an error later, since
@@ -693,7 +693,7 @@ impl<'tcx, D: OutlivesHandlingDelegate<'tcx>> TypeOutlivesOpCtxt<'_, 'tcx, D> {
         // projection outlive; in some cases, this may add insufficient
         // edges into the inference graph, leading to inference failures
         // even though a satisfactory solution exists.
-        let verify_bound = self.verify_bound_cx.alias_bound(alias_ty);
+        let verify_bound = self.verify_bound_cx.alias_ty_bound(alias_ty);
         debug!("alias_must_outlive: pushing {:?}", verify_bound);
         self.delegate.push_verify(origin, GenericKind::Alias(alias_ty), region, verify_bound);
     }
