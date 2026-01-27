@@ -29,6 +29,8 @@ use rustc_errors::{Applicability, DiagMessage, ErrCode, MultiSpan, SubdiagMessag
 
 extern crate rustc_session;
 
+extern crate core;
+
 rustc_fluent_macro::fluent_messages! { "./example.ftl" }
 
 // E0123 and E0456 are no longer used, so we define our own constants here just for this test.
@@ -56,7 +58,7 @@ enum DiagnosticOnEnum {
 #[derive(Diagnostic)]
 #[diag(no_crate_example, code = E0123)]
 #[diag = "E0123"]
-//~^ ERROR failed to resolve: you might be missing crate `core`
+//~^ ERROR expected parentheses: #[diag(...)]
 struct WrongStructAttrStyle {}
 
 #[derive(Diagnostic)]
@@ -801,7 +803,7 @@ struct SuggestionsNoItem {
 struct SuggestionsInvalidItem {
     #[suggestion(code(foo))]
     //~^ ERROR `code(...)` must contain only string literals
-    //~| ERROR failed to resolve: you might be missing crate `core`
+    //~| ERROR unexpected token, expected `)`
     sub: Span,
 }
 
@@ -809,7 +811,7 @@ struct SuggestionsInvalidItem {
 #[diag(no_crate_example)]
 struct SuggestionsInvalidLiteral {
     #[suggestion(code = 3)]
-    //~^ ERROR failed to resolve: you might be missing crate `core`
+    //~^ ERROR expected string literal
     sub: Span,
 }
 

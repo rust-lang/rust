@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `slug` in module `crate::fluent_generated`
+  --> $DIR/subdiagnostic-derive-2.rs:30:9
+   |
+LL | #[label(slug)]
+   |         ^^^^ not found in `crate::fluent_generated`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.
