@@ -50,8 +50,8 @@ macro_rules! bench_mask_kind {
     ($mask_kind:ident, $mask:expr) => {
         mod $mask_kind {
             use super::{Data, ITERATIONS, U};
-            bench_template!(U::gather_bits, gather_bits, $mask);
-            bench_template!(U::scatter_bits, scatter_bits, $mask);
+            bench_template!(U::extract_bits, extract_bits, $mask);
+            bench_template!(U::deposit_bits, deposit_bits, $mask);
         }
     };
 }

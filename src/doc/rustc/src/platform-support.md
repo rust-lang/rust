@@ -275,6 +275,8 @@ target | std | host | notes
 [`aarch64-unknown-trusty`](platform-support/trusty.md) | ✓ |  |
 [`aarch64-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ✓ |  |
 [`aarch64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  | ARM64 VxWorks OS
+[`aarch64v8r-unknown-none`](platform-support/aarch64v8r-unknown-none.md) | * | | Bare Armv8-R in AArch64 mode, hardfloat
+[`aarch64v8r-unknown-none-softfloat`](platform-support/aarch64v8r-unknown-none.md) | * | | Bare Armv8-R in AArch64 mode, softfloat
 [`aarch64_be-unknown-hermit`](platform-support/hermit.md) | ✓ |  | ARM64 Hermit (big-endian)
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)

@@ -87,7 +87,6 @@
 #[allow(deprecated)]
 pub use self::sip::SipHasher;
 #[unstable(feature = "hashmap_internals", issue = "none")]
-#[allow(deprecated)]
 #[doc(hidden)]
 pub use self::sip::SipHasher13;
 use crate::{fmt, marker};
