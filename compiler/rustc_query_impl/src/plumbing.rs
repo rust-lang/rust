@@ -546,18 +546,6 @@ macro_rules! expand_if_cached {
     };
 }
 
-/// Don't show the backtrace for query system by default
-/// use `RUST_BACKTRACE=full` to show all the backtraces
-#[inline(never)]
-pub(crate) fn __rust_begin_short_backtrace<F, T>(f: F) -> T
-where
-    F: FnOnce() -> T,
-{
-    let result = f();
-    std::hint::black_box(());
-    result
-}
-
 // NOTE: `$V` isn't used here, but we still need to match on it so it can be passed to other macros
 // invoked by `rustc_with_all_queries`.
 macro_rules! define_queries {
@@ -615,6 +603,32 @@ macro_rules! define_queries {
                 }
             }
 
+            /// Defines a `compute` function for this query, to be used as a
+            /// function pointer in [`QueryVTable::compute`].
+            mod compute_fn {
+                use super::*;
+                use ::rustc_middle::query::queries::$name::{Key, Value, provided_to_erased};
+
+                /// This function would be named `compute`, but we also want it
+                /// to mark the boundaries of an omitted region in backtraces.
+                #[inline(never)]
+                pub(crate) fn __rust_begin_short_backtrace<'tcx>(
+                    tcx: TyCtxt<'tcx>,
+                    key: Key<'tcx>,
+                ) -> Erase<Value<'tcx>> {
+                    #[cfg(debug_assertions)]
+                    let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
+
+                    // Call the actual provider function for this query.
+                    let provided_value = call_provider!([$($modifiers)*][tcx, $name, key]);
+                    rustc_middle::ty::print::with_reduced_queries!({
+                        tracing::trace!(?provided_value);
+                    });
+
+                    provided_to_erased(tcx, provided_value)
+                }
+            }
+
             pub(crate) fn make_query_vtable<'tcx>()
                 -> QueryVTable<'tcx, queries::$name::Storage<'tcx>>
             {
@@ -627,22 +641,7 @@ macro_rules! define_queries {
                     query_cache: std::mem::offset_of!(QueryCaches<'tcx>, $name),
                     cache_on_disk: |tcx, key| ::rustc_middle::query::cached::$name(tcx, key),
                     execute_query: |tcx, key| erase(tcx.$name(key)),
-                    compute: |tcx, key| {
-                        #[cfg(debug_assertions)]
-                        let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
-                        __rust_begin_short_backtrace(||
-                            queries::$name::provided_to_erased(
-                                tcx,
-                                {
-                                    let ret = call_provider!([$($modifiers)*][tcx, $name, key]);
-                                    rustc_middle::ty::print::with_reduced_queries!({
-                                        tracing::trace!(?ret);
-                                    });
-                                    ret
-                                }
-                            )
-                        )
-                    },
+                    compute: self::compute_fn::__rust_begin_short_backtrace,
                     can_load_from_disk: should_ever_cache_on_disk!([$($modifiers)*] true false),
                     try_load_from_disk: should_ever_cache_on_disk!([$($modifiers)*] {
                         |tcx, key, prev_index, index| {

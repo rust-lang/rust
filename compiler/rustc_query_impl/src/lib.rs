@@ -26,7 +26,7 @@ use rustc_query_system::query::{
 };
 use rustc_span::{ErrorGuaranteed, Span};
 
-use crate::plumbing::{__rust_begin_short_backtrace, encode_all_query_results, try_mark_green};
+use crate::plumbing::{encode_all_query_results, try_mark_green};
 use crate::profiling_support::QueryKeyStringCache;
 
 #[macro_use]
