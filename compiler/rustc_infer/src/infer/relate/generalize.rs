@@ -267,12 +267,14 @@ impl<'tcx> InferCtxt<'tcx> {
         let mut generalizer = Generalizer {
             infcx: self,
             span,
-            structurally_relate_aliases,
             root_vid,
             for_universe,
             root_term: source_term.into(),
             ambient_variance,
-            state: GeneralizationState::Default,
+            state: match structurally_relate_aliases {
+                StructurallyRelateAliases::No => GeneralizerState::Default,
+                StructurallyRelateAliases::Yes => GeneralizerState::StructurallyRelateAliases,
+            },
             cache: Default::default(),
             normalize,
         };
@@ -322,10 +324,13 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-enum GeneralizationState {
+enum GeneralizerState {
+    /// Treat aliases as potentially normalizable.
     Default,
-    InAlias,
-    InNormalizedAlias,
+    IncompletelyRelateHigherRankedAlias,
+    /// Only one layer
+    ShallowStructurallyRelateAliases,
+    StructurallyRelateAliases,
 }
 
 /// The "generalizer" is used when handling inference variables.
@@ -345,10 +350,6 @@ struct Generalizer<'me, 'tcx> {
     infcx: &'me InferCtxt<'tcx>,
 
     span: Span,
-
-    /// Whether aliases should be related structurally. If not, we have to
-    /// be careful when generalizing aliases.
-    structurally_relate_aliases: StructurallyRelateAliases,
 
     /// The vid of the type variable that is in the process of being
     /// instantiated. If we find this within the value we are folding,
@@ -372,10 +373,9 @@ struct Generalizer<'me, 'tcx> {
     /// This is necessary to correctly handle
     /// `<T as Bar<<?0 as Foo>::Assoc>::Assoc == ?0`. This equality can
     /// hold by either normalizing the outer or the inner associated type.
-    // TODO: update doc comment
-    state: GeneralizationState,
+    state: GeneralizerState,
 
-    cache: SsoHashMap<(Ty<'tcx>, ty::Variance, GeneralizationState), Ty<'tcx>>,
+    cache: SsoHashMap<(Ty<'tcx>, ty::Variance, GeneralizerState), Ty<'tcx>>,
 
     /// Normalize an alias in the trait solver.
     /// If normalization fails, a fresh infer var is returned.
@@ -415,44 +415,51 @@ impl<'tcx> Generalizer<'_, 'tcx> {
     ///   continue generalizing the alias. This ends up pulling down the universe of the
     ///   inference variable and is incomplete in case the alias would normalize to a type
     ///   which does not mention that inference variable.
-    fn generalize_alias_ty(
+    fn handle_alias_ty(
         &mut self,
+        alias_ty: Ty<'tcx>,
         alias: ty::AliasTy<'tcx>,
     ) -> Result<Ty<'tcx>, TypeError<'tcx>> {
-        // We do not eagerly replace aliases with inference variables if they have
-        // escaping bound vars, see the method comment for details. However, when we
-        // are inside of an alias with escaping bound vars replacing nested aliases
-        // with inference variables can cause incorrect ambiguity.
-        //
-        // cc trait-system-refactor-initiative#110
-        if self.infcx.next_trait_solver()
-            && !alias.has_escaping_bound_vars()
-            && match self.state {
-                GeneralizationState::Default => true,
-                GeneralizationState::InAlias => false,
-                // When generalizing an alias after normalizing,
-                // the outer alias should be treated as rigid and we shouldn't try generalizing it again.
-                // If we recursively find more aliases, the state should have been set back to InAlias.
-                GeneralizationState::InNormalizedAlias => unreachable!(),
+        match self.state {
+            GeneralizerState::ShallowStructurallyRelateAliases => {
+                // We can switch back to default, we've treated one layer as rigid by doing this operation.
+                self.state = GeneralizerState::Default;
+                let res = relate::structurally_relate_tys(self, alias_ty, alias_ty);
+                self.state = GeneralizerState::ShallowStructurallyRelateAliases;
+                return res;
             }
-        {
-            let normalized_alias = (self.normalize)(alias);
+            GeneralizerState::StructurallyRelateAliases => {
+                return relate::structurally_relate_tys(self, alias_ty, alias_ty);
+            }
+            GeneralizerState::Default
+                if self.infcx.next_trait_solver() && !alias.has_escaping_bound_vars() =>
+            {
+                // We do not eagerly replace aliases with inference variables if they have
+                // escaping bound vars, see the method comment for details. However, when we
+                // are inside of an alias with escaping bound vars replacing nested aliases
+                // with inference variables can cause incorrect ambiguity.
+                //
+                // cc trait-system-refactor-initiative#110
+                let normalized_alias = (self.normalize)(alias);
 
-            self.state = GeneralizationState::InNormalizedAlias;
-            // recursively generalize, treat the outer alias as rigid to avoid infinite recursion
-            let res = self.relate(normalized_alias, normalized_alias);
+                self.state = GeneralizerState::ShallowStructurallyRelateAliases;
+                // recursively generalize, treat the outer alias as rigid to avoid infinite recursion
+                let res = self.relate(normalized_alias, normalized_alias);
 
-            // only one way to get here
-            self.state = GeneralizationState::Default;
+                // only one way to get here
+                self.state = GeneralizerState::Default;
 
-            return res;
+                return res;
+            }
+            GeneralizerState::Default | GeneralizerState::IncompletelyRelateHigherRankedAlias => {}
         }
 
-        let previous_state = mem::replace(&mut self.state, GeneralizationState::InAlias);
+        let previous_state =
+            mem::replace(&mut self.state, GeneralizerState::IncompletelyRelateHigherRankedAlias);
         let result = match self.relate(alias, alias) {
             Ok(alias) => Ok(alias.to_ty(self.cx())),
             Err(e) => match previous_state {
-                GeneralizationState::Default => {
+                GeneralizerState::Default => {
                     let mut visitor = MaxUniverse::new();
                     alias.visit_with(&mut visitor);
                     let infer_replacement_is_complete =
@@ -465,11 +472,11 @@ impl<'tcx> Generalizer<'_, 'tcx> {
                     debug!("generalization failure in alias");
                     Ok(self.next_ty_var_for_alias())
                 }
-                GeneralizationState::InAlias => return Err(e),
-                // When generalizing an alias after normalizing,
-                // the outer alias should be treated as rigid and we shouldn't try generalizing it again.
-                // If we recursively find more aliases, the state should have been set back to InAlias.
-                GeneralizationState::InNormalizedAlias => unreachable!(),
+                GeneralizerState::IncompletelyRelateHigherRankedAlias => return Err(e),
+
+                // Early return.
+                GeneralizerState::ShallowStructurallyRelateAliases
+                | GeneralizerState::StructurallyRelateAliases => unreachable!(),
             },
         };
         self.state = previous_state;
@@ -593,11 +600,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                                 && !matches!(self.infcx.typing_mode(), TypingMode::Coherence)
                             {
                                 match self.state {
-                                    GeneralizationState::InAlias => {
+                                    GeneralizerState::IncompletelyRelateHigherRankedAlias => {
                                         inner.type_variables().equate(vid, new_var_id);
                                     }
-                                    GeneralizationState::Default
-                                    | GeneralizationState::InNormalizedAlias => {}
+                                    GeneralizerState::Default
+                                    | GeneralizerState::ShallowStructurallyRelateAliases
+                                    | GeneralizerState::StructurallyRelateAliases => {}
                                 }
                             }
 
@@ -627,21 +635,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                 }
             }
 
-            ty::Alias(_, data) => match self.structurally_relate_aliases {
-                StructurallyRelateAliases::No => match self.state {
-                    GeneralizationState::Default | GeneralizationState::InAlias => {
-                        self.generalize_alias_ty(data)
-                    }
-                    GeneralizationState::InNormalizedAlias => {
-                        // We can switch back to default, we've treated one layer as rigid by doing this operation.
-                        self.state = GeneralizationState::Default;
-                        let res = relate::structurally_relate_tys(self, t, t);
-                        self.state = GeneralizationState::InNormalizedAlias;
-                        res
-                    }
-                },
-                StructurallyRelateAliases::Yes => relate::structurally_relate_tys(self, t, t),
-            },
+            ty::Alias(_, data) => self.handle_alias_ty(t, data),
 
             _ => relate::structurally_relate_tys(self, t, t),
         }?;
@@ -739,11 +733,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                                 && !matches!(self.infcx.typing_mode(), TypingMode::Coherence)
                             {
                                 match self.state {
-                                    GeneralizationState::InAlias => {
+                                    GeneralizerState::IncompletelyRelateHigherRankedAlias => {
                                         variable_table.union(vid, new_var_id);
                                     }
-                                    GeneralizationState::Default
-                                    | GeneralizationState::InNormalizedAlias => {}
+                                    GeneralizerState::Default
+                                    | GeneralizerState::ShallowStructurallyRelateAliases
+                                    | GeneralizerState::StructurallyRelateAliases => {}
                                 }
                             }
                             Ok(ty::Const::new_var(self.cx(), new_var_id))
