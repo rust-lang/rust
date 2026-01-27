@@ -1,6 +1,6 @@
 [package]
-name = "windows-targets"
-description = "A drop-in replacement for the real windows-targets crate for use in std only."
+name = "windows-link"
+description = "A drop-in replacement for the real windows-link crate for use in std only."
 version = "0.0.0"
 edition = "2024"
 

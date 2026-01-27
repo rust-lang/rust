@@ -55,8 +55,8 @@ object = { version = "0.37.1", default-features = false, optional = true, featur
     'archive',
 ] }
 
-[target.'cfg(any(windows, target_os = "cygwin"))'.dependencies.windows-targets]
-path = "../windows_targets"
+[target.'cfg(any(windows, target_os = "cygwin"))'.dependencies.windows-link]
+path = "../windows_link"
 
 [dev-dependencies]
 rand = { version = "0.9.0", default-features = false, features = ["alloc"] }
@@ -130,7 +130,7 @@ llvm_enzyme = ["core/llvm_enzyme"]
 
 # Enable using raw-dylib for Windows imports.
 # This will eventually be the default.
-windows_raw_dylib = ["windows-targets/windows_raw_dylib"]
+windows_raw_dylib = ["windows-link/windows_raw_dylib"]
 
 [package.metadata.fortanix-sgx]
 # Maximum possible number of threads when testing
