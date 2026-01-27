@@ -18,6 +18,8 @@ use crate::query::{
 };
 use crate::ty::TyCtxt;
 
+pub type WillCacheOnDiskForKeyFn<'tcx, Key> = fn(tcx: TyCtxt<'tcx>, key: &Key) -> bool;
+
 pub type TryLoadFromDiskFn<'tcx, Key, Value> = fn(
     tcx: TyCtxt<'tcx>,
     key: &Key,
@@ -41,7 +43,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub query_state: usize,
     // Offset of this query's cache field in the QueryCaches struct
     pub query_cache: usize,
-    pub cache_on_disk: fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool,
+    pub will_cache_on_disk_for_key_fn: Option<WillCacheOnDiskForKeyFn<'tcx, C::Key>>,
     pub execute_query: fn(tcx: TyCtxt<'tcx>, k: C::Key) -> C::Value,
     pub compute: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
     pub try_load_from_disk_fn: Option<TryLoadFromDiskFn<'tcx, C::Key, C::Value>>,
