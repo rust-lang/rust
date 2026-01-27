@@ -159,7 +159,10 @@ impl LimitStack {
     }
     pub fn pop_attrs(&mut self, sess: &Session, attrs: &[impl AttributeExt], name: Symbol) {
         let stack = &mut self.stack;
-        parse_attrs(sess, attrs, name, |val| debug_assert_eq!(stack.pop(), Some(val)));
+        parse_attrs(sess, attrs, name, |val| {
+            let popped = stack.pop();
+            debug_assert_eq!(popped, Some(val));
+        });
     }
 }
 

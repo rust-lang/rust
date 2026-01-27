@@ -414,6 +414,8 @@ declare_features! (
     (unstable, cmse_nonsecure_entry, "1.48.0", Some(75835)),
     /// Allows `async {}` expressions in const contexts.
     (unstable, const_async_blocks, "1.53.0", Some(85368)),
+    /// Allows `const { ... }` as a shorthand for `const _: () = const { ... };` for module items.
+    (unstable, const_block_items, "CURRENT_RUSTC_VERSION", Some(149226)),
     /// Allows `const || {}` closures in const contexts.
     (incomplete, const_closures, "1.68.0", Some(106003)),
     /// Allows using `[const] Destruct` bounds and calling drop impls in const contexts.
@@ -632,6 +634,8 @@ declare_features! (
     (unstable, rtm_target_feature, "1.35.0", Some(150258)),
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
+    /// Allows `extern "rust-preserve-none"`.
+    (unstable, rust_preserve_none_cc, "CURRENT_RUSTC_VERSION", Some(151401)),
     /// Target features on s390x.
     (unstable, s390x_target_feature, "1.82.0", Some(150259)),
     /// Allows the use of the `sanitize` attribute.

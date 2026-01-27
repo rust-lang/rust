@@ -92,8 +92,6 @@ fn fast_path_correct() {
     test_literal!(1.448997445238699);
 }
 
-// FIXME(f16_f128): remove gates once tests work on all targets
-
 #[test]
 fn lonely_dot() {
     #[cfg(target_has_reliable_f16)]

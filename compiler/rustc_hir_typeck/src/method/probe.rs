@@ -415,10 +415,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     infcx.instantiate_canonical(span, &query_input.canonical);
                 let query::MethodAutoderefSteps { predefined_opaques_in_body: _, self_ty } = value;
                 debug!(?self_ty, ?query_input, "probe_op: Mode::Path");
+                let prev_opaque_entries = self.inner.borrow_mut().opaque_types().num_entries();
                 MethodAutoderefStepsResult {
                     steps: infcx.tcx.arena.alloc_from_iter([CandidateStep {
-                        self_ty: self
-                            .make_query_response_ignoring_pending_obligations(var_values, self_ty),
+                        self_ty: self.make_query_response_ignoring_pending_obligations(
+                            var_values,
+                            self_ty,
+                            prev_opaque_entries,
+                        ),
                         self_ty_is_opaque: false,
                         autoderefs: 0,
                         from_unsafe_deref: false,
@@ -607,6 +611,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
             debug!(?key, ?ty, ?prev, "ignore duplicate in `opaque_types_storage`");
         }
     }
+    let prev_opaque_entries = infcx.inner.borrow_mut().opaque_types().num_entries();
 
     // We accept not-yet-defined opaque types in the autoderef
     // chain to support recursive calls. We do error if the final
@@ -650,8 +655,11 @@ pub(crate) fn method_autoderef_steps<'tcx>(
             .zip(reachable_via_deref)
             .map(|((ty, d), reachable_via_deref)| {
                 let step = CandidateStep {
-                    self_ty: infcx
-                        .make_query_response_ignoring_pending_obligations(inference_vars, ty),
+                    self_ty: infcx.make_query_response_ignoring_pending_obligations(
+                        inference_vars,
+                        ty,
+                        prev_opaque_entries,
+                    ),
                     self_ty_is_opaque: self_ty_is_opaque(ty),
                     autoderefs: d,
                     from_unsafe_deref: reached_raw_pointer,
@@ -671,8 +679,11 @@ pub(crate) fn method_autoderef_steps<'tcx>(
             .by_ref()
             .map(|(ty, d)| {
                 let step = CandidateStep {
-                    self_ty: infcx
-                        .make_query_response_ignoring_pending_obligations(inference_vars, ty),
+                    self_ty: infcx.make_query_response_ignoring_pending_obligations(
+                        inference_vars,
+                        ty,
+                        prev_opaque_entries,
+                    ),
                     self_ty_is_opaque: self_ty_is_opaque(ty),
                     autoderefs: d,
                     from_unsafe_deref: reached_raw_pointer,
@@ -692,11 +703,19 @@ pub(crate) fn method_autoderef_steps<'tcx>(
     let opt_bad_ty = match final_ty.kind() {
         ty::Infer(ty::TyVar(_)) if !self_ty_is_opaque(final_ty) => Some(MethodAutoderefBadTy {
             reached_raw_pointer,
-            ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, final_ty),
+            ty: infcx.make_query_response_ignoring_pending_obligations(
+                inference_vars,
+                final_ty,
+                prev_opaque_entries,
+            ),
         }),
         ty::Error(_) => Some(MethodAutoderefBadTy {
             reached_raw_pointer,
-            ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, final_ty),
+            ty: infcx.make_query_response_ignoring_pending_obligations(
+                inference_vars,
+                final_ty,
+                prev_opaque_entries,
+            ),
         }),
         ty::Array(elem_ty, _) => {
             let autoderefs = steps.iter().filter(|s| s.reachable_via_deref).count() - 1;
@@ -704,6 +723,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
                 self_ty: infcx.make_query_response_ignoring_pending_obligations(
                     inference_vars,
                     Ty::new_slice(infcx.tcx, *elem_ty),
+                    prev_opaque_entries,
                 ),
                 self_ty_is_opaque: false,
                 autoderefs,

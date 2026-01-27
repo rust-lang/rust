@@ -54,7 +54,7 @@ pub fn run(port: u16, lint: Option<String>) -> ! {
         }
 
         // Delay to avoid updating the metadata too aggressively.
-        thread::sleep(Duration::from_millis(1000));
+        thread::sleep(Duration::from_secs(1));
     }
 }
 

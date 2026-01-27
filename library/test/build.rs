@@ -1,4 +1,5 @@
 fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rustc-check-cfg=cfg(enable_unstable_features)");
 
     let rustc = std::env::var("RUSTC").unwrap_or_else(|_| "rustc".into());

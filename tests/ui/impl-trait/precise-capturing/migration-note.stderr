@@ -282,7 +282,6 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
    |
 LL |     let x = { let x = display_len(&mut vec![0]); x };
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn display_len<T>(x: &Vec<T>) -> impl Display + use<T> {

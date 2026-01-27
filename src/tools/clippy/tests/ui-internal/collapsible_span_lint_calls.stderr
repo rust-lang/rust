@@ -49,5 +49,53 @@ LL | |             db.note(note_msg);
 LL | |         });
    | |__________^ help: collapse into: `span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, None, note_msg)`
 
-error: aborting due to 5 previous errors
+error: this call is collapsible
+  --> tests/ui-internal/collapsible_span_lint_calls.rs:72:9
+   |
+LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+LL | |
+LL | |             db.span_suggestion(
+LL | |                 expr.span,
+...  |
+LL | |             );
+LL | |         });
+   | |__________^ help: collapse into: `span_lint_and_sugg(cx, TEST_LINT, expr.span, lint_msg, format!("try using {foo}"), format!("{foo}.use"), Applicability::MachineApplicable)`
+
+error: this call is collapsible
+  --> tests/ui-internal/collapsible_span_lint_calls.rs:81:9
+   |
+LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+LL | |
+LL | |             db.span_help(expr.span, format!("try using {foo}"));
+LL | |         });
+   | |__________^ help: collapse into: `span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, Some(expr.span), format!("try using {foo}"))`
+
+error: this call is collapsible
+  --> tests/ui-internal/collapsible_span_lint_calls.rs:85:9
+   |
+LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+LL | |
+LL | |             db.help(format!("try using {foo}"));
+LL | |         });
+   | |__________^ help: collapse into: `span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, None, format!("try using {foo}"))`
+
+error: this call is collapsible
+  --> tests/ui-internal/collapsible_span_lint_calls.rs:89:9
+   |
+LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+LL | |
+LL | |             db.span_note(expr.span, format!("required because of {foo}"));
+LL | |         });
+   | |__________^ help: collapse into: `span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, Some(expr.span), format!("required because of {foo}"))`
+
+error: this call is collapsible
+  --> tests/ui-internal/collapsible_span_lint_calls.rs:93:9
+   |
+LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+LL | |
+LL | |             db.note(format!("required because of {foo}"));
+LL | |         });
+   | |__________^ help: collapse into: `span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, None, format!("required because of {foo}"))`
+
+error: aborting due to 10 previous errors
 

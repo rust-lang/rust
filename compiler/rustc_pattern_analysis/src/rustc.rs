@@ -4,8 +4,8 @@ use std::iter::once;
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 use rustc_arena::DroplessArena;
-use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, HirId};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
@@ -468,12 +468,12 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 fields = vec![];
                 arity = 0;
             }
-            PatKind::Deref { subpattern } => {
+            PatKind::Deref { pin, subpattern } => {
                 fields = vec![self.lower_pat(subpattern).at_index(0)];
                 arity = 1;
-                ctor = match ty.pinned_ref() {
-                    None if ty.is_ref() => Ref,
-                    Some((inner_ty, _)) => {
+                ctor = match pin {
+                    hir::Pinnedness::Not if ty.is_ref() => Ref,
+                    hir::Pinnedness::Pinned if let Some((inner_ty, _)) = ty.pinned_ref() => {
                         self.internal_state.has_lowered_deref_pat.set(true);
                         DerefPattern(RevealedTy(inner_ty))
                     }

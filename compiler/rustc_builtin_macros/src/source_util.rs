@@ -13,7 +13,7 @@ use rustc_expand::base::{
 };
 use rustc_expand::module::DirOwnership;
 use rustc_parse::lexer::StripTokens;
-use rustc_parse::parser::ForceCollect;
+use rustc_parse::parser::{AllowConstBlockItems, ForceCollect};
 use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, utf8_error};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_session::parse::ParseSess;
@@ -168,7 +168,7 @@ pub(crate) fn expand_include<'cx>(
             ));
             let mut ret = SmallVec::new();
             loop {
-                match p.parse_item(ForceCollect::No) {
+                match p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes) {
                     Err(err) => {
                         err.emit();
                         break;
@@ -275,7 +275,15 @@ fn load_binary_file(
         }
     };
     match cx.source_map().load_binary_file(&resolved_path) {
-        Ok(data) => Ok(data),
+        Ok(data) => {
+            cx.sess
+                .psess
+                .file_depinfo
+                .borrow_mut()
+                .insert(Symbol::intern(&resolved_path.to_string_lossy()));
+
+            Ok(data)
+        }
         Err(io_err) => {
             let mut err = cx.dcx().struct_span_err(
                 macro_span,

@@ -6,13 +6,14 @@ use std::num::NonZero;
 
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash64;
 use rustc_hir::limit::Limit;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{
-    self, DepContext, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
+    self, DepContext, DepKind, DepKindVTable, DepNode, DepNodeIndex, SerializedDepNodeIndex,
     dep_kinds,
 };
 use rustc_middle::query::Key;
@@ -26,8 +27,8 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffect, QueryStackFrame,
-    force_query,
+    QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffect,
+    QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra, force_query,
 };
 use rustc_query_system::{QueryOverflow, QueryOverflowNote};
 use rustc_serialize::{Decodable, Encodable};
@@ -35,6 +36,8 @@ use rustc_span::def_id::LOCAL_CRATE;
 
 use crate::QueryConfigRestored;
 
+/// Implements [`QueryContext`] for use by [`rustc_query_system`], since that
+/// crate does not have direct access to [`TyCtxt`].
 #[derive(Copy, Clone)]
 pub struct QueryCtxt<'tcx> {
     pub tcx: TyCtxt<'tcx>,
@@ -44,15 +47,6 @@ impl<'tcx> QueryCtxt<'tcx> {
     #[inline]
     pub fn new(tcx: TyCtxt<'tcx>) -> Self {
         QueryCtxt { tcx }
-    }
-}
-
-impl<'tcx> std::ops::Deref for QueryCtxt<'tcx> {
-    type Target = TyCtxt<'tcx>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.tcx
     }
 }
 
@@ -66,17 +60,21 @@ impl<'tcx> HasDepContext for QueryCtxt<'tcx> {
     }
 }
 
-impl QueryContext for QueryCtxt<'_> {
+impl<'tcx> QueryContext for QueryCtxt<'tcx> {
+    type QueryInfo = QueryStackDeferred<'tcx>;
+
     #[inline]
     fn jobserver_proxy(&self) -> &Proxy {
-        &*self.jobserver_proxy
+        &self.tcx.jobserver_proxy
     }
 
     #[inline]
     fn next_job_id(self) -> QueryJobId {
         QueryJobId(
-            NonZero::new(self.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
-                .unwrap(),
+            NonZero::new(
+                self.tcx.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+            )
+            .unwrap(),
         )
     }
 
@@ -95,7 +93,10 @@ impl QueryContext for QueryCtxt<'_> {
     /// Prefer passing `false` to `require_complete` to avoid potential deadlocks,
     /// especially when called from within a deadlock handler, unless a
     /// complete map is needed and no deadlock is possible at this call site.
-    fn collect_active_jobs(self, require_complete: bool) -> Result<QueryMap, QueryMap> {
+    fn collect_active_jobs(
+        self,
+        require_complete: bool,
+    ) -> Result<QueryMap<QueryStackDeferred<'tcx>>, QueryMap<QueryStackDeferred<'tcx>>> {
         let mut jobs = QueryMap::default();
         let mut complete = true;
 
@@ -108,12 +109,20 @@ impl QueryContext for QueryCtxt<'_> {
         if complete { Ok(jobs) } else { Err(jobs) }
     }
 
+    fn lift_query_info(
+        self,
+        info: &QueryStackDeferred<'tcx>,
+    ) -> rustc_query_system::query::QueryStackFrameExtra {
+        info.extract()
+    }
+
     // Interactions with on_disk_cache
     fn load_side_effect(
         self,
         prev_dep_node_index: SerializedDepNodeIndex,
     ) -> Option<QuerySideEffect> {
-        self.query_system
+        self.tcx
+            .query_system
             .on_disk_cache
             .as_ref()
             .and_then(|c| c.load_side_effect(self.tcx, prev_dep_node_index))
@@ -122,7 +131,7 @@ impl QueryContext for QueryCtxt<'_> {
     #[inline(never)]
     #[cold]
     fn store_side_effect(self, dep_node_index: DepNodeIndex, side_effect: QuerySideEffect) {
-        if let Some(c) = self.query_system.on_disk_cache.as_ref() {
+        if let Some(c) = self.tcx.query_system.on_disk_cache.as_ref() {
             c.store_side_effect(dep_node_index, side_effect)
         }
     }
@@ -140,7 +149,9 @@ impl QueryContext for QueryCtxt<'_> {
         // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
         // when accessing the `ImplicitCtxt`.
         tls::with_related_context(self.tcx, move |current_icx| {
-            if depth_limit && !self.recursion_limit().value_within_limit(current_icx.query_depth) {
+            if depth_limit
+                && !self.tcx.recursion_limit().value_within_limit(current_icx.query_depth)
+            {
                 self.depth_limit_error(token);
             }
 
@@ -161,16 +172,19 @@ impl QueryContext for QueryCtxt<'_> {
         let query_map = self.collect_active_jobs(true).expect("failed to collect active queries");
         let (info, depth) = job.find_dep_kind_root(query_map);
 
-        let suggested_limit = match self.recursion_limit() {
+        let suggested_limit = match self.tcx.recursion_limit() {
             Limit(0) => Limit(2),
             limit => limit * 2,
         };
 
-        self.sess.dcx().emit_fatal(QueryOverflow {
+        self.tcx.sess.dcx().emit_fatal(QueryOverflow {
             span: info.job.span,
-            note: QueryOverflowNote { desc: info.query.description, depth },
+            note: QueryOverflowNote {
+                desc: self.lift_query_info(&info.query.info).description,
+                depth,
+            },
             suggested_limit,
-            crate_name: self.crate_name(LOCAL_CRATE),
+            crate_name: self.tcx.crate_name(LOCAL_CRATE),
         });
     }
 }
@@ -199,21 +213,21 @@ pub fn query_key_hash_verify_all<'tcx>(tcx: TyCtxt<'tcx>) {
     }
 }
 
-macro_rules! handle_cycle_error {
+macro_rules! cycle_error_handling {
     ([]) => {{
-        rustc_query_system::HandleCycleError::Error
+        rustc_query_system::query::CycleErrorHandling::Error
     }};
     ([(cycle_fatal) $($rest:tt)*]) => {{
-        rustc_query_system::HandleCycleError::Fatal
+        rustc_query_system::query::CycleErrorHandling::Fatal
     }};
     ([(cycle_stash) $($rest:tt)*]) => {{
-        rustc_query_system::HandleCycleError::Stash
+        rustc_query_system::query::CycleErrorHandling::Stash
     }};
     ([(cycle_delay_bug) $($rest:tt)*]) => {{
-        rustc_query_system::HandleCycleError::DelayBug
+        rustc_query_system::query::CycleErrorHandling::DelayBug
     }};
     ([$other:tt $($modifiers:tt)*]) => {
-        handle_cycle_error!([$($modifiers)*])
+        cycle_error_handling!([$($modifiers)*])
     };
 }
 
@@ -305,16 +319,17 @@ macro_rules! should_ever_cache_on_disk {
     };
 }
 
-pub(crate) fn create_query_frame<
-    'tcx,
-    K: Copy + Key + for<'a> HashStable<StableHashingContext<'a>>,
->(
-    tcx: TyCtxt<'tcx>,
-    do_describe: fn(TyCtxt<'tcx>, K) -> String,
-    key: K,
-    kind: DepKind,
-    name: &'static str,
-) -> QueryStackFrame {
+fn create_query_frame_extra<'tcx, K: Key + Copy + 'tcx>(
+    (tcx, key, kind, name, do_describe): (
+        TyCtxt<'tcx>,
+        K,
+        DepKind,
+        &'static str,
+        fn(TyCtxt<'tcx>, K) -> String,
+    ),
+) -> QueryStackFrameExtra {
+    let def_id = key.key_as_def_id();
+
     // If reduced queries are requested, we may be printing a query stack due
     // to a panic. Avoid using `default_span` and `def_kind` in that case.
     let reduce_queries = with_reduced_queries();
@@ -326,36 +341,49 @@ pub(crate) fn create_query_frame<
     } else {
         description
     };
-
-    let span = if reduce_queries {
+    let span = if kind == dep_graph::dep_kinds::def_span || reduce_queries {
         // The `def_span` query is used to calculate `default_span`,
         // so exit to avoid infinite recursion.
         None
     } else {
-        Some(tcx.with_reduced_queries(|| key.default_span(tcx)))
+        Some(key.default_span(tcx))
     };
 
-    let def_id = key.key_as_def_id();
-
-    let def_kind = if reduce_queries {
+    let def_kind = if kind == dep_graph::dep_kinds::def_kind || reduce_queries {
         // Try to avoid infinite recursion.
         None
     } else {
-        def_id
-            .and_then(|def_id| def_id.as_local())
-            .map(|def_id| tcx.with_reduced_queries(|| tcx.def_kind(def_id)))
+        def_id.and_then(|def_id| def_id.as_local()).map(|def_id| tcx.def_kind(def_id))
     };
+    QueryStackFrameExtra::new(description, span, def_kind)
+}
 
+pub(crate) fn create_query_frame<
+    'tcx,
+    K: Copy + DynSend + DynSync + Key + for<'a> HashStable<StableHashingContext<'a>> + 'tcx,
+>(
+    tcx: TyCtxt<'tcx>,
+    do_describe: fn(TyCtxt<'tcx>, K) -> String,
+    key: K,
+    kind: DepKind,
+    name: &'static str,
+) -> QueryStackFrame<QueryStackDeferred<'tcx>> {
+    let def_id = key.key_as_def_id();
+
+    let hash = || {
+        tcx.with_stable_hashing_context(|mut hcx| {
+            let mut hasher = StableHasher::new();
+            kind.as_usize().hash_stable(&mut hcx, &mut hasher);
+            key.hash_stable(&mut hcx, &mut hasher);
+            hasher.finish::<Hash64>()
+        })
+    };
     let def_id_for_ty_in_cycle = key.def_id_for_ty_in_cycle();
 
-    let hash = tcx.with_stable_hashing_context(|mut hcx| {
-        let mut hasher = StableHasher::new();
-        kind.as_usize().hash_stable(&mut hcx, &mut hasher);
-        key.hash_stable(&mut hcx, &mut hasher);
-        hasher.finish::<Hash64>()
-    });
+    let info =
+        QueryStackDeferred::new((tcx, key, kind, name, do_describe), create_query_frame_extra);
 
-    QueryStackFrame::new(description, span, def_id, def_kind, kind, def_id_for_ty_in_cycle, hash)
+    QueryStackFrame::new(info, kind, hash, def_id, def_id_for_ty_in_cycle)
 }
 
 pub(crate) fn encode_query_results<'a, 'tcx, Q>(
@@ -367,7 +395,7 @@ pub(crate) fn encode_query_results<'a, 'tcx, Q>(
     Q: super::QueryConfigRestored<'tcx>,
     Q::RestoredValue: Encodable<CacheEncoder<'a, 'tcx>>,
 {
-    let _timer = qcx.profiler().generic_activity_with_arg("encode_query_results_for", query.name());
+    let _timer = qcx.tcx.prof.generic_activity_with_arg("encode_query_results_for", query.name());
 
     assert!(query.query_state(qcx).all_inactive());
     let cache = query.query_cache(qcx);
@@ -389,8 +417,7 @@ pub(crate) fn query_key_hash_verify<'tcx>(
     query: impl QueryConfig<QueryCtxt<'tcx>>,
     qcx: QueryCtxt<'tcx>,
 ) {
-    let _timer =
-        qcx.profiler().generic_activity_with_arg("query_key_hash_verify_for", query.name());
+    let _timer = qcx.tcx.prof.generic_activity_with_arg("query_key_hash_verify_for", query.name());
 
     let mut map = UnordMap::default();
 
@@ -489,14 +516,17 @@ where
     }
 }
 
-pub(crate) fn query_callback<'tcx, Q>(is_anon: bool, is_eval_always: bool) -> DepKindStruct<'tcx>
+pub(crate) fn make_dep_kind_vtable_for_query<'tcx, Q>(
+    is_anon: bool,
+    is_eval_always: bool,
+) -> DepKindVTable<'tcx>
 where
     Q: QueryConfigRestored<'tcx>,
 {
     let fingerprint_style = <Q::Config as QueryConfig<QueryCtxt<'tcx>>>::Key::fingerprint_style();
 
     if is_anon || !fingerprint_style.reconstructible() {
-        return DepKindStruct {
+        return DepKindVTable {
             is_anon,
             is_eval_always,
             fingerprint_style,
@@ -506,7 +536,7 @@ where
         };
     }
 
-    DepKindStruct {
+    DepKindVTable {
         is_anon,
         is_eval_always,
         fingerprint_style,
@@ -618,7 +648,7 @@ macro_rules! define_queries {
                     name: stringify!($name),
                     eval_always: is_eval_always!([$($modifiers)*]),
                     dep_kind: dep_graph::dep_kinds::$name,
-                    handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
+                    cycle_error_handling: cycle_error_handling!([$($modifiers)*]),
                     query_state: std::mem::offset_of!(QueryStates<'tcx>, $name),
                     query_cache: std::mem::offset_of!(QueryCaches<'tcx>, $name),
                     cache_on_disk: |tcx, key| ::rustc_middle::query::cached::$name(tcx, key),
@@ -707,7 +737,7 @@ macro_rules! define_queries {
 
             pub(crate) fn collect_active_jobs<'tcx>(
                 tcx: TyCtxt<'tcx>,
-                qmap: &mut QueryMap,
+                qmap: &mut QueryMap<QueryStackDeferred<'tcx>>,
                 require_complete: bool,
             ) -> Option<()> {
                 let make_query = |tcx, key| {
@@ -791,7 +821,7 @@ macro_rules! define_queries {
         // These arrays are used for iteration and can't be indexed by `DepKind`.
 
         const COLLECT_ACTIVE_JOBS: &[
-            for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap, bool) -> Option<()>
+            for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap<QueryStackDeferred<'tcx>>, bool) -> Option<()>
         ] =
             &[$(query_impl::$name::collect_active_jobs),*];
 
@@ -811,15 +841,19 @@ macro_rules! define_queries {
             for<'tcx> fn(TyCtxt<'tcx>)
         ] = &[$(query_impl::$name::query_key_hash_verify),*];
 
-        #[allow(nonstandard_style)]
-        mod query_callbacks {
+        /// Module containing a named function for each dep kind (including queries)
+        /// that creates a `DepKindVTable`.
+        ///
+        /// Consumed via `make_dep_kind_array!` to create a list of vtables.
+        #[expect(non_snake_case)]
+        mod _dep_kind_vtable_ctors {
             use super::*;
             use rustc_middle::bug;
             use rustc_query_system::dep_graph::FingerprintStyle;
 
             // We use this for most things when incr. comp. is turned off.
-            pub(crate) fn Null<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn Null<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
@@ -830,8 +864,8 @@ macro_rules! define_queries {
             }
 
             // We use this for the forever-red node.
-            pub(crate) fn Red<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn Red<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
@@ -841,8 +875,8 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn SideEffect<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn SideEffect<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
@@ -855,8 +889,8 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn AnonZeroDeps<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn AnonZeroDeps<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: true,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Opaque,
@@ -866,8 +900,8 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn TraitSelect<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn TraitSelect<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: true,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
@@ -877,8 +911,8 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn CompileCodegenUnit<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn CompileCodegenUnit<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Opaque,
@@ -888,8 +922,8 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn CompileMonoItem<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn CompileMonoItem<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Opaque,
@@ -899,8 +933,8 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn Metadata<'tcx>() -> DepKindStruct<'tcx> {
-                DepKindStruct {
+            pub(crate) fn Metadata<'tcx>() -> DepKindVTable<'tcx> {
+                DepKindVTable {
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
@@ -910,16 +944,17 @@ macro_rules! define_queries {
                 }
             }
 
-            $(pub(crate) fn $name<'tcx>()-> DepKindStruct<'tcx> {
-                $crate::plumbing::query_callback::<query_impl::$name::QueryType<'tcx>>(
+            $(pub(crate) fn $name<'tcx>() -> DepKindVTable<'tcx> {
+                use $crate::query_impl::$name::QueryType;
+                $crate::plumbing::make_dep_kind_vtable_for_query::<QueryType<'tcx>>(
                     is_anon!([$($modifiers)*]),
                     is_eval_always!([$($modifiers)*]),
                 )
             })*
         }
 
-        pub fn query_callbacks<'tcx>(arena: &'tcx Arena<'tcx>) -> &'tcx [DepKindStruct<'tcx>] {
-            arena.alloc_from_iter(rustc_middle::make_dep_kind_array!(query_callbacks))
+        pub fn make_dep_kind_vtables<'tcx>(arena: &'tcx Arena<'tcx>) -> &'tcx [DepKindVTable<'tcx>] {
+            arena.alloc_from_iter(rustc_middle::make_dep_kind_array!(_dep_kind_vtable_ctors))
         }
     }
 }

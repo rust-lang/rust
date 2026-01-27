@@ -1,3 +1,4 @@
+//@ ignore-loongarch64 (handles dso_local differently)
 //@ ignore-powerpc64 (handles dso_local differently)
 //@ ignore-apple (handles dso_local differently)
 

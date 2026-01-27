@@ -76,8 +76,7 @@ These use a pinned version of `ruff`, to avoid relying on the local environment.
 <!-- REUSE-IgnoreEnd -->
 
 In the past, files began with a copyright and license notice.
-Please **omit** this notice for new files licensed under the standard terms (dual
-MIT/Apache-2.0).
+Please **omit** this notice for new files licensed under the standard terms (MIT OR Apache-2.0).
 
 All of the copyright notices should be gone by now, but if you come across one
 in the rust-lang/rust repo, feel free to open a PR to remove it.

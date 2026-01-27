@@ -22,9 +22,12 @@
 )]
 #![deny(deprecated_safe, clippy::undocumented_unsafe_blocks)]
 
-extern crate proc_macro;
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate proc_macro as rustc_proc_macro;
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_proc_macro;
 
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_lexer as rustc_lexer;
@@ -53,7 +56,7 @@ use temp_dir::TempDir;
 
 pub use crate::server_impl::token_id::SpanId;
 
-pub use proc_macro::Delimiter;
+pub use rustc_proc_macro::Delimiter;
 pub use span;
 
 pub use crate::bridge::*;
@@ -186,7 +189,9 @@ impl ProcMacroSrv<'_> {
 }
 
 pub trait ProcMacroSrvSpan: Copy + Send + Sync {
-    type Server<'a>: proc_macro::bridge::server::Server<TokenStream = crate::token_stream::TokenStream<Self>>;
+    type Server<'a>: rustc_proc_macro::bridge::server::Server<
+            TokenStream = crate::token_stream::TokenStream<Self>,
+        >;
     fn make_server<'a>(
         call_site: Self,
         def_site: Self,

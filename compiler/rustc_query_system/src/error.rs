@@ -11,14 +11,6 @@ pub(crate) struct CycleStack {
     pub desc: String,
 }
 
-#[derive(Copy, Clone)]
-pub enum HandleCycleError {
-    Error,
-    Fatal,
-    DelayBug,
-    Stash,
-}
-
 #[derive(Subdiagnostic)]
 pub(crate) enum StackCount {
     #[note(query_system_cycle_stack_single)]

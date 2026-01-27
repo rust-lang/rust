@@ -110,6 +110,7 @@ define-function: (
         call-function: ("open-search", {})
         // We empty the search input in case it wasn't empty.
         set-property: (".search-input", {"value": ""})
+        focus: ".search-input"
         // We write the actual query.
         write-into: (".search-input", |query|)
         press-key: 'Enter'

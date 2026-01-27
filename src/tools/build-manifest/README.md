@@ -18,7 +18,7 @@ This gets called by `promote-release` <https://github.com/rust-lang/promote-rele
     a. If appropriate, call `tarball.is_preview(true)` for the component.
 2. Add a new `PkgType` to build-manifest. Fix all the compile errors as appropriate.
 
-## Testing changes locally
+## Testing changes locally with rustup
 
 In order to test the changes locally you need to have a valid dist directory
 available locally. If you don't want to build all the compiler, you can easily
@@ -26,14 +26,32 @@ create one from the nightly artifacts with:
 
 ```sh
 for component in rust rustc rust-std rust-docs cargo; do
-    wget -P build/dist https://static.rust-lang.org/dist/${component}-nightly-x86_64-unknown-linux-gnu.tar.gz
+    wget -P build/dist https://static.rust-lang.org/dist/${component}-nightly-x86_64-unknown-linux-gnu.tar.xz
 done
 ```
 
-Then, you can generate the manifest and all the packages from `build/dist` to
-`build/manifest` with:
+Then, you can generate the manifest and add it to `build/dist`:
 
 ```sh
-mkdir -p build/manifest
-cargo +nightly run --release -p build-manifest build/dist build/manifest 1970-01-01 http://example.com nightly
+cargo +nightly run --release -p build-manifest build/dist build/dist 1970-01-01 http://localhost:8000 nightly
 ```
+
+After that, generate a SHA256 stamp for the manifest file:
+```sh
+sha256sum build/dist/channel-rust-nightly.toml > build/dist/channel-rust-nightly.toml.sha256
+```
+
+And start a HTTP server from the `build` directory:
+```sh
+cd build
+python3 -m http.server 8000
+```
+
+After you do all that, you can then install the locally generated components with rustup:
+```
+rustup uninstall nightly
+RUSTUP_DIST_SERVER=http://localhost:8000 rustup toolchain install nightly --profile minimal
+RUSTUP_DIST_SERVER=http://localhost:8000 rustup +nightly component add <my-new-component>
+```
+
+Note that generally it will not work to combine components built locally and those built from CI (nightly). Ideally, if you want to ship new rustup components, first dist them in nightly, and then test everything from nightly here after it's available on CI.

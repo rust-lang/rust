@@ -2,7 +2,7 @@
 --flat
 --sys
 --no-deps
---link windows_targets
+--link windows_link
 --filter
 !INVALID_HANDLE_VALUE
 ABOVE_NORMAL_PRIORITY_CLASS
@@ -2170,7 +2170,6 @@ GetFileType
 GETFINALPATHNAMEBYHANDLE_FLAGS
 GetFinalPathNameByHandleW
 GetFullPathNameW
-GetHostNameW
 GetLastError
 GetModuleFileNameW
 GetModuleHandleA
