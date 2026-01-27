@@ -20,12 +20,8 @@ use tracing::debug;
 use super::error::*;
 use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
-use crate::interpret::util::{ensure_monomorphic_enough, type_implements_predicates};
 use crate::interpret::{
-    self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
-    GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, RangeSet, Scalar,
-    compile_time_machine, err_inval, interp_ok, throw_exhaust, throw_inval, throw_ub,
-    throw_ub_custom, throw_unsup, throw_unsup_format,
+    self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame, GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, RangeSet, Scalar, compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok, throw_exhaust, throw_inval, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format, type_implements_predicates
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint

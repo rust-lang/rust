@@ -15,7 +15,7 @@ mod projection;
 mod stack;
 mod step;
 mod traits;
-pub mod util;
+mod util;
 mod validity;
 mod visitor;
 
@@ -41,3 +41,4 @@ pub use self::util::EnteredTraceSpan;
 pub(crate) use self::util::create_static_alloc;
 pub use self::validity::{CtfeValidationMode, RangeSet, RefTracking};
 pub use self::visitor::ValueVisitor;
+pub(crate) use self::util::{type_implements_predicates, ensure_monomorphic_enough};
