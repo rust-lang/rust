@@ -40,6 +40,8 @@ where
 
     /// Register `AliasRelate` obligation(s) that both types must be related to each other.
     fn register_alias_relate_predicate(&mut self, a: I::Ty, b: I::Ty);
+
+    fn try_eagerly_normalize_alias(&mut self, alias: ty::AliasTy<I>) -> I::Ty;
 }
 
 pub fn super_combine_tys<Infcx, I, R>(
