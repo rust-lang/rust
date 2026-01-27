@@ -5,12 +5,11 @@ use std::io::Write;
 use rustfix::{Filter, apply_suggestions, get_suggestions_from_json};
 use tracing::debug;
 
-use super::{
-    AllowUnused, Emit, FailMode, LinkToAux, PassMode, RunFailMode, RunResult, TargetLocation,
-    TestCx, TestOutput, Truncated, UI_FIXED, WillExecute,
-};
 use crate::json;
-use crate::runtest::ProcRes;
+use crate::runtest::{
+    AllowUnused, Emit, FailMode, LinkToAux, PassMode, ProcRes, RunFailMode, RunResult,
+    TargetLocation, TestCx, TestOutput, Truncated, UI_FIXED, WillExecute,
+};
 
 impl TestCx<'_> {
     pub(super) fn run_ui_test(&self) {
@@ -228,6 +227,7 @@ impl TestCx<'_> {
             // And finally, compile the fixed code and make sure it both
             // succeeds and has no diagnostics.
             let mut rustc = self.make_compile_args(
+                self.compiler_kind_for_non_aux(),
                 &self.expected_output_path(UI_FIXED),
                 TargetLocation::ThisFile(self.make_exe_name()),
                 emit_metadata,
