@@ -18,6 +18,7 @@ use rustc_const_eval::check_consts::{ConstCx, qualifs};
 use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -329,6 +330,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 if let TempState::Defined { location: loc, .. } = self.temps[local]
                     && let Left(statement) =  self.body.stmt_at(loc)
                     && let Some((_, Rvalue::Use(Operand::Constant(c)))) = statement.kind.as_assign()
+                    && self.should_evaluate_for_promotion_checks(c.const_)
                     && let Some(idx) = c.const_.try_eval_target_usize(self.tcx, self.typing_env)
                     // Determine the type of the thing we are indexing.
                     && let ty::Array(_, len) = place_base.ty(self.body, self.tcx).ty.kind()
@@ -484,7 +486,9 @@ impl<'tcx> Validator<'_, 'tcx> {
                             let sz = lhs_ty.primitive_size(self.tcx);
                             // Integer division: the RHS must be a non-zero const.
                             let rhs_val = match rhs {
-                                Operand::Constant(c) => {
+                                Operand::Constant(c)
+                                    if self.should_evaluate_for_promotion_checks(c.const_) =>
+                                {
                                     c.const_.try_eval_scalar_int(self.tcx, self.typing_env)
                                 }
                                 _ => None,
@@ -502,9 +506,14 @@ impl<'tcx> Validator<'_, 'tcx> {
                                         // The RHS is -1 or unknown, so we have to be careful.
                                         // But is the LHS int::MIN?
                                         let lhs_val = match lhs {
-                                            Operand::Constant(c) => c
-                                                .const_
-                                                .try_eval_scalar_int(self.tcx, self.typing_env),
+                                            Operand::Constant(c)
+                                                if self.should_evaluate_for_promotion_checks(
+                                                    c.const_,
+                                                ) =>
+                                            {
+                                                c.const_
+                                                    .try_eval_scalar_int(self.tcx, self.typing_env)
+                                            }
                                             _ => None,
                                         };
                                         let lhs_min = sz.signed_int_min();
@@ -682,6 +691,28 @@ impl<'tcx> Validator<'_, 'tcx> {
         }
         // This passed all checks, so let's accept.
         Ok(())
+    }
+
+    /// Can we try to evaluate a given constant at this point in compilation? Attempting to evaluate
+    /// a const block before borrow-checking will result in a query cycle (#150464).
+    fn should_evaluate_for_promotion_checks(&self, constant: Const<'tcx>) -> bool {
+        match constant {
+            // `Const::Ty` is always a `ConstKind::Param` right now and that can never be turned
+            // into a mir value for promotion
+            // FIXME(mgca): do we want uses of type_const to be normalized during promotion?
+            Const::Ty(..) => false,
+            Const::Val(..) => true,
+            // Evaluating a MIR constant requires borrow-checking it. For inline consts, as of
+            // #138499, this means borrow-checking its typeck root. Since borrow-checking the
+            // typeck root requires promoting its constants, trying to evaluate an inline const here
+            // will result in a query cycle. To avoid the cycle, we can't evaluate const blocks yet.
+            // Other kinds of unevaluated's can cause query cycles too when they arise from
+            // self-reference in user code; e.g. evaluating a constant can require evaluating a
+            // const function that uses that constant, again requiring evaluation of the constant.
+            // However, this form of cycle renders both the constant and function unusable in
+            // general, so we don't need to special-case it here.
+            Const::Unevaluated(uc, _) => self.tcx.def_kind(uc.def) != DefKind::InlineConst,
+        }
     }
 }
 
