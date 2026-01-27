@@ -23,9 +23,8 @@ use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
     GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, RangeSet, Scalar,
-    compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok, throw_exhaust,
-    throw_inval, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
-    type_implements_predicates,
+    compile_time_machine, err_inval, interp_ok, throw_exhaust, throw_inval, throw_ub,
+    throw_ub_custom, throw_unsup, throw_unsup_format, type_implements_predicates,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -598,7 +597,6 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let type_from_type_id = ecx.read_type_id(&args[0])?;
                 let trait_from_type_id = ecx.read_type_id(&args[1])?;
 
-                ensure_monomorphic_enough(ecx.tcx.tcx, trait_from_type_id)?;
                 let ty::Dynamic(predicates, _) = trait_from_type_id.kind() else {
                     span_bug!(
                         ecx.find_closest_untracked_caller_location(),
@@ -606,7 +604,12 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     );
                 };
 
-                let implements = type_implements_predicates(ecx, type_from_type_id, predicates)?;
+                let implements = type_implements_predicates(
+                    ecx,
+                    type_from_type_id,
+                    trait_from_type_id,
+                    predicates,
+                )?;
 
                 ecx.write_scalar(Scalar::from_bool(implements), dest)?;
             }

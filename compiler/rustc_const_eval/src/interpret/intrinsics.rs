@@ -224,7 +224,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let tp_ty = instance.args.type_at(0);
                 let result_ty = instance.args.type_at(1);
 
-                ensure_monomorphic_enough(tcx, result_ty)?;
                 let ty::Dynamic(preds, _) = result_ty.kind() else {
                     span_bug!(
                         self.find_closest_untracked_caller_location(),
@@ -232,7 +231,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     );
                 };
 
-                if type_implements_predicates(self, tp_ty, preds)? {
+                if type_implements_predicates(self, tp_ty, result_ty, preds)? {
                     let vtable_ptr = self.get_vtable_ptr(tp_ty, preds)?;
                     // Writing a non-null pointer into an `Option<NonNull>` will automatically make it `Some`.
                     self.write_pointer(vtable_ptr, dest)?;

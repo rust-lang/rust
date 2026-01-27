@@ -13,13 +13,15 @@ use crate::const_eval::{CompileTimeInterpCx, CompileTimeMachine, InterpretationR
 use crate::interpret::Machine;
 
 /// Checks if a type implements predicates.
-/// Calls `ensure_monomorphic_enough` on `ty` for you.
+/// Calls `ensure_monomorphic_enough` on `ty` and `trait_ty` for you.
 pub(crate) fn type_implements_predicates<'tcx, M: Machine<'tcx>>(
     ecx: &mut InterpCx<'tcx, M>,
     ty: Ty<'tcx>,
+    trait_ty: Ty<'tcx>,
     preds: &ty::List<ty::PolyExistentialPredicate<'tcx>>,
 ) -> InterpResult<'tcx, bool> {
     ensure_monomorphic_enough(ecx.tcx.tcx, ty)?;
+    ensure_monomorphic_enough(ecx.tcx.tcx, trait_ty)?;
 
     let (infcx, param_env) = ecx.tcx.infer_ctxt().build_with_typing_env(ecx.typing_env);
 
