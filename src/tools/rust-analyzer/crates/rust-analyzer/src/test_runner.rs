@@ -101,7 +101,7 @@ impl CargoTestHandle {
         ws_target_dir: Option<&Utf8Path>,
         test_target: TestTarget,
         sender: Sender<CargoTestMessage>,
-    ) -> std::io::Result<Self> {
+    ) -> anyhow::Result<Self> {
         let mut cmd = toolchain::command(Tool::Cargo.path(), root, &options.extra_env);
         cmd.env("RUSTC_BOOTSTRAP", "1");
         cmd.arg("--color=always");
