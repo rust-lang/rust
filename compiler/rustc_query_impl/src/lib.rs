@@ -25,7 +25,7 @@ use rustc_query_system::query::{
 };
 use rustc_span::{ErrorGuaranteed, Span};
 
-use crate::plumbing::{__rust_begin_short_backtrace, encode_all_query_results, try_mark_green};
+use crate::plumbing::{encode_all_query_results, try_mark_green};
 use crate::profiling_support::QueryKeyStringCache;
 
 #[macro_use]
@@ -117,7 +117,7 @@ where
 
     #[inline(always)]
     fn compute(self, qcx: QueryCtxt<'tcx>, key: Self::Key) -> Self::Value {
-        (self.vtable.compute)(qcx.tcx, key)
+        (self.vtable.compute_fn)(qcx.tcx, key)
     }
 
     #[inline(always)]
