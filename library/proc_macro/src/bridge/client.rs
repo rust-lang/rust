@@ -30,19 +30,19 @@ impl Drop for TokenStream {
 }
 
 impl<S> Encode<S> for TokenStream {
-    fn encode(self, w: &mut Writer, s: &mut S) {
+    fn encode(self, w: &mut Buffer, s: &mut S) {
         mem::ManuallyDrop::new(self).handle.encode(w, s);
     }
 }
 
 impl<S> Encode<S> for &TokenStream {
-    fn encode(self, w: &mut Writer, s: &mut S) {
+    fn encode(self, w: &mut Buffer, s: &mut S) {
         self.handle.encode(w, s);
     }
 }
 
 impl<S> Decode<'_, '_, S> for TokenStream {
-    fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
+    fn decode(r: &mut &[u8], s: &mut S) -> Self {
         TokenStream { handle: handle::Handle::decode(r, s) }
     }
 }
@@ -56,22 +56,16 @@ impl !Send for Span {}
 impl !Sync for Span {}
 
 impl<S> Encode<S> for Span {
-    fn encode(self, w: &mut Writer, s: &mut S) {
+    fn encode(self, w: &mut Buffer, s: &mut S) {
         self.handle.encode(w, s);
     }
 }
 
 impl<S> Decode<'_, '_, S> for Span {
-    fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
+    fn decode(r: &mut &[u8], s: &mut S) -> Self {
         Span { handle: handle::Handle::decode(r, s) }
     }
 }
-
-// FIXME(eddyb) generate these impls by pattern-matching on the
-// names of methods - also could use the presence of `fn drop`
-// to distinguish between 'owned and 'interned, above.
-// Alternatively, special "modes" could be listed of types in with_api
-// instead of pattern matching on methods, here and in server decl.
 
 impl Clone for TokenStream {
     fn clone(&self) -> Self {
@@ -104,10 +98,7 @@ pub(crate) use super::symbol::Symbol;
 
 macro_rules! define_client_side {
     (
-        Methods {
-            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
-        },
-        $($name:ident),* $(,)?
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
     ) => {
         impl Methods {
             $(pub(crate) fn $method($($arg: $arg_ty),*) $(-> $ret_ty)? {
@@ -115,7 +106,7 @@ macro_rules! define_client_side {
                     let mut buf = bridge.cached_buffer.take();
 
                     buf.clear();
-                    api_tags::Method::$method.encode(&mut buf, &mut ());
+                    ApiTags::$method.encode(&mut buf, &mut ());
                     $($arg.encode(&mut buf, &mut ());)*
 
                     buf = bridge.dispatch.call(buf);
@@ -130,7 +121,7 @@ macro_rules! define_client_side {
         }
     }
 }
-with_api!(self, self, define_client_side);
+with_api!(self, define_client_side);
 
 struct Bridge<'a> {
     /// Reusable buffer (only `clear`-ed, never shrunk), primarily

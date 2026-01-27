@@ -5,12 +5,12 @@ use std::marker::PhantomData;
 
 use super::*;
 
-pub(super) struct HandleStore<S: Types> {
-    token_stream: handle::OwnedStore<Marked<S::TokenStream, client::TokenStream>>,
-    span: handle::InternedStore<Marked<S::Span, client::Span>>,
+pub(super) struct HandleStore<S: Server> {
+    token_stream: handle::OwnedStore<MarkedTokenStream<S>>,
+    span: handle::InternedStore<MarkedSpan<S>>,
 }
 
-impl<S: Types> HandleStore<S> {
+impl<S: Server> HandleStore<S> {
     fn new(handle_counters: &'static client::HandleCounters) -> Self {
         HandleStore {
             token_stream: handle::OwnedStore::new(&handle_counters.token_stream),
@@ -19,52 +19,54 @@ impl<S: Types> HandleStore<S> {
     }
 }
 
-impl<S: Types> Encode<HandleStore<S>> for Marked<S::TokenStream, client::TokenStream> {
-    fn encode(self, w: &mut Writer, s: &mut HandleStore<S>) {
+pub(super) type MarkedTokenStream<S> = Marked<<S as Server>::TokenStream, client::TokenStream>;
+pub(super) type MarkedSpan<S> = Marked<<S as Server>::Span, client::Span>;
+pub(super) type MarkedSymbol<S> = Marked<<S as Server>::Symbol, client::Symbol>;
+
+impl<S: Server> Encode<HandleStore<S>> for MarkedTokenStream<S> {
+    fn encode(self, w: &mut Buffer, s: &mut HandleStore<S>) {
         s.token_stream.alloc(self).encode(w, s);
     }
 }
 
-impl<S: Types> Decode<'_, '_, HandleStore<S>> for Marked<S::TokenStream, client::TokenStream> {
-    fn decode(r: &mut Reader<'_>, s: &mut HandleStore<S>) -> Self {
+impl<S: Server> Decode<'_, '_, HandleStore<S>> for MarkedTokenStream<S> {
+    fn decode(r: &mut &[u8], s: &mut HandleStore<S>) -> Self {
         s.token_stream.take(handle::Handle::decode(r, &mut ()))
     }
 }
 
-impl<'s, S: Types> Decode<'_, 's, HandleStore<S>>
-    for &'s Marked<S::TokenStream, client::TokenStream>
-{
-    fn decode(r: &mut Reader<'_>, s: &'s mut HandleStore<S>) -> Self {
+impl<'s, S: Server> Decode<'_, 's, HandleStore<S>> for &'s MarkedTokenStream<S> {
+    fn decode(r: &mut &[u8], s: &'s mut HandleStore<S>) -> Self {
         &s.token_stream[handle::Handle::decode(r, &mut ())]
     }
 }
 
-impl<S: Types> Encode<HandleStore<S>> for Marked<S::Span, client::Span> {
-    fn encode(self, w: &mut Writer, s: &mut HandleStore<S>) {
+impl<S: Server> Encode<HandleStore<S>> for MarkedSpan<S> {
+    fn encode(self, w: &mut Buffer, s: &mut HandleStore<S>) {
         s.span.alloc(self).encode(w, s);
     }
 }
 
-impl<S: Types> Decode<'_, '_, HandleStore<S>> for Marked<S::Span, client::Span> {
-    fn decode(r: &mut Reader<'_>, s: &mut HandleStore<S>) -> Self {
+impl<S: Server> Decode<'_, '_, HandleStore<S>> for MarkedSpan<S> {
+    fn decode(r: &mut &[u8], s: &mut HandleStore<S>) -> Self {
         s.span.copy(handle::Handle::decode(r, &mut ()))
     }
 }
 
-pub trait Types {
-    type TokenStream: 'static + Clone;
-    type Span: 'static + Copy + Eq + Hash;
-    type Symbol: 'static;
+struct Dispatcher<S: Server> {
+    handle_store: HandleStore<S>,
+    server: S,
 }
 
-macro_rules! declare_server_traits {
+macro_rules! define_server_dispatcher_impl {
     (
-        Methods {
-            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
-        },
-        $($name:ident),* $(,)?
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
     ) => {
-        pub trait Server: Types {
+        pub trait Server {
+            type TokenStream: 'static + Clone;
+            type Span: 'static + Copy + Eq + Hash;
+            type Symbol: 'static;
+
             fn globals(&mut self) -> ExpnGlobals<Self::Span>;
 
             /// Intern a symbol received from RPC
@@ -75,39 +77,28 @@ macro_rules! declare_server_traits {
 
             $(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?;)*
         }
-    }
-}
-with_api!(Self, self_, declare_server_traits);
 
-struct Dispatcher<S: Types> {
-    handle_store: HandleStore<S>,
-    server: S,
-}
-
-macro_rules! define_dispatcher_impl {
-    (
-        Methods {
-            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
-        },
-        $($name:ident),* $(,)?
-    ) => {
         // FIXME(eddyb) `pub` only for `ExecutionStrategy` below.
         pub trait DispatcherTrait {
             // HACK(eddyb) these are here to allow `Self::$name` to work below.
-            $(type $name;)*
+            type TokenStream;
+            type Span;
+            type Symbol;
 
             fn dispatch(&mut self, buf: Buffer) -> Buffer;
         }
 
         impl<S: Server> DispatcherTrait for Dispatcher<S> {
-            $(type $name = Marked<S::$name, client::$name>;)*
+            type TokenStream = MarkedTokenStream<S>;
+            type Span = MarkedSpan<S>;
+            type Symbol = MarkedSymbol<S>;
 
             fn dispatch(&mut self, mut buf: Buffer) -> Buffer {
                 let Dispatcher { handle_store, server } = self;
 
                 let mut reader = &buf[..];
-                match api_tags::Method::decode(&mut reader, &mut ()) {
-                    $(api_tags::Method::$method => {
+                match ApiTags::decode(&mut reader, &mut ()) {
+                    $(ApiTags::$method => {
                         let mut call_method = || {
                             $(let $arg = <$arg_ty>::decode(&mut reader, handle_store).unmark();)*
                             let r = server.$method($($arg),*);
@@ -136,7 +127,7 @@ macro_rules! define_dispatcher_impl {
         }
     }
 }
-with_api!(Self, self_, define_dispatcher_impl);
+with_api!(Self, define_server_dispatcher_impl);
 
 pub trait ExecutionStrategy {
     fn run_bridge_and_client(
@@ -303,7 +294,7 @@ fn run_server<
     let globals = dispatcher.server.globals();
 
     let mut buf = Buffer::new();
-    (<ExpnGlobals<Marked<S::Span, client::Span>> as Mark>::mark(globals), input)
+    (<ExpnGlobals<MarkedSpan<S>> as Mark>::mark(globals), input)
         .encode(&mut buf, &mut dispatcher.handle_store);
 
     buf = strategy.run_bridge_and_client(&mut dispatcher, buf, run_client, force_show_panics);
@@ -328,13 +319,11 @@ impl client::Client<crate::TokenStream, crate::TokenStream> {
             strategy,
             handle_counters,
             server,
-            <Marked<S::TokenStream, client::TokenStream>>::mark(input),
+            <MarkedTokenStream<S>>::mark(input),
             run,
             force_show_panics,
         )
-        .map(|s| {
-            <Option<Marked<S::TokenStream, client::TokenStream>>>::unmark(s).unwrap_or_default()
-        })
+        .map(|s| <Option<MarkedTokenStream<S>>>::unmark(s).unwrap_or_default())
     }
 }
 
@@ -356,15 +345,10 @@ impl client::Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream
             strategy,
             handle_counters,
             server,
-            (
-                <Marked<S::TokenStream, client::TokenStream>>::mark(input),
-                <Marked<S::TokenStream, client::TokenStream>>::mark(input2),
-            ),
+            (<MarkedTokenStream<S>>::mark(input), <MarkedTokenStream<S>>::mark(input2)),
             run,
             force_show_panics,
         )
-        .map(|s| {
-            <Option<Marked<S::TokenStream, client::TokenStream>>>::unmark(s).unwrap_or_default()
-        })
+        .map(|s| <Option<MarkedTokenStream<S>>>::unmark(s).unwrap_or_default())
     }
 }
