@@ -2746,7 +2746,7 @@ pub const fn _mm256_setr_epi64x(a: i64, b: i64, c: i64, d: i64) -> __m256i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_set1_pd(a: f64) -> __m256d {
-    _mm256_setr_pd(a, a, a, a)
+    f64x4::splat(a).as_m256d()
 }
 
 /// Broadcasts single-precision (32-bit) floating-point value `a` to all
@@ -2759,7 +2759,7 @@ pub const fn _mm256_set1_pd(a: f64) -> __m256d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_set1_ps(a: f32) -> __m256 {
-    _mm256_setr_ps(a, a, a, a, a, a, a, a)
+    f32x8::splat(a).as_m256()
 }
 
 /// Broadcasts 8-bit integer `a` to all elements of returned vector.
@@ -2772,13 +2772,7 @@ pub const fn _mm256_set1_ps(a: f32) -> __m256 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_set1_epi8(a: i8) -> __m256i {
-    #[rustfmt::skip]
-    _mm256_setr_epi8(
-        a, a, a, a, a, a, a, a,
-        a, a, a, a, a, a, a, a,
-        a, a, a, a, a, a, a, a,
-        a, a, a, a, a, a, a, a,
-    )
+    i8x32::splat(a).as_m256i()
 }
 
 /// Broadcasts 16-bit integer `a` to all elements of returned vector.
@@ -2793,7 +2787,7 @@ pub const fn _mm256_set1_epi8(a: i8) -> __m256i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_set1_epi16(a: i16) -> __m256i {
-    _mm256_setr_epi16(a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a)
+    i16x16::splat(a).as_m256i()
 }
 
 /// Broadcasts 32-bit integer `a` to all elements of returned vector.
@@ -2806,7 +2800,7 @@ pub const fn _mm256_set1_epi16(a: i16) -> __m256i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_set1_epi32(a: i32) -> __m256i {
-    _mm256_setr_epi32(a, a, a, a, a, a, a, a)
+    i32x8::splat(a).as_m256i()
 }
 
 /// Broadcasts 64-bit integer `a` to all elements of returned vector.
@@ -2821,7 +2815,7 @@ pub const fn _mm256_set1_epi32(a: i32) -> __m256i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_set1_epi64x(a: i64) -> __m256i {
-    _mm256_setr_epi64x(a, a, a, a)
+    i64x4::splat(a).as_m256i()
 }
 
 /// Cast vector of type __m256d to type __m256.

@@ -100,6 +100,3 @@ vluti4q_laneq_u8
 
 # Broken in Clang
 vcvth_s16_f16
-# FIXME: Broken output due to missing f16 printing support in Rust
-vmulh_lane_f16
-vmulh_laneq_f16
