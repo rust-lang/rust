@@ -15,7 +15,7 @@
 
 pub mod helpers;
 pub mod os;
-pub mod time;
+pub mod system_time;
 
 #[cfg(test)]
 mod tests;
