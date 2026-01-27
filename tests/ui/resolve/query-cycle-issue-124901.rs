@@ -1,4 +1,4 @@
-//~ ERROR: cycle detected when getting HIR ID of `Default`
+//~ ERROR: cycle detected when looking up span for `Default`
 trait Default {
     type Id;
 

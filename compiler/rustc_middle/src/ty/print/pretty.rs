@@ -159,9 +159,7 @@ pub macro with_types_for_signature($e:expr) {{
 /// Avoids running any queries during prints.
 pub macro with_no_queries($e:expr) {{
     $crate::ty::print::with_reduced_queries!($crate::ty::print::with_forced_impl_filename_line!(
-        $crate::ty::print::with_no_trimmed_paths!($crate::ty::print::with_no_visible_paths!(
-            $crate::ty::print::with_forced_impl_filename_line!($e)
-        ))
+        $crate::ty::print::with_no_trimmed_paths!($crate::ty::print::with_no_visible_paths!($e))
     ))
 }}
 
