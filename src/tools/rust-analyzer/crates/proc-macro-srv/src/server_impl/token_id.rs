@@ -36,13 +36,11 @@ pub struct SpanIdServer<'a> {
     pub callback: Option<ProcMacroClientHandle<'a>>,
 }
 
-impl server::Types for SpanIdServer<'_> {
+impl server::Server for SpanIdServer<'_> {
     type TokenStream = crate::token_stream::TokenStream<Span>;
     type Span = Span;
     type Symbol = Symbol;
-}
 
-impl server::Server for SpanIdServer<'_> {
     fn globals(&mut self) -> ExpnGlobals<Self::Span> {
         ExpnGlobals {
             def_site: self.def_site,
