@@ -2503,6 +2503,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         let dest_ty = dest.ty(self.body, tcx).ty;
         let borrowed_ty = borrowed_place.ty(self.body, tcx).ty;
+        let ty::Adt(_, args) = dest_ty.kind() else { bug!() };
+        let [arg, ..] = ***args else { bug!() };
+        let ty::GenericArgKind::Lifetime(reborrow_region) = arg.kind() else { bug!() };
+        self.constraints.liveness_constraints.add_location(reborrow_region.as_var(), location);
 
         if mutability.is_not() {
             // FIXME: for shared reborrow we need to relate the types manually,
@@ -2520,14 +2524,20 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 };
                 let dest_ty = dest_field.ty(tcx, dest_args);
                 let borrowed_ty = borrowed_field.ty(tcx, borrowed_args);
-                self.relate_types(
-                    borrowed_ty,
-                    ty::Variance::Covariant,
-                    dest_ty,
-                    location.to_locations(),
-                    category,
-                )
-                .unwrap();
+                if borrowed_ty.ref_mutability() == Some(Mutability::Mut)
+                    && dest_ty.ref_mutability() == Some(Mutability::Not)
+                {
+                    // self.add_reborrow_constraint(location, borrow_region, borrowed_place);
+                } else {
+                    self.relate_types(
+                        borrowed_ty,
+                        ty::Variance::Covariant,
+                        dest_ty,
+                        location.to_locations(),
+                        category,
+                    )
+                    .unwrap();
+                }
             }
         } else {
             // Exclusive reborrow

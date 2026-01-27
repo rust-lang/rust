@@ -304,10 +304,12 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
             self.local_map.entry(borrowed_place.local).or_default().insert(idx);
         } else if let &mir::Rvalue::Reborrow(mutability, borrowed_place) = rvalue {
             let borrowed_place_ty = borrowed_place.ty(self.body, self.tcx).ty;
-            let &ty::Adt(reborrowed_adt, reborrowed_args) = borrowed_place_ty.kind() else {
+            let &ty::Adt(reborrowed_adt, _reborrowed_args) = borrowed_place_ty.kind() else {
                 unreachable!()
             };
-            let &ty::Adt(target_adt, _) = assigned_place.ty(self.body, self.tcx).ty.kind() else {
+            let &ty::Adt(target_adt, assigned_args) =
+                assigned_place.ty(self.body, self.tcx).ty.kind()
+            else {
                 unreachable!()
             };
             let borrow = if mutability == Mutability::Mut {
@@ -318,7 +320,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                     )
                 }
                 let Some(ty::GenericArgKind::Lifetime(region)) =
-                    reborrowed_args.get(0).map(|r| r.kind())
+                    assigned_args.get(0).map(|r| r.kind())
                 else {
                     bug!(
                         "hir-typeck passed but {} does not have a lifetime argument",
@@ -343,7 +345,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                     )
                 }
                 let Some(ty::GenericArgKind::Lifetime(region)) =
-                    reborrowed_args.get(0).map(|r| r.kind())
+                    assigned_args.get(0).map(|r| r.kind())
                 else {
                     bug!(
                         "hir-typeck passed but {} does not have a lifetime argument",

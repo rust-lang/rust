@@ -534,6 +534,10 @@ fn assert_field_type_is_reborrow<'tcx>(
     ty: Ty<'tcx>,
     span: Span,
 ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
+    if ty.ref_mutability() == Some(ty::Mutability::Mut) {
+        // Mutable references are Reborrow but not really.
+        return Ok(());
+    }
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
     let cause = traits::ObligationCause::misc(span, impl_did);
     let obligation =
@@ -667,6 +671,20 @@ pub(crate) fn coerce_shared_info<'tcx>(
         //
         // 1 data field each; they must be the same type and Copy, or relate to one another using
         // CoerceShared.
+        if source.ref_mutability() == Some(ty::Mutability::Mut)
+            && target.ref_mutability() == Some(ty::Mutability::Not)
+            && infcx
+                .eq_structurally_relating_aliases(
+                    param_env,
+                    source.peel_refs(),
+                    target.peel_refs(),
+                    source_field_span,
+                )
+                .is_ok()
+        {
+            // &mut T implements CoerceShared to &T, except not really.
+            return Ok(CoerceSharedInfo {});
+        }
         if infcx
             .eq_structurally_relating_aliases(param_env, source, target, source_field_span)
             .is_err()
