@@ -1,0 +1,14 @@
+//@ build-pass
+//@ compile-flags: -Zunpretty=hir
+
+#![feature(const_block_items)]
+extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+
+const _: () =
+    {
+        // foo
+    };
+
+fn main() { }

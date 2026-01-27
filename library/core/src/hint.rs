@@ -292,9 +292,18 @@ pub fn spin_loop() {
             // SAFETY: the `cfg` attr ensures that we only execute this on aarch64 targets.
             unsafe { crate::arch::aarch64::__isb(crate::arch::aarch64::SY) }
         }
-        all(target_arch = "arm", target_feature = "v6") => {
-            // SAFETY: the `cfg` attr ensures that we only execute this on arm targets
-            // with support for the v6 feature.
+        all(
+            target_arch = "arm",
+            any(
+                all(target_feature = "v6k", not(target_feature = "thumb-mode")),
+                target_feature = "v6t2",
+                all(target_feature = "v6", target_feature = "mclass"),
+            )
+        ) => {
+            // SAFETY: the `cfg` attr ensures that we only execute this on arm
+            // targets with support for the this feature. On ARMv6 in Thumb
+            // mode, T2 is required (see Arm DDI0406C Section A8.8.427),
+            // otherwise ARMv6-M or ARMv6K is enough
             unsafe { crate::arch::arm::__yield() }
         }
         target_arch = "loongarch32" => crate::arch::loongarch32::ibar::<0>(),
@@ -649,7 +658,7 @@ pub const fn must_use<T>(value: T) -> T {
 ///     }
 /// }
 /// ```
-#[unstable(feature = "likely_unlikely", issue = "136873")]
+#[unstable(feature = "likely_unlikely", issue = "151619")]
 #[inline(always)]
 pub const fn likely(b: bool) -> bool {
     crate::intrinsics::likely(b)
@@ -699,7 +708,7 @@ pub const fn likely(b: bool) -> bool {
 ///     }
 /// }
 /// ```
-#[unstable(feature = "likely_unlikely", issue = "136873")]
+#[unstable(feature = "likely_unlikely", issue = "151619")]
 #[inline(always)]
 pub const fn unlikely(b: bool) -> bool {
     crate::intrinsics::unlikely(b)
@@ -707,6 +716,10 @@ pub const fn unlikely(b: bool) -> bool {
 
 /// Hints to the compiler that given path is cold, i.e., unlikely to be taken. The compiler may
 /// choose to optimize paths that are not cold at the expense of paths that are cold.
+///
+/// Note that like all hints, the exact effect to codegen is not guaranteed. Using `cold_path`
+/// can actually *decrease* performance if the branch is called more than expected. It is advisable
+/// to perform benchmarks to tell if this function is useful.
 ///
 /// # Examples
 ///
@@ -729,6 +742,38 @@ pub const fn unlikely(b: bool) -> bool {
 ///         2 => 100,
 ///         3 => { cold_path(); 1000 }, // this branch is unlikely
 ///         _ => { cold_path(); 10000 }, // this is also unlikely
+///     }
+/// }
+/// ```
+///
+/// This can also be used to implement `likely` and `unlikely` helpers to hint the condition rather
+/// than the branch:
+///
+/// ```
+/// #![feature(cold_path)]
+/// use core::hint::cold_path;
+///
+/// #[inline(always)]
+/// pub const fn likely(b: bool) -> bool {
+///     if !b {
+///         cold_path();
+///     }
+///     b
+/// }
+///
+/// #[inline(always)]
+/// pub const fn unlikely(b: bool) -> bool {
+///     if b {
+///         cold_path();
+///     }
+///     b
+/// }
+///
+/// fn foo(x: i32) {
+///     if likely(x > 0) {
+///         println!("this branch is likely to be taken");
+///     } else {
+///         println!("this branch is unlikely to be taken");
 ///     }
 /// }
 /// ```

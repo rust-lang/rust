@@ -22,7 +22,7 @@ use rustc_span::{
 };
 
 use crate::lexer::StripTokens;
-use crate::parser::{ForceCollect, Parser};
+use crate::parser::{AllowConstBlockItems, ForceCollect, Parser};
 use crate::{new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 
 fn psess() -> ParseSess {
@@ -2233,7 +2233,7 @@ fn parse_item_from_source_str(
     psess: &ParseSess,
 ) -> PResult<'_, Option<Box<ast::Item>>> {
     unwrap_or_emit_fatal(new_parser_from_source_str(psess, name, source, StripTokens::Nothing))
-        .parse_item(ForceCollect::No)
+        .parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
 }
 
 // Produces a `rustc_span::span`.
@@ -2248,7 +2248,9 @@ fn string_to_expr(source_str: String) -> Box<ast::Expr> {
 
 /// Parses a string, returns an item.
 fn string_to_item(source_str: String) -> Option<Box<ast::Item>> {
-    with_error_checking_parse(source_str, &psess(), |p| p.parse_item(ForceCollect::No))
+    with_error_checking_parse(source_str, &psess(), |p| {
+        p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
+    })
 }
 
 #[test]

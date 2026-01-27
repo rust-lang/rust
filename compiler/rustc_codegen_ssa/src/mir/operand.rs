@@ -1074,8 +1074,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if constant_ty.is_simd() {
                     // However, some SIMD types do not actually use the vector ABI
                     // (in particular, packed SIMD types do not). Ensure we exclude those.
+                    //
+                    // We also have to exclude vectors of pointers because `immediate_const_vector`
+                    // does not work for those.
                     let layout = bx.layout_of(constant_ty);
-                    if let BackendRepr::SimdVector { .. } = layout.backend_repr {
+                    let (_, element_ty) = constant_ty.simd_size_and_type(bx.tcx());
+                    if let BackendRepr::SimdVector { .. } = layout.backend_repr
+                        && element_ty.is_numeric()
+                    {
                         let (llval, ty) = self.immediate_const_vector(bx, constant);
                         return OperandRef {
                             val: OperandValue::Immediate(llval),

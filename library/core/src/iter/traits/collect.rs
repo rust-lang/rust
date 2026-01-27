@@ -281,6 +281,7 @@ pub trait FromIterator<A>: Sized {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
     /// The type of the elements being iterated over.
+    #[rustc_diagnostic_item = "IntoIteratorItem"]
     #[stable(feature = "rust1", since = "1.0.0")]
     type Item;
 

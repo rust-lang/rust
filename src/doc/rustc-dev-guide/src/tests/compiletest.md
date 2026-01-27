@@ -311,13 +311,19 @@ For example, `./x test tests/debuginfo -- --debugger gdb` will only test GDB com
 
 ### Codegen tests
 
-The tests in [`tests/codegen-llvm`] test LLVM code generation. They compile the test
-with the `--emit=llvm-ir` flag to emit LLVM IR. They then run the LLVM
+The tests in [`tests/codegen-llvm`] test LLVM code generation. They compile the
+test with the `--emit=llvm-ir` flag to emit LLVM IR. They then run the LLVM
 [FileCheck] tool. The test is annotated with various `// CHECK` comments to
 check the generated code. See the [FileCheck] documentation for a tutorial and
 more information.
 
 See also the [assembly tests](#assembly-tests) for a similar set of tests.
+
+By default, codegen tests will have `//@ needs-target-std` *implied* (that the
+target needs to support std), *unless* the `#![no_std]`/`#![no_core]` attribute
+was specified in the test source. You can override this behavior and explicitly
+write `//@ needs-target-std` to only run the test when target supports std, even
+if the test is `#![no_std]`/`#![no_core]`.
 
 If you need to work with `#![no_std]` cross-compiling tests, consult the
 [`minicore` test auxiliary](./minicore.md) chapter.
@@ -665,7 +671,9 @@ to link to the extern crate to make the crate be available as an extern prelude.
 That allows you to specify the additional syntax of the `--extern` flag, such as
 renaming a dependency. For example, `//@ aux-crate:foo=bar.rs` will compile
 `auxiliary/bar.rs` and make it available under then name `foo` within the test.
-This is similar to how Cargo does dependency renaming.
+This is similar to how Cargo does dependency renaming. It is also possible to
+specify [`--extern` modifiers](https://github.com/rust-lang/rust/issues/98405).
+For example, `//@ aux-crate:noprelude:foo=bar.rs`.
 
 `aux-bin` is similar to `aux-build` but will build a binary instead of a
 library. The binary will be available in `auxiliary/bin` relative to the working

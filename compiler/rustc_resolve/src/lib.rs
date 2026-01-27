@@ -1831,13 +1831,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         f(self, MacroNS);
     }
 
-    fn per_ns_cm<'r, F: FnMut(&mut CmResolver<'r, 'ra, 'tcx>, Namespace)>(
+    fn per_ns_cm<'r, F: FnMut(CmResolver<'_, 'ra, 'tcx>, Namespace)>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
         mut f: F,
     ) {
-        f(&mut self, TypeNS);
-        f(&mut self, ValueNS);
-        f(&mut self, MacroNS);
+        f(self.reborrow(), TypeNS);
+        f(self.reborrow(), ValueNS);
+        f(self, MacroNS);
     }
 
     fn is_builtin_macro(&self, res: Res) -> bool {
@@ -1902,7 +1902,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         let scope_set = ScopeSet::All(TypeNS);
-        self.cm().visit_scopes(scope_set, parent_scope, ctxt, None, |this, scope, _, _| {
+        self.cm().visit_scopes(scope_set, parent_scope, ctxt, None, |mut this, scope, _, _| {
             match scope {
                 Scope::ModuleNonGlobs(module, _) => {
                     this.get_mut().traits_in_module(module, assoc_item, &mut found_traits);

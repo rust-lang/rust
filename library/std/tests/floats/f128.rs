@@ -1,4 +1,3 @@
-// FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
 #![cfg(target_has_reliable_f128)]
 
 use std::f128::consts;
@@ -35,7 +34,7 @@ macro_rules! assert_f128_biteq {
 
 #[test]
 fn test_num_f128() {
-    // FIXME(f16_f128): replace with a `test_num` call once the required `fmodl`/`fmodf128`
+    // FIXME(f128): replace with a `test_num` call once the required `fmodl`/`fmodf128`
     // function is available on all platforms.
     let ten = 10f128;
     let two = 2f128;

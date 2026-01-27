@@ -1,4 +1,5 @@
 //@aux-build:proc_macro_derive.rs
+//@aux-build:proc_macros.rs
 
 #![allow(
     unused,
@@ -11,6 +12,7 @@
 
 #[macro_use]
 extern crate proc_macro_derive;
+extern crate proc_macros;
 
 fn empty() {}
 
@@ -146,6 +148,36 @@ mod issue_13578 {
     pub trait Foo {}
 
     impl<'a, T: 'a> Foo for Option<T> where &'a T: Foo {}
+}
+
+// no lint on proc macro generated code
+mod proc_macro_generated {
+    use proc_macros::external;
+
+    // no lint on external macro (extra unused lifetimes in impl block)
+    external! {
+        struct ExternalImplStruct;
+
+        impl<'a> ExternalImplStruct {
+            fn foo() {}
+        }
+    }
+
+    // no lint on external macro (extra unused lifetimes in method)
+    external! {
+        struct ExternalMethodStruct;
+
+        impl ExternalMethodStruct {
+            fn bar<'a>(&self) {}
+        }
+    }
+
+    // no lint on external macro (extra unused lifetimes in trait method)
+    external! {
+        trait ExternalUnusedLifetimeTrait {
+            fn unused_lt<'a>(x: u8) {}
+        }
+    }
 }
 
 fn main() {}

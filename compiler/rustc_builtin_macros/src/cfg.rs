@@ -40,8 +40,11 @@ fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry,
         return Err(cx.dcx().emit_err(errors::RequiresCfgPattern { span }));
     }
 
-    let meta = MetaItemOrLitParser::parse_single(&mut parser, ShouldEmit::ErrorsAndLints)
-        .map_err(|diag| diag.emit())?;
+    let meta = MetaItemOrLitParser::parse_single(
+        &mut parser,
+        ShouldEmit::ErrorsAndLints { recover: true },
+    )
+    .map_err(|diag| diag.emit())?;
     let cfg = AttributeParser::parse_single_args(
         cx.sess,
         span,
@@ -55,7 +58,7 @@ fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry,
         // Doesn't matter what the target actually is here.
         Target::Crate,
         Some(cx.ecfg.features),
-        ShouldEmit::ErrorsAndLints,
+        ShouldEmit::ErrorsAndLints { recover: true },
         &meta,
         parse_cfg_entry,
         &CFG_TEMPLATE,

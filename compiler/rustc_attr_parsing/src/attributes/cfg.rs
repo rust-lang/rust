@@ -360,7 +360,8 @@ fn parse_cfg_attr_internal<'a>(
 ) -> PResult<'a, (CfgEntry, Vec<(ast::AttrItem, Span)>)> {
     // Parse cfg predicate
     let pred_start = parser.token.span;
-    let meta = MetaItemOrLitParser::parse_single(parser, ShouldEmit::ErrorsAndLints)?;
+    let meta =
+        MetaItemOrLitParser::parse_single(parser, ShouldEmit::ErrorsAndLints { recover: true })?;
     let pred_span = pred_start.with_hi(parser.token.span.hi());
 
     let cfg_predicate = AttributeParser::parse_single_args(
@@ -375,7 +376,7 @@ fn parse_cfg_attr_internal<'a>(
         CRATE_NODE_ID,
         Target::Crate,
         features,
-        ShouldEmit::ErrorsAndLints,
+        ShouldEmit::ErrorsAndLints { recover: true },
         &meta,
         parse_cfg_entry,
         &CFG_ATTR_TEMPLATE,

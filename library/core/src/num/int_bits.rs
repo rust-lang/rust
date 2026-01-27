@@ -1,12 +1,12 @@
-//! Implementations for `uN::gather_bits` and `uN::scatter_bits`
+//! Implementations for `uN::extract_bits` and `uN::deposit_bits`
 //!
 //! For the purposes of this implementation, the operations can be thought
 //! of as operating on the input bits as a list, starting from the least
-//! significant bit. Gathering is like `Vec::retain` that deletes bits
-//! where the mask has a zero. Scattering is like doing the inverse by
-//! inserting the zeros that gathering would delete.
+//! significant bit. Extraction is like `Vec::retain` that deletes bits
+//! where the mask has a zero. Deposition is like doing the inverse by
+//! inserting the zeros that extraction would delete.
 //!
-//! Key observation: Each bit that is gathered/scattered needs to be
+//! Key observation: Each extracted or deposited bit needs to be
 //! shifted by the count of zeros up to the corresponding mask bit.
 //!
 //! With that in mind, the general idea is to decompose the operation into
@@ -14,7 +14,7 @@
 //! of the bits by `n = 1 << stage`. The masks for each stage are computed
 //! via prefix counts of zeros in the mask.
 //!
-//! # Gathering
+//! # Extraction
 //!
 //! Consider the input as a sequence of runs of data (bitstrings A,B,C,...),
 //! split by fixed-width groups of zeros ('.'), initially at width `n = 1`.
@@ -36,9 +36,9 @@
 //! ........abbbcccccddeghh
 //! ```
 //!
-//! # Scattering
+//! # Deposition
 //!
-//! For `scatter_bits`, the stages are reversed. We start with a single run of
+//! For `deposit_bits`, the stages are reversed. We start with a single run of
 //! data in the low bits. Each stage then splits each run of data in two by
 //! shifting part of it left by `n`, which is halved each stage.
 //! ```text
@@ -100,7 +100,7 @@ macro_rules! uint_impl {
             }
 
             #[inline(always)]
-            pub(in super::super) const fn gather_impl(mut x: $U, sparse: $U) -> $U {
+            pub(in super::super) const fn extract_impl(mut x: $U, sparse: $U) -> $U {
                 let masks = prepare(sparse);
                 x &= sparse;
                 let mut stage = 0;
@@ -131,7 +131,7 @@ macro_rules! uint_impl {
                 x
             }
             #[inline(always)]
-            pub(in super::super) const fn scatter_impl(mut x: $U, sparse: $U) -> $U {
+            pub(in super::super) const fn deposit_impl(mut x: $U, sparse: $U) -> $U {
                 let masks = prepare(sparse);
                 let mut stage = STAGES;
                 while stage > 0 {

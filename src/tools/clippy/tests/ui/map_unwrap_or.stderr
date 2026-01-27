@@ -232,5 +232,11 @@ LL -     let _ = opt.map(|x| x > 5).unwrap_or(false);
 LL +     let _ = opt.is_some_and(|x| x > 5);
    |
 
-error: aborting due to 15 previous errors
+error: called `map(<f>).unwrap_or(<a>)` on an `Option` value
+  --> tests/ui/map_unwrap_or.rs:164:5
+   |
+LL |     x.map(|y| y.0).unwrap_or(&[]);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 16 previous errors
 

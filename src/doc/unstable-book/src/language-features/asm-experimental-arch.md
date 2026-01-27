@@ -8,7 +8,6 @@ The tracking issue for this feature is: [#93335]
 
 This feature tracks `asm!` and `global_asm!` support for the following architectures:
 - NVPTX
-- PowerPC
 - Hexagon
 - MIPS32r2 and MIPS64r2
 - wasm32
@@ -31,16 +30,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | NVPTX        | `reg64`        | None\*                             | `l`                  |
 | Hexagon      | `reg`          | `r[0-28]`                          | `r`                  |
 | Hexagon      | `preg`         | `p[0-3]`                           | Only clobbers        |
-| PowerPC      | `reg`          | `r0`, `r[3-12]`, `r[14-29]`\*      | `r`                  |
-| PowerPC      | `reg_nonzero`  | `r[3-12]`, `r[14-29]`\*            | `b`                  |
-| PowerPC      | `freg`         | `f[0-31]`                          | `f`                  |
-| PowerPC      | `vreg`         | `v[0-31]`                          | `v`                  |
-| PowerPC      | `vsreg         | `vs[0-63]`                         | `wa`                 |
-| PowerPC      | `cr`           | `cr[0-7]`, `cr`                    | Only clobbers        |
-| PowerPC      | `ctr`          | `ctr`                              | Only clobbers        |
-| PowerPC      | `lr`           | `lr`                               | Only clobbers        |
-| PowerPC      | `xer`          | `xer`                              | Only clobbers        |
-| PowerPC      | `spe_acc`      | `spe_acc`                          | Only clobbers        |
 | wasm32       | `local`        | None\*                             | `r`                  |
 | BPF          | `reg`          | `r[0-10]`                          | `r`                  |
 | BPF          | `wreg`         | `w[0-10]`                          | `w`                  |
@@ -62,10 +51,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 > - NVPTX doesn't have a fixed register set, so named registers are not supported.
 >
 > - WebAssembly doesn't have registers, so named registers are not supported.
->
-> - r29 is reserved only on 32 bit PowerPC targets.
->
-> - spe_acc is only available on PowerPC SPE targets.
 
 # Register class supported types
 
@@ -80,17 +65,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | NVPTX        | `reg64`                         | None           | `i8`, `i16`, `i32`, `f32`, `i64`, `f64` |
 | Hexagon      | `reg`                           | None           | `i8`, `i16`, `i32`, `f32`               |
 | Hexagon      | `preg`                          | N/A            | Only clobbers                           |
-| PowerPC      | `reg`                           | None           | `i8`, `i16`, `i32`, `i64` (powerpc64 only) |
-| PowerPC      | `reg_nonzero`                   | None           | `i8`, `i16`, `i32`, `i64` (powerpc64 only) |
-| PowerPC      | `freg`                          | None           | `f32`, `f64`                            |
-| PowerPC      | `vreg`                          | `altivec`      | `i8x16`, `i16x8`, `i32x4`, `f32x4`      |
-| PowerPC      | `vreg`                          | `vsx`          | `f32`, `f64`, `i64x2`, `f64x2`          |
-| PowerPC      | `vsreg`                         | `vsx`          | The union of vsx and altivec vreg types |
-| PowerPC      | `cr`                            | N/A            | Only clobbers                           |
-| PowerPC      | `ctr`                           | N/A            | Only clobbers                           |
-| PowerPC      | `lr`                            | N/A            | Only clobbers                           |
-| PowerPC      | `xer`                           | N/A            | Only clobbers                           |
-| PowerPC      | `spe_acc`                       | N/A            | Only clobbers                           |
 | wasm32       | `local`                         | None           | `i8` `i16` `i32` `i64` `f32` `f64`      |
 | BPF          | `reg`                           | None           | `i8` `i16` `i32` `i64`                  |
 | BPF          | `wreg`                          | `alu32`        | `i8` `i16` `i32`                        |
@@ -111,10 +85,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | Hexagon      | `r29`         | `sp`      |
 | Hexagon      | `r30`         | `fr`      |
 | Hexagon      | `r31`         | `lr`      |
-| PowerPC      | `r1`          | `sp`      |
-| PowerPC      | `r31`         | `fp`      |
-| PowerPC      | `r[0-31]`     | `[0-31]`  |
-| PowerPC      | `f[0-31]`     | `fr[0-31]`|
 | BPF          | `r[0-10]`     | `w[0-10]` |
 | AVR          | `XH`          | `r27`     |
 | AVR          | `XL`          | `r26`     |
@@ -153,16 +123,14 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | Architecture | Unsupported register                    | Reason                                                                                                                                                                              |
 | ------------ | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | All          | `sp`, `r14`/`o6` (SPARC)                | The stack pointer must be restored to its original value at the end of an asm code block.                                                                                           |
-| All          | `fr` (Hexagon), `fp` (PowerPC), `$fp` (MIPS), `Y` (AVR), `r4` (MSP430), `a6` (M68k), `r30`/`i6` (SPARC) | The frame pointer cannot be used as an input or output.                                                             |
-| All          | `r19` (Hexagon), `r29` (PowerPC 32 bit only), `r30` (PowerPC) | These are used internally by LLVM as "base pointer" for functions with complex stack frames.                                                                              |
+| All          | `fr` (Hexagon) `$fp` (MIPS), `Y` (AVR), `r4` (MSP430), `a6` (M68k), `r30`/`i6` (SPARC) | The frame pointer cannot be used as an input or output.                                                             |
+| All          | `r19` (Hexagon) | These are used internally by LLVM as "base pointer" for functions with complex stack frames.                                                                              |
 | MIPS         | `$0` or `$zero`                         | This is a constant zero register which can't be modified.                                                                                                                           |
 | MIPS         | `$1` or `$at`                           | Reserved for assembler.                                                                                                                                                             |
 | MIPS         | `$26`/`$k0`, `$27`/`$k1`                | OS-reserved registers.                                                                                                                                                              |
 | MIPS         | `$28`/`$gp`                             | Global pointer cannot be used as inputs or outputs.                                                                                                                                 |
 | MIPS         | `$ra`                                   | Return address cannot be used as inputs or outputs.                                                                                                                                 |
 | Hexagon      | `lr`                                    | This is the link register which cannot be used as an input or output.                                                                                                               |
-| PowerPC      | `r2`, `r13`                             | These are system reserved registers.                                                                                                                                                |
-| PowerPC      | `vrsave`                                | The vrsave register cannot be used as an input or output.                                                                                                                           |
 | AVR          | `r0`, `r1`, `r1r0`                      | Due to an issue in LLVM, the `r0` and `r1` registers cannot be used as inputs or outputs.  If modified, they must be restored to their original values before the end of the block. |
 |MSP430        | `r0`, `r2`, `r3`                        | These are the program counter, status register, and constant generator respectively. Neither the status register nor constant generator can be written to.                          |
 | M68k         | `a4`, `a5`                              | Used internally by LLVM for the base pointer and global base pointer. |
@@ -189,11 +157,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | NVPTX        | `reg32`        | None     | `r0`           | None          |
 | NVPTX        | `reg64`        | None     | `rd0`          | None          |
 | Hexagon      | `reg`          | None     | `r0`           | None          |
-| PowerPC      | `reg`          | None     | `0`            | None          |
-| PowerPC      | `reg_nonzero`  | None     | `3`            | None          |
-| PowerPC      | `freg`         | None     | `0`            | None          |
-| PowerPC      | `vreg`         | None     | `0`            | None          |
-| PowerPC      | `vsreg`        | None     | `0`            | None          |
 | SPARC        | `reg`          | None     | `%o0`          | None          |
 | CSKY         | `reg`          | None     | `r0`           | None          |
 | CSKY         | `freg`         | None     | `f0`           | None          |

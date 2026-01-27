@@ -9,6 +9,7 @@ use crate::alloc::Layout;
 use crate::clone::TrivialClone;
 use crate::marker::{Destruct, DiscriminantKind};
 use crate::panic::const_assert;
+use crate::ptr::Alignment;
 use crate::{clone, cmp, fmt, hash, intrinsics, ptr};
 
 mod manually_drop;
@@ -1256,6 +1257,10 @@ pub trait SizedTypeProperties: Sized {
     #[unstable(feature = "sized_type_properties", issue = "none")]
     #[lang = "mem_align_const"]
     const ALIGN: usize = intrinsics::align_of::<Self>();
+
+    #[doc(hidden)]
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    const ALIGNMENT: Alignment = Alignment::of::<Self>();
 
     /// `true` if this type requires no storage.
     /// `false` if its [size](size_of) is greater than zero.

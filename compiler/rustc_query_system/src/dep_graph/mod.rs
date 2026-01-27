@@ -7,7 +7,7 @@ mod serialized;
 
 use std::panic;
 
-pub use dep_node::{DepKind, DepKindStruct, DepNode, DepNodeParams, WorkProductId};
+pub use dep_node::{DepKind, DepKindVTable, DepNode, DepNodeParams, WorkProductId};
 pub(crate) use graph::DepGraphData;
 pub use graph::{DepGraph, DepNodeIndex, TaskDepsRef, WorkProduct, WorkProductMap, hash_result};
 pub use query::DepGraphQuery;
@@ -35,21 +35,21 @@ pub trait DepContext: Copy {
     /// Access the compiler session.
     fn sess(&self) -> &Session;
 
-    fn dep_kind_info(&self, dep_node: DepKind) -> &DepKindStruct<Self>;
+    fn dep_kind_vtable(&self, dep_node: DepKind) -> &DepKindVTable<Self>;
 
     #[inline(always)]
     fn fingerprint_style(self, kind: DepKind) -> FingerprintStyle {
-        let data = self.dep_kind_info(kind);
-        if data.is_anon {
+        let vtable = self.dep_kind_vtable(kind);
+        if vtable.is_anon {
             return FingerprintStyle::Opaque;
         }
-        data.fingerprint_style
+        vtable.fingerprint_style
     }
 
     #[inline(always)]
     /// Return whether this kind always require evaluation.
     fn is_eval_always(self, kind: DepKind) -> bool {
-        self.dep_kind_info(kind).is_eval_always
+        self.dep_kind_vtable(kind).is_eval_always
     }
 
     /// Try to force a dep node to execute and see if it's green.
@@ -65,9 +65,10 @@ pub trait DepContext: Copy {
         prev_index: SerializedDepNodeIndex,
         frame: &MarkFrame<'_>,
     ) -> bool {
-        let cb = self.dep_kind_info(dep_node.kind);
-        if let Some(f) = cb.force_from_dep_node {
-            match panic::catch_unwind(panic::AssertUnwindSafe(|| f(self, dep_node, prev_index))) {
+        if let Some(force_fn) = self.dep_kind_vtable(dep_node.kind).force_from_dep_node {
+            match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                force_fn(self, dep_node, prev_index)
+            })) {
                 Err(value) => {
                     if !value.is::<rustc_errors::FatalErrorMarker>() {
                         print_markframe_trace(self.dep_graph(), frame);
@@ -83,9 +84,8 @@ pub trait DepContext: Copy {
 
     /// Load data from the on-disk cache.
     fn try_load_from_on_disk_cache(self, dep_node: DepNode) {
-        let cb = self.dep_kind_info(dep_node.kind);
-        if let Some(f) = cb.try_load_from_on_disk_cache {
-            f(self, dep_node)
+        if let Some(try_load_fn) = self.dep_kind_vtable(dep_node.kind).try_load_from_on_disk_cache {
+            try_load_fn(self, dep_node)
         }
     }
 

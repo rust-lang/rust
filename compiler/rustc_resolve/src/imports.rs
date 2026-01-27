@@ -893,7 +893,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         let mut indeterminate_count = 0;
-        self.per_ns_cm(|this, ns| {
+        self.per_ns_cm(|mut this, ns| {
             if !type_ns_only || ns == TypeNS {
                 if bindings[ns].get() != PendingDecl::Pending {
                     return;

@@ -865,9 +865,13 @@ const fn handle_error(e: TryReserveError) -> ! {
 #[inline]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 const fn layout_array(cap: usize, elem_layout: Layout) -> Result<Layout, TryReserveError> {
+    // This is only used with `elem_layout`s which are those of real rust types,
+    // which lets us use the much-simpler `repeat_packed`.
+    debug_assert!(elem_layout.size() == elem_layout.pad_to_align().size());
+
     // FIXME(const-hack) return to using `map` and `map_err` once `const_closures` is implemented
-    match elem_layout.repeat(cap) {
-        Ok((layout, _pad)) => Ok(layout),
+    match elem_layout.repeat_packed(cap) {
+        Ok(layout) => Ok(layout),
         Err(_) => Err(CapacityOverflow.into()),
     }
 }

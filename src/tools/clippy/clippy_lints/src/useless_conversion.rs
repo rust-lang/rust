@@ -365,7 +365,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             format!("useless conversion to the same type: `{b}`"),
                             "consider removing `.into_iter()`",
                             sugg,
-                            Applicability::MachineApplicable, // snippet
+                            applicability,
                         );
                     }
                 }

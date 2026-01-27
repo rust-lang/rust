@@ -9,6 +9,7 @@ use rustc_ast::{self as ast, CRATE_NODE_ID};
 use rustc_attr_parsing::{AttributeParser, Early, ShouldEmit};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenResults, CrateInfo};
+use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal};
@@ -584,7 +585,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
     let result: io::Result<()> = try {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
-        let mut files: Vec<(String, u64, Option<SourceFileHash>)> = sess
+        let mut files: IndexMap<String, (u64, Option<SourceFileHash>)> = sess
             .source_map()
             .files()
             .iter()
@@ -593,10 +594,12 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             .map(|fmap| {
                 (
                     escape_dep_filename(&fmap.name.prefer_local_unconditionally().to_string()),
-                    // This needs to be unnormalized,
-                    // as external tools wouldn't know how rustc normalizes them
-                    fmap.unnormalized_source_len as u64,
-                    fmap.checksum_hash,
+                    (
+                        // This needs to be unnormalized,
+                        // as external tools wouldn't know how rustc normalizes them
+                        fmap.unnormalized_source_len as u64,
+                        fmap.checksum_hash,
+                    ),
                 )
             })
             .collect();
@@ -614,7 +617,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
         fn hash_iter_files<P: AsRef<Path>>(
             it: impl Iterator<Item = P>,
             checksum_hash_algo: Option<SourceFileHashAlgorithm>,
-        ) -> impl Iterator<Item = (P, u64, Option<SourceFileHash>)> {
+        ) -> impl Iterator<Item = (P, (u64, Option<SourceFileHash>))> {
             it.map(move |path| {
                 match checksum_hash_algo.and_then(|algo| {
                     fs::File::open(path.as_ref())
@@ -630,8 +633,8 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
                         })
                         .ok()
                 }) {
-                    Some((file_len, checksum)) => (path, file_len, Some(checksum)),
-                    None => (path, 0, None),
+                    Some((file_len, checksum)) => (path, (file_len, Some(checksum))),
+                    None => (path, (0, None)),
                 }
             })
         }
@@ -705,18 +708,14 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
                     file,
                     "{}: {}\n",
                     path.display(),
-                    files
-                        .iter()
-                        .map(|(path, _file_len, _checksum_hash_algo)| path.as_str())
-                        .intersperse(" ")
-                        .collect::<String>()
+                    files.keys().map(String::as_str).intersperse(" ").collect::<String>()
                 )?;
             }
 
             // Emit a fake target for each input file to the compilation. This
             // prevents `make` from spitting out an error if a file is later
             // deleted. For more info see #28735
-            for (path, _file_len, _checksum_hash_algo) in &files {
+            for path in files.keys() {
                 writeln!(file, "{path}:")?;
             }
 
@@ -745,7 +744,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             if sess.opts.unstable_opts.checksum_hash_algorithm().is_some() {
                 files
                     .iter()
-                    .filter_map(|(path, file_len, hash_algo)| {
+                    .filter_map(|(path, (file_len, hash_algo))| {
                         hash_algo.map(|hash_algo| (path, file_len, hash_algo))
                     })
                     .try_for_each(|(path, file_len, checksum_hash)| {
@@ -992,7 +991,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
             hir_arena,
             untracked,
             dep_graph,
-            rustc_query_impl::query_callbacks(arena),
+            rustc_query_impl::make_dep_kind_vtables(arena),
             rustc_query_impl::query_system(
                 providers.queries,
                 providers.extern_queries,
