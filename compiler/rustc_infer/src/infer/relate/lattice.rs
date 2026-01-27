@@ -300,8 +300,7 @@ impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
         ))]);
     }
 
-    fn try_eagerly_normalize_alias(&mut self, _alias: ty::AliasTy<'tcx>) -> Ty<'tcx> {
-        // TODO: this should actually normalize
-        self.infcx.next_ty_var(self.span())
+    fn try_eagerly_normalize_alias(&mut self, alias: ty::AliasTy<'tcx>) -> Ty<'tcx> {
+        self.infcx.try_eagerly_normalize_alias(self.param_env(), self.span(), alias)
     }
 }
