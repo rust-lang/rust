@@ -3361,6 +3361,9 @@ impl Target {
 
                 Err(format!("could not find specification for target {target_tuple:?}"))
             }
+            TargetTuple::TargetJson { ref contents, .. } if !unstable_options => {
+                Err("custom targets are unstable and require `-Zunstable-options`".to_string())
+            }
             TargetTuple::TargetJson { ref contents, .. } => Target::from_json(contents),
         }
     }
