@@ -4,7 +4,7 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-dataflow
 //@ run-pass
-//@ compile-flags: -Zsanitizer=dataflow -Zsanitizer-dataflow-abilist={{src-base}}/sanitizer/dataflow-abilist.txt -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=dataflow -Zsanitizer-dataflow-abilist={{src-base}}/sanitizer/dataflow-abilist.txt
 //@ ignore-backends: gcc
 
 use std::mem::size_of;

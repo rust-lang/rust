@@ -647,6 +647,49 @@ This is primarily useful for local development, to ensure that all the `dylib` d
 
 To set the rpath to a different value (which can be useful for distribution), `-Clink-arg` with a platform-specific linker argument can be used to set the rpath directly.
 
+## sanitize
+
+Sanitizers are a set of compiler-based runtime error detection tools that
+instrument programs to detect bugs during execution. They work by instrumenting
+code at compile time and runtime to monitor program behavior and detect specific
+classes of errors at runtime. Sanitizers enable precise, low-overhead runtime
+bug detection, improving software reliability and security.
+
+This option allows for use of one or more of these sanitizers:
+
+  * [AddressSanitizer
+    (ASan)](../sanitizers.md#addresssanitizer):
+    Detects memory errors (e.g., buffer overflows, use after free).
+  * [LeakSanitizer
+    (LSan)](../sanitizers.md#leaksanitizer):
+    Detects memory leaks either as part of AddressSanitizer or as a standalone
+    tool.
+
+These are the valid values for this option for targets that support one or more
+of these sanitizers:
+
+| Target                      | Sanitizers      |
+|-----------------------------|-----------------|
+| aarch64-apple-darwin        | address         |
+| aarch64-unknown-linux-gnu   | address, leak   |
+| i686-pc-windows-msvc        | address         |
+| i686-unknown-linux-gnu      | address         |
+| x86_64-apple-darwin         | address, leak   |
+| x86_64-pc-windows-msvc      | address         |
+| x86_64-unknown-linux-gnu    | address, leak   |
+
+The quality of the Sanitizers implementation and support varies across operating
+systems and architectures, and relies heavily on LLVM implementation--they are
+mostly implemented in and supported by LLVM.
+
+Using a different LLVM or runtime version than the one used by the Rust compiler
+is not supported. Using Sanitizers in mixed-language binaries (also known as
+“mixed binaries”) is supported when the same LLVM and runtime version is used by
+all languages.
+
+For more information about the available sanitizers, see the [Sanitizers
+chapter](../sanitizers.md).
+
 ## save-temps
 
 This flag controls whether temporary files generated during compilation are

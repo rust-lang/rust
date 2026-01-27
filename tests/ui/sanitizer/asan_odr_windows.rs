@@ -2,7 +2,7 @@
 //! See <https://github.com/rust-lang/rust/issues/124390>.
 
 //@ run-pass
-//@ compile-flags:-Zsanitizer=address -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=address
 //@ aux-build: asan_odr_win-2.rs
 //@ only-windows-msvc
 //@ needs-sanitizer-support

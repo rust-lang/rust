@@ -3,10 +3,10 @@
 //@ needs-sanitizer-address
 //@ needs-sanitizer-leak
 //@ revisions: ASAN LSAN
-//@       compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
-//@       compile-flags: -Copt-level=3 -Zmir-opt-level=4 -Ctarget-feature=-crt-static
-//@[ASAN] compile-flags: -Zsanitizer=address
-//@[LSAN] compile-flags: -Zsanitizer=leak
+//@       compile-flags: -Ctarget-feature=-crt-static -Cunsafe-allow-abi-mismatch=sanitize
+//@       compile-flags: -Copt-level=3 -Zmir-opt-level=4
+//@[ASAN] compile-flags: -Zunstable-options -Csanitize=address
+//@[LSAN] compile-flags: -Zunstable-options -Csanitize=leak
 
 #![crate_type = "lib"]
 #![feature(sanitize)]

@@ -3,8 +3,7 @@
 //
 //@ needs-sanitizer-cfi
 //@ check-pass
-//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Zsanitizer-cfi-generalize-pointers
-//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Ccodegen-units=1 -Clto -Ctarget-feature=-crt-static -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=cfi -Zsanitizer-cfi-generalize-pointers
 
 #![feature(cfg_sanitizer_cfi)]
 

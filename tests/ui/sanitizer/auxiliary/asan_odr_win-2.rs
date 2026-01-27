@@ -1,5 +1,5 @@
 //@ no-prefer-dynamic
-//@ compile-flags: -Z sanitizer=address
+//@ compile-flags: -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Zsanitizer=address
 #![crate_name = "othercrate"]
 #![crate_type = "rlib"]
 

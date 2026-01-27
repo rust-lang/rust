@@ -19,9 +19,11 @@
 //@ only-linux
 //
 //@ revisions:ASAN ASAN-FAT-LTO
-//@ compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
-// [ASAN] no extra compile-flags
-//@[ASAN-FAT-LTO] compile-flags: -Cprefer-dynamic=false -Clto=fat
+//@                compile-flags: -Copt-level=0 -Ctarget-feature=-crt-static
+//@                compile-flags: -Cunsafe-allow-abi-mismatch=sanitize
+//@[ASAN]          compile-flags: -Zunstable-options -Csanitize=address
+//@[ASAN-FAT-LTO]  compile-flags: -Clto=fat -Cprefer-dynamic=false
+//@[ASAN-FAT-LTO]  compile-flags: -Zunstable-options -Csanitize=address
 
 #![crate_type = "staticlib"]
 

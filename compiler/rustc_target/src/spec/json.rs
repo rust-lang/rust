@@ -403,6 +403,7 @@ impl ToJson for Target {
         target_option_val!(supported_split_debuginfo);
         target_option_val!(supported_sanitizers);
         target_option_val!(default_sanitizers);
+        target_option_val!(stable_sanitizers);
         target_option_val!(c_enum_min_bits);
         target_option_val!(generate_arange_section);
         target_option_val!(supports_stack_protector);

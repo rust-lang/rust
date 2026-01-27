@@ -1014,7 +1014,9 @@ pub struct TargetCfg {
     #[serde(default)]
     pub(crate) dynamic_linking: bool,
     #[serde(rename = "supported-sanitizers", default)]
-    pub(crate) sanitizers: Vec<Sanitizer>,
+    pub(crate) supported_sanitizers: Vec<Sanitizer>,
+    #[serde(rename = "stable-sanitizers", default)]
+    pub(crate) stable_sanitizers: Vec<Sanitizer>,
     #[serde(rename = "supports-xray", default)]
     pub(crate) xray: bool,
     #[serde(default = "default_reloc_model")]

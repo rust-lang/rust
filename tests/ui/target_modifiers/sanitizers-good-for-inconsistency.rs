@@ -6,10 +6,10 @@
 //@[wrong_leak_san] needs-sanitizer-leak
 
 //@ aux-build:no-sanitizers.rs
-//@ compile-flags: -Cpanic=abort -C target-feature=-crt-static
+//@ compile-flags: -Cpanic=abort -Ctarget-feature=-crt-static
 
-//@[wrong_address_san] compile-flags: -Zsanitizer=address
-//@[wrong_leak_san] compile-flags: -Zsanitizer=leak
+//@[wrong_address_san] compile-flags: -Zunstable-options -Csanitize=address
+//@[wrong_leak_san] compile-flags: -Zunstable-options -Csanitize=leak
 //@ check-pass
 
 #![feature(no_core)]

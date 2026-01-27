@@ -3,13 +3,12 @@
 //
 //@ needs-sanitizer-memory
 //@ revisions:MSAN-0 MSAN-1 MSAN-2 MSAN-1-LTO MSAN-2-LTO
-//
-//@ compile-flags: -Zsanitizer=memory -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
-// [MSAN-0] no extra compile-flags
-//@[MSAN-1] compile-flags: -Zsanitizer-memory-track-origins=1
-//@[MSAN-2] compile-flags: -Zsanitizer-memory-track-origins
-//@[MSAN-1-LTO] compile-flags: -Zsanitizer-memory-track-origins=1 -C lto=fat
-//@[MSAN-2-LTO] compile-flags: -Zsanitizer-memory-track-origins -C lto=fat
+//@[MSAN-0] compile-flags: -Zunstable-options -Csanitize=memory
+//@[MSAN-1] compile-flags: -Zunstable-options -Csanitize=memory -Zsanitizer-memory-track-origins=1
+//@[MSAN-2] compile-flags: -Zunstable-options -Csanitize=memory -Zsanitizer-memory-track-origins
+//@[MSAN-1-LTO] compile-flags: -Clto=fat -Zunstable-options -Csanitize=memory -Zsanitizer-memory-track-origins=1
+//@[MSAN-2-LTO] compile-flags: -Clto=fat -Zunstable-options -Csanitize=memory -Zsanitizer-memory-track-origins
+//@ compile-flags: -Ctarget-feature=-crt-static -Cunsafe-allow-abi-mismatch=sanitize
 
 #![crate_type = "lib"]
 

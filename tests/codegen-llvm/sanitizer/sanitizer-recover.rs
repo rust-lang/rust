@@ -5,13 +5,17 @@
 //@ needs-sanitizer-memory
 //@ revisions:ASAN ASAN-RECOVER MSAN MSAN-RECOVER MSAN-RECOVER-LTO
 //@ no-prefer-dynamic
-//@                   compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 //@                   compile-flags: -Ctarget-feature=-crt-static
-//@[ASAN]             compile-flags: -Zsanitizer=address -Copt-level=0
-//@[ASAN-RECOVER]     compile-flags: -Zsanitizer=address -Zsanitizer-recover=address -Copt-level=0
-//@[MSAN]             compile-flags: -Zsanitizer=memory
-//@[MSAN-RECOVER]     compile-flags: -Zsanitizer=memory  -Zsanitizer-recover=memory
-//@[MSAN-RECOVER-LTO] compile-flags: -Zsanitizer=memory  -Zsanitizer-recover=memory -C lto=fat
+//@                   compile-flags: -Cunsafe-allow-abi-mismatch=sanitize
+//@[ASAN]             compile-flags: -Zunstable-options -Csanitize=address
+//@[ASAN]             compile-flags: -Copt-level=0
+//@[ASAN-RECOVER]     compile-flags: -Zunstable-options -Csanitize=address
+//@[ASAN-RECOVER]     compile-flags: -Zsanitizer-recover=address -Copt-level=0
+//@[MSAN]             compile-flags: -Zunstable-options -Csanitize=memory
+//@[MSAN-RECOVER]     compile-flags: -Zunstable-options -Csanitize=memory
+//@[MSAN-RECOVER]     compile-flags: -Zsanitizer-recover=memory
+//@[MSAN-RECOVER-LTO] compile-flags: -Zunstable-options -Csanitize=memory
+//@[MSAN-RECOVER-LTO] compile-flags: -Zsanitizer-recover=memory -Clto=fat
 //
 // MSAN-NOT:         @__msan_keep_going
 // MSAN-RECOVER:     @__msan_keep_going = weak_odr {{.*}}constant i32 1

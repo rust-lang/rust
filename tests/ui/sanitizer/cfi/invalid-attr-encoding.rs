@@ -1,7 +1,7 @@
 // Verifies that invalid user-defined CFI encodings can't be used.
 //
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi
+//@ compile-flags: -Ccodegen-units=1 -Clto -Ctarget-feature=-crt-static -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=cfi -Zsanitizer-cfi-generalize-pointers
 
 #![feature(cfi_encoding, no_core)]
 #![no_core]

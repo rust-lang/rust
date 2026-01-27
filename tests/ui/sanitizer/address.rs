@@ -2,7 +2,7 @@
 //@ needs-sanitizer-address
 //@ ignore-cross-compile
 //
-//@ compile-flags: -Z sanitizer=address -O -g -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=address -O -g
 //
 //@ run-fail-or-crash
 //@ error-pattern: AddressSanitizer: stack-buffer-overflow

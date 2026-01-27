@@ -9,7 +9,7 @@ session_branch_protection_requires_aarch64 = `-Zbranch-protection` is only suppo
 
 session_cannot_enable_crt_static_linux = sanitizer is incompatible with statically linked libc, disable it using `-C target-feature=-crt-static`
 
-session_cannot_mix_and_match_sanitizers = `-Zsanitizer={$first}` is incompatible with `-Zsanitizer={$second}`
+session_cannot_mix_and_match_sanitizers = `-Csanitize={$first}` is incompatible with `-Csanitize={$second}`
 
 session_cli_feature_diagnostic_help =
     add `-Zcrate-attr="feature({$feature})"` to the command-line options to enable
@@ -93,15 +93,15 @@ session_profile_sample_use_file_does_not_exist = file `{$path}` passed to `-C pr
 
 session_profile_use_file_does_not_exist = file `{$path}` passed to `-C profile-use` does not exist
 
-session_sanitizer_cfi_canonical_jump_tables_requires_cfi = `-Zsanitizer-cfi-canonical-jump-tables` requires `-Zsanitizer=cfi`
+session_sanitizer_cfi_canonical_jump_tables_requires_cfi = `-Zsanitizer-cfi-canonical-jump-tables` requires `-Csanitize=cfi`
 
-session_sanitizer_cfi_generalize_pointers_requires_cfi = `-Zsanitizer-cfi-generalize-pointers` requires `-Zsanitizer=cfi` or `-Zsanitizer=kcfi`
+session_sanitizer_cfi_generalize_pointers_requires_cfi = `-Zsanitizer-cfi-generalize-pointers` requires `-Csanitize=cfi` or `-Csanitize=kcfi`
 
-session_sanitizer_cfi_normalize_integers_requires_cfi = `-Zsanitizer-cfi-normalize-integers` requires `-Zsanitizer=cfi` or `-Zsanitizer=kcfi`
+session_sanitizer_cfi_normalize_integers_requires_cfi = `-Zsanitizer-cfi-normalize-integers` requires `-Csanitize=cfi` or `-Csanitize=kcfi`
 
-session_sanitizer_cfi_requires_lto = `-Zsanitizer=cfi` requires `-Clto` or `-Clinker-plugin-lto`
+session_sanitizer_cfi_requires_lto = `-Csanitize=cfi` requires `-Clto` or `-Clinker-plugin-lto`
 
-session_sanitizer_cfi_requires_single_codegen_unit = `-Zsanitizer=cfi` with `-Clto` requires `-Ccodegen-units=1`
+session_sanitizer_cfi_requires_single_codegen_unit = `-Csanitize=cfi` with `-Clto` requires `-Ccodegen-units=1`
 
 session_sanitizer_kcfi_arity_requires_kcfi = `-Zsanitizer-kcfi-arity` requires `-Zsanitizer=kcfi`
 
