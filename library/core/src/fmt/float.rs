@@ -13,8 +13,14 @@ macro_rules! impl_general_format {
     ($($t:ident)*) => {
         $(impl GeneralFormat for $t {
             fn already_rounded_value_should_use_exponential(&self) -> bool {
+                // `max_abs` rounds to infinity for `f16`. This is fine to save us from a more
+                // complex macro, it just means a positive-exponent `f16` will never print as
+                // scientific notation by default (reasonably, the max is 65504.0).
+                #[allow(overflowing_literals)]
+                let max_abs = 1e+16;
+
                 let abs = $t::abs(*self);
-                (abs != 0.0 && abs < 1e-4) || abs >= 1e+16
+                (abs != 0.0 && abs < 1e-4) || abs >= max_abs
             }
         })*
     }

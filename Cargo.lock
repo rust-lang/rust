@@ -4170,6 +4170,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "rustc_abi",
+ "rustc_apfloat",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr_parsing",
