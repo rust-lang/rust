@@ -10,10 +10,10 @@ trait GeneralFormat: PartialOrd {
 }
 
 macro_rules! impl_general_format {
-    ($($t:ident)*) => {
-        $(impl GeneralFormat for $t {
+    ($($ty:ty)*) => {
+        $(impl GeneralFormat for $ty {
             fn already_rounded_value_should_use_exponential(&self) -> bool {
-                let abs = $t::abs(*self);
+                let abs = <$ty>::abs(*self);
                 (abs != 0.0 && abs < 1e-4) || abs >= 1e+16
             }
         })*
@@ -23,6 +23,8 @@ macro_rules! impl_general_format {
 #[cfg(target_has_reliable_f16)]
 impl_general_format! { f16 }
 impl_general_format! { f32 f64 }
+#[cfg(target_has_reliable_f128)]
+impl_general_format! { f128 }
 
 // Don't inline this so callers don't use the stack space this function
 // requires unless they have to.
@@ -198,7 +200,7 @@ where
 }
 
 macro_rules! floating {
-    ($($ty:ident)*) => {
+    ($($ty:ty)*) => {
         $(
             #[stable(feature = "rust1", since = "1.0.0")]
             impl Debug for $ty {
@@ -231,10 +233,11 @@ macro_rules! floating {
     };
 }
 
-floating! { f32 f64 }
-
 #[cfg(target_has_reliable_f16)]
 floating! { f16 }
+floating! { f32 f64 }
+#[cfg(target_has_reliable_f128)]
+floating! { f128 }
 
 // FIXME(f16): A fallback is used when the backend+target does not support f16 well, in order
 // to avoid ICEs.
@@ -275,10 +278,38 @@ impl UpperExp for f16 {
     }
 }
 
+#[cfg(not(target_has_reliable_f128))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for f128 {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(f, "{:#034x}", self.to_bits())
+    }
+}
+
+#[cfg(not(target_has_reliable_f128))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Display for f128 {
+    #[inline]
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+        Debug::fmt(self, fmt)
+    }
+}
+
+#[cfg(not(target_has_reliable_f128))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl LowerExp for f128 {
+    #[inline]
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+        Debug::fmt(self, fmt)
+    }
+}
+
+#[cfg(not(target_has_reliable_f128))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl UpperExp for f128 {
+    #[inline]
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+        Debug::fmt(self, fmt)
     }
 }
