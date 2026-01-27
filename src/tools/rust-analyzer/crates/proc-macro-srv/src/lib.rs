@@ -22,8 +22,11 @@
 )]
 #![deny(deprecated_safe, clippy::undocumented_unsafe_blocks)]
 
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate proc_macro as rustc_proc_macro;
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
+#[cfg(feature = "in-rust-tree")]
 extern crate rustc_proc_macro;
 
 #[cfg(not(feature = "in-rust-tree"))]
