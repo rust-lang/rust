@@ -1,15 +1,16 @@
 /// This module provides types and traits for buffering lints until later in compilation.
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_error_messages::MultiSpan;
 use rustc_lint_defs::{BuiltinLintDiag, Lint, LintId};
 
-use crate::{DynSend, LintDiagnostic, LintDiagnosticBox};
+use crate::{LintDiagnostic, LintDiagnosticBox};
 
 /// We can't implement `LintDiagnostic` for `BuiltinLintDiag`, because decorating some of its
 /// variants requires types we don't have yet. So, handle that case separately.
 pub enum DecorateDiagCompat {
-    Dynamic(Box<dyn for<'a> LintDiagnosticBox<'a, ()> + DynSend + 'static>),
+    Dynamic(Box<dyn for<'a> LintDiagnosticBox<'a, ()> + DynSend + DynSync + 'static>),
     Builtin(BuiltinLintDiag),
 }
 
@@ -21,7 +22,9 @@ impl std::fmt::Debug for DecorateDiagCompat {
 
 impl !LintDiagnostic<'_, ()> for BuiltinLintDiag {}
 
-impl<D: for<'a> LintDiagnostic<'a, ()> + DynSend + 'static> From<D> for DecorateDiagCompat {
+impl<D: for<'a> LintDiagnostic<'a, ()> + DynSend + DynSync + 'static> From<D>
+    for DecorateDiagCompat
+{
     #[inline]
     fn from(d: D) -> Self {
         Self::Dynamic(Box::new(d))
