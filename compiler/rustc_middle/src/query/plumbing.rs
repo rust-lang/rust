@@ -18,6 +18,13 @@ use crate::query::{
 };
 use crate::ty::TyCtxt;
 
+pub type TryLoadFromDiskFn<'tcx, Key, Value> = fn(
+    tcx: TyCtxt<'tcx>,
+    key: &Key,
+    prev_index: SerializedDepNodeIndex,
+    index: DepNodeIndex,
+) -> Option<Value>;
+
 /// Stores function pointers and other metadata for a particular query.
 ///
 /// Used indirectly by query plumbing in `rustc_query_system`, via a trait.
@@ -34,13 +41,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub cache_on_disk: fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool,
     pub execute_query: fn(tcx: TyCtxt<'tcx>, k: C::Key) -> C::Value,
     pub compute: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
-    pub can_load_from_disk: bool,
-    pub try_load_from_disk: fn(
-        tcx: TyCtxt<'tcx>,
-        key: &C::Key,
-        prev_index: SerializedDepNodeIndex,
-        index: DepNodeIndex,
-    ) -> Option<C::Value>,
+    pub try_load_from_disk_fn: Option<TryLoadFromDiskFn<'tcx, C::Key, C::Value>>,
     pub loadable_from_disk:
         fn(tcx: TyCtxt<'tcx>, key: &C::Key, index: SerializedDepNodeIndex) -> bool,
     pub hash_result: HashResult<C::Value>,

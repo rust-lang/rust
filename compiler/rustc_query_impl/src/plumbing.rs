@@ -666,24 +666,21 @@ macro_rules! define_queries {
                             )
                         )
                     },
-                    can_load_from_disk: should_ever_cache_on_disk!([$($modifiers)*] true false),
-                    try_load_from_disk: should_ever_cache_on_disk!([$($modifiers)*] {
-                        |tcx, key, prev_index, index| {
-                            if ::rustc_middle::query::cached::$name(tcx, key) {
-                                let value = $crate::plumbing::try_load_from_disk::<
-                                    queries::$name::ProvidedValue<'tcx>
-                                >(
-                                    tcx,
-                                    prev_index,
-                                    index,
-                                );
-                                value.map(|value| queries::$name::provided_to_erased(tcx, value))
-                            } else {
-                                None
+                    try_load_from_disk_fn: should_ever_cache_on_disk!([$($modifiers)*] {
+                        Some(|tcx, key, prev_index, index| {
+                            // Check the `cache_on_disk_if` condition for this key.
+                            if !::rustc_middle::query::cached::$name(tcx, key) {
+                                return None;
                             }
-                        }
+
+                            let value: queries::$name::ProvidedValue<'tcx> =
+                                $crate::plumbing::try_load_from_disk(tcx, prev_index, index)?;
+
+                            // Arena-alloc the value if appropriate, and erase it.
+                            Some(queries::$name::provided_to_erased(tcx, value))
+                        })
                     } {
-                        |_tcx, _key, _prev_index, _index| None
+                        None
                     }),
                     value_from_cycle_error: |tcx, cycle, guar| {
                         let result: queries::$name::Value<'tcx> = Value::from_cycle_error(tcx, cycle, guar);

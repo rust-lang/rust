@@ -128,11 +128,8 @@ where
         prev_index: SerializedDepNodeIndex,
         index: DepNodeIndex,
     ) -> Option<Self::Value> {
-        if self.vtable.can_load_from_disk {
-            (self.vtable.try_load_from_disk)(qcx.tcx, key, prev_index, index)
-        } else {
-            None
-        }
+        // `?` will return None immediately for queries that never cache to disk.
+        self.vtable.try_load_from_disk_fn?(qcx.tcx, key, prev_index, index)
     }
 
     #[inline]
