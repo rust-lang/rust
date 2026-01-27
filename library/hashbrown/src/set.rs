@@ -1,9 +1,9 @@
 use crate::{Equivalent, TryReserveError};
+use core::cell::UnsafeCell;
+use core::fmt;
 use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FusedIterator};
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
-use core::{fmt, mem};
-use map::make_hash;
 
 use super::map::{self, HashMap, Keys};
 use crate::DefaultHashBuilder;
@@ -1112,12 +1112,18 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn replace(&mut self, value: T) -> Option<T> {
-        let hash = make_hash(&self.map.hash_builder, &value);
-        match self.map.find_or_find_insert_index(hash, &value) {
-            Ok(bucket) => Some(mem::replace(unsafe { &mut bucket.as_mut().0 }, value)),
-            Err(index) => {
+        let value = UnsafeCell::new(value);
+        // SAFETY: We know the key is no longer accessed after the initial check.
+        match self.map.entry_ref(unsafe { &*value.get() }) {
+            map::EntryRef::Occupied(mut entry) => {
+                // SAFETY: We know the key will not be accessed any more, and
+                //   that the key is equivalent to the one in the entry.
+                Some(unsafe { entry.replace_key_unchecked(value.into_inner()) })
+            }
+            map::EntryRef::Vacant(entry) => {
+                // SAFETY: A value is equivalent to itself.
                 unsafe {
-                    self.map.table.insert_at_index(hash, index, (value, ()));
+                    entry.insert_with_key_unchecked(value.into_inner(), ());
                 }
                 None
             }
@@ -2529,8 +2535,9 @@ fn assert_covariance() {
 
 #[cfg(test)]
 mod test_set {
-    use super::{Equivalent, HashSet, make_hash};
+    use super::{Equivalent, HashSet};
     use crate::DefaultHashBuilder;
+    use crate::map::make_hash;
     use std::vec::Vec;
 
     #[test]
