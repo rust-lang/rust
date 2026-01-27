@@ -190,6 +190,7 @@ pub struct ResolverGlobalCtxt {
     pub doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
     pub all_macro_rules: UnordSet<Symbol>,
     pub stripped_cfg_items: Vec<StrippedCfgItem>,
+    pub hirless_def_ids: UnordSet<LocalDefId>,
 }
 
 /// Resolutions that should only be used for lowering.

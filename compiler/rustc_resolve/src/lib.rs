@@ -1122,6 +1122,35 @@ pub struct ResolverOutputs {
     pub ast_lowering: ResolverAstLowering,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum VisitNonLifetimeBinder {
+    No,
+    WhereBoundPredicate,
+    GenericBound,
+}
+
+impl VisitNonLifetimeBinder {
+    pub fn in_generic_bound(&self) -> bool {
+        matches!(self, VisitNonLifetimeBinder::GenericBound)
+    }
+
+    pub fn enter_where_bound_predicate(&mut self) -> Self {
+        let prev = *self;
+        if let VisitNonLifetimeBinder::No = prev {
+            *self = VisitNonLifetimeBinder::WhereBoundPredicate;
+        }
+        prev
+    }
+
+    pub fn enter_generic_bound(&mut self) -> Self {
+        let prev = *self;
+        if let VisitNonLifetimeBinder::WhereBoundPredicate = prev {
+            *self = VisitNonLifetimeBinder::GenericBound;
+        }
+        prev
+    }
+}
+
 /// The main resolver class.
 ///
 /// This is the visitor that walks the whole crate.
@@ -1342,6 +1371,9 @@ pub struct Resolver<'ra, 'tcx> {
     // that were encountered during resolution. These names are used to generate item names
     // for APITs, so we don't want to leak details of resolution into these names.
     impl_trait_names: FxHashMap<NodeId, Symbol> = default::fx_hash_map(),
+
+    visit_non_lifetime_binder: VisitNonLifetimeBinder = VisitNonLifetimeBinder::No,
+    hirless_def_ids: UnordSet<LocalDefId> = Default::default(),
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1774,6 +1806,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             doc_link_traits_in_scope: self.doc_link_traits_in_scope,
             all_macro_rules: self.all_macro_rules,
             stripped_cfg_items,
+            hirless_def_ids: self.hirless_def_ids,
         };
         let ast_lowering = ty::ResolverAstLowering {
             partial_res_map: self.partial_res_map,
