@@ -15,7 +15,7 @@ LL |     #[warn(refining_impl_trait)]
 help: replace the return type so that it matches the trait
    |
 LL -     fn bar(self) -> Arc<String> {
-LL +     fn bar(self) -> impl Deref<Target = impl Sized> {
+LL +     fn bar(self) -> impl std::ops::Deref<Target = impl Sized> {
    |
 
 warning: impl trait in impl method signature does not match trait method signature
@@ -34,7 +34,7 @@ LL |     #[warn(refining_impl_trait)]
 help: replace the return type so that it matches the trait
    |
 LL -     fn bar(self) -> Arc<String> {
-LL +     fn bar(self) -> impl Deref<Target = impl Sized> {
+LL +     fn bar(self) -> impl std::ops::Deref<Target = impl Sized> {
    |
 
 warning: 2 warnings emitted
