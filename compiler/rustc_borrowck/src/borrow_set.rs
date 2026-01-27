@@ -363,11 +363,8 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                     assigned_place: *assigned_place,
                 }
             };
-            let kind = borrow.kind;
             let (idx, _) = self.location_map.insert_full(location, borrow);
             let idx = BorrowIndex::from(idx);
-
-            self.insert_as_pending_if_two_phase(location, assigned_place, kind, idx);
 
             self.local_map.entry(borrowed_place.local).or_default().insert(idx);
         }
