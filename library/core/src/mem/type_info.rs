@@ -28,7 +28,7 @@ impl TypeId {
 
     /// Checks if the type represented by the `TypeId` implements the trait.
     /// It can only be called at compile time.
-    pub const fn implements_trait<
+    pub const fn has_trait<
         T: ptr::Pointee<Metadata = ptr::DynMetadata<T>> + ?Sized + 'static,
     >(
         self,
@@ -39,7 +39,7 @@ impl TypeId {
     /// Checks if the type represented by the `TypeId` implements the trait represented by the secondary `TypeId`.
     /// Returns `None` if the `trait_represented_by_type_id` is not a trait represented by type id.
     /// It can only be called at compile time.
-    pub const fn implements_trait_represented_by_type_id(
+    pub const fn has_trait_represented_by_type_id(
         self,
         trait_represented_by_type_id: Self,
     ) -> Option<bool> {
