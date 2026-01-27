@@ -118,6 +118,7 @@
     - [riscv64a23-unknown-linux-gnu](platform-support/riscv64a23-unknown-linux-gnu.md)
     - [s390x-unknown-linux-gnu](platform-support/s390x-unknown-linux-gnu.md)
     - [s390x-unknown-linux-musl](platform-support/s390x-unknown-linux-musl.md)
+    - [s390x-unknown-none-softfloat](platform-support/s390x-unknown-none-softfloat.md)
     - [sparc-unknown-none-elf](./platform-support/sparc-unknown-none-elf.md)
     - [solaris](platform-support/solaris.md)
     - [\*-nto-qnx-\*](platform-support/nto-qnx.md)
