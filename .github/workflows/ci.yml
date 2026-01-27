@@ -240,9 +240,18 @@ jobs:
 
   miri:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     env:
       PROPTEST_CASES: 16
     steps:
       - uses: actions/checkout@v4
-      - name: Test (Miri)
-        run: cargo miri test
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+
+      - name: Test (Miri) (partition ${{ matrix.shard }}/4)
+        run: |
+          cargo miri nextest run --partition count:${{ matrix.shard }}/4
