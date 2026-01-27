@@ -2656,6 +2656,10 @@ However, it's not needed with smaller screen width because the doc/code block is
 .deprecated-count {
 	display: none;
 }
+/*
+The `:not(:empty)` is a little trick to not have to add conditions in JS to hide/show the marker.
+It's entirely based on whether it has content and if the setting is enabled.
+*/
 .hide-deprecated-items .deprecated-count:not(:empty) {
 	display: block;
 	margin: 10px 0;
