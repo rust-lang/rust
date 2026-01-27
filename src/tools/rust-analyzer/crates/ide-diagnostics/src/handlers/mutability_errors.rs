@@ -1,3 +1,5 @@
+#![expect(unused, reason = "diagnostics is temporarily disabled due to too many false positives")]
+
 use hir::db::ExpandDatabase;
 use ide_db::source_change::SourceChange;
 use ide_db::text_edit::TextEdit;
@@ -88,16 +90,17 @@ pub(crate) fn unused_mut(ctx: &DiagnosticsContext<'_>, d: &hir::UnusedMut) -> Op
         )])
     })();
     let ast = d.local.primary_source(ctx.sema.db).syntax_ptr();
-    Some(
-        Diagnostic::new_with_syntax_node_ptr(
-            ctx,
-            DiagnosticCode::RustcLint("unused_mut"),
-            "variable does not need to be mutable",
-            ast,
-        )
-        // Not supporting `#[allow(unused_mut)]` in proc macros leads to false positive, hence not stable.
-        .with_fixes(fixes),
-    )
+    // Some(
+    //     Diagnostic::new_with_syntax_node_ptr(
+    //         ctx,
+    //         DiagnosticCode::RustcLint("unused_mut"),
+    //         "variable does not need to be mutable",
+    //         ast,
+    //     )
+    //     // Not supporting `#[allow(unused_mut)]` in proc macros leads to false positive, hence not stable.
+    //     .with_fixes(fixes),
+    // )
+    None
 }
 
 pub(super) fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
@@ -105,6 +108,7 @@ pub(super) fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken
 }
 
 #[cfg(test)]
+#[cfg(false)] // Diagnostic temporarily disabled
 mod tests {
     use crate::tests::{check_diagnostics, check_diagnostics_with_disabled, check_fix};
 

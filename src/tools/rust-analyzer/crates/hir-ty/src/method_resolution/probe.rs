@@ -1246,9 +1246,9 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
             .filter(|step| step.reachable_via_deref)
             .filter(|step| {
                 debug!("pick_all_method: step={:?}", step);
-                // skip types that are from a type error or that would require dereferencing
-                // a raw pointer
-                !step.self_ty.value.value.references_non_lt_error() && !step.from_unsafe_deref
+                // Skip types with type errors (but not const/lifetime errors, which are
+                // often spurious due to incomplete const evaluation) and raw pointer derefs.
+                !step.self_ty.value.value.references_only_ty_error() && !step.from_unsafe_deref
             })
             .try_for_each(|step| {
                 let InferOk { value: self_ty, obligations: instantiate_self_ty_obligations } = self
@@ -1740,7 +1740,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
     /// We want to only accept trait methods if they were hold even if the
     /// opaque types were rigid. To handle this, we both check that for trait
     /// candidates the goal were to hold even when treating opaques as rigid,
-    /// see [OpaqueTypesJank](rustc_trait_selection::solve::OpaqueTypesJank).
+    /// see `rustc_trait_selection::solve::OpaqueTypesJank`.
     ///
     /// We also check that all opaque types encountered as self types in the
     /// autoderef chain don't get constrained when applying the candidate.

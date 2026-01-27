@@ -4,7 +4,7 @@
 
 rust-analyzer fails to resolve `None`, and thinks you are binding to a variable
 named `None`. That's usually a sign of a corrupted sysroot. Try removing and re-installing
-it: `rustup component remove rust-src` then `rustup component install rust-src`.
+it: `rustup component remove rust-src` then `rustup component add rust-src`.
 
 ### Rust Analyzer and Cargo compete over the build lock
 

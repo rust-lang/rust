@@ -45,6 +45,7 @@ pub struct LoadCargoConfig {
     pub load_out_dirs_from_check: bool,
     pub with_proc_macro_server: ProcMacroServerChoice,
     pub prefill_caches: bool,
+    pub proc_macro_processes: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -113,15 +114,25 @@ pub fn load_workspace_into_db(
     let proc_macro_server = match &load_config.with_proc_macro_server {
         ProcMacroServerChoice::Sysroot => ws.find_sysroot_proc_macro_srv().map(|it| {
             it.and_then(|it| {
-                ProcMacroClient::spawn(&it, extra_env, ws.toolchain.as_ref()).map_err(Into::into)
+                ProcMacroClient::spawn(
+                    &it,
+                    extra_env,
+                    ws.toolchain.as_ref(),
+                    load_config.proc_macro_processes,
+                )
+                .map_err(Into::into)
             })
             .map_err(|e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str()))
         }),
-        ProcMacroServerChoice::Explicit(path) => {
-            Some(ProcMacroClient::spawn(path, extra_env, ws.toolchain.as_ref()).map_err(|e| {
-                ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str())
-            }))
-        }
+        ProcMacroServerChoice::Explicit(path) => Some(
+            ProcMacroClient::spawn(
+                path,
+                extra_env,
+                ws.toolchain.as_ref(),
+                load_config.proc_macro_processes,
+            )
+            .map_err(|e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str())),
+        ),
         ProcMacroServerChoice::None => Some(Err(ProcMacroLoadingError::Disabled)),
     };
     match &proc_macro_server {
@@ -435,7 +446,7 @@ pub fn load_proc_macro(
 ) -> ProcMacroLoadResult {
     let res: Result<Vec<_>, _> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf());
-        let vec = server.load_dylib(dylib, Some(&mut reject_subrequests)).map_err(|e| {
+        let vec = server.load_dylib(dylib, Some(&reject_subrequests)).map_err(|e| {
             ProcMacroLoadingError::ProcMacroSrvError(format!("{e}").into_boxed_str())
         })?;
         if vec.is_empty() {
@@ -541,7 +552,7 @@ impl ProcMacroExpander for Expander {
         mixed_site: Span,
         current_dir: String,
     ) -> Result<tt::TopSubtree, ProcMacroExpansionError> {
-        let mut cb = |req| match req {
+        let cb = |req| match req {
             SubRequest::LocalFilePath { file_id } => {
                 let file_id = FileId::from_raw(file_id);
                 let source_root_id = db.file_source_root(file_id).source_root_id(db);
@@ -553,21 +564,33 @@ impl ProcMacroExpander for Expander {
 
                 Ok(SubResponse::LocalFilePathResult { name })
             }
+            // Not incremental: requires full file text.
             SubRequest::SourceText { file_id, ast_id, start, end } => {
-                let ast_id = span::ErasedFileAstId::from_raw(ast_id);
-                let editioned_file_id = span::EditionedFileId::from_raw(file_id);
-                let span = Span {
-                    range: TextRange::new(TextSize::from(start), TextSize::from(end)),
-                    anchor: SpanAnchor { file_id: editioned_file_id, ast_id },
-                    ctx: SyntaxContext::root(editioned_file_id.edition()),
-                };
-                let range = db.resolve_span(span);
+                let range = resolve_sub_span(
+                    db,
+                    file_id,
+                    ast_id,
+                    TextRange::new(TextSize::from(start), TextSize::from(end)),
+                );
                 let source = db.file_text(range.file_id.file_id(db)).text(db);
                 let text = source
                     .get(usize::from(range.range.start())..usize::from(range.range.end()))
                     .map(ToOwned::to_owned);
 
                 Ok(SubResponse::SourceTextResult { text })
+            }
+            // Not incremental: requires building line index.
+            SubRequest::LineColumn { file_id, ast_id, offset } => {
+                let range =
+                    resolve_sub_span(db, file_id, ast_id, TextRange::empty(TextSize::from(offset)));
+                let source = db.file_text(range.file_id.file_id(db)).text(db);
+                let line_index = ide_db::line_index::LineIndex::new(source);
+                let (line, column) = line_index
+                    .try_line_col(range.range.start())
+                    .map(|lc| (lc.line + 1, lc.col + 1))
+                    .unwrap_or((1, 1));
+                // proc_macro::Span line/column are 1-based
+                Ok(SubResponse::LineColumnResult { line, column })
             }
             SubRequest::FilePath { file_id } => {
                 let file_id = FileId::from_raw(file_id);
@@ -581,6 +604,17 @@ impl ProcMacroExpander for Expander {
 
                 Ok(SubResponse::FilePathResult { name })
             }
+            // Not incremental: requires global span resolution.
+            SubRequest::ByteRange { file_id, ast_id, start, end } => {
+                let range = resolve_sub_span(
+                    db,
+                    file_id,
+                    ast_id,
+                    TextRange::new(TextSize::from(start), TextSize::from(end)),
+                );
+
+                Ok(SubResponse::ByteRangeResult { range: range.range.into() })
+            }
         };
         match self.0.expand(
             subtree.view(),
@@ -590,7 +624,7 @@ impl ProcMacroExpander for Expander {
             call_site,
             mixed_site,
             current_dir,
-            Some(&mut cb),
+            Some(&cb),
         ) {
             Ok(Ok(subtree)) => Ok(subtree),
             Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err)),
@@ -601,6 +635,22 @@ impl ProcMacroExpander for Expander {
     fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
         (other as &dyn Any).downcast_ref::<Self>() == Some(self)
     }
+}
+
+fn resolve_sub_span(
+    db: &dyn ExpandDatabase,
+    file_id: u32,
+    ast_id: u32,
+    range: TextRange,
+) -> hir_expand::FileRange {
+    let ast_id = span::ErasedFileAstId::from_raw(ast_id);
+    let editioned_file_id = span::EditionedFileId::from_raw(file_id);
+    let span = Span {
+        range,
+        anchor: SpanAnchor { file_id: editioned_file_id, ast_id },
+        ctx: SyntaxContext::root(editioned_file_id.edition()),
+    };
+    db.resolve_span(span)
 }
 
 #[cfg(test)]
@@ -618,6 +668,7 @@ mod tests {
             load_out_dirs_from_check: false,
             with_proc_macro_server: ProcMacroServerChoice::None,
             prefill_caches: false,
+            proc_macro_processes: 1,
         };
         let (db, _vfs, _proc_macro) =
             load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {}).unwrap();

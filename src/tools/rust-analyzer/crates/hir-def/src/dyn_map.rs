@@ -27,14 +27,15 @@
 pub mod keys {
     use std::marker::PhantomData;
 
+    use either::Either;
     use hir_expand::{MacroCallId, attrs::AttrId};
     use rustc_hash::FxHashMap;
     use syntax::{AstNode, AstPtr, ast};
 
     use crate::{
-        BlockId, ConstId, EnumId, EnumVariantId, ExternBlockId, ExternCrateId, FieldId, FunctionId,
-        ImplId, LifetimeParamId, Macro2Id, MacroRulesId, ProcMacroId, StaticId, StructId, TraitId,
-        TypeAliasId, TypeOrConstParamId, UnionId, UseId,
+        BlockId, BuiltinDeriveImplId, ConstId, EnumId, EnumVariantId, ExternBlockId, ExternCrateId,
+        FieldId, FunctionId, ImplId, LifetimeParamId, Macro2Id, MacroRulesId, ProcMacroId,
+        StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId, UnionId, UseId,
         dyn_map::{DynMap, Policy},
     };
 
@@ -71,7 +72,8 @@ pub mod keys {
         (
             AttrId,
             /* derive() */ MacroCallId,
-            /* actual derive macros */ Box<[Option<MacroCallId>]>,
+            /* actual derive macros */
+            Box<[Option<Either<MacroCallId, BuiltinDeriveImplId>>]>,
         ),
     > = Key::new();
 

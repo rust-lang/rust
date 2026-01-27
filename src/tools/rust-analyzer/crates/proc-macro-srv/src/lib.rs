@@ -22,8 +22,11 @@
 )]
 #![deny(deprecated_safe, clippy::undocumented_unsafe_blocks)]
 
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate proc_macro as rustc_proc_macro;
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
+#[cfg(feature = "in-rust-tree")]
 extern crate rustc_proc_macro;
 
 #[cfg(not(feature = "in-rust-tree"))]
@@ -41,6 +44,7 @@ use std::{
     env,
     ffi::OsString,
     fs,
+    ops::Range,
     path::{Path, PathBuf},
     sync::{Arc, Mutex, PoisonError},
     thread,
@@ -98,6 +102,10 @@ pub trait ProcMacroClientInterface {
     fn file(&mut self, file_id: span::FileId) -> String;
     fn source_text(&mut self, span: Span) -> Option<String>;
     fn local_file(&mut self, file_id: span::FileId) -> Option<String>;
+    /// Line and column are 1-based.
+    fn line_column(&mut self, span: Span) -> Option<(u32, u32)>;
+
+    fn byte_range(&mut self, span: Span) -> Range<usize>;
 }
 
 const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;

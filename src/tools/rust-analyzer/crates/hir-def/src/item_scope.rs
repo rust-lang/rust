@@ -4,6 +4,7 @@
 use std::{fmt, sync::LazyLock};
 
 use base_db::Crate;
+use either::Either;
 use hir_expand::{AstId, MacroCallId, attrs::AttrId, name::Name};
 use indexmap::map::Entry;
 use itertools::Itertools;
@@ -199,7 +200,7 @@ struct DeriveMacroInvocation {
     attr_id: AttrId,
     /// The `#[derive]` call
     attr_call_id: MacroCallId,
-    derive_call_ids: SmallVec<[Option<MacroCallId>; 4]>,
+    derive_call_ids: SmallVec<[Option<Either<MacroCallId, BuiltinDeriveImplId>>; 4]>,
 }
 
 pub(crate) static BUILTIN_SCOPE: LazyLock<FxIndexMap<Name, PerNs>> = LazyLock::new(|| {
@@ -345,7 +346,9 @@ impl ItemScope {
     pub fn all_macro_calls(&self) -> impl Iterator<Item = MacroCallId> + '_ {
         self.macro_invocations.values().copied().chain(self.attr_macros.values().copied()).chain(
             self.derive_macros.values().flat_map(|it| {
-                it.iter().flat_map(|it| it.derive_call_ids.iter().copied().flatten())
+                it.iter().flat_map(|it| {
+                    it.derive_call_ids.iter().copied().flatten().flat_map(|it| it.left())
+                })
             }),
         )
     }
@@ -377,6 +380,10 @@ impl ItemScope {
 
     pub(crate) fn type_(&self, name: &Name) -> Option<(ModuleDefId, Visibility)> {
         self.types.get(name).map(|item| (item.def, item.vis))
+    }
+
+    pub(crate) fn makro(&self, name: &Name) -> Option<MacroId> {
+        self.macros.get(name).map(|item| item.def)
     }
 
     /// XXX: this is O(N) rather than O(1), try to not introduce new usages.
@@ -519,7 +526,7 @@ impl ItemScope {
     pub(crate) fn set_derive_macro_invoc(
         &mut self,
         adt: AstId<ast::Adt>,
-        call: MacroCallId,
+        call: Either<MacroCallId, BuiltinDeriveImplId>,
         id: AttrId,
         idx: usize,
     ) {
@@ -539,7 +546,7 @@ impl ItemScope {
         adt: AstId<ast::Adt>,
         attr_id: AttrId,
         attr_call_id: MacroCallId,
-        mut derive_call_ids: SmallVec<[Option<MacroCallId>; 4]>,
+        mut derive_call_ids: SmallVec<[Option<Either<MacroCallId, BuiltinDeriveImplId>>; 4]>,
     ) {
         derive_call_ids.shrink_to_fit();
         self.derive_macros.entry(adt).or_default().push(DeriveMacroInvocation {
@@ -554,7 +561,9 @@ impl ItemScope {
     ) -> impl Iterator<
         Item = (
             AstId<ast::Adt>,
-            impl Iterator<Item = (AttrId, MacroCallId, &[Option<MacroCallId>])>,
+            impl Iterator<
+                Item = (AttrId, MacroCallId, &[Option<Either<MacroCallId, BuiltinDeriveImplId>>]),
+            >,
         ),
     > + '_ {
         self.derive_macros.iter().map(|(k, v)| {

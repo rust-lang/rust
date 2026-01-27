@@ -68,7 +68,7 @@ impl<N: AstNode> AstPtr<N> {
         self.raw
     }
 
-    pub fn text_range(&self) -> TextRange {
+    pub fn text_range(self) -> TextRange {
         self.raw.text_range()
     }
 

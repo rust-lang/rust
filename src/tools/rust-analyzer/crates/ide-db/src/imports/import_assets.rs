@@ -600,7 +600,19 @@ fn trait_applicable_items<'db>(
         }
         deref_chain
             .into_iter()
-            .filter_map(|ty| Some((ty.krate(db).into(), ty.fingerprint_for_trait_impl()?)))
+            .flat_map(|ty| {
+                let fingerprint = ty.fingerprint_for_trait_impl()?;
+                let mut crates = vec![];
+
+                if let Some(adt) = ty.as_adt() {
+                    // Push crate where ADT was defined
+                    crates.push((adt.krate(db).into(), fingerprint));
+                }
+                // Always include environment crate
+                crates.push((ty.krate(db).into(), fingerprint));
+                Some(crates)
+            })
+            .flatten()
             .unique()
             .collect::<Vec<_>>()
     };

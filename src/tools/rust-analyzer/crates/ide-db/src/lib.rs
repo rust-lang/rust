@@ -65,7 +65,7 @@ use base_db::{
 };
 use hir::{
     FilePositionWrapper, FileRangeWrapper,
-    db::{DefDatabase, ExpandDatabase},
+    db::{DefDatabase, ExpandDatabase, HirDatabase},
 };
 use triomphe::Arc;
 
@@ -269,6 +269,7 @@ pub enum SymbolKind {
     BuiltinAttr,
     Const,
     ConstParam,
+    CrateRoot,
     Derive,
     DeriveHelper,
     Enum,
@@ -307,14 +308,15 @@ impl From<hir::MacroKind> for SymbolKind {
     }
 }
 
-impl From<hir::ModuleDef> for SymbolKind {
-    fn from(it: hir::ModuleDef) -> Self {
+impl SymbolKind {
+    pub fn from_module_def(db: &dyn HirDatabase, it: hir::ModuleDef) -> Self {
         match it {
             hir::ModuleDef::Const(..) => SymbolKind::Const,
             hir::ModuleDef::Variant(..) => SymbolKind::Variant,
             hir::ModuleDef::Function(..) => SymbolKind::Function,
             hir::ModuleDef::Macro(mac) if mac.is_proc_macro() => SymbolKind::ProcMacro,
             hir::ModuleDef::Macro(..) => SymbolKind::Macro,
+            hir::ModuleDef::Module(m) if m.is_crate_root(db) => SymbolKind::CrateRoot,
             hir::ModuleDef::Module(..) => SymbolKind::Module,
             hir::ModuleDef::Static(..) => SymbolKind::Static,
             hir::ModuleDef::Adt(hir::Adt::Struct(..)) => SymbolKind::Struct,

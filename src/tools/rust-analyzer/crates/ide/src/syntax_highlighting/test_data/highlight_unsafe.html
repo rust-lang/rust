@@ -91,7 +91,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
         <span class="comment">// unsafe fn and method calls</span>
         <span class="function unsafe">unsafe_fn</span><span class="parenthesis unsafe">(</span><span class="parenthesis unsafe">)</span><span class="semicolon">;</span>
-        <span class="self_keyword crate_root public">self</span><span class="operator">::</span><span class="function unsafe">unsafe_fn</span><span class="parenthesis unsafe">(</span><span class="parenthesis unsafe">)</span><span class="semicolon">;</span>
+        <span class="self_keyword public">self</span><span class="operator">::</span><span class="function unsafe">unsafe_fn</span><span class="parenthesis unsafe">(</span><span class="parenthesis unsafe">)</span><span class="semicolon">;</span>
         <span class="parenthesis">(</span><span class="function">unsafe_fn</span> <span class="keyword">as</span> <span class="keyword unsafe">unsafe</span> <span class="keyword">fn</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="parenthesis">)</span><span class="parenthesis unsafe">(</span><span class="parenthesis unsafe">)</span><span class="semicolon">;</span>
         <span class="struct">Struct</span> <span class="brace">{</span> <span class="field">field</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="operator">.</span><span class="method reference unsafe">unsafe_method</span><span class="parenthesis unsafe">(</span><span class="parenthesis unsafe">)</span><span class="semicolon">;</span>
 
@@ -120,7 +120,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
         <span class="operator">&</span><span class="static unsafe">EXTERN_STATIC</span><span class="semicolon">;</span>
         <span class="operator">&</span><span class="keyword">raw</span> <span class="keyword const">const</span> <span class="static">EXTERN_STATIC</span><span class="semicolon">;</span>
 
-        <span class="module crate_root default_library library">core</span><span class="operator">::</span><span class="module default_library library">arch</span><span class="operator">::</span><span class="macro default_library library unsafe">asm</span><span class="macro_bang unsafe">!</span><span class="parenthesis unsafe">(</span>
+        <span class="crate_root default_library library">core</span><span class="operator">::</span><span class="module default_library library">arch</span><span class="operator">::</span><span class="macro default_library library unsafe">asm</span><span class="macro_bang unsafe">!</span><span class="parenthesis unsafe">(</span>
             <span class="string_literal macro">"push {</span><span class="variable">base</span><span class="string_literal macro">}"</span><span class="comma macro">,</span>
             <span class="variable declaration macro">base</span> <span class="operator macro">=</span> <span class="keyword const macro">const</span> <span class="numeric_literal macro">0</span>
         <span class="parenthesis unsafe">)</span><span class="semicolon">;</span>

@@ -273,9 +273,8 @@ impl<'db> std::fmt::Debug for Clauses<'db> {
 
 impl<'db> Clauses<'db> {
     #[inline]
-    pub fn empty(_interner: DbInterner<'db>) -> Self {
-        // FIXME: Get from a static.
-        Self::new_from_slice(&[])
+    pub fn empty(interner: DbInterner<'db>) -> Self {
+        interner.default_types().empty.clauses
     }
 
     #[inline]

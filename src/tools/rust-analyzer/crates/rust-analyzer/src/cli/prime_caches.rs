@@ -38,6 +38,7 @@ impl flags::PrimeCaches {
             // we want to ensure that this command, not `load_workspace_at`,
             // is responsible for that work.
             prefill_caches: false,
+            proc_macro_processes: config.proc_macro_num_processes(),
         };
 
         let root = AbsPathBuf::assert_utf8(std::env::current_dir()?.join(root));

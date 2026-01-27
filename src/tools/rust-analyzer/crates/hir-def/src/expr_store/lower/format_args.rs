@@ -10,7 +10,8 @@ use crate::{
     builtin_type::BuiltinUint,
     expr_store::{HygieneId, lower::ExprCollector, path::Path},
     hir::{
-        Array, BindingAnnotation, Expr, ExprId, Literal, Pat, RecordLitField, Statement,
+        Array, BindingAnnotation, Expr, ExprId, Literal, Pat, RecordLitField, RecordSpread,
+        Statement,
         format_args::{
             self, FormatAlignment, FormatArgs, FormatArgsPiece, FormatArgument, FormatArgumentKind,
             FormatArgumentsCollector, FormatCount, FormatDebugHex, FormatOptions,
@@ -869,7 +870,7 @@ impl<'db> ExprCollector<'db> {
             self.alloc_expr_desugared(Expr::RecordLit {
                 path: self.lang_path(lang_items.FormatPlaceholder).map(Box::new),
                 fields: Box::new([position, flags, precision, width]),
-                spread: None,
+                spread: RecordSpread::None,
             })
         } else {
             let format_placeholder_new =
