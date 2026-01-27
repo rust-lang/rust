@@ -1,6 +1,6 @@
 //! This module contains a stable quicksort and partition implementation.
 
-use crate::mem::{ManuallyDrop, MaybeUninit};
+use crate::mem::MaybeUninit;
 use crate::slice::sort::shared::FreezeMarker;
 use crate::slice::sort::shared::pivot::choose_pivot;
 use crate::slice::sort::shared::smallsort::StableSmallSortTypeImpl;
@@ -41,8 +41,11 @@ pub fn quicksort<T, F: FnMut(&T, &T) -> bool>(
         // SAFETY: We only access the temporary copy for Freeze types, otherwise
         // self-modifications via `is_less` would not be observed and this would
         // be unsound. Our temporary copy does not escape this scope.
-        let pivot_copy = unsafe { ManuallyDrop::new(ptr::read(&v[pivot_pos])) };
-        let pivot_ref = (!has_direct_interior_mutability::<T>()).then_some(&*pivot_copy);
+        // We use `MaybeUninit` to avoid re-tag issues. FIXME: use `MaybeDangling`.
+        let pivot_copy = unsafe { ptr::read((&raw const v[pivot_pos]).cast::<MaybeUninit<T>>()) };
+        let pivot_ref =
+            // SAFETY: We created the value in an init state.
+            (!has_direct_interior_mutability::<T>()).then_some(unsafe { &*pivot_copy.as_ptr() });
 
         // We choose a pivot, and check if this pivot is equal to our left
         // ancestor. If true, we do a partition putting equal elements on the
