@@ -773,7 +773,7 @@ impl<T: Copy> Bound<&T> {
     /// ```
     #[unstable(feature = "bound_copied", issue = "145966")]
     #[must_use]
-    pub fn copied(self) -> Bound<T> {
+    pub const fn copied(self) -> Bound<T> {
         match self {
             Bound::Unbounded => Bound::Unbounded,
             Bound::Included(x) => Bound::Included(*x),

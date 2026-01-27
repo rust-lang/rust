@@ -910,7 +910,7 @@ where
     R: [const] ops::RangeBounds<usize> + [const] Destruct,
 {
     let len = bounds.end;
-    into_slice_range(len, (range.start_bound().cloned(), range.end_bound().cloned()))
+    into_slice_range(len, (range.start_bound().copied(), range.end_bound().copied()))
 }
 
 /// Performs bounds checking of a range without panicking.
@@ -950,7 +950,7 @@ where
     R: ops::RangeBounds<usize>,
 {
     let len = bounds.end;
-    let r = into_range(len, (range.start_bound().cloned(), range.end_bound().cloned()))?;
+    let r = into_range(len, (range.start_bound().copied(), range.end_bound().copied()))?;
     if r.start > r.end || r.end > len { None } else { Some(r) }
 }
 
