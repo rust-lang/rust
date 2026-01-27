@@ -1277,8 +1277,6 @@ impl Builder<'_> {
         rustdocflags.arg("--crate-version").arg(&rust_version);
 
         // Environment variables *required* throughout the build
-        //
-        // FIXME: should update code to not require this env var
 
         // The host this new compiler is being *built* on.
         cargo.env("CFG_COMPILER_BUILD_TRIPLE", compiler.host.triple);
