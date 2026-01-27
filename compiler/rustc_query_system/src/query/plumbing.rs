@@ -623,7 +623,7 @@ where
     // We always expect to find a cached result for things that
     // can be forced from `DepNode`.
     debug_assert!(
-        !query.cache_on_disk(*qcx.dep_context(), key)
+        !query.will_cache_on_disk_for_key(*qcx.dep_context(), key)
             || !qcx.dep_context().fingerprint_style(dep_node.kind).reconstructible(),
         "missing on-disk cache entry for {dep_node:?}"
     );

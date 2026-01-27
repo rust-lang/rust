@@ -396,7 +396,7 @@ pub(crate) fn encode_query_results<'a, 'tcx, Q>(
     assert!(query.query_state(qcx).all_inactive());
     let cache = query.query_cache(qcx);
     cache.iter(&mut |key, value, dep_node| {
-        if query.cache_on_disk(qcx.tcx, key) {
+        if query.will_cache_on_disk_for_key(qcx.tcx, key) {
             let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
             // Record position of the cache entry.
@@ -445,7 +445,7 @@ where
     let key = Q::Key::recover(tcx, &dep_node).unwrap_or_else(|| {
         panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash)
     });
-    if query.cache_on_disk(tcx, &key) {
+    if query.will_cache_on_disk_for_key(tcx, &key) {
         let _ = query.execute_query(tcx, key);
     }
 }
@@ -648,7 +648,11 @@ macro_rules! define_queries {
                     cycle_error_handling: cycle_error_handling!([$($modifiers)*]),
                     query_state: std::mem::offset_of!(QueryStates<'tcx>, $name),
                     query_cache: std::mem::offset_of!(QueryCaches<'tcx>, $name),
-                    cache_on_disk: |tcx, key| ::rustc_middle::query::cached::$name(tcx, key),
+                    will_cache_on_disk_for_key_fn: should_ever_cache_on_disk!([$($modifiers)*] {
+                        Some(::rustc_middle::query::cached::$name)
+                    } {
+                        None
+                    }),
                     execute_query: |tcx, key| erase::erase_val(tcx.$name(key)),
                     compute: |tcx, key| {
                         #[cfg(debug_assertions)]

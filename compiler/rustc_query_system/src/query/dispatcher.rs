@@ -46,7 +46,7 @@ pub trait QueryDispatcher<'tcx>: Copy {
     // Don't use this method to access query results, instead use the methods on TyCtxt
     fn query_cache<'a>(self, tcx: Self::Qcx) -> &'a Self::Cache;
 
-    fn cache_on_disk(self, tcx: DepContextOf<'tcx, Self>, key: &Self::Key) -> bool;
+    fn will_cache_on_disk_for_key(self, tcx: DepContextOf<'tcx, Self>, key: &Self::Key) -> bool;
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn execute_query(self, tcx: DepContextOf<'tcx, Self>, k: Self::Key) -> Self::Value;

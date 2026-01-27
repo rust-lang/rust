@@ -81,8 +81,8 @@ where
     }
 
     #[inline(always)]
-    fn cache_on_disk(self, tcx: TyCtxt<'tcx>, key: &Self::Key) -> bool {
-        (self.vtable.cache_on_disk)(tcx, key)
+    fn will_cache_on_disk_for_key(self, tcx: TyCtxt<'tcx>, key: &Self::Key) -> bool {
+        self.vtable.will_cache_on_disk_for_key_fn.map_or(false, |f| f(tcx, key))
     }
 
     #[inline(always)]
