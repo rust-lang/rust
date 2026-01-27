@@ -30,7 +30,9 @@ use tracing::debug;
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
-use crate::builder::gpu_offload::{OffloadKernelDims, gen_call_handling, gen_define_handling};
+use crate::builder::gpu_offload::{
+    OffloadKernelDims, gen_call_handling, gen_define_handling, register_offload,
+};
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
 use crate::errors::{
@@ -1402,6 +1404,7 @@ fn codegen_offload<'ll, 'tcx>(
             return;
         }
     };
+    register_offload(cx);
     let offload_data = gen_define_handling(&cx, &metadata, target_symbol, offload_globals);
     gen_call_handling(bx, &offload_data, &args, &types, &metadata, offload_globals, &offload_dims);
 }
