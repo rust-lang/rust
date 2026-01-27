@@ -9,6 +9,10 @@
 // Ensure a catch-all generates:
 // - `catchpad ... [ptr null]` on Wasm (otherwise LLVM gets confused)
 // - `catchpad ... [ptr null, i32 64, ptr null]` on Windows (otherwise we catch SEH exceptions)
+//
+// Unlike on windows, on Wasm, we specifically do want to catch foreign
+// exceptions. To catch only C++ exceptions we'd need to call
+// @llvm.wasm.get.exception and @llvm.wasm.get.ehselector in the catchpad.
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "lib"]
@@ -36,8 +40,14 @@ fn panic_cannot_unwind() -> ! {
 #[no_mangle]
 #[rustc_nounwind]
 pub fn doesnt_unwind() {
+    // CHECK: catchswitch within none [label %{{.*}}] unwind to caller
     // emscripten: %catchpad = catchpad within %catchswitch [ptr null]
     // wasi: %catchpad = catchpad within %catchswitch [ptr null]
     // seh: %catchpad = catchpad within %catchswitch [ptr null, i32 64, ptr null]
+    //
+    // We don't call these intrinsics on wasm targets so we generate a catch_all
+    // instruction which also picks up foreign exceptions
+    // NOT: @llvm.wasm.get.exception
+    // NOT: @llvm.wasm.get.ehselector
     unwinds();
 }
