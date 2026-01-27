@@ -125,7 +125,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// This is not a problem: instead of using LLVM aliases, we can just generate
     /// a new function symbol (with target architecture!) which effectively comes down to:
     ///
-    /// ```rust,ignore
+    /// ```ignore (illustrative example)
     /// fn alias_name(...args) {
     ///     original_name(...args)
     /// }
