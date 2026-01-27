@@ -129,13 +129,18 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
 
                             variant
                         }
+                        ty::Dynamic(predicates, region) => {
+                            let (variant, variant_place) = downcast(sym::DynTrait)?;
+                            let dyn_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
+                            self.write_dyn_trait_type_info(dyn_place, *predicates, *region)?;
+                            variant
+                        }
                         ty::Adt(_, _)
                         | ty::Foreign(_)
                         | ty::Pat(_, _)
                         | ty::FnDef(..)
                         | ty::FnPtr(..)
                         | ty::UnsafeBinder(..)
-                        | ty::Dynamic(..)
                         | ty::Closure(..)
                         | ty::CoroutineClosure(..)
                         | ty::Coroutine(..)
