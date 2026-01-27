@@ -209,9 +209,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
                         ty
                     }
                 }
-                ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
-                    unreachable!("unexpected fresh infcx var")
-                }
+                ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => ty,
             }
         } else if ty.has_infer() {
             ty.super_fold_with(self)
@@ -247,7 +245,9 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
                     }
                 }
                 ty::InferConst::Fresh(_) => {
-                    unreachable!("unexpected fresh infcx var")
+                    // `Fresh` const vars are produced by `TypeFreshener` and don't refer to infcx state.
+                    // They can safely be forwarded through `fudge_inference_if_ok`.
+                    ct
                 }
             }
         } else if ct.has_infer() {

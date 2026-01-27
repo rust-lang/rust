@@ -653,10 +653,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             // into the witness.
             ty::CoroutineWitness(..) => (),
 
+            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => (),
+
             // These variants should not exist as a self type.
-            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
-            | ty::Param(_)
-            | ty::Bound(_, _) => bug!("unexpected self type: {self_ty}"),
+            ty::Infer(ty::TyVar(_)) | ty::Param(_) | ty::Bound(_, _) => {
+                bug!("unexpected self type: {self_ty}")
+            }
         }
 
         #[allow(rustc::usage_of_type_ir_traits)]

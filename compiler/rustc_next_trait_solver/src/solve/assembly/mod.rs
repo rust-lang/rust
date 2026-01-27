@@ -707,7 +707,10 @@ where
             | ty::Placeholder(..)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Error(_) => return,
-            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) | ty::Bound(..) => {
+            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                return;
+            }
+            ty::Bound(..) => {
                 panic!("unexpected self type for `{goal:?}`")
             }
 
@@ -799,6 +802,14 @@ where
         }
 
         let self_ty = goal.predicate.self_ty();
+        // FreshTy is used as trait_object_dummy_self and should not reach here
+        if matches!(
+            self_ty.kind(),
+            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+        ) {
+            return;
+        }
+
         let bounds = match self_ty.kind() {
             ty::Bool
             | ty::Char

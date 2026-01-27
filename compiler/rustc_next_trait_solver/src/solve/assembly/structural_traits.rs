@@ -148,8 +148,10 @@ where
 
         ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => Err(NoSolution),
 
-        ty::Bound(..)
-        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+        // FreshTy is used as trait_object_dummy_self and should not reach here
+        ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => Err(NoSolution),
+
+        ty::Bound(..) | ty::Infer(ty::TyVar(_)) => {
             panic!("unexpected type `{ty:?}`")
         }
 

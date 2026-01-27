@@ -1,0 +1,59 @@
+error[E0658]: associated const equality is incomplete
+  --> $DIR/fresh-ty-has-trivial-sizedness.rs:12:29
+   |
+LL |     let _: &dyn A<Ty = i32, CT = 0> = &();
+   |                             ^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0038]: the trait `A` is not dyn compatible
+  --> $DIR/fresh-ty-has-trivial-sizedness.rs:12:17
+   |
+LL |     let _: &dyn A<Ty = i32, CT = 0> = &();
+   |                 ^^^^^^^^^^^^^^^^^^^ `A` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/fresh-ty-has-trivial-sizedness.rs:8:11
+   |
+LL | trait A {
+   |       - this trait is not dyn compatible...
+LL |     type Ty;
+LL |     const CT: Self::Ty;
+   |           ^^ ...because it contains this associated `const`
+   = help: consider moving `CT` to another trait
+
+error[E0277]: the size for values of type `FreshTy(0)` cannot be known
+  --> $DIR/fresh-ty-has-trivial-sizedness.rs:12:34
+   |
+LL |     let _: &dyn A<Ty = i32, CT = 0> = &();
+   |                                  ^ doesn't have a known size
+   |
+   = help: the nightly-only, unstable trait `MetaSized` is not implemented for `FreshTy(0)`
+note: required by a bound in `A`
+  --> $DIR/fresh-ty-has-trivial-sizedness.rs:6:1
+   |
+LL | / trait A {
+LL | |     type Ty;
+LL | |     const CT: Self::Ty;
+LL | | }
+   | |_^ required by this bound in `A`
+
+error[E0277]: the trait bound `FreshTy(0): A` is not satisfied
+  --> $DIR/fresh-ty-has-trivial-sizedness.rs:12:34
+   |
+LL |     let _: &dyn A<Ty = i32, CT = 0> = &();
+   |                                  ^ the trait `A` is not implemented for `FreshTy(0)`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/fresh-ty-has-trivial-sizedness.rs:6:1
+   |
+LL | trait A {
+   | ^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0038, E0277, E0658.
+For more information about an error, try `rustc --explain E0038`.

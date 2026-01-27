@@ -383,7 +383,16 @@ pub fn sizedness_fast_path<'tcx>(
             _ => return false,
         };
 
-        if trait_pred.self_ty().has_trivial_sizedness(tcx, sizedness) {
+        let self_ty = trait_pred.self_ty();
+        // FreshTy is used as trait_object_dummy_self and should not reach has_trivial_sizedness
+        if matches!(
+            self_ty.kind(),
+            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+        ) {
+            return false;
+        }
+
+        if self_ty.has_trivial_sizedness(tcx, sizedness) {
             debug!("fast path -- trivial sizedness");
             return true;
         }
