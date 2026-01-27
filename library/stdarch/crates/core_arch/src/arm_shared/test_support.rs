@@ -111,13 +111,13 @@ macro_rules! V_f32 {
 
 macro_rules! to64 {
     ($t : ident) => {
-        |v: $t| -> u64 { transmute(v) }
+        |v: $t| -> u64 { unsafe { transmute(v) } }
     };
 }
 
 macro_rules! to128 {
     ($t : ident) => {
-        |v: $t| -> u128 { transmute(v) }
+        |v: $t| -> u128 { unsafe { transmute(v) } }
     };
 }
 
@@ -158,9 +158,7 @@ pub(crate) fn test<T, U, V, W, X>(
 macro_rules! gen_test_fn {
     ($n: ident, $t: ident, $u: ident, $v: ident, $w: ident, $x: ident, $vals: expr, $fill1: expr, $fill2: expr, $cast: expr) => {
         pub(crate) fn $n(test_fun: fn($v, $v) -> $w, verify_fun: fn($t, $t) -> $u) {
-            unsafe {
-                test::<$t, $u, $v, $w, $x>($vals, $fill1, $fill2, $cast, test_fun, verify_fun)
-            };
+            test::<$t, $u, $v, $w, $x>($vals, $fill1, $fill2, $cast, test_fun, verify_fun);
         }
     };
 }

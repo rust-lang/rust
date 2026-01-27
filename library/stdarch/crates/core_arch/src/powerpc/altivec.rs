@@ -364,16 +364,45 @@ unsafe extern "C" {
     fn vrfin(a: vector_float) -> vector_float;
 }
 
-impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, f32x4 }
-
-impl_neg! { i8x16 : 0 }
-impl_neg! { i16x8 : 0 }
-impl_neg! { i32x4 : 0 }
-impl_neg! { f32x4 : 0f32 }
-
 #[macro_use]
 mod sealed {
     use super::*;
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorNeg {
+        unsafe fn vec_neg(self) -> Self;
+    }
+
+    macro_rules! impl_neg {
+        ($($v:ty)*) => {
+            $(
+                #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+                impl VectorNeg for $v {
+                    #[inline]
+                    #[target_feature(enable = "altivec")]
+                    unsafe fn vec_neg(self) -> Self {
+                        simd_neg(self)
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_neg! {
+        vector_signed_char
+        vector_unsigned_char
+        vector_bool_char
+
+        vector_signed_short
+        vector_unsigned_short
+        vector_bool_short
+
+        vector_signed_int
+        vector_unsigned_int
+        vector_bool_int
+
+        vector_float
+    }
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorInsert {
@@ -1380,7 +1409,7 @@ mod sealed {
             #[inline]
             #[target_feature(enable = "altivec")]
             unsafe fn $name(v: s_t_l!($ty)) -> s_t_l!($ty) {
-                v.vec_max(-v)
+                v.vec_max(simd_neg(v))
             }
 
             impl_vec_trait! { [VectorAbs vec_abs] $name (s_t_l!($ty)) }
@@ -1428,7 +1457,7 @@ mod sealed {
     #[cfg_attr(test, assert_instr(vspltb, IMM4 = 15))]
     unsafe fn vspltb<const IMM4: u32>(a: vector_signed_char) -> vector_signed_char {
         static_assert_uimm_bits!(IMM4, 4);
-        simd_shuffle(a, a, const { u32x16::from_array([IMM4; 16]) })
+        simd_shuffle(a, a, const { u32x16::splat(IMM4) })
     }
 
     #[inline]
@@ -1436,7 +1465,7 @@ mod sealed {
     #[cfg_attr(test, assert_instr(vsplth, IMM3 = 7))]
     unsafe fn vsplth<const IMM3: u32>(a: vector_signed_short) -> vector_signed_short {
         static_assert_uimm_bits!(IMM3, 3);
-        simd_shuffle(a, a, const { u32x8::from_array([IMM3; 8]) })
+        simd_shuffle(a, a, const { u32x8::splat(IMM3) })
     }
 
     #[inline]
@@ -1445,7 +1474,7 @@ mod sealed {
     #[cfg_attr(all(test, target_feature = "vsx"), assert_instr(xxspltw, IMM2 = 3))]
     unsafe fn vspltw<const IMM2: u32>(a: vector_signed_int) -> vector_signed_int {
         static_assert_uimm_bits!(IMM2, 2);
-        simd_shuffle(a, a, const { u32x4::from_array([IMM2; 4]) })
+        simd_shuffle(a, a, const { u32x4::splat(IMM2) })
     }
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
@@ -4032,6 +4061,14 @@ pub unsafe fn vec_mfvscr() -> vector_unsigned_short {
     mfvscr()
 }
 
+/// Vector Negate
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_neg<T: sealed::VectorNeg>(a: T) -> T {
+    a.vec_neg()
+}
+
 /// Vector add.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -4703,7 +4740,7 @@ mod tests {
         for off in 0..16 {
             let val: u8x16 = transmute(vec_xl(0, (pat.as_ptr() as *const u8).offset(off)));
             for i in 0..16 {
-                let v = val.extract(i);
+                let v = val.extract_dyn(i);
                 assert_eq!(off as usize + i, v as usize);
             }
         }
@@ -4758,7 +4795,7 @@ mod tests {
         )];
         for off in 0..16 {
             let v: u8x16 = transmute(vec_lde(off, pat.as_ptr() as *const u8));
-            assert_eq!(off as u8, v.extract(off as _));
+            assert_eq!(off as u8, v.extract_dyn(off as _));
         }
     }
 
@@ -4767,7 +4804,7 @@ mod tests {
         let pat = [u16x8::new(0, 1, 2, 3, 4, 5, 6, 7)];
         for off in 0..8 {
             let v: u16x8 = transmute(vec_lde(off * 2, pat.as_ptr() as *const u16));
-            assert_eq!(off as u16, v.extract(off as _));
+            assert_eq!(off as u16, v.extract_dyn(off as _));
         }
     }
 
@@ -4776,7 +4813,7 @@ mod tests {
         let pat = [u32x4::new(0, 1, 2, 3)];
         for off in 0..4 {
             let v: u32x4 = transmute(vec_lde(off * 4, pat.as_ptr() as *const u32));
-            assert_eq!(off as u32, v.extract(off as _));
+            assert_eq!(off as u32, v.extract_dyn(off as _));
         }
     }
 
