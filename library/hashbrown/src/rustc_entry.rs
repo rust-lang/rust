@@ -1,6 +1,7 @@
 use self::RustcEntry::*;
+use crate::alloc::{Allocator, Global};
 use crate::map::{Drain, HashMap, IntoIter, Iter, IterMut, make_hash};
-use crate::raw::{Allocator, Bucket, Global, RawTable};
+use crate::raw::{Bucket, RawTable};
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash};
 use core::mem;

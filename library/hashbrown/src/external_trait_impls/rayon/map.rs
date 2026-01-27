@@ -1,8 +1,8 @@
 //! Rayon extensions for `HashMap`.
 
 use super::raw::{RawIntoParIter, RawParDrain, RawParIter};
-use crate::hash_map::HashMap;
-use crate::raw::{Allocator, Global};
+use crate::HashMap;
+use crate::alloc::{Allocator, Global};
 use core::fmt;
 use core::hash::{BuildHasher, Hash};
 use core::marker::PhantomData;
@@ -456,13 +456,13 @@ where
 
 #[cfg(test)]
 mod test_par_map {
-    use alloc::vec::Vec;
     use core::hash::{Hash, Hasher};
     use core::sync::atomic::{AtomicUsize, Ordering};
+    use stdalloc::vec::Vec;
 
     use rayon::prelude::*;
 
-    use crate::hash_map::HashMap;
+    use crate::HashMap;
 
     struct Droppable<'a> {
         k: usize,

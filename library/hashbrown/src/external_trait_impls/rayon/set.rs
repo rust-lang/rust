@@ -1,8 +1,8 @@
 //! Rayon extensions for `HashSet`.
 
 use super::map;
-use crate::hash_set::HashSet;
-use crate::raw::{Allocator, Global};
+use crate::HashSet;
+use crate::alloc::{Allocator, Global};
 use core::hash::{BuildHasher, Hash};
 use rayon::iter::plumbing::UnindexedConsumer;
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelExtend, ParallelIterator};
@@ -386,12 +386,12 @@ where
 
 #[cfg(test)]
 mod test_par_set {
-    use alloc::vec::Vec;
     use core::sync::atomic::{AtomicUsize, Ordering};
+    use stdalloc::vec::Vec;
 
     use rayon::prelude::*;
 
-    use crate::hash_set::HashSet;
+    use crate::HashSet;
 
     #[test]
     fn test_disjoint() {
