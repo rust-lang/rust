@@ -15,6 +15,9 @@ and [Cortex-R52+][cortex-r52-plus].
 See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 `arm-none-eabi` targets.
 
+For Armv8-R CPUs running in AArch64 mode (such as the Arm Cortex-R82), see
+[`aarch64v8r-unknown-none`](aarch64v8r-unknown-none.md) instead.
+
 [cortex-r52]: https://www.arm.com/products/silicon-ip-cpu/cortex-r/cortex-r52
 [cortex-r52-plus]: https://www.arm.com/products/silicon-ip-cpu/cortex-r/cortex-r52-plus
 
