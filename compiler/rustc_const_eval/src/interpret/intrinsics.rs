@@ -24,7 +24,7 @@ use super::{
 };
 use crate::fluent_generated as fluent;
 use crate::interpret::Writeable;
-use crate::interpret::util::type_implements_predicates;
+use crate::interpret::util::type_implements_dyn_trait;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum MulAddType {
@@ -224,14 +224,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let tp_ty = instance.args.type_at(0);
                 let result_ty = instance.args.type_at(1);
 
-                let ty::Dynamic(preds, _) = result_ty.kind() else {
-                    span_bug!(
-                        self.find_closest_untracked_caller_location(),
-                        "Invalid type provided to vtable_for::<T, U>. U must be dyn Trait, got {result_ty}."
-                    );
-                };
+                let (implements_trait, preds) = type_implements_dyn_trait(self, tp_ty, result_ty)?;
 
-                if type_implements_predicates(self, tp_ty, result_ty, preds)? {
+                if implements_trait {
                     let vtable_ptr = self.get_vtable_ptr(tp_ty, preds)?;
                     // Writing a non-null pointer into an `Option<NonNull>` will automatically make it `Some`.
                     self.write_pointer(vtable_ptr, dest)?;

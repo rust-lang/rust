@@ -1239,6 +1239,7 @@ symbols! {
         i128_legacy_fn_min_value,
         i128_legacy_mod,
         i128_type,
+        id,
         ident,
         if_let,
         if_let_guard,

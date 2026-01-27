@@ -12,7 +12,7 @@ use rustc_middle::mir::interpret::{Pointer, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::{bug, mir, span_bug};
+use rustc_middle::{bug, mir};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::callconv::FnAbi;
 use tracing::debug;
@@ -24,7 +24,7 @@ use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
     GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, RangeSet, Scalar,
     compile_time_machine, err_inval, interp_ok, throw_exhaust, throw_inval, throw_ub,
-    throw_ub_custom, throw_unsup, throw_unsup_format, type_implements_predicates,
+    throw_ub_custom, throw_unsup, throw_unsup_format, type_implements_dyn_trait,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -597,19 +597,8 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let type_from_type_id = ecx.read_type_id(&args[0])?;
                 let trait_from_type_id = ecx.read_type_id(&args[1])?;
 
-                let ty::Dynamic(predicates, _) = trait_from_type_id.kind() else {
-                    span_bug!(
-                        ecx.find_closest_untracked_caller_location(),
-                        "Invalid type provided to type_id_implements_trait. The second parameter must represent a dyn Trait, instead you gave us {trait_from_type_id}."
-                    );
-                };
-
-                let implements = type_implements_predicates(
-                    ecx,
-                    type_from_type_id,
-                    trait_from_type_id,
-                    predicates,
-                )?;
+                let (implements, _) =
+                    type_implements_dyn_trait(ecx, type_from_type_id, trait_from_type_id)?;
 
                 ecx.write_scalar(Scalar::from_bool(implements), dest)?;
             }

@@ -4,7 +4,7 @@ use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::interpret::{AllocInit, Allocation, GlobalAlloc, InterpResult, Pointer};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{PolyExistentialPredicate, Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
-use rustc_middle::{mir, ty};
+use rustc_middle::{mir, span_bug, ty};
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
 
@@ -14,14 +14,20 @@ use crate::interpret::Machine;
 
 /// Checks if a type implements predicates.
 /// Calls `ensure_monomorphic_enough` on `ty` and `trait_ty` for you.
-pub(crate) fn type_implements_predicates<'tcx, M: Machine<'tcx>>(
+pub(crate) fn type_implements_dyn_trait<'tcx, M: Machine<'tcx>>(
     ecx: &mut InterpCx<'tcx, M>,
     ty: Ty<'tcx>,
     trait_ty: Ty<'tcx>,
-    preds: &ty::List<ty::PolyExistentialPredicate<'tcx>>,
-) -> InterpResult<'tcx, bool> {
+) -> InterpResult<'tcx, (bool, &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>)> {
     ensure_monomorphic_enough(ecx.tcx.tcx, ty)?;
     ensure_monomorphic_enough(ecx.tcx.tcx, trait_ty)?;
+
+    let ty::Dynamic(preds, _) = trait_ty.kind() else {
+        span_bug!(
+            ecx.find_closest_untracked_caller_location(),
+            "Invalid type provided to type_implements_predicates. U must be dyn Trait, got {trait_ty}."
+        );
+    };
 
     let (infcx, param_env) = ecx.tcx.infer_ctxt().build_with_typing_env(ecx.typing_env);
 
@@ -38,7 +44,7 @@ pub(crate) fn type_implements_predicates<'tcx, M: Machine<'tcx>>(
     // Since `assumed_wf_tys=[]` the choice of LocalDefId is irrelevant, so using the "default"
     let regions_are_valid = ocx.resolve_regions(CRATE_DEF_ID, param_env, []).is_empty();
 
-    interp_ok(regions_are_valid && type_impls_trait)
+    interp_ok((regions_are_valid && type_impls_trait, preds))
 }
 
 /// Checks whether a type contains generic parameters which must be instantiated.

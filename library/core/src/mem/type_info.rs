@@ -15,6 +15,8 @@ pub struct Type {
     pub kind: TypeKind,
     /// Size of the type. `None` if it is unsized
     pub size: Option<usize>,
+    /// `TypeId` that the type was gathered from.
+    pub id: TypeId,
 }
 
 impl TypeId {
@@ -25,28 +27,6 @@ impl TypeId {
     pub const fn info(self) -> Type {
         type_of(self)
     }
-
-    /// Checks if the type represented by the `TypeId` implements the trait.
-    /// It can only be called at compile time.
-    pub const fn has_trait<T: ptr::Pointee<Metadata = ptr::DynMetadata<T>> + ?Sized + 'static>(
-        self,
-    ) -> bool {
-        type_id_implements_trait(self, TypeId::of::<T>())
-    }
-
-    /// Checks if the type represented by the `TypeId` implements the trait represented by the secondary `TypeId`.
-    /// Returns `None` if the `trait_represented_by_type_id` is not a trait represented by type id.
-    /// It can only be called at compile time.
-    pub const fn has_trait_represented_by_type_id(
-        self,
-        trait_represented_by_type_id: Self,
-    ) -> Option<bool> {
-        if type_id_is_trait(trait_represented_by_type_id) {
-            Some(type_id_implements_trait(self, trait_represented_by_type_id))
-        } else {
-            None
-        }
-    }
 }
 
 impl Type {
@@ -56,6 +36,28 @@ impl Type {
     // FIXME(reflection): don't require the 'static bound
     pub const fn of<T: ?Sized + 'static>() -> Self {
         const { TypeId::of::<T>().info() }
+    }
+
+    /// Checks if the type has the trait.
+    /// It can only be called at compile time.
+    pub const fn has_trait<T: ptr::Pointee<Metadata = ptr::DynMetadata<T>> + ?Sized + 'static>(
+        self,
+    ) -> bool {
+        type_id_implements_trait(self.id, TypeId::of::<T>())
+    }
+
+    /// Checks if the type has the trait represented by the `TypeId`.
+    /// Returns `None` if the `trait_represented_by_type_id` is not a trait represented by type id.
+    /// It can only be called at compile time.
+    pub const fn has_trait_represented_by_type_id(
+        self,
+        trait_represented_by_type_id: TypeId,
+    ) -> Option<bool> {
+        if type_id_is_trait(trait_represented_by_type_id) {
+            Some(type_id_implements_trait(self.id, trait_represented_by_type_id))
+        } else {
+            None
+        }
     }
 }
 

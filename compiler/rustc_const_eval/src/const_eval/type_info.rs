@@ -172,6 +172,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                     };
                     self.write_discriminant(variant_index, &field_dest)?;
                 }
+                sym::id => {
+                    self.write_type_id(ty, &field_dest)?;
+                }
                 other => span_bug!(self.tcx.span, "unknown `Type` field {other}"),
             }
         }
