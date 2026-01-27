@@ -52,7 +52,7 @@ Atari systems or emulated environments such as QEMU version 4.2 or newer or ARAn
 ISO images for installation are provided by the Debian Ports team and can be obtained
 from the Debian CD image server available at:
 
-[https://cdimage.debian.org/cdimage/ports/](https://cdimage.debian.org/cdimage/ports/)
+[https://cdimage.debian.org/cdimage/ports/12.0/m68k/](https://cdimage.debian.org/cdimage/ports/12.0/m68k/)
 
 Documentation for Debian/m68k is available on the Debian Wiki at:
 
