@@ -48,7 +48,7 @@ impl Expander {
         callback: Option<ProcMacroClientHandle<'_>>,
     ) -> Result<TokenStream<S>, PanicMessage>
     where
-        <S::Server<'a> as bridge::server::Types>::TokenStream: Default,
+        <S::Server<'a> as bridge::server::Server>::TokenStream: Default,
     {
         self.inner
             .proc_macros

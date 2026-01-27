@@ -9,10 +9,9 @@ use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, RawFd};
 use crate::sys::fd::FileDesc;
-use crate::sys::time::Instant;
 use crate::sys::{AsInner, FromInner, IntoInner};
 pub use crate::sys::{cvt, cvt_r};
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{cmp, mem};
 
 #[expect(non_camel_case_types)]
