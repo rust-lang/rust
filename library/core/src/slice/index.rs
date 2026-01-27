@@ -910,7 +910,7 @@ where
     R: [const] ops::RangeBounds<usize> + [const] Destruct,
 {
     let len = bounds.end;
-    into_slice_range(len, (range.start_bound().cloned(), range.end_bound().cloned()))
+    into_slice_range(len, (range.start_bound().copied(), range.end_bound().copied()))
 }
 
 /// Performs bounds checking of a range without panicking.
@@ -950,7 +950,7 @@ where
     R: ops::RangeBounds<usize>,
 {
     let len = bounds.end;
-    let r = into_range(len, (range.start_bound().cloned(), range.end_bound().cloned()))?;
+    let r = into_range(len, (range.start_bound().copied(), range.end_bound().copied()))?;
     if r.start > r.end || r.end > len { None } else { Some(r) }
 }
 
@@ -977,6 +977,7 @@ pub(crate) const fn into_range_unchecked(
 /// Converts pair of `ops::Bound`s into `ops::Range`.
 /// Returns `None` on overflowing indices.
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
+#[inline]
 pub(crate) const fn into_range(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
@@ -1002,6 +1003,7 @@ pub(crate) const fn into_range(
 
 /// Converts pair of `ops::Bound`s into `ops::Range`.
 /// Panics on overflowing indices.
+#[inline]
 pub(crate) const fn into_slice_range(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
