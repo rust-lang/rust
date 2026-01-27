@@ -19,10 +19,10 @@
 //! assert_eq!(total, Duration::new(10, 7));
 //! ```
 
-use crate::fmt;
 use crate::iter::Sum;
 use crate::num::niche_types::Nanoseconds;
 use crate::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use crate::{fmt, intrinsics};
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
 const NANOS_PER_MILLI: u32 = 1_000_000;
@@ -1019,8 +1019,13 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
+    #[track_caller]
     pub fn mul_f64(self, rhs: f64) -> Duration {
-        Duration::from_secs_f64(rhs * self.as_secs_f64())
+        // Multiply seconds and nanoseconds separately to preserve precision.
+        // This avoids the precision loss from converting the full Duration to f64.
+        let secs_product = (self.secs as f64) * rhs;
+        let nanos_product = (self.nanos.as_inner() as f64) * rhs;
+        Self::duration_from_float_secs(secs_product, nanos_product, "Duration::mul_f64")
     }
 
     /// Multiplies `Duration` by `f32`.
@@ -1033,15 +1038,22 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
-    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_641));
+    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_283));
     /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847_800, 0));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
+    #[track_caller]
     pub fn mul_f32(self, rhs: f32) -> Duration {
-        Duration::from_secs_f32(rhs * self.as_secs_f32())
+        // Multiply seconds and nanoseconds separately to preserve precision.
+        // This avoids the precision loss from converting the full Duration to f32.
+        // Use f64 for intermediate calculations to preserve precision.
+        let rhs_f64 = rhs as f64;
+        let secs_product = (self.secs as f64) * rhs_f64;
+        let nanos_product = (self.nanos.as_inner() as f64) * rhs_f64;
+        Self::duration_from_float_secs(secs_product, nanos_product, "Duration::mul_f32")
     }
 
     /// Divides `Duration` by `f64`.
@@ -1061,8 +1073,13 @@ impl Duration {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
+    #[track_caller]
     pub fn div_f64(self, rhs: f64) -> Duration {
-        Duration::from_secs_f64(self.as_secs_f64() / rhs)
+        // Divide seconds and nanoseconds separately to preserve precision.
+        // This avoids the precision loss from converting the full Duration to f64.
+        let secs_quotient = (self.secs as f64) / rhs;
+        let nanos_quotient = (self.nanos.as_inner() as f64) / rhs;
+        Self::duration_from_float_secs(secs_quotient, nanos_quotient, "Duration::div_f64")
     }
 
     /// Divides `Duration` by `f32`.
@@ -1077,15 +1094,83 @@ impl Duration {
     /// let dur = Duration::new(2, 700_000_000);
     /// // note that due to rounding errors result is slightly
     /// // different from 0.859_872_611
-    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_580));
+    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_583));
     /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_599));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
+    #[track_caller]
     pub fn div_f32(self, rhs: f32) -> Duration {
-        Duration::from_secs_f32(self.as_secs_f32() / rhs)
+        // Divide seconds and nanoseconds separately to preserve precision.
+        // This avoids the precision loss from converting the full Duration to f32.
+        // Use f64 for intermediate calculations to preserve precision.
+        let rhs_f64 = rhs as f64;
+        let secs_quotient = (self.secs as f64) / rhs_f64;
+        let nanos_quotient = (self.nanos.as_inner() as f64) / rhs_f64;
+        Self::duration_from_float_secs(secs_quotient, nanos_quotient, "Duration::div_f32")
+    }
+
+    /// Helper function to create a Duration from floating-point seconds and nanoseconds.
+    /// Used by mul_f32, mul_f64, div_f32, div_f64 to avoid code duplication.
+    ///
+    /// # Arguments
+    /// * `secs_f64` - The seconds component (may have fractional part)
+    /// * `nanos_f64` - The nanoseconds component (may have fractional part)
+    /// * `fn_name` - The name of the calling function for panic messages
+    #[inline]
+    #[track_caller]
+    fn duration_from_float_secs(secs_f64: f64, nanos_f64: f64, fn_name: &str) -> Duration {
+        // Check for negative, NaN, or infinity
+        // Note: !(x >= 0.0) catches negative numbers, NaN, and -infinity
+        // We also explicitly check for +infinity which would pass the >= 0.0 check
+        if !(secs_f64 >= 0.0 && nanos_f64 >= 0.0)
+            || secs_f64.is_infinite()
+            || nanos_f64.is_infinite()
+        {
+            panic!("{fn_name}: time is negative, NaN, or infinite");
+        }
+
+        // Split seconds into integer and fractional parts
+        let secs_whole = intrinsics::truncf64(secs_f64);
+        let secs_frac = secs_f64 - secs_whole;
+
+        // Check for overflow BEFORE casting to u64
+        if secs_whole > u64::MAX as f64 {
+            panic!("overflow in {fn_name}");
+        }
+
+        // Convert fractional seconds to nanoseconds and add to nanos_f64
+        let nanos_from_secs = secs_frac * (NANOS_PER_SEC as f64);
+        let total_nanos = nanos_f64 + nanos_from_secs;
+
+        // Handle nanoseconds overflow into seconds
+        let extra_secs = intrinsics::truncf64(total_nanos / (NANOS_PER_SEC as f64));
+        // Clamp to 0.0 to handle potential floating-point errors that could make this negative
+        let final_nanos = (total_nanos - extra_secs * (NANOS_PER_SEC as f64)).max(0.0);
+
+        // Round nanoseconds to nearest integer
+        let nanos_rounded = intrinsics::roundf64(final_nanos) as u32;
+
+        // Handle edge case where rounding pushes nanos to NANOS_PER_SEC
+        let (nanos_final, secs_adjust) = if nanos_rounded >= NANOS_PER_SEC {
+            (nanos_rounded - NANOS_PER_SEC, 1u64)
+        } else {
+            (nanos_rounded, 0u64)
+        };
+
+        // Compute total seconds with overflow checking
+        let secs_whole_u64 = secs_whole as u64;
+        let extra_secs_u64 = extra_secs as u64;
+
+        let total_secs =
+            secs_whole_u64.checked_add(extra_secs_u64).and_then(|s| s.checked_add(secs_adjust));
+
+        match total_secs {
+            Some(secs) => Duration::new(secs, nanos_final),
+            None => panic!("overflow in {fn_name}"),
+        }
     }
 
     /// Divides `Duration` by `Duration` and returns `f64`.
