@@ -56,7 +56,7 @@ enum DiagnosticOnEnum {
 #[derive(Diagnostic)]
 #[diag(no_crate_example, code = E0123)]
 #[diag = "E0123"]
-//~^ ERROR failed to resolve: you might be missing crate `core`
+//~^ ERROR expected parentheses: #[diag(...)]
 struct WrongStructAttrStyle {}
 
 #[derive(Diagnostic)]
@@ -80,6 +80,7 @@ struct InvalidNestedStructAttr {}
 #[diag(nonsense("foo"), code = E0123, slug = "foo")]
 //~^ ERROR diagnostic slug must be the first argument
 //~| ERROR diagnostic slug not specified
+//~| ERROR derive(Diagnostic): expected `,`
 struct InvalidNestedStructAttr1 {}
 
 #[derive(Diagnostic)]
@@ -801,7 +802,7 @@ struct SuggestionsNoItem {
 struct SuggestionsInvalidItem {
     #[suggestion(code(foo))]
     //~^ ERROR `code(...)` must contain only string literals
-    //~| ERROR failed to resolve: you might be missing crate `core`
+    //~| ERROR unexpected token, expected `)`
     sub: Span,
 }
 

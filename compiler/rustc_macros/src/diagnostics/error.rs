@@ -13,14 +13,15 @@ pub(crate) enum DiagnosticDeriveError {
 impl DiagnosticDeriveError {
     pub(crate) fn to_compile_error(self) -> TokenStream {
         match self {
-            DiagnosticDeriveError::SynError(e) => e.to_compile_error(),
-            DiagnosticDeriveError::ErrorHandled => {
-                // Return ! to avoid having to create a blank Diag to return when an
-                // error has already been emitted to the compiler.
-                quote! {
-                    { unreachable!(); }
-                }
+            DiagnosticDeriveError::SynError(e) => {
+                span_err(e.span().unwrap(), e.to_string()).emit();
             }
+            DiagnosticDeriveError::ErrorHandled => {}
+        }
+        // Return ! to avoid having to create a blank Diag to return when an
+        // error has already been emitted to the compiler.
+        quote! {
+            { unreachable!(); }
         }
     }
 }
