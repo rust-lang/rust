@@ -25,6 +25,9 @@ pub type TryLoadFromDiskFn<'tcx, Key, Value> = fn(
     index: DepNodeIndex,
 ) -> Option<Value>;
 
+pub type IsLoadableFromDiskFn<'tcx, Key> =
+    fn(tcx: TyCtxt<'tcx>, key: &Key, index: SerializedDepNodeIndex) -> bool;
+
 /// Stores function pointers and other metadata for a particular query.
 ///
 /// Used indirectly by query plumbing in `rustc_query_system`, via a trait.
@@ -42,8 +45,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub execute_query: fn(tcx: TyCtxt<'tcx>, k: C::Key) -> C::Value,
     pub compute: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
     pub try_load_from_disk_fn: Option<TryLoadFromDiskFn<'tcx, C::Key, C::Value>>,
-    pub loadable_from_disk:
-        fn(tcx: TyCtxt<'tcx>, key: &C::Key, index: SerializedDepNodeIndex) -> bool,
+    pub is_loadable_from_disk_fn: Option<IsLoadableFromDiskFn<'tcx, C::Key>>,
     pub hash_result: HashResult<C::Value>,
     pub value_from_cycle_error:
         fn(tcx: TyCtxt<'tcx>, cycle_error: &CycleError, guar: ErrorGuaranteed) -> C::Value,

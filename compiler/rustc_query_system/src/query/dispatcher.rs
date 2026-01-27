@@ -57,7 +57,7 @@ pub trait QueryDispatcher<Qcx: QueryContext>: Copy {
         index: DepNodeIndex,
     ) -> Option<Self::Value>;
 
-    fn loadable_from_disk(self, qcx: Qcx, key: &Self::Key, idx: SerializedDepNodeIndex) -> bool;
+    fn is_loadable_from_disk(self, qcx: Qcx, key: &Self::Key, idx: SerializedDepNodeIndex) -> bool;
 
     /// Synthesize an error value to let compilation continue after a cycle.
     fn value_from_cycle_error(

@@ -686,17 +686,17 @@ macro_rules! define_queries {
                     } {
                         None
                     }),
+                    is_loadable_from_disk_fn: should_ever_cache_on_disk!([$($modifiers)*] {
+                        Some(|tcx, key, index| -> bool {
+                            ::rustc_middle::query::cached::$name(tcx, key) &&
+                                $crate::plumbing::loadable_from_disk(tcx, index)
+                        })
+                    } {
+                        None
+                    }),
                     value_from_cycle_error: |tcx, cycle, guar| {
                         let result: queries::$name::Value<'tcx> = Value::from_cycle_error(tcx, cycle, guar);
                         erase(result)
-                    },
-                    loadable_from_disk: |_tcx, _key, _index| {
-                        should_ever_cache_on_disk!([$($modifiers)*] {
-                            ::rustc_middle::query::cached::$name(_tcx, _key) &&
-                                $crate::plumbing::loadable_from_disk(_tcx, _index)
-                        } {
-                            false
-                        })
                     },
                     hash_result: hash_result!([$($modifiers)*][queries::$name::Value<'tcx>]),
                     format_value: |value| format!("{:?}", restore::<queries::$name::Value<'tcx>>(*value)),
