@@ -552,21 +552,23 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn set_personality_fn(&mut self, personality: Self::Function);
 
-    // These are used by everyone except msvc
+    // These are used by everyone except msvc and wasm EH
     fn cleanup_landing_pad(&mut self, pers_fn: Self::Function) -> (Self::Value, Self::Value);
     fn filter_landing_pad(&mut self, pers_fn: Self::Function);
     fn resume(&mut self, exn0: Self::Value, exn1: Self::Value);
 
-    // These are used only by msvc
+    // These are used by msvc and wasm EH
     fn cleanup_pad(&mut self, parent: Option<Self::Value>, args: &[Self::Value]) -> Self::Funclet;
     fn cleanup_ret(&mut self, funclet: &Self::Funclet, unwind: Option<Self::BasicBlock>);
     fn catch_pad(&mut self, parent: Self::Value, args: &[Self::Value]) -> Self::Funclet;
+    fn funclet_pad_value(&self, funclet: &Self::Funclet) -> Self::Value;
     fn catch_switch(
         &mut self,
         parent: Option<Self::Value>,
         unwind: Option<Self::BasicBlock>,
         handlers: &[Self::BasicBlock],
     ) -> Self::Value;
+    fn wasm_get_exception_and_selector(&mut self, funclet: &Self::Funclet);
 
     fn atomic_cmpxchg(
         &mut self,

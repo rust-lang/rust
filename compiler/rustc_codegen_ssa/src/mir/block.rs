@@ -215,16 +215,15 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             mir::UnwindAction::Continue => None,
             mir::UnwindAction::Unreachable => None,
             mir::UnwindAction::Terminate(reason) => {
-                if fx.mir[self.bb].is_cleanup && base::wants_new_eh_instructions(fx.cx.tcx().sess) {
+                if fx.mir[self.bb].is_cleanup && base::wants_wasm_eh(fx.cx.tcx().sess) {
+                    // For wasm, we need to generate a nested `cleanuppad within %outer_pad`
+                    // to catch exceptions during cleanup and call `panic_in_cleanup`.
+                    Some(fx.terminate_block_for_funclet(self.bb, reason))
+                } else if fx.mir[self.bb].is_cleanup
+                    && base::wants_new_eh_instructions(fx.cx.tcx().sess)
+                {
                     // MSVC SEH will abort automatically if an exception tries to
                     // propagate out from cleanup.
-
-                    // FIXME(@mirkootter): For wasm, we currently do not support terminate during
-                    // cleanup, because this requires a few more changes: The current code
-                    // caches the `terminate_block` for each function; funclet based code - however -
-                    // requires a different terminate_block for each funclet
-                    // Until this is implemented, we just do not unwind inside cleanup blocks
-
                     None
                 } else {
                     Some(fx.terminate_block(reason))
@@ -239,7 +238,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
         if let Some(unwind_block) = unwind_block {
             let ret_llbb = if let Some((_, target)) = destination {
-                fx.llbb(target)
+                self.llbb_with_cleanup(fx, target)
             } else {
                 fx.unreachable_block()
             };
@@ -318,7 +317,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         if operands.iter().any(|x| matches!(x, InlineAsmOperandRef::Label { .. })) {
             assert!(unwind_target.is_none());
             let ret_llbb = if let Some(target) = destination {
-                fx.llbb(target)
+                self.llbb_with_cleanup(fx, target)
             } else {
                 fx.unreachable_block()
             };
@@ -335,7 +334,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             MergingSucc::False
         } else if let Some(cleanup) = unwind_target {
             let ret_llbb = if let Some(target) = destination {
-                fx.llbb(target)
+                self.llbb_with_cleanup(fx, target)
             } else {
                 fx.unreachable_block()
             };
@@ -1831,7 +1830,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     fn terminate_block(&mut self, reason: UnwindTerminateReason) -> Bx::BasicBlock {
-        if let Some((cached_bb, cached_reason)) = self.terminate_block
+        // For non-funclet cases (and funclet cases outside cleanup blocks),
+        // we cache at START_BLOCK index since there's only one terminate block needed.
+        let cache_bb = mir::START_BLOCK;
+        if let Some((cached_bb, cached_reason)) = self.terminate_blocks[cache_bb]
             && reason == cached_reason
         {
             return cached_bb;
@@ -1901,7 +1903,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 &[null] as &[_]
             };
 
-            funclet = Some(bx.catch_pad(cs, args));
+            let cp = bx.catch_pad(cs, args);
+
+            if base::wants_wasm_eh(self.cx.sess()) {
+                // For Wasm, we need to call `@llvm.wasm.get.exception` and
+                // `@llvm.wasm.get.ehselector` to tell LLVM's WasmEHPrepare pass
+                // to generate a catch that only applies for C++ exceptions, not
+                // to convert this to a cleanuppad and generate a `catch_all`
+                bx.wasm_get_exception_and_selector(&cp);
+            }
+
+            funclet = Some(cp);
         } else {
             llbb = Bx::append_block(self.cx, self.llfn, "terminate");
             bx = Bx::build(self.cx, llbb);
@@ -1927,7 +1939,96 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         bx.unreachable();
 
-        self.terminate_block = Some((llbb, reason));
+        self.terminate_blocks[cache_bb] = Some((llbb, reason));
+        llbb
+    }
+
+    /// Generate a terminate block for use within a cleanup funclet for wasm
+    ///
+    /// On wasm when we're inside a cleanup funclet and need to handle a
+    /// double-panic we generate a nested catchswitch/catchpad that catches the
+    /// inner exception and calls the terminate function.
+    ///
+    /// This is not needed for MSVC because MSVC SEH will abort automatically if
+    /// an exception tries to propagate out from cleanup.
+    ///
+    /// The pattern is:
+    /// ```llvm
+    /// cs_terminate:
+    ///   %cs = catchswitch within %outer_pad [%cp_terminate] unwind to caller
+    /// cp_terminate:
+    ///   %cp = catchpad within %cs [null]
+    ///   %exn = call @llvm.wasm.get.exception(token %cp)
+    ///   %sel = call @llvm.wasm.get.ehselector(token %cp)
+    ///   call void @core::panicking::panic_in_cleanup() [ "funclet"(token %cp) ]
+    ///   unreachable
+    /// ```
+    ///
+    /// The calls to `@llvm.wasm.get.exception` and `@llvm.wasm.get.ehselector`
+    /// are necessary to tell LLVM's WasmEHPrepare pass not to catch foreign
+    /// exceptions. It's not clear that this is necessary, but it is more
+    /// consistent.
+    fn terminate_block_for_funclet(
+        &mut self,
+        funclet_bb: mir::BasicBlock,
+        reason: UnwindTerminateReason,
+    ) -> Bx::BasicBlock {
+        debug_assert!(base::wants_wasm_eh(self.cx.tcx().sess));
+        // Cache per funclet - use the funclet's cleanup BB as the key
+        let cleanup_kinds =
+            self.cleanup_kinds.as_ref().expect("cleanup_kinds required for funclets");
+        let cache_bb = cleanup_kinds[funclet_bb]
+            .funclet_bb(funclet_bb)
+            .expect("funclet_bb should be in a funclet");
+
+        if let Some((cached_bb, cached_reason)) = self.terminate_blocks[cache_bb]
+            && reason == cached_reason
+        {
+            return cached_bb;
+        }
+
+        // Ensure the outer funclet is created first
+        if self.funclets[cache_bb].is_none() {
+            self.landing_pad_for(cache_bb);
+        }
+
+        // Create catchswitch/catchpad within the outer funclet
+        let llbb = Bx::append_block(self.cx, self.llfn, "cs_terminate");
+        let cp_llbb = Bx::append_block(self.cx, self.llfn, "cp_terminate");
+
+        let mut cs_bx = Bx::build(self.cx, llbb);
+
+        // Get the outer funclet's pad value
+        let outer_funclet =
+            self.funclets[cache_bb].as_ref().expect("landing_pad_for didn't create funclet");
+        let outer_pad_value = cs_bx.funclet_pad_value(outer_funclet);
+
+        let cs = cs_bx.catch_switch(Some(outer_pad_value), None, &[cp_llbb]);
+
+        let mut bx = Bx::build(self.cx, cp_llbb);
+        let null = bx.const_null(bx.type_ptr_ext(bx.cx().data_layout().instruction_address_space));
+        let cp = bx.catch_pad(cs, &[null]);
+
+        // Call wasm intrinsics to make this a typed catch not a catch_all
+        bx.wasm_get_exception_and_selector(&cp);
+
+        // The rest of this is identical to the end of terminate_block()
+        self.set_debug_loc(&mut bx, mir::SourceInfo::outermost(self.mir.span));
+
+        let (fn_abi, fn_ptr, instance) =
+            common::build_langcall(&bx, self.mir.span, reason.lang_item());
+        if is_call_from_compiler_builtins_to_upstream_monomorphization(bx.tcx(), instance) {
+            bx.abort();
+        } else {
+            let fn_ty = bx.fn_decl_backend_type(fn_abi);
+
+            let llret = bx.call(fn_ty, None, Some(fn_abi), fn_ptr, &[], Some(&cp), None);
+            bx.apply_attrs_to_cleanup_callsite(llret);
+        }
+
+        bx.unreachable();
+
+        self.terminate_blocks[cache_bb] = Some((llbb, reason));
         llbb
     }
 
