@@ -26,6 +26,7 @@ pub mod stdio;
 pub mod sync;
 pub mod thread;
 pub mod thread_local;
+pub mod time;
 
 // FIXME(117276): remove this, move feature implementations into individual
 //                submodules.
