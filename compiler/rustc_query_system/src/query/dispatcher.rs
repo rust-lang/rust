@@ -61,7 +61,7 @@ pub trait QueryDispatcher<'tcx>: Copy {
         index: DepNodeIndex,
     ) -> Option<Self::Value>;
 
-    fn loadable_from_disk(
+    fn is_loadable_from_disk(
         self,
         qcx: Self::Qcx,
         key: &Self::Key,

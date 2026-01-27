@@ -631,7 +631,7 @@ where
     // Sanity check for the logic in `ensure`: if the node is green and the result loadable,
     // we should actually be able to load it.
     debug_assert!(
-        !query.loadable_from_disk(qcx, key, prev_dep_node_index),
+        !query.is_loadable_from_disk(qcx, key, prev_dep_node_index),
         "missing on-disk cache entry for loadable {dep_node:?}"
     );
 
@@ -798,7 +798,7 @@ where
         return (false, None);
     }
 
-    let loadable = query.loadable_from_disk(qcx, key, serialized_dep_node_index);
+    let loadable = query.is_loadable_from_disk(qcx, key, serialized_dep_node_index);
     (!loadable, Some(dep_node))
 }
 
