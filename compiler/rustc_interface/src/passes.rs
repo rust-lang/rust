@@ -901,7 +901,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_hir_typeck::provide(&mut providers.queries);
     ty::provide(&mut providers.queries);
     traits::provide(&mut providers.queries);
-    solve::provide(&mut providers.queries);
+    solve::provide(providers);
     rustc_passes::provide(&mut providers.queries);
     rustc_traits::provide(&mut providers.queries);
     rustc_ty_utils::provide(&mut providers.queries);
