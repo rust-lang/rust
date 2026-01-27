@@ -34,6 +34,7 @@ use rustc_span::source_map::{Spanned, respan};
 use rustc_span::{ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
+use crate::attr::data_structures::CfgEntry;
 pub use crate::format::*;
 use crate::token::{self, CommentKind, Delimiter};
 use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
@@ -1533,11 +1534,10 @@ impl Expr {
             // then type of result is trait object.
             // Otherwise we don't assume the result type.
             ExprKind::Binary(binop, lhs, rhs) if binop.node == BinOpKind::Add => {
-                if let (Some(lhs), Some(rhs)) = (lhs.to_bound(), rhs.to_bound()) {
-                    TyKind::TraitObject(vec![lhs, rhs], TraitObjectSyntax::None)
-                } else {
+                let (Some(lhs), Some(rhs)) = (lhs.to_bound(), rhs.to_bound()) else {
                     return None;
-                }
+                };
+                TyKind::TraitObject(vec![lhs, rhs], TraitObjectSyntax::None)
             }
 
             ExprKind::Underscore => TyKind::Infer,
@@ -1811,7 +1811,7 @@ pub enum ExprKind {
     /// or a `gen` block (`gen move { ... }`).
     ///
     /// The span is the "decl", which is the header before the body `{ }`
-    /// including the `asyng`/`gen` keywords and possibly `move`.
+    /// including the `async`/`gen` keywords and possibly `move`.
     Gen(CaptureBy, Box<Block>, GenBlockKind, Span),
     /// An await expression (`my_future.await`). Span is of await keyword.
     Await(Box<Expr>, Span),
@@ -2108,6 +2108,20 @@ pub struct MacroDef {
     pub body: Box<DelimArgs>,
     /// `true` if macro was defined with `macro_rules`.
     pub macro_rules: bool,
+
+    /// Corresponds to `#[eii_declaration(...)]`.
+    /// `#[eii_declaration(...)]` is a built-in attribute macro, not a built-in attribute,
+    /// because we require some name resolution to occur in the parameters of this attribute.
+    /// Name resolution isn't possible in attributes otherwise, so we encode it in the AST.
+    /// During ast lowering, we turn it back into an attribute again
+    pub eii_declaration: Option<EiiDecl>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+pub struct EiiDecl {
+    /// path to the extern item we're targeting
+    pub foreign_item: Path,
+    pub impl_unsafe: bool,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Copy, Hash, Eq, PartialEq)]
@@ -2382,7 +2396,7 @@ impl FnSig {
 /// * the `G<Ty> = Ty` in `Trait<G<Ty> = Ty>`
 /// * the `A: Bound` in `Trait<A: Bound>`
 /// * the `RetTy` in `Trait(ArgTy, ArgTy) -> RetTy`
-/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `associated_const_equality`)
+/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `min_generic_const_args`)
 /// * the `f(..): Bound` in `Trait<f(..): Bound>` (feature `return_type_notation`)
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct AssocItemConstraint {
@@ -3334,7 +3348,8 @@ impl UseTree {
 /// Distinguishes between `Attribute`s that decorate items and Attributes that
 /// are contained as statements within items. These two cases need to be
 /// distinguished for pretty-printing.
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy, HashStable_Generic, Walkable)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
+#[derive(Encodable, Decodable, HashStable_Generic, Walkable)]
 pub enum AttrStyle {
     Outer,
     Inner,
@@ -3378,7 +3393,7 @@ impl NormalAttr {
             item: AttrItem {
                 unsafety: Safety::Default,
                 path: Path::from_ident(ident),
-                args: AttrArgs::Empty,
+                args: AttrItemKind::Unparsed(AttrArgs::Empty),
                 tokens: None,
             },
             tokens: None,
@@ -3390,9 +3405,51 @@ impl NormalAttr {
 pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,
-    pub args: AttrArgs,
+    pub args: AttrItemKind,
     // Tokens for the meta item, e.g. just the `foo` within `#[foo]` or `#![foo]`.
     pub tokens: Option<LazyAttrTokenStream>,
+}
+
+/// Some attributes are stored in a parsed form, for performance reasons.
+/// Their arguments don't have to be reparsed everytime they're used
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum AttrItemKind {
+    Parsed(EarlyParsedAttribute),
+    Unparsed(AttrArgs),
+}
+
+impl AttrItemKind {
+    pub fn unparsed(self) -> Option<AttrArgs> {
+        match self {
+            AttrItemKind::Unparsed(args) => Some(args),
+            AttrItemKind::Parsed(_) => None,
+        }
+    }
+
+    pub fn unparsed_ref(&self) -> Option<&AttrArgs> {
+        match self {
+            AttrItemKind::Unparsed(args) => Some(args),
+            AttrItemKind::Parsed(_) => None,
+        }
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        match self {
+            AttrItemKind::Unparsed(args) => args.span(),
+            AttrItemKind::Parsed(_) => None,
+        }
+    }
+}
+
+/// Some attributes are stored in parsed form in the AST.
+/// This is done for performance reasons, so the attributes don't need to be reparsed on every use.
+///
+/// Currently all early parsed attributes are excluded from pretty printing at rustc_ast_pretty::pprust::state::print_attribute_inline.
+/// When adding new early parsed attributes, consider whether they should be pretty printed.
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+pub enum EarlyParsedAttribute {
+    CfgTrace(CfgEntry),
+    CfgAttrTrace,
 }
 
 impl AttrItem {
@@ -3569,6 +3626,7 @@ impl Item {
     pub fn opt_generics(&self) -> Option<&Generics> {
         match &self.kind {
             ItemKind::ExternCrate(..)
+            | ItemKind::ConstBlock(_)
             | ItemKind::Use(_)
             | ItemKind::Mod(..)
             | ItemKind::ForeignMod(_)
@@ -3747,6 +3805,34 @@ pub struct Fn {
     pub contract: Option<Box<FnContract>>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
     pub body: Option<Box<Block>>,
+
+    /// This function is an implementation of an externally implementable item (EII).
+    /// This means, there was an EII declared somewhere and this function is the
+    /// implementation that should be run when the declaration is called.
+    pub eii_impls: ThinVec<EiiImpl>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct EiiImpl {
+    pub node_id: NodeId,
+    pub eii_macro_path: Path,
+    /// This field is an implementation detail that prevents a lot of bugs.
+    /// See <https://github.com/rust-lang/rust/issues/149981> for an example.
+    ///
+    /// The problem is, that if we generate a declaration *together* with its default,
+    /// we generate both a declaration and an implementation. The generated implementation
+    /// uses the same mechanism to register itself as a user-defined implementation would,
+    /// despite being invisible to users. What does happen is a name resolution step.
+    /// The invisible default implementation has to find the declaration.
+    /// Both are generated at the same time, so we can skip that name resolution step.
+    ///
+    /// This field is that shortcut: we prefill the extern target to skip a name resolution step,
+    /// making sure it never fails. It'd be awful UX if we fail name resolution in code invisible to the user.
+    pub known_eii_macro_resolution: Option<EiiDecl>,
+    pub impl_safety: Safety,
+    pub span: Span,
+    pub inner_span: Span,
+    pub is_default: bool,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -3810,6 +3896,17 @@ impl ConstItemRhs {
     }
 }
 
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct ConstBlockItem {
+    pub id: NodeId,
+    pub span: Span,
+    pub block: Box<Block>,
+}
+
+impl ConstBlockItem {
+    pub const IDENT: Ident = Ident { name: kw::Underscore, span: DUMMY_SP };
+}
+
 // Adding a new variant? Please update `test_item` in `tests/ui/macros/stringify.rs`.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
@@ -3829,6 +3926,11 @@ pub enum ItemKind {
     ///
     /// E.g., `const FOO: i32 = 42;`.
     Const(Box<ConstItem>),
+    /// A module-level const block.
+    /// Equivalent to `const _: () = const { ... };`.
+    ///
+    /// E.g., `const { assert!(true) }`.
+    ConstBlock(ConstBlockItem),
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
@@ -3905,6 +4007,8 @@ impl ItemKind {
             | ItemKind::MacroDef(ident, _)
             | ItemKind::Delegation(box Delegation { ident, .. }) => Some(ident),
 
+            ItemKind::ConstBlock(_) => Some(ConstBlockItem::IDENT),
+
             ItemKind::Use(_)
             | ItemKind::ForeignMod(_)
             | ItemKind::GlobalAsm(_)
@@ -3918,9 +4022,9 @@ impl ItemKind {
     pub fn article(&self) -> &'static str {
         use ItemKind::*;
         match self {
-            Use(..) | Static(..) | Const(..) | Fn(..) | Mod(..) | GlobalAsm(..) | TyAlias(..)
-            | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | MacroDef(..)
-            | Delegation(..) | DelegationMac(..) => "a",
+            Use(..) | Static(..) | Const(..) | ConstBlock(..) | Fn(..) | Mod(..)
+            | GlobalAsm(..) | TyAlias(..) | Struct(..) | Union(..) | Trait(..) | TraitAlias(..)
+            | MacroDef(..) | Delegation(..) | DelegationMac(..) => "a",
             ExternCrate(..) | ForeignMod(..) | MacCall(..) | Enum(..) | Impl { .. } => "an",
         }
     }
@@ -3931,6 +4035,7 @@ impl ItemKind {
             ItemKind::Use(..) => "`use` import",
             ItemKind::Static(..) => "static item",
             ItemKind::Const(..) => "constant item",
+            ItemKind::ConstBlock(..) => "const block",
             ItemKind::Fn(..) => "function",
             ItemKind::Mod(..) => "module",
             ItemKind::ForeignMod(..) => "extern block",
@@ -3960,7 +4065,18 @@ impl ItemKind {
             | Self::Trait(box Trait { generics, .. })
             | Self::TraitAlias(box TraitAlias { generics, .. })
             | Self::Impl(Impl { generics, .. }) => Some(generics),
-            _ => None,
+
+            Self::ExternCrate(..)
+            | Self::Use(..)
+            | Self::Static(..)
+            | Self::ConstBlock(..)
+            | Self::Mod(..)
+            | Self::ForeignMod(..)
+            | Self::GlobalAsm(..)
+            | Self::MacCall(..)
+            | Self::MacroDef(..)
+            | Self::Delegation(..)
+            | Self::DelegationMac(..) => None,
         }
     }
 }
@@ -4113,7 +4229,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 184);
+    static_assert_size!(Fn, 192);
     static_assert_size!(ForeignItem, 80);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);

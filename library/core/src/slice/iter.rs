@@ -2176,7 +2176,7 @@ unsafe impl<T> Sync for ChunksExactMut<'_, T> where T: Sync {}
 /// [`array_windows`]: slice::array_windows
 /// [slices]: slice
 #[derive(Debug, Clone, Copy)]
-#[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "array_windows", since = "1.94.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ArrayWindows<'a, T: 'a, const N: usize> {
     v: &'a [T],
@@ -2189,7 +2189,7 @@ impl<'a, T: 'a, const N: usize> ArrayWindows<'a, T, N> {
     }
 }
 
-#[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "array_windows", since = "1.94.0")]
 impl<'a, T, const N: usize> Iterator for ArrayWindows<'a, T, N> {
     type Item = &'a [T; N];
 
@@ -2226,7 +2226,7 @@ impl<'a, T, const N: usize> Iterator for ArrayWindows<'a, T, N> {
     }
 }
 
-#[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "array_windows", since = "1.94.0")]
 impl<'a, T, const N: usize> DoubleEndedIterator for ArrayWindows<'a, T, N> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T; N]> {
@@ -2245,7 +2245,7 @@ impl<'a, T, const N: usize> DoubleEndedIterator for ArrayWindows<'a, T, N> {
     }
 }
 
-#[stable(feature = "array_windows", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "array_windows", since = "1.94.0")]
 impl<T, const N: usize> ExactSizeIterator for ArrayWindows<'_, T, N> {
     fn is_empty(&self) -> bool {
         self.v.len() < N
@@ -2495,19 +2495,13 @@ impl<'a, T> Iterator for RChunksMut<'a, T> {
             && end < self.v.len()
         {
             let end = self.v.len() - end;
-            let start = match end.checked_sub(self.chunk_size) {
-                Some(sum) => sum,
-                None => 0,
-            };
-            // SAFETY: This type ensures that self.v is a valid pointer with a correct len.
-            // Therefore the bounds check in split_at_mut guarantees the split point is inbounds.
-            let (head, tail) = unsafe { self.v.split_at_mut(start) };
-            // SAFETY: This type ensures that self.v is a valid pointer with a correct len.
-            // Therefore the bounds check in split_at_mut guarantees the split point is inbounds.
-            let (nth, _) = unsafe { tail.split_at_mut(end - start) };
-            self.v = head;
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (rest, _) = unsafe { self.v.split_at_mut(end) };
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (rest, chunk) = unsafe { rest.split_at_mut(end.saturating_sub(self.chunk_size)) };
+            self.v = rest;
             // SAFETY: Nothing else points to or will point to the contents of this slice.
-            Some(unsafe { &mut *nth })
+            Some(unsafe { &mut *chunk })
         } else {
             self.v = &mut [];
             None

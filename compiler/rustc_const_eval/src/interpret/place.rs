@@ -2,10 +2,9 @@
 //! into a place.
 //! All high-level functions to write to memory work on places as destinations.
 
-use std::assert_matches::assert_matches;
-
 use either::{Either, Left, Right};
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
+use rustc_data_structures::assert_matches;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, mir, span_bug};

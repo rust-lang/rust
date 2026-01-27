@@ -488,7 +488,30 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         let Some(InferSource { span, kind }) = local_visitor.infer_source else {
-            return self.bad_inference_failure_err(failure_span, arg_data, error_code);
+            let silence = if let DefKind::AssocFn = self.tcx.def_kind(body_def_id)
+                && let parent = self.tcx.parent(body_def_id.into())
+                && self.tcx.is_automatically_derived(parent)
+                && let Some(parent) = parent.as_local()
+                && let hir::Node::Item(item) = self.tcx.hir_node_by_def_id(parent)
+                && let hir::ItemKind::Impl(imp) = item.kind
+                && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = imp.self_ty.kind
+                && let Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, def_id) = path.res
+                && let Some(def_id) = def_id.as_local()
+                && let hir::Node::Item(item) = self.tcx.hir_node_by_def_id(def_id)
+            {
+                // We have encountered an inference error within an automatically derived `impl`,
+                // from a `#[derive(..)]` on an item that had a parse error. Because the parse
+                // error might have caused the expanded code to be malformed, we silence the
+                // inference error.
+                item.kind.recovered()
+            } else {
+                false
+            };
+            let mut err = self.bad_inference_failure_err(failure_span, arg_data, error_code);
+            if silence {
+                err.downgrade_to_delayed_bug();
+            }
+            return err;
         };
 
         let (source_kind, name, long_ty_path) = kind.ty_localized_msg(self);

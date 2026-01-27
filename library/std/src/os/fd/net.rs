@@ -1,6 +1,6 @@
 use crate::os::fd::owned::OwnedFd;
 use crate::os::fd::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner};
 use crate::{net, sys};
 
 macro_rules! impl_as_raw_fd {

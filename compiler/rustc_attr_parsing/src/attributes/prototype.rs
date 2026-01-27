@@ -27,7 +27,7 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span);
+            cx.expected_list(cx.attr_span, args);
             return None;
         };
 
@@ -46,9 +46,8 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
                 extract_value(cx, sym::dialect, arg, meta_item.span(), &mut dialect, &mut failed);
             } else if let Some(arg) = meta_item.word_is(sym::phase) {
                 extract_value(cx, sym::phase, arg, meta_item.span(), &mut phase, &mut failed);
-            } else if let Some(word) = meta_item.path().word() {
-                let word = word.to_string();
-                cx.unknown_key(meta_item.span(), word, &["dialect", "phase"]);
+            } else if let Some(..) = meta_item.path().word() {
+                cx.expected_specific_argument(meta_item.span(), &[sym::dialect, sym::phase]);
                 failed = true;
             } else {
                 cx.expected_name_value(meta_item.span(), None);

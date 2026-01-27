@@ -8,7 +8,7 @@ use crate::borrow::Cow;
 use crate::collections::TryReserveError;
 use crate::rc::Rc;
 use crate::sync::Arc;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner};
 use crate::{fmt, mem};
 
 #[derive(Hash)]

@@ -1,4 +1,7 @@
-use std::assert_matches::debug_assert_matches;
+#[cfg(bootstrap)]
+pub use std::assert_matches::debug_assert_matches;
+#[cfg(not(bootstrap))]
+pub use std::debug_assert_matches;
 use std::fmt::{self, Display, Write as _};
 use std::sync::LazyLock as Lazy;
 use std::{ascii, mem};
@@ -357,7 +360,7 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
         }
         // array lengths are obviously usize
         ty::ConstKind::Value(cv) if *cv.ty.kind() == ty::Uint(ty::UintTy::Usize) => {
-            cv.valtree.unwrap_leaf().to_string()
+            cv.to_leaf().to_string()
         }
         _ => n.to_string(),
     }

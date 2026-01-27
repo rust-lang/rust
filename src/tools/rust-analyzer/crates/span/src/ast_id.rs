@@ -48,6 +48,11 @@ pub const ROOT_ERASED_FILE_AST_ID: ErasedFileAstId =
 pub const FIXUP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
     ErasedFileAstId(pack_hash_index_and_kind(0, 0, ErasedFileAstIdKind::Fixup as u32));
 
+/// [`ErasedFileAstId`] used as the span for syntax nodes that should not be mapped down to
+/// macro expansion. Any `Span` containing this file id is to be considered fake.
+pub const NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
+    ErasedFileAstId(pack_hash_index_and_kind(0, 0, ErasedFileAstIdKind::NoDownmap as u32));
+
 /// This is a type erased FileAstId.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ErasedFileAstId(u32);
@@ -95,6 +100,7 @@ impl fmt::Debug for ErasedFileAstId {
             BlockExpr,
             AsmExpr,
             Fixup,
+            NoDownmap,
         );
         if f.alternate() {
             write!(f, "{kind}[{:04X}, {}]", self.hash_value(), self.index())
@@ -150,6 +156,9 @@ enum ErasedFileAstIdKind {
     // because incrementality is not a problem, they will always be the only item in the macro file,
     // and memory usage also not because they're rare.
     AsmExpr,
+    /// Represents a fake [`ErasedFileAstId`] that should not be mapped down to macro expansion
+    /// result.
+    NoDownmap,
     /// Keep this last.
     Root,
 }
@@ -158,7 +167,7 @@ enum ErasedFileAstIdKind {
 const HASH_BITS: u32 = 16;
 const INDEX_BITS: u32 = 11;
 const KIND_BITS: u32 = 5;
-const _: () = assert!(ErasedFileAstIdKind::Fixup as u32 <= ((1 << KIND_BITS) - 1));
+const _: () = assert!(ErasedFileAstIdKind::Root as u32 <= ((1 << KIND_BITS) - 1));
 const _: () = assert!(HASH_BITS + INDEX_BITS + KIND_BITS == u32::BITS);
 
 #[inline]
@@ -594,8 +603,9 @@ impl AstIdMap {
         // After all, the block will then contain the *outer* item, so we allocate
         // an ID for it anyway.
         let mut blocks = Vec::new();
-        let mut curr_layer = vec![(node.clone(), None)];
-        let mut next_layer = vec![];
+        let mut curr_layer = Vec::with_capacity(32);
+        curr_layer.push((node.clone(), None));
+        let mut next_layer = Vec::with_capacity(32);
         while !curr_layer.is_empty() {
             curr_layer.drain(..).for_each(|(node, parent_idx)| {
                 let mut preorder = node.preorder();
@@ -764,6 +774,48 @@ impl AstIdMap {
                 self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
             ),
         }
+    }
+}
+
+#[cfg(not(no_salsa_async_drops))]
+impl Drop for AstIdMap {
+    fn drop(&mut self) {
+        let arena = std::mem::take(&mut self.arena);
+        let ptr_map = std::mem::take(&mut self.ptr_map);
+        let id_map = std::mem::take(&mut self.id_map);
+        static AST_ID_MAP_DROP_THREAD: std::sync::OnceLock<
+            std::sync::mpsc::Sender<(
+                Arena<(SyntaxNodePtr, ErasedFileAstId)>,
+                hashbrown::HashTable<ArenaId>,
+                hashbrown::HashTable<ArenaId>,
+            )>,
+        > = std::sync::OnceLock::new();
+        AST_ID_MAP_DROP_THREAD
+            .get_or_init(|| {
+                let (sender, receiver) = std::sync::mpsc::channel::<(
+                    Arena<(SyntaxNodePtr, ErasedFileAstId)>,
+                    hashbrown::HashTable<ArenaId>,
+                    hashbrown::HashTable<ArenaId>,
+                )>();
+                std::thread::Builder::new()
+                    .name("AstIdMapDropper".to_owned())
+                    .spawn(move || {
+                        loop {
+                            // block on a receive
+                            _ = receiver.recv();
+                            // then drain the entire channel
+                            while receiver.try_recv().is_ok() {}
+                            // and sleep for a bit
+                            std::thread::sleep(std::time::Duration::from_millis(100));
+                        }
+                        // why do this over just a `receiver.iter().for_each(drop)`? To reduce contention on the channel lock.
+                        // otherwise this thread will constantly wake up and sleep again.
+                    })
+                    .unwrap();
+                sender
+            })
+            .send((arena, ptr_map, id_map))
+            .unwrap();
     }
 }
 

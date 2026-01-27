@@ -16,7 +16,7 @@ error: layout_of(NonZero<u32>) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -61,7 +61,7 @@ error: layout_of((u32) is 1..) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -106,7 +106,7 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -137,7 +137,7 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,
@@ -166,7 +166,7 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                            offsets: [
                                Size(0 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -217,7 +217,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -248,7 +248,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                        },
                        fields: Arbitrary {
                            offsets: [],
-                           memory_index: [],
+                           in_memory_order: [],
                        },
                        largest_niche: None,
                        uninhabited: false,
@@ -277,7 +277,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                            offsets: [
                                Size(0 bytes),
                            ],
-                           memory_index: [
+                           in_memory_order: [
                                0,
                            ],
                        },
@@ -328,7 +328,7 @@ error: layout_of(NonZeroU32New) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -401,7 +401,7 @@ error: layout_of((i8) is -10..=10) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -446,7 +446,7 @@ error: layout_of((i8) is i8::MIN..=0) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },

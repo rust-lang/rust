@@ -7,8 +7,8 @@ use ide_db::{
     helpers::pick_best_token,
     search::{FileReference, ReferenceCategory, SearchScope},
     syntax_helpers::node_ext::{
-        eq_label_lt, for_each_tail_expr, full_path_of_name_ref, is_closure_or_blk_with_modif,
-        preorder_expr_with_ctx_checker,
+        eq_label_lt, find_loops, for_each_tail_expr, full_path_of_name_ref,
+        is_closure_or_blk_with_modif, preorder_expr_with_ctx_checker,
     },
 };
 use syntax::{
@@ -562,7 +562,7 @@ pub(crate) fn highlight_break_points(
         Some(highlights)
     }
 
-    let Some(loops) = goto_definition::find_loops(sema, &token) else {
+    let Some(loops) = find_loops(sema, &token) else {
         return FxHashMap::default();
     };
 

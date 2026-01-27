@@ -333,5 +333,22 @@ LL | |             return Err(reason);
 LL | |         }
    | |_________^ help: replace it with: `result?;`
 
-error: aborting due to 35 previous errors
+error: this `let...else` may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:626:5
+   |
+LL | /     let Some(x) = test_expr!(42) else {
+LL | |         return None;
+LL | |     };
+   | |______^ help: replace it with: `let x = test_expr!(42)?;`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:632:5
+   |
+LL | /     if test_expr!(42).is_none() {
+LL | |
+LL | |         return None;
+LL | |     }
+   | |_____^ help: replace it with: `test_expr!(42)?;`
+
+error: aborting due to 37 previous errors
 

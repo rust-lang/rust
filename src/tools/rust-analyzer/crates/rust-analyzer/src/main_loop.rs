@@ -9,7 +9,7 @@ use std::{
 };
 
 use crossbeam_channel::{Receiver, never, select};
-use ide_db::base_db::{SourceDatabase, VfsPath, salsa::Database as _};
+use ide_db::base_db::{SourceDatabase, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::{TextDocumentIdentifier, notification::Notification as _};
 use stdx::thread::ThreadIntent;
@@ -383,7 +383,7 @@ impl GlobalState {
                             ));
                         }
                         PrimeCachesProgress::End { cancelled } => {
-                            self.analysis_host.raw_database_mut().trigger_lru_eviction();
+                            self.analysis_host.trigger_garbage_collection();
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
                                 self.prime_caches_queue
@@ -437,11 +437,17 @@ impl GlobalState {
                 }
             }
             Event::Flycheck(message) => {
-                let _p = tracing::info_span!("GlobalState::handle_event/flycheck").entered();
-                self.handle_flycheck_msg(message);
+                let mut cargo_finished = false;
+                self.handle_flycheck_msg(message, &mut cargo_finished);
                 // Coalesce many flycheck updates into a single loop turn
                 while let Ok(message) = self.flycheck_receiver.try_recv() {
-                    self.handle_flycheck_msg(message);
+                    self.handle_flycheck_msg(message, &mut cargo_finished);
+                }
+                if cargo_finished {
+                    self.send_request::<lsp_types::request::WorkspaceDiagnosticRefresh>(
+                        (),
+                        |_, _| (),
+                    );
                 }
             }
             Event::TestResult(message) => {
@@ -528,6 +534,16 @@ impl GlobalState {
             }
             if project_or_mem_docs_changed && self.config.test_explorer() {
                 self.update_tests();
+            }
+
+            let current_revision = self.analysis_host.raw_database().nonce_and_revision().1;
+            // no work is currently being done, now we can block a bit and clean up our garbage
+            if self.task_pool.handle.is_empty()
+                && self.fmt_pool.handle.is_empty()
+                && current_revision != self.last_gc_revision
+            {
+                self.analysis_host.trigger_garbage_collection();
+                self.last_gc_revision = current_revision;
             }
         }
 
@@ -901,7 +917,8 @@ impl GlobalState {
                         // Not a lot of bad can happen from mistakenly identifying `minicore`, so proceed with that.
                         self.minicore.minicore_text = contents
                             .as_ref()
-                            .and_then(|contents| String::from_utf8(contents.clone()).ok());
+                            .and_then(|contents| str::from_utf8(contents).ok())
+                            .map(triomphe::Arc::from);
                     }
 
                     let path = VfsPath::from(path);
@@ -1109,7 +1126,7 @@ impl GlobalState {
         }
     }
 
-    fn handle_flycheck_msg(&mut self, message: FlycheckMessage) {
+    fn handle_flycheck_msg(&mut self, message: FlycheckMessage, cargo_finished: &mut bool) {
         match message {
             FlycheckMessage::AddDiagnostic {
                 id,
@@ -1167,6 +1184,7 @@ impl GlobalState {
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
                     flycheck::Progress::DidCancel => {
                         self.last_flycheck_error = None;
+                        *cargo_finished = true;
                         (Progress::End, None)
                     }
                     flycheck::Progress::DidFailToRestart(err) => {
@@ -1177,6 +1195,7 @@ impl GlobalState {
                     flycheck::Progress::DidFinish(result) => {
                         self.last_flycheck_error =
                             result.err().map(|err| format!("cargo check failed to start: {err}"));
+                        *cargo_finished = true;
                         (Progress::End, None)
                     }
                 };
@@ -1320,6 +1339,7 @@ impl GlobalState {
             .on::<NO_RETRY, lsp_ext::MoveItem>(handlers::handle_move_item)
             //
             .on::<NO_RETRY, lsp_ext::InternalTestingFetchConfig>(handlers::internal_testing_fetch_config)
+            .on::<RETRY, lsp_ext::GetFailedObligations>(handlers::get_failed_obligations)
             .finish();
     }
 

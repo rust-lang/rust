@@ -11,7 +11,6 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
-use std::assert_matches::assert_matches;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
@@ -24,11 +23,15 @@ pub use assoc::*;
 pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
 pub use intrinsic::IntrinsicDef;
-use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, VariantIdx};
+use rustc_abi::{
+    Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, VariantIdx,
+};
+use rustc_ast::AttrVec;
 use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::assert_matches;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
@@ -48,7 +51,7 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol};
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
 #[allow(
@@ -74,7 +77,7 @@ pub use self::closure::{
 };
 pub use self::consts::{
     AnonConstKind, AtomicOrdering, Const, ConstInt, ConstKind, ConstToValTreeResult, Expr,
-    ExprKind, ScalarInt, SimdAlign, UnevaluatedConst, ValTree, ValTreeKind, Value,
+    ExprKind, ScalarInt, SimdAlign, UnevaluatedConst, ValTree, ValTreeKindExt, Value,
 };
 pub use self::context::{
     CtxtInterners, CurrentGcx, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed, tls,
@@ -193,8 +196,6 @@ pub struct ResolverGlobalCtxt {
 /// This struct is meant to be consumed by lowering.
 #[derive(Debug)]
 pub struct ResolverAstLowering {
-    pub legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
-
     /// Resolutions for nodes that have a single resolution.
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
@@ -219,6 +220,32 @@ pub struct ResolverAstLowering {
 
     /// Information about functions signatures for delegation items expansion
     pub delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
+    // Information about delegations which is used when handling recursive delegations
+    pub delegation_infos: LocalDefIdMap<DelegationInfo>,
+}
+
+bitflags::bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub struct DelegationFnSigAttrs: u8 {
+        const TARGET_FEATURE = 1 << 0;
+        const MUST_USE = 1 << 1;
+    }
+}
+
+pub const DELEGATION_INHERIT_ATTRS_START: DelegationFnSigAttrs = DelegationFnSigAttrs::MUST_USE;
+
+#[derive(Debug)]
+pub struct DelegationInfo {
+    // NodeId (either delegation.id or item_id in case of a trait impl) for signature resolution,
+    // for details see https://github.com/rust-lang/rust/issues/118212#issuecomment-2160686914
+    pub resolution_node: ast::NodeId,
+    pub attrs: DelegationAttrs,
+}
+
+#[derive(Debug)]
+pub struct DelegationAttrs {
+    pub flags: DelegationFnSigAttrs,
+    pub to_inherit: AttrVec,
 }
 
 #[derive(Debug)]
@@ -227,7 +254,7 @@ pub struct DelegationFnSig {
     pub param_count: usize,
     pub has_self: bool,
     pub c_variadic: bool,
-    pub target_feature: bool,
+    pub attrs: DelegationAttrs,
 }
 
 #[derive(Clone, Copy, Debug, HashStable)]
@@ -1503,6 +1530,17 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         let attributes = self.get_all_attrs(did);
+        let elt = find_attr!(
+            attributes,
+            AttributeKind::RustcScalableVector { element_count, .. } => element_count
+        )
+        .map(|elt| match elt {
+            Some(n) => ScalableElt::ElementCount(*n),
+            None => ScalableElt::Container,
+        });
+        if elt.is_some() {
+            flags.insert(ReprFlags::IS_SCALABLE);
+        }
         if let Some(reprs) = find_attr!(attributes, AttributeKind::Repr { reprs, .. } => reprs) {
             for (r, _) in reprs {
                 flags.insert(match *r {
@@ -1567,7 +1605,14 @@ impl<'tcx> TyCtxt<'tcx> {
             flags.insert(ReprFlags::PASS_INDIRECTLY_IN_NON_RUSTIC_ABIS);
         }
 
-        ReprOptions { int: size, align: max_align, pack: min_pack, flags, field_shuffle_seed }
+        ReprOptions {
+            int: size,
+            align: max_align,
+            pack: min_pack,
+            flags,
+            field_shuffle_seed,
+            scalable: elt,
+        }
     }
 
     /// Look up the name of a definition across crates. This does not look at HIR.
@@ -1771,37 +1816,6 @@ impl<'tcx> TyCtxt<'tcx> {
             self.hir_attrs(self.local_def_id_to_hir_id(did))
         } else {
             self.attrs_for_def(did)
-        }
-    }
-
-    /// Get an attribute from the diagnostic attribute namespace
-    ///
-    /// This function requests an attribute with the following structure:
-    ///
-    /// `#[diagnostic::$attr]`
-    ///
-    /// This function performs feature checking, so if an attribute is returned
-    /// it can be used by the consumer
-    pub fn get_diagnostic_attr(
-        self,
-        did: impl Into<DefId>,
-        attr: Symbol,
-    ) -> Option<&'tcx hir::Attribute> {
-        let did: DefId = did.into();
-        if did.as_local().is_some() {
-            // it's a crate local item, we need to check feature flags
-            if rustc_feature::is_stable_diagnostic_attribute(attr, self.features()) {
-                self.get_attrs_by_path(did, &[sym::diagnostic, sym::do_not_recommend]).next()
-            } else {
-                None
-            }
-        } else {
-            // we filter out unstable diagnostic attributes before
-            // encoding attributes
-            debug_assert!(rustc_feature::encode_cross_crate(attr));
-            self.attrs_for_def(did)
-                .iter()
-                .find(|a| matches!(a.path().as_ref(), [sym::diagnostic, a] if *a == attr))
         }
     }
 
@@ -2286,8 +2300,8 @@ impl<'tcx> fmt::Debug for SymbolName<'tcx> {
 
 /// The constituent parts of a type level constant of kind ADT or array.
 #[derive(Copy, Clone, Debug, HashStable)]
-pub struct DestructuredConst<'tcx> {
-    pub variant: Option<VariantIdx>,
+pub struct DestructuredAdtConst<'tcx> {
+    pub variant: VariantIdx,
     pub fields: &'tcx [ty::Const<'tcx>],
 }
 
@@ -2395,9 +2409,7 @@ fn typetree_from_ty_impl_inner<'tcx>(
     }
 
     if ty.is_ref() || ty.is_raw_ptr() || ty.is_box() {
-        let inner_ty = if let Some(inner) = ty.builtin_deref(true) {
-            inner
-        } else {
+        let Some(inner_ty) = ty.builtin_deref(true) else {
             return TypeTree::new();
         };
 

@@ -1,0 +1,17 @@
+error: `#[eii]` is only valid on functions
+  --> $DIR/error_statement_position.rs:8:5
+   |
+LL |     #[eii]
+   |     ^^^^^^
+
+error: `#[eii]` can only be used on functions inside a module
+  --> $DIR/error_statement_position.rs:14:5
+   |
+LL |     #[eii]
+   |     ^^^^^^
+LL |
+LL |     fn foo() {}
+   |        --- `#[eii]` is used on this item, which is part of another item's local scope
+
+error: aborting due to 2 previous errors
+

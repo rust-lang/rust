@@ -37,7 +37,8 @@ fn connect_error() {
             e.kind() == ErrorKind::ConnectionRefused
                 || e.kind() == ErrorKind::InvalidInput
                 || e.kind() == ErrorKind::AddrInUse
-                || e.kind() == ErrorKind::AddrNotAvailable,
+                || e.kind() == ErrorKind::AddrNotAvailable
+                || e.kind() == ErrorKind::NetworkUnreachable,
             "bad error: {} {:?}",
             e,
             e.kind()
@@ -315,6 +316,8 @@ fn read_buf() {
         let mut buf = BorrowedBuf::from(buf.as_mut_slice());
         t!(s.read_buf(buf.unfilled()));
         assert_eq!(buf.filled(), &[1, 2, 3, 4]);
+        // TcpStream::read_buf should omit buffer initialization.
+        assert_eq!(buf.init_len(), 4);
 
         t.join().ok().expect("thread panicked");
     })

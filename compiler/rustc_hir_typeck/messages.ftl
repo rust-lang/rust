@@ -133,6 +133,10 @@ hir_typeck_fru_suggestion =
 hir_typeck_functional_record_update_on_non_struct =
     functional record update syntax requires a struct
 
+hir_typeck_gpu_kernel_abi_cannot_be_called =
+    functions with the "gpu-kernel" ABI cannot be called
+    .note = an `extern "gpu-kernel"` function must be launched on the GPU by the runtime
+
 hir_typeck_help_set_edition_cargo = set `edition = "{$edition}"` in `Cargo.toml`
 hir_typeck_help_set_edition_standalone = pass `--edition {$edition}` to `rustc`
 

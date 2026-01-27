@@ -1,12 +1,15 @@
 //! Various helper functions to work with SyntaxNodes.
 use std::ops::ControlFlow;
 
+use either::Either;
 use itertools::Itertools;
 use parser::T;
 use span::Edition;
 use syntax::{
-    AstNode, AstToken, Preorder, RustLanguage, WalkEvent,
+    AstNode, AstToken, Direction, Preorder, RustLanguage, SyntaxToken, WalkEvent,
+    algo::non_trivia_sibling,
     ast::{self, HasLoopBody, MacroCall, PathSegmentKind, VisibilityKind},
+    syntax_editor::Element,
 };
 
 pub fn expr_as_name_ref(expr: &ast::Expr) -> Option<ast::NameRef> {
@@ -419,6 +422,48 @@ pub fn eq_label_lt(lt1: &Option<ast::Lifetime>, lt2: &Option<ast::Lifetime>) -> 
     lt1.as_ref().zip(lt2.as_ref()).is_some_and(|(lt, lbl)| lt.text() == lbl.text())
 }
 
+/// Find the loop or block to break or continue, multiple results may be caused by macros.
+pub fn find_loops(
+    sema: &hir::Semantics<'_, crate::RootDatabase>,
+    token: &syntax::SyntaxToken,
+) -> Option<impl Iterator<Item = ast::Expr>> {
+    let parent = token.parent()?;
+    let lbl = syntax::match_ast! {
+        match parent {
+            ast::BreakExpr(break_) => break_.lifetime(),
+            ast::ContinueExpr(continue_) => continue_.lifetime(),
+            _ => None,
+        }
+    };
+    let label_matches =
+        move |it: Option<ast::Label>| match (lbl.as_ref(), it.and_then(|it| it.lifetime())) {
+            (Some(lbl), Some(it)) => lbl.text() == it.text(),
+            (None, _) => true,
+            (Some(_), None) => false,
+        };
+
+    let find_ancestors = move |token| {
+        for anc in sema.token_ancestors_with_macros(token).filter_map(ast::Expr::cast) {
+            let node = match &anc {
+                ast::Expr::LoopExpr(loop_) if label_matches(loop_.label()) => anc,
+                ast::Expr::WhileExpr(while_) if label_matches(while_.label()) => anc,
+                ast::Expr::ForExpr(for_) if label_matches(for_.label()) => anc,
+                ast::Expr::BlockExpr(blk)
+                    if blk.label().is_some() && label_matches(blk.label()) =>
+                {
+                    anc
+                }
+                _ => continue,
+            };
+
+            return Some(node);
+        }
+        None
+    };
+
+    sema.descend_into_macros(token.clone()).into_iter().filter_map(find_ancestors).into()
+}
+
 struct TreeWithDepthIterator {
     preorder: Preorder<RustLanguage>,
     depth: u32,
@@ -499,4 +544,38 @@ pub fn parse_tt_as_comma_sep_paths(
 pub fn macro_call_for_string_token(string: &ast::String) -> Option<MacroCall> {
     let macro_call = string.syntax().parent_ancestors().find_map(ast::MacroCall::cast)?;
     Some(macro_call)
+}
+
+pub fn is_in_macro_matcher(token: &SyntaxToken) -> bool {
+    let Some(macro_def) = token
+        .parent_ancestors()
+        .map_while(Either::<ast::TokenTree, ast::Macro>::cast)
+        .find_map(Either::right)
+    else {
+        return false;
+    };
+    let range = token.text_range();
+    let Some(body) = (match macro_def {
+        ast::Macro::MacroDef(macro_def) => {
+            if let Some(args) = macro_def.args() {
+                return args.syntax().text_range().contains_range(range);
+            }
+            macro_def.body()
+        }
+        ast::Macro::MacroRules(macro_rules) => macro_rules.token_tree(),
+    }) else {
+        return false;
+    };
+    if !body.syntax().text_range().contains_range(range) {
+        return false;
+    }
+    body.token_trees_and_tokens().filter_map(|tt| tt.into_node()).any(|tt| {
+        let Some(next) = non_trivia_sibling(tt.syntax().syntax_element(), Direction::Next) else {
+            return false;
+        };
+        let Some(next_next) = next.next_sibling_or_token() else { return false };
+        next.kind() == T![=]
+            && next_next.kind() == T![>]
+            && tt.syntax().text_range().contains_range(range)
+    })
 }

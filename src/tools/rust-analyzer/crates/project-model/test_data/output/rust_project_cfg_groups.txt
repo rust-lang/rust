@@ -12,6 +12,7 @@
                     "hello_world",
                 ),
             },
+            crate_attrs: [],
             is_proc_macro: false,
             proc_macro_cwd: AbsPathBuf(
                 "$ROOT$",
@@ -62,6 +63,7 @@
                     "other_crate",
                 ),
             },
+            crate_attrs: [],
             is_proc_macro: false,
             proc_macro_cwd: AbsPathBuf(
                 "$ROOT$",

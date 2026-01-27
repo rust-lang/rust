@@ -198,7 +198,7 @@ to help make the perf comparison as fair as possible.
 >
 > 3. Run the prescribed try jobs with `@bors try`. As aforementioned, this
 >    requires the user to either (1) have `try` permissions or (2) be delegated
->    with `try` permissions by `@bors delegate` by someone who has `try`
+>    with `try` permissions by `@bors delegate=try` by someone who has `try`
 >    permissions.
 >
 > Note that this is usually easier to do than manually edit [`jobs.yml`].
@@ -213,10 +213,7 @@ the corresponding PR.
 Multiple try builds can execute concurrently across different PRs, but there can be at most
 a single try build running on a single PR at any given time.
 
-Note that try builds are handled using the [new bors] implementation.
-
 [rustc-perf]: https://github.com/rust-lang/rustc-perf
-[new bors]: https://github.com/rust-lang/bors
 
 ### Modifying CI jobs
 
@@ -281,8 +278,7 @@ Breakages like these usually happen when another, incompatible PR is merged
 after the build happened.
 
 To ensure a `main` branch that works all the time, we forbid manual merges.
-Instead, all PRs have to be approved through our bot, [bors] (the software
-behind it is called [homu]).
+Instead, all PRs have to be approved through our bot, [bors].
 All the approved PRs are put in a [merge queue]
 (sorted by priority and creation date) and are automatically tested one at the time.
 If all the builders are green, the PR is merged, otherwise the failure is
@@ -447,23 +443,6 @@ More information is available in the [toolstate documentation].
 [rust-toolstate]: https://rust-lang-nursery.github.io/rust-toolstate
 [toolstate documentation]: https://forge.rust-lang.org/infra/toolstate.html
 
-## Public CI dashboard
-
-To monitor the Rust CI, you can have a look at the [public dashboard] maintained by the infra team.
-
-These are some useful panels from the dashboard:
-
-- Pipeline duration: check how long the auto builds take to run.
-- Top slowest jobs: check which jobs are taking the longest to run.
-- Change in median job duration: check what jobs are slowest than before. Useful
-  to detect regressions.
-- Top failed jobs: check which jobs are failing the most.
-
-To learn more about the dashboard, see the [Datadog CI docs].
-
-[Datadog CI docs]: https://docs.datadoghq.com/continuous_integration/
-[public dashboard]: https://p.datadoghq.com/sb/3a172e20-e9e1-11ed-80e3-da7ad0900002-b5f7bb7e08b664a06b08527da85f7e30
-
 ## Determining the CI configuration
 
 If you want to determine which `bootstrap.toml` settings are used in CI for a
@@ -482,8 +461,7 @@ To do this:
 [`jobs.yml`]: https://github.com/rust-lang/rust/blob/HEAD/src/ci/github-actions/jobs.yml
 [`.github/workflows/ci.yml`]: https://github.com/rust-lang/rust/blob/HEAD/.github/workflows/ci.yml
 [`src/ci/citool`]: https://github.com/rust-lang/rust/blob/HEAD/src/ci/citool
-[bors]: https://github.com/bors
-[homu]: https://github.com/rust-lang/homu
+[bors]: https://github.com/rust-lang/bors
 [merge queue]: https://bors.rust-lang.org/queue/rust
 [dist-x86_64-linux]: https://github.com/rust-lang/rust/blob/HEAD/src/ci/docker/host-x86_64/dist-x86_64-linux/Dockerfile
 [the GitHub Actions workflows page]: https://github.com/rust-lang/rust/actions

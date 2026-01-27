@@ -2,15 +2,27 @@ use std::env;
 use std::path::{Path, PathBuf};
 
 use clap::{ArgMatches, Command, arg, crate_version};
-use mdbook::MDBook;
-use mdbook::errors::Result as Result3;
+use mdbook_driver::MDBook;
+use mdbook_driver::errors::Result as Result3;
 use mdbook_i18n_helpers::preprocessors::Gettext;
 use mdbook_spec::Spec;
 use mdbook_trpl::{Figure, Listing, Note};
 
 fn main() {
     let crate_version = concat!("v", crate_version!());
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
+    let filter = tracing_subscriber::EnvFilter::builder()
+        .with_env_var("MDBOOK_LOG")
+        .with_default_directive(tracing_subscriber::filter::LevelFilter::INFO.into())
+        .from_env_lossy();
+    tracing_subscriber::fmt()
+        .without_time()
+        .with_ansi(std::io::IsTerminal::is_terminal(&std::io::stderr()))
+        .with_writer(std::io::stderr)
+        .with_env_filter(filter)
+        .with_target(std::env::var_os("MDBOOK_LOG").is_some())
+        .init();
+
+    // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     let d_arg = arg!(-d --"dest-dir" <DEST_DIR>
 "The output directory for your book\n(Defaults to ./book when omitted)")
     .required(false)
@@ -82,60 +94,22 @@ fn main() {
     };
 }
 
-// Build command implementation
-pub fn build(args: &ArgMatches) -> Result3<()> {
+fn build(args: &ArgMatches) -> Result3<()> {
     let book_dir = get_book_dir(args);
-    let mut book = load_book(&book_dir)?;
-
-    if let Some(lang) = args.get_one::<String>("lang") {
-        let gettext = Gettext;
-        book.with_preprocessor(gettext);
-        book.config.set("book.language", lang).unwrap();
-    }
-
-    // Set this to allow us to catch bugs in advance.
-    book.config.build.create_missing = false;
-
-    if let Some(dest_dir) = args.get_one::<PathBuf>("dest-dir") {
-        book.config.build.build_dir = dest_dir.into();
-    }
-
-    // NOTE: Replacing preprocessors using this technique causes error
-    // messages to be displayed when the original preprocessor doesn't work
-    // (but it otherwise succeeds).
-    //
-    // This should probably be fixed in mdbook to remove the existing
-    // preprocessor, or this should modify the config and use
-    // MDBook::load_with_config.
-    if book.config.get_preprocessor("trpl-note").is_some() {
-        book.with_preprocessor(Note);
-    }
-
-    if book.config.get_preprocessor("trpl-listing").is_some() {
-        book.with_preprocessor(Listing);
-    }
-
-    if book.config.get_preprocessor("trpl-figure").is_some() {
-        book.with_preprocessor(Figure);
-    }
-
-    if book.config.get_preprocessor("spec").is_some() {
-        let rust_root = args.get_one::<PathBuf>("rust-root").cloned();
-        book.with_preprocessor(Spec::new(rust_root)?);
-    }
-
-    book.build()?;
-
-    Ok(())
+    let dest_dir = args.get_one::<PathBuf>("dest-dir");
+    let lang = args.get_one::<String>("lang");
+    let rust_root = args.get_one::<PathBuf>("rust-root");
+    let book = load_book(&book_dir, dest_dir, lang, rust_root.cloned())?;
+    book.build()
 }
 
 fn test(args: &ArgMatches) -> Result3<()> {
     let book_dir = get_book_dir(args);
+    let mut book = load_book(&book_dir, None, None, None)?;
     let library_paths = args
         .try_get_one::<Vec<String>>("library-path")?
         .map(|v| v.iter().map(|s| s.as_str()).collect::<Vec<&str>>())
         .unwrap_or_default();
-    let mut book = load_book(&book_dir)?;
     book.test(library_paths)
 }
 
@@ -148,10 +122,52 @@ fn get_book_dir(args: &ArgMatches) -> PathBuf {
     }
 }
 
-fn load_book(book_dir: &Path) -> Result3<MDBook> {
+fn load_book(
+    book_dir: &Path,
+    dest_dir: Option<&PathBuf>,
+    lang: Option<&String>,
+    rust_root: Option<PathBuf>,
+) -> Result3<MDBook> {
     let mut book = MDBook::load(book_dir)?;
     book.config.set("output.html.input-404", "").unwrap();
     book.config.set("output.html.hash-files", true).unwrap();
+
+    if let Some(lang) = lang {
+        let gettext = Gettext;
+        book.with_preprocessor(gettext);
+        book.config.set("book.language", lang).unwrap();
+    }
+
+    // Set this to allow us to catch bugs in advance.
+    book.config.build.create_missing = false;
+
+    if let Some(dest_dir) = dest_dir {
+        book.config.build.build_dir = dest_dir.into();
+    }
+
+    // NOTE: Replacing preprocessors using this technique causes error
+    // messages to be displayed when the original preprocessor doesn't work
+    // (but it otherwise succeeds).
+    //
+    // This should probably be fixed in mdbook to remove the existing
+    // preprocessor, or this should modify the config and use
+    // MDBook::load_with_config.
+    if book.config.contains_key("preprocessor.trpl-note") {
+        book.with_preprocessor(Note);
+    }
+
+    if book.config.contains_key("preprocessor.trpl-listing") {
+        book.with_preprocessor(Listing);
+    }
+
+    if book.config.contains_key("preprocessor.trpl-figure") {
+        book.with_preprocessor(Figure);
+    }
+
+    if book.config.contains_key("preprocessor.spec") {
+        book.with_preprocessor(Spec::new(rust_root)?);
+    }
+
     Ok(book)
 }
 
@@ -159,7 +175,7 @@ fn parse_library_paths(input: &str) -> Result<Vec<String>, String> {
     Ok(input.split(",").map(String::from).collect())
 }
 
-fn handle_error(error: mdbook::errors::Error) -> ! {
+fn handle_error(error: mdbook_driver::errors::Error) -> ! {
     eprintln!("Error: {}", error);
 
     for cause in error.chain().skip(1) {

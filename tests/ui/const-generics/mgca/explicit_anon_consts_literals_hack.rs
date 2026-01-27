@@ -1,9 +1,6 @@
 //@ check-pass
 
-// We allow for literals to implicitly be anon consts still regardless
-// of whether a const block is placed around them or not
-
-#![feature(min_generic_const_args, associated_const_equality)]
+#![feature(min_generic_const_args, adt_const_params)]
 #![expect(incomplete_features)]
 
 trait Trait {
@@ -18,5 +15,16 @@ fn repeat_count() {
 type ArrLen = [(); 1];
 struct Foo<const N: isize>;
 type NormalArg = (Foo<1>, Foo<-1>);
+
+#[derive(Eq, PartialEq, std::marker::ConstParamTy)]
+struct ADT { field: u8 }
+
+fn struct_expr() {
+    fn takes_n<const N: ADT>() {}
+
+    takes_n::<{ ADT { field: 1 } }>();
+
+    takes_n::<{ ADT { field: const { 1 } } }>();
+}
 
 fn main() {}

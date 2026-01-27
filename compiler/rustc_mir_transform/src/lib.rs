@@ -1,11 +1,9 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(const_type_name)]
 #![feature(cow_is_borrowed)]
 #![feature(file_buffered)]
-#![feature(gen_blocks)]
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(try_blocks)]
@@ -30,7 +28,6 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
-use rustc_mir_build::builder::build_mir;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, sym};
 use tracing::debug;
@@ -198,6 +195,7 @@ declare_passes! {
     mod single_use_consts : SingleUseConsts;
     mod sroa : ScalarReplacementOfAggregates;
     mod strip_debuginfo : StripDebugInfo;
+    mod ssa_range_prop: SsaRangePropagation;
     mod unreachable_enum_branching : UnreachableEnumBranching;
     mod unreachable_prop : UnreachablePropagation;
     mod validate : Validator;
@@ -207,9 +205,9 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     coverage::query::provide(providers);
-    ffi_unwind_calls::provide(providers);
-    shim::provide(providers);
-    cross_crate_inline::provide(providers);
+    ffi_unwind_calls::provide(&mut providers.queries);
+    shim::provide(&mut providers.queries);
+    cross_crate_inline::provide(&mut providers.queries);
     providers.queries = query::Providers {
         mir_keys,
         mir_built,
@@ -261,7 +259,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                     if context == hir::Constness::Const { called_in_const } else { called_at_rt };
                 let (method, place): (fn(Place<'tcx>) -> Operand<'tcx>, Place<'tcx>) =
                     match tupled_args.node {
-                        Operand::Constant(_) => {
+                        Operand::Constant(_) | Operand::RuntimeChecks(_) => {
                             // There is no good way of extracting a tuple arg from a constant
                             // (const generic stuff) so we just create a temporary and deconstruct
                             // that.
@@ -378,8 +376,11 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
     validator.qualifs_in_return_place()
 }
 
+/// Implementation of the `mir_built` query.
 fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
-    let mut body = build_mir(tcx, def);
+    // Delegate to the main MIR building code in the `rustc_mir_build` crate.
+    // This is the one place that is allowed to call `build_mir_inner_impl`.
+    let mut body = tcx.build_mir_inner_impl(def);
 
     // Identifying trivial consts based on their mir_built is easy, but a little wasteful.
     // Trying to push this logic earlier in the compiler and never even produce the Body would
@@ -741,6 +742,9 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &dead_store_elimination::DeadStoreElimination::Initial,
             &gvn::GVN,
             &simplify::SimplifyLocals::AfterGVN,
+            // This pass does attempt to track assignments.
+            // Keep it close to GVN which merges identical values into the same local.
+            &ssa_range_prop::SsaRangePropagation,
             &match_branches::MatchBranchSimplification,
             &dataflow_const_prop::DataflowConstProp,
             &single_use_consts::SingleUseConsts,

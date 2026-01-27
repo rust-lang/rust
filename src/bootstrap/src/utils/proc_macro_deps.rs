@@ -5,6 +5,7 @@ pub static CRATES: &[&str] = &[
     // tidy-alphabetical-start
     "annotate-snippets",
     "anstyle",
+    "askama_derive",
     "askama_parser",
     "basic-toml",
     "block-buffer",
@@ -21,6 +22,7 @@ pub static CRATES: &[&str] = &[
     "fluent-langneg",
     "fluent-syntax",
     "fnv",
+    "foldhash",
     "generic-array",
     "hashbrown",
     "heck",

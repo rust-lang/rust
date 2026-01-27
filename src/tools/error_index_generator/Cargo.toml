@@ -5,7 +5,8 @@ edition = "2021"
 workspace = "../rustbook"
 
 [dependencies]
-mdbook = { version = "0.4", default-features = false, features = ["search"] }
+mdbook-driver = { version = "0.5.1", features = ["search"] }
+mdbook-summary = "0.5.1"
 
 [[bin]]
 name = "error_index_generator"

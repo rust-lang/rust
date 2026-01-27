@@ -50,6 +50,15 @@ impl EarlyLintPass for Pass {
         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
             db.help(help_msg).help(help_msg);
         });
+
+        // Issue #15880
+        #[expect(clippy::disallowed_names)]
+        let foo = "foo";
+        span_lint_and_sugg(cx, TEST_LINT, expr.span, lint_msg, format!("try using {foo}"), format!("{foo}.use"), Applicability::MachineApplicable);
+        span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, Some(expr.span), format!("try using {foo}"));
+        span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, None, format!("try using {foo}"));
+        span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, Some(expr.span), format!("required because of {foo}"));
+        span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, None, format!("required because of {foo}"));
     }
 }
 

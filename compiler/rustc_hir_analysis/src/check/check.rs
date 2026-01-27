@@ -1,7 +1,7 @@
 use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
-use rustc_abi::{ExternAbi, FieldIdx};
+use rustc_abi::{ExternAbi, FieldIdx, ScalableElt};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{EmissionGuarantee, MultiSpan};
@@ -24,6 +24,7 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, fold_regions,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
+use rustc_span::source_map::Spanned;
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
@@ -92,7 +93,9 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let span = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
 
-    if def.repr().simd() {
+    if let Some(scalable) = def.repr().scalable {
+        check_scalable_vector(tcx, span, def_id, scalable);
+    } else if def.repr().simd() {
         check_simd(tcx, span, def_id);
     }
 
@@ -188,6 +191,12 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 if tcx.def_kind(tcx.local_parent(def_id)) == DefKind::ForeignMod) =>
         {
             tcx.dcx().emit_err(errors::TooLargeStatic { span });
+            return;
+        }
+        // SIMD types with invalid layout (e.g., zero-length) should emit an error
+        Err(e @ LayoutError::InvalidSimd { .. }) => {
+            let ty_span = tcx.ty_span(def_id);
+            tcx.dcx().emit_err(Spanned { span: ty_span, node: e.into_diagnostic() });
             return;
         }
         // Generic statics are rejected, but we still reach this case.
@@ -506,23 +515,18 @@ fn sanity_check_found_hidden_type<'tcx>(
             return Ok(());
         }
     }
-    let strip_vars = |ty: Ty<'tcx>| {
-        ty.fold_with(&mut BottomUpFolder {
-            tcx,
-            ty_op: |t| t,
-            ct_op: |c| c,
-            lt_op: |l| match l.kind() {
-                RegionKind::ReVar(_) => tcx.lifetimes.re_erased,
-                _ => l,
-            },
+    let erase_re_vars = |ty: Ty<'tcx>| {
+        fold_regions(tcx, ty, |r, _| match r.kind() {
+            RegionKind::ReVar(_) => tcx.lifetimes.re_erased,
+            _ => r,
         })
     };
     // Closures frequently end up containing erased lifetimes in their final representation.
     // These correspond to lifetime variables that never got resolved, so we patch this up here.
-    ty.ty = strip_vars(ty.ty);
+    ty.ty = erase_re_vars(ty.ty);
     // Get the hidden type.
     let hidden_ty = tcx.type_of(key.def_id).instantiate(tcx, key.args);
-    let hidden_ty = strip_vars(hidden_ty);
+    let hidden_ty = erase_re_vars(hidden_ty);
 
     // If the hidden types differ, emit a type mismatch diagnostic.
     if hidden_ty == ty.ty {
@@ -977,12 +981,19 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                         (0, _) => ("const", "consts", None),
                         _ => ("type or const", "types or consts", None),
                     };
+                    let name =
+                        if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::EiiForeignItem) {
+                            "externally implementable items"
+                        } else {
+                            "foreign items"
+                        };
+
                     let span = tcx.def_span(def_id);
                     struct_span_code_err!(
                         tcx.dcx(),
                         span,
                         E0044,
-                        "foreign items may not have {kinds} parameters",
+                        "{name} may not have {kinds} parameters",
                     )
                     .with_span_label(span, format!("can't have {kinds} parameters"))
                     .with_help(
@@ -1338,9 +1349,7 @@ fn check_impl_items_against_trait<'tcx>(
         }
 
         if let Some(missing_items) = must_implement_one_of {
-            let attr_span = tcx
-                .get_attr(trait_ref.def_id, sym::rustc_must_implement_one_of)
-                .map(|attr| attr.span());
+            let attr_span = find_attr!(tcx.get_all_attrs(trait_ref.def_id), AttributeKind::RustcMustImplementOneOf {attr_span, ..} => *attr_span);
 
             missing_items_must_implement_one_of_err(
                 tcx,
@@ -1421,6 +1430,100 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
                 )
                 .emit();
                 return;
+            }
+        }
+    }
+}
+
+#[tracing::instrument(skip(tcx), level = "debug")]
+fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalable: ScalableElt) {
+    let ty = tcx.type_of(def_id).instantiate_identity();
+    let ty::Adt(def, args) = ty.kind() else { return };
+    if !def.is_struct() {
+        tcx.dcx().delayed_bug("`rustc_scalable_vector` applied to non-struct");
+        return;
+    }
+
+    let fields = &def.non_enum_variant().fields;
+    match scalable {
+        ScalableElt::ElementCount(..) if fields.is_empty() => {
+            let mut err =
+                tcx.dcx().struct_span_err(span, "scalable vectors must have a single field");
+            err.help("scalable vector types' only field must be a primitive scalar type");
+            err.emit();
+            return;
+        }
+        ScalableElt::ElementCount(..) if fields.len() >= 2 => {
+            tcx.dcx().struct_span_err(span, "scalable vectors cannot have multiple fields").emit();
+            return;
+        }
+        ScalableElt::Container if fields.is_empty() => {
+            let mut err =
+                tcx.dcx().struct_span_err(span, "scalable vectors must have a single field");
+            err.help("tuples of scalable vectors can only contain multiple of the same scalable vector type");
+            err.emit();
+            return;
+        }
+        _ => {}
+    }
+
+    match scalable {
+        ScalableElt::ElementCount(..) => {
+            let element_ty = &fields[FieldIdx::ZERO].ty(tcx, args);
+
+            // Check that `element_ty` only uses types valid in the lanes of a scalable vector
+            // register: scalar types which directly match a "machine" type - integers, floats and
+            // bools
+            match element_ty.kind() {
+                ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Bool => (),
+                _ => {
+                    let mut err = tcx.dcx().struct_span_err(
+                        span,
+                        "element type of a scalable vector must be a primitive scalar",
+                    );
+                    err.help("only `u*`, `i*`, `f*` and `bool` types are accepted");
+                    err.emit();
+                }
+            }
+        }
+        ScalableElt::Container => {
+            let mut prev_field_ty = None;
+            for field in fields.iter() {
+                let element_ty = field.ty(tcx, args);
+                if let ty::Adt(def, _) = element_ty.kind()
+                    && def.repr().scalable()
+                {
+                    match def
+                        .repr()
+                        .scalable
+                        .expect("`repr().scalable.is_some()` != `repr().scalable()`")
+                    {
+                        ScalableElt::ElementCount(_) => { /* expected field */ }
+                        ScalableElt::Container => {
+                            tcx.dcx().span_err(
+                                tcx.def_span(field.did),
+                                "scalable vector structs cannot contain other scalable vector structs",
+                            );
+                            break;
+                        }
+                    }
+                } else {
+                    tcx.dcx().span_err(
+                        tcx.def_span(field.did),
+                        "scalable vector structs can only have scalable vector fields",
+                    );
+                    break;
+                }
+
+                if let Some(prev_ty) = prev_field_ty.replace(element_ty)
+                    && prev_ty != element_ty
+                {
+                    tcx.dcx().span_err(
+                        tcx.def_span(field.did),
+                        "all fields in a scalable vector struct must be the same type",
+                    );
+                    break;
+                }
             }
         }
     }

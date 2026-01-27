@@ -5,8 +5,8 @@
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
 pub use core::alloc::*;
-use core::hint;
 use core::ptr::{self, NonNull};
+use core::{cmp, hint};
 
 unsafe extern "Rust" {
     // These are the magic symbols to call the global allocator. rustc generates
@@ -182,9 +182,9 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 impl Global {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
+    fn alloc_impl_runtime(layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
         match layout.size() {
-            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0)),
+            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling_ptr(), 0)),
             // SAFETY: `layout` is non-zero in size,
             size => unsafe {
                 let raw_ptr = if zeroed { alloc_zeroed(layout) } else { alloc(layout) };
@@ -194,10 +194,26 @@ impl Global {
         }
     }
 
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    fn deallocate_impl_runtime(ptr: NonNull<u8>, layout: Layout) {
+        if layout.size() != 0 {
+            // SAFETY:
+            // * We have checked that `layout` is non-zero in size.
+            // * The caller is obligated to provide a layout that "fits", and in this case,
+            //   "fit" always means a layout that is equal to the original, because our
+            //   `allocate()`, `grow()`, and `shrink()` implementations never returns a larger
+            //   allocation than requested.
+            // * Other conditions must be upheld by the caller, as per `Allocator::deallocate()`'s
+            //   safety documentation.
+            unsafe { dealloc(ptr.as_ptr(), layout) }
+        }
+    }
+
     // SAFETY: Same as `Allocator::grow`
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    unsafe fn grow_impl(
+    fn grow_impl_runtime(
         &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
@@ -241,10 +257,172 @@ impl Global {
             },
         }
     }
+
+    // SAFETY: Same as `Allocator::grow`
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    fn shrink_impl_runtime(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+        _zeroed: bool,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        debug_assert!(
+            new_layout.size() <= old_layout.size(),
+            "`new_layout.size()` must be smaller than or equal to `old_layout.size()`"
+        );
+
+        match new_layout.size() {
+            // SAFETY: conditions must be upheld by the caller
+            0 => unsafe {
+                self.deallocate(ptr, old_layout);
+                Ok(NonNull::slice_from_raw_parts(new_layout.dangling_ptr(), 0))
+            },
+
+            // SAFETY: `new_size` is non-zero. Other conditions must be upheld by the caller
+            new_size if old_layout.align() == new_layout.align() => unsafe {
+                // `realloc` probably checks for `new_size <= old_layout.size()` or something similar.
+                hint::assert_unchecked(new_size <= old_layout.size());
+
+                let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
+                let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
+                Ok(NonNull::slice_from_raw_parts(ptr, new_size))
+            },
+
+            // SAFETY: because `new_size` must be smaller than or equal to `old_layout.size()`,
+            // both the old and new memory allocation are valid for reads and writes for `new_size`
+            // bytes. Also, because the old allocation wasn't yet deallocated, it cannot overlap
+            // `new_ptr`. Thus, the call to `copy_nonoverlapping` is safe. The safety contract
+            // for `dealloc` must be upheld by the caller.
+            new_size => unsafe {
+                let new_ptr = self.allocate(new_layout)?;
+                ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), new_size);
+                self.deallocate(ptr, old_layout);
+                Ok(new_ptr)
+            },
+        }
+    }
+
+    // SAFETY: Same as `Allocator::allocate`
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
+        core::intrinsics::const_eval_select(
+            (layout, zeroed),
+            Global::alloc_impl_const,
+            Global::alloc_impl_runtime,
+        )
+    }
+
+    // SAFETY: Same as `Allocator::deallocate`
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const unsafe fn deallocate_impl(&self, ptr: NonNull<u8>, layout: Layout) {
+        core::intrinsics::const_eval_select(
+            (ptr, layout),
+            Global::deallocate_impl_const,
+            Global::deallocate_impl_runtime,
+        )
+    }
+
+    // SAFETY: Same as `Allocator::grow`
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const unsafe fn grow_impl(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+        zeroed: bool,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        core::intrinsics::const_eval_select(
+            (self, ptr, old_layout, new_layout, zeroed),
+            Global::grow_shrink_impl_const,
+            Global::grow_impl_runtime,
+        )
+    }
+
+    // SAFETY: Same as `Allocator::shrink`
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const unsafe fn shrink_impl(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        core::intrinsics::const_eval_select(
+            (self, ptr, old_layout, new_layout, false),
+            Global::grow_shrink_impl_const,
+            Global::shrink_impl_runtime,
+        )
+    }
+
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const fn alloc_impl_const(layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
+        match layout.size() {
+            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling_ptr(), 0)),
+            // SAFETY: `layout` is non-zero in size,
+            size => unsafe {
+                let raw_ptr = core::intrinsics::const_allocate(layout.size(), layout.align());
+                let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
+                if zeroed {
+                    // SAFETY: the pointer returned by `const_allocate` is valid to write to.
+                    ptr.write_bytes(0, size);
+                }
+                Ok(NonNull::slice_from_raw_parts(ptr, size))
+            },
+        }
+    }
+
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const fn deallocate_impl_const(ptr: NonNull<u8>, layout: Layout) {
+        if layout.size() != 0 {
+            // SAFETY: We checked for nonzero size; other preconditions must be upheld by caller.
+            unsafe {
+                core::intrinsics::const_deallocate(ptr.as_ptr(), layout.size(), layout.align());
+            }
+        }
+    }
+
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    const fn grow_shrink_impl_const(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+        zeroed: bool,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        let new_ptr = self.alloc_impl(new_layout, zeroed)?;
+        // SAFETY: both pointers are valid and this operations is in bounds.
+        unsafe {
+            ptr::copy_nonoverlapping(
+                ptr.as_ptr(),
+                new_ptr.as_mut_ptr(),
+                cmp::min(old_layout.size(), new_layout.size()),
+            );
+        }
+        unsafe {
+            self.deallocate_impl(ptr, old_layout);
+        }
+        Ok(new_ptr)
+    }
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl Allocator for Global {
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+unsafe impl const Allocator for Global {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
@@ -260,17 +438,8 @@ unsafe impl Allocator for Global {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        if layout.size() != 0 {
-            // SAFETY:
-            // * We have checked that `layout` is non-zero in size.
-            // * The caller is obligated to provide a layout that "fits", and in this case,
-            //   "fit" always means a layout that is equal to the original, because our
-            //   `allocate()`, `grow()`, and `shrink()` implementations never returns a larger
-            //   allocation than requested.
-            // * Other conditions must be upheld by the caller, as per `Allocator::deallocate()`'s
-            //   safety documentation.
-            unsafe { dealloc(ptr.as_ptr(), layout) }
-        }
+        // SAFETY: all conditions must be upheld by the caller
+        unsafe { self.deallocate_impl(ptr, layout) }
     }
 
     #[inline]
@@ -305,40 +474,8 @@ unsafe impl Allocator for Global {
         old_layout: Layout,
         new_layout: Layout,
     ) -> Result<NonNull<[u8]>, AllocError> {
-        debug_assert!(
-            new_layout.size() <= old_layout.size(),
-            "`new_layout.size()` must be smaller than or equal to `old_layout.size()`"
-        );
-
-        match new_layout.size() {
-            // SAFETY: conditions must be upheld by the caller
-            0 => unsafe {
-                self.deallocate(ptr, old_layout);
-                Ok(NonNull::slice_from_raw_parts(new_layout.dangling(), 0))
-            },
-
-            // SAFETY: `new_size` is non-zero. Other conditions must be upheld by the caller
-            new_size if old_layout.align() == new_layout.align() => unsafe {
-                // `realloc` probably checks for `new_size <= old_layout.size()` or something similar.
-                hint::assert_unchecked(new_size <= old_layout.size());
-
-                let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
-                let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
-                Ok(NonNull::slice_from_raw_parts(ptr, new_size))
-            },
-
-            // SAFETY: because `new_size` must be smaller than or equal to `old_layout.size()`,
-            // both the old and new memory allocation are valid for reads and writes for `new_size`
-            // bytes. Also, because the old allocation wasn't yet deallocated, it cannot overlap
-            // `new_ptr`. Thus, the call to `copy_nonoverlapping` is safe. The safety contract
-            // for `dealloc` must be upheld by the caller.
-            new_size => unsafe {
-                let new_ptr = self.allocate(new_layout)?;
-                ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), new_size);
-                self.deallocate(ptr, old_layout);
-                Ok(new_ptr)
-            },
-        }
+        // SAFETY: all conditions must be upheld by the caller
+        unsafe { self.shrink_impl(ptr, old_layout, new_layout) }
     }
 }
 

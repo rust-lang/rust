@@ -2083,7 +2083,7 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             prepare_test_config(&ctx)
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] rustc 0 <host> -> Tidy 1 <host>
         [test] tidy <>
         [build] rustdoc 0 <host>
@@ -2105,7 +2105,7 @@ mod snapshot {
         [test] compiletest-debuginfo 1 <host>
         [test] compiletest-ui-fulldeps 1 <host>
         [build] rustdoc 1 <host>
-        [test] compiletest-rustdoc 1 <host>
+        [test] compiletest-rustdoc-html 1 <host>
         [test] compiletest-coverage-run-rustdoc 1 <host>
         [test] compiletest-pretty 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
@@ -2175,7 +2175,7 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("test")
-                .args(&["ui", "ui-fulldeps", "run-make", "rustdoc", "rustdoc-gui", "incremental"])
+                .args(&["ui", "ui-fulldeps", "run-make", "rustdoc-html", "rustdoc-gui", "incremental"])
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
@@ -2186,11 +2186,10 @@ mod snapshot {
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustdoc 1 <host>
         [test] compiletest-run-make 1 <host>
-        [test] compiletest-rustdoc 1 <host>
+        [test] compiletest-rustdoc-html 1 <host>
         [build] rustc 0 <host> -> RustdocGUITest 1 <host>
         [test] rustdoc-gui 1 <host>
         [test] compiletest-incremental 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
         ");
     }
 
@@ -2199,7 +2198,7 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("test")
-                .args(&["ui", "ui-fulldeps", "run-make", "rustdoc", "rustdoc-gui", "incremental"])
+                .args(&["ui", "ui-fulldeps", "run-make", "rustdoc-html", "rustdoc-gui", "incremental"])
                 .stage(2)
                 .render_steps(), @r"
         [build] llvm <host>
@@ -2214,11 +2213,10 @@ mod snapshot {
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustdoc 2 <host>
         [test] compiletest-run-make 2 <host>
-        [test] compiletest-rustdoc 2 <host>
+        [test] compiletest-rustdoc-html 2 <host>
         [build] rustc 0 <host> -> RustdocGUITest 1 <host>
         [test] rustdoc-gui 2 <host>
         [test] compiletest-incremental 2 <host>
-        [build] rustdoc 1 <host>
         ");
     }
 
@@ -2247,12 +2245,11 @@ mod snapshot {
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustdoc 2 <host>
         [test] compiletest-run-make 2 <target1>
-        [test] compiletest-rustdoc 2 <target1>
+        [build] rustc 1 <host> -> rustc 2 <target1>
+        [build] rustdoc 1 <host>
         [build] rustc 0 <host> -> RustdocGUITest 1 <host>
         [test] rustdoc-gui 2 <target1>
         [test] compiletest-incremental 2 <target1>
-        [build] rustc 1 <host> -> rustc 2 <target1>
-        [build] rustdoc 1 <host>
         [build] rustc 2 <target1> -> std 2 <target1>
         [build] rustdoc 2 <target1>
         ");
@@ -2264,7 +2261,7 @@ mod snapshot {
         insta::assert_snapshot!(
             prepare_test_config(&ctx)
                 .stage(2)
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] rustc 0 <host> -> Tidy 1 <host>
         [test] tidy <>
         [build] rustdoc 0 <host>
@@ -2289,7 +2286,7 @@ mod snapshot {
         [build] rustc 2 <host> -> rustc 3 <host>
         [test] compiletest-ui-fulldeps 2 <host>
         [build] rustdoc 2 <host>
-        [test] compiletest-rustdoc 2 <host>
+        [test] compiletest-rustdoc-html 2 <host>
         [test] compiletest-coverage-run-rustdoc 2 <host>
         [test] compiletest-pretty 2 <host>
         [build] rustc 2 <host> -> std 2 <host>

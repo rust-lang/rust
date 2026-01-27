@@ -91,18 +91,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // File related shims
             "stat" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.macos_fbsd_solarish_stat(path, buf)?;
+                let result = this.stat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "lstat" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.macos_fbsd_solarish_lstat(path, buf)?;
-                this.write_scalar(result, dest)?;
-            }
-            "readdir" => {
-                let [dirp] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.readdir64("dirent", dirp)?;
+                let result = this.lstat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
 
@@ -122,6 +119,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "stack_getbounds" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [stack] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let stack = this.deref_pointer_as(stack, this.libc_ty_layout("stack_t"))?;
 
@@ -140,6 +138,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "pset_info" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [pset, tpe, cpus, list] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 // We do not need to handle the current process cpu mask, available_parallelism

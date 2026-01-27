@@ -1,6 +1,5 @@
 // ignore-tidy-filelength
 
-#![allow(rustc::untranslatable_diagnostic)]
 use std::num::NonZero;
 
 use rustc_errors::codes::*;
@@ -945,14 +944,6 @@ pub(crate) struct NonGlobImportTypeIrInherent {
 pub(crate) struct LintPassByHand;
 
 #[derive(LintDiagnostic)]
-#[diag(lint_diag_out_of_impl)]
-pub(crate) struct DiagOutOfImpl;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_untranslatable_diag)]
-pub(crate) struct UntranslatableDiag;
-
-#[derive(LintDiagnostic)]
 #[diag(lint_bad_opt_access)]
 pub(crate) struct BadOptAccessDiag<'a> {
     pub msg: &'a str,
@@ -1138,10 +1129,10 @@ pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
 // dangling.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_dangling_pointers_from_temporaries)]
-#[note]
 #[help(lint_help_bind)]
-#[help(lint_help_returned)]
-#[help(lint_help_visit)]
+#[note(lint_note_safe)]
+#[note(lint_note_return)]
+#[note(lint_note_more_info)]
 // FIXME: put #[primary_span] on `ptr_span` once it does not cause conflicts
 pub(crate) struct DanglingPointersFromTemporaries<'tcx> {
     pub callee: Ident,
@@ -1154,7 +1145,8 @@ pub(crate) struct DanglingPointersFromTemporaries<'tcx> {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_dangling_pointers_from_locals)]
-#[note]
+#[note(lint_note_safe)]
+#[note(lint_note_more_info)]
 pub(crate) struct DanglingPointersFromLocals<'tcx> {
     pub ret_ty: Ty<'tcx>,
     #[label(lint_ret_ty)]
@@ -2009,6 +2001,19 @@ impl<'a> LintDiagnostic<'a, ()> for ImproperCTypes<'_> {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_improper_gpu_kernel_arg)]
+#[help]
+pub(crate) struct ImproperGpuKernelArg<'a> {
+    pub ty: Ty<'a>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_missing_gpu_kernel_export_name)]
+#[help]
+#[note]
+pub(crate) struct MissingGpuKernelExportName;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_variant_size_differences)]
 pub(crate) struct VariantSizeDifferencesDiag {
     pub largest: u64,
@@ -2855,7 +2860,6 @@ pub(crate) struct AmbiguousGlobReexports {
     pub duplicate_reexport: Span,
 
     pub name: String,
-    // FIXME: make this translatable
     pub namespace: String,
 }
 
@@ -2868,7 +2872,6 @@ pub(crate) struct HiddenGlobReexports {
     pub private_item: Span,
 
     pub name: String,
-    // FIXME: make this translatable
     pub namespace: String,
 }
 
@@ -3298,3 +3301,27 @@ pub(crate) struct DocTestUnknown {
 #[derive(LintDiagnostic)]
 #[diag(lint_doc_test_literal)]
 pub(crate) struct DocTestLiteral;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_attr_crate_level)]
+#[note]
+pub(crate) struct AttrCrateLevelOnly;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_incorrect_do_not_recommend_args)]
+pub(crate) struct DoNotRecommendDoesNotExpectArgs;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_invalid_crate_type_value)]
+pub(crate) struct UnknownCrateTypes {
+    #[subdiagnostic]
+    pub sugg: Option<UnknownCrateTypesSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(lint_suggestion, code = r#""{snippet}""#, applicability = "maybe-incorrect")]
+pub(crate) struct UnknownCrateTypesSuggestion {
+    #[primary_span]
+    pub span: Span,
+    pub snippet: Symbol,
+}

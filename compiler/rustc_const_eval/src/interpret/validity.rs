@@ -1315,7 +1315,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                     self.visit_scalar(b, b_layout)?;
                 }
             }
-            BackendRepr::SimdVector { .. } => {
+            BackendRepr::SimdVector { .. } | BackendRepr::ScalableVector { .. } => {
                 // No checks here, we assume layout computation gets this right.
                 // (This is harder to check since Miri does not represent these as `Immediate`. We
                 // also cannot use field projections since this might be a newtype around a vector.)

@@ -404,15 +404,9 @@ impl Options {
         let unstable_features =
             rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
         let config::JsonConfig { json_rendered, json_unused_externs, json_color, .. } =
-            config::parse_json(early_dcx, matches, unstable_features.is_nightly_build());
-        let error_format = config::parse_error_format(
-            early_dcx,
-            matches,
-            color,
-            json_color,
-            json_rendered,
-            unstable_features.is_nightly_build(),
-        );
+            config::parse_json(early_dcx, matches);
+        let error_format =
+            config::parse_error_format(early_dcx, matches, color, json_color, json_rendered);
         let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_default();
 
         let mut target_modifiers = BTreeMap::<OptionsTargetModifiers, String>::new();

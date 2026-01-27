@@ -165,7 +165,7 @@ fn main() {
     // The value is not important, we only care that whatever the value is,
     // won't change from execution to execution.
     if cfg!(with_isolation) {
-        if cfg!(target_os = "linux") {
+        if cfg!(any(target_os = "linux", target_os = "android")) {
             // Linux starts the TID at the PID, which is 1000.
             assert_eq!(tid, 1000);
         } else {
@@ -174,8 +174,8 @@ fn main() {
         }
     }
 
-    // On Linux and NetBSD, the first TID is the PID.
-    #[cfg(any(target_os = "linux", target_os = "netbsd"))]
+    // On Linux, the first TID is the PID.
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     assert_eq!(tid, unsafe { libc::getpid() } as u64);
 
     #[cfg(any(target_vendor = "apple", windows))]

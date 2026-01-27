@@ -3,8 +3,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
@@ -38,6 +36,7 @@ mod define_opaque;
 mod derive;
 mod deriving;
 mod edition_panic;
+mod eii;
 mod env;
 mod errors;
 mod format;
@@ -117,9 +116,13 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         define_opaque: define_opaque::expand,
         derive: derive::Expander { is_const: false },
         derive_const: derive::Expander { is_const: true },
+        eii: eii::eii,
+        eii_declaration: eii::eii_declaration,
+        eii_shared_macro: eii::eii_shared_macro,
         global_allocator: global_allocator::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,
+        unsafe_eii: eii::unsafe_eii,
         // tidy-alphabetical-end
     }
 

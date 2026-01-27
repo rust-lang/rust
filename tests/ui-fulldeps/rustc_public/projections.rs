@@ -21,7 +21,7 @@ use rustc_public::ItemKind;
 use rustc_public::crate_def::CrateDef;
 use rustc_public::mir::{ProjectionElem, Rvalue, StatementKind};
 use rustc_public::ty::{RigidTy, TyKind, UintTy};
-use std::assert_matches::assert_matches;
+use std::assert_matches;
 use std::io::Write;
 use std::ops::ControlFlow;
 

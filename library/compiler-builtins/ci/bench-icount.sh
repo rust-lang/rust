@@ -10,35 +10,43 @@ if [ -z "$target" ]; then
     target="$host_target"
 fi
 
-iai_home="iai-home"
+# Print machine information
+uname -a
+lscpu || true
+
+gungraun_home="gungraun-home"
 
 # Use the arch as a tag to disambiguate artifacts
 tag="$(echo "$target" | cut -d'-' -f1)"
 
-# Download the baseline from master
+# Download the baseline from main
 ./ci/ci-util.py locate-baseline --download --extract --tag "$tag"
+
+# FIXME: migration from iai-named baselines to gungraun, can be dropped
+# after the first run with gungraun.
+[ -d "iai-home" ] && mv "iai-home" "$gungraun_home"
 
 # Run benchmarks once
 function run_icount_benchmarks() {
     cargo_args=(
-        "--bench" "icount"
+        "--bench" "*icount*"
         "--no-default-features"
         "--features" "unstable,unstable-float,icount"
     )
 
-    iai_args=(
-        "--home" "$(pwd)/$iai_home"
-        "--callgrind-limits=ir=5.0"
+    gungraun_args=(
+        "--home" "$(pwd)/$gungraun_home"
+        "--callgrind-limits=ir=5.0%"
         "--save-summary"
     )
 
-    # Parse `cargo_arg0 cargo_arg1 -- iai_arg0 iai_arg1` syntax
-    parsing_iai_args=0
+    # Parse `cargo_arg0 cargo_arg1 -- gungraun_arg0 gungraun_arg1` syntax
+    parsing_gungraun_args=0
     while [ "$#" -gt 0 ]; do
-        if [ "$parsing_iai_args" == "1" ]; then
-            iai_args+=("$1")
+        if [ "$parsing_gungraun_args" == "1" ]; then
+            gungraun_args+=("$1")
         elif [ "$1" == "--" ]; then
-            parsing_iai_args=1
+            parsing_gungraun_args=1
         else
             cargo_args+=("$1")
         fi
@@ -46,9 +54,9 @@ function run_icount_benchmarks() {
         shift
     done
 
-    # Run iai-callgrind benchmarks. Do this in a subshell with `&& true` to
-    # capture rather than exit on error.
-    (cargo bench "${cargo_args[@]}" -- "${iai_args[@]}") && true
+    # Run gungraun benchmarks. Do this in a subshell with `&& true` to capture
+    # rather than exit on error.
+    (cargo bench "${cargo_args[@]}" -- "${gungraun_args[@]}") && true
     exit_code="$?"
 
     if [ "$exit_code" -eq 0 ]; then
@@ -68,4 +76,4 @@ run_icount_benchmarks -- --save-baseline=hardfloat
 # Name and tar the new baseline
 name="baseline-icount-$tag-$(date -u +'%Y%m%d%H%M')-${GITHUB_SHA:0:12}"
 echo "BASELINE_NAME=$name" >>"$GITHUB_ENV"
-tar cJf "$name.tar.xz" "$iai_home"
+tar cJf "$name.tar.xz" "$gungraun_home"

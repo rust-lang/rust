@@ -19,6 +19,7 @@ use rustc_infer::infer::{
     BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
 };
 use rustc_infer::traits::PredicateObligations;
+use rustc_middle::bug;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
@@ -28,7 +29,6 @@ use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
     GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
@@ -123,16 +123,19 @@ pub(crate) fn type_check<'tcx>(
         known_type_outlives_obligations,
     } = free_region_relations::create(infcx, universal_regions, &mut constraints);
 
-    let pre_obligations = infcx.take_registered_region_obligations();
-    assert!(
-        pre_obligations.is_empty(),
-        "there should be no incoming region obligations = {pre_obligations:#?}",
-    );
-    let pre_assumptions = infcx.take_registered_region_assumptions();
-    assert!(
-        pre_assumptions.is_empty(),
-        "there should be no incoming region assumptions = {pre_assumptions:#?}",
-    );
+    {
+        // Scope these variables so it's clear they're not used later
+        let pre_obligations = infcx.take_registered_region_obligations();
+        assert!(
+            pre_obligations.is_empty(),
+            "there should be no incoming region obligations = {pre_obligations:#?}",
+        );
+        let pre_assumptions = infcx.take_registered_region_assumptions();
+        assert!(
+            pre_assumptions.is_empty(),
+            "there should be no incoming region assumptions = {pre_assumptions:#?}",
+        );
+    }
 
     debug!(?normalized_inputs_and_output);
 
@@ -387,18 +390,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn check_user_type_annotations(&mut self) {
         debug!(?self.user_type_annotations);
-        let tcx = self.tcx();
         for user_annotation in self.user_type_annotations {
             let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } = *user_annotation;
             let annotation = self.instantiate_canonical(span, user_ty);
-            if let ty::UserTypeKind::TypeOf(def, args) = annotation.kind
-                && let DefKind::InlineConst = tcx.def_kind(def)
-            {
-                assert!(annotation.bounds.is_empty());
-                self.check_inline_const(inferred_ty, def.expect_local(), args, span);
-            } else {
-                self.ascribe_user_type(inferred_ty, annotation, span);
-            }
+            self.ascribe_user_type(inferred_ty, annotation, span);
         }
     }
 
@@ -559,36 +554,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         for region in liveness_constraints.live_regions_unordered() {
             self.constraints.liveness_constraints.add_location(region, location);
         }
-    }
-
-    fn check_inline_const(
-        &mut self,
-        inferred_ty: Ty<'tcx>,
-        def_id: LocalDefId,
-        args: UserArgs<'tcx>,
-        span: Span,
-    ) {
-        assert!(args.user_self_ty.is_none());
-        let tcx = self.tcx();
-        let const_ty = tcx.type_of(def_id).instantiate(tcx, args.args);
-        if let Err(terr) =
-            self.eq_types(const_ty, inferred_ty, Locations::All(span), ConstraintCategory::Boring)
-        {
-            span_bug!(
-                span,
-                "bad inline const pattern: ({:?} = {:?}) {:?}",
-                const_ty,
-                inferred_ty,
-                terr
-            );
-        }
-        let args = self.infcx.resolve_vars_if_possible(args.args);
-        let predicates = self.prove_closure_bounds(tcx, def_id, args, Locations::All(span));
-        self.normalize_and_prove_instantiated_predicates(
-            def_id.to_def_id(),
-            predicates,
-            Locations::All(span),
-        );
     }
 }
 
@@ -1023,7 +988,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // element, so we require the `Copy` trait.
                 if len.try_to_target_usize(tcx).is_none_or(|len| len > 1) {
                     match operand {
-                        Operand::Copy(..) | Operand::Constant(..) => {
+                        Operand::Copy(..) | Operand::Constant(..) | Operand::RuntimeChecks(_) => {
                             // These are always okay: direct use of a const, or a value that can
                             // evidently be copied.
                         }
@@ -1045,8 +1010,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-
-            &Rvalue::NullaryOp(NullOp::RuntimeChecks(_)) => {}
 
             Rvalue::ShallowInitBox(_operand, ty) => {
                 let trait_ref =
@@ -1583,12 +1546,18 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                     .unwrap();
                                 }
                                 (None, None) => {
+                                    // `struct_tail` returns regions which haven't been mapped
+                                    // to nll vars yet so we do it here as `outlives_constraints`
+                                    // expects nll vars.
+                                    let src_lt = self.universal_regions.to_region_vid(src_lt);
+                                    let dst_lt = self.universal_regions.to_region_vid(dst_lt);
+
                                     // The principalless (no non-auto traits) case:
                                     // You can only cast `dyn Send + 'long` to `dyn Send + 'short`.
                                     self.constraints.outlives_constraints.push(
                                         OutlivesConstraint {
-                                            sup: src_lt.as_var(),
-                                            sub: dst_lt.as_var(),
+                                            sup: src_lt,
+                                            sub: dst_lt,
                                             locations: location.to_locations(),
                                             span: location.to_locations().span(self.body),
                                             category: ConstraintCategory::Cast {
@@ -1727,12 +1696,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     let def_id = uv.def;
                     if tcx.def_kind(def_id) == DefKind::InlineConst {
                         let def_id = def_id.expect_local();
-                        let predicates = self.prove_closure_bounds(
-                            tcx,
-                            def_id,
-                            uv.args,
-                            location.to_locations(),
-                        );
+                        let predicates = self.prove_closure_bounds(tcx, def_id, uv.args, location);
                         self.normalize_and_prove_instantiated_predicates(
                             def_id.to_def_id(),
                             predicates,
@@ -2276,7 +2240,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::BinaryOp(..)
-            | Rvalue::NullaryOp(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::UnaryOp(..)
             | Rvalue::Discriminant(..)
@@ -2516,15 +2479,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // clauses on the struct.
             AggregateKind::Closure(def_id, args)
             | AggregateKind::CoroutineClosure(def_id, args)
-            | AggregateKind::Coroutine(def_id, args) => (
-                def_id,
-                self.prove_closure_bounds(
-                    tcx,
-                    def_id.expect_local(),
-                    args,
-                    location.to_locations(),
-                ),
-            ),
+            | AggregateKind::Coroutine(def_id, args) => {
+                (def_id, self.prove_closure_bounds(tcx, def_id.expect_local(), args, location))
+            }
 
             AggregateKind::Array(_) | AggregateKind::Tuple | AggregateKind::RawPtr(..) => {
                 (CRATE_DEF_ID.to_def_id(), ty::InstantiatedPredicates::empty())
@@ -2543,12 +2500,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: LocalDefId,
         args: GenericArgsRef<'tcx>,
-        locations: Locations,
+        location: Location,
     ) -> ty::InstantiatedPredicates<'tcx> {
         let root_def_id = self.root_cx.root_def_id();
         // We will have to handle propagated closure requirements for this closure,
         // but need to defer this until the nested body has been fully borrow checked.
-        self.deferred_closure_requirements.push((def_id, args, locations));
+        self.deferred_closure_requirements.push((def_id, args, location.to_locations()));
 
         // Equate closure args to regions inherited from `root_def_id`. Fixes #98589.
         let typeck_root_args = ty::GenericArgs::identity_for_item(tcx, root_def_id);
@@ -2572,7 +2529,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Err(_) = self.eq_args(
             typeck_root_args,
             parent_args,
-            locations,
+            location.to_locations(),
             ConstraintCategory::BoringNoLocation,
         ) {
             span_mirbug!(

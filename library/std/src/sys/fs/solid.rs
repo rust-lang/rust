@@ -9,11 +9,11 @@ use crate::os::raw::{c_int, c_short};
 use crate::os::solid::ffi::OsStrExt;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
-pub use crate::sys::fs::common::exists;
+pub use crate::sys::fs::common::{Dir, exists};
+use crate::sys::helpers::ignore_notfound;
 use crate::sys::pal::{abi, error};
 use crate::sys::time::SystemTime;
 use crate::sys::{unsupported, unsupported_err};
-use crate::sys_common::ignore_notfound;
 
 type CIntNotMinusOne = core::num::niche_types::NotAllOnes<c_int>;
 
@@ -401,7 +401,7 @@ impl File {
 
             // Safety: `num_bytes_read` bytes were written to the unfilled
             // portion of the buffer
-            cursor.advance(num_bytes_read);
+            cursor.advance_unchecked(num_bytes_read);
 
             Ok(())
         }

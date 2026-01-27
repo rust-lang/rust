@@ -1,9 +1,8 @@
 use super::{SocketAddr, UnixStream, sockaddr_un};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
-use crate::sys::cvt;
 use crate::sys::net::Socket;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{AsInner, FromInner, IntoInner, cvt};
 use crate::{fmt, io, mem};
 
 /// A structure representing a Unix domain socket server.

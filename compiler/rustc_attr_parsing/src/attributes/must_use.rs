@@ -1,7 +1,4 @@
-use rustc_errors::DiagArgValue;
-
 use super::prelude::*;
-use crate::session_diagnostics::IllFormedAttributeInputLint;
 
 pub(crate) struct MustUseParser;
 
@@ -44,15 +41,8 @@ impl<S: Stage> SingleAttributeParser<S> for MustUseParser {
                     };
                     Some(value_str)
                 }
-                ArgParser::List(_) => {
-                    let suggestions = cx.suggestions();
-                    cx.emit_err(IllFormedAttributeInputLint {
-                        num_suggestions: suggestions.len(),
-                        suggestions: DiagArgValue::StrListSepByAnd(
-                            suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
-                        ),
-                        span: cx.attr_span,
-                    });
+                ArgParser::List(list) => {
+                    cx.expected_nv_or_no_args(list.span);
                     return None;
                 }
             },

@@ -22,8 +22,7 @@ case $1 in
     "prepare")
         echo "=> Installing new nightly"
         rustup toolchain install --profile minimal "nightly-${TOOLCHAIN}" # Sanity check to see if the nightly exists
-        sed -i "s/\"nightly-.*\"/\"nightly-${TOOLCHAIN}\"/" rust-toolchain
-        rustup component add rustfmt || true
+        sed -i "s/\"nightly-.*\"/\"nightly-${TOOLCHAIN}\"/" rust-toolchain.toml
 
         echo "=> Uninstalling all old nightlies"
         for nightly in $(rustup toolchain list | grep nightly | grep -v "$TOOLCHAIN" | grep -v nightly-x86_64); do
@@ -35,7 +34,7 @@ case $1 in
         ./y.sh prepare
         ;;
     "commit")
-        git add rust-toolchain
+        git add rust-toolchain.toml
         git commit -m "Rustup to $(rustc -V)"
         ;;
     "push")

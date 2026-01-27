@@ -2,17 +2,18 @@ use std::convert::identity;
 
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
-use rustc_ast::{AttrStyle, NodeId, Safety};
+use rustc_ast::{AttrItemKind, AttrStyle, NodeId, Safety};
 use rustc_errors::DiagCtxtHandle;
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::lints::AttributeLint;
+use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
 use rustc_session::Session;
-use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::lint::{BuiltinLintDiag, LintId};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
-use crate::context::{AcceptContext, FinalizeContext, SharedContext, Stage};
+use crate::context::{AcceptContext, FinalizeContext, FinalizeFn, SharedContext, Stage};
+use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
 use crate::parser::{ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
 use crate::{Early, Late, OmitDoc, ShouldEmit};
@@ -112,16 +113,15 @@ impl<'sess> AttributeParser<'sess, Early> {
         p.parse_attribute_list(
             attrs,
             target_span,
-            target_node_id,
             target,
             OmitDoc::Skip,
             std::convert::identity,
-            |lint| {
+            |lint_id, span, kind| {
                 sess.psess.buffer_lint(
-                    lint.lint_id.lint,
-                    lint.span,
-                    lint.id,
-                    BuiltinLintDiag::AttributeLint(lint.kind),
+                    lint_id.lint,
+                    span,
+                    target_node_id,
+                    BuiltinLintDiag::AttributeLint(kind),
                 )
             },
         )
@@ -134,6 +134,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         attr: &ast::Attribute,
         target_span: Span,
         target_node_id: NodeId,
+        target: Target,
         features: Option<&'sess Features>,
         emit_errors: ShouldEmit,
         parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser) -> Option<T>,
@@ -146,8 +147,12 @@ impl<'sess> AttributeParser<'sess, Early> {
             normal_attr.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
 
         let path = AttrPath::from_ast(&normal_attr.item.path, identity);
-        let args =
-            ArgParser::from_attr_args(&normal_attr.item.args, &parts, &sess.psess, emit_errors)?;
+        let args = ArgParser::from_attr_args(
+            &normal_attr.item.args.unparsed_ref().unwrap(),
+            &parts,
+            &sess.psess,
+            emit_errors,
+        )?;
         Self::parse_single_args(
             sess,
             attr.span,
@@ -158,6 +163,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             ParsedDescription::Attribute,
             target_span,
             target_node_id,
+            target,
             features,
             emit_errors,
             &args,
@@ -178,6 +184,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         parsed_description: ParsedDescription,
         target_span: Span,
         target_node_id: NodeId,
+        target: Target,
         features: Option<&'sess Features>,
         emit_errors: ShouldEmit,
         args: &I,
@@ -191,28 +198,22 @@ impl<'sess> AttributeParser<'sess, Early> {
             sess,
             stage: Early { emit_errors },
         };
-        let mut emit_lint = |lint: AttributeLint<NodeId>| {
+        let mut emit_lint = |lint_id: LintId, span: Span, kind: AttributeLintKind| {
             sess.psess.buffer_lint(
-                lint.lint_id.lint,
-                lint.span,
-                lint.id,
-                BuiltinLintDiag::AttributeLint(lint.kind),
+                lint_id.lint,
+                span,
+                target_node_id,
+                BuiltinLintDiag::AttributeLint(kind),
             )
         };
         if let Some(safety) = attr_safety {
-            parser.check_attribute_safety(
-                &attr_path,
-                inner_span,
-                safety,
-                &mut emit_lint,
-                target_node_id,
-            )
+            parser.check_attribute_safety(&attr_path, inner_span, safety, &mut emit_lint)
         }
         let mut cx: AcceptContext<'_, 'sess, Early> = AcceptContext {
             shared: SharedContext {
                 cx: &mut parser,
                 target_span,
-                target_id: target_node_id,
+                target,
                 emit_lint: &mut emit_lint,
             },
             attr_span,
@@ -260,15 +261,16 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         &mut self,
         attrs: &[ast::Attribute],
         target_span: Span,
-        target_id: S::Id,
         target: Target,
         omit_doc: OmitDoc,
-
         lower_span: impl Copy + Fn(Span) -> Span,
-        mut emit_lint: impl FnMut(AttributeLint<S::Id>),
+        mut emit_lint: impl FnMut(LintId, Span, AttributeLintKind),
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
+        let mut early_parsed_state = EarlyParsedState::default();
+
+        let mut finalizers: Vec<&FinalizeFn<S>> = Vec::with_capacity(attrs.len());
 
         for attr in attrs {
             // If we're only looking for a single attribute, skip all the ones we don't care about.
@@ -288,6 +290,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 continue;
             }
 
+            let attr_span = lower_span(attr.span);
             match &attr.kind {
                 ast::AttrKind::DocComment(comment_kind, symbol) => {
                     if omit_doc == OmitDoc::Skip {
@@ -297,7 +300,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                     attributes.push(Attribute::Parsed(AttributeKind::DocComment {
                         style: attr.style,
                         kind: DocFragmentKind::Sugared(*comment_kind),
-                        span: lower_span(attr.span),
+                        span: attr_span,
                         comment: *symbol,
                     }))
                 }
@@ -305,12 +308,20 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                     attr_paths.push(PathParser(&n.item.path));
                     let attr_path = AttrPath::from_ast(&n.item.path, lower_span);
 
+                    let args = match &n.item.args {
+                        AttrItemKind::Unparsed(args) => args,
+                        AttrItemKind::Parsed(parsed) => {
+                            early_parsed_state
+                                .accept_early_parsed_attribute(attr_span, lower_span, parsed);
+                            continue;
+                        }
+                    };
+
                     self.check_attribute_safety(
                         &attr_path,
                         lower_span(n.item.span()),
                         n.item.unsafety,
                         &mut emit_lint,
-                        target_id,
                     );
 
                     let parts =
@@ -318,7 +329,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
 
                     if let Some(accepts) = S::parsers().accepters.get(parts.as_slice()) {
                         let Some(args) = ArgParser::from_attr_args(
-                            &n.item.args,
+                            args,
                             &parts,
                             &self.sess.psess,
                             self.stage.should_emit(),
@@ -351,7 +362,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             attributes.push(Attribute::Parsed(AttributeKind::DocComment {
                                 style: attr.style,
                                 kind: DocFragmentKind::Raw(nv.value_span),
-                                span: attr.span,
+                                span: attr_span,
                                 comment,
                             }));
                             continue;
@@ -362,10 +373,10 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                                 shared: SharedContext {
                                     cx: self,
                                     target_span,
-                                    target_id,
+                                    target,
                                     emit_lint: &mut emit_lint,
                                 },
-                                attr_span: lower_span(attr.span),
+                                attr_span,
                                 inner_span: lower_span(n.item.span()),
                                 attr_style: attr.style,
                                 parsed_description: ParsedDescription::Attribute,
@@ -374,6 +385,8 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             };
 
                             (accept.accept_fn)(&mut cx, &args);
+                            finalizers.push(&accept.finalizer);
+
                             if !matches!(cx.stage.should_emit(), ShouldEmit::Nothing) {
                                 Self::check_target(&accept.allowed_targets, target, &mut cx);
                             }
@@ -396,39 +409,43 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
 
                         attributes.push(Attribute::Unparsed(Box::new(AttrItem {
                             path: attr_path.clone(),
-                            args: self.lower_attr_args(&n.item.args, lower_span),
+                            args: self
+                                .lower_attr_args(n.item.args.unparsed_ref().unwrap(), lower_span),
                             id: HashIgnoredAttrId { attr_id: attr.id },
                             style: attr.style,
-                            span: lower_span(attr.span),
+                            span: attr_span,
                         })));
                     }
                 }
             }
         }
 
-        let mut parsed_attributes = Vec::new();
-        for f in &S::parsers().finalizers {
+        early_parsed_state.finalize_early_parsed_attributes(&mut attributes);
+        for f in &finalizers {
             if let Some(attr) = f(&mut FinalizeContext {
-                shared: SharedContext {
-                    cx: self,
-                    target_span,
-                    target_id,
-                    emit_lint: &mut emit_lint,
-                },
+                shared: SharedContext { cx: self, target_span, target, emit_lint: &mut emit_lint },
                 all_attrs: &attr_paths,
             }) {
-                parsed_attributes.push(Attribute::Parsed(attr));
+                attributes.push(Attribute::Parsed(attr));
             }
         }
-
-        attributes.extend(parsed_attributes);
 
         attributes
     }
 
     /// Returns whether there is a parser for an attribute with this name
     pub fn is_parsed_attribute(path: &[Symbol]) -> bool {
+        /// The list of attributes that are parsed attributes,
+        /// even though they don't have a parser in `Late::parsers()`
+        const SPECIAL_ATTRIBUTES: &[&[Symbol]] = &[
+            // Cfg attrs are removed after being early-parsed, so don't need to be in the parser list
+            &[sym::cfg],
+            &[sym::cfg_attr],
+        ];
+
         Late::parsers().accepters.contains_key(path)
+            || EARLY_PARSED_ATTRIBUTES.contains(&path)
+            || SPECIAL_ATTRIBUTES.contains(&path)
     }
 
     fn lower_attr_args(&self, args: &ast::AttrArgs, lower_span: impl Fn(Span) -> Span) -> AttrArgs {

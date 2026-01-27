@@ -10,7 +10,7 @@ bitflags = "2.4.1"
 either = "1.0"
 elsa = "1.11.0"
 ena = "0.14.3"
-indexmap = "2.4.0"
+indexmap = "2.12.1"
 jobserver_crate = { version = "0.1.28", package = "jobserver" }
 measureme = "12.0.1"
 parking_lot = "0.12"
@@ -31,7 +31,7 @@ tracing = "0.1"
 # tidy-alphabetical-end
 
 [dependencies.hashbrown]
-version = "0.15.2"
+version = "0.16.1"
 default-features = false
 features = ["nightly"] # for may_dangle
 

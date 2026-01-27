@@ -2369,6 +2369,8 @@ pub(crate) struct UnknownTokenStart {
     pub null: Option<UnknownTokenNull>,
     #[subdiagnostic]
     pub repeat: Option<UnknownTokenRepeat>,
+    #[subdiagnostic]
+    pub invisible: Option<InvisibleCharacter>,
 }
 
 #[derive(Subdiagnostic)]
@@ -2408,6 +2410,10 @@ pub(crate) enum TokenSubstitution {
 pub(crate) struct UnknownTokenRepeat {
     pub repeats: usize,
 }
+
+#[derive(Subdiagnostic)]
+#[help(parse_help_invisible_char)]
+pub(crate) struct InvisibleCharacter;
 
 #[derive(Subdiagnostic)]
 #[help(parse_help_null)]
@@ -3670,4 +3676,30 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
 pub(crate) struct VarargsWithoutPattern {
     #[suggestion(code = "_: ...", applicability = "machine-applicable")]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_delegation_non_trait_impl_reuse)]
+pub(crate) struct ImplReuseInherentImpl {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_struct_literal_placeholder_path)]
+pub(crate) struct StructLiteralPlaceholderPath {
+    #[primary_span]
+    #[label]
+    #[suggestion(applicability = "has-placeholders", code = "/* Type */", style = "verbose")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_struct_literal_body_without_path_late)]
+pub(crate) struct StructLiteralWithoutPathLate {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[suggestion(applicability = "has-placeholders", code = "/* Type */ ", style = "verbose")]
+    pub suggestion_span: Span,
 }

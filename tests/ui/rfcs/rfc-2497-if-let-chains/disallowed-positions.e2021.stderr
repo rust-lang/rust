@@ -1137,7 +1137,7 @@ error[E0277]: the `?` operator can only be applied to values that implement `Try
 LL |         if let 0 = 0? {}
    |                    ^^ the `?` operator cannot be applied to type `{integer}`
    |
-   = help: the trait `Try` is not implemented for `{integer}`
+   = help: the nightly-only, unstable trait `Try` is not implemented for `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:224:11
@@ -1198,7 +1198,7 @@ error[E0277]: the `?` operator can only be applied to values that implement `Try
 LL |         while let 0 = 0? {}
    |                       ^^ the `?` operator cannot be applied to type `{integer}`
    |
-   = help: the trait `Try` is not implemented for `{integer}`
+   = help: the nightly-only, unstable trait `Try` is not implemented for `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:333:10
@@ -1217,7 +1217,7 @@ error[E0277]: the `?` operator can only be applied to values that implement `Try
 LL |         let 0 = 0?;
    |                 ^^ the `?` operator cannot be applied to type `{integer}`
    |
-   = help: the trait `Try` is not implemented for `{integer}`
+   = help: the nightly-only, unstable trait `Try` is not implemented for `{integer}`
 
 error: aborting due to 134 previous errors
 

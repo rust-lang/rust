@@ -1,0 +1,16 @@
+error: an array of `Range` that is only one element
+  --> tests/ui/single_range_in_vec_init_unfixable.rs:10:24
+   |
+LL |     takes_range_slice(&[0..len as i64]);
+   |                        ^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::single-range-in-vec-init` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_range_in_vec_init)]`
+help: if you wanted a `Vec` that contains the entire range, try
+   |
+LL -     takes_range_slice(&[0..len as i64]);
+LL +     takes_range_slice(&(0..len as i64).collect::<std::vec::Vec<i64>>());
+   |
+
+error: aborting due to 1 previous error
+

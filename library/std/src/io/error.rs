@@ -1,6 +1,13 @@
 #[cfg(test)]
 mod tests;
 
+// On 64-bit platforms, `io::Error` may use a bit-packed representation to
+// reduce size. However, this representation assumes that error codes are
+// always 32-bit wide.
+//
+// This assumption is invalid on 64-bit UEFI, where error codes are 64-bit.
+// Therefore, the packed representation is explicitly disabled for UEFI
+// targets, and the unpacked representation must be used instead.
 #[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
 mod repr_bitpacked;
 #[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
@@ -139,7 +146,7 @@ enum ErrorData<C> {
 ///
 /// [`into`]: Into::into
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
-pub type RawOsError = sys::RawOsError;
+pub type RawOsError = sys::io::RawOsError;
 
 // `#[repr(align(4))]` is probably redundant, it should have that value or
 // higher already. We include it just because repr_bitpacked.rs's encoding
@@ -180,7 +187,7 @@ pub struct SimpleMessage {
 ///     Err(FAIL)
 /// }
 /// ```
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 #[unstable(feature = "io_const_error", issue = "133448")]
 #[allow_internal_unstable(hint_must_use, io_const_error_internals)]
 pub macro const_error($kind:expr, $message:expr $(,)?) {
@@ -646,7 +653,7 @@ impl Error {
     #[must_use]
     #[inline]
     pub fn last_os_error() -> Error {
-        Error::from_raw_os_error(sys::os::errno())
+        Error::from_raw_os_error(sys::io::errno())
     }
 
     /// Creates a new instance of an [`Error`] from a particular OS error code.
@@ -997,7 +1004,7 @@ impl Error {
     #[inline]
     pub fn kind(&self) -> ErrorKind {
         match self.repr.data() {
-            ErrorData::Os(code) => sys::decode_error_kind(code),
+            ErrorData::Os(code) => sys::io::decode_error_kind(code),
             ErrorData::Custom(c) => c.kind,
             ErrorData::Simple(kind) => kind,
             ErrorData::SimpleMessage(m) => m.kind,
@@ -1007,7 +1014,7 @@ impl Error {
     #[inline]
     pub(crate) fn is_interrupted(&self) -> bool {
         match self.repr.data() {
-            ErrorData::Os(code) => sys::is_interrupted(code),
+            ErrorData::Os(code) => sys::io::is_interrupted(code),
             ErrorData::Custom(c) => c.kind == ErrorKind::Interrupted,
             ErrorData::Simple(kind) => kind == ErrorKind::Interrupted,
             ErrorData::SimpleMessage(m) => m.kind == ErrorKind::Interrupted,
@@ -1021,8 +1028,8 @@ impl fmt::Debug for Repr {
             ErrorData::Os(code) => fmt
                 .debug_struct("Os")
                 .field("code", &code)
-                .field("kind", &sys::decode_error_kind(code))
-                .field("message", &sys::os::error_string(code))
+                .field("kind", &sys::io::decode_error_kind(code))
+                .field("message", &sys::io::error_string(code))
                 .finish(),
             ErrorData::Custom(c) => fmt::Debug::fmt(&c, fmt),
             ErrorData::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
@@ -1040,7 +1047,7 @@ impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.repr.data() {
             ErrorData::Os(code) => {
-                let detail = sys::os::error_string(code);
+                let detail = sys::io::error_string(code);
                 write!(fmt, "{detail} (os error {code})")
             }
             ErrorData::Custom(ref c) => c.error.fmt(fmt),

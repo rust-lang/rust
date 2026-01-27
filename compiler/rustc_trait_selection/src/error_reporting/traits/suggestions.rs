@@ -1,12 +1,12 @@
 // ignore-tidy-filelength
 
-use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
 use std::path::PathBuf;
 
 use itertools::{EitherOrBoth, Itertools};
 use rustc_abi::ExternAbi;
+use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::codes::*;
@@ -1391,25 +1391,45 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // return early in the caller.
 
             let mut label = || {
+                // Special case `Sized` as `old_pred` will be the trait itself instead of
+                // `Sized` when the trait bound is the source of the error.
+                let is_sized = match obligation.predicate.kind().skip_binder() {
+                    ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
+                        self.tcx.is_lang_item(trait_pred.def_id(), LangItem::Sized)
+                    }
+                    _ => false,
+                };
+
                 let msg = format!(
                     "the trait bound `{}` is not satisfied",
                     self.tcx.short_string(old_pred, err.long_ty_path()),
                 );
-                let self_ty_str =
-                    self.tcx.short_string(old_pred.self_ty().skip_binder(), err.long_ty_path());
+                let self_ty_str = self.tcx.short_string(old_pred.self_ty(), err.long_ty_path());
                 let trait_path = self
                     .tcx
                     .short_string(old_pred.print_modifiers_and_trait_path(), err.long_ty_path());
 
                 if has_custom_message {
+                    let msg = if is_sized {
+                        "the trait bound `Sized` is not satisfied".into()
+                    } else {
+                        msg
+                    };
                     err.note(msg);
                 } else {
                     err.messages = vec![(rustc_errors::DiagMessage::from(msg), Style::NoStyle)];
                 }
-                err.span_label(
-                    span,
-                    format!("the trait `{trait_path}` is not implemented for `{self_ty_str}`"),
-                );
+                if is_sized {
+                    err.span_label(
+                        span,
+                        format!("the trait `Sized` is not implemented for `{self_ty_str}`"),
+                    );
+                } else {
+                    err.span_label(
+                        span,
+                        format!("the trait `{trait_path}` is not implemented for `{self_ty_str}`"),
+                    );
+                }
             };
 
             let mut sugg_prefixes = vec![];
@@ -3578,10 +3598,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 "unsatisfied trait bound introduced in this `derive` macro",
                             );
                         } else if !data.span.is_dummy() && !data.span.overlaps(self_ty.span) {
-                            spans.push_span_label(
-                                data.span,
-                                "unsatisfied trait bound introduced here",
-                            );
+                            // `Sized` may be an explicit or implicit trait bound. If it is
+                            // implicit, mention it as such.
+                            if let Some(pred) = predicate.as_trait_clause()
+                                && self.tcx.is_lang_item(pred.def_id(), LangItem::Sized)
+                                && self
+                                    .tcx
+                                    .generics_of(data.impl_or_alias_def_id)
+                                    .own_params
+                                    .iter()
+                                    .any(|param| self.tcx.def_span(param.def_id) == data.span)
+                            {
+                                spans.push_span_label(
+                                    data.span,
+                                    "unsatisfied trait bound implicitly introduced here",
+                                );
+                            } else {
+                                spans.push_span_label(
+                                    data.span,
+                                    "unsatisfied trait bound introduced here",
+                                );
+                            }
                         }
                         err.span_note(spans, msg);
                         point_at_assoc_type_restriction(
@@ -3843,6 +3880,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "unsized values must be place expressions and cannot be put in temporaries",
                 );
             }
+            ObligationCauseCode::CompareEii { .. } => {
+                panic!("trait bounds on EII not yet supported ")
+            }
         }
     }
 
@@ -4066,15 +4106,46 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ))
                 && expr.span.hi() != rcvr.span.hi()
             {
-                err.span_suggestion_verbose(
-                    expr.span.with_lo(rcvr.span.hi()),
-                    format!(
-                        "consider removing this method call, as the receiver has type `{ty}` and \
-                         `{pred}` trivially holds",
-                    ),
-                    "",
-                    Applicability::MaybeIncorrect,
-                );
+                let should_sugg = match tcx.hir_node(call_hir_id) {
+                    Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::MethodCall(_, call_receiver, _, _),
+                        ..
+                    }) if let Some((DefKind::AssocFn, did)) =
+                        typeck_results.type_dependent_def(call_hir_id)
+                        && call_receiver.hir_id == arg_hir_id =>
+                    {
+                        // Avoid suggesting removing a method call if the argument is the receiver of the parent call and
+                        // removing the receiver would make the method inaccessible. i.e. `x.a().b()`, suggesting removing
+                        // `.a()` could change the type and make `.b()` unavailable.
+                        if tcx.inherent_impl_of_assoc(did).is_some() {
+                            // if we're calling an inherent impl method, just try to make sure that the receiver type stays the same.
+                            Some(ty) == typeck_results.node_type_opt(arg_hir_id)
+                        } else {
+                            // we're calling a trait method, so we just check removing the method call still satisfies the trait.
+                            let trait_id = tcx
+                                .trait_of_assoc(did)
+                                .unwrap_or_else(|| tcx.impl_trait_id(tcx.parent(did)));
+                            let args = typeck_results.node_args(call_hir_id);
+                            let tr = ty::TraitRef::from_assoc(tcx, trait_id, args)
+                                .with_replaced_self_ty(tcx, ty);
+                            self.type_implements_trait(tr.def_id, tr.args, param_env)
+                                .must_apply_modulo_regions()
+                        }
+                    }
+                    _ => true,
+                };
+
+                if should_sugg {
+                    err.span_suggestion_verbose(
+                        expr.span.with_lo(rcvr.span.hi()),
+                        format!(
+                            "consider removing this method call, as the receiver has type `{ty}` and \
+                            `{pred}` trivially holds",
+                        ),
+                        "",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
             if let hir::Expr { kind: hir::ExprKind::Block(block, _), .. } = expr {
                 let inner_expr = expr.peel_blocks();
@@ -4319,6 +4390,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         path_segment: &hir::PathSegment<'_>,
         args: &[hir::Expr<'_>],
+        prev_ty: Ty<'_>,
         err: &mut Diag<'_, G>,
     ) {
         let tcx = self.tcx;
@@ -4332,6 +4404,47 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let TypeError::Sorts(expected_found) = diff else {
                     continue;
                 };
+                if tcx.is_diagnostic_item(sym::IntoIteratorItem, *def_id)
+                    && path_segment.ident.name == sym::iter
+                    && self.can_eq(
+                        param_env,
+                        Ty::new_ref(
+                            tcx,
+                            tcx.lifetimes.re_erased,
+                            expected_found.found,
+                            ty::Mutability::Not,
+                        ),
+                        *ty,
+                    )
+                    && let [] = args
+                {
+                    // Used `.iter()` when `.into_iter()` was likely meant.
+                    err.span_suggestion_verbose(
+                        path_segment.ident.span,
+                        format!("consider consuming the `{prev_ty}` to construct the `Iterator`"),
+                        "into_iter".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
+                if tcx.is_diagnostic_item(sym::IntoIteratorItem, *def_id)
+                    && path_segment.ident.name == sym::into_iter
+                    && self.can_eq(
+                        param_env,
+                        expected_found.found,
+                        Ty::new_ref(tcx, tcx.lifetimes.re_erased, *ty, ty::Mutability::Not),
+                    )
+                    && let [] = args
+                {
+                    // Used `.into_iter()` when `.iter()` was likely meant.
+                    err.span_suggestion_verbose(
+                        path_segment.ident.span,
+                        format!(
+                            "consider not consuming the `{prev_ty}` to construct the `Iterator`"
+                        ),
+                        "iter".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
                 if tcx.is_diagnostic_item(sym::IteratorItem, *def_id)
                     && path_segment.ident.name == sym::map
                     && self.can_eq(param_env, expected_found.found, *ty)
@@ -4444,6 +4557,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             expr = rcvr_expr;
             let assocs_in_this_method =
                 self.probe_assoc_types_at_expr(&type_diffs, span, prev_ty, expr.hir_id, param_env);
+            prev_ty = self.resolve_vars_if_possible(
+                typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(tcx)),
+            );
             self.look_for_iterator_item_mistakes(
                 &assocs_in_this_method,
                 typeck_results,
@@ -4451,12 +4567,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 param_env,
                 path_segment,
                 args,
+                prev_ty,
                 err,
             );
             assocs.push(assocs_in_this_method);
-            prev_ty = self.resolve_vars_if_possible(
-                typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(tcx)),
-            );
 
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
                 && let hir::Path { res: Res::Local(hir_id), .. } = path
@@ -4688,7 +4802,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // slices of `element_ty` with `mutability`.
         let mut is_slice = |candidate: Ty<'tcx>| match *candidate.kind() {
             ty::RawPtr(t, m) | ty::Ref(_, t, m) => {
-                if matches!(*t.kind(), ty::Slice(e) if e == element_ty)
+                if let ty::Slice(e) = *t.kind()
+                    && e == element_ty
                     && m == mutability.unwrap_or(m)
                 {
                     // Use the candidate's mutability going forward.
@@ -5289,12 +5404,9 @@ fn hint_missing_borrow<'tcx>(
                     ty = mut_ty.ty;
                     left -= 1;
                 }
-                let sugg = if left == 0 {
-                    (span, String::new())
-                } else {
-                    (arg.span, expected_arg.to_string())
-                };
-                remove_borrow.push(sugg);
+                if left == 0 {
+                    remove_borrow.push((span, String::new()));
+                }
             }
         }
     }
@@ -5481,7 +5593,14 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
         };
         if let ty::PredicatePolarity::Positive = trait_predicate.polarity() {
             format!(
-                "{pre_message}the trait `{}` is not implemented for{desc} `{}`",
+                "{pre_message}the {}trait `{}` is not implemented for{desc} `{}`",
+                if tcx.lookup_stability(trait_predicate.def_id()).map(|s| s.level.is_stable())
+                    == Some(false)
+                {
+                    "nightly-only, unstable "
+                } else {
+                    ""
+                },
                 trait_predicate.print_modifiers_and_trait_path(),
                 tcx.short_string(trait_predicate.self_ty().skip_binder(), long_ty_path),
             )

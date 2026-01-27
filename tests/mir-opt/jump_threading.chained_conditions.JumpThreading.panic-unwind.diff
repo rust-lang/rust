@@ -43,10 +43,118 @@
       scope 4 (inlined std::cmp::impls::<impl PartialEq<&str> for &String>::eq) {
           let mut _27: &std::string::String;
           let mut _28: &str;
+          scope 5 (inlined <String as PartialEq<str>>::eq) {
+              scope 6 (inlined #[track_caller] <String as Index<RangeFull>>::index) {
+                  let _29: &str;
+                  scope 7 (inlined String::as_str) {
+                      let _30: &[u8];
+                      scope 8 (inlined Vec::<u8>::as_slice) {
+                          let _31: *const [u8];
+                          let mut _32: *const u8;
+                          let mut _33: usize;
+                          scope 9 (inlined Vec::<u8>::as_ptr) {
+                              scope 10 (inlined alloc::raw_vec::RawVec::<u8>::ptr) {
+                                  scope 11 (inlined alloc::raw_vec::RawVecInner::ptr::<u8>) {
+                                      scope 12 (inlined alloc::raw_vec::RawVecInner::non_null::<u8>) {
+                                          let mut _34: std::ptr::NonNull<u8>;
+                                          scope 13 (inlined std::ptr::Unique::<u8>::cast::<u8>) {
+                                              scope 14 (inlined NonNull::<u8>::cast::<u8>) {
+                                                  scope 15 (inlined NonNull::<u8>::as_ptr) {
+                                                  }
+                                              }
+                                          }
+                                          scope 16 (inlined std::ptr::Unique::<u8>::as_non_null_ptr) {
+                                          }
+                                      }
+                                      scope 17 (inlined NonNull::<u8>::as_ptr) {
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                      scope 18 (inlined from_utf8_unchecked) {
+                      }
+                  }
+                  scope 19 (inlined #[track_caller] core::str::traits::<impl SliceIndex<str> for RangeFull>::index) {
+                  }
+              }
+              scope 20 (inlined #[track_caller] core::str::traits::<impl Index<RangeFull> for str>::index) {
+                  scope 21 (inlined #[track_caller] core::str::traits::<impl SliceIndex<str> for RangeFull>::index) {
+                  }
+              }
+              scope 22 (inlined core::str::traits::<impl PartialEq for str>::eq) {
+                  let mut _35: &&[u8];
+                  let _36: &[u8];
+                  let mut _37: &&[u8];
+                  let _38: &[u8];
+                  scope 23 (inlined core::str::<impl str>::as_bytes) {
+                  }
+                  scope 24 (inlined core::str::<impl str>::as_bytes) {
+                  }
+                  scope 25 (inlined std::cmp::impls::<impl PartialEq for &[u8]>::eq) {
+                      scope 26 (inlined core::slice::cmp::<impl PartialEq for [u8]>::eq) {
+                      }
+                  }
+              }
+          }
       }
-      scope 5 (inlined std::cmp::impls::<impl PartialEq<&str> for &String>::eq) {
-          let mut _29: &std::string::String;
-          let mut _30: &str;
+      scope 27 (inlined std::cmp::impls::<impl PartialEq<&str> for &String>::eq) {
+          let mut _39: &std::string::String;
+          let mut _40: &str;
+          scope 28 (inlined <String as PartialEq<str>>::eq) {
+              scope 29 (inlined #[track_caller] <String as Index<RangeFull>>::index) {
+                  let _41: &str;
+                  scope 30 (inlined String::as_str) {
+                      let _42: &[u8];
+                      scope 31 (inlined Vec::<u8>::as_slice) {
+                          let _43: *const [u8];
+                          let mut _44: *const u8;
+                          let mut _45: usize;
+                          scope 32 (inlined Vec::<u8>::as_ptr) {
+                              scope 33 (inlined alloc::raw_vec::RawVec::<u8>::ptr) {
+                                  scope 34 (inlined alloc::raw_vec::RawVecInner::ptr::<u8>) {
+                                      scope 35 (inlined alloc::raw_vec::RawVecInner::non_null::<u8>) {
+                                          let mut _46: std::ptr::NonNull<u8>;
+                                          scope 36 (inlined std::ptr::Unique::<u8>::cast::<u8>) {
+                                              scope 37 (inlined NonNull::<u8>::cast::<u8>) {
+                                                  scope 38 (inlined NonNull::<u8>::as_ptr) {
+                                                  }
+                                              }
+                                          }
+                                          scope 39 (inlined std::ptr::Unique::<u8>::as_non_null_ptr) {
+                                          }
+                                      }
+                                      scope 40 (inlined NonNull::<u8>::as_ptr) {
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                      scope 41 (inlined from_utf8_unchecked) {
+                      }
+                  }
+                  scope 42 (inlined #[track_caller] core::str::traits::<impl SliceIndex<str> for RangeFull>::index) {
+                  }
+              }
+              scope 43 (inlined #[track_caller] core::str::traits::<impl Index<RangeFull> for str>::index) {
+                  scope 44 (inlined #[track_caller] core::str::traits::<impl SliceIndex<str> for RangeFull>::index) {
+                  }
+              }
+              scope 45 (inlined core::str::traits::<impl PartialEq for str>::eq) {
+                  let mut _47: &&[u8];
+                  let _48: &[u8];
+                  let mut _49: &&[u8];
+                  let _50: &[u8];
+                  scope 46 (inlined core::str::<impl str>::as_bytes) {
+                  }
+                  scope 47 (inlined core::str::<impl str>::as_bytes) {
+                  }
+                  scope 48 (inlined std::cmp::impls::<impl PartialEq for &[u8]>::eq) {
+                      scope 49 (inlined core::slice::cmp::<impl PartialEq for [u8]>::eq) {
+                      }
+                  }
+              }
+          }
       }
   
       bb0: {
@@ -89,7 +197,28 @@
           StorageLive(_28);
           _27 = copy (*_8);
           _28 = copy (*_10);
-          _7 = <String as PartialEq<str>>::eq(move _27, move _28) -> [return: bb23, unwind: bb22];
+          StorageLive(_29);
+          StorageLive(_30);
+          StorageLive(_31);
+          StorageLive(_32);
+          StorageLive(_34);
+          _34 = copy ((((((*_27).0: std::vec::Vec<u8>).0: alloc::raw_vec::RawVec<u8>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
+          _32 = copy _34 as *const u8 (Transmute);
+          StorageDead(_34);
+          StorageLive(_33);
+          _33 = copy (((*_27).0: std::vec::Vec<u8>).1: usize);
+          _31 = *const [u8] from (copy _32, move _33);
+          StorageDead(_33);
+          StorageDead(_32);
+          _30 = &(*_31);
+          StorageDead(_31);
+          _29 = copy _30 as &str (Transmute);
+          StorageDead(_30);
+          StorageLive(_36);
+          StorageLive(_38);
+          _36 = copy _29 as &[u8] (Transmute);
+          _38 = copy _28 as &[u8] (Transmute);
+          _7 = <[u8] as core::slice::cmp::SlicePartialEq<u8>>::equal(move _36, move _38) -> [return: bb23, unwind: bb22];
       }
   
       bb5: {
@@ -120,11 +249,32 @@
           StorageLive(_17);
           _20 = const chained_conditions::promoted[0];
           _17 = &(*_20);
-          StorageLive(_29);
-          StorageLive(_30);
-          _29 = copy (*_15);
-          _30 = copy (*_17);
-          _14 = <String as PartialEq<str>>::eq(move _29, move _30) -> [return: bb24, unwind: bb22];
+          StorageLive(_39);
+          StorageLive(_40);
+          _39 = copy (*_15);
+          _40 = copy (*_17);
+          StorageLive(_41);
+          StorageLive(_42);
+          StorageLive(_43);
+          StorageLive(_44);
+          StorageLive(_46);
+          _46 = copy ((((((*_39).0: std::vec::Vec<u8>).0: alloc::raw_vec::RawVec<u8>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
+          _44 = copy _46 as *const u8 (Transmute);
+          StorageDead(_46);
+          StorageLive(_45);
+          _45 = copy (((*_39).0: std::vec::Vec<u8>).1: usize);
+          _43 = *const [u8] from (copy _44, move _45);
+          StorageDead(_45);
+          StorageDead(_44);
+          _42 = &(*_43);
+          StorageDead(_43);
+          _41 = copy _42 as &str (Transmute);
+          StorageDead(_42);
+          StorageLive(_48);
+          StorageLive(_50);
+          _48 = copy _41 as &[u8] (Transmute);
+          _50 = copy _40 as &[u8] (Transmute);
+          _14 = <[u8] as core::slice::cmp::SlicePartialEq<u8>>::equal(move _48, move _50) -> [return: bb24, unwind: bb22];
       }
   
       bb7: {
@@ -223,14 +373,20 @@
       }
   
       bb23: {
+          StorageDead(_38);
+          StorageDead(_36);
+          StorageDead(_29);
           StorageDead(_28);
           StorageDead(_27);
           switchInt(move _7) -> [0: bb6, otherwise: bb5];
       }
   
       bb24: {
-          StorageDead(_30);
-          StorageDead(_29);
+          StorageDead(_50);
+          StorageDead(_48);
+          StorageDead(_41);
+          StorageDead(_40);
+          StorageDead(_39);
           switchInt(move _14) -> [0: bb9, otherwise: bb8];
 +     }
 + 

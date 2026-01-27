@@ -1,7 +1,8 @@
 //@error-in-other-file: aborted execution
 // Backtraces vary wildly between platforms, we have to normalize away almost the entire thing
 //@normalize-stderr-test: "'main'|'<unnamed>'" -> "$$NAME"
-//@normalize-stderr-test: ".*(note|-->|:::|\|).*\n" -> ""
+//@normalize-stderr-test: ".*(note|-->|\|).*\n" -> ""
+//@normalize-stderr-test: "\n *\d+:.*\n *at .*" -> ""
 
 pub struct NoisyDrop {}
 

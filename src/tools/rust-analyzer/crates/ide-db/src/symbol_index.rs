@@ -27,7 +27,7 @@ use std::{
     ops::ControlFlow,
 };
 
-use base_db::{RootQueryDb, SourceRootId};
+use base_db::{LibraryRoots, LocalRoots, RootQueryDb, SourceRootId};
 use fst::{Automaton, Streamer, raw::IndexedValue};
 use hir::{
     Crate, Module,
@@ -36,7 +36,7 @@ use hir::{
     symbols::{FileSymbol, SymbolCollector},
 };
 use rayon::prelude::*;
-use rustc_hash::FxHashSet;
+use salsa::Update;
 
 use crate::RootDatabase;
 
@@ -101,24 +101,8 @@ impl Query {
     }
 }
 
-/// The set of roots for crates.io libraries.
-/// Files in libraries are assumed to never change.
-#[salsa::input(singleton, debug)]
-pub struct LibraryRoots {
-    #[returns(ref)]
-    pub roots: FxHashSet<SourceRootId>,
-}
-
-/// The set of "local" (that is, from the current workspace) roots.
-/// Files in local roots are assumed to change frequently.
-#[salsa::input(singleton, debug)]
-pub struct LocalRoots {
-    #[returns(ref)]
-    pub roots: FxHashSet<SourceRootId>,
-}
-
 /// The symbol indices of modules that make up a given crate.
-pub fn crate_symbols(db: &dyn HirDatabase, krate: Crate) -> Box<[&SymbolIndex]> {
+pub fn crate_symbols(db: &dyn HirDatabase, krate: Crate) -> Box<[&SymbolIndex<'_>]> {
     let _p = tracing::info_span!("crate_symbols").entered();
     krate.modules(db).into_iter().map(|module| SymbolIndex::module_symbols(db, module)).collect()
 }
@@ -148,7 +132,7 @@ pub fn crate_symbols(db: &dyn HirDatabase, krate: Crate) -> Box<[&SymbolIndex]> 
 // | Editor  | Shortcut |
 // |---------|-----------|
 // | VS Code | <kbd>Ctrl+T</kbd>
-pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
+pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol<'_>> {
     let _p = tracing::info_span!("world_symbols", query = ?query.query).entered();
 
     let indices: Vec<_> = if query.libs {
@@ -170,9 +154,7 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
         crates
             .par_iter()
             .for_each_with(db.clone(), |snap, &krate| _ = crate_symbols(snap, krate.into()));
-        let indices: Vec<_> =
-            crates.into_iter().map(|krate| crate_symbols(db, krate.into())).collect();
-        indices.iter().flat_map(|indices| indices.iter().cloned()).collect()
+        crates.into_iter().flat_map(|krate| Vec::from(crate_symbols(db, krate.into()))).collect()
     };
 
     let mut res = vec![];
@@ -184,24 +166,27 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
 }
 
 #[derive(Default)]
-pub struct SymbolIndex {
-    symbols: Box<[FileSymbol]>,
+pub struct SymbolIndex<'db> {
+    symbols: Box<[FileSymbol<'db>]>,
     map: fst::Map<Vec<u8>>,
 }
 
-impl SymbolIndex {
+impl<'db> SymbolIndex<'db> {
     /// The symbol index for a given source root within library_roots.
-    pub fn library_symbols(db: &dyn HirDatabase, source_root_id: SourceRootId) -> &SymbolIndex {
+    pub fn library_symbols(
+        db: &'db dyn HirDatabase,
+        source_root_id: SourceRootId,
+    ) -> &'db SymbolIndex<'db> {
         // FIXME:
         #[salsa::interned]
         struct InternedSourceRootId {
             id: SourceRootId,
         }
         #[salsa::tracked(returns(ref))]
-        fn library_symbols(
-            db: &dyn HirDatabase,
-            source_root_id: InternedSourceRootId<'_>,
-        ) -> SymbolIndex {
+        fn library_symbols<'db>(
+            db: &'db dyn HirDatabase,
+            source_root_id: InternedSourceRootId<'db>,
+        ) -> SymbolIndex<'db> {
             let _p = tracing::info_span!("library_symbols").entered();
 
             // We call this without attaching because this runs in parallel, so we need to attach here.
@@ -224,7 +209,7 @@ impl SymbolIndex {
 
     /// The symbol index for a given module. These modules should only be in source roots that
     /// are inside local_roots.
-    pub fn module_symbols(db: &dyn HirDatabase, module: Module) -> &SymbolIndex {
+    pub fn module_symbols(db: &dyn HirDatabase, module: Module) -> &SymbolIndex<'_> {
         // FIXME:
         #[salsa::interned]
         struct InternedModuleId {
@@ -232,7 +217,10 @@ impl SymbolIndex {
         }
 
         #[salsa::tracked(returns(ref))]
-        fn module_symbols(db: &dyn HirDatabase, module: InternedModuleId<'_>) -> SymbolIndex {
+        fn module_symbols<'db>(
+            db: &'db dyn HirDatabase,
+            module: InternedModuleId<'db>,
+        ) -> SymbolIndex<'db> {
             let _p = tracing::info_span!("module_symbols").entered();
 
             // We call this without attaching because this runs in parallel, so we need to attach here.
@@ -250,29 +238,41 @@ impl SymbolIndex {
     }
 }
 
-impl fmt::Debug for SymbolIndex {
+impl fmt::Debug for SymbolIndex<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SymbolIndex").field("n_symbols", &self.symbols.len()).finish()
     }
 }
 
-impl PartialEq for SymbolIndex {
-    fn eq(&self, other: &SymbolIndex) -> bool {
+impl PartialEq for SymbolIndex<'_> {
+    fn eq(&self, other: &SymbolIndex<'_>) -> bool {
         self.symbols == other.symbols
     }
 }
 
-impl Eq for SymbolIndex {}
+impl Eq for SymbolIndex<'_> {}
 
-impl Hash for SymbolIndex {
+impl Hash for SymbolIndex<'_> {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.symbols.hash(hasher)
     }
 }
 
-impl SymbolIndex {
-    fn new(mut symbols: Box<[FileSymbol]>) -> SymbolIndex {
-        fn cmp(lhs: &FileSymbol, rhs: &FileSymbol) -> Ordering {
+unsafe impl Update for SymbolIndex<'_> {
+    unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
+        let this = unsafe { &mut *old_pointer };
+        if *this == new_value {
+            false
+        } else {
+            *this = new_value;
+            true
+        }
+    }
+}
+
+impl<'db> SymbolIndex<'db> {
+    fn new(mut symbols: Box<[FileSymbol<'db>]>) -> SymbolIndex<'db> {
+        fn cmp(lhs: &FileSymbol<'_>, rhs: &FileSymbol<'_>) -> Ordering {
             let lhs_chars = lhs.name.as_str().chars().map(|c| c.to_ascii_lowercase());
             let rhs_chars = rhs.name.as_str().chars().map(|c| c.to_ascii_lowercase());
             lhs_chars.cmp(rhs_chars)
@@ -318,7 +318,7 @@ impl SymbolIndex {
     }
 
     pub fn memory_size(&self) -> usize {
-        self.map.as_fst().size() + self.symbols.len() * size_of::<FileSymbol>()
+        self.map.as_fst().size() + self.symbols.len() * size_of::<FileSymbol<'_>>()
     }
 
     fn range_to_map_value(start: usize, end: usize) -> u64 {
@@ -336,10 +336,10 @@ impl SymbolIndex {
 }
 
 impl Query {
-    pub(crate) fn search<'sym, T>(
+    pub(crate) fn search<'db, T>(
         self,
-        indices: &'sym [&SymbolIndex],
-        cb: impl FnMut(&'sym FileSymbol) -> ControlFlow<T>,
+        indices: &[&'db SymbolIndex<'db>],
+        cb: impl FnMut(&'db FileSymbol<'db>) -> ControlFlow<T>,
     ) -> Option<T> {
         let _p = tracing::info_span!("symbol_index::Query::search").entered();
         let mut op = fst::map::OpBuilder::new();
@@ -371,11 +371,11 @@ impl Query {
         }
     }
 
-    fn search_maps<'sym, T>(
+    fn search_maps<'db, T>(
         &self,
-        indices: &'sym [&SymbolIndex],
+        indices: &[&'db SymbolIndex<'db>],
         mut stream: fst::map::Union<'_>,
-        mut cb: impl FnMut(&'sym FileSymbol) -> ControlFlow<T>,
+        mut cb: impl FnMut(&'db FileSymbol<'db>) -> ControlFlow<T>,
     ) -> Option<T> {
         let ignore_underscore_prefixed = !self.query.starts_with("__");
         while let Some((_, indexed_values)) = stream.next() {
@@ -426,6 +426,7 @@ impl Query {
 mod tests {
 
     use expect_test::expect_file;
+    use rustc_hash::FxHashSet;
     use salsa::Setter;
     use test_fixture::{WORKSPACE, WithFixture};
 

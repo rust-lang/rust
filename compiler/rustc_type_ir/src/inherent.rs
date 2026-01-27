@@ -292,6 +292,12 @@ pub trait ValueConst<I: Interner<ValueConst = Self>>: Copy + Debug + Hash + Eq {
     fn valtree(self) -> I::ValTree;
 }
 
+// FIXME(mgca): This trait can be removed once we're not using a `Box` in `Branch`
+pub trait ValTree<I: Interner<ValTree = Self>>: Copy + Debug + Hash + Eq {
+    // This isnt' `IntoKind` because then we can't return a reference
+    fn kind(&self) -> &ty::ValTreeKind<I>;
+}
+
 pub trait ExprConst<I: Interner<ExprConst = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
     fn args(self) -> I::GenericArgs;
 }
@@ -639,8 +645,6 @@ pub trait Features<I: Interner>: Copy {
     fn generic_const_exprs(self) -> bool;
 
     fn coroutine_clone(self) -> bool;
-
-    fn associated_const_equality(self) -> bool;
 
     fn feature_bound_holds_in_crate(self, symbol: I::Symbol) -> bool;
 }

@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
+bitflags = "2.4.1"
 blake3 = "1.5.2"
 derive-where = "1.2.7"
 indexmap = { version = "2.0.0" }
@@ -20,5 +21,5 @@ scoped-tls = "1.0"
 sha1 = "0.10.0"
 sha2 = "0.10.1"
 tracing = "0.1"
-unicode-width = "0.2.0"
+unicode-width = "0.2.2"
 # tidy-alphabetical-end

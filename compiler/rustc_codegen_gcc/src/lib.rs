@@ -84,7 +84,7 @@ use gccjit::{TargetInfo, Version};
 use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
-    CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn,
+    CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::base::codegen_crate;
 use rustc_codegen_ssa::target_features::cfg_target_feature;
@@ -98,7 +98,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames};
-use rustc_session::filesearch::make_target_lib_path;
 use rustc_span::Symbol;
 use rustc_target::spec::{Arch, RelocModel};
 use tempfile::TempDir;
@@ -207,16 +206,36 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn init(&self, sess: &Session) {
+        fn file_path(sysroot_path: &Path, sess: &Session) -> PathBuf {
+            let rustlib_path =
+                rustc_target::relative_target_rustlib_path(sysroot_path, &sess.host.llvm_target);
+            sysroot_path
+                .join(rustlib_path)
+                .join("codegen-backends")
+                .join("lib")
+                .join(sess.target.llvm_target.as_ref())
+                .join("libgccjit.so")
+        }
+
         // We use all_paths() instead of only path() in case the path specified by --sysroot is
         // invalid.
         // This is the case for instance in Rust for Linux where they specify --sysroot=/dev/null.
         for path in sess.opts.sysroot.all_paths() {
-            let libgccjit_target_lib_file =
-                make_target_lib_path(path, &sess.target.llvm_target).join("libgccjit.so");
+            let libgccjit_target_lib_file = file_path(path, sess);
             if let Ok(true) = fs::exists(&libgccjit_target_lib_file) {
                 load_libgccjit_if_needed(&libgccjit_target_lib_file);
                 break;
             }
+        }
+
+        if !gccjit::is_loaded() {
+            let mut paths = vec![];
+            for path in sess.opts.sysroot.all_paths() {
+                let libgccjit_target_lib_file = file_path(path, sess);
+                paths.push(libgccjit_target_lib_file);
+            }
+
+            panic!("Could not load libgccjit.so. Attempted paths: {:#?}", paths);
         }
 
         #[cfg(feature = "master")]
@@ -267,7 +286,8 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn provide(&self, providers: &mut Providers) {
-        providers.global_backend_features = |tcx, ()| gcc_util::global_gcc_features(tcx.sess)
+        providers.queries.global_backend_features =
+            |tcx, ()| gcc_util::global_gcc_features(tcx.sess)
     }
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
@@ -415,23 +435,25 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn run_and_optimize_fat_lto(
         cgcx: &CodegenContext<Self>,
+        shared_emitter: &SharedEmitter,
         // FIXME(bjorn3): Limit LTO exports to these symbols
         _exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
     ) -> ModuleCodegen<Self::Module> {
-        back::lto::run_fat(cgcx, each_linked_rlib_for_lto, modules)
+        back::lto::run_fat(cgcx, shared_emitter, each_linked_rlib_for_lto, modules)
     }
 
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
+        dcx: DiagCtxtHandle<'_>,
         // FIXME(bjorn3): Limit LTO exports to these symbols
         _exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>) {
-        back::lto::run_thin(cgcx, each_linked_rlib_for_lto, modules, cached_modules)
+        back::lto::run_thin(cgcx, dcx, each_linked_rlib_for_lto, modules, cached_modules)
     }
 
     fn print_pass_timings(&self) {
@@ -444,7 +466,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn optimize(
         _cgcx: &CodegenContext<Self>,
-        _dcx: DiagCtxtHandle<'_>,
+        _shared_emitter: &SharedEmitter,
         module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) {
@@ -453,6 +475,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn optimize_thin(
         cgcx: &CodegenContext<Self>,
+        _shared_emitter: &SharedEmitter,
         thin: ThinModule<Self>,
     ) -> ModuleCodegen<Self::Module> {
         back::lto::optimize_thin_module(thin, cgcx)
@@ -460,10 +483,11 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn codegen(
         cgcx: &CodegenContext<Self>,
+        shared_emitter: &SharedEmitter,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> CompiledModule {
-        back::write::codegen(cgcx, module, config)
+        back::write::codegen(cgcx, shared_emitter, module, config)
     }
 
     fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {

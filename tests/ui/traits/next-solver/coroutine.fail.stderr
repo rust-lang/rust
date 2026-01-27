@@ -8,7 +8,7 @@ LL | /         || {
 LL | |
 LL | |             yield ();
 LL | |         },
-   | |_________^ the trait `Coroutine<A>` is not implemented for `{coroutine@$DIR/coroutine.rs:20:9: 20:11}`
+   | |_________^ the nightly-only, unstable trait `Coroutine<A>` is not implemented for `{coroutine@$DIR/coroutine.rs:20:9: 20:11}`
    |
 note: required by a bound in `needs_coroutine`
   --> $DIR/coroutine.rs:14:28

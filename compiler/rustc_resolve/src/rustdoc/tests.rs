@@ -2,14 +2,18 @@ use std::path::PathBuf;
 
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::symbol::sym;
-use rustc_span::{BytePos, DUMMY_SP, Span};
+use rustc_span::{BytePos, DUMMY_SP, FileName, Span};
 
 use super::{DocFragment, DocFragmentKind, source_span_for_markdown_range_inner};
+
+fn filename(sm: &SourceMap, path: &str) -> FileName {
+    FileName::Real(sm.path_mapping().to_real_filename(sm.working_dir(), PathBuf::from(path)))
+}
 
 #[test]
 fn single_backtick() {
     let sm = SourceMap::new(FilePathMapping::empty());
-    sm.new_source_file(PathBuf::from("foo.rs").into(), r#"#[doc = "`"] fn foo() {}"#.to_string());
+    sm.new_source_file(filename(&sm, "foo.rs"), r#"#[doc = "`"] fn foo() {}"#.to_string());
     let (span, _) = source_span_for_markdown_range_inner(
         &sm,
         "`",
@@ -32,7 +36,7 @@ fn single_backtick() {
 fn utf8() {
     // regression test for https://github.com/rust-lang/rust/issues/141665
     let sm = SourceMap::new(FilePathMapping::empty());
-    sm.new_source_file(PathBuf::from("foo.rs").into(), r#"#[doc = "⚠"] fn foo() {}"#.to_string());
+    sm.new_source_file(filename(&sm, "foo.rs"), r#"#[doc = "⚠"] fn foo() {}"#.to_string());
     let (span, _) = source_span_for_markdown_range_inner(
         &sm,
         "⚠",

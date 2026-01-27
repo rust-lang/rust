@@ -256,6 +256,10 @@ Some traits' implementation must be compared with their definition, checking for
 
 This subdirectory is *not* intended comparison traits (`PartialEq`, `Eq`, `PartialOrd`, `Ord`).
 
+## `tests/ui/compile-flags/`
+
+Tests for compile flags.
+
 ## `tests/ui/compiletest-self-test/`: compiletest "meta" tests
 
 Meta test suite of the test harness `compiletest` itself.
@@ -324,7 +328,7 @@ Tests for crate resolution and loading behavior, including `extern crate` declar
 
 ## `tests/ui/cross/`: Various tests related to the concept of "cross"
 
-**FIXME**: The unifying topic of these tests appears to be that their filenames begin with the word "cross". The similarities end there - one test is about "cross-borrowing" a `Box<T>` into `&T`, while another is about a global trait used "across" files. Some of these terminology are really outdated and does not match the current terminology. Additionally, "cross" is also way too generic, it's easy to confuse with cross-compile.
+**FIXME**: The unifying topic of these tests appears to be that their filenames begin with the word "cross". The similarities end there - one test is about "cross-borrowing" a `Box<T>` into `&T`, while another is about a global trait used "across" files. Some of this terminology is really outdated and does not match the current terminology. Additionally, "cross" is also way too generic, it's easy to confuse with cross-compile.
 
 ## `tests/ui/cross-crate/`: Cross-Crate Interaction
 
@@ -375,12 +379,6 @@ These tests use the unstable command line option `query-dep-graph` to examine th
 ## `tests/ui/deprecation/`: Deprecation Attribute
 
 Tests for `#[deprecated]` attribute and `deprecated_in_future` internal lint.
-
-## `tests/ui/deref-patterns/`: `#![feature(deref_patterns)]` and `#![feature(string_deref_patterns)]`
-
-Tests for `#![feature(deref_patterns)]` and `#![feature(string_deref_patterns)]`. See [Deref patterns | The Unstable book](https://doc.rust-lang.org/nightly/unstable-book/language-features/deref-patterns.html).
-
-**FIXME**: May have some overlap with `tests/ui/pattern/deref-patterns`.
 
 ## `tests/ui/derived-errors/`: Derived Error Messages
 
@@ -548,6 +546,8 @@ A broad directory for tests on expressions.
 
 Tests on the `extern` keyword and `extern` blocks and functions.
 
+**FIXME**: Merge with `tests/ui/abi/extern`.
+
 ## `tests/ui/extern-flag/`: `--extern` command line flag
 
 Tests for the `--extern` CLI flag.
@@ -555,6 +555,12 @@ Tests for the `--extern` CLI flag.
 ## `tests/ui/feature-gates/`
 
 Tests on feature-gating, and the `#![feature(..)]` mechanism itself.
+
+## `tests/ui/ffi/`: Foreign Function Interface
+
+Tests for the `std::ffi` module.
+
+See [`std::ffi`](https://doc.rust-lang.org/std/ffi/index.html)
 
 ## `tests/ui/ffi-attrs/`: `#![feature(ffi_const, ffi_pure)]`
 
@@ -697,12 +703,6 @@ Tests on type inference.
 
 Tests for diagnostics on infinitely recursive types without indirection.
 
-## `tests/ui/inherent-impls-overlap-check/`
-
-Checks that repeating the same function names across separate `impl` blocks triggers an informative error, but not if the `impl` are for different types, such as `Bar<u8>` and `Bar<u16>`.
-
-NOTE: This should maybe be a subdirectory within another related to duplicate definitions, such as `tests/ui/duplicate/`.
-
 ## `tests/ui/inline-const/`
 
 These tests revolve around the inline `const` block that forces the compiler to const-eval its content.
@@ -733,15 +733,9 @@ Various tests related to rejecting invalid inputs.
 
 **FIXME**: This is rather uninformative, possibly rehome into more meaningful directories.
 
-## `tests/ui/invalid-compile-flags/`
+## `tests/ui/io-checks/`: Input Output
 
-Tests for checking that invalid usage of compiler flags are rejected.
-
-## `tests/ui/io-checks/`
-
-Contains a single test. The test tries to output a file into an invalid directory with `-o`, then checks that the result is an error, not an internal compiler error.
-
-**FIXME**: Rehome to invalid compiler flags maybe.
+Tests for I/O related behaviour, covering stdout/stderr handling and error propagation.
 
 ## `tests/ui/issues/`: Tests directly related to GitHub issues
 
@@ -911,7 +905,7 @@ Something is missing which could be added to fix (e.g. suggestions).
 
 Tests for checking missing trait bounds, and their diagnostics.
 
-**FIMXE**: Maybe a subdirectory of `ui/trait-bounds` would be more appropriate.
+**FIXME**: Maybe a subdirectory of `ui/trait-bounds` would be more appropriate.
 
 ## `tests/ui/modules/`
 
@@ -957,7 +951,7 @@ Despite the size of the directory, this is a single test, spawning a sprawling `
 
 A very similar principle as `non_modrs_mods`, but with an added inline `mod` statement inside another `mod`'s code block.
 
-**FXIME**: Consider merge with `tests/ui/modules/`, keeping the directory structure.
+**FIXME**: Consider merge with `tests/ui/modules/`, keeping the directory structure.
 
 ## `tests/ui/no_std/`
 

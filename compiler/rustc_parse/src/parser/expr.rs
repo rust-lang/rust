@@ -1468,6 +1468,9 @@ impl<'a> Parser<'a> {
             } else if this.check(exp!(OpenParen)) {
                 this.parse_expr_tuple_parens(restrictions)
             } else if this.check(exp!(OpenBrace)) {
+                if let Some(expr) = this.maybe_recover_bad_struct_literal_path(false)? {
+                    return Ok(expr);
+                }
                 this.parse_expr_block(None, lo, BlockCheckMode::Default)
             } else if this.check(exp!(Or)) || this.check(exp!(OrOr)) {
                 this.parse_expr_closure().map_err(|mut err| {
@@ -1521,7 +1524,7 @@ impl<'a> Parser<'a> {
                     },
                 )
             } else if this.check_inline_const(0) {
-                this.parse_const_block(lo, false)
+                this.parse_const_block(lo)
             } else if this.may_recover() && this.is_do_catch_block() {
                 this.recover_do_catch()
             } else if this.is_try_block() {
@@ -1542,6 +1545,9 @@ impl<'a> Parser<'a> {
             } else if this.check_keyword(exp!(Let)) {
                 this.parse_expr_let(restrictions)
             } else if this.eat_keyword(exp!(Underscore)) {
+                if let Some(expr) = this.maybe_recover_bad_struct_literal_path(true)? {
+                    return Ok(expr);
+                }
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
             } else if this.token_uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
@@ -1622,15 +1628,13 @@ impl<'a> Parser<'a> {
             let first_expr = self.parse_expr()?;
             if self.eat(exp!(Semi)) {
                 // Repeating array syntax: `[ 0; 512 ]`
-                let count = if self.token.is_keyword(kw::Const)
-                    && self.look_ahead(1, |t| *t == token::OpenBrace)
-                {
+                let count = if self.eat_keyword(exp!(Const)) {
                     // While we could just disambiguate `Direct` from `AnonConst` by
                     // treating all const block exprs as `AnonConst`, that would
                     // complicate the DefCollector and likely all other visitors.
                     // So we strip the const blockiness and just store it as a block
                     // in the AST with the extra disambiguator on the AnonConst
-                    self.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?
+                    self.parse_mgca_const_block(false)?
                 } else {
                     self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?
                 };
@@ -3100,7 +3104,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn eat_label(&mut self) -> Option<Label> {
         if let Some((ident, is_raw)) = self.token.lifetime() {
             // Disallow `'fn`, but with a better error message than `expect_lifetime`.
-            if matches!(is_raw, IdentIsRaw::No) && ident.without_first_quote().is_reserved() {
+            if is_raw == IdentIsRaw::No && ident.without_first_quote().is_reserved() {
                 self.dcx().emit_err(errors::KeywordLabel { span: ident.span });
             }
 
@@ -3697,6 +3701,45 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
+        }
+    }
+
+    fn maybe_recover_bad_struct_literal_path(
+        &mut self,
+        is_underscore_entry_point: bool,
+    ) -> PResult<'a, Option<Box<Expr>>> {
+        if self.may_recover()
+            && self.check_noexpect(&token::OpenBrace)
+            && (!self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
+                && self.is_likely_struct_lit())
+        {
+            let span = if is_underscore_entry_point {
+                self.prev_token.span
+            } else {
+                self.token.span.shrink_to_lo()
+            };
+
+            self.bump(); // {
+            let expr = self.parse_expr_struct(
+                None,
+                Path::from_ident(Ident::new(kw::Underscore, span)),
+                false,
+            )?;
+
+            let guar = if is_underscore_entry_point {
+                self.dcx().create_err(errors::StructLiteralPlaceholderPath { span }).emit()
+            } else {
+                self.dcx()
+                    .create_err(errors::StructLiteralWithoutPathLate {
+                        span: expr.span,
+                        suggestion_span: expr.span.shrink_to_lo(),
+                    })
+                    .emit()
+            };
+
+            Ok(Some(self.mk_expr_err(expr.span, guar)))
+        } else {
+            Ok(None)
         }
     }
 

@@ -1,16 +1,17 @@
+use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, ExprKind, HirId, PatKind};
 use rustc_hir_pretty::ty_to_string;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::Span;
+use rustc_span::{Span, sym};
 use rustc_trait_selection::traits::{
     MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
 use tracing::{debug, instrument};
 
-use crate::coercion::{AsCoercionSite, CoerceMany};
+use crate::coercion::CoerceMany;
 use crate::{Diverges, Expectation, FnCtxt, GatherLocalsVisitor, Needs};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -73,7 +74,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Expectation::ExpectHasType(ety) if ety != tcx.types.unit => ety,
                 _ => self.next_ty_var(expr.span),
             };
-            CoerceMany::with_coercion_sites(coerce_first, arms)
+            CoerceMany::with_capacity(coerce_first, arms.len())
         };
 
         let mut prior_non_diverging_arms = vec![]; // Used only for diagnostics.
@@ -269,16 +270,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Handle the fallback arm of a desugared if(-let) like a missing else.
     ///
     /// Returns `true` if there was an error forcing the coercion to the `()` type.
-    pub(super) fn if_fallback_coercion<T>(
+    pub(super) fn if_fallback_coercion(
         &self,
         if_span: Span,
         cond_expr: &'tcx hir::Expr<'tcx>,
         then_expr: &'tcx hir::Expr<'tcx>,
-        coercion: &mut CoerceMany<'tcx, '_, T>,
-    ) -> bool
-    where
-        T: AsCoercionSite,
-    {
+        coercion: &mut CoerceMany<'tcx>,
+    ) -> bool {
         // If this `if` expr is the parent's function return expr,
         // the cause of the type coercion is the return type, point at it. (#25228)
         let hir_id = self.tcx.parent_hir_id(self.tcx.parent_hir_id(then_expr.hir_id));
@@ -294,6 +292,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error
     }
 
+    /// Check if the span comes from an assert-like macro expansion.
+    fn is_from_assert_macro(&self, span: Span) -> bool {
+        span.ctxt().outer_expn_data().macro_def_id.is_some_and(|def_id| {
+            matches!(
+                self.tcx.get_diagnostic_name(def_id),
+                Some(
+                    sym::assert_macro
+                        | sym::debug_assert_macro
+                        | sym::assert_eq_macro
+                        | sym::assert_ne_macro
+                        | sym::debug_assert_eq_macro
+                        | sym::debug_assert_ne_macro
+                )
+            )
+        })
+    }
+
     /// Explain why `if` expressions without `else` evaluate to `()` and detect likely irrefutable
     /// `if let PAT = EXPR {}` expressions that could be turned into `let PAT = EXPR;`.
     fn explain_if_expr(
@@ -305,6 +320,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         then_expr: &'tcx hir::Expr<'tcx>,
         error: &mut bool,
     ) {
+        let is_assert_macro = self.is_from_assert_macro(if_span);
+
         if let Some((if_span, msg)) = ret_reason {
             err.span_label(if_span, msg);
         } else if let ExprKind::Block(block, _) = then_expr.kind
@@ -312,8 +329,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             err.span_label(expr.span, "found here");
         }
-        err.note("`if` expressions without `else` evaluate to `()`");
-        err.help("consider adding an `else` block that evaluates to the expected type");
+
+        if is_assert_macro {
+            err.code(E0308);
+            err.primary_message("mismatched types");
+        } else {
+            err.note("`if` expressions without `else` evaluate to `()`");
+            err.help("consider adding an `else` block that evaluates to the expected type");
+        }
         *error = true;
         if let ExprKind::Let(hir::LetExpr { span, pat, init, .. }) = cond_expr.kind
             && let ExprKind::Block(block, _) = then_expr.kind

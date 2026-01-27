@@ -2,11 +2,12 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::{self as hir, find_attr};
 use rustc_macros::{Decodable, Encodable, HashStable};
-use rustc_span::symbol::sym;
+use rustc_span::Span;
 use tracing::debug;
 
 use crate::query::LocalCrate;
@@ -69,10 +70,9 @@ pub struct TraitDef {
     /// must be implemented.
     pub must_implement_one_of: Option<Box<[Ident]>>,
 
-    /// Whether to add a builtin `dyn Trait: Trait` implementation.
-    /// This is enabled for all traits except ones marked with
-    /// `#[rustc_do_not_implement_via_object]`.
-    pub implement_via_object: bool,
+    /// Whether the trait should be considered dyn-incompatible, even if it otherwise
+    /// satisfies the requirements to be dyn-compatible.
+    pub force_dyn_incompatible: Option<Span>,
 
     /// Whether a trait is fully built-in, and any implementation is disallowed.
     /// This only applies to built-in traits, and is marked via
@@ -241,7 +241,7 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
 /// Query provider for `incoherent_impls`.
 pub(super) fn incoherent_impls_provider(tcx: TyCtxt<'_>, simp: SimplifiedType) -> &[DefId] {
     if let Some(def_id) = simp.def()
-        && !tcx.has_attr(def_id, sym::rustc_has_incoherent_inherent_impls)
+        && !find_attr!(tcx.get_all_attrs(def_id), AttributeKind::RustcHasIncoherentInherentImpls)
     {
         return &[];
     }

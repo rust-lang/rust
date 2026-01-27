@@ -145,6 +145,12 @@ declare_clippy_lint! {
     /// let _ = i32::try_from(u32::MAX).ok();
     /// ```
     ///
+    /// If the wrapping is intended, you can use:
+    /// ```no_run
+    /// let _ = u32::MAX.cast_signed();
+    /// let _ = (-1i32).cast_unsigned();
+    /// ```
+    ///
     #[clippy::version = "pre 1.29.0"]
     pub CAST_POSSIBLE_WRAP,
     pedantic,
@@ -836,7 +842,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.93.0"]
     pub NEEDLESS_TYPE_CAST,
-    pedantic,
+    nursery,
     "binding defined with one type but always cast to another"
 }
 

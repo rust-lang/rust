@@ -6,7 +6,7 @@ use rustc_target::callconv::FnAbi;
 
 use super::{
     ShiftOp, horizontal_bin_op, mpsadbw, packssdw, packsswb, packusdw, packuswb, permute, pmaddbw,
-    pmulhrsw, psadbw, psign, shift_simd_by_scalar,
+    pmaddwd, pmulhrsw, psadbw, pshufb, psign, shift_simd_by_scalar,
 };
 use crate::*;
 
@@ -189,28 +189,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [left, right] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-                assert_eq!(dest_len, right_len);
-
-                for i in 0..dest_len {
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_u8()?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    let res = if right & 0x80 == 0 {
-                        // Shuffle each 128-bit (16-byte) block independently.
-                        let j = u64::from(right % 16).strict_add(i & !15);
-                        this.read_scalar(&this.project_index(&left, j)?)?
-                    } else {
-                        // If the highest bit in `right` is 1, write zero.
-                        Scalar::from_u8(0)
-                    };
-
-                    this.write_scalar(res, &dest)?;
-                }
+                pshufb(this, left, right, dest)?;
             }
             // Used to implement the _mm256_sign_epi{8,16,32} functions.
             // Negates elements from `left` when the corresponding element in
@@ -244,6 +223,16 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 shift_simd_by_scalar(this, left, right, which, dest)?;
+            }
+            // Used to implement the _mm256_madd_epi16 function.
+            // Multiplies packed signed 16-bit integers in `left` and `right`, producing
+            // intermediate signed 32-bit integers. Horizontally add adjacent pairs of
+            // intermediate 32-bit integers, and pack the results in `dest`.
+            "pmadd.wd" => {
+                let [left, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                pmaddwd(this, left, right, dest)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

@@ -25,7 +25,7 @@ use rustc_trait_selection::traits::{
     self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
 
-use crate::coercion::DynamicCoerceMany;
+use crate::coercion::CoerceMany;
 use crate::fallback::DivergingFallbackBehavior;
 use crate::fn_ctxt::checks::DivergingBlockBehavior;
 use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
@@ -56,13 +56,13 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
     /// expressions. If `None`, this is in a context where return is
     /// inappropriate, such as a const expression.
     ///
-    /// This is a `RefCell<DynamicCoerceMany>`, which means that we
+    /// This is a `RefCell<CoerceMany>`, which means that we
     /// can track all the return expressions and then use them to
     /// compute a useful coercion from the set, similar to a match
     /// expression or other branching context. You can use methods
     /// like `expected_ty` to access the declared return type (if
     /// any).
-    pub(super) ret_coercion: Option<RefCell<DynamicCoerceMany<'tcx>>>,
+    pub(super) ret_coercion: Option<RefCell<CoerceMany<'tcx>>>,
 
     /// First span of a return site that we find. Used in error messages.
     pub(super) ret_coercion_span: Cell<Option<Span>>,

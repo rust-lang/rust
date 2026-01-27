@@ -96,3 +96,8 @@ fn _f4() {
     assert!(C);
     //~^ assertions_on_constants
 }
+
+fn issue_16242(var: bool) {
+    // should not lint
+    assert!(cfg!(feature = "hey") && var);
+}

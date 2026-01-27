@@ -445,17 +445,15 @@ where
         goal_kind: ty::ClosureKind,
     ) -> Result<Candidate<I>, NoSolution> {
         let cx = ecx.cx();
-        let tupled_inputs_and_output =
-            match structural_traits::extract_tupled_inputs_and_output_from_callable(
+        let Some(tupled_inputs_and_output) =
+            structural_traits::extract_tupled_inputs_and_output_from_callable(
                 cx,
                 goal.predicate.self_ty(),
                 goal_kind,
-            )? {
-                Some(tupled_inputs_and_output) => tupled_inputs_and_output,
-                None => {
-                    return ecx.forced_ambiguity(MaybeCause::Ambiguity);
-                }
-            };
+            )?
+        else {
+            return ecx.forced_ambiguity(MaybeCause::Ambiguity);
+        };
         let (inputs, output) = ecx.instantiate_binder_with_infer(tupled_inputs_and_output);
 
         // A built-in `Fn` impl only holds if the output is sized.

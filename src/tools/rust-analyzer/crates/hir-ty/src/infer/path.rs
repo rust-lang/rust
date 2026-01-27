@@ -64,7 +64,7 @@ impl<'db> InferenceContext<'_, 'db> {
             }
             ValueNs::LocalBinding(pat) => {
                 return match self.result.type_of_binding.get(pat) {
-                    Some(ty) => Some(ValuePathResolution::NonGeneric(*ty)),
+                    Some(ty) => Some(ValuePathResolution::NonGeneric(ty.as_ref())),
                     None => {
                         never!("uninferred pattern?");
                         None
@@ -102,7 +102,7 @@ impl<'db> InferenceContext<'_, 'db> {
             // This is something like `TypeAlias::<Args>::EnumVariant`. Do not call `substs_from_path()`,
             // as it'll try to re-lower the previous segment assuming it refers to the enum, but it refers
             // to the type alias and they may have different generics.
-            self.types.empty_args
+            self.types.empty.generic_args
         } else {
             self.with_body_ty_lowering(|ctx| {
                 let mut path_ctx = ctx.at_path(path, id);
@@ -240,11 +240,8 @@ impl<'db> InferenceContext<'_, 'db> {
 
         if let ItemContainerId::TraitId(trait_) = container {
             let parent_len = generics(self.db, def).parent_generics().map_or(0, |g| g.len_self());
-            let parent_subst = GenericArgs::new_from_iter(
-                interner,
-                subst.as_slice()[..parent_len].iter().copied(),
-            );
-            let trait_ref = TraitRef::new(interner, trait_.into(), parent_subst);
+            let parent_subst = GenericArgs::new_from_slice(&subst.as_slice()[..parent_len]);
+            let trait_ref = TraitRef::new_from_args(interner, trait_.into(), parent_subst);
             self.table.register_predicate(Obligation::new(
                 interner,
                 ObligationCause::new(),
@@ -339,7 +336,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     [ty.into()],
                     |_, id, _| self.table.next_var_for_param(id),
                 );
-                let trait_ref = TraitRef::new(self.interner(), trait_.into(), args);
+                let trait_ref = TraitRef::new_from_args(self.interner(), trait_.into(), args);
                 self.table.register_predicate(Obligation::new(
                     self.interner(),
                     ObligationCause::new(),

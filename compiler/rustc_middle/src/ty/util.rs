@@ -609,9 +609,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// have the same `DefKind`.
     ///
     /// Note that closures have a `DefId`, but the closure *expression* also has a
-    /// `HirId` that is located within the context where the closure appears (and, sadly,
-    /// a corresponding `NodeId`, since those are not yet phased out). The parent of
-    /// the closure's `DefId` will also be the context where it appears.
+    /// `HirId` that is located within the context where the closure appears. The
+    /// parent of the closure's `DefId` will also be the context where it appears.
     pub fn is_closure_like(self, def_id: DefId) -> bool {
         matches!(self.def_kind(def_id), DefKind::Closure)
     }
@@ -1394,8 +1393,10 @@ impl<'tcx> Ty<'tcx> {
 
                 // This doesn't depend on regions, so try to minimize distinct
                 // query keys used.
-                let erased = tcx.normalize_erasing_regions(typing_env, query_ty);
-                tcx.has_significant_drop_raw(typing_env.as_query_input(erased))
+                // FIX: Use try_normalize to avoid crashing. If it fails, return true.
+                tcx.try_normalize_erasing_regions(typing_env, query_ty)
+                    .map(|erased| tcx.has_significant_drop_raw(typing_env.as_query_input(erased)))
+                    .unwrap_or(true)
             }
         }
     }

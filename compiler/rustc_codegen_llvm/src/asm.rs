@@ -1,9 +1,8 @@
-use std::assert_matches::assert_matches;
-
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, Scalar};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::TyAndLayout;

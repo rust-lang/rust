@@ -4,12 +4,10 @@ use std::cell::RefCell;
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::spanned::Spanned;
 use synstructure::Structure;
 
 use crate::diagnostics::diagnostic_builder::DiagnosticDeriveKind;
-use crate::diagnostics::error::{DiagnosticDeriveError, span_err};
-use crate::diagnostics::utils::SetOnce;
+use crate::diagnostics::error::DiagnosticDeriveError;
 
 /// The central struct for constructing the `into_diag` method from an annotated struct.
 pub(crate) struct DiagnosticDerive<'a> {
@@ -29,36 +27,16 @@ impl<'a> DiagnosticDerive<'a> {
             let preamble = builder.preamble(variant);
             let body = builder.body(variant);
 
-            let init = match builder.slug.value_ref() {
-                None => {
-                    span_err(builder.span, "diagnostic slug not specified")
-                        .help(
-                            "specify the slug as the first argument to the `#[diag(...)]` \
-                            attribute, such as `#[diag(hir_analysis_example_error)]`",
-                        )
-                        .emit();
-                    return DiagnosticDeriveError::ErrorHandled.to_compile_error();
-                }
-                Some(slug)
-                    if let Some(Mismatch { slug_name, crate_name, slug_prefix }) =
-                        Mismatch::check(slug) =>
-                {
-                    span_err(slug.span().unwrap(), "diagnostic slug and crate name do not match")
-                        .note(format!("slug is `{slug_name}` but the crate name is `{crate_name}`"))
-                        .help(format!("expected a slug starting with `{slug_prefix}_...`"))
-                        .emit();
-                    return DiagnosticDeriveError::ErrorHandled.to_compile_error();
-                }
-                Some(slug) => {
-                    slugs.borrow_mut().push(slug.clone());
-                    quote! {
-                        let mut diag = rustc_errors::Diag::new(
-                            dcx,
-                            level,
-                            crate::fluent_generated::#slug
-                        );
-                    }
-                }
+            let Some(slug) = builder.primary_message() else {
+                return DiagnosticDeriveError::ErrorHandled.to_compile_error();
+            };
+            slugs.borrow_mut().push(slug.clone());
+            let init = quote! {
+                let mut diag = rustc_errors::Diag::new(
+                    dcx,
+                    level,
+                    crate::fluent_generated::#slug
+                );
             };
 
             let formatting_init = &builder.formatting_init;
@@ -113,32 +91,12 @@ impl<'a> LintDiagnosticDerive<'a> {
             let preamble = builder.preamble(variant);
             let body = builder.body(variant);
 
-            let primary_message = match builder.slug.value_ref() {
-                None => {
-                    span_err(builder.span, "diagnostic slug not specified")
-                        .help(
-                            "specify the slug as the first argument to the attribute, such as \
-                            `#[diag(compiletest_example)]`",
-                        )
-                        .emit();
-                    DiagnosticDeriveError::ErrorHandled.to_compile_error()
-                }
-                Some(slug)
-                    if let Some(Mismatch { slug_name, crate_name, slug_prefix }) =
-                        Mismatch::check(slug) =>
-                {
-                    span_err(slug.span().unwrap(), "diagnostic slug and crate name do not match")
-                        .note(format!("slug is `{slug_name}` but the crate name is `{crate_name}`"))
-                        .help(format!("expected a slug starting with `{slug_prefix}_...`"))
-                        .emit();
-                    DiagnosticDeriveError::ErrorHandled.to_compile_error()
-                }
-                Some(slug) => {
-                    slugs.borrow_mut().push(slug.clone());
-                    quote! {
-                        diag.primary_message(crate::fluent_generated::#slug);
-                    }
-                }
+            let Some(slug) = builder.primary_message() else {
+                return DiagnosticDeriveError::ErrorHandled.to_compile_error();
+            };
+            slugs.borrow_mut().push(slug.clone());
+            let primary_message = quote! {
+                diag.primary_message(crate::fluent_generated::#slug);
             };
 
             let formatting_init = &builder.formatting_init;
@@ -169,30 +127,6 @@ impl<'a> LintDiagnosticDerive<'a> {
         }
 
         imp
-    }
-}
-
-struct Mismatch {
-    slug_name: String,
-    crate_name: String,
-    slug_prefix: String,
-}
-
-impl Mismatch {
-    /// Checks whether the slug starts with the crate name it's in.
-    fn check(slug: &syn::Path) -> Option<Mismatch> {
-        // If this is missing we're probably in a test, so bail.
-        let crate_name = std::env::var("CARGO_CRATE_NAME").ok()?;
-
-        // If we're not in a "rustc_" crate, bail.
-        let Some(("rustc", slug_prefix)) = crate_name.split_once('_') else { return None };
-
-        let slug_name = slug.segments.first()?.ident.to_string();
-        if !slug_name.starts_with(slug_prefix) {
-            Some(Mismatch { slug_name, slug_prefix: slug_prefix.to_string(), crate_name })
-        } else {
-            None
-        }
     }
 }
 

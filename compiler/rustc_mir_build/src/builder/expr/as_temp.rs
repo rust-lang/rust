@@ -7,7 +7,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use tracing::{debug, instrument};
 
-use crate::builder::scope::DropKind;
+use crate::builder::scope::{DropKind, LintLevel};
 use crate::builder::{BlockAnd, BlockAndExtension, Builder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -39,10 +39,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr = &this.thir[expr_id];
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
-        if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
-            return this.in_scope((region_scope, source_info), lint_level, |this| {
-                this.as_temp(block, temp_lifetime, value, mutability)
-            });
+        if let ExprKind::Scope { region_scope, hir_id, value } = expr.kind {
+            return this.in_scope(
+                (region_scope, source_info),
+                LintLevel::Explicit(hir_id),
+                |this| this.as_temp(block, temp_lifetime, value, mutability),
+            );
         }
 
         let expr_ty = expr.ty;

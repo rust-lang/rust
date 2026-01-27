@@ -28,8 +28,7 @@ pub fn parse_version(s: Symbol) -> Option<RustcVersion> {
 }
 
 pub fn is_builtin_attr(attr: &impl AttributeExt) -> bool {
-    attr.is_doc_comment().is_some()
-        || attr.ident().is_some_and(|ident| is_builtin_attr_name(ident.name))
+    attr.is_doc_comment().is_some() || attr.name().is_some_and(|name| is_builtin_attr_name(name))
 }
 
 /// Parse a single integer.
@@ -43,7 +42,7 @@ pub(crate) fn parse_single_integer<S: Stage>(
     args: &ArgParser,
 ) -> Option<u128> {
     let Some(list) = args.list() else {
-        cx.expected_list(cx.attr_span);
+        cx.expected_list(cx.attr_span, args);
         return None;
     };
     let Some(single) = list.single() else {

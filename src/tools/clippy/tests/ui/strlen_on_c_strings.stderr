@@ -1,47 +1,89 @@
-error: using `libc::strlen` on a `CString` or `CStr` value
-  --> tests/ui/strlen_on_c_strings.rs:11:13
+error: using `libc::strlen` on a `CString` value
+  --> tests/ui/strlen_on_c_strings.rs:10:13
    |
 LL |     let _ = unsafe { libc::strlen(cstring.as_ptr()) };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cstring.as_bytes().len()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `cstring.count_bytes()`
    |
    = note: `-D clippy::strlen-on-c-strings` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::strlen_on_c_strings)]`
 
-error: using `libc::strlen` on a `CString` or `CStr` value
-  --> tests/ui/strlen_on_c_strings.rs:16:13
+error: using `libc::strlen` on a `CStr` value
+  --> tests/ui/strlen_on_c_strings.rs:15:13
    |
 LL |     let _ = unsafe { libc::strlen(cstr.as_ptr()) };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cstr.to_bytes().len()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `cstr.count_bytes()`
 
-error: using `libc::strlen` on a `CString` or `CStr` value
-  --> tests/ui/strlen_on_c_strings.rs:19:13
+error: using `libc::strlen` on a `CStr` value
+  --> tests/ui/strlen_on_c_strings.rs:18:13
    |
 LL |     let _ = unsafe { strlen(cstr.as_ptr()) };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cstr.to_bytes().len()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `cstr.count_bytes()`
 
-error: using `libc::strlen` on a `CString` or `CStr` value
-  --> tests/ui/strlen_on_c_strings.rs:23:22
+error: using `libc::strlen` on a `CStr` value
+  --> tests/ui/strlen_on_c_strings.rs:22:22
    |
 LL |     let _ = unsafe { strlen((*pcstr).as_ptr()) };
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(*pcstr).to_bytes().len()`
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `(*pcstr).count_bytes()`
 
-error: using `libc::strlen` on a `CString` or `CStr` value
-  --> tests/ui/strlen_on_c_strings.rs:29:22
+error: using `libc::strlen` on a `CStr` value
+  --> tests/ui/strlen_on_c_strings.rs:28:22
    |
 LL |     let _ = unsafe { strlen(unsafe_identity(cstr).as_ptr()) };
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unsafe_identity(cstr).to_bytes().len()`
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `unsafe_identity(cstr).count_bytes()`
 
-error: using `libc::strlen` on a `CString` or `CStr` value
-  --> tests/ui/strlen_on_c_strings.rs:31:13
+error: using `libc::strlen` on a `CStr` value
+  --> tests/ui/strlen_on_c_strings.rs:30:13
    |
 LL |     let _ = unsafe { strlen(unsafe { unsafe_identity(cstr) }.as_ptr()) };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unsafe { unsafe_identity(cstr) }.to_bytes().len()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `unsafe { unsafe_identity(cstr) }.count_bytes()`
 
-error: using `libc::strlen` on a `CString` or `CStr` value
-  --> tests/ui/strlen_on_c_strings.rs:35:22
+error: using `libc::strlen` on a `CStr` value
+  --> tests/ui/strlen_on_c_strings.rs:34:22
    |
 LL |     let _ = unsafe { strlen(f(cstr).as_ptr()) };
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `f(cstr).to_bytes().len()`
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `f(cstr).count_bytes()`
 
-error: aborting due to 7 previous errors
+error: using `libc::strlen` on a type that dereferences to `CStr`
+  --> tests/ui/strlen_on_c_strings.rs:40:13
+   |
+LL |     let _ = unsafe { libc::strlen(box_cstring.as_ptr()) };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `box_cstring.count_bytes()`
+
+error: using `libc::strlen` on a type that dereferences to `CStr`
+  --> tests/ui/strlen_on_c_strings.rs:42:13
+   |
+LL |     let _ = unsafe { libc::strlen(box_cstr.as_ptr()) };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `box_cstr.count_bytes()`
+
+error: using `libc::strlen` on a type that dereferences to `CStr`
+  --> tests/ui/strlen_on_c_strings.rs:44:13
+   |
+LL |     let _ = unsafe { libc::strlen(arc_cstring.as_ptr()) };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `arc_cstring.count_bytes()`
+
+error: using `libc::strlen` on a `CStr` value
+  --> tests/ui/strlen_on_c_strings.rs:51:13
+   |
+LL |     let _ = unsafe { libc::strlen(cstr.as_ptr()) };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `cstr.to_bytes().len()`
+
+error: using `libc::strlen` on a `CString` value
+  --> tests/ui/strlen_on_c_strings.rs:55:13
+   |
+LL |     let _ = unsafe { libc::strlen(cstring.as_ptr()) };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `cstring.to_bytes().len()`
+
+error: using `libc::strlen` on a `CStr` value
+  --> tests/ui/strlen_on_c_strings.rs:62:13
+   |
+LL |     let _ = unsafe { libc::strlen(cstr.as_ptr()) };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `cstr.count_bytes()`
+
+error: using `libc::strlen` on a `CString` value
+  --> tests/ui/strlen_on_c_strings.rs:66:13
+   |
+LL |     let _ = unsafe { libc::strlen(cstring.as_ptr()) };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `cstring.count_bytes()`
+
+error: aborting due to 14 previous errors
 

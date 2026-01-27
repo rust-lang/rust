@@ -32,14 +32,14 @@ serde_json = { version = "1.0", optional = true }
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 # native-lib dependencies
-libffi = { version = "5.0.0", optional = true }
+libffi = { version = "5.1.0", optional = true }
 libloading = { version = "0.9", optional = true }
 serde = { version = "1.0.219", features = ["derive"], optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 nix = { version = "0.30.1", features = ["mman", "ptrace", "signal"], optional = true }
 ipc-channel = { version = "0.20.0", optional = true }
-capstone = { version = "0.13", optional = true }
+capstone = { version = "0.14", optional = true }
 
 [target.'cfg(all(target_os = "linux", target_pointer_width = "64", target_endian = "little"))'.dependencies]
 genmc-sys = { path = "./genmc-sys/", version = "0.1.0", optional = true }
@@ -68,6 +68,7 @@ expensive-consistency-checks = ["stack-cache"]
 tracing = ["serde_json"]
 native-lib = ["dep:libffi", "dep:libloading", "dep:capstone", "dep:ipc-channel", "dep:nix", "dep:serde"]
 jemalloc = []
+check_only = ["libffi?/check_only", "capstone?/check_only", "genmc-sys?/check_only"]
 
 [lints.rust.unexpected_cfgs]
 level = "warn"

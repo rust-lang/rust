@@ -1,5 +1,8 @@
-#![feature(associated_const_equality, generic_const_items, min_generic_const_args)]
+#![feature(generic_const_items, min_generic_const_args)]
 #![expect(incomplete_features)]
+// library crates exercise weirder code paths around
+// DefIds which were created for const args.
+#![crate_type = "lib"]
 
 struct Foo<const N: usize>;
 
@@ -19,7 +22,7 @@ type Arr4<const N: usize> = [(); 1 + 1];
 //~^ ERROR: complex const arguments must be placed inside of a `const` block
 type Arr5<const N: usize> = [(); const { 1 + 1 }];
 
-fn repeats<const N: usize>() {
+fn repeats<const N: usize>() -> [(); N] {
     let _1 = [(); N];
     let _2 = [(); { N }];
     let _3 = [(); const { N }];
@@ -27,6 +30,8 @@ fn repeats<const N: usize>() {
     let _4 = [(); 1 + 1];
     //~^ ERROR: complex const arguments must be placed inside of a `const` block
     let _5 = [(); const { 1 + 1 }];
+    let _6: [(); const { N }] = todo!();
+    //~^ ERROR: generic parameters may not be used in const operations
 }
 
 #[type_const]
@@ -66,5 +71,3 @@ struct Default3<const N: usize, const M: usize = const { N }>;
 struct Default4<const N: usize, const M: usize = { 1 + 1 }>;
 //~^ ERROR: complex const arguments must be placed inside of a `const` block
 struct Default5<const N: usize, const M: usize = const { 1 + 1}>;
-
-fn main() {}

@@ -264,7 +264,7 @@ impl InlineAsmArch {
             Arch::Mips | Arch::Mips32r6 => Some(Self::Mips),
             Arch::Mips64 | Arch::Mips64r6 => Some(Self::Mips64),
             Arch::PowerPC => Some(Self::PowerPC),
-            Arch::PowerPC64 | Arch::PowerPC64LE => Some(Self::PowerPC64),
+            Arch::PowerPC64 => Some(Self::PowerPC64),
             Arch::S390x => Some(Self::S390x),
             Arch::Sparc => Some(Self::Sparc),
             Arch::Sparc64 => Some(Self::Sparc64),
@@ -1021,8 +1021,8 @@ impl InlineAsmClobberAbi {
                 _ => Err(&["C", "system"]),
             },
             InlineAsmArch::LoongArch32 | InlineAsmArch::LoongArch64 => match name {
-                "C" | "system" => Ok(InlineAsmClobberAbi::LoongArch),
-                _ => Err(&["C", "system"]),
+                "C" | "system" | "efiapi" => Ok(InlineAsmClobberAbi::LoongArch),
+                _ => Err(&["C", "system", "efiapi"]),
             },
             InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => match name {
                 "C" | "system" => Ok(if target.abi == Abi::Spe {

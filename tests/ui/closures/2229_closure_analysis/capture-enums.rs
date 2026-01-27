@@ -1,6 +1,7 @@
 //@ edition:2021
 
 #![feature(rustc_attrs)]
+#![feature(stmt_expr_attributes)]
 
 enum Info {
     Point(i32, i32, String),
@@ -14,14 +15,12 @@ fn multi_variant_enum() {
     let meta = Info::Meta("meta".into(), vec);
 
     let c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
         if let Info::Point(_, _, str) = point {
             //~^ NOTE: Capturing point[] -> Immutable
+            //~| NOTE: Capturing point[] -> Immutable
             //~| NOTE: Capturing point[(2, 0)] -> ByValue
             //~| NOTE: Min Capture point[] -> ByValue
             println!("{}", str);
@@ -29,6 +28,7 @@ fn multi_variant_enum() {
 
         if let Info::Meta(_, v) = meta {
             //~^ NOTE: Capturing meta[] -> Immutable
+            //~| NOTE: Capturing meta[] -> Immutable
             //~| NOTE: Capturing meta[(1, 1)] -> ByValue
             //~| NOTE: Min Capture meta[] -> ByValue
             println!("{:?}", v);
@@ -46,9 +46,6 @@ fn single_variant_enum() {
     let point = SingleVariant::Point(10, -10, "1".into());
 
     let c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:

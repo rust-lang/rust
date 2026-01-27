@@ -5,7 +5,9 @@ use arrayvec::ArrayVec;
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
-use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
+use rustc_type_ir_macros::{
+    GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
+};
 
 use crate::data_structures::HashMap;
 use crate::inherent::*;
@@ -36,7 +38,7 @@ impl<I: Interner, V: Eq> Eq for CanonicalQueryInput<I, V> {}
 pub struct Canonical<I: Interner, V> {
     pub value: V,
     pub max_universe: UniverseIndex,
-    pub variables: I::CanonicalVarKinds,
+    pub var_kinds: I::CanonicalVarKinds,
 }
 
 impl<I: Interner, V: Eq> Eq for Canonical<I, V> {}
@@ -66,17 +68,17 @@ impl<I: Interner, V> Canonical<I, V> {
     /// let b: Canonical<I, (T, Ty<I>)> = a.unchecked_map(|v| (v, ty));
     /// ```
     pub fn unchecked_map<W>(self, map_op: impl FnOnce(V) -> W) -> Canonical<I, W> {
-        let Canonical { max_universe, variables, value } = self;
-        Canonical { max_universe, variables, value: map_op(value) }
+        let Canonical { max_universe, var_kinds, value } = self;
+        Canonical { max_universe, var_kinds, value: map_op(value) }
     }
 }
 
 impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { value, max_universe, variables } = self;
+        let Self { value, max_universe, var_kinds } = self;
         write!(
             f,
-            "Canonical {{ value: {value}, max_universe: {max_universe:?}, variables: {variables:?} }}",
+            "Canonical {{ value: {value}, max_universe: {max_universe:?}, var_kinds: {var_kinds:?} }}",
         )
     }
 }
@@ -86,6 +88,7 @@ impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
 /// a copy of the canonical value in some other inference context,
 /// with fresh inference variables replacing the canonical values.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -219,7 +222,7 @@ impl<I: Interner> CanonicalVarKind<I> {
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct CanonicalVarValues<I: Interner> {
     pub var_values: I::GenericArgs,
 }
@@ -308,30 +311,30 @@ impl<I: Interner> CanonicalVarValues<I> {
 
     pub fn instantiate(
         cx: I,
-        variables: I::CanonicalVarKinds,
+        var_kinds: I::CanonicalVarKinds,
         mut f: impl FnMut(&[I::GenericArg], CanonicalVarKind<I>) -> I::GenericArg,
     ) -> CanonicalVarValues<I> {
         // Instantiating `CanonicalVarValues` is really hot, but limited to less than
         // 4 most of the time. Avoid creating a `Vec` here.
-        if variables.len() <= 4 {
+        if var_kinds.len() <= 4 {
             let mut var_values = ArrayVec::<_, 4>::new();
-            for info in variables.iter() {
+            for info in var_kinds.iter() {
                 var_values.push(f(&var_values, info));
             }
             CanonicalVarValues { var_values: cx.mk_args(&var_values) }
         } else {
-            CanonicalVarValues::instantiate_cold(cx, variables, f)
+            CanonicalVarValues::instantiate_cold(cx, var_kinds, f)
         }
     }
 
     #[cold]
     fn instantiate_cold(
         cx: I,
-        variables: I::CanonicalVarKinds,
+        var_kinds: I::CanonicalVarKinds,
         mut f: impl FnMut(&[I::GenericArg], CanonicalVarKind<I>) -> I::GenericArg,
     ) -> CanonicalVarValues<I> {
-        let mut var_values = Vec::with_capacity(variables.len());
-        for info in variables.iter() {
+        let mut var_values = Vec::with_capacity(var_kinds.len());
+        for info in var_kinds.iter() {
             var_values.push(f(&var_values, info));
         }
         CanonicalVarValues { var_values: cx.mk_args(&var_values) }

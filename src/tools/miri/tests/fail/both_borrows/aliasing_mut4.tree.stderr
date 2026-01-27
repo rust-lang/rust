@@ -19,20 +19,17 @@ help: the protected tag <TAG> was created here, in the initial state Frozen
    |
 LL | fn safe(x: &i32, y: &mut Cell<i32>) {
    |         ^
-   = note: BACKTRACE (of the first span):
-   = note: inside `std::mem::replace::<i32>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
-   = note: inside `std::cell::Cell::<i32>::replace` at RUSTLIB/core/src/cell.rs:LL:CC
-   = note: inside `std::cell::Cell::<i32>::set` at RUSTLIB/core/src/cell.rs:LL:CC
-note: inside `safe`
-  --> tests/fail/both_borrows/aliasing_mut4.rs:LL:CC
-   |
-LL |     y.set(1);
-   |     ^^^^^^^^
-note: inside `main`
-  --> tests/fail/both_borrows/aliasing_mut4.rs:LL:CC
-   |
-LL |     safe_raw(xshr, xraw as *mut _);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: std::mem::replace
+               at RUSTLIB/core/src/mem/mod.rs:LL:CC
+           1: std::cell::Cell::replace
+               at RUSTLIB/core/src/cell.rs:LL:CC
+           2: std::cell::Cell::set
+               at RUSTLIB/core/src/cell.rs:LL:CC
+           3: safe
+               at tests/fail/both_borrows/aliasing_mut4.rs:LL:CC
+           4: main
+               at tests/fail/both_borrows/aliasing_mut4.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

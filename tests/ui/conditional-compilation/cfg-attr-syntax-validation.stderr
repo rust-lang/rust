@@ -13,9 +13,9 @@ error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-attr-syntax-validation.rs:7:1
    |
 LL | #[cfg = 10]
-   | ^^^^^^^^^^^
-   | |
-   | expected this to be a list
+   | ^^^^^^----^
+   | |     |
+   | |     expected this to be a list
    | help: must be of the form: `#[cfg(predicate)]`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>

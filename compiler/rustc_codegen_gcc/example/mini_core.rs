@@ -748,25 +748,25 @@ extern "C" {
 pub struct VaList<'a>(&'a mut VaListImpl);
 
 #[rustc_builtin_macro]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro stringify($($t:tt)*) {
     /* compiler built-in */
 }
 
 #[rustc_builtin_macro]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro file() {
     /* compiler built-in */
 }
 
 #[rustc_builtin_macro]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro line() {
     /* compiler built-in */
 }
 
 #[rustc_builtin_macro]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro cfg() {
     /* compiler built-in */
 }

@@ -296,7 +296,14 @@ int_impl!(i128, u128);
 
 /// Trait for integers twice the bit width of another integer. This is implemented for all
 /// primitives except for `u8`, because there is not a smaller primitive.
-pub trait DInt: MinInt {
+pub trait DInt:
+    MinInt
+    + ops::Add<Output = Self>
+    + ops::Sub<Output = Self>
+    + ops::Shl<u32, Output = Self>
+    + ops::Shr<u32, Output = Self>
+    + Ord
+{
     /// Integer that is half the bit width of the integer this trait is implemented for
     type H: HInt<D = Self>;
 

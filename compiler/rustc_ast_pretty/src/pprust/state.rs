@@ -694,7 +694,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             }
             ast::Safety::Default | ast::Safety::Safe(_) => {}
         }
-        match &item.args {
+        match &item.args.unparsed_ref().expect("Parsed attributes are never printed") {
             AttrArgs::Delimited(DelimArgs { dspan: _, delim, tokens }) => self.print_mac_common(
                 Some(MacHeader::Path(&item.path)),
                 false,
@@ -865,6 +865,17 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         sp: Span,
         print_visibility: impl FnOnce(&mut Self),
     ) {
+        if let Some(eii_decl) = &macro_def.eii_declaration {
+            self.word("#[eii_declaration(");
+            self.print_path(&eii_decl.foreign_item, false, 0);
+            if eii_decl.impl_unsafe {
+                self.word(",");
+                self.space();
+                self.word("unsafe");
+            }
+            self.word(")]");
+            self.hardbreak();
+        }
         let (kw, has_bang) = if macro_def.macro_rules {
             ("macro_rules", true)
         } else {
@@ -2162,6 +2173,15 @@ impl<'a> State<'a> {
 
     fn print_meta_item(&mut self, item: &ast::MetaItem) {
         let ib = self.ibox(INDENT_UNIT);
+
+        match item.unsafety {
+            ast::Safety::Unsafe(_) => {
+                self.word("unsafe");
+                self.popen();
+            }
+            ast::Safety::Default | ast::Safety::Safe(_) => {}
+        }
+
         match &item.kind {
             ast::MetaItemKind::Word => self.print_path(&item.path, false, 0),
             ast::MetaItemKind::NameValue(value) => {
@@ -2177,6 +2197,12 @@ impl<'a> State<'a> {
                 self.pclose();
             }
         }
+
+        match item.unsafety {
+            ast::Safety::Unsafe(_) => self.pclose(),
+            ast::Safety::Default | ast::Safety::Safe(_) => {}
+        }
+
         self.end(ib);
     }
 

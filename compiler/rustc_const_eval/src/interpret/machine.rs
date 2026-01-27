@@ -298,7 +298,7 @@ pub trait Machine<'tcx>: Sized {
         interp_ok(())
     }
 
-    /// Determines the result of a `NullaryOp::RuntimeChecks` invocation.
+    /// Determines the result of a `Operand::RuntimeChecks` invocation.
     fn runtime_checks(
         _ecx: &InterpCx<'tcx, Self>,
         r: mir::RuntimeChecks,
@@ -678,16 +678,6 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
     #[inline(always)]
     fn float_fuse_mul_add(_ecx: &InterpCx<$tcx, Self>) -> bool {
         true
-    }
-
-    #[inline(always)]
-    fn runtime_checks(
-        _ecx: &InterpCx<$tcx, Self>,
-        _r: mir::RuntimeChecks,
-    ) -> InterpResult<$tcx, bool> {
-        // We can't look at `tcx.sess` here as that can differ across crates, which can lead to
-        // unsound differences in evaluating the same constant at different instantiation sites.
-        interp_ok(true)
     }
 
     #[inline(always)]

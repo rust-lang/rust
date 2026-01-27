@@ -18,18 +18,13 @@ help: the accessed tag <TAG> later transitioned to Disabled due to a foreign wri
 LL |     *our = 5;
    |     ^^^^^^^^
    = help: this transition corresponds to a loss of read permissions
-   = note: BACKTRACE (of the first span):
-   = note: inside `unknown_code_2` at tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
-note: inside `demo_box_advanced_unique`
-  --> tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
-   |
-LL |     unknown_code_2();
-   |     ^^^^^^^^^^^^^^^^
-note: inside `main`
-  --> tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
-   |
-LL |     demo_box_advanced_unique(Box::new(0));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: stack backtrace:
+           0: unknown_code_2
+               at tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
+           1: demo_box_advanced_unique
+               at tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
+           2: main
+               at tests/fail/both_borrows/box_exclusive_violation1.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

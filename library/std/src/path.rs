@@ -2972,6 +2972,15 @@ impl Path {
     ///
     /// If `path` is absolute, it replaces the current path.
     ///
+    /// On Windows:
+    ///
+    /// * if `path` has a root but no prefix (e.g., `\windows`), it
+    ///   replaces and returns everything except for the prefix (if any) of `self`.
+    /// * if `path` has a prefix but no root, `self` is ignored and `path` is returned.
+    /// * if `self` has a verbatim prefix (e.g. `\\?\C:\windows`)
+    ///   and `path` is not empty, the new path is normalized: all references
+    ///   to `.` and `..` are removed.
+    ///
     /// See [`PathBuf::push`] for more details on what it means to adjoin a path.
     ///
     /// # Examples
@@ -3204,6 +3213,17 @@ impl Path {
     #[inline]
     pub fn display(&self) -> Display<'_> {
         Display { inner: self.inner.display() }
+    }
+
+    /// Returns the same path as `&Path`.
+    ///
+    /// This method is redundant when used directly on `&Path`, but
+    /// it helps dereferencing other `PathBuf`-like types to `Path`s,
+    /// for example references to `Box<Path>` or `Arc<Path>`.
+    #[inline]
+    #[unstable(feature = "str_as_str", issue = "130366")]
+    pub const fn as_path(&self) -> &Path {
+        self
     }
 
     /// Queries the file system to get information about a file, directory, etc.

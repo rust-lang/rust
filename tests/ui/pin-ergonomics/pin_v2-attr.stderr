@@ -20,7 +20,7 @@ LL | #![pin_v2]
    |
    = help: `#[pin_v2]` can be applied to data types and unions
 
-error: `#[pin_v2]` attribute cannot be used on function params
+error: `#[pin_v2]` attribute cannot be used on type parameters
   --> $DIR/pin_v2-attr.rs:27:10
    |
 LL | enum Foo<#[pin_v2] T, #[pin_v2] U = ()> {
@@ -28,7 +28,7 @@ LL | enum Foo<#[pin_v2] T, #[pin_v2] U = ()> {
    |
    = help: `#[pin_v2]` can be applied to data types and unions
 
-error: `#[pin_v2]` attribute cannot be used on function params
+error: `#[pin_v2]` attribute cannot be used on type parameters
   --> $DIR/pin_v2-attr.rs:27:23
    |
 LL | enum Foo<#[pin_v2] T, #[pin_v2] U = ()> {

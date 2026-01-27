@@ -270,6 +270,8 @@ ast_passes_precise_capturing_duplicated = duplicate `use<...>` precise capturing
 
 ast_passes_precise_capturing_not_allowed_here = `use<...>` precise capturing syntax not allowed in {$loc}
 
+ast_passes_scalable_vector_not_tuple_struct = scalable vectors must be tuple structs
+
 ast_passes_static_without_body =
     free static item without body
     .suggestion = provide a definition for the static

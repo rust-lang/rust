@@ -13,7 +13,7 @@ use rustc_expand::base::{
 };
 use rustc_expand::module::DirOwnership;
 use rustc_parse::lexer::StripTokens;
-use rustc_parse::parser::ForceCollect;
+use rustc_parse::parser::{AllowConstBlockItems, ForceCollect};
 use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, utf8_error};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_session::parse::ParseSess;
@@ -68,13 +68,10 @@ pub(crate) fn expand_file(
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
-    use rustc_session::RemapFileNameExt;
-    use rustc_session::config::RemapPathScopeComponents;
+    use rustc_span::RemapPathScopeComponents;
     ExpandResult::Ready(MacEager::expr(cx.expr_str(
         topmost,
-        Symbol::intern(
-            &loc.file.name.for_scope(cx.sess, RemapPathScopeComponents::MACRO).to_string_lossy(),
-        ),
+        Symbol::intern(&loc.file.name.display(RemapPathScopeComponents::MACRO).to_string_lossy()),
     )))
 }
 
@@ -147,9 +144,7 @@ pub(crate) fn expand_include<'cx>(
             let mut p = unwrap_or_emit_fatal(new_parser_from_file(
                 self.psess,
                 &self.path,
-                // Don't strip frontmatter for backward compatibility, `---` may be the start of a
-                // manifold negation. FIXME: Ideally, we wouldn't strip shebangs here either.
-                StripTokens::Shebang,
+                StripTokens::Nothing,
                 Some(self.span),
             ));
             let expr = parse_expr(&mut p).ok()?;
@@ -173,7 +168,7 @@ pub(crate) fn expand_include<'cx>(
             ));
             let mut ret = SmallVec::new();
             loop {
-                match p.parse_item(ForceCollect::No) {
+                match p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes) {
                     Err(err) => {
                         err.emit();
                         break;

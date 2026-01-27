@@ -1,11 +1,9 @@
-use std::hash::BuildHasherDefault;
-
-pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
+pub use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet, FxHasher};
 
 pub type StdEntry<'a, K, V> = std::collections::hash_map::Entry<'a, K, V>;
 
-pub type FxIndexMap<K, V> = indexmap::IndexMap<K, V, BuildHasherDefault<FxHasher>>;
-pub type FxIndexSet<V> = indexmap::IndexSet<V, BuildHasherDefault<FxHasher>>;
+pub type FxIndexMap<K, V> = indexmap::IndexMap<K, V, FxBuildHasher>;
+pub type FxIndexSet<V> = indexmap::IndexSet<V, FxBuildHasher>;
 pub type IndexEntry<'a, K, V> = indexmap::map::Entry<'a, K, V>;
 pub type IndexOccupiedEntry<'a, K, V> = indexmap::map::OccupiedEntry<'a, K, V>;
 
@@ -27,4 +25,19 @@ macro_rules! define_stable_id_collections {
         pub type $set_name = $crate::fx::FxIndexSet<$key>;
         pub type $entry_name<'a, T> = $crate::fx::IndexEntry<'a, $key, T>;
     };
+}
+
+pub mod default {
+    use super::{FxBuildHasher, FxHashMap, FxHashSet};
+
+    // FIXME: These two functions will become unnecessary after
+    // <https://github.com/rust-lang/rustc-hash/pull/63> lands and we start using the corresponding
+    // `rustc-hash` version. After that we can use `Default::default()` instead.
+    pub const fn fx_hash_map<K, V>() -> FxHashMap<K, V> {
+        FxHashMap::with_hasher(FxBuildHasher)
+    }
+
+    pub const fn fx_hash_set<V>() -> FxHashSet<V> {
+        FxHashSet::with_hasher(FxBuildHasher)
+    }
 }

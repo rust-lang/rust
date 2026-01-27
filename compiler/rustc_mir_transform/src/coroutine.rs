@@ -64,9 +64,9 @@ use itertools::izip;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
-use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{CoroutineDesugaring, CoroutineKind};
+use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind, find_attr};
 use rustc_index::bit_set::{BitMatrix, DenseBitSet, GrowableBitSet};
 use rustc_index::{Idx, IndexVec, indexvec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
@@ -85,7 +85,6 @@ use rustc_mir_dataflow::{
 };
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::source_map::dummy_spanned;
-use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
@@ -1891,6 +1890,16 @@ fn check_must_not_suspend_ty<'tcx>(
                 SuspendCheckData { descr_pre: &format!("{}allocator ", data.descr_pre), ..data },
             )
         }
+        // FIXME(sized_hierarchy): This should be replaced with a requirement that types in
+        // coroutines implement `const Sized`. Scalable vectors are temporarily `Sized` while
+        // `feature(sized_hierarchy)` is not fully implemented, but in practice are
+        // non-`const Sized` and so do not have a known size at compilation time. Layout computation
+        // for a coroutine containing scalable vectors would be incorrect.
+        ty::Adt(def, _) if def.repr().scalable() => {
+            tcx.dcx()
+                .span_err(data.source_span, "scalable vectors cannot be held over await points");
+            true
+        }
         ty::Adt(def, _) => check_must_not_suspend_def(tcx, def.did(), hir_id, data),
         // FIXME: support adding the attribute to TAITs
         ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
@@ -1979,11 +1988,11 @@ fn check_must_not_suspend_def(
     hir_id: hir::HirId,
     data: SuspendCheckData<'_>,
 ) -> bool {
-    if let Some(attr) = tcx.get_attr(def_id, sym::must_not_suspend) {
-        let reason = attr.value_str().map(|s| errors::MustNotSuspendReason {
-            span: data.source_span,
-            reason: s.as_str().to_string(),
-        });
+    if let Some(reason_str) =
+        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::MustNotSupend {reason} => reason)
+    {
+        let reason =
+            reason_str.map(|s| errors::MustNotSuspendReason { span: data.source_span, reason: s });
         tcx.emit_node_span_lint(
             rustc_session::lint::builtin::MUST_NOT_SUSPEND,
             hir_id,

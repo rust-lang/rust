@@ -8,7 +8,8 @@ use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock};
-use rustc_errors::emitter::{EmitterWithNote, HumanEmitter, stderr_destination};
+use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
+use rustc_errors::emitter::{EmitterWithNote, stderr_destination};
 use rustc_errors::translation::Translator;
 use rustc_errors::{
     BufferedEarlyLint, ColorConfig, DecorateDiagCompat, Diag, DiagCtxt, DiagCtxtHandle,
@@ -132,8 +133,6 @@ pub fn feature_warn(sess: &Session, feature: Symbol, span: Span, explain: &'stat
 ///
 /// This variant allows you to control whether it is a library or language feature.
 /// Almost always, you want to use this for a language feature. If so, prefer `feature_warn`.
-#[allow(rustc::diagnostic_outside_of_impl)]
-#[allow(rustc::untranslatable_diagnostic)]
 #[track_caller]
 pub fn feature_warn_issue(
     sess: &Session,
@@ -171,7 +170,6 @@ pub fn add_feature_diagnostics<G: EmissionGuarantee>(
 /// This variant allows you to control whether it is a library or language feature.
 /// Almost always, you want to use this for a language feature. If so, prefer
 /// `add_feature_diagnostics`.
-#[allow(rustc::diagnostic_outside_of_impl)] // FIXME
 pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
     err: &mut Diag<'_, G>,
     sess: &Session,
@@ -286,7 +284,7 @@ impl ParseSess {
         let translator = Translator::with_fallback_bundle(locale_resources, false);
         let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
         let emitter = Box::new(
-            HumanEmitter::new(stderr_destination(ColorConfig::Auto), translator)
+            AnnotateSnippetEmitter::new(stderr_destination(ColorConfig::Auto), translator)
                 .sm(Some(Arc::clone(&sm))),
         );
         let dcx = DiagCtxt::new(emitter);
@@ -318,8 +316,10 @@ impl ParseSess {
     pub fn emitter_with_note(locale_resources: Vec<&'static str>, note: String) -> Self {
         let translator = Translator::with_fallback_bundle(locale_resources, false);
         let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
-        let emitter =
-            Box::new(HumanEmitter::new(stderr_destination(ColorConfig::Auto), translator));
+        let emitter = Box::new(AnnotateSnippetEmitter::new(
+            stderr_destination(ColorConfig::Auto),
+            translator,
+        ));
         let dcx = DiagCtxt::new(Box::new(EmitterWithNote { emitter, note }));
         ParseSess::with_dcx(dcx, sm)
     }

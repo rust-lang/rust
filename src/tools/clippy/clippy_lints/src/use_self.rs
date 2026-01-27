@@ -10,13 +10,14 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
 use rustc_hir::{
     self as hir, AmbigArg, Expr, ExprKind, FnRetTy, FnSig, GenericArgsParentheses, GenericParamKind, HirId, Impl,
-    ImplItemImplKind, ImplItemKind, Item, ItemKind, Pat, PatExpr, PatExprKind, PatKind, Path, QPath, Ty, TyKind,
+    ImplItemImplKind, ImplItemKind, Item, ItemKind, Node, Pat, PatExpr, PatExprKind, PatKind, Path, QPath, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty as MiddleTy;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use std::iter;
+use std::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -213,6 +214,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 path.res,
                 Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } | Res::Def(DefKind::TyParam, _)
             )
+            && !ty_is_in_generic_args(cx, hir_ty)
             && !types_to_skip.contains(&hir_ty.hir_id)
             && let ty = ty_from_hir_ty(cx, hir_ty.as_unambig_ty())
             && let impl_ty = cx.tcx.type_of(impl_id).instantiate_identity()
@@ -310,6 +312,38 @@ fn lint_path_to_variant(cx: &LateContext<'_>, path: &Path<'_>) {
             .with_hi(self_seg.args().span_ext().unwrap_or(self_seg.ident.span).hi());
         span_lint(cx, span);
     }
+}
+
+fn ty_is_in_generic_args<'tcx>(cx: &LateContext<'tcx>, hir_ty: &Ty<'tcx, AmbigArg>) -> bool {
+    cx.tcx.hir_parent_iter(hir_ty.hir_id).any(|(_, parent)| {
+        matches!(parent, Node::ImplItem(impl_item) if impl_item.generics.params.iter().any(|param| {
+            let GenericParamKind::Const { ty: const_ty, .. } = &param.kind else {
+                return false;
+            };
+            ty_contains_ty(const_ty, hir_ty)
+        }))
+    })
+}
+
+fn ty_contains_ty<'tcx>(outer: &Ty<'tcx>, inner: &Ty<'tcx, AmbigArg>) -> bool {
+    struct ContainsVisitor<'tcx> {
+        inner: &'tcx Ty<'tcx, AmbigArg>,
+    }
+
+    impl<'tcx> Visitor<'tcx> for ContainsVisitor<'tcx> {
+        type Result = ControlFlow<()>;
+
+        fn visit_ty(&mut self, t: &'tcx Ty<'tcx, AmbigArg>) -> Self::Result {
+            if t.hir_id == self.inner.hir_id {
+                return ControlFlow::Break(());
+            }
+
+            walk_ty(self, t)
+        }
+    }
+
+    let mut visitor = ContainsVisitor { inner };
+    visitor.visit_ty_unambig(outer).is_break()
 }
 
 /// Checks whether types `a` and `b` have the same lifetime parameters.

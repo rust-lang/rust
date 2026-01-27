@@ -24,7 +24,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         # Unsetting this would make so that any malicious package could get our Github Token
         persist-credentials: false

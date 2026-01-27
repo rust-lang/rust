@@ -47,7 +47,7 @@ pub use lazy::Storage as LazyStorage;
 )]
 #[allow_internal_unsafe]
 #[unstable(feature = "thread_local_internals", issue = "none")]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro thread_local_inner {
     // NOTE: we cannot import `LocalKey`, `LazyStorage` or `EagerStorage` with a `use` because that
     // can shadow user provided type or type alias with a matching name. Please update the shadowing
@@ -110,7 +110,7 @@ pub macro thread_local_inner {
     }},
 }
 
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 pub(crate) macro local_pointer {
     () => {},
     ($vis:vis static $name:ident; $($rest:tt)*) => {

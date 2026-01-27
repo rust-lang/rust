@@ -6,9 +6,6 @@ attr_parsing_bundle_needs_static =
 
 attr_parsing_cfg_attr_bad_delim = wrong `cfg_attr` delimiters
 
-attr_parsing_cfg_predicate_identifier =
-    `cfg` predicate key must be an identifier
-
 attr_parsing_deprecated_item_suggestion =
     suggestions on deprecated items are unstable
     .help = add `#![feature(deprecated_suggestion)]` to the crate root
@@ -26,6 +23,9 @@ attr_parsing_doc_alias_malformed =
 attr_parsing_doc_alias_start_end =
     {$attr_str} cannot start or end with ' '
 
+attr_parsing_doc_attr_not_crate_level =
+    `#![doc({$attr_name} = "...")]` isn't allowed as a crate-level attribute
+
 attr_parsing_doc_attribute_not_attribute =
     nonexistent builtin attribute `{$attribute}` used in `#[doc(attribute = "...")]`
     .help = only existing builtin attributes are allowed in core/std
@@ -41,9 +41,6 @@ attr_parsing_empty_link_name =
     link name must not be empty
     .label = empty link name
 
-attr_parsing_expected_one_cfg_pattern =
-    expected 1 cfg-pattern
-
 attr_parsing_expected_single_version_literal =
     expected single version literal
 
@@ -55,11 +52,6 @@ attr_parsing_expects_feature_list =
 
 attr_parsing_expects_features =
     `{$name}` expects feature names
-
-attr_parsing_ill_formed_attribute_input = {$num_suggestions ->
-        [1] attribute must be of the form {$suggestions}
-        *[other] valid forms for the attribute are {$suggestions}
-    }
 
 attr_parsing_import_name_type_raw =
     import name type can only be used with link kind `raw-dylib`
@@ -211,6 +203,9 @@ attr_parsing_rustc_allowed_unstable_pairing =
 attr_parsing_rustc_promotable_pairing =
     `rustc_promotable` attribute must be paired with either a `rustc_const_unstable` or a `rustc_const_stable` attribute
 
+attr_parsing_rustc_scalable_vector_count_out_of_range = element count in `rustc_scalable_vector` is too large: `{$n}`
+    .note = the value may not exceed `u16::MAX`
+
 attr_parsing_soft_no_args =
     `soft` should not have any arguments
 
@@ -218,10 +213,6 @@ attr_parsing_stability_outside_std = stability attributes may not be used outsid
 
 attr_parsing_suffixed_literal_in_attribute = suffixed literals are not allowed in attributes
     .help = instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
-
-attr_parsing_unknown_meta_item =
-    unknown meta item '{$item}'
-    .label = expected one of {$expected}
 
 attr_parsing_unknown_version_literal =
     unknown version literal format, assuming it refers to a future version
@@ -239,14 +230,10 @@ attr_parsing_unstable_cfg_target_compact =
     compact `cfg(target(..))` is experimental and subject to change
 
 attr_parsing_unstable_feature_bound_incompatible_stability = item annotated with `#[unstable_feature_bound]` should not be stable
-    .help = If this item is meant to be stable, do not use any functions annotated with `#[unstable_feature_bound]`. Otherwise, mark this item as unstable with `#[unstable]`
+    .help = if this item is meant to be stable, do not use any functions annotated with `#[unstable_feature_bound]`. Otherwise, mark this item as unstable with `#[unstable]`
 
-attr_parsing_unsupported_literal_cfg_boolean =
-    literal in `cfg` predicate value must be a boolean
-attr_parsing_unsupported_literal_cfg_string =
-    literal in `cfg` predicate value must be a string
-attr_parsing_unsupported_literal_generic =
-    unsupported literal
+attr_parsing_unsupported_instruction_set = target `{$current_target}` does not support `#[instruction_set({$instruction_set}::*)]`
+
 attr_parsing_unsupported_literal_suggestion =
     consider removing the prefix
 

@@ -22,15 +22,13 @@ extern crate rustc_arena;
 #[expect(unused_extern_crates, reason = "required to link to rustc crates")]
 extern crate rustc_driver;
 extern crate rustc_lexer;
-extern crate rustc_literal_escaper;
 
-pub mod deprecate_lint;
 pub mod dogfood;
+pub mod edit_lints;
 pub mod fmt;
 pub mod lint;
 pub mod new_lint;
 pub mod release;
-pub mod rename_lint;
 pub mod serve;
 pub mod setup;
 pub mod sync;

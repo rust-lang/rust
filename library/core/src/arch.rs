@@ -30,7 +30,7 @@ pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
 /// Refer to [Rust By Example] for a usage guide and the [reference] for
 /// detailed information about the syntax and available options.
 ///
-/// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
+/// [Rust By Example]: https://doc.rust-lang.org/nightly/rust`-by-example/unsafe/asm.html
 /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
 #[stable(feature = "naked_functions", since = "1.88.0")]
 #[rustc_builtin_macro]

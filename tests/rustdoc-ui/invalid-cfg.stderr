@@ -2,7 +2,9 @@ error[E0539]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:2:1
    |
 LL | #[doc(cfg = "x")]
-   | ^^^^^^^^^^^^^^^^^ expected this to be a list
+   | ^^^^^^^^^^-----^^
+   |           |
+   |           expected this to be a list
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:3:1
@@ -16,7 +18,9 @@ error[E0539]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:7:1
    |
 LL | #[doc(cfg = "x")]
-   | ^^^^^^^^^^^^^^^^^ expected this to be a list
+   | ^^^^^^^^^^-----^^
+   |           |
+   |           expected this to be a list
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:8:1
@@ -30,7 +34,9 @@ error[E0539]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:12:1
    |
 LL | #[doc(cfg = "x")]
-   | ^^^^^^^^^^^^^^^^^ expected this to be a list
+   | ^^^^^^^^^^-----^^
+   |           |
+   |           expected this to be a list
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:13:1
@@ -44,7 +50,9 @@ error[E0539]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:18:1
    |
 LL | #[doc(cfg = "x")]
-   | ^^^^^^^^^^^^^^^^^ expected this to be a list
+   | ^^^^^^^^^^-----^^
+   |           |
+   |           expected this to be a list
 
 error[E0805]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:19:1

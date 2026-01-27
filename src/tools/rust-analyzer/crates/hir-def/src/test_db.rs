@@ -49,6 +49,12 @@ impl Default for TestDB {
         this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
         // This needs to be here otherwise `CrateGraphBuilder` panics.
         this.set_all_crates(Arc::new(Box::new([])));
+        _ = base_db::LibraryRoots::builder(Default::default())
+            .durability(Durability::MEDIUM)
+            .new(&this);
+        _ = base_db::LocalRoots::builder(Default::default())
+            .durability(Durability::MEDIUM)
+            .new(&this);
         CrateGraphBuilder::default().set_in_db(&mut this);
         this
     }

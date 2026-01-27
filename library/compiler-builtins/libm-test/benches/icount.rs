@@ -1,10 +1,10 @@
-//! Benchmarks that use `iai-cachegrind` to be reasonably CI-stable.
+//! Benchmarks that use `gungraun` to be reasonably CI-stable.
 #![feature(f16)]
 #![feature(f128)]
 
 use std::hint::black_box;
 
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 use libm::support::{HInt, Hexf, hf16, hf32, hf64, hf128, u256};
 use libm_test::generate::spaced;
 use libm_test::{CheckBasis, CheckCtx, GeneratorKind, MathOp, OpRustArgs, TupleCall, op};
@@ -156,7 +156,13 @@ fn icount_bench_u256_shr(cases: Vec<(u256, u32)>) {
 
 library_benchmark_group!(
     name = icount_bench_u128_group;
-    benchmarks = icount_bench_u128_widen_mul, icount_bench_u256_narrowing_div, icount_bench_u256_add, icount_bench_u256_sub, icount_bench_u256_shl, icount_bench_u256_shr
+    benchmarks =
+    icount_bench_u128_widen_mul,
+    icount_bench_u256_narrowing_div,
+    icount_bench_u256_add,
+    icount_bench_u256_sub,
+    icount_bench_u256_shl,
+    icount_bench_u256_shr
 );
 
 #[library_benchmark]

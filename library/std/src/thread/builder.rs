@@ -40,7 +40,6 @@ use crate::io;
 /// [`name`]: Builder::name
 /// [`spawn`]: Builder::spawn
 /// [`thread::spawn`]: super::spawn
-/// [`io::Result`]: crate::io::Result
 /// [`unwrap`]: crate::result::Result::unwrap
 /// [naming-threads]: ./index.html#naming-threads
 /// [stack-size]: ./index.html#stack-size
@@ -161,8 +160,6 @@ impl Builder {
     /// [`io::Result`] to capture any failure to create the thread at
     /// the OS level.
     ///
-    /// [`io::Result`]: crate::io::Result
-    ///
     /// # Panics
     ///
     /// Panics if a thread name was set and it contained null bytes.
@@ -250,7 +247,6 @@ impl Builder {
     /// handler.join().unwrap();
     /// ```
     ///
-    /// [`io::Result`]: crate::io::Result
     /// [`thread::spawn`]: super::spawn
     /// [`spawn`]: super::spawn
     #[stable(feature = "thread_spawn_unchecked", since = "1.82.0")]

@@ -2,6 +2,7 @@ use either::Either;
 use rustc_abi::{BackendRepr, Endian};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::{Float, Round};
+use rustc_data_structures::assert_matches;
 use rustc_middle::mir::interpret::{InterpErrorKind, Pointer, UndefinedBehaviorInfo};
 use rustc_middle::ty::{FloatTy, ScalarInt, SimdAlign};
 use rustc_middle::{bug, err_ub_format, mir, span_bug, throw_unsup_format, ty};
@@ -10,7 +11,7 @@ use tracing::trace;
 
 use super::{
     ImmTy, InterpCx, InterpResult, Machine, MinMax, MulAddType, OpTy, PlaceTy, Provenance, Scalar,
-    Size, TyAndLayout, assert_matches, interp_ok, throw_ub_format,
+    Size, TyAndLayout, interp_ok, throw_ub_format,
 };
 use crate::interpret::Writeable;
 
@@ -29,7 +30,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let dest = dest.force_mplace(self)?;
 
         match intrinsic_name {
-            sym::simd_insert => {
+            sym::simd_insert | sym::simd_insert_dyn => {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
                 let elem = &args[2];
                 let (input, input_len) = self.project_to_simd(&args[0])?;
@@ -38,7 +39,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // Bounds are not checked by typeck so we have to do it ourselves.
                 if index >= input_len {
                     throw_ub_format!(
-                        "`simd_insert` index {index} is out-of-bounds of vector with length {input_len}"
+                        "`{intrinsic_name}` index {index} is out-of-bounds of vector with length {input_len}"
                     );
                 }
 
@@ -49,16 +50,25 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     self.copy_op(&value, &place)?;
                 }
             }
-            sym::simd_extract => {
+            sym::simd_extract | sym::simd_extract_dyn => {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
                 let (input, input_len) = self.project_to_simd(&args[0])?;
                 // Bounds are not checked by typeck so we have to do it ourselves.
                 if index >= input_len {
                     throw_ub_format!(
-                        "`simd_extract` index {index} is out-of-bounds of vector with length {input_len}"
+                        "`{intrinsic_name}` index {index} is out-of-bounds of vector with length {input_len}"
                     );
                 }
                 self.copy_op(&self.project_index(&input, index)?, &dest)?;
+            }
+            sym::simd_splat => {
+                let elem = &args[0];
+                let (dest, dest_len) = self.project_to_simd(&dest)?;
+
+                for i in 0..dest_len {
+                    let place = self.project_index(&dest, i)?;
+                    self.copy_op(elem, &place)?;
+                }
             }
             sym::simd_neg
             | sym::simd_fabs
@@ -545,7 +555,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let (right, right_len) = self.project_to_simd(&args[1])?;
                 let (dest, dest_len) = self.project_to_simd(&dest)?;
 
-                let index = generic_args[2].expect_const().to_value().valtree.unwrap_branch();
+                let index = generic_args[2].expect_const().to_branch();
                 let index_len = index.len();
 
                 assert_eq!(left_len, right_len);
@@ -553,7 +563,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 for i in 0..dest_len {
                     let src_index: u64 =
-                        index[usize::try_from(i).unwrap()].unwrap_leaf().to_u32().into();
+                        index[usize::try_from(i).unwrap()].to_leaf().to_u32().into();
                     let dest = self.project_index(&dest, i)?;
 
                     let val = if src_index < left_len {
@@ -657,9 +667,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.check_simd_ptr_alignment(
                     ptr,
                     dest_layout,
-                    generic_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
-                        .unwrap_leaf()
-                        .to_simd_alignment(),
+                    generic_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment(),
                 )?;
 
                 for i in 0..dest_len {
@@ -689,9 +697,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.check_simd_ptr_alignment(
                     ptr,
                     args[2].layout,
-                    generic_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
-                        .unwrap_leaf()
-                        .to_simd_alignment(),
+                    generic_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment(),
                 )?;
 
                 for i in 0..vals_len {

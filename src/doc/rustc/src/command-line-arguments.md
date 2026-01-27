@@ -284,7 +284,7 @@ and instead produce a test harness. See the [Tests chapter](tests/index.md)
 for more information about tests.
 
 <a id="option-target"></a>
-## `--target`: select a target triple to build
+## `--target`: select a target tuple to build
 
 This controls which [target](targets/index.md) to produce.
 
@@ -424,6 +424,14 @@ Remap source path prefixes in all output, including compiler diagnostics,
 debug information, macro expansions, etc. It takes a value of the form `FROM=TO`
 where a path prefix equal to `FROM` is rewritten to the value `TO`. This flag may be
 specified multiple times.
+
+Refer to the [Remap source paths](remap-source-paths.md) section of this book for
+further details and explanation.
+
+<a id="option-remap-path-scope"></a>
+## `--remap-path-scope`: remap source paths in output
+
+Defines which scopes of paths should be remapped by `--remap-path-prefix`.
 
 Refer to the [Remap source paths](remap-source-paths.md) section of this book for
 further details and explanation.

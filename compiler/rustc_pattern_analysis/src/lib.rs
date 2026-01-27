@@ -3,9 +3,8 @@
 //! [`rustc`] module.
 
 // tidy-alphabetical-start
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
 #![allow(unused_crate_dependencies)]
+#![cfg_attr(feature = "rustc", feature(if_let_guard))]
 // tidy-alphabetical-end
 
 pub(crate) mod checks;
@@ -141,7 +140,7 @@ pub struct MatchArm<'p, Cx: PatCx> {
 
 impl<'p, Cx: PatCx> Clone for MatchArm<'p, Cx> {
     fn clone(&self) -> Self {
-        Self { pat: self.pat, has_guard: self.has_guard, arm_data: self.arm_data }
+        *self
     }
 }
 

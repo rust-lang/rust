@@ -5,7 +5,7 @@ use std::ops::{ControlFlow, Deref};
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
-use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
+use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
 
 use crate::data_structures::SsoHashSet;
@@ -25,6 +25,7 @@ use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex};
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, T)]
 #[derive_where(Copy; I: Interner, T: Copy)]
+#[derive(GenericTypeVisitable)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct Binder<I: Interner, T> {
     value: T,
@@ -361,6 +362,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 #[derive_where(Clone, PartialEq, Ord, Hash, Debug; I: Interner, T)]
 #[derive_where(PartialOrd; I: Interner, T: Ord)]
 #[derive_where(Copy; I: Interner, T: Copy)]
+#[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -944,7 +946,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 pub enum BoundVarIndexKind {
     Bound(DebruijnIndex),
     Canonical,

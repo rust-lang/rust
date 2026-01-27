@@ -1,0 +1,13 @@
+error[E0271]: type mismatch resolving `<() as Trait>::N == 0`
+  --> $DIR/dyn-compat-const-mismatch.rs:17:32
+   |
+LL |     let _: &dyn Trait<N = 0> = &();
+   |                                ^^^ expected `0`, found `1`
+   |
+   = note: expected constant `0`
+              found constant `1`
+   = note: required for the cast from `&()` to `&dyn Trait<N = 0>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

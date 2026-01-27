@@ -1,11 +1,11 @@
-error: malformed `crate_type` attribute input
+error[E0539]: malformed `crate_type` attribute input
   --> $DIR/crate-type-empty.rs:2:1
    |
 LL | #![crate_type]
-   | ^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^ help: must be of the form: `#![crate_type = "crate type"]`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/linkage.html>
-   |
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0539`.

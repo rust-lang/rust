@@ -27,10 +27,9 @@
 //!
 //! ## `Cell<T>`
 //!
-//! [`Cell<T>`] implements interior mutability by moving values in and out of the cell. That is, an
-//! `&mut T` to the inner value can never be obtained, and the value itself cannot be directly
-//! obtained without replacing it with something else. Both of these rules ensure that there is
-//! never more than one reference pointing to the inner value. This type provides the following
+//! [`Cell<T>`] implements interior mutability by moving values in and out of the cell. That is, a
+//! `&T` to the inner value can never be obtained, and the value itself cannot be directly
+//! obtained without replacing it with something else. This type provides the following
 //! methods:
 //!
 //!  - For types that implement [`Copy`], the [`get`](Cell::get) method retrieves the current
@@ -2696,20 +2695,20 @@ fn assert_coerce_unsized(
     let _: RefCell<&dyn Send> = d;
 }
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized> PinCoerceUnsized for UnsafeCell<T> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized> PinCoerceUnsized for SyncUnsafeCell<T> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized> PinCoerceUnsized for Cell<T> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<T: ?Sized> PinCoerceUnsized for RefCell<T> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<'b, T: ?Sized> PinCoerceUnsized for Ref<'b, T> {}
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 unsafe impl<'b, T: ?Sized> PinCoerceUnsized for RefMut<'b, T> {}

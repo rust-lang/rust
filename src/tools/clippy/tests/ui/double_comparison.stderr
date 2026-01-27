@@ -49,5 +49,29 @@ error: this binary expression can be simplified
 LL |     if x >= y && x <= y {
    |        ^^^^^^^^^^^^^^^^ help: try: `x == y`
 
-error: aborting due to 8 previous errors
+error: this binary expression can be simplified
+  --> tests/ui/double_comparison.rs:38:8
+   |
+LL |     if x != y && x <= y {
+   |        ^^^^^^^^^^^^^^^^ help: try: `x < y`
+
+error: this binary expression can be simplified
+  --> tests/ui/double_comparison.rs:42:8
+   |
+LL |     if x <= y && x != y {
+   |        ^^^^^^^^^^^^^^^^ help: try: `x < y`
+
+error: this binary expression can be simplified
+  --> tests/ui/double_comparison.rs:46:8
+   |
+LL |     if x != y && x >= y {
+   |        ^^^^^^^^^^^^^^^^ help: try: `x > y`
+
+error: this binary expression can be simplified
+  --> tests/ui/double_comparison.rs:50:8
+   |
+LL |     if x >= y && x != y {
+   |        ^^^^^^^^^^^^^^^^ help: try: `x > y`
+
+error: aborting due to 12 previous errors
 

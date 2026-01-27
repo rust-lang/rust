@@ -1,0 +1,22 @@
+warning: `panic` is ambiguous
+  --> $DIR/ambiguous-panic-non-prelude-std-glob.rs:9:5
+   |
+LL |     panic!();
+   |     ^^^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #147319 <https://github.com/rust-lang/rust/issues/147319>
+   = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
+note: `panic` could refer to the macro imported here
+  --> $DIR/ambiguous-panic-non-prelude-std-glob.rs:6:5
+   |
+LL | use ::std::*;
+   |     ^^^^^^^^
+   = help: consider adding an explicit import of `panic` to disambiguate
+   = help: or use `crate::panic` to refer to this macro unambiguously
+note: `panic` could also refer to a macro from prelude
+  --> $SRC_DIR/core/src/prelude/mod.rs:LL:COL
+   = note: `#[warn(ambiguous_panic_imports)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+

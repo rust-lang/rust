@@ -57,7 +57,7 @@ error: layout_of((i8) is (i8::MIN..=-1 | 1..)) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },
@@ -102,7 +102,7 @@ error: layout_of((i8) is (i8::MIN..=-2 | 0..)) = Layout {
                offsets: [
                    Size(0 bytes),
                ],
-               memory_index: [
+               in_memory_order: [
                    0,
                ],
            },

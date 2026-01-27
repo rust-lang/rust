@@ -1,4 +1,4 @@
-//! This query borrow-checks the MIR to (further) ensure it is not broken.
+//! This crate implemens MIR typeck and MIR borrowck.
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
@@ -111,9 +111,9 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers { mir_borrowck, ..*providers };
 }
 
-/// Provider for `query mir_borrowck`. Similar to `typeck`, this must
-/// only be called for typeck roots which will then borrowck all
-/// nested bodies as well.
+/// Provider for `query mir_borrowck`. Unlike `typeck`, this must
+/// only be called for typeck roots which *similar* to `typeck` will
+/// then borrowck all nested bodies as well.
 fn mir_borrowck(
     tcx: TyCtxt<'_>,
     def: LocalDefId,
@@ -1301,7 +1301,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 (Read(kind), BorrowKind::Mut { .. }) => {
                     // Reading from mere reservations of mutable-borrows is OK.
                     if !is_active(this.dominators(), borrow, location) {
-                        assert!(borrow.kind.allows_two_phase_borrow());
+                        assert!(borrow.kind.is_two_phase_borrow());
                         return ControlFlow::Continue(());
                     }
 
@@ -1464,7 +1464,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     }
                     BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
-                        if bk.allows_two_phase_borrow() {
+                        if bk.is_two_phase_borrow() {
                             (Deep, Reservation(wk))
                         } else {
                             (Deep, Write(wk))
@@ -1557,10 +1557,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             Rvalue::BinaryOp(_bin_op, box (operand1, operand2)) => {
                 self.consume_operand(location, (operand1, span), state);
                 self.consume_operand(location, (operand2, span), state);
-            }
-
-            Rvalue::NullaryOp(_op) => {
-                // nullary ops take no dynamic input; no borrowck effect.
             }
 
             Rvalue::Aggregate(aggregate_kind, operands) => {
@@ -1699,7 +1695,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     _ => propagate_closure_used_mut_place(self, place),
                 }
             }
-            Operand::Constant(..) => {}
+            Operand::Constant(..) | Operand::RuntimeChecks(_) => {}
         }
     }
 
@@ -1750,7 +1746,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     state,
                 );
             }
-            Operand::Constant(_) => {}
+            Operand::Constant(_) | Operand::RuntimeChecks(_) => {}
         }
     }
 

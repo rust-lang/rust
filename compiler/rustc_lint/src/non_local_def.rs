@@ -199,10 +199,6 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 let mut ms = MultiSpan::from_span(impl_span);
 
                 for path in &collector.paths {
-                    // FIXME: While a translatable diagnostic message can have an argument
-                    // we (currently) have no way to set different args per diag msg with
-                    // `MultiSpan::push_span_label`.
-                    #[allow(rustc::untranslatable_diagnostic)]
                     ms.push_span_label(
                         path_span_without_args(path),
                         format!("`{}` is not local", path_name_to_string(path)),

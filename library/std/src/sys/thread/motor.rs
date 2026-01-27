@@ -3,7 +3,7 @@ use crate::io;
 use crate::num::NonZeroUsize;
 use crate::sys::map_motor_error;
 use crate::thread::ThreadInit;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 1024 * 256;
 
@@ -36,7 +36,7 @@ impl Thread {
     }
 
     pub fn join(self) {
-        assert!(moto_rt::thread::join(self.sys_thread) == moto_rt::E_OK)
+        assert!(moto_rt::thread::join(self.sys_thread).is_ok())
     }
 }
 
@@ -61,4 +61,8 @@ pub fn yield_now() {
 
 pub fn sleep(dur: Duration) {
     moto_rt::thread::sleep_until(moto_rt::time::Instant::now() + dur)
+}
+
+pub fn sleep_until(deadline: Instant) {
+    moto_rt::thread::sleep_until(deadline.into_inner())
 }

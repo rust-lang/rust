@@ -18,19 +18,11 @@ help: the accessed tag <TAG> later transitioned to Disabled due to a foreign wri
 LL |         *alias = 42;
    |         ^^^^^^^^^^^
    = help: this transition corresponds to a loss of read and write permissions
-   = note: BACKTRACE (of the first span):
-   = note: inside `Foo::add` at tests/fail/tree_borrows/write-during-2phase.rs:LL:CC
-note: inside `main`
-  --> tests/fail/tree_borrows/write-during-2phase.rs:LL:CC
-   |
-LL |       let res = f.add(unsafe {
-   |  _______________^
-LL | |         // This is the access at fault, but it's not immediately apparent because
-LL | |         // the reference that got invalidated is not under a Protector.
-LL | |         *alias = 42;
-LL | |         0
-LL | |     });
-   | |______^
+   = note: stack backtrace:
+           0: Foo::add
+               at tests/fail/tree_borrows/write-during-2phase.rs:LL:CC
+           1: main
+               at tests/fail/tree_borrows/write-during-2phase.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

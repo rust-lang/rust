@@ -29,7 +29,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
 
 use crate::Namespace::*;
 use crate::errors::{
@@ -38,21 +38,21 @@ use crate::errors::{
 };
 use crate::imports::Import;
 use crate::{
-    BindingKey, CacheCell, CmResolver, DeriveData, Determinacy, Finalize, InvocationParent,
-    MacroData, ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope,
-    PathResult, ResolutionError, Resolver, ScopeSet, Segment, Used,
+    BindingKey, CacheCell, CmResolver, Decl, DeclKind, DeriveData, Determinacy, Finalize,
+    InvocationParent, MacroData, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult,
+    ResolutionError, Resolver, ScopeSet, Segment, Used,
 };
 
 type Res = def::Res<NodeId>;
 
-/// Binding produced by a `macro_rules` item.
-/// Not modularized, can shadow previous `macro_rules` bindings, etc.
+/// Name declaration produced by a `macro_rules` item definition.
+/// Not modularized, can shadow previous `macro_rules` definitions, etc.
 #[derive(Debug)]
-pub(crate) struct MacroRulesBinding<'ra> {
-    pub(crate) binding: NameBinding<'ra>,
+pub(crate) struct MacroRulesDecl<'ra> {
+    pub(crate) decl: Decl<'ra>,
     /// `macro_rules` scope into which the `macro_rules` item was planted.
     pub(crate) parent_macro_rules_scope: MacroRulesScopeRef<'ra>,
-    pub(crate) ident: Ident,
+    pub(crate) ident: Macros20NormalizedIdent,
 }
 
 /// The scope introduced by a `macro_rules!` macro.
@@ -65,7 +65,7 @@ pub(crate) enum MacroRulesScope<'ra> {
     /// Empty "root" scope at the crate start containing no names.
     Empty,
     /// The scope introduced by a `macro_rules!` macro definition.
-    Binding(&'ra MacroRulesBinding<'ra>),
+    Def(&'ra MacroRulesDecl<'ra>),
     /// The scope introduced by a macro invocation that can potentially
     /// create a `macro_rules!` macro definition.
     Invocation(LocalExpnId),
@@ -164,6 +164,14 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
 
     fn invocation_parent(&self, id: LocalExpnId) -> LocalDefId {
         self.invocation_parents[&id].parent_def
+    }
+
+    fn mark_scope_with_compile_error(&mut self, id: NodeId) {
+        if let Some(id) = self.opt_local_def_id(id)
+            && self.tcx.def_kind(id).is_module_like()
+        {
+            self.mods_with_parse_errors.insert(id.to_def_id());
+        }
     }
 
     fn resolve_dollar_crates(&self) {
@@ -403,13 +411,10 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                     ) {
                         Ok((Some(ext), _)) => {
                             if !ext.helper_attrs.is_empty() {
-                                let last_seg = resolution.path.segments.last().unwrap();
-                                let span = last_seg.ident.span.normalize_to_macros_2_0();
-                                entry.helper_attrs.extend(
-                                    ext.helper_attrs
-                                        .iter()
-                                        .map(|name| (i, Ident::new(*name, span))),
-                                );
+                                let span = resolution.path.segments.last().unwrap().ident.span;
+                                entry.helper_attrs.extend(ext.helper_attrs.iter().map(|name| {
+                                    (i, Macros20NormalizedIdent::new(Ident::new(*name, span)))
+                                }));
                             }
                             entry.has_derive_copy |= ext.builtin_name == Some(sym::Copy);
                             ext
@@ -431,8 +436,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             .iter()
             .map(|(_, ident)| {
                 let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
-                let binding = self.arenas.new_pub_res_binding(res, ident.span, expn_id);
-                (*ident, binding)
+                (*ident, self.arenas.new_pub_def_decl(res, ident.span, expn_id))
             })
             .collect();
         self.helper_attrs.insert(expn_id, helper_attrs);
@@ -531,7 +535,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         target_trait.for_each_child(self, |this, ident, ns, _binding| {
             // FIXME: Adjust hygiene for idents from globs, like for glob imports.
             if let Some(overriding_keys) = this.impl_binding_keys.get(&impl_def_id)
-                && overriding_keys.contains(&BindingKey::new(ident.0, ns))
+                && overriding_keys.contains(&BindingKey::new(ident, ns))
             {
                 // The name is overridden, do not produce it from the glob delegation.
             } else {
@@ -839,10 +843,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                  res: Res| {
             if let Some(initial_res) = initial_res {
                 if res != initial_res {
-                    // Make sure compilation does not succeed if preferred macro resolution
-                    // has changed after the macro had been expanded. In theory all such
-                    // situations should be reported as errors, so this is a bug.
-                    this.dcx().span_delayed_bug(span, "inconsistent resolution for a macro");
+                    if this.ambiguity_errors.is_empty() {
+                        // Make sure compilation does not succeed if preferred macro resolution
+                        // has changed after the macro had been expanded. In theory all such
+                        // situations should be reported as errors, so this is a bug.
+                        this.dcx().span_delayed_bug(span, "inconsistent resolution for a macro");
+                    }
                 }
             } else if this.tcx.dcx().has_errors().is_none() && this.privacy_errors.is_empty() {
                 // It's possible that the macro was unresolved (indeterminate) and silently
@@ -1062,18 +1068,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn prohibit_imported_non_macro_attrs(
         &self,
-        binding: Option<NameBinding<'ra>>,
+        decl: Option<Decl<'ra>>,
         res: Option<Res>,
         span: Span,
     ) {
         if let Some(Res::NonMacroAttr(kind)) = res {
-            if kind != NonMacroAttrKind::Tool && binding.is_none_or(|b| b.is_import()) {
-                let binding_span = binding.map(|binding| binding.span);
+            if kind != NonMacroAttrKind::Tool && decl.is_none_or(|b| b.is_import()) {
                 self.dcx().emit_err(errors::CannotUseThroughAnImport {
                     span,
                     article: kind.article(),
                     descr: kind.descr(),
-                    binding_span,
+                    binding_span: decl.map(|d| d.span),
                 });
             }
         }
@@ -1084,12 +1089,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         path: &ast::Path,
         parent_scope: &ParentScope<'ra>,
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
-        binding: Option<NameBinding<'ra>>,
+        decl: Option<Decl<'ra>>,
     ) {
         if let Some((mod_def_id, node_id)) = invoc_in_mod_inert_attr
-            && let Some(binding) = binding
+            && let Some(decl) = decl
             // This is a `macro_rules` itself, not some import.
-            && let NameBindingKind::Res(res) = binding.kind
+            && let DeclKind::Def(res) = decl.kind
             && let Res::Def(DefKind::Macro(kinds), def_id) = res
             && kinds.contains(MacroKinds::BANG)
             // And the `macro_rules` is defined inside the attribute's module,
@@ -1133,7 +1138,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     errors::OutOfScopeMacroCalls {
                         span: path.span,
                         path: pprust::path_to_string(path),
-                        // FIXME: Make this translatable.
                         location,
                     },
                 );

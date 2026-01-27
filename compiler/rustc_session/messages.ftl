@@ -57,7 +57,6 @@ session_int_literal_too_large = integer literal is too large
     .note = value exceeds limit of `{$limit}`
 
 session_invalid_character_in_crate_name = invalid character {$character} in crate name: `{$crate_name}`
-    .help = you can either pass `--crate-name` on the command line or add `#![crate_name = "…"]` to set the crate name
 
 session_invalid_float_literal_suffix = invalid suffix `{$suffix}` for float literal
     .label = invalid suffix `{$suffix}`
@@ -81,6 +80,8 @@ session_invalid_num_literal_suffix = invalid suffix `{$suffix}` for number liter
     .help = the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
 
 session_linker_plugin_lto_windows_not_supported = linker plugin based LTO is not supported together with `-C prefer-dynamic` when targeting Windows-like targets
+
+session_must_be_name_of_associated_function = must be a name of an associated function
 
 session_not_circumvent_feature = `-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature gates, except when testing error paths in the CTFE engine
 
@@ -139,12 +140,6 @@ session_unleashed_feature_help_named = skipping check for `{$gate}` feature
 session_unleashed_feature_help_unnamed = skipping check that does not even have a feature gate
 
 session_unstable_virtual_function_elimination = `-Zvirtual-function-elimination` requires `-Clto`
-
-session_unsupported_crate_type_for_codegen_backend =
-    dropping unsupported crate type `{$crate_type}` for codegen backend `{$codegen_backend}`
-
-session_unsupported_crate_type_for_target =
-    dropping unsupported crate type `{$crate_type}` for target `{$target_triple}`
 
 session_unsupported_dwarf_version = requested DWARF version {$dwarf_version} is not supported
 session_unsupported_dwarf_version_help = supported DWARF versions are 2, 3, 4 and 5

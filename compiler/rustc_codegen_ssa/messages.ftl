@@ -8,9 +8,9 @@ codegen_ssa_aix_strip_not_used = using host's `strip` binary to cross-compile to
 
 codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
 
-codegen_ssa_bare_instruction_set = `#[instruction_set]` requires an argument
-
 codegen_ssa_binary_output_to_tty = option `-o` or `--emit` is used to write binary output type `{$shorthand}` to stdout, but stdout is a tty
+
+codegen_ssa_bpf_staticlib_not_supported = linking static libraries is not supported for BPF
 
 codegen_ssa_cgu_not_recorded =
     CGU-reuse for `{$cgu_user_name}` is (mangled: `{$cgu_name}`) was not recorded
@@ -47,8 +47,6 @@ codegen_ssa_error_creating_remark_dir = failed to create remark directory: {$err
 
 codegen_ssa_error_writing_def_file =
     error writing .DEF file: {$error}
-
-codegen_ssa_expected_name_value_pair = expected name value pair
 
 codegen_ssa_extern_funcs_not_found = some `extern` functions couldn't be found; some native libraries may need to be installed or have their path specified
 
@@ -90,11 +88,6 @@ codegen_ssa_incorrect_cgu_reuse_type =
 
 codegen_ssa_insufficient_vs_code_product = VS Code is a different product, and is not sufficient.
 
-codegen_ssa_invalid_instruction_set = invalid instruction set specified
-
-codegen_ssa_invalid_literal_value = invalid literal value
-    .label = value must be an integer between `0` and `255`
-
 codegen_ssa_invalid_monomorphization_basic_float_type = invalid monomorphization of `{$name}` intrinsic: expected basic float type, found `{$ty}`
 
 codegen_ssa_invalid_monomorphization_basic_integer_or_ptr_type = invalid monomorphization of `{$name}` intrinsic: expected basic integer or pointer type, found `{$ty}`
@@ -129,6 +122,7 @@ codegen_ssa_invalid_monomorphization_mask_wrong_element_type = invalid monomorph
 
 codegen_ssa_invalid_monomorphization_mismatched_lengths = invalid monomorphization of `{$name}` intrinsic: mismatched lengths: mask length `{$m_len}` != other vector length `{$v_len}`
 
+codegen_ssa_invalid_monomorphization_non_scalable_type = invalid monomorphization of `{$name}` intrinsic: expected non-scalable type, found scalable type `{$ty}`
 codegen_ssa_invalid_monomorphization_return_element = invalid monomorphization of `{$name}` intrinsic: expected return element type `{$in_elem}` (element of input `{$in_ty}`), found `{$ret_ty}` with element type `{$out_ty}`
 
 codegen_ssa_invalid_monomorphization_return_integer_type = invalid monomorphization of `{$name}` intrinsic: expected return type with integer elements, found `{$ret_ty}` with non-integer `{$out_ty}`
@@ -214,8 +208,6 @@ codegen_ssa_msvc_missing_linker = the msvc targets depend on the msvc linker but
 
 codegen_ssa_multiple_external_func_decl = multiple declarations of external function `{$function}` from library `{$library_name}` have different calling conventions
 
-codegen_ssa_multiple_instruction_set = cannot specify more than one instruction set
-
 codegen_ssa_multiple_main_functions = entry symbol `main` declared multiple times
     .help = did you use `#[no_mangle]` on `fn main`? Use `#![no_main]` to suppress the usual Rust-generated entry point
 
@@ -227,9 +219,6 @@ codegen_ssa_no_module_named =
 codegen_ssa_no_natvis_directory = error enumerating natvis directory: {$error}
 
 codegen_ssa_no_saved_object_file = cached cgu {$cgu_name} should have an object file, but doesn't
-
-codegen_ssa_out_of_range_integer = integer value out of range
-    .label = value must be between `0` and `255`
 
 codegen_ssa_processing_dymutil_failed = processing debug info with `dsymutil` failed: {$status}
     .note = {$output}
@@ -360,9 +349,6 @@ codegen_ssa_unable_to_run_dsymutil = unable to run `dsymutil`: {$error}
 
 codegen_ssa_unable_to_write_debugger_visualizer = unable to write debugger visualizer file `{$path}`: {$error}
 
-codegen_ssa_unexpected_parameter_name = unexpected parameter name
-    .label = expected `{$prefix_nops}` or `{$entry_nops}`
-
 codegen_ssa_unknown_archive_kind =
     don't know how to build archive of type: {$kind}
 
@@ -381,8 +367,6 @@ codegen_ssa_unknown_reuse_kind = unknown cgu-reuse-kind `{$kind}` specified
 codegen_ssa_unstable_ctarget_feature =
     unstable feature specified for `-Ctarget-feature`: `{$feature}`
     .note = this feature is not stably supported; its behavior can change in the future
-
-codegen_ssa_unsupported_instruction_set = target does not support `#[instruction_set]`
 
 codegen_ssa_unsupported_link_self_contained = option `-C link-self-contained` is not supported on this target
 

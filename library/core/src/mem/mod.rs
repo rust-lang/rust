@@ -9,6 +9,7 @@ use crate::alloc::Layout;
 use crate::clone::TrivialClone;
 use crate::marker::{Destruct, DiscriminantKind};
 use crate::panic::const_assert;
+use crate::ptr::Alignment;
 use crate::{clone, cmp, fmt, hash, intrinsics, ptr};
 
 mod manually_drop;
@@ -18,6 +19,10 @@ pub use manually_drop::ManuallyDrop;
 mod maybe_uninit;
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 pub use maybe_uninit::MaybeUninit;
+
+mod maybe_dangling;
+#[unstable(feature = "maybe_dangling", issue = "118166")]
+pub use maybe_dangling::MaybeDangling;
 
 mod transmutability;
 #[unstable(feature = "transmutability", issue = "99571")]
@@ -32,6 +37,9 @@ pub use drop_guard::DropGuard;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::transmute;
+
+#[unstable(feature = "type_info", issue = "146922")]
+pub mod type_info;
 
 /// Takes ownership and "forgets" about the value **without running its destructor**.
 ///
@@ -1249,6 +1257,10 @@ pub trait SizedTypeProperties: Sized {
     #[unstable(feature = "sized_type_properties", issue = "none")]
     #[lang = "mem_align_const"]
     const ALIGN: usize = intrinsics::align_of::<Self>();
+
+    #[doc(hidden)]
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    const ALIGNMENT: Alignment = Alignment::of::<Self>();
 
     /// `true` if this type requires no storage.
     /// `false` if its [size](size_of) is greater than zero.

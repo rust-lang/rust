@@ -6,9 +6,7 @@
 // having basically only two use-cases that act in different ways.
 
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::def::DefKind;
-use rustc_hir::{LangItem, find_attr};
+use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, AdtDef, Ty};
@@ -230,9 +228,7 @@ where
     F: FnMut(Local) -> bool,
 {
     match rvalue {
-        Rvalue::ThreadLocalRef(_) | Rvalue::NullaryOp(..) => {
-            Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx))
-        }
+        Rvalue::ThreadLocalRef(_) => Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx)),
 
         Rvalue::Discriminant(place) => in_place::<Q, _>(cx, in_local, place.as_ref()),
 
@@ -314,7 +310,7 @@ where
         // i.e., we treat all qualifs as non-structural for deref projections. Generally,
         // we can say very little about `*ptr` even if we know that `ptr` satisfies all
         // sorts of properties.
-        if matches!(elem, ProjectionElem::Deref) {
+        if elem == ProjectionElem::Deref {
             // We have to assume that this qualifies.
             return true;
         }
@@ -340,23 +336,25 @@ where
         Operand::Copy(place) | Operand::Move(place) => {
             return in_place::<Q, _>(cx, in_local, place.as_ref());
         }
+        Operand::RuntimeChecks(_) => return Q::in_any_value_of_ty(cx, cx.tcx.types.bool),
 
         Operand::Constant(c) => c,
     };
 
     // Check the qualifs of the value of `const` items.
     let uneval = match constant.const_ {
-        Const::Ty(_, ct)
-            if matches!(
-                ct.kind(),
-                ty::ConstKind::Param(_) | ty::ConstKind::Error(_) | ty::ConstKind::Value(_)
-            ) =>
-        {
-            None
-        }
-        Const::Ty(_, c) => {
-            bug!("expected ConstKind::Param or ConstKind::Value here, found {:?}", c)
-        }
+        Const::Ty(_, ct) => match ct.kind() {
+            ty::ConstKind::Param(_) | ty::ConstKind::Error(_) => None,
+            // Unevaluated consts in MIR bodies don't have associated MIR (e.g. `#[type_const]`).
+            ty::ConstKind::Unevaluated(_) => None,
+            // FIXME(mgca): Investigate whether using `None` for `ConstKind::Value` is overly
+            // strict, and if instead we should be doing some kind of value-based analysis.
+            ty::ConstKind::Value(_) => None,
+            _ => bug!(
+                "expected ConstKind::Param, ConstKind::Value, ConstKind::Unevaluated, or ConstKind::Error here, found {:?}",
+                ct
+            ),
+        },
         Const::Unevaluated(uv, _) => Some(uv),
         Const::Val(..) => None,
     };
@@ -367,14 +365,8 @@ where
         // check performed after the promotion. Verify that with an assertion.
         assert!(promoted.is_none() || Q::ALLOW_PROMOTED);
 
-        // Avoid looking at attrs of anon consts as that will ICE
-        let is_type_const_item =
-            matches!(cx.tcx.def_kind(def), DefKind::Const | DefKind::AssocConst)
-                && find_attr!(cx.tcx.get_all_attrs(def), AttributeKind::TypeConst(_));
-
-        // Don't peak inside trait associated constants, also `#[type_const] const` items
-        // don't have bodies so there's nothing to look at
-        if promoted.is_none() && cx.tcx.trait_of_assoc(def).is_none() && !is_type_const_item {
+        // Don't peak inside trait associated constants.
+        if promoted.is_none() && cx.tcx.trait_of_assoc(def).is_none() {
             let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def);
 
             if !Q::in_qualifs(&qualifs) {

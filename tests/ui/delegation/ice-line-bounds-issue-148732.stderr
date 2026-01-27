@@ -4,8 +4,7 @@ error[E0106]: missing lifetime specifier
 LL |     dbg!(b);
    |     ^^^^^^^ expected named lifetime parameter
    |
-   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
-   |
+   = note: this error originates in the macro `$crate::macros::dbg_internal` which comes from the expansion of the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find function `a` in this scope
   --> $DIR/ice-line-bounds-issue-148732.rs:1:7
@@ -38,7 +37,7 @@ LL |     dbg!(b);
    |     ^^^^^^^ the trait `Debug` is not implemented for fn item `fn() {b}`
    |
    = help: use parentheses to call this function: `b()`
-   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::macros::dbg_internal` which comes from the expansion of the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

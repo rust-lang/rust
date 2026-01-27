@@ -31,5 +31,9 @@ vfs.workspace = true
 span.workspace = true
 intern.workspace = true
 
+[features]
+default = []
+in-rust-tree = []
+
 [lints]
 workspace = true

@@ -6,10 +6,9 @@ use crate::os::windows::io::{AsRawHandle, HandleOrNull};
 use crate::sys::handle::Handle;
 use crate::sys::pal::time::WaitableTimer;
 use crate::sys::pal::{dur2timeout, to_u16s};
-use crate::sys::{c, stack_overflow};
-use crate::sys_common::FromInner;
+use crate::sys::{FromInner, c, stack_overflow};
 use crate::thread::ThreadInit;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{io, ptr};
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
@@ -121,11 +120,28 @@ pub fn sleep(dur: Duration) {
         timer.set(dur)?;
         timer.wait()
     }
+    // Directly forward to `Sleep` for its zero duration behavior when indeed
+    // zero in order to skip the `Instant::now` calls, useless in this case.
+    if dur.is_zero() {
+        unsafe { c::Sleep(0) };
     // Attempt to use high-precision sleep (Windows 10, version 1803+).
-    // On error fallback to the standard `Sleep` function.
-    // Also preserves the zero duration behavior of `Sleep`.
-    if dur.is_zero() || high_precision_sleep(dur).is_err() {
-        unsafe { c::Sleep(dur2timeout(dur)) }
+    // On error, fallback to the standard `Sleep` function.
+    } else if high_precision_sleep(dur).is_err() {
+        let start = Instant::now();
+        unsafe { c::Sleep(dur2timeout(dur)) };
+
+        // See #149935: `Sleep` under Windows 7 and probably 8 as well seems a
+        // bit buggy for us as it can last less than the requested time while
+        // our API is meant to guarantee that. This is fixed by measuring the
+        // effective time difference and if needed, sleeping a bit more in
+        // order to ensure the duration is always exceeded. A fixed single
+        // millisecond works because `Sleep` operates based on a system-wide
+        // (until Windows 10 2004 that makes it process-local) interrupt timer
+        // that counts in "tick" units of ~15ms by default: a 1ms timeout
+        // therefore passes the next tick boundary.
+        if start.elapsed() < dur {
+            unsafe { c::Sleep(1) };
+        }
     }
 }
 

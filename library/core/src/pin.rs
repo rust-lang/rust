@@ -831,15 +831,13 @@
 //!     <code>fn get_pin_mut(self: [Pin]<[`&mut Self`]>) -> [Pin]<[`&mut T`]></code>.
 //!     Then we could do the following:
 //!     ```compile_fail
-//!     # use std::cell::RefCell;
-//!     # use std::pin::Pin;
-//!     fn exploit_ref_cell<T>(rc: Pin<&mut RefCell<T>>) {
+//!     fn exploit_ref_cell<T>(mut rc: Pin<&mut RefCell<T>>) {
 //!         // Here we get pinned access to the `T`.
 //!         let _: Pin<&mut T> = rc.as_mut().get_pin_mut();
 //!
 //!         // And here we have `&mut T` to the same data.
 //!         let shared: &RefCell<T> = rc.into_ref().get_ref();
-//!         let borrow = shared.borrow_mut();
+//!         let mut borrow = shared.borrow_mut();
 //!         let content = &mut *borrow;
 //!     }
 //!     ```
@@ -1825,7 +1823,7 @@ where
 {
 }
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
 /// Trait that indicates that this is a pointer or a wrapper for one, where
 /// unsizing can be performed on the pointee when it is pinned.
 ///
@@ -2027,7 +2025,7 @@ unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 ///
 /// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin
 #[stable(feature = "pin_macro", since = "1.68.0")]
-#[rustc_macro_transparency = "semitransparent"]
+#[rustc_macro_transparency = "semiopaque"]
 #[allow_internal_unstable(super_let)]
 #[rustc_diagnostic_item = "pin_macro"]
 // `super` gets removed by rustfmt

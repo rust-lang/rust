@@ -29,7 +29,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, ErrorOutputType, Input};
 use rustc_session::lint;
 use rustc_span::edition::Edition;
-use rustc_span::{FileName, Span};
+use rustc_span::{FileName, RemapPathScopeComponents, Span};
 use rustc_target::spec::{Target, TargetTuple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
 use tracing::debug;
@@ -625,7 +625,7 @@ fn run_test(
     ]);
     if let ErrorOutputType::HumanReadable { kind, color_config } = rustdoc_options.error_format {
         let short = kind.short();
-        let unicode = kind == HumanReadableErrorType::AnnotateSnippet { unicode: true, short };
+        let unicode = kind == HumanReadableErrorType { unicode: true, short };
 
         if short {
             compiler_args.extend_from_slice(&["--error-format".to_owned(), "short".to_owned()]);
@@ -957,8 +957,10 @@ impl ScrapedDocTest {
         if !item_path.is_empty() {
             item_path.push(' ');
         }
-        let name =
-            format!("{} - {item_path}(line {line})", filename.prefer_remapped_unconditionally());
+        let name = format!(
+            "{} - {item_path}(line {line})",
+            filename.display(RemapPathScopeComponents::DOCUMENTATION)
+        );
 
         Self { filename, line, langstr, text, name, span, global_crate_attrs }
     }
@@ -969,15 +971,11 @@ impl ScrapedDocTest {
     fn no_run(&self, opts: &RustdocOptions) -> bool {
         self.langstr.no_run || opts.no_run
     }
+
     fn path(&self) -> PathBuf {
         match &self.filename {
-            FileName::Real(path) => {
-                if let Some(local_path) = path.local_path() {
-                    local_path.to_path_buf()
-                } else {
-                    // Somehow we got the filename from the metadata of another crate, should never happen
-                    unreachable!("doctest from a different crate");
-                }
+            FileName::Real(name) => {
+                name.path(RemapPathScopeComponents::DOCUMENTATION).to_path_buf()
             }
             _ => PathBuf::from(r"doctest.rs"),
         }
@@ -1023,9 +1021,12 @@ impl CreateRunnableDocTests {
 
     fn add_test(&mut self, scraped_test: ScrapedDocTest, dcx: Option<DiagCtxtHandle<'_>>) {
         // For example `module/file.rs` would become `module_file_rs`
+        //
+        // Note that we are kind-of extending the definition of the MACRO scope here, but
+        // after all `#[doc]` is kind-of a macro.
         let file = scraped_test
             .filename
-            .prefer_local()
+            .display(RemapPathScopeComponents::MACRO)
             .to_string_lossy()
             .chars()
             .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })

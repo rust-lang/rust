@@ -122,6 +122,13 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         unimplemented!()
     }
 
+    #[inline(always)]
+    fn runtime_checks(_ecx: &InterpCx<'tcx, Self>, r: RuntimeChecks) -> InterpResult<'tcx, bool> {
+        // Runtime checks have different value depending on the crate they are codegenned in.
+        // Verify we aren't trying to evaluate them in mir-optimizations.
+        panic!("compiletime machine evaluated {r:?}")
+    }
+
     fn binary_ptr_op(
         ecx: &InterpCx<'tcx, Self>,
         bin_op: BinOp,

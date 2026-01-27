@@ -78,11 +78,15 @@ The following test suites are available, with links for more information:
 
 [`run-make`](#run-make-tests) are general purpose tests using Rust programs.
 
+### The build-std test suite
+
+[`build-std`](#build-std-tests) test that -Zbuild-std works.
+
 ### Rustdoc test suites
 
 | Test suite                           | Purpose                                                                  |
 |--------------------------------------|--------------------------------------------------------------------------|
-| [`rustdoc`][rustdoc-html-tests]      | Check HTML output of `rustdoc`                                           |
+| [`rustdoc-html`][rustdoc-html-tests]      | Check HTML output of `rustdoc`                                           |
 | [`rustdoc-gui`][rustdoc-gui-tests]   | Check `rustdoc`'s GUI using a web browser                                |
 | [`rustdoc-js`][rustdoc-js-tests]     | Check `rustdoc`'s search engine and index                                |
 | [`rustdoc-js-std`][rustdoc-js-tests] | Check `rustdoc`'s search engine and index on the std library docs        |
@@ -90,10 +94,11 @@ The following test suites are available, with links for more information:
 | `rustdoc-ui`                         | Check terminal output of `rustdoc` ([see also](ui.md))                   |
 
 Some rustdoc-specific tests can also be found in `ui/rustdoc/`.
-These check rustdoc-related or -specific lints that (also) run as part of `rustc`, not (only) `rustdoc`.
+These tests ensure that certain lints that are emitted as part of executing rustdoc
+are also run when executing rustc.
 Run-make tests pertaining to rustdoc are typically named `run-make/rustdoc-*/`.
 
-[rustdoc-html-tests]: ../rustdoc-internals/rustdoc-test-suite.md
+[rustdoc-html-tests]: ../rustdoc-internals/rustdoc-html-test-suite.md
 [rustdoc-gui-tests]: ../rustdoc-internals/rustdoc-gui-test-suite.md
 [rustdoc-js-tests]: ../rustdoc-internals/search.md#testing-the-search-engine
 [rustdoc-json-tests]: ../rustdoc-internals/rustdoc-json-test-suite.md
@@ -306,13 +311,19 @@ For example, `./x test tests/debuginfo -- --debugger gdb` will only test GDB com
 
 ### Codegen tests
 
-The tests in [`tests/codegen-llvm`] test LLVM code generation. They compile the test
-with the `--emit=llvm-ir` flag to emit LLVM IR. They then run the LLVM
+The tests in [`tests/codegen-llvm`] test LLVM code generation. They compile the
+test with the `--emit=llvm-ir` flag to emit LLVM IR. They then run the LLVM
 [FileCheck] tool. The test is annotated with various `// CHECK` comments to
 check the generated code. See the [FileCheck] documentation for a tutorial and
 more information.
 
 See also the [assembly tests](#assembly-tests) for a similar set of tests.
+
+By default, codegen tests will have `//@ needs-target-std` *implied* (that the
+target needs to support std), *unless* the `#![no_std]`/`#![no_core]` attribute
+was specified in the test source. You can override this behavior and explicitly
+write `//@ needs-target-std` to only run the test when target supports std, even
+if the test is `#![no_std]`/`#![no_core]`.
 
 If you need to work with `#![no_std]` cross-compiling tests, consult the
 [`minicore` test auxiliary](./minicore.md) chapter.
@@ -427,6 +438,12 @@ The `run-make-cargo` test suite additionally builds an in-tree `cargo` to suppor
 use cases that require testing in-tree `cargo` in conjunction with in-tree `rustc`.
 The `run-make` test suite does not have access to in-tree `cargo` (so it can be the
 faster-to-iterate test suite).
+
+### `build-std` tests
+
+The tests in [`tests/build-std`] check that `-Zbuild-std` works. This is currently
+just a run-make test suite with a single recipe. The recipe generates test cases
+and runs them in parallel.
 
 #### Using Rust recipes
 
@@ -654,7 +671,9 @@ to link to the extern crate to make the crate be available as an extern prelude.
 That allows you to specify the additional syntax of the `--extern` flag, such as
 renaming a dependency. For example, `//@ aux-crate:foo=bar.rs` will compile
 `auxiliary/bar.rs` and make it available under then name `foo` within the test.
-This is similar to how Cargo does dependency renaming.
+This is similar to how Cargo does dependency renaming. It is also possible to
+specify [`--extern` modifiers](https://github.com/rust-lang/rust/issues/98405).
+For example, `//@ aux-crate:noprelude:foo=bar.rs`.
 
 `aux-bin` is similar to `aux-build` but will build a binary instead of a
 library. The binary will be available in `auxiliary/bin` relative to the working

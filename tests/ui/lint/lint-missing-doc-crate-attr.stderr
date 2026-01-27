@@ -1,0 +1,16 @@
+error: missing documentation for the crate
+  --> $DIR/lint-missing-doc-crate-attr.rs:2:1
+   |
+LL | / #![deny(missing_docs)]
+LL | |
+LL | | #![crate_type = "lib"]
+   | |______________________^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-missing-doc-crate-attr.rs:2:9
+   |
+LL | #![deny(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

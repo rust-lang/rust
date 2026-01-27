@@ -23,5 +23,5 @@ cfg_select! {
 
 pub use imp::{ExitStatus, ExitStatusError, Process};
 
-pub use self::common::{Command, CommandArgs, ExitCode, Stdio};
+pub use self::common::{ChildPipe, Command, CommandArgs, ExitCode, Stdio, read_output};
 pub use crate::ffi::OsString as EnvKey;

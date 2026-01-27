@@ -1712,8 +1712,8 @@ impl<T> *mut [T] {
     /// Gets a raw, mutable pointer to the underlying array.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "core_slice_as_array", since = "1.93.0")]
+    #[rustc_const_stable(feature = "core_slice_as_array", since = "1.93.0")]
     #[inline]
     #[must_use]
     pub const fn as_mut_array<const N: usize>(self) -> Option<*mut [T; N]> {
@@ -1742,7 +1742,7 @@ impl<T> *mut [T] {
     /// that is at least `mid * size_of::<T>()` bytes long. Not upholding these
     /// requirements is *[undefined behavior]* even if the resulting pointers are not used.
     ///
-    /// Since `len` being in-bounds it is not a safety invariant of `*mut [T]` the
+    /// Since `len` being in-bounds is not a safety invariant of `*mut [T]` the
     /// safety requirements of this method are the same as for [`split_at_mut_unchecked`].
     /// The explicit bounds check is only as useful as `len` is correct.
     ///

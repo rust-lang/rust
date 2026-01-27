@@ -7,13 +7,9 @@
 #[macro_use]
 extern crate quote;
 
-use proc_macro2::{Ident, Literal, Span, TokenStream, TokenTree};
+use proc_macro2::{Ident, Span, TokenStream, TokenTree};
 use quote::ToTokens;
 use std::env;
-
-fn string(s: &str) -> TokenTree {
-    Literal::string(s).into()
-}
 
 #[proc_macro_attribute]
 pub fn simd_test(
@@ -21,29 +17,31 @@ pub fn simd_test(
     item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let tokens = TokenStream::from(attr).into_iter().collect::<Vec<_>>();
-    if tokens.len() != 3 {
-        panic!("expected #[simd_test(enable = \"feature\")]");
-    }
-    match &tokens[0] {
-        TokenTree::Ident(tt) if *tt == "enable" => {}
-        _ => panic!("expected #[simd_test(enable = \"feature\")]"),
-    }
-    match &tokens[1] {
-        TokenTree::Punct(tt) if tt.as_char() == '=' => {}
-        _ => panic!("expected #[simd_test(enable = \"feature\")]"),
-    }
-    let enable_feature = match &tokens[2] {
-        TokenTree::Literal(tt) => tt.to_string(),
-        _ => panic!("expected #[simd_test(enable = \"feature\")]"),
-    };
-    let enable_feature = enable_feature.trim_start_matches('"').trim_end_matches('"');
-    let target_features: Vec<String> = enable_feature
-        .replace('+', "")
-        .split(',')
-        .map(String::from)
-        .collect();
+    let (target_features, target_feature_attr) = match &tokens[..] {
+        [] => (Vec::new(), TokenStream::new()),
+        [
+            TokenTree::Ident(enable),
+            TokenTree::Punct(equals),
+            TokenTree::Literal(literal),
+        ] if enable == "enable" && equals.as_char() == '=' => {
+            let enable_feature = literal.to_string();
+            let enable_feature = enable_feature.trim_start_matches('"').trim_end_matches('"');
+            let target_features: Vec<_> = enable_feature
+                .replace('+', "")
+                .split(',')
+                .map(String::from)
+                .collect();
 
-    let enable_feature = string(enable_feature);
+            (
+                target_features,
+                quote! {
+                    #[target_feature(enable = #enable_feature)]
+                },
+            )
+        }
+        _ => panic!("expected #[simd_test(enable = \"feature\")] or #[simd_test]"),
+    };
+
     let mut item = syn::parse_macro_input!(item as syn::ItemFn);
     let item_attrs = std::mem::take(&mut item.attrs);
     let name = &item.sig.ident;
@@ -102,6 +100,19 @@ pub fn simd_test(
         TokenStream::new()
     };
 
+    let (const_test, const_stability) = if item.sig.constness.is_some() {
+        (
+            quote! {
+                const _: () = unsafe { #name() };
+            },
+            quote! {
+                #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+            },
+        )
+    } else {
+        (TokenStream::new(), TokenStream::new())
+    };
+
     let ret: TokenStream = quote_spanned! {
         proc_macro2::Span::call_site() =>
         #[allow(non_snake_case)]
@@ -109,6 +120,8 @@ pub fn simd_test(
         #maybe_ignore
         #(#item_attrs)*
         fn #name() {
+            #const_test
+
             let mut missing_features = ::std::vec::Vec::new();
             #detect_missing_features
             if missing_features.is_empty() {
@@ -118,7 +131,8 @@ pub fn simd_test(
                 ::stdarch_test::assert_skip_test_ok(stringify!(#name), &missing_features);
             }
 
-            #[target_feature(enable = #enable_feature)]
+            #target_feature_attr
+            #const_stability
             #item
         }
     };

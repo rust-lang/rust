@@ -11,6 +11,13 @@ use crate::coverage::graph::CoverageGraph;
 use crate::coverage::hir_info::ExtractedHirInfo;
 use crate::coverage::spans::extract_refined_covspans;
 
+/// Indicates why mapping extraction failed, for debug-logging purposes.
+#[derive(Debug)]
+pub(crate) enum MappingsError {
+    NoMappings,
+    TreeSortFailure,
+}
+
 #[derive(Default)]
 pub(crate) struct ExtractedMappings {
     pub(crate) mappings: Vec<Mapping>,
@@ -23,8 +30,8 @@ pub(crate) fn extract_mappings_from_mir<'tcx>(
     mir_body: &mir::Body<'tcx>,
     hir_info: &ExtractedHirInfo,
     graph: &CoverageGraph,
-) -> ExtractedMappings {
-    let expn_tree = expansion::build_expn_tree(mir_body, hir_info, graph);
+) -> Result<ExtractedMappings, MappingsError> {
+    let expn_tree = expansion::build_expn_tree(mir_body, hir_info, graph)?;
 
     let mut mappings = vec![];
 
@@ -33,7 +40,11 @@ pub(crate) fn extract_mappings_from_mir<'tcx>(
 
     extract_branch_mappings(mir_body, hir_info, graph, &expn_tree, &mut mappings);
 
-    ExtractedMappings { mappings }
+    if mappings.is_empty() {
+        tracing::debug!("no mappings were extracted");
+        return Err(MappingsError::NoMappings);
+    }
+    Ok(ExtractedMappings { mappings })
 }
 
 fn resolve_block_markers(

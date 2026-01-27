@@ -420,6 +420,13 @@ pub enum ObligationCauseCode<'tcx> {
     /// Only reachable if the `unsized_fn_params` feature is used. Unsized function arguments must
     /// be place expressions because we can't store them in MIR locals as temporaries.
     UnsizedNonPlaceExpr(Span),
+
+    /// Error derived when checking an impl item is compatible with
+    /// its corresponding trait item's definition
+    CompareEii {
+        external_impl: LocalDefId,
+        declaration: DefId,
+    },
 }
 
 /// Whether a value can be extracted into a const.
@@ -752,8 +759,11 @@ pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub nested: ThinVec<N>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 pub enum DynCompatibilityViolation {
+    /// Trait is marked `#[rustc_dyn_incompatible_trait]`.
+    ExplicitlyDynIncompatible(SmallVec<[Span; 1]>),
+
     /// `Self: Sized` declared on the trait.
     SizedSelf(SmallVec<[Span; 1]>),
 
@@ -768,20 +778,24 @@ pub enum DynCompatibilityViolation {
     SupertraitConst(SmallVec<[Span; 1]>),
 
     /// Method has something illegal.
-    Method(Symbol, MethodViolationCode, Span),
+    Method(Symbol, MethodViolation, Span),
 
-    /// Associated const.
-    AssocConst(Symbol, Span),
+    /// Associated constant is faulty.
+    AssocConst(Symbol, AssocConstViolation, Span),
 
-    /// GAT
-    GAT(Symbol, Span),
+    /// Generic associated type (GAT).
+    GenericAssocTy(Symbol, Span),
 }
 
 impl DynCompatibilityViolation {
     pub fn error_msg(&self) -> Cow<'static, str> {
+        // FIXME(mgca): For method violations we just say "method ..." but for assoc const ones we
+        //              say "it contains ... associated constant ...". Make it consistent.
+
         match self {
-            DynCompatibilityViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
-            DynCompatibilityViolation::SupertraitSelf(spans) => {
+            Self::ExplicitlyDynIncompatible(_) => "it opted out of dyn-compatibility".into(),
+            Self::SizedSelf(_) => "it requires `Self: Sized`".into(),
+            Self::SupertraitSelf(spans) => {
                 if spans.iter().any(|sp| *sp != DUMMY_SP) {
                     "it uses `Self` as a type parameter".into()
                 } else {
@@ -789,93 +803,80 @@ impl DynCompatibilityViolation {
                         .into()
                 }
             }
-            DynCompatibilityViolation::SupertraitNonLifetimeBinder(_) => {
+            Self::SupertraitNonLifetimeBinder(_) => {
                 "where clause cannot reference non-lifetime `for<...>` variables".into()
             }
-            DynCompatibilityViolation::SupertraitConst(_) => {
-                "it cannot have a `const` supertrait".into()
-            }
-            DynCompatibilityViolation::Method(name, MethodViolationCode::StaticMethod(_), _) => {
+            Self::SupertraitConst(_) => "it cannot have a `const` supertrait".into(),
+            Self::Method(name, MethodViolation::StaticMethod(_), _) => {
                 format!("associated function `{name}` has no `self` parameter").into()
             }
-            DynCompatibilityViolation::Method(
-                name,
-                MethodViolationCode::ReferencesSelfInput(_),
-                DUMMY_SP,
-            ) => format!("method `{name}` references the `Self` type in its parameters").into(),
-            DynCompatibilityViolation::Method(
-                name,
-                MethodViolationCode::ReferencesSelfInput(_),
-                _,
-            ) => format!("method `{name}` references the `Self` type in this parameter").into(),
-            DynCompatibilityViolation::Method(
-                name,
-                MethodViolationCode::ReferencesSelfOutput,
-                _,
-            ) => format!("method `{name}` references the `Self` type in its return type").into(),
-            DynCompatibilityViolation::Method(
-                name,
-                MethodViolationCode::ReferencesImplTraitInTrait(_),
-                _,
-            ) => {
+            Self::Method(name, MethodViolation::ReferencesSelfInput(_), DUMMY_SP) => {
+                format!("method `{name}` references the `Self` type in its parameters").into()
+            }
+            Self::Method(name, MethodViolation::ReferencesSelfInput(_), _) => {
+                format!("method `{name}` references the `Self` type in this parameter").into()
+            }
+            Self::Method(name, MethodViolation::ReferencesSelfOutput, _) => {
+                format!("method `{name}` references the `Self` type in its return type").into()
+            }
+            Self::Method(name, MethodViolation::ReferencesImplTraitInTrait(_), _) => {
                 format!("method `{name}` references an `impl Trait` type in its return type").into()
             }
-            DynCompatibilityViolation::Method(name, MethodViolationCode::AsyncFn, _) => {
+            Self::Method(name, MethodViolation::AsyncFn, _) => {
                 format!("method `{name}` is `async`").into()
             }
-            DynCompatibilityViolation::Method(name, MethodViolationCode::CVariadic, _) => {
+            Self::Method(name, MethodViolation::CVariadic, _) => {
                 format!("method `{name}` is C-variadic").into()
             }
-            DynCompatibilityViolation::Method(
-                name,
-                MethodViolationCode::WhereClauseReferencesSelf,
-                _,
-            ) => format!("method `{name}` references the `Self` type in its `where` clause").into(),
-            DynCompatibilityViolation::Method(name, MethodViolationCode::Generic, _) => {
+            Self::Method(name, MethodViolation::WhereClauseReferencesSelf, _) => {
+                format!("method `{name}` references the `Self` type in its `where` clause").into()
+            }
+            Self::Method(name, MethodViolation::Generic, _) => {
                 format!("method `{name}` has generic type parameters").into()
             }
-            DynCompatibilityViolation::Method(
-                name,
-                MethodViolationCode::UndispatchableReceiver(_),
-                _,
-            ) => format!("method `{name}`'s `self` parameter cannot be dispatched on").into(),
-            DynCompatibilityViolation::AssocConst(name, DUMMY_SP) => {
-                format!("it contains associated `const` `{name}`").into()
+            Self::Method(name, MethodViolation::UndispatchableReceiver(_), _) => {
+                format!("method `{name}`'s `self` parameter cannot be dispatched on").into()
             }
-            DynCompatibilityViolation::AssocConst(..) => {
-                "it contains this associated `const`".into()
+            Self::AssocConst(name, AssocConstViolation::FeatureNotEnabled, _) => {
+                format!("it contains associated const `{name}`").into()
             }
-            DynCompatibilityViolation::GAT(name, _) => {
-                format!("it contains the generic associated type `{name}`").into()
+            Self::AssocConst(name, AssocConstViolation::Generic, _) => {
+                format!("it contains generic associated const `{name}`").into()
+            }
+            Self::AssocConst(name, AssocConstViolation::NonType, _) => {
+                format!("it contains associated const `{name}` that's not marked `#[type_const]`")
+                    .into()
+            }
+            Self::AssocConst(name, AssocConstViolation::TypeReferencesSelf, _) => format!(
+                "it contains associated const `{name}` whose type references the `Self` type"
+            )
+            .into(),
+            Self::GenericAssocTy(name, _) => {
+                format!("it contains generic associated type `{name}`").into()
             }
         }
     }
 
     pub fn solution(&self) -> DynCompatibilityViolationSolution {
         match self {
-            DynCompatibilityViolation::SizedSelf(_)
-            | DynCompatibilityViolation::SupertraitSelf(_)
-            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(..)
-            | DynCompatibilityViolation::SupertraitConst(_) => {
-                DynCompatibilityViolationSolution::None
-            }
-            DynCompatibilityViolation::Method(
+            Self::ExplicitlyDynIncompatible(_)
+            | Self::SizedSelf(_)
+            | Self::SupertraitSelf(_)
+            | Self::SupertraitNonLifetimeBinder(..)
+            | Self::SupertraitConst(_) => DynCompatibilityViolationSolution::None,
+            Self::Method(
                 name,
-                MethodViolationCode::StaticMethod(Some((add_self_sugg, make_sized_sugg))),
+                MethodViolation::StaticMethod(Some((add_self_sugg, make_sized_sugg))),
                 _,
             ) => DynCompatibilityViolationSolution::AddSelfOrMakeSized {
                 name: *name,
                 add_self_sugg: add_self_sugg.clone(),
                 make_sized_sugg: make_sized_sugg.clone(),
             },
-            DynCompatibilityViolation::Method(
-                name,
-                MethodViolationCode::UndispatchableReceiver(Some(span)),
-                _,
-            ) => DynCompatibilityViolationSolution::ChangeToRefSelf(*name, *span),
-            DynCompatibilityViolation::AssocConst(name, _)
-            | DynCompatibilityViolation::GAT(name, _)
-            | DynCompatibilityViolation::Method(name, ..) => {
+            Self::Method(name, MethodViolation::UndispatchableReceiver(Some(span)), _) => {
+                DynCompatibilityViolationSolution::ChangeToRefSelf(*name, *span)
+            }
+            Self::Method(name, ..) | Self::AssocConst(name, ..) | Self::GenericAssocTy(name, _) => {
                 DynCompatibilityViolationSolution::MoveToAnotherTrait(*name)
             }
         }
@@ -885,13 +886,14 @@ impl DynCompatibilityViolation {
         // When `span` comes from a separate crate, it'll be `DUMMY_SP`. Treat it as `None` so
         // diagnostics use a `note` instead of a `span_label`.
         match self {
-            DynCompatibilityViolation::SupertraitSelf(spans)
-            | DynCompatibilityViolation::SizedSelf(spans)
-            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(spans)
-            | DynCompatibilityViolation::SupertraitConst(spans) => spans.clone(),
-            DynCompatibilityViolation::AssocConst(_, span)
-            | DynCompatibilityViolation::GAT(_, span)
-            | DynCompatibilityViolation::Method(_, _, span) => {
+            Self::ExplicitlyDynIncompatible(spans)
+            | Self::SizedSelf(spans)
+            | Self::SupertraitSelf(spans)
+            | Self::SupertraitNonLifetimeBinder(spans)
+            | Self::SupertraitConst(spans) => spans.clone(),
+            Self::Method(_, _, span)
+            | Self::AssocConst(_, _, span)
+            | Self::GenericAssocTy(_, span) => {
                 if *span != DUMMY_SP {
                     smallvec![*span]
                 } else {
@@ -957,8 +959,8 @@ impl DynCompatibilityViolationSolution {
 }
 
 /// Reasons a method might not be dyn-compatible.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]
-pub enum MethodViolationCode {
+#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+pub enum MethodViolation {
     /// e.g., `fn foo()`
     StaticMethod(Option<(/* add &self */ (String, Span), /* add Self: Sized */ (String, Span))>),
 
@@ -985,6 +987,22 @@ pub enum MethodViolationCode {
 
     /// the method's receiver (`self` argument) can't be dispatched on
     UndispatchableReceiver(Option<Span>),
+}
+
+/// Reasons an associated const might not be dyn compatible.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+pub enum AssocConstViolation {
+    /// Unstable feature `min_generic_const_args` wasn't enabled.
+    FeatureNotEnabled,
+
+    /// Has own generic parameters (GAC).
+    Generic,
+
+    /// Isn't marked `#[type_const]`.
+    NonType,
+
+    /// Its type mentions the `Self` type parameter.
+    TypeReferencesSelf,
 }
 
 /// These are the error cases for `codegen_select_candidate`.

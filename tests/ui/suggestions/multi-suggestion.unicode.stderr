@@ -5,6 +5,7 @@ LL │     let _ = std::collections::HashMap();
    │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ╰╴
    ╭▸ $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+   ⸬  $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
    │
    ╰ note: `std::collections::HashMap` defined here
 help: you might have meant to use an associated function to build this type
@@ -12,14 +13,15 @@ help: you might have meant to use an associated function to build this type
 LL │     let _ = std::collections::HashMap::new();
    ├╴                                     +++++
 LL -     let _ = std::collections::HashMap();
+LL +     let _ = std::collections::HashMap::new_in(_);
+   ├╴
+LL -     let _ = std::collections::HashMap();
 LL +     let _ = std::collections::HashMap::with_capacity(_);
    ├╴
 LL -     let _ = std::collections::HashMap();
-LL +     let _ = std::collections::HashMap::with_hasher(_);
-   ├╴
-LL -     let _ = std::collections::HashMap();
-LL +     let _ = std::collections::HashMap::with_capacity_and_hasher(_, _);
-   ╰╴
+LL +     let _ = std::collections::HashMap::with_capacity_in(_, _);
+   │
+   ╰ and 4 other candidates
 help: consider using the `Default` trait
    ╭╴
 LL │     let _ = <std::collections::HashMap as std::default::Default>::default();
@@ -73,7 +75,7 @@ LL -         })),
 LL +         wtf: Some(<Box as std::default::Default>::default()),
    ╰╴
 
-error: cannot construct `HashMap<_, _, _>` with struct literal syntax due to private fields
+error: cannot construct `HashMap<_, _, _, _>` with struct literal syntax due to private fields
    ╭▸ $DIR/multi-suggestion.rs:19:13
    │
 LL │     let _ = std::collections::HashMap {};
@@ -86,14 +88,15 @@ LL -     let _ = std::collections::HashMap {};
 LL +     let _ = std::collections::HashMap::new();
    ├╴
 LL -     let _ = std::collections::HashMap {};
+LL +     let _ = std::collections::HashMap::new_in(_);
+   ├╴
+LL -     let _ = std::collections::HashMap {};
 LL +     let _ = std::collections::HashMap::with_capacity(_);
    ├╴
 LL -     let _ = std::collections::HashMap {};
-LL +     let _ = std::collections::HashMap::with_hasher(_);
-   ├╴
-LL -     let _ = std::collections::HashMap {};
-LL +     let _ = std::collections::HashMap::with_capacity_and_hasher(_, _);
-   ╰╴
+LL +     let _ = std::collections::HashMap::with_capacity_in(_, _);
+   │
+   ╰ and 4 other candidates
 help: consider using the `Default` trait
    ╭╴
 LL -     let _ = std::collections::HashMap {};

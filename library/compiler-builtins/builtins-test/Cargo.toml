@@ -1,7 +1,6 @@
 [package]
 name = "builtins-test"
 version = "0.1.0"
-authors = ["Alex Crichton <alex@alexcrichton.com>"]
 edition = "2024"
 publish = false
 license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
@@ -14,7 +13,7 @@ rand_xoshiro = "0.7"
 # To compare float builtins against
 rustc_apfloat = "0.2.3"
 # Really a dev dependency, but dev dependencies can't be optional
-iai-callgrind = { version = "0.15.2", optional = true }
+gungraun = { version = "0.17.0", optional = true }
 
 [dependencies.compiler_builtins]
 path = "../builtins-shim"
@@ -46,8 +45,8 @@ no-sys-f16-f64-convert = []
 # Skip tests that rely on f16 symbols being available on the system
 no-sys-f16 = ["no-sys-f16-f64-convert"]
 
-# Enable icount benchmarks (requires iai-callgrind and valgrind)
-icount = ["dep:iai-callgrind"]
+# Enable icount benchmarks (requires gungraun-runner and valgrind locally)
+icount = ["dep:gungraun"]
 
 # Enable report generation without bringing in more dependencies by default
 benchmarking-reports = ["criterion/plotters", "criterion/html_reports"]

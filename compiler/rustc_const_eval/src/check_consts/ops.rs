@@ -125,9 +125,6 @@ pub(crate) struct FnCallNonConst<'tcx> {
 }
 
 impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
-    // FIXME: make this translatable
-    #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)]
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, _: Span) -> Diag<'tcx> {
         let tcx = ccx.tcx;
         let caller = ccx.def_id();

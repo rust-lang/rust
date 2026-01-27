@@ -6,7 +6,7 @@ use crate::ffi::CStr;
 use crate::io;
 use crate::os::unix::net;
 use crate::sealed::Sealed;
-use crate::sys_common::AsInner;
+use crate::sys::AsInner;
 
 /// NetBSD-specific functionality for `AF_UNIX` sockets [`UnixDatagram`]
 /// and [`UnixStream`].

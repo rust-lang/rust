@@ -10,8 +10,7 @@ use hir_def::{
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     AliasTyKind, ClauseKind, PredicatePolarity, TypeSuperVisitable as _, TypeVisitable as _,
-    Upcast, elaborate,
-    inherent::{IntoKind, SliceLike},
+    Upcast, elaborate, inherent::IntoKind,
 };
 use smallvec::SmallVec;
 
@@ -329,13 +328,9 @@ where
     }
 
     let sig = db.callable_item_signature(func.into());
-    if sig
-        .skip_binder()
-        .inputs()
-        .iter()
-        .skip(1)
-        .any(|ty| contains_illegal_self_type_reference(db, trait_, &ty, AllowSelfProjection::Yes))
-    {
+    if sig.skip_binder().inputs().iter().skip(1).any(|ty| {
+        contains_illegal_self_type_reference(db, trait_, ty.skip_binder(), AllowSelfProjection::Yes)
+    }) {
         cb(MethodViolationCode::ReferencesSelfInput)?;
     }
 
@@ -412,11 +407,11 @@ fn receiver_is_dispatchable<'db>(
 
     // `self: Self` can't be dispatched on, but this is already considered dyn-compatible
     // See rustc's comment on https://github.com/rust-lang/rust/blob/3f121b9461cce02a703a0e7e450568849dfaa074/compiler/rustc_trait_selection/src/traits/object_safety.rs#L433-L437
-    if sig.inputs().iter().next().is_some_and(|p| p.skip_binder() == self_param_ty) {
+    if sig.inputs().iter().next().is_some_and(|p| *p.skip_binder() == self_param_ty) {
         return true;
     }
 
-    let Some(&receiver_ty) = sig.inputs().skip_binder().as_slice().first() else {
+    let Some(&receiver_ty) = sig.inputs().skip_binder().first() else {
         return false;
     };
 
@@ -427,9 +422,14 @@ fn receiver_is_dispatchable<'db>(
     };
 
     let meta_sized_did = lang_items.MetaSized;
-    let Some(meta_sized_did) = meta_sized_did else {
-        return false;
-    };
+
+    // TODO: This is for supporting dyn compatibility for toolchains doesn't contain `MetaSized`
+    // trait. Uncomment and short circuit here once `MINIMUM_SUPPORTED_TOOLCHAIN_VERSION`
+    // become > 1.88.0
+    //
+    // let Some(meta_sized_did) = meta_sized_did else {
+    //     return false;
+    // };
 
     // Type `U`
     // FIXME: That seems problematic to fake a generic param like that?
@@ -450,17 +450,16 @@ fn receiver_is_dispatchable<'db>(
         });
         let trait_predicate = TraitRef::new_from_args(interner, trait_.into(), args);
 
-        let meta_sized_predicate =
-            TraitRef::new(interner, meta_sized_did.into(), [unsized_self_ty]);
+        let meta_sized_predicate = meta_sized_did
+            .map(|did| TraitRef::new(interner, did.into(), [unsized_self_ty]).upcast(interner));
 
         ParamEnv {
             clauses: Clauses::new_from_iter(
                 interner,
-                generic_predicates.iter_identity_copied().chain([
-                    unsize_predicate.upcast(interner),
-                    trait_predicate.upcast(interner),
-                    meta_sized_predicate.upcast(interner),
-                ]),
+                generic_predicates
+                    .iter_identity_copied()
+                    .chain([unsize_predicate.upcast(interner), trait_predicate.upcast(interner)])
+                    .chain(meta_sized_predicate),
             ),
         }
     };

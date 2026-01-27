@@ -83,6 +83,19 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         Bn::Tgamma => 20,
     };
 
+    // These have a separate implementation on i586
+    if cfg!(x86_no_sse) {
+        match ctx.fn_ident {
+            Id::Exp => ulp = 1,
+            Id::Exp2 => ulp = 1,
+            Id::Exp10 => ulp = 1,
+            Id::Expf => ulp = 0,
+            Id::Exp2f => ulp = 0,
+            Id::Exp10f => ulp = 0,
+            _ => (),
+        }
+    }
+
     // There are some cases where musl's approximation is less accurate than ours. For these
     // cases, increase the ULP.
     if ctx.basis == Musl {
@@ -98,6 +111,8 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
             Id::Cbrt => ulp = 2,
             // FIXME(#401): musl has an incorrect result here.
             Id::Fdim => ulp = 2,
+            Id::Exp2f => ulp = 1,
+            Id::Expf => ulp = 1,
             Id::Sincosf => ulp = 500,
             Id::Tgamma => ulp = 20,
             _ => (),
@@ -124,8 +139,6 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
             Id::Asinh => ulp = 3,
             Id::Asinhf => ulp = 3,
             Id::Cbrt => ulp = 1,
-            Id::Exp10 | Id::Exp10f => ulp = 1_000_000,
-            Id::Exp2 | Id::Exp2f => ulp = 10_000_000,
             Id::Log1p | Id::Log1pf => ulp = 2,
             Id::Tan => ulp = 2,
             _ => (),
@@ -205,36 +218,6 @@ impl MaybeOverride<(f16,)> for SpecialCase {}
 
 impl MaybeOverride<(f32,)> for SpecialCase {
     fn check_float<F: Float>(input: (f32,), actual: F, expected: F, ctx: &CheckCtx) -> CheckAction {
-        if ctx.base_name == BaseName::Expm1
-            && !input.0.is_infinite()
-            && input.0 > 80.0
-            && actual.is_infinite()
-            && !expected.is_infinite()
-        {
-            // we return infinity but the number is representable
-            if ctx.basis == CheckBasis::Musl {
-                return XFAIL_NOCHECK;
-            }
-            return XFAIL("expm1 representable numbers");
-        }
-
-        if cfg!(x86_no_sse)
-            && ctx.base_name == BaseName::Exp2
-            && !expected.is_infinite()
-            && actual.is_infinite()
-        {
-            // We return infinity when there is a representable value. Test input: 127.97238
-            return XFAIL("586 exp2 representable numbers");
-        }
-
-        if ctx.base_name == BaseName::Sinh && input.0.abs() > 80.0 && actual.is_nan() {
-            // we return some NaN that should be real values or infinite
-            if ctx.basis == CheckBasis::Musl {
-                return XFAIL_NOCHECK;
-            }
-            return XFAIL("sinh unexpected NaN");
-        }
-
         if (ctx.base_name == BaseName::Lgamma || ctx.base_name == BaseName::LgammaR)
             && input.0 > 4e36
             && expected.is_infinite()
@@ -276,14 +259,6 @@ impl MaybeOverride<(f64,)> for SpecialCase {
         {
             // Our rounding mode is incorrect.
             return XFAIL("i586 rint rounding mode");
-        }
-
-        if cfg!(x86_no_sse)
-            && (ctx.fn_ident == Identifier::Exp10 || ctx.fn_ident == Identifier::Exp2)
-        {
-            // FIXME: i586 has very imprecise results with ULP > u32::MAX for these
-            // operations so we can't reasonably provide a limit.
-            return XFAIL_NOCHECK;
         }
 
         if ctx.base_name == BaseName::J0 && input.0 < -1e300 {

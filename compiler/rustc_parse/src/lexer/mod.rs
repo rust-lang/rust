@@ -36,6 +36,10 @@ use unescape_error_reporting::{emit_unescape_error, escaped_char};
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(rustc_lexer::Token, 12);
 
+const INVISIBLE_CHARACTERS: [char; 8] = [
+    '\u{200b}', '\u{200c}', '\u{2060}', '\u{2061}', '\u{2062}', '\u{00ad}', '\u{034f}', '\u{061c}',
+];
+
 #[derive(Clone, Debug)]
 pub(crate) struct UnmatchedDelim {
     pub found_delim: Option<Delimiter>,
@@ -316,7 +320,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     // Include the leading `'` in the real identifier, for macro
                     // expansion purposes. See #12512 for the gory details of why
                     // this is necessary.
-                    let lifetime_name = self.str_from(start);
+                    let lifetime_name = nfc_normalize(self.str_from(start));
                     self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
                     if starts_with_number {
                         let span = self.mk_sp(start, self.pos);
@@ -325,8 +329,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                             .with_span(span)
                             .stash(span, StashKey::LifetimeIsChar);
                     }
-                    let ident = Symbol::intern(lifetime_name);
-                    token::Lifetime(ident, IdentIsRaw::No)
+                    token::Lifetime(lifetime_name, IdentIsRaw::No)
                 }
                 rustc_lexer::TokenKind::RawLifetime => {
                     self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
@@ -373,7 +376,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                             String::with_capacity(lifetime_name_without_tick.as_str().len() + 1);
                         lifetime_name.push('\'');
                         lifetime_name += lifetime_name_without_tick.as_str();
-                        let sym = Symbol::intern(&lifetime_name);
+                        let sym = nfc_normalize(&lifetime_name);
 
                         // Make sure we mark this as a raw identifier.
                         self.psess.raw_identifier_spans.push(span);
@@ -393,9 +396,8 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                         self.pos = lt_start;
                         self.cursor = Cursor::new(&str_before[2 as usize..], FrontmatterAllowed::No);
 
-                        let lifetime_name = self.str_from(start);
-                        let ident = Symbol::intern(lifetime_name);
-                        token::Lifetime(ident, IdentIsRaw::No)
+                        let lifetime_name = nfc_normalize(self.str_from(start));
+                        token::Lifetime(lifetime_name, IdentIsRaw::No)
                     }
                 }
                 rustc_lexer::TokenKind::Semi => token::Semi,
@@ -458,6 +460,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                         escaped: escaped_char(c),
                         sugg,
                         null: if c == '\x00' { Some(errors::UnknownTokenNull) } else { None },
+                        invisible: if INVISIBLE_CHARACTERS.contains(&c) { Some(errors::InvisibleCharacter) } else { None },
                         repeat: if repeats > 0 {
                             swallow_next_invalid = repeats;
                             Some(errors::UnknownTokenRepeat { repeats })

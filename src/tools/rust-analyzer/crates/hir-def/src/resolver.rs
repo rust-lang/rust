@@ -881,7 +881,7 @@ impl<'db> Resolver<'db> {
             }));
             if let Some(block) = expr_scopes.block(scope_id) {
                 let def_map = block_def_map(db, block);
-                let local_def_map = block.module(db).only_local_def_map(db);
+                let local_def_map = block.lookup(db).module.only_local_def_map(db);
                 resolver.scopes.push(Scope::BlockScope(ModuleItemMap {
                     def_map,
                     local_def_map,
@@ -936,7 +936,7 @@ fn handle_macro_def_scope(
         // A macro is allowed to refer to variables from before its declaration.
         // Therefore, if we got to the rib of its declaration, give up its hygiene
         // and use its parent expansion.
-        *hygiene_id = HygieneId::new(parent_ctx.opaque_and_semitransparent(db));
+        *hygiene_id = HygieneId::new(parent_ctx.opaque_and_semiopaque(db));
         *hygiene_info = parent_ctx.outer_expn(db).map(|expansion| {
             let expansion = db.lookup_intern_macro_call(expansion.into());
             (parent_ctx.parent(db), expansion.def)
@@ -950,7 +950,7 @@ fn hygiene_info(
     hygiene_id: HygieneId,
 ) -> Option<(SyntaxContext, MacroDefId)> {
     if !hygiene_id.is_root() {
-        let ctx = hygiene_id.lookup();
+        let ctx = hygiene_id.syntax_context();
         ctx.outer_expn(db).map(|expansion| {
             let expansion = db.lookup_intern_macro_call(expansion.into());
             (ctx.parent(db), expansion.def)
@@ -1087,7 +1087,7 @@ fn resolver_for_scope_<'db>(
     for scope in scope_chain.into_iter().rev() {
         if let Some(block) = scopes.block(scope) {
             let def_map = block_def_map(db, block);
-            let local_def_map = block.module(db).only_local_def_map(db);
+            let local_def_map = block.lookup(db).module.only_local_def_map(db);
             // Using `DefMap::ROOT` is okay here since inside modules other than the root,
             // there can't directly be expressions.
             r = r.push_block_scope(def_map, local_def_map, def_map.root);

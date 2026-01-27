@@ -1,0 +1,16 @@
+error[E0806]: `other` has 0 parameters but #[foo] requires it to have 1
+  --> $DIR/cross_crate_wrong_ty.rs:12:1
+   |
+LL | #[unsafe(cross_crate_eii_declaration::foo)]
+   | ------------------------------------------- required because of this attribute
+LL | fn other() -> u64 {
+   | ^^^^^^^^^^^^^^^^^ expected 1 parameter, found 0
+   |
+  ::: $DIR/auxiliary/cross_crate_eii_declaration.rs:13:5
+   |
+LL |     pub safe fn bar(x: u64) -> u64;
+   |     ------------------------------- requires 1 parameter
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0806`.

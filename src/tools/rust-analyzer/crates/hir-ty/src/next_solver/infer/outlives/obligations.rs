@@ -3,7 +3,7 @@ use rustc_type_ir::{OutlivesPredicate, TypeVisitableExt};
 use tracing::{debug, instrument};
 
 use crate::next_solver::{
-    ArgOutlivesPredicate, GenericArg, Region, RegionOutlivesPredicate, Ty,
+    ArgOutlivesPredicate, GenericArgKind, Region, RegionOutlivesPredicate, Ty,
     infer::{InferCtxt, TypeOutlivesConstraint, snapshot::undo_log::UndoLog},
 };
 
@@ -12,14 +12,14 @@ impl<'db> InferCtxt<'db> {
         &self,
         OutlivesPredicate(arg, r2): ArgOutlivesPredicate<'db>,
     ) {
-        match arg {
-            GenericArg::Lifetime(r1) => {
+        match arg.kind() {
+            GenericArgKind::Lifetime(r1) => {
                 self.register_region_outlives_constraint(OutlivesPredicate(r1, r2));
             }
-            GenericArg::Ty(ty1) => {
+            GenericArgKind::Type(ty1) => {
                 self.register_type_outlives_constraint(ty1, r2);
             }
-            GenericArg::Const(_) => unreachable!(),
+            GenericArgKind::Const(_) => unreachable!(),
         }
     }
 

@@ -59,7 +59,7 @@
 #[cold = 1]
 //~^ ERROR malformed
 #[must_use()]
-//~^ ERROR valid forms for the attribute are
+//~^ ERROR malformed
 #[no_mangle = 1]
 //~^ ERROR malformed
 #[unsafe(naked())]
@@ -137,7 +137,7 @@ pub fn test3() {}
 //~^ ERROR malformed
 #[must_not_suspend()]
 //~^ ERROR malformed
-#[cfi_encoding]
+#[cfi_encoding = ""]
 //~^ ERROR malformed
 struct Test;
 
@@ -214,12 +214,12 @@ static mut TLS: u8 = 42;
 #[no_link()]
 //~^ ERROR malformed
 #[macro_use = 1]
-//~^ ERROR valid forms for the attribute are `#[macro_use(name1, name2, ...)]` and `#[macro_use]`
+//~^ ERROR malformed
 extern crate wloop;
 //~^ ERROR can't find crate for `wloop` [E0463]
 
 #[macro_export = 18]
-//~^ ERROR valid forms for the attribute are
+//~^ ERROR malformed
 #[allow_internal_unsafe = 1]
 //~^ ERROR malformed
 //~| ERROR allow_internal_unsafe side-steps the unsafe_code lint

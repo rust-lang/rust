@@ -4,10 +4,9 @@ use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_macros::HashStable;
-use rustc_query_system::HandleCycleError;
 use rustc_query_system::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 pub(crate) use rustc_query_system::query::QueryJobId;
-use rustc_query_system::query::*;
+use rustc_query_system::query::{CycleError, CycleErrorHandling, HashResult, QueryCache};
 use rustc_span::{ErrorGuaranteed, Span};
 pub use sealed::IntoQueryParam;
 
@@ -23,7 +22,8 @@ pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub name: &'static str,
     pub eval_always: bool,
     pub dep_kind: DepKind,
-    pub handle_cycle_error: HandleCycleError,
+    /// How this query deals with query cycle errors.
+    pub cycle_error_handling: CycleErrorHandling,
     // Offset of this query's state field in the QueryStates struct
     pub query_state: usize,
     // Offset of this query's cache field in the QueryCaches struct
@@ -278,7 +278,7 @@ macro_rules! define_callbacks {
                     ($V)
                 );
 
-                /// This function takes `ProvidedValue` and coverts it to an erased `Value` by
+                /// This function takes `ProvidedValue` and converts it to an erased `Value` by
                 /// allocating it on an arena if the query has the `arena_cache` modifier. The
                 /// value is then erased and returned. This will happen when computing the query
                 /// using a provider or decoding a stored result.
@@ -342,22 +342,18 @@ macro_rules! define_callbacks {
             })*
         }
 
+        /// Holds per-query arenas for queries with the `arena_cache` modifier.
+        #[derive(Default)]
         pub struct QueryArenas<'tcx> {
-            $($(#[$attr])* pub $name: query_if_arena!([$($modifiers)*]
-                (TypedArena<<$V as $crate::query::arena_cached::ArenaCached<'tcx>>::Allocated>)
-                ()
-            ),)*
-        }
-
-        impl Default for QueryArenas<'_> {
-            fn default() -> Self {
-                Self {
-                    $($name: query_if_arena!([$($modifiers)*]
-                        (Default::default())
-                        ()
-                    ),)*
-                }
-            }
+            $(
+                $(#[$attr])*
+                pub $name: query_if_arena!([$($modifiers)*]
+                    // Use the `ArenaCached` helper trait to determine the arena's value type.
+                    (TypedArena<<$V as $crate::query::arena_cached::ArenaCached<'tcx>>::Allocated>)
+                    // No arena for this query, so the field type is `()`.
+                    ()
+                ),
+            )*
         }
 
         #[derive(Default)]
@@ -431,7 +427,7 @@ macro_rules! define_callbacks {
         #[derive(Default)]
         pub struct QueryStates<'tcx> {
             $(
-                pub $name: QueryState<$($K)*, QueryStackDeferred<'tcx>>,
+                pub $name: QueryState<$($K)*>,
             )*
         }
 
@@ -532,7 +528,7 @@ macro_rules! define_feedable {
 // The result type of each query must implement `Clone`, and additionally
 // `ty::query::values::Value`, which produces an appropriate placeholder
 // (error) value if the query resulted in a query cycle.
-// Queries marked with `fatal_cycle` do not need the latter implementation,
+// Queries marked with `cycle_fatal` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
 
 mod sealed {

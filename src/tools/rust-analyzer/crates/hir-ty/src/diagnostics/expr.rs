@@ -99,7 +99,7 @@ impl BodyValidationDiagnostic {
 struct ExprValidator<'db> {
     owner: DefWithBodyId,
     body: Arc<Body>,
-    infer: &'db InferenceResult<'db>,
+    infer: &'db InferenceResult,
     env: ParamEnv<'db>,
     diagnostics: Vec<BodyValidationDiagnostic>,
     validate_lints: bool,
@@ -313,7 +313,7 @@ impl<'db> ExprValidator<'db> {
                 );
                 value_or_partial.is_none_or(|v| !matches!(v, ValueNs::StaticId(_)))
             }
-            Expr::Field { expr, .. } => match self.infer.type_of_expr[*expr].kind() {
+            Expr::Field { expr, .. } => match self.infer.expr_ty(*expr).kind() {
                 TyKind::Adt(adt, ..) if matches!(adt.def_id().0, AdtId::UnionId(_)) => false,
                 _ => self.is_known_valid_scrutinee(*expr),
             },
@@ -554,7 +554,7 @@ impl<'db> FilterMapNextChecker<'db> {
 
 pub fn record_literal_missing_fields(
     db: &dyn HirDatabase,
-    infer: &InferenceResult<'_>,
+    infer: &InferenceResult,
     id: ExprId,
     expr: &Expr,
 ) -> Option<(VariantId, Vec<LocalFieldId>, /*exhaustive*/ bool)> {
@@ -584,7 +584,7 @@ pub fn record_literal_missing_fields(
 
 pub fn record_pattern_missing_fields(
     db: &dyn HirDatabase,
-    infer: &InferenceResult<'_>,
+    infer: &InferenceResult,
     id: PatId,
     pat: &Pat,
 ) -> Option<(VariantId, Vec<LocalFieldId>, /*exhaustive*/ bool)> {
@@ -612,8 +612,8 @@ pub fn record_pattern_missing_fields(
     Some((variant_def, missed_fields, exhaustive))
 }
 
-fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResult<'_>) -> bool {
-    fn walk(pat: PatId, body: &Body, infer: &InferenceResult<'_>, has_type_mismatches: &mut bool) {
+fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResult) -> bool {
+    fn walk(pat: PatId, body: &Body, infer: &InferenceResult, has_type_mismatches: &mut bool) {
         match infer.type_mismatch_for_pat(pat) {
             Some(_) => *has_type_mismatches = true,
             None if *has_type_mismatches => (),

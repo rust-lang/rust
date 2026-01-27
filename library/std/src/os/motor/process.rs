@@ -1,7 +1,7 @@
 #![unstable(feature = "motor_ext", issue = "147456")]
 
 use crate::sealed::Sealed;
-use crate::sys_common::AsInner;
+use crate::sys::AsInner;
 
 pub trait ChildExt: Sealed {
     /// Extracts the main thread raw handle, without taking ownership

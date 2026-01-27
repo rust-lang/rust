@@ -15,10 +15,11 @@ use crate::sys::pal::api::{self, WinError, set_file_information_by_handle};
 use crate::sys::pal::{IoResult, fill_utf16_buf, to_u16s, truncate_utf16_at_nul};
 use crate::sys::path::{WCStr, maybe_verbatim};
 use crate::sys::time::SystemTime;
-use crate::sys::{Align8, c, cvt};
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys::{Align8, AsInner, FromInner, IntoInner, c, cvt};
 use crate::{fmt, ptr, slice};
 
+mod dir;
+pub use dir::Dir;
 mod remove_dir_all;
 use remove_dir_all::remove_dir_all_iterative;
 
@@ -81,6 +82,8 @@ pub struct OpenOptions {
     share_mode: u32,
     security_qos_flags: u32,
     inherit_handle: bool,
+    freeze_last_access_time: bool,
+    freeze_last_write_time: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -204,6 +207,8 @@ impl OpenOptions {
             attributes: 0,
             security_qos_flags: 0,
             inherit_handle: false,
+            freeze_last_access_time: false,
+            freeze_last_write_time: false,
         }
     }
 
@@ -246,6 +251,12 @@ impl OpenOptions {
     pub fn inherit_handle(&mut self, inherit: bool) {
         self.inherit_handle = inherit;
     }
+    pub fn freeze_last_access_time(&mut self, freeze: bool) {
+        self.freeze_last_access_time = freeze;
+    }
+    pub fn freeze_last_write_time(&mut self, freeze: bool) {
+        self.freeze_last_write_time = freeze;
+    }
 
     fn get_access_mode(&self) -> io::Result<u32> {
         match (self.read, self.write, self.append, self.access_mode) {
@@ -275,7 +286,7 @@ impl OpenOptions {
         }
     }
 
-    fn get_creation_mode(&self) -> io::Result<u32> {
+    fn get_cmode_disposition(&self) -> io::Result<(u32, u32)> {
         match (self.write, self.append) {
             (true, false) => {}
             (false, false) => {
@@ -297,14 +308,22 @@ impl OpenOptions {
         }
 
         Ok(match (self.create, self.truncate, self.create_new) {
-            (false, false, false) => c::OPEN_EXISTING,
-            (true, false, false) => c::OPEN_ALWAYS,
-            (false, true, false) => c::TRUNCATE_EXISTING,
+            (false, false, false) => (c::OPEN_EXISTING, c::FILE_OPEN),
+            (true, false, false) => (c::OPEN_ALWAYS, c::FILE_OPEN_IF),
+            (false, true, false) => (c::TRUNCATE_EXISTING, c::FILE_OVERWRITE),
             // `CREATE_ALWAYS` has weird semantics so we emulate it using
             // `OPEN_ALWAYS` and a manual truncation step. See #115745.
-            (true, true, false) => c::OPEN_ALWAYS,
-            (_, _, true) => c::CREATE_NEW,
+            (true, true, false) => (c::OPEN_ALWAYS, c::FILE_OVERWRITE_IF),
+            (_, _, true) => (c::CREATE_NEW, c::FILE_CREATE),
         })
+    }
+
+    fn get_creation_mode(&self) -> io::Result<u32> {
+        self.get_cmode_disposition().map(|(mode, _)| mode)
+    }
+
+    fn get_disposition(&self) -> io::Result<u32> {
+        self.get_cmode_disposition().map(|(_, mode)| mode)
     }
 
     fn get_flags_and_attributes(&self) -> u32 {
@@ -343,6 +362,18 @@ impl File {
         };
         let handle = unsafe { HandleOrInvalid::from_raw_handle(handle) };
         if let Ok(handle) = OwnedHandle::try_from(handle) {
+            if opts.freeze_last_access_time || opts.freeze_last_write_time {
+                let file_time =
+                    c::FILETIME { dwLowDateTime: 0xFFFFFFFF, dwHighDateTime: 0xFFFFFFFF };
+                cvt(unsafe {
+                    c::SetFileTime(
+                        handle.as_raw_handle(),
+                        core::ptr::null(),
+                        if opts.freeze_last_access_time { &file_time } else { core::ptr::null() },
+                        if opts.freeze_last_write_time { &file_time } else { core::ptr::null() },
+                    )
+                })?;
+            }
             // Manual truncation. See #115745.
             if opts.truncate
                 && creation == c::OPEN_ALWAYS
@@ -1020,14 +1051,23 @@ impl FromRawHandle for File {
     }
 }
 
+fn debug_path_handle<'a, 'b>(
+    handle: BorrowedHandle<'a>,
+    f: &'a mut fmt::Formatter<'b>,
+    name: &str,
+) -> fmt::DebugStruct<'a, 'b> {
+    // FIXME(#24570): add more info here (e.g., mode)
+    let mut b = f.debug_struct(name);
+    b.field("handle", &handle.as_raw_handle());
+    if let Ok(path) = get_path(handle) {
+        b.field("path", &path);
+    }
+    b
+}
+
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME(#24570): add more info here (e.g., mode)
-        let mut b = f.debug_struct("File");
-        b.field("handle", &self.handle.as_raw_handle());
-        if let Ok(path) = get_path(self) {
-            b.field("path", &path);
-        }
+        let mut b = debug_path_handle(self.handle.as_handle(), f, "File");
         b.finish()
     }
 }
@@ -1293,8 +1333,8 @@ pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
                 Layout::from_size_align(struct_size as usize, align_of::<c::FILE_RENAME_INFO>())
                     .unwrap();
 
-            // SAFETY: We allocate enough memory for a full FILE_RENAME_INFO struct and a filename.
             let file_rename_info;
+            // SAFETY: We allocate enough memory for a full FILE_RENAME_INFO struct and a filename.
             unsafe {
                 file_rename_info = alloc(layout).cast::<c::FILE_RENAME_INFO>();
                 if file_rename_info.is_null() {
@@ -1531,10 +1571,10 @@ pub fn set_times_nofollow(p: &WCStr, times: FileTimes) -> io::Result<()> {
     file.set_times(times)
 }
 
-fn get_path(f: &File) -> io::Result<PathBuf> {
+fn get_path(f: impl AsRawHandle) -> io::Result<PathBuf> {
     fill_utf16_buf(
         |buf, sz| unsafe {
-            c::GetFinalPathNameByHandleW(f.handle.as_raw_handle(), buf, sz, c::VOLUME_NAME_DOS)
+            c::GetFinalPathNameByHandleW(f.as_raw_handle(), buf, sz, c::VOLUME_NAME_DOS)
         },
         |buf| PathBuf::from(OsString::from_wide(buf)),
     )
@@ -1547,7 +1587,7 @@ pub fn canonicalize(p: &WCStr) -> io::Result<PathBuf> {
     // This flag is so we can open directories too
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
     let f = File::open_native(p, &opts)?;
-    get_path(&f)
+    get_path(f.handle)
 }
 
 pub fn copy(from: &WCStr, to: &WCStr) -> io::Result<u64> {

@@ -692,6 +692,12 @@ declare_clippy_lint! {
     /// ///
     /// /// It was chosen by a fair dice roll.
     /// ```
+    ///
+    /// ### Terminal punctuation marks
+    /// This lint treats these characters as end markers: '.', '?', '!', '…' and ':'.
+    ///
+    /// The colon is not exactly a terminal punctuation mark, but this is required for paragraphs that
+    /// introduce a table or a list for example.
     #[clippy::version = "1.93.0"]
     pub DOC_PARAGRAPHS_MISSING_PUNCTUATION,
     restriction,
@@ -869,10 +875,12 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         }),
         true,
     );
-    let mut doc = fragments.iter().fold(String::new(), |mut acc, fragment| {
-        add_doc_fragment(&mut acc, fragment);
-        acc
-    });
+
+    let mut doc = String::with_capacity(fragments.iter().map(|frag| frag.doc.as_str().len() + 1).sum());
+
+    for fragment in &fragments {
+        add_doc_fragment(&mut doc, fragment);
+    }
     doc.pop();
 
     if doc.trim().is_empty() {

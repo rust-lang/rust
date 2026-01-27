@@ -244,3 +244,45 @@ pub(self) struct S;
         "#]],
     )
 }
+
+#[test]
+fn crate_attrs_should_preserve_order() {
+    check(
+        r#"
+//- /main.rs crate:foo crate-attr:no_std crate-attr:features(f16) crate-attr:crate_type="bin"
+        "#,
+        expect![[r##"
+            #![no_std]
+            #![features(f16)]
+            #![crate_type = "bin"]
+        "##]],
+    );
+}
+
+#[test]
+fn crate_attrs_with_disabled_cfg_injected() {
+    check(
+        r#"
+//- /main.rs crate:foo crate-attr:no_std crate-attr:cfg(false) crate-attr:features(f16,f128) crate-attr:crate_type="bin"
+        "#,
+        expect![[r#"
+            #![no_std]
+            #![cfg(false)]
+        "#]],
+    );
+}
+
+#[test]
+fn crate_attrs_with_disabled_cfg_in_source() {
+    check(
+        r#"
+//- /lib.rs crate:foo crate-attr:no_std
+#![cfg(false)]
+#![no_core]
+        "#,
+        expect![[r#"
+            #![no_std]
+            #![cfg(false)]
+        "#]],
+    );
+}

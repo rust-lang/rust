@@ -447,24 +447,23 @@ impl ast::UseTreeList {
 
 impl ast::Impl {
     pub fn self_ty(&self) -> Option<ast::Type> {
-        match self.target() {
-            (Some(t), None) | (_, Some(t)) => Some(t),
-            _ => None,
-        }
+        self.target().1
     }
 
     pub fn trait_(&self) -> Option<ast::Type> {
-        match self.target() {
-            (Some(t), Some(_)) => Some(t),
-            _ => None,
-        }
+        self.target().0
     }
 
     fn target(&self) -> (Option<ast::Type>, Option<ast::Type>) {
-        let mut types = support::children(self.syntax());
-        let first = types.next();
-        let second = types.next();
-        (first, second)
+        let mut types = support::children(self.syntax()).peekable();
+        let for_kw = self.for_token();
+        let trait_ = types.next_if(|trait_: &ast::Type| {
+            for_kw.is_some_and(|for_kw| {
+                trait_.syntax().text_range().start() < for_kw.text_range().start()
+            })
+        });
+        let self_ty = types.next();
+        (trait_, self_ty)
     }
 
     pub fn for_trait_name_ref(name_ref: &ast::NameRef) -> Option<ast::Impl> {
@@ -813,13 +812,16 @@ pub enum TypeBoundKind {
 }
 
 impl ast::TypeBound {
-    pub fn kind(&self) -> TypeBoundKind {
+    pub fn kind(&self) -> Option<TypeBoundKind> {
         if let Some(path_type) = support::children(self.syntax()).next() {
-            TypeBoundKind::PathType(self.for_binder(), path_type)
+            Some(TypeBoundKind::PathType(self.for_binder(), path_type))
+        } else if let Some(for_binder) = support::children::<ast::ForType>(&self.syntax).next() {
+            let Some(ast::Type::PathType(path_type)) = for_binder.ty() else { return None };
+            Some(TypeBoundKind::PathType(for_binder.for_binder(), path_type))
         } else if let Some(args) = self.use_bound_generic_args() {
-            TypeBoundKind::Use(args)
+            Some(TypeBoundKind::Use(args))
         } else if let Some(lifetime) = self.lifetime() {
-            TypeBoundKind::Lifetime(lifetime)
+            Some(TypeBoundKind::Lifetime(lifetime))
         } else {
             unreachable!()
         }
@@ -1093,6 +1095,16 @@ impl ast::MatchGuard {
     }
 }
 
+impl ast::MatchArm {
+    pub fn parent_match(&self) -> ast::MatchExpr {
+        self.syntax()
+            .parent()
+            .and_then(|it| it.parent())
+            .and_then(ast::MatchExpr::cast)
+            .expect("MatchArms are always nested in MatchExprs")
+    }
+}
+
 impl From<ast::Item> for ast::AnyHasAttrs {
     fn from(node: ast::Item) -> Self {
         Self::new(node)
@@ -1102,6 +1114,15 @@ impl From<ast::Item> for ast::AnyHasAttrs {
 impl From<ast::AssocItem> for ast::AnyHasAttrs {
     fn from(node: ast::AssocItem) -> Self {
         Self::new(node)
+    }
+}
+
+impl ast::FormatArgsArgName {
+    /// This is not a [`ast::Name`], because the name may be a keyword.
+    pub fn name(&self) -> SyntaxToken {
+        let name = self.syntax.first_token().unwrap();
+        assert!(name.kind().is_any_identifier());
+        name
     }
 }
 

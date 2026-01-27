@@ -12,7 +12,7 @@ trait Tr1 {
 }
 
 #[rustc_must_implement_one_of(a)]
-//~^ ERROR the `#[rustc_must_implement_one_of]` attribute must be used with at least 2 args
+//~^ ERROR malformed
 trait Tr2 {
     fn a() {}
 }
@@ -36,11 +36,11 @@ trait Tr5 {
 }
 
 #[rustc_must_implement_one_of(abc, xyz)]
-//~^ ERROR attribute should be applied to a trait
+//~^ ERROR `#[rustc_must_implement_one_of]` attribute cannot be used on functions
 fn function() {}
 
 #[rustc_must_implement_one_of(abc, xyz)]
-//~^ ERROR attribute should be applied to a trait
+//~^ ERROR `#[rustc_must_implement_one_of]` attribute cannot be used on structs
 struct Struct {}
 
 fn main() {}

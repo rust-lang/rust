@@ -2,7 +2,6 @@ use core::num::dec2flt::float::RawFloat;
 
 use crate::num::{ldexp_f32, ldexp_f64};
 
-// FIXME(f16_f128): enable on all targets once possible.
 #[test]
 #[cfg(target_has_reliable_f16)]
 fn test_f16_integer_decode() {
@@ -54,7 +53,6 @@ fn test_f64_integer_decode() {
 
 /* Sanity checks of computed magic numbers */
 
-// FIXME(f16_f128): enable on all targets once possible.
 #[test]
 #[cfg(target_has_reliable_f16)]
 fn test_f16_consts() {

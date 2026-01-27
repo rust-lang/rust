@@ -466,7 +466,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for BinaryHeap<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Ord> Default for BinaryHeap<T> {
+impl<T> Default for BinaryHeap<T> {
     /// Creates an empty `BinaryHeap<T>`.
     #[inline]
     fn default() -> BinaryHeap<T> {
@@ -496,7 +496,7 @@ impl<T: Ord, A: Allocator> Drop for RebuildOnDrop<'_, T, A> {
     }
 }
 
-impl<T: Ord> BinaryHeap<T> {
+impl<T> BinaryHeap<T> {
     /// Creates an empty `BinaryHeap` as a max-heap.
     ///
     /// # Examples
@@ -537,7 +537,7 @@ impl<T: Ord> BinaryHeap<T> {
     }
 }
 
-impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
+impl<T, A: Allocator> BinaryHeap<T, A> {
     /// Creates an empty `BinaryHeap` as a max-heap, using `A` as allocator.
     ///
     /// # Examples
@@ -581,7 +581,9 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     pub fn with_capacity_in(capacity: usize, alloc: A) -> BinaryHeap<T, A> {
         BinaryHeap { data: Vec::with_capacity_in(capacity, alloc) }
     }
+}
 
+impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// Returns a mutable reference to the greatest item in the binary heap, or
     /// `None` if it is empty.
     ///

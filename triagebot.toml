@@ -96,6 +96,17 @@ Thanks! <3
 """
 label = "O-ARM"
 
+[ping.loongarch]
+message = """\
+Hey LoongArch Group! This bug has been identified as a good "LoongArch candidate".
+In case it's useful, here are some [instructions] for tackling these sorts of
+bugs. Maybe take a look?
+Thanks! <3
+
+[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/loongarch.html
+"""
+label = "O-loongarch"
+
 [ping.risc-v]
 message = """\
 Hey RISC-V Group! This bug has been identified as a good "RISC-V candidate".
@@ -218,6 +229,7 @@ exclude_labels = [
     "T-infra",
     "T-release",
     "requires-nightly",
+    "F-*",
 ]
 
 [autolabel."T-rustdoc"]
@@ -228,7 +240,7 @@ trigger_files = [
     "src/rustdoc-json-types",
 
     # Tests
-    "tests/rustdoc",
+    "tests/rustdoc-html",
     "tests/rustdoc-ui",
     "tests/rustdoc-gui",
     "tests/rustdoc-js/",
@@ -303,7 +315,7 @@ trigger_labels = [
 ]
 trigger_files = [
     "src/librustdoc/html/",
-    "tests/rustdoc/",
+    "tests/rustdoc-html/",
     "tests/rustdoc-gui/",
     "tests/rustdoc-js/",
     "tests/rustdoc-js-std/",
@@ -318,6 +330,14 @@ trigger_files = [
 ]
 trigger_labels = [
     "A-type-based-search",
+]
+
+[autolabel."A-rustdoc-js"]
+trigger_files = [
+    "src/librustdoc/html/static/js/",
+    "src/librustdoc/html/static/css/",
+    "tests/rustdoc-js/",
+    "tests/rustdoc-js-std/",
 ]
 
 [autolabel."T-compiler"]
@@ -479,6 +499,7 @@ trigger_files = [
     "bootstrap.example.toml",
     "src/bootstrap",
     "src/build_helper",
+    "src/tools/build-manifest",
     "src/tools/rust-installer",
     "src/tools/x",
     "src/stage0",
@@ -942,15 +963,15 @@ cc = ["@lcnr"]
 
 [mentions."compiler/rustc_middle/src/ty/relate.rs"]
 message = "changes to the core type system"
-cc = ["@compiler-errors", "@lcnr"]
+cc = ["@lcnr"]
 
 [mentions."compiler/rustc_infer/src/infer/relate"]
 message = "changes to the core type system"
-cc = ["@compiler-errors", "@lcnr"]
+cc = ["@lcnr"]
 
 [mentions."compiler/rustc_hir_typeck/src/fn_ctxt/inspect_obligations.rs"]
 message = "changes to `inspect_obligations.rs`"
-cc = ["@compiler-errors", "@lcnr"]
+cc = ["@lcnr"]
 
 [mentions."compiler/rustc_middle/src/mir/interpret"]
 message = "Some changes occurred to the CTFE / Miri interpreter"
@@ -962,7 +983,7 @@ cc = ["@rust-lang/wg-mir-opt"]
 
 [mentions."compiler/rustc_trait_selection/src/traits/wf.rs"]
 message = "changes to the core type system"
-cc = ["@compiler-errors", "@lcnr"]
+cc = ["@lcnr"]
 
 [mentions."compiler/rustc_trait_selection/src/traits/const_evaluatable.rs"]
 message = "Some changes occurred in `const_evaluatable.rs`"
@@ -985,11 +1006,18 @@ message = """
 Some changes occurred in engine.rs, potentially modifying the public API \
 of `ObligationCtxt`.
 """
-cc = ["@lcnr", "@compiler-errors"]
+cc = ["@lcnr"]
 
 [mentions."compiler/rustc_hir_analysis/src/hir_ty_lowering"]
 message = "HIR ty lowering was modified"
 cc = ["@fmease"]
+
+[mentions."library/core/src/mem/type_info.rs"]
+message = """
+The reflection data structures are tied exactly to the implementation
+in the compiler. Make sure to also adjust `rustc_const_eval/src/const_eval/type_info.rs`
+"""
+cc = ["@oli-obk"]
 
 [mentions."compiler/rustc_error_codes/src/lib.rs"]
 message = "Some changes occurred in diagnostic error codes"
@@ -1046,6 +1074,14 @@ Some changes occurred to the intrinsics. Make sure the CTFE / Miri interpreter
 gets adapted for the changes, if necessary.
 """
 cc = ["@rust-lang/miri", "@RalfJung", "@oli-obk", "@lcnr"]
+
+[mentions."library/core/src/num/{dec2flt,flt2dec}"]
+message = "Some changes occurred in float parsing"
+cc = ["@tgross35"]
+
+[mentions."library/core/src/fmt/num.rs"]
+message = "Some changes occurred in integer formatting"
+cc = ["@tgross35"]
 
 [mentions."library/portable-simd"]
 message = """
@@ -1134,7 +1170,7 @@ cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@vakaras"]
 
 [mentions."compiler/rustc_error_messages"]
 message = "`rustc_error_messages` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
+cc = ["@davidtwco", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_errors/src/annotate_snippet_emitter_writer.rs"]
 message = "`rustc_errors::annotate_snippet_emitter_writer` was changed"
@@ -1146,11 +1182,11 @@ cc = ["@Muscraft"]
 
 [mentions."compiler/rustc_errors/src/translation.rs"]
 message = "`rustc_errors::translation` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
+cc = ["@davidtwco", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_macros/src/diagnostics"]
 message = "`rustc_macros::diagnostics` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
+cc = ["@davidtwco", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_public"]
 message = "This PR changes rustc_public"
@@ -1338,11 +1374,11 @@ message = "The rustc-dev-guide subtree was changed. If this PR *only* touches th
 cc = ["@BoxyUwU", "@jieyouxu", "@kobzol", "@tshepang"]
 
 [mentions."compiler/rustc_passes/src/check_attr.rs"]
-cc = ["@jdonszelmann"]
+cc = ["@jdonszelmann", "@JonathanBrouwer"]
 [mentions."compiler/rustc_attr_parsing"]
-cc = ["@jdonszelmann"]
+cc = ["@jdonszelmann", "@JonathanBrouwer"]
 [mentions."compiler/rustc_hir/src/attrs"]
-cc = ["@jdonszelmann"]
+cc = ["@jdonszelmann", "@JonathanBrouwer"]
 
 [mentions."src/tools/enzyme"]
 cc = ["@ZuseZ4"]
@@ -1415,7 +1451,6 @@ compiler_leads = [
 compiler = [
     "@BoxyUwU",
     "@chenyukang",
-    "@compiler-errors",
     "@davidtwco",
     "@eholk",
     "@fee1-dead",
@@ -1424,7 +1459,6 @@ compiler = [
     "@jieyouxu",
     "@jdonszelmann",
     "@JonathanBrouwer",
-    "@lcnr",
     "@madsmtm",
     "@mati865",
     "@Nadrieril",
@@ -1432,6 +1466,7 @@ compiler = [
     "@oli-obk",
     "@petrochenkov",
     "@SparrowLii",
+    "@tiif",
     "@WaffleLapkin",
     "@wesleywiser",
 ]
@@ -1474,13 +1509,11 @@ incremental = [
     "@wesleywiser",
 ]
 diagnostics = [
-    "@compiler-errors",
     "@davidtwco",
     "@oli-obk",
     "@chenyukang",
 ]
 parser = [
-    "@compiler-errors",
     "@davidtwco",
     "@nnethercote",
     "@petrochenkov",
@@ -1506,7 +1539,6 @@ mir-opt = [
     "@saethlin",
 ]
 types = [
-    "@compiler-errors",
     "@jackh726",
     "@lcnr",
     "@oli-obk",
@@ -1518,14 +1550,14 @@ borrowck = [
     "@matthewjasper"
 ]
 ast_lowering = [
-    "@compiler-errors",
     "@spastorino",
 ]
 debuginfo = [
     "@davidtwco"
 ]
 fallback = [
-    "@Mark-Simulacrum"
+    "@Mark-Simulacrum",
+    "@jieyouxu",
 ]
 style-team = [
     "@calebcartwright",
@@ -1533,7 +1565,6 @@ style-team = [
     "@traviscross",
 ]
 project-const-traits = [
-    "@compiler-errors",
     "@fee1-dead",
     "@fmease",
     "@oli-obk",
@@ -1617,17 +1648,18 @@ dep-bumps = [
 "/src/llvm-project" =                                    ["@cuviper"]
 "/src/rustdoc-json-types" =                              ["rustdoc"]
 "/src/stage0" =                                          ["bootstrap"]
-"/tests/run-make" =                                      ["@jieyouxu"]
-"/tests/run-make-cargo" =                                ["@jieyouxu"]
-"/tests/rustdoc" =                                       ["rustdoc"]
+"/tests/run-make" =                                      ["compiler"]
+"/tests/run-make-cargo" =                                ["compiler"]
+"/tests/rustdoc-html" =                                  ["rustdoc"]
 "/tests/rustdoc-gui" =                                   ["rustdoc"]
 "/tests/rustdoc-js-std" =                                ["rustdoc"]
 "/tests/rustdoc-js/" =                                   ["rustdoc"]
 "/tests/rustdoc-json" =                                  ["@aDotInTheVoid"]
 "/tests/rustdoc-ui" =                                    ["rustdoc"]
 "/tests/ui" =                                            ["compiler"]
+"/src/tools/build-manifest" =                            ["bootstrap"]
 "/src/tools/cargo" =                                     ["@ehuss"]
-"/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors", "@jieyouxu"]
+"/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@jieyouxu"]
 "/src/tools/linkchecker" =                               ["@ehuss"]
 "/src/tools/opt-dist" =                                  ["@kobzol"]
 "/src/tools/run-make-support" =                          ["@jieyouxu"]

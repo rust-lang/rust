@@ -14,8 +14,8 @@ use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_call, lower_generic_args,
 };
 use rustc_hir_analysis::hir_ty_lowering::{
-    ExplicitLateBound, FeedConstTy, GenericArgCountMismatch, GenericArgCountResult,
-    GenericArgsLowerer, GenericPathSegment, HirTyLowerer, IsMethodCall, RegionInferReason,
+    ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, GenericArgsLowerer,
+    GenericPathSegment, HirTyLowerer, IsMethodCall, RegionInferReason,
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
@@ -216,7 +216,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Don't write user type annotations for const param types, since we give them
         // identity args just so that we can trivially substitute their `EarlyBinder`.
         // We enforce that they match their type in MIR later on.
-        if matches!(self.tcx.def_kind(def_id), DefKind::ConstParam) {
+        if self.tcx.def_kind(def_id) == DefKind::ConstParam {
             return;
         }
 
@@ -525,9 +525,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn lower_const_arg(
         &self,
         const_arg: &'tcx hir::ConstArg<'tcx>,
-        feed: FeedConstTy<'_, 'tcx>,
+        ty: Ty<'tcx>,
     ) -> ty::Const<'tcx> {
-        let ct = self.lowerer().lower_const_arg(const_arg, feed);
+        let ct = self.lowerer().lower_const_arg(const_arg, ty);
         self.register_wf_obligation(
             ct.into(),
             self.tcx.hir_span(const_arg.hir_id),
@@ -1004,6 +1004,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err_extend,
         );
 
+        if let Err(e) = self.lowerer().check_param_res_if_mcg_for_instantiate_value_path(res, span)
+        {
+            return (Ty::new_error(self.tcx, e), res);
+        }
+
         if let Res::Local(hid) = res {
             let ty = self.local_ty(span, hid);
             let ty = self.normalize(span, ty);
@@ -1223,7 +1228,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Ambiguous parts of `ConstArg` are handled in the match arms below
                         .lower_const_arg(
                             ct.as_unambig_ct(),
-                            FeedConstTy::Param(param.def_id, preceding_args),
+                            self.fcx
+                                .tcx
+                                .type_of(param.def_id)
+                                .instantiate(self.fcx.tcx, preceding_args),
                         )
                         .into(),
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {

@@ -15,7 +15,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             abi: Abi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
-            features: "+v6,+vfp2,-d32".into(),
+            features: "+v6,+vfp2".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}__gnu_mcount_nc".into(),
             llvm_mcount_intrinsic: Some("llvm.arm.gnu.eabi.mcount".into()),

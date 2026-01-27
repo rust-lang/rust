@@ -197,6 +197,10 @@ impl Name {
     pub fn symbol(&self) -> &Symbol {
         &self.symbol
     }
+
+    pub fn is_generated(&self) -> bool {
+        self.as_str().starts_with("<ra@gennew>")
+    }
 }
 
 struct Display<'a> {
@@ -254,7 +258,7 @@ impl AsName for ast::NameOrNameRef {
     }
 }
 
-impl<Span> AsName for tt::Ident<Span> {
+impl AsName for tt::Ident {
     fn as_name(&self) -> Name {
         Name::new_root(self.sym.as_str())
     }

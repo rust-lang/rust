@@ -76,7 +76,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
                 return None;
             }
             _ => {
-                cx.expected_list(cx.attr_span);
+                cx.expected_list(cx.attr_span, args);
                 return None;
             }
         };
@@ -141,8 +141,6 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
 
                 macro report_unstable_modifier($feature: ident) {
                     if !features.$feature() {
-                        // FIXME: make this translatable
-                        #[expect(rustc::untranslatable_diagnostic)]
                         feature_err(
                             sess,
                             sym::$feature,
@@ -379,7 +377,7 @@ impl LinkParser {
             return true;
         }
         let Some(link_cfg) = item.args().list() else {
-            cx.expected_list(item.span());
+            cx.expected_list(item.span(), item.args());
             return true;
         };
         let Some(link_cfg) = link_cfg.single() else {
@@ -469,7 +467,6 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
         Allow(Target::Static),
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
@@ -587,12 +584,12 @@ impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Static),
         Allow(Target::ForeignStatic),
         Allow(Target::ForeignFn),
+        Warn(Target::Method(MethodKind::Trait { body: false })), // Not inherited
     ]);
 
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: [
@@ -658,4 +655,22 @@ impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
 
         Some(AttributeKind::Linkage(linkage, cx.attr_span))
     }
+}
+
+pub(crate) struct NeedsAllocatorParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for NeedsAllocatorParser {
+    const PATH: &[Symbol] = &[sym::needs_allocator];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsAllocator;
+}
+
+pub(crate) struct CompilerBuiltinsParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for CompilerBuiltinsParser {
+    const PATH: &[Symbol] = &[sym::compiler_builtins];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::CompilerBuiltins;
 }

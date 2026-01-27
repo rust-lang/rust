@@ -4,14 +4,17 @@ use crate::source::{SpanRange, SpanRangeExt, walk_span_to_context};
 use crate::tokenize_with_text;
 use rustc_ast::ast;
 use rustc_ast::ast::InlineAsmTemplatePiece;
-use rustc_data_structures::fx::FxHasher;
+use rustc_data_structures::fx::{FxHasher, FxIndexMap};
 use rustc_hir::MatchSource::TryDesugar;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, ByRef, Closure, ConstArg, ConstArgKind, Expr,
-    ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime,
-    LifetimeKind, Node, Pat, PatExpr, PatExprKind, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind,
-    StructTailExpr, TraitBoundModifiers, Ty, TyKind, TyPat, TyPatKind,
+    AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, ByRef, Closure, ConstArg, ConstArgKind, ConstItemRhs,
+    Expr, ExprField, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericArgs, GenericBound, GenericBounds,
+    GenericParam, GenericParamKind, GenericParamSource, Generics, HirId, HirIdMap, InlineAsmOperand, ItemId, ItemKind,
+    LetExpr, Lifetime, LifetimeKind, LifetimeParamKind, Node, ParamName, Pat, PatExpr, PatExprKind, PatField, PatKind,
+    Path, PathSegment, PreciseCapturingArgKind, PrimTy, QPath, Stmt, StmtKind, StructTailExpr, TraitBoundModifiers, Ty,
+    TyKind, TyPat, TyPatKind, UseKind, WherePredicate, WherePredicateKind,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::LateContext;
@@ -106,6 +109,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             left_ctxt: SyntaxContext::root(),
             right_ctxt: SyntaxContext::root(),
             locals: HirIdMap::default(),
+            local_items: FxIndexMap::default(),
         }
     }
 
@@ -144,6 +148,7 @@ pub struct HirEqInterExpr<'a, 'b, 'tcx> {
     // right. For example, when comparing `{ let x = 1; x + 2 }` and `{ let y = 1; y + 2 }`,
     // these blocks are considered equal since `x` is mapped to `y`.
     pub locals: HirIdMap<HirId>,
+    pub local_items: FxIndexMap<DefId, DefId>,
 }
 
 impl HirEqInterExpr<'_, '_, '_> {
@@ -168,6 +173,189 @@ impl HirEqInterExpr<'_, '_, '_> {
                     && self.eq_pat(l.pat, r.pat)
             },
             (StmtKind::Expr(l), StmtKind::Expr(r)) | (StmtKind::Semi(l), StmtKind::Semi(r)) => self.eq_expr(l, r),
+            (StmtKind::Item(l), StmtKind::Item(r)) => self.eq_item(*l, *r),
+            _ => false,
+        }
+    }
+
+    pub fn eq_item(&mut self, l: ItemId, r: ItemId) -> bool {
+        let left = self.inner.cx.tcx.hir_item(l);
+        let right = self.inner.cx.tcx.hir_item(r);
+        let eq = match (left.kind, right.kind) {
+            (
+                ItemKind::Const(l_ident, l_generics, l_ty, ConstItemRhs::Body(l_body)),
+                ItemKind::Const(r_ident, r_generics, r_ty, ConstItemRhs::Body(r_body)),
+            ) => {
+                l_ident.name == r_ident.name
+                    && self.eq_generics(l_generics, r_generics)
+                    && self.eq_ty(l_ty, r_ty)
+                    && self.eq_body(l_body, r_body)
+            },
+            (ItemKind::Static(l_mut, l_ident, l_ty, l_body), ItemKind::Static(r_mut, r_ident, r_ty, r_body)) => {
+                l_mut == r_mut && l_ident.name == r_ident.name && self.eq_ty(l_ty, r_ty) && self.eq_body(l_body, r_body)
+            },
+            (
+                ItemKind::Fn {
+                    sig: l_sig,
+                    ident: l_ident,
+                    generics: l_generics,
+                    body: l_body,
+                    has_body: l_has_body,
+                },
+                ItemKind::Fn {
+                    sig: r_sig,
+                    ident: r_ident,
+                    generics: r_generics,
+                    body: r_body,
+                    has_body: r_has_body,
+                },
+            ) => {
+                l_ident.name == r_ident.name
+                    && (l_has_body == r_has_body)
+                    && self.eq_fn_sig(&l_sig, &r_sig)
+                    && self.eq_generics(l_generics, r_generics)
+                    && self.eq_body(l_body, r_body)
+            },
+            (ItemKind::TyAlias(l_ident, l_generics, l_ty), ItemKind::TyAlias(r_ident, r_generics, r_ty)) => {
+                l_ident.name == r_ident.name && self.eq_generics(l_generics, r_generics) && self.eq_ty(l_ty, r_ty)
+            },
+            (ItemKind::Use(l_path, l_kind), ItemKind::Use(r_path, r_kind)) => {
+                self.eq_path_segments(l_path.segments, r_path.segments)
+                    && match (l_kind, r_kind) {
+                        (UseKind::Single(l_ident), UseKind::Single(r_ident)) => l_ident.name == r_ident.name,
+                        (UseKind::Glob, UseKind::Glob) | (UseKind::ListStem, UseKind::ListStem) => true,
+                        _ => false,
+                    }
+            },
+            (ItemKind::Mod(l_ident, l_mod), ItemKind::Mod(r_ident, r_mod)) => {
+                l_ident.name == r_ident.name && over(l_mod.item_ids, r_mod.item_ids, |l, r| self.eq_item(*l, *r))
+            },
+            _ => false,
+        };
+        if eq {
+            self.local_items.insert(l.owner_id.to_def_id(), r.owner_id.to_def_id());
+        }
+        eq
+    }
+
+    fn eq_fn_sig(&mut self, left: &FnSig<'_>, right: &FnSig<'_>) -> bool {
+        left.header.safety == right.header.safety
+            && left.header.constness == right.header.constness
+            && left.header.asyncness == right.header.asyncness
+            && left.header.abi == right.header.abi
+            && self.eq_fn_decl(left.decl, right.decl)
+    }
+
+    fn eq_fn_decl(&mut self, left: &FnDecl<'_>, right: &FnDecl<'_>) -> bool {
+        over(left.inputs, right.inputs, |l, r| self.eq_ty(l, r))
+            && (match (left.output, right.output) {
+                (FnRetTy::DefaultReturn(_), FnRetTy::DefaultReturn(_)) => true,
+                (FnRetTy::Return(l_ty), FnRetTy::Return(r_ty)) => self.eq_ty(l_ty, r_ty),
+                _ => false,
+            })
+            && left.c_variadic == right.c_variadic
+            && left.implicit_self == right.implicit_self
+            && left.lifetime_elision_allowed == right.lifetime_elision_allowed
+    }
+
+    fn eq_generics(&mut self, left: &Generics<'_>, right: &Generics<'_>) -> bool {
+        self.eq_generics_param(left.params, right.params)
+            && self.eq_generics_predicate(left.predicates, right.predicates)
+    }
+
+    fn eq_generics_predicate(&mut self, left: &[WherePredicate<'_>], right: &[WherePredicate<'_>]) -> bool {
+        over(left, right, |l, r| match (l.kind, r.kind) {
+            (WherePredicateKind::BoundPredicate(l_bound), WherePredicateKind::BoundPredicate(r_bound)) => {
+                l_bound.origin == r_bound.origin
+                    && self.eq_ty(l_bound.bounded_ty, r_bound.bounded_ty)
+                    && self.eq_generics_param(l_bound.bound_generic_params, r_bound.bound_generic_params)
+                    && self.eq_generics_bound(l_bound.bounds, r_bound.bounds)
+            },
+            (WherePredicateKind::RegionPredicate(l_region), WherePredicateKind::RegionPredicate(r_region)) => {
+                Self::eq_lifetime(l_region.lifetime, r_region.lifetime)
+                    && self.eq_generics_bound(l_region.bounds, r_region.bounds)
+            },
+            (WherePredicateKind::EqPredicate(l_eq), WherePredicateKind::EqPredicate(r_eq)) => {
+                self.eq_ty(l_eq.lhs_ty, r_eq.lhs_ty)
+            },
+            _ => false,
+        })
+    }
+
+    fn eq_generics_bound(&mut self, left: GenericBounds<'_>, right: GenericBounds<'_>) -> bool {
+        over(left, right, |l, r| match (l, r) {
+            (GenericBound::Trait(l_trait), GenericBound::Trait(r_trait)) => {
+                l_trait.modifiers == r_trait.modifiers
+                    && self.eq_path(l_trait.trait_ref.path, r_trait.trait_ref.path)
+                    && self.eq_generics_param(l_trait.bound_generic_params, r_trait.bound_generic_params)
+            },
+            (GenericBound::Outlives(l_lifetime), GenericBound::Outlives(r_lifetime)) => {
+                Self::eq_lifetime(l_lifetime, r_lifetime)
+            },
+            (GenericBound::Use(l_capture, _), GenericBound::Use(r_capture, _)) => {
+                over(l_capture, r_capture, |l, r| match (l, r) {
+                    (PreciseCapturingArgKind::Lifetime(l_lifetime), PreciseCapturingArgKind::Lifetime(r_lifetime)) => {
+                        Self::eq_lifetime(l_lifetime, r_lifetime)
+                    },
+                    (PreciseCapturingArgKind::Param(l_param), PreciseCapturingArgKind::Param(r_param)) => {
+                        l_param.ident == r_param.ident && l_param.res == r_param.res
+                    },
+                    _ => false,
+                })
+            },
+            _ => false,
+        })
+    }
+
+    fn eq_generics_param(&mut self, left: &[GenericParam<'_>], right: &[GenericParam<'_>]) -> bool {
+        over(left, right, |l, r| {
+            (match (l.name, r.name) {
+                (ParamName::Plain(l_ident), ParamName::Plain(r_ident))
+                | (ParamName::Error(l_ident), ParamName::Error(r_ident)) => l_ident.name == r_ident.name,
+                (ParamName::Fresh, ParamName::Fresh) => true,
+                _ => false,
+            }) && l.pure_wrt_drop == r.pure_wrt_drop
+                && self.eq_generics_param_kind(&l.kind, &r.kind)
+                && (matches!(
+                    (l.source, r.source),
+                    (GenericParamSource::Generics, GenericParamSource::Generics)
+                        | (GenericParamSource::Binder, GenericParamSource::Binder)
+                ))
+        })
+    }
+
+    fn eq_generics_param_kind(&mut self, left: &GenericParamKind<'_>, right: &GenericParamKind<'_>) -> bool {
+        match (left, right) {
+            (GenericParamKind::Lifetime { kind: l_kind }, GenericParamKind::Lifetime { kind: r_kind }) => {
+                match (l_kind, r_kind) {
+                    (LifetimeParamKind::Explicit, LifetimeParamKind::Explicit)
+                    | (LifetimeParamKind::Error, LifetimeParamKind::Error) => true,
+                    (LifetimeParamKind::Elided(l_lifetime_kind), LifetimeParamKind::Elided(r_lifetime_kind)) => {
+                        l_lifetime_kind == r_lifetime_kind
+                    },
+                    _ => false,
+                }
+            },
+            (
+                GenericParamKind::Type {
+                    default: l_default,
+                    synthetic: l_synthetic,
+                },
+                GenericParamKind::Type {
+                    default: r_default,
+                    synthetic: r_synthetic,
+                },
+            ) => both(*l_default, *r_default, |l, r| self.eq_ty(l, r)) && l_synthetic == r_synthetic,
+            (
+                GenericParamKind::Const {
+                    ty: l_ty,
+                    default: l_default,
+                },
+                GenericParamKind::Const {
+                    ty: r_ty,
+                    default: r_default,
+                },
+            ) => self.eq_ty(l_ty, r_ty) && both(*l_default, *r_default, |l, r| self.eq_const_arg(l, r)),
             _ => false,
         }
     }
@@ -317,7 +505,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (ExprKind::Block(l, _), ExprKind::Block(r, _)) => self.eq_block(l, r),
             (ExprKind::Binary(l_op, ll, lr), ExprKind::Binary(r_op, rl, rr)) => {
                 l_op.node == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
-                    || swap_binop(l_op.node, ll, lr).is_some_and(|(l_op, ll, lr)| {
+                    || swap_binop(self.inner.cx, l_op.node, ll, lr).is_some_and(|(l_op, ll, lr)| {
                         l_op == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
                     })
             },
@@ -473,15 +661,53 @@ impl HirEqInterExpr<'_, '_, '_> {
     }
 
     fn eq_const_arg(&mut self, left: &ConstArg<'_>, right: &ConstArg<'_>) -> bool {
+        if !self.check_ctxt(left.span.ctxt(), right.span.ctxt()) {
+            return false;
+        }
+
         match (&left.kind, &right.kind) {
+            (ConstArgKind::Tup(l_t), ConstArgKind::Tup(r_t)) => {
+                l_t.len() == r_t.len() && l_t.iter().zip(*r_t).all(|(l_c, r_c)| self.eq_const_arg(l_c, r_c))
+            },
             (ConstArgKind::Path(l_p), ConstArgKind::Path(r_p)) => self.eq_qpath(l_p, r_p),
             (ConstArgKind::Anon(l_an), ConstArgKind::Anon(r_an)) => self.eq_body(l_an.body, r_an.body),
             (ConstArgKind::Infer(..), ConstArgKind::Infer(..)) => true,
+            (ConstArgKind::Struct(path_a, inits_a), ConstArgKind::Struct(path_b, inits_b)) => {
+                self.eq_qpath(path_a, path_b)
+                    && inits_a
+                        .iter()
+                        .zip(*inits_b)
+                        .all(|(init_a, init_b)| self.eq_const_arg(init_a.expr, init_b.expr))
+            },
+            (ConstArgKind::TupleCall(path_a, args_a), ConstArgKind::TupleCall(path_b, args_b)) => {
+                self.eq_qpath(path_a, path_b)
+                    && args_a
+                        .iter()
+                        .zip(*args_b)
+                        .all(|(arg_a, arg_b)| self.eq_const_arg(arg_a, arg_b))
+            },
+            (ConstArgKind::Literal(kind_l), ConstArgKind::Literal(kind_r)) => kind_l == kind_r,
+            (ConstArgKind::Array(l_arr), ConstArgKind::Array(r_arr)) => {
+                l_arr.elems.len() == r_arr.elems.len()
+                    && l_arr
+                        .elems
+                        .iter()
+                        .zip(r_arr.elems.iter())
+                        .all(|(l_elem, r_elem)| self.eq_const_arg(l_elem, r_elem))
+            },
             // Use explicit match for now since ConstArg is undergoing flux.
-            (ConstArgKind::Path(..), ConstArgKind::Anon(..))
-            | (ConstArgKind::Anon(..), ConstArgKind::Path(..))
-            | (ConstArgKind::Infer(..) | ConstArgKind::Error(..), _)
-            | (_, ConstArgKind::Infer(..) | ConstArgKind::Error(..)) => false,
+            (
+                ConstArgKind::Path(..)
+                | ConstArgKind::Tup(..)
+                | ConstArgKind::Anon(..)
+                | ConstArgKind::TupleCall(..)
+                | ConstArgKind::Infer(..)
+                | ConstArgKind::Struct(..)
+                | ConstArgKind::Literal(..)
+                | ConstArgKind::Array(..)
+                | ConstArgKind::Error(..),
+                _,
+            ) => false,
         }
     }
 
@@ -506,9 +732,8 @@ impl HirEqInterExpr<'_, '_, '_> {
                     negated: right_neg,
                 },
             ) => left_neg == right_neg && left.node == right.node,
-            (PatExprKind::ConstBlock(left), PatExprKind::ConstBlock(right)) => self.eq_body(left.body, right.body),
             (PatExprKind::Path(left), PatExprKind::Path(right)) => self.eq_qpath(left, right),
-            (PatExprKind::Lit { .. } | PatExprKind::ConstBlock(..) | PatExprKind::Path(..), _) => false,
+            (PatExprKind::Lit { .. } | PatExprKind::Path(..), _) => false,
         }
     }
 
@@ -563,6 +788,17 @@ impl HirEqInterExpr<'_, '_, '_> {
         match (left.res, right.res) {
             (Res::Local(l), Res::Local(r)) => l == r || self.locals.get(&l) == Some(&r),
             (Res::Local(_), _) | (_, Res::Local(_)) => false,
+            (Res::Def(l_kind, l), Res::Def(r_kind, r))
+                if l_kind == r_kind
+                    && let DefKind::Const
+                    | DefKind::Static { .. }
+                    | DefKind::Fn
+                    | DefKind::TyAlias
+                    | DefKind::Use
+                    | DefKind::Mod = l_kind =>
+            {
+                (l == r || self.local_items.get(&l) == Some(&r)) && self.eq_path_segments(left.segments, right.segments)
+            },
             _ => self.eq_path_segments(left.segments, right.segments),
         }
     }
@@ -722,26 +958,35 @@ fn reduce_exprkind<'hir>(cx: &LateContext<'_>, kind: &'hir ExprKind<'hir>) -> &'
 }
 
 fn swap_binop<'a>(
+    cx: &LateContext<'_>,
     binop: BinOpKind,
     lhs: &'a Expr<'a>,
     rhs: &'a Expr<'a>,
 ) -> Option<(BinOpKind, &'a Expr<'a>, &'a Expr<'a>)> {
     match binop {
-        BinOpKind::Add | BinOpKind::Eq | BinOpKind::Ne | BinOpKind::BitAnd | BinOpKind::BitXor | BinOpKind::BitOr => {
-            Some((binop, rhs, lhs))
-        },
+        // `==` and `!=`, are commutative
+        BinOpKind::Eq | BinOpKind::Ne => Some((binop, rhs, lhs)),
+        // Comparisons can be reversed
         BinOpKind::Lt => Some((BinOpKind::Gt, rhs, lhs)),
         BinOpKind::Le => Some((BinOpKind::Ge, rhs, lhs)),
         BinOpKind::Ge => Some((BinOpKind::Le, rhs, lhs)),
         BinOpKind::Gt => Some((BinOpKind::Lt, rhs, lhs)),
-        BinOpKind::Mul // Not always commutative, e.g. with matrices. See issue #5698
-        | BinOpKind::Shl
-        | BinOpKind::Shr
-        | BinOpKind::Rem
-        | BinOpKind::Sub
-        | BinOpKind::Div
+        // Non-commutative operators
+        BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Rem | BinOpKind::Sub | BinOpKind::Div => None,
+        // We know that those operators are commutative for primitive types,
+        // and we don't assume anything for other types
+        BinOpKind::Mul
+        | BinOpKind::Add
         | BinOpKind::And
-        | BinOpKind::Or => None,
+        | BinOpKind::Or
+        | BinOpKind::BitAnd
+        | BinOpKind::BitXor
+        | BinOpKind::BitOr => cx
+            .typeck_results()
+            .expr_ty_adjusted(lhs)
+            .peel_refs()
+            .is_primitive()
+            .then_some((binop, rhs, lhs)),
     }
 }
 
@@ -1102,7 +1347,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 lit.node.hash(&mut self.s);
                 negated.hash(&mut self.s);
             },
-            PatExprKind::ConstBlock(c) => self.hash_body(c.body),
             PatExprKind::Path(qpath) => self.hash_qpath(qpath),
         }
     }
@@ -1330,9 +1574,32 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
     fn hash_const_arg(&mut self, const_arg: &ConstArg<'_>) {
         match &const_arg.kind {
+            ConstArgKind::Tup(tup) => {
+                for arg in *tup {
+                    self.hash_const_arg(arg);
+                }
+            },
             ConstArgKind::Path(path) => self.hash_qpath(path),
             ConstArgKind::Anon(anon) => self.hash_body(anon.body),
+            ConstArgKind::Struct(path, inits) => {
+                self.hash_qpath(path);
+                for init in *inits {
+                    self.hash_const_arg(init.expr);
+                }
+            },
+            ConstArgKind::TupleCall(path, args) => {
+                self.hash_qpath(path);
+                for arg in *args {
+                    self.hash_const_arg(arg);
+                }
+            },
+            ConstArgKind::Array(array_expr) => {
+                for elem in array_expr.elems {
+                    self.hash_const_arg(elem);
+                }
+            },
             ConstArgKind::Infer(..) | ConstArgKind::Error(..) => {},
+            ConstArgKind::Literal(lit) => lit.hash(&mut self.s),
         }
     }
 

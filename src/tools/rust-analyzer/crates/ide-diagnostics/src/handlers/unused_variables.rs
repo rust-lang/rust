@@ -183,6 +183,61 @@ fn main2() {
     }
 
     #[test]
+    fn apply_last_lint_attribute_when_multiple_are_present() {
+        check_diagnostics(
+            r#"
+#![allow(unused_variables)]
+#![warn(unused_variables)]
+#![deny(unused_variables)]
+
+fn main() {
+    let x = 2;
+      //^ 💡 error: unused variable
+
+    #[deny(unused_variables)]
+    #[warn(unused_variables)]
+    #[allow(unused_variables)]
+    let y = 0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn prefer_closest_ancestor_lint_attribute() {
+        check_diagnostics(
+            r#"
+#![allow(unused_variables)]
+
+fn main() {
+    #![warn(unused_variables)]
+
+    #[deny(unused_variables)]
+    let x = 2;
+      //^ 💡 error: unused variable
+}
+
+#[warn(unused_variables)]
+fn main2() {
+    #[deny(unused_variables)]
+    let x = 2;
+      //^ 💡 error: unused variable
+}
+
+#[warn(unused_variables)]
+fn main3() {
+    let x = 2;
+      //^ 💡 warn: unused variable
+}
+
+fn main4() {
+    let x = 2;
+}
+"#,
+        );
+    }
+
+    #[test]
     fn fix_unused_variable() {
         check_fix(
             r#"
@@ -331,6 +386,46 @@ fn main() {
 struct S { field : u32 }
 fn f(S { field }: error) {
       // ^^^^^ 💡 warn: unused variable
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn crate_attrs_lint_smoke_test() {
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:foo crate-attr:deny(unused_variables)
+fn main() {
+    let x = 2;
+      //^ 💡 error: unused variable
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn crate_attrs_should_not_override_lints_in_source() {
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:foo crate-attr:allow(unused_variables)
+#![deny(unused_variables)]
+fn main() {
+    let x = 2;
+      //^ 💡 error: unused variable
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn crate_attrs_should_preserve_lint_order() {
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:foo crate-attr:allow(unused_variables) crate-attr:warn(unused_variables)
+fn main() {
+    let x = 2;
+      //^ 💡 warn: unused variable
 }
 "#,
         );

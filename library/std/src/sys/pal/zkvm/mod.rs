@@ -12,8 +12,6 @@ pub const WORD_SIZE: usize = size_of::<u32>();
 
 pub mod abi;
 pub mod os;
-#[path = "../unsupported/pipe.rs"]
-pub mod pipe;
 #[path = "../unsupported/time.rs"]
 pub mod time;
 
@@ -33,14 +31,6 @@ pub fn unsupported<T>() -> std_io::Result<T> {
 
 pub fn unsupported_err() -> std_io::Error {
     std_io::Error::UNSUPPORTED_PLATFORM
-}
-
-pub fn is_interrupted(_code: i32) -> bool {
-    false
-}
-
-pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
-    crate::io::ErrorKind::Uncategorized
 }
 
 pub fn abort_internal() -> ! {

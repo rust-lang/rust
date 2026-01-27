@@ -179,7 +179,7 @@ from_str_float_impl!(f16);
 from_str_float_impl!(f32);
 from_str_float_impl!(f64);
 
-// FIXME(f16_f128): A fallback is used when the backend+target does not support f16 well, in order
+// FIXME(f16): A fallback is used when the backend+target does not support f16 well, in order
 // to avoid ICEs.
 
 #[cfg(not(target_has_reliable_f16))]

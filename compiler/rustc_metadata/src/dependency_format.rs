@@ -104,7 +104,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
             CrateType::Dylib | CrateType::Cdylib | CrateType::Sdylib => {
                 if sess.opts.cg.prefer_dynamic { Linkage::Dynamic } else { Linkage::Static }
             }
-            CrateType::Staticlib => {
+            CrateType::StaticLib => {
                 if sess.opts.unstable_opts.staticlib_prefer_dynamic {
                     Linkage::Dynamic
                 } else {
@@ -141,7 +141,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
 
             // Static executables must have all static dependencies.
             // If any are not found, generate some nice pretty errors.
-            if (ty == CrateType::Staticlib && !sess.opts.unstable_opts.staticlib_allow_rdylib_deps)
+            if (ty == CrateType::StaticLib && !sess.opts.unstable_opts.staticlib_allow_rdylib_deps)
                 || (ty == CrateType::Executable
                     && sess.crt_static(Some(ty))
                     && !sess.target.crt_static_allows_dylibs)
@@ -242,7 +242,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         let src = tcx.used_crate_source(cnum);
         if src.dylib.is_none()
             && !formats.contains_key(&cnum)
-            && tcx.dep_kind(cnum) == CrateDepKind::Explicit
+            && tcx.dep_kind(cnum) == CrateDepKind::Unconditional
         {
             assert!(src.rlib.is_some() || src.rmeta.is_some());
             info!("adding staticlib: {}", tcx.crate_name(cnum));
@@ -355,8 +355,8 @@ fn attempt_static(tcx: TyCtxt<'_>, unavailable: &mut Vec<CrateNum>) -> Option<De
     for &cnum in tcx.crates(()) {
         assert_eq!(
             ret.push(match tcx.dep_kind(cnum) {
-                CrateDepKind::Explicit => Linkage::Static,
-                CrateDepKind::MacrosOnly | CrateDepKind::Implicit => Linkage::NotLinked,
+                CrateDepKind::Unconditional => Linkage::Static,
+                CrateDepKind::MacrosOnly | CrateDepKind::Conditional => Linkage::NotLinked,
             }),
             cnum
         );
