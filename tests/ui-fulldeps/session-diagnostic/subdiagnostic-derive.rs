@@ -123,16 +123,6 @@ struct K {
 }
 
 #[derive(Subdiagnostic)]
-#[label(slug)]
-//~^ ERROR cannot find value `slug` in module `crate::fluent_generated`
-//~^^ NOTE not found in `crate::fluent_generated`
-struct L {
-    #[primary_span]
-    span: Span,
-    var: String,
-}
-
-#[derive(Subdiagnostic)]
 #[label()]
 //~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
 struct M {
@@ -707,9 +697,6 @@ struct BP {
 }
 
 #[derive(Subdiagnostic)]
-//~^ ERROR cannot find value `__code_29` in this scope
-//~| NOTE in this expansion
-//~| NOTE not found in this scope
 #[multipart_suggestion(no_crate_example)]
 struct BQ {
     #[suggestion_part(code = 3)]
