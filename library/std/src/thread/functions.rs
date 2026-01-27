@@ -316,7 +316,6 @@ pub fn sleep(dur: Duration) {
 /// | Illumos   | [clock_nanosleep] (Monotonic Clock)]                                 |
 /// | Dragonfly | [clock_nanosleep] (Monotonic Clock)]                                 |
 /// | Hurd      | [clock_nanosleep] (Monotonic Clock)]                                 |
-/// | Fuchsia   | [clock_nanosleep] (Monotonic Clock)]                                 |
 /// | Vxworks   | [clock_nanosleep] (Monotonic Clock)]                                 |
 /// | Apple     | `mach_wait_until`                                                    |
 /// | Other     | `sleep_until` uses [`sleep`] and does not issue a syscall itself     |
