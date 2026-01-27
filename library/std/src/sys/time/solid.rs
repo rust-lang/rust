@@ -1,8 +1,37 @@
-use super::abi;
-use super::error::expect_success;
-pub use super::itron::time::Instant;
 use crate::mem::MaybeUninit;
+use crate::sys::pal::error::expect_success;
+use crate::sys::pal::{abi, itron};
 use crate::time::Duration;
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+pub struct Instant(itron::abi::SYSTIM);
+
+impl Instant {
+    pub fn now() -> Instant {
+        Instant(itron::time::get_tim())
+    }
+
+    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
+        self.0.checked_sub(other.0).map(|ticks| {
+            // `SYSTIM` is measured in microseconds
+            Duration::from_micros(ticks)
+        })
+    }
+
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
+        // `SYSTIM` is measured in microseconds
+        let ticks = other.as_micros();
+
+        Some(Instant(self.0.checked_add(ticks.try_into().ok()?)?))
+    }
+
+    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
+        // `SYSTIM` is measured in microseconds
+        let ticks = other.as_micros();
+
+        Some(Instant(self.0.checked_sub(ticks.try_into().ok()?)?))
+    }
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct SystemTime(abi::time_t);

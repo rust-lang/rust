@@ -1822,7 +1822,7 @@ impl File {
             _ => {
                 #[cfg(all(target_os = "linux", target_env = "gnu", target_pointer_width = "32", not(target_arch = "riscv32")))]
                 {
-                    use crate::sys::{time::__timespec64, weak::weak};
+                    use crate::sys::pal::{time::__timespec64, weak::weak};
 
                     // Added in glibc 2.34
                     weak!(
@@ -2258,7 +2258,7 @@ fn set_times_impl(p: &CStr, times: FileTimes, follow_symlinks: bool) -> io::Resu
             let flags = if follow_symlinks { 0 } else { libc::AT_SYMLINK_NOFOLLOW };
             #[cfg(all(target_os = "linux", target_env = "gnu", target_pointer_width = "32", not(target_arch = "riscv32")))]
             {
-                use crate::sys::{time::__timespec64, weak::weak};
+                use crate::sys::pal::{time::__timespec64, weak::weak};
 
                 // Added in glibc 2.34
                 weak!(
