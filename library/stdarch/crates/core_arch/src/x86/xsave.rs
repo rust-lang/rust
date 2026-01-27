@@ -197,47 +197,53 @@ mod tests {
 
     #[simd_test(enable = "xsave")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
-    unsafe fn test_xsave() {
+    fn test_xsave() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
 
-        _xsave(a.ptr(), m);
-        _xrstor(a.ptr(), m);
-        _xsave(b.ptr(), m);
+        unsafe {
+            _xsave(a.ptr(), m);
+            _xrstor(a.ptr(), m);
+            _xsave(b.ptr(), m);
+        }
     }
 
     #[simd_test(enable = "xsave")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
-    unsafe fn test_xgetbv() {
+    fn test_xgetbv() {
         let xcr_n: u32 = _XCR_XFEATURE_ENABLED_MASK;
 
-        let xcr: u64 = _xgetbv(xcr_n);
-        let xcr_cpy: u64 = _xgetbv(xcr_n);
+        let xcr: u64 = unsafe { _xgetbv(xcr_n) };
+        let xcr_cpy: u64 = unsafe { _xgetbv(xcr_n) };
         assert_eq!(xcr, xcr_cpy);
     }
 
     #[simd_test(enable = "xsave,xsaveopt")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
-    unsafe fn test_xsaveopt() {
+    fn test_xsaveopt() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
 
-        _xsaveopt(a.ptr(), m);
-        _xrstor(a.ptr(), m);
-        _xsaveopt(b.ptr(), m);
+        unsafe {
+            _xsaveopt(a.ptr(), m);
+            _xrstor(a.ptr(), m);
+            _xsaveopt(b.ptr(), m);
+        }
     }
 
     #[simd_test(enable = "xsave,xsavec")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
-    unsafe fn test_xsavec() {
+    fn test_xsavec() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
 
-        _xsavec(a.ptr(), m);
-        _xrstor(a.ptr(), m);
-        _xsavec(b.ptr(), m);
+        unsafe {
+            _xsavec(a.ptr(), m);
+            _xrstor(a.ptr(), m);
+            _xsavec(b.ptr(), m);
+        }
     }
 }

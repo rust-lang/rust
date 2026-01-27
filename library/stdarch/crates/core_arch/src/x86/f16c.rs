@@ -106,7 +106,7 @@ pub fn _mm256_cvtps_ph<const IMM_ROUNDING: i32>(a: __m256) -> __m128i {
 #[cfg(test)]
 mod tests {
     use crate::core_arch::assert_eq_const as assert_eq;
-    use crate::{core_arch::x86::*, mem::transmute};
+    use crate::core_arch::x86::*;
     use stdarch_test::simd_test;
 
     const F16_ONE: i16 = 0x3c00;

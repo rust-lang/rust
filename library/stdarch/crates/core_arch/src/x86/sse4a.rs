@@ -206,7 +206,7 @@ mod tests {
     // Miri cannot support this until it is clear how it fits in the Rust memory model
     // (non-temporal store)
     #[cfg_attr(miri, ignore)]
-    unsafe fn test_mm_stream_sd() {
+    fn test_mm_stream_sd() {
         let mut mem = MemoryF64 {
             data: [1.0_f64, 2.0],
         };
@@ -216,7 +216,9 @@ mod tests {
 
             let x = _mm_setr_pd(3.0, 4.0);
 
-            _mm_stream_sd(d, x);
+            unsafe {
+                _mm_stream_sd(d, x);
+            }
             _mm_sfence();
         }
         assert_eq!(mem.data[0], 3.0);
@@ -232,7 +234,7 @@ mod tests {
     // Miri cannot support this until it is clear how it fits in the Rust memory model
     // (non-temporal store)
     #[cfg_attr(miri, ignore)]
-    unsafe fn test_mm_stream_ss() {
+    fn test_mm_stream_ss() {
         let mut mem = MemoryF32 {
             data: [1.0_f32, 2.0, 3.0, 4.0],
         };
@@ -242,7 +244,9 @@ mod tests {
 
             let x = _mm_setr_ps(5.0, 6.0, 7.0, 8.0);
 
-            _mm_stream_ss(d, x);
+            unsafe {
+                _mm_stream_ss(d, x);
+            }
             _mm_sfence();
         }
         assert_eq!(mem.data[0], 5.0);
