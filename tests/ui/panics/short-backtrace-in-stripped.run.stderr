@@ -1,0 +1,9 @@
+
+thread 'main' ($TID) panicked at $DIR/short-backtrace-in-stripped.rs:18:13:
+explicit panic
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: <unknown>
+   2: <unknown>
+   3: <unknown>
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.

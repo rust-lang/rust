@@ -4,6 +4,7 @@
 use crate::backtrace_rs::{self, BacktraceFmt, BytesOrWideString, PrintFmt};
 use crate::borrow::Cow;
 use crate::io::prelude::*;
+use crate::mem::{ManuallyDrop, MaybeUninit};
 use crate::path::{self, Path, PathBuf};
 use crate::sync::{Mutex, MutexGuard, PoisonError};
 use crate::{env, fmt, io};
@@ -68,6 +69,7 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
     let mut first_omit = true;
     // If we're using a short backtrace, ignore all frames until we're told to start printing.
     let mut print = print_fmt != PrintFmt::Short;
+    let mut skip = false;
     set_image_base();
     // SAFETY: we roll our own locking in this town
     unsafe {
@@ -81,12 +83,30 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
                 let frame_ip = frame.ip();
                 res = writeln!(bt_fmt.formatter(), "{idx:4}: {frame_ip:HEX_WIDTH$?}");
             } else {
+                // `call_with_short_backtrace_marker::<End>` means we are done hiding symbols
+                // for now. Print until we see `call_with_short_backtrace_marker::<Begin>`.
+                if print_fmt == PrintFmt::Short {
+                    let sym = frame.symbol_address();
+                    if sym == call_with_short_backtrace_marker::<End> as _ {
+                        skip = true;
+                        print = true;
+                    } else if print && sym == call_with_short_backtrace_marker::<Begin> as _ {
+                        skip = true;
+                        print = false;
+                    }
+                }
+
                 let mut hit = false;
                 backtrace_rs::resolve_frame_unsynchronized(frame, |symbol| {
                     hit = true;
+                    if skip {
+                        skip = false;
+                        return;
+                    }
 
-                    // `__rust_end_short_backtrace` means we are done hiding symbols
-                    // for now. Print until we see `__rust_begin_short_backtrace`.
+                    // Hide `__rust_[begin|end]_short_backtrace` frames from short backtraces.
+                    // Unfortunately these generic functions have to be matched by name, as we do
+                    // not know their generic parameters.
                     if print_fmt == PrintFmt::Short {
                         if let Some(sym) = symbol.name().and_then(|s| s.as_str()) {
                             if sym.contains("__rust_end_short_backtrace") {
@@ -159,32 +179,43 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
 /// this is only inline(never) when backtraces in std are enabled, otherwise
 /// it's fine to optimize away.
 #[cfg_attr(feature = "backtrace", inline(never))]
-pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
-where
-    F: FnOnce() -> T,
-{
-    let result = f();
+fn call_with_short_backtrace_marker<T: Terminus>(f: &mut dyn FnMut()) {
+    f();
 
-    // prevent this frame from being tail-call optimised away
-    crate::hint::black_box(());
-
-    result
+    // (Try to) prevent both ICF and TCO
+    crate::hint::black_box(T::ID);
 }
 
-/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`. Note that
-/// this is only inline(never) when backtraces in std are enabled, otherwise
-/// it's fine to optimize away.
-#[cfg_attr(feature = "backtrace", inline(never))]
-pub fn __rust_end_short_backtrace<F, T>(f: F) -> T
-where
-    F: FnOnce() -> T,
-{
-    let result = f();
+trait Terminus {
+    const ID: u32;
+}
 
-    // prevent this frame from being tail-call optimised away
-    crate::hint::black_box(());
+macro_rules! short_backtrace_termini {
+    ($($f:ident => $t:ident($id:literal)),* $(,)?) => {$(
+        struct $t;
+        impl Terminus for $t {
+            const ID: u32 = $id;
+        }
 
-    result
+        #[doc(hidden)]
+        #[unstable(feature = "short_backtrace_termini", reason = "for rustc to have ICE backtraces abbreviated", issue = "none")]
+        #[inline(always)]
+        pub fn $f<F, T>(f: F) -> T
+        where
+            F: FnOnce() -> T,
+        {
+            let mut result = MaybeUninit::<T>::uninit();
+            let mut f = ManuallyDrop::new(f);
+            let mut f = || { result.write(unsafe { ManuallyDrop::take(&mut f) }()); };
+            call_with_short_backtrace_marker::<$t>(&mut f);
+            unsafe { result.assume_init() }
+        }
+    )*};
+}
+
+short_backtrace_termini! {
+    __rust_begin_short_backtrace => Begin(0),
+    __rust_end_short_backtrace => End(1),
 }
 
 /// Prints the filename of the backtrace frame.
