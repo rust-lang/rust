@@ -74,6 +74,7 @@ windows_targets::link!("kernel32.dll" "system" fn MultiByteToWideChar(codepage :
 windows_targets::link!("ntdll.dll" "system" fn NtCreateFile(filehandle : *mut HANDLE, desiredaccess : FILE_ACCESS_RIGHTS, objectattributes : *const OBJECT_ATTRIBUTES, iostatusblock : *mut IO_STATUS_BLOCK, allocationsize : *const i64, fileattributes : FILE_FLAGS_AND_ATTRIBUTES, shareaccess : FILE_SHARE_MODE, createdisposition : NTCREATEFILE_CREATE_DISPOSITION, createoptions : NTCREATEFILE_CREATE_OPTIONS, eabuffer : *const core::ffi::c_void, ealength : u32) -> NTSTATUS);
 windows_targets::link!("ntdll.dll" "system" fn NtOpenFile(filehandle : *mut HANDLE, desiredaccess : u32, objectattributes : *const OBJECT_ATTRIBUTES, iostatusblock : *mut IO_STATUS_BLOCK, shareaccess : u32, openoptions : u32) -> NTSTATUS);
 windows_targets::link!("ntdll.dll" "system" fn NtReadFile(filehandle : HANDLE, event : HANDLE, apcroutine : PIO_APC_ROUTINE, apccontext : *const core::ffi::c_void, iostatusblock : *mut IO_STATUS_BLOCK, buffer : *mut core::ffi::c_void, length : u32, byteoffset : *const i64, key : *const u32) -> NTSTATUS);
+windows_targets::link!("ntdll.dll" "system" fn NtSetInformationFile(filehandle : HANDLE, iostatusblock : *mut IO_STATUS_BLOCK, fileinformation : *const core::ffi::c_void, length : u32, fileinformationclass : FILE_INFORMATION_CLASS) -> NTSTATUS);
 windows_targets::link!("ntdll.dll" "system" fn NtWriteFile(filehandle : HANDLE, event : HANDLE, apcroutine : PIO_APC_ROUTINE, apccontext : *const core::ffi::c_void, iostatusblock : *mut IO_STATUS_BLOCK, buffer : *const core::ffi::c_void, length : u32, byteoffset : *const i64, key : *const u32) -> NTSTATUS);
 windows_targets::link!("advapi32.dll" "system" fn OpenProcessToken(processhandle : HANDLE, desiredaccess : TOKEN_ACCESS_MASK, tokenhandle : *mut HANDLE) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn QueryPerformanceCounter(lpperformancecount : *mut i64) -> BOOL);
@@ -2531,6 +2532,7 @@ impl Default for FILE_ID_BOTH_DIR_INFO {
         unsafe { core::mem::zeroed() }
     }
 }
+pub type FILE_INFORMATION_CLASS = i32;
 pub type FILE_INFO_BY_HANDLE_CLASS = i32;
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
@@ -2588,6 +2590,30 @@ pub union FILE_RENAME_INFO_0 {
     pub Flags: u32,
 }
 impl Default for FILE_RENAME_INFO_0 {
+    fn default() -> Self {
+        unsafe { core::mem::zeroed() }
+    }
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct FILE_RENAME_INFORMATION {
+    pub Anonymous: FILE_RENAME_INFORMATION_0,
+    pub RootDirectory: HANDLE,
+    pub FileNameLength: u32,
+    pub FileName: [u16; 1],
+}
+impl Default for FILE_RENAME_INFORMATION {
+    fn default() -> Self {
+        unsafe { core::mem::zeroed() }
+    }
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union FILE_RENAME_INFORMATION_0 {
+    pub ReplaceIfExists: bool,
+    pub Flags: u32,
+}
+impl Default for FILE_RENAME_INFORMATION_0 {
     fn default() -> Self {
         unsafe { core::mem::zeroed() }
     }
@@ -2699,6 +2725,8 @@ pub const FileNormalizedNameInfo: FILE_INFO_BY_HANDLE_CLASS = 24i32;
 pub const FileRemoteProtocolInfo: FILE_INFO_BY_HANDLE_CLASS = 13i32;
 pub const FileRenameInfo: FILE_INFO_BY_HANDLE_CLASS = 3i32;
 pub const FileRenameInfoEx: FILE_INFO_BY_HANDLE_CLASS = 22i32;
+pub const FileRenameInformation: FILE_INFORMATION_CLASS = 10i32;
+pub const FileRenameInformationEx: FILE_INFORMATION_CLASS = 65i32;
 pub const FileStandardInfo: FILE_INFO_BY_HANDLE_CLASS = 1i32;
 pub const FileStorageInfo: FILE_INFO_BY_HANDLE_CLASS = 16i32;
 pub const FileStreamInfo: FILE_INFO_BY_HANDLE_CLASS = 7i32;
