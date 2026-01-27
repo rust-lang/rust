@@ -396,4 +396,13 @@ impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for TypeRelating<'_, 'tcx>
             }
         })]);
     }
+
+    fn try_eagerly_normalize_alias(
+        &mut self,
+        _alias: rustc_type_ir::AliasTy<<InferCtxt<'tcx> as rustc_type_ir::InferCtxtLike>::Interner>,
+    ) -> <<InferCtxt<'tcx> as rustc_type_ir::InferCtxtLike>::Interner as rustc_type_ir::Interner>::Ty
+    {
+        // We only try to eagerly normalize aliases if we're using the new solver.
+        unreachable!()
+    }
 }

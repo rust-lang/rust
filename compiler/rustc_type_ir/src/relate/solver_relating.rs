@@ -15,6 +15,7 @@ pub trait RelateExt: InferCtxtLike {
         variance: ty::Variance,
         rhs: T,
         span: <Self::Interner as Interner>::Span,
+        normalize: &mut dyn FnMut(ty::AliasTy<Self::Interner>) -> <Self::Interner as Interner>::Ty,
     ) -> Result<
         Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
         TypeError<Self::Interner>,
@@ -32,40 +33,46 @@ pub trait RelateExt: InferCtxtLike {
     >;
 }
 
-impl<Infcx: InferCtxtLike> RelateExt for Infcx {
-    fn relate<T: Relate<Self::Interner>>(
+impl<I: Interner, Infcx: InferCtxtLike<Interner = I>> RelateExt for Infcx {
+    fn relate<T: Relate<I>>(
         &self,
-        param_env: <Self::Interner as Interner>::ParamEnv,
+        param_env: I::ParamEnv,
         lhs: T,
         variance: ty::Variance,
         rhs: T,
-        span: <Self::Interner as Interner>::Span,
-    ) -> Result<
-        Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
-        TypeError<Self::Interner>,
-    > {
-        let mut relate =
-            SolverRelating::new(self, StructurallyRelateAliases::No, variance, param_env, span);
+        span: I::Span,
+        normalize: &mut dyn FnMut(ty::AliasTy<I>) -> I::Ty,
+    ) -> Result<Vec<Goal<I, I::Predicate>>, TypeError<I>> {
+        let mut relate = SolverRelating::new(
+            self,
+            StructurallyRelateAliases::No,
+            variance,
+            param_env,
+            span,
+            normalize,
+        );
         relate.relate(lhs, rhs)?;
         Ok(relate.goals)
     }
 
-    fn eq_structurally_relating_aliases<T: Relate<Self::Interner>>(
+    fn eq_structurally_relating_aliases<T: Relate<I>>(
         &self,
-        param_env: <Self::Interner as Interner>::ParamEnv,
+        param_env: I::ParamEnv,
         lhs: T,
         rhs: T,
-        span: <Self::Interner as Interner>::Span,
-    ) -> Result<
-        Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
-        TypeError<Self::Interner>,
-    > {
+        span: I::Span,
+    ) -> Result<Vec<Goal<I, I::Predicate>>, TypeError<I>> {
+        // Structurally relating, we treat aliases as rigid,
+        // so we shouldn't ever try to normalize them.
+        let mut normalize_unreachable = |_alias| unreachable!();
+
         let mut relate = SolverRelating::new(
             self,
             StructurallyRelateAliases::Yes,
             ty::Invariant,
             param_env,
             span,
+            &mut normalize_unreachable,
         );
         relate.relate(lhs, rhs)?;
         Ok(relate.goals)
@@ -75,12 +82,14 @@ impl<Infcx: InferCtxtLike> RelateExt for Infcx {
 /// Enforce that `a` is equal to or a subtype of `b`.
 pub struct SolverRelating<'infcx, Infcx, I: Interner> {
     infcx: &'infcx Infcx,
+
     // Immutable fields.
     structurally_relate_aliases: StructurallyRelateAliases,
     param_env: I::ParamEnv,
     span: I::Span,
     // Mutable fields.
     ambient_variance: ty::Variance,
+    normalize: &'infcx mut dyn FnMut(ty::AliasTy<I>) -> I::Ty,
     goals: Vec<Goal<I, I::Predicate>>,
     /// The cache only tracks the `ambient_variance` as it's the
     /// only field which is mutable and which meaningfully changes
@@ -118,12 +127,14 @@ where
         ambient_variance: ty::Variance,
         param_env: I::ParamEnv,
         span: I::Span,
+        normalize: &'infcx mut dyn FnMut(ty::AliasTy<I>) -> I::Ty,
     ) -> Self {
         SolverRelating {
             infcx,
             structurally_relate_aliases,
             span,
             ambient_variance,
+            normalize,
             param_env,
             goals: vec![],
             cache: Default::default(),
@@ -405,5 +416,9 @@ where
                 unreachable!("Expected bivariance to be handled in relate_with_variance")
             }
         })]);
+    }
+
+    fn try_eagerly_normalize_alias(&mut self, alias: ty::AliasTy<I>) -> I::Ty {
+        (self.normalize)(alias)
     }
 }
