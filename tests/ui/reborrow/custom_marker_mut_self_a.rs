@@ -12,6 +12,7 @@ fn method<'a>(_a: CustomMarker<'a>) -> &'a () {
 
 fn main() {
     let a = CustomMarker(PhantomData);
+    let b = method(a);
     let _ = method(a);
-    let _ = method(a);
+    let _ = (a, b);
 }

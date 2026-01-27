@@ -14,13 +14,9 @@ impl<'a, T> Clone for CustomRef<'a, T> {
 }
 impl<'a, T> Copy for CustomRef<'a, T> {}
 
-fn method(a: CustomRef<'_, ()>) {}  //~NOTE function defined here
+fn method(a: CustomRef<'_, ()>) {}
 
 fn main() {
     let a = CustomMut(&mut ());
     method(a);
-    //~^ ERROR mismatched types
-    //~| NOTE expected `CustomRef<'_, ()>`, found `CustomMut<'_, ()>`
-    //~| NOTE arguments to this function are incorrect
-    //~| NOTE expected struct `CustomRef<'_, ()>`
 }
