@@ -270,7 +270,7 @@ impl f32 {
     #[inline]
     #[rustc_const_unstable(feature = "float_mul_add_relaxed", issue = "151770")]
     pub const fn mul_add_relaxed(self, a: f32, b: f32) -> f32 {
-        core::f32::mul_add_relaxed(self, a, b)
+        core::intrinsics::fmuladdf32(self, a, b)
     }
 
     /// Calculates Euclidean division, the matching method for `rem_euclid`.
