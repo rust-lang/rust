@@ -3,7 +3,6 @@
 //! type, and vice versa.
 
 use std::hash::{Hash, Hasher};
-use std::ops::Deref;
 use std::{fmt, str};
 
 use rustc_arena::DroplessArena;
@@ -2753,7 +2752,7 @@ impl fmt::Display for IdentPrinter {
     }
 }
 
-/// An newtype around `Ident` that calls [Ident::normalize_to_macro_rules] on
+/// A newtype around `Ident` that calls [Ident::normalize_to_macro_rules] on
 /// construction for "local variable hygiene" comparisons.
 ///
 /// Use this type when you need to compare identifiers according to macro_rules hygiene.
@@ -2777,48 +2776,6 @@ impl fmt::Debug for MacroRulesNormalizedIdent {
 impl fmt::Display for MacroRulesNormalizedIdent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
-    }
-}
-
-/// An newtype around `Ident` that calls [Ident::normalize_to_macros_2_0] on
-/// construction for "item hygiene" comparisons.
-///
-/// Identifiers with same string value become same if they came from the same macro 2.0 macro
-/// (e.g., `macro` item, but not `macro_rules` item) and stay different if they came from
-/// different macro 2.0 macros.
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub struct Macros20NormalizedIdent(pub Ident);
-
-impl Macros20NormalizedIdent {
-    #[inline]
-    pub fn new(ident: Ident) -> Self {
-        Macros20NormalizedIdent(ident.normalize_to_macros_2_0())
-    }
-
-    // dummy_span does not need to be normalized, so we can use `Ident` directly
-    pub fn with_dummy_span(name: Symbol) -> Self {
-        Macros20NormalizedIdent(Ident::with_dummy_span(name))
-    }
-}
-
-impl fmt::Debug for Macros20NormalizedIdent {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.0, f)
-    }
-}
-
-impl fmt::Display for Macros20NormalizedIdent {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
-    }
-}
-
-/// By impl Deref, we can access the wrapped Ident as if it were a normal Ident
-/// such as `norm_ident.name` instead of `norm_ident.0.name`.
-impl Deref for Macros20NormalizedIdent {
-    type Target = Ident;
-    fn deref(&self) -> &Self::Target {
-        &self.0
     }
 }
 

@@ -1620,22 +1620,24 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(mod_path, None, None, *source)
             {
-                let targets: Vec<_> =
-                    self.r
-                        .resolutions(module)
-                        .borrow()
-                        .iter()
-                        .filter_map(|(key, resolution)| {
-                            resolution.borrow().best_decl().map(|binding| binding.res()).and_then(
-                                |res| if filter_fn(res) { Some((*key, res)) } else { None },
-                            )
+                let targets: Vec<_> = self
+                    .r
+                    .resolutions(module)
+                    .borrow()
+                    .iter()
+                    .filter_map(|(key, resolution)| {
+                        let resolution = resolution.borrow();
+                        resolution.best_decl().map(|binding| binding.res()).and_then(|res| {
+                            if filter_fn(res) {
+                                Some((key.ident.name, resolution.orig_ident_span, res))
+                            } else {
+                                None
+                            }
                         })
-                        .collect();
-                if let [target] = targets.as_slice() {
-                    return Some(TypoSuggestion::single_item_from_ident(
-                        target.0.ident.0,
-                        target.1,
-                    ));
+                    })
+                    .collect();
+                if let &[(name, orig_ident_span, res)] = targets.as_slice() {
+                    return Some(TypoSuggestion::single_item(name, orig_ident_span, res));
                 }
             }
         }
@@ -2662,7 +2664,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 // Locals and type parameters
                 for (ident, &res) in &rib.bindings {
                     if filter_fn(res) && ident.span.ctxt() == rib_ctxt {
-                        names.push(TypoSuggestion::typo_from_ident(*ident, res));
+                        names.push(TypoSuggestion::new(ident.name, ident.span, res));
                     }
                 }
 
@@ -2824,7 +2826,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 break;
             }
 
-            in_module.for_each_child(self.r, |r, ident, _, name_binding| {
+            in_module.for_each_child(self.r, |r, ident, orig_ident_span, _, name_binding| {
                 // abort if the module is already found or if name_binding is private external
                 if result.is_some() || !name_binding.vis().is_visible_locally() {
                     return;
@@ -2832,7 +2834,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 if let Some(module_def_id) = name_binding.res().module_like_def_id() {
                     // form the path
                     let mut path_segments = path_segments.clone();
-                    path_segments.push(ast::PathSegment::from_ident(ident.0));
+                    path_segments.push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
                     let doc_visible = doc_visible
                         && (module_def_id.is_local() || !r.tcx.is_doc_hidden(module_def_id));
                     if module_def_id == def_id {
@@ -2868,10 +2870,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn collect_enum_ctors(&self, def_id: DefId) -> Option<Vec<(Path, DefId, CtorKind)>> {
         self.find_module(def_id).map(|(enum_module, enum_import_suggestion)| {
             let mut variants = Vec::new();
-            enum_module.for_each_child(self.r, |_, ident, _, name_binding| {
+            enum_module.for_each_child(self.r, |_, ident, orig_ident_span, _, name_binding| {
                 if let Res::Def(DefKind::Ctor(CtorOf::Variant, kind), def_id) = name_binding.res() {
                     let mut segms = enum_import_suggestion.path.segments.clone();
-                    segms.push(ast::PathSegment::from_ident(ident.0));
+                    segms.push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
                     let path = Path { span: name_binding.span, segments: segms, tokens: None };
                     variants.push((path, def_id, kind));
                 }
