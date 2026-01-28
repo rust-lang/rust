@@ -1,5 +1,5 @@
 use super::sealed::Sealed;
-use crate::simd::{LaneCount, Mask, Simd, SupportedLaneCount, cmp::SimdPartialEq, num::SimdUint};
+use crate::simd::{Mask, Simd, cmp::SimdPartialEq, num::SimdUint};
 
 /// Operations on SIMD vectors of mutable pointers.
 pub trait SimdMutPtr: Copy + Sealed {
@@ -85,12 +85,9 @@ pub trait SimdMutPtr: Copy + Sealed {
     fn wrapping_sub(self, count: Self::Usize) -> Self;
 }
 
-impl<T, const N: usize> Sealed for Simd<*mut T, N> where LaneCount<N>: SupportedLaneCount {}
+impl<T, const N: usize> Sealed for Simd<*mut T, N> {}
 
-impl<T, const N: usize> SimdMutPtr for Simd<*mut T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T, const N: usize> SimdMutPtr for Simd<*mut T, N> {
     type Usize = Simd<usize, N>;
     type Isize = Simd<isize, N>;
     type CastPtr<U> = Simd<*mut U, N>;

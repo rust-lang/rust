@@ -1,7 +1,7 @@
 //! 4x4 matrix inverse
 // Code ported from the `packed_simd` crate
 // Run this code with `cargo test --example matrix_inversion`
-#![feature(array_chunks, portable_simd)]
+#![feature(portable_simd)]
 use core_simd::simd::prelude::*;
 
 // Gotta define our own 4x4 matrix since Rust doesn't ship multidim arrays yet :^)

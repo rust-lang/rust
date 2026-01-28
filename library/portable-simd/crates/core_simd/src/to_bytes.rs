@@ -1,12 +1,12 @@
 use crate::simd::{
-    LaneCount, Simd, SimdElement, SupportedLaneCount,
+    Simd, SimdElement,
     num::{SimdFloat, SimdInt, SimdUint},
 };
 
 mod sealed {
     use super::*;
     pub trait Sealed {}
-    impl<T: SimdElement, const N: usize> Sealed for Simd<T, N> where LaneCount<N>: SupportedLaneCount {}
+    impl<T: SimdElement, const N: usize> Sealed for Simd<T, N> {}
 }
 use sealed::Sealed;
 
