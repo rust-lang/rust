@@ -15,7 +15,7 @@ LL | final trait Trait {
    = note: only associated functions in traits can be `final`
 
 error: a static item cannot be `final`
-  --> $DIR/positions.rs:64:5
+  --> $DIR/positions.rs:67:5
    |
 LL |     final static FOO_EXTERN: usize = 0;
    |     ^^^^^ `final` because of this
@@ -23,7 +23,7 @@ LL |     final static FOO_EXTERN: usize = 0;
    = note: only associated functions in traits can be `final`
 
 error: an extern block cannot be `final`
-  --> $DIR/positions.rs:55:1
+  --> $DIR/positions.rs:58:1
    |
 LL | final unsafe extern "C" {
    | ^^^^^ `final` because of this
@@ -79,7 +79,7 @@ LL |     final fn method() {}
    |     `final` because of this
 
 error: `final` is only allowed on associated functions in traits
-  --> $DIR/positions.rs:38:5
+  --> $DIR/positions.rs:39:5
    |
 LL |     final type Foo = ();
    |     -----^^^^^^^^^^^^^^^
@@ -87,7 +87,7 @@ LL |     final type Foo = ();
    |     `final` because of this
 
 error: `final` is only allowed on associated functions in traits
-  --> $DIR/positions.rs:41:5
+  --> $DIR/positions.rs:43:5
    |
 LL |     final const FOO: usize = 1;
    |     -----^^^^^^^^^^^^^^^^^^^^^^
@@ -95,7 +95,7 @@ LL |     final const FOO: usize = 1;
    |     `final` because of this
 
 error: `final` is only allowed on associated functions in traits
-  --> $DIR/positions.rs:46:1
+  --> $DIR/positions.rs:49:1
    |
 LL | final fn foo() {}
    | -----^^^^^^^^^
@@ -103,7 +103,7 @@ LL | final fn foo() {}
    | `final` because of this
 
 error: `final` is only allowed on associated functions in traits
-  --> $DIR/positions.rs:49:1
+  --> $DIR/positions.rs:52:1
    |
 LL | final type FooTy = ();
    | -----^^^^^^^^^^^^^^^^^
@@ -111,7 +111,7 @@ LL | final type FooTy = ();
    | `final` because of this
 
 error: `final` is only allowed on associated functions in traits
-  --> $DIR/positions.rs:52:1
+  --> $DIR/positions.rs:55:1
    |
 LL | final const FOO: usize = 0;
    | -----^^^^^^^^^^^^^^^^^^^^^^
@@ -119,7 +119,7 @@ LL | final const FOO: usize = 0;
    | `final` because of this
 
 error: `final` is only allowed on associated functions in traits
-  --> $DIR/positions.rs:58:5
+  --> $DIR/positions.rs:61:5
    |
 LL |     final fn foo_extern();
    |     -----^^^^^^^^^^^^^^^^^
@@ -127,7 +127,7 @@ LL |     final fn foo_extern();
    |     `final` because of this
 
 error: `final` is only allowed on associated functions in traits
-  --> $DIR/positions.rs:61:5
+  --> $DIR/positions.rs:64:5
    |
 LL |     final type FooExtern;
    |     -----^^^^^^^^^^^^^^^^
@@ -135,7 +135,7 @@ LL |     final type FooExtern;
    |     `final` because of this
 
 error: incorrect `static` inside `extern` block
-  --> $DIR/positions.rs:64:18
+  --> $DIR/positions.rs:67:18
    |
 LL | final unsafe extern "C" {
    | ----------------------- `extern` blocks define existing foreign statics and statics inside of them cannot have a body
@@ -147,5 +147,41 @@ LL |     final static FOO_EXTERN: usize = 0;
    |
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
 
-error: aborting due to 18 previous errors
+error: cannot override `method` because it already has a `final` definition in the trait
+  --> $DIR/positions.rs:35:5
+   |
+LL |     final fn method() {}
+   |     ^^^^^^^^^^^^^^^^^
+   |
+note: `method` is marked final here
+  --> $DIR/positions.rs:13:5
+   |
+LL |     final fn method() {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: cannot override `Foo` because it already has a `final` definition in the trait
+  --> $DIR/positions.rs:39:5
+   |
+LL |     final type Foo = ();
+   |     ^^^^^^^^^^^^^^
+   |
+note: `Foo` is marked final here
+  --> $DIR/positions.rs:16:5
+   |
+LL |     final type Foo = ();
+   |     ^^^^^^^^^^^^^^
+
+error: cannot override `FOO` because it already has a `final` definition in the trait
+  --> $DIR/positions.rs:43:5
+   |
+LL |     final const FOO: usize = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `FOO` is marked final here
+  --> $DIR/positions.rs:19:5
+   |
+LL |     final const FOO: usize = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 21 previous errors
 
