@@ -2,6 +2,7 @@
 
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
+use syn::parse::ParseStream;
 use syn::spanned::Spanned;
 use syn::{Attribute, Meta, Path, Token, Type, parse_quote};
 use synstructure::{BindingInfo, Structure, VariantInfo};
@@ -42,7 +43,7 @@ pub(crate) struct DiagnosticDeriveVariantBuilder {
 
     /// Slug is a mandatory part of the struct attribute as corresponds to the Fluent message that
     /// has the actual diagnostic message.
-    pub slug: SpannedOption<Path>,
+    pub slug: Option<Path>,
 
     /// Error codes are a optional part of the struct attribute - this is only set to detect
     /// multiple specifications.
@@ -111,7 +112,7 @@ impl DiagnosticDeriveKind {
 
 impl DiagnosticDeriveVariantBuilder {
     pub(crate) fn primary_message(&self) -> Option<&Path> {
-        match self.slug.value_ref() {
+        match self.slug.as_ref() {
             None => {
                 span_err(self.span, "diagnostic slug not specified")
                     .help(
@@ -209,47 +210,54 @@ impl DiagnosticDeriveVariantBuilder {
         let name = attr.path().segments.last().unwrap().ident.to_string();
         let name = name.as_str();
 
-        let mut first = true;
-
         if name == "diag" {
             let mut tokens = TokenStream::new();
-            attr.parse_nested_meta(|nested| {
-                let path = &nested.path;
+            attr.parse_args_with(|input: ParseStream<'_>| {
+                let mut input = &*input;
+                let slug_recovery_point = input.fork();
 
-                if first && (nested.input.is_empty() || nested.input.peek(Token![,])) {
-                    self.slug.set_once(path.clone(), path.span().unwrap());
-                    first = false;
-                    return Ok(());
+                let slug = input.parse::<Path>()?;
+                if input.is_empty() || input.peek(Token![,]) {
+                    self.slug = Some(slug);
+                } else {
+                    input = &slug_recovery_point;
                 }
 
-                first = false;
-
-                let Ok(nested) = nested.value() else {
-                    span_err(
-                        nested.input.span().unwrap(),
-                        "diagnostic slug must be the first argument",
-                    )
-                    .emit();
-                    return Ok(());
-                };
-
-                if path.is_ident("code") {
-                    self.code.set_once((), path.span().unwrap());
-
-                    let code = nested.parse::<syn::Expr>()?;
-                    tokens.extend(quote! {
-                        diag.code(#code);
-                    });
-                } else {
-                    span_err(path.span().unwrap(), "unknown argument")
-                        .note("only the `code` parameter is valid after the slug")
+                while !input.is_empty() {
+                    input.parse::<Token![,]>()?;
+                    // Allow trailing comma
+                    if input.is_empty() {
+                        break;
+                    }
+                    let arg_name: Path = input.parse::<Path>()?;
+                    if input.peek(Token![,]) {
+                        span_err(
+                            arg_name.span().unwrap(),
+                            "diagnostic slug must be the first argument",
+                        )
                         .emit();
-
-                    // consume the buffer so we don't have syntax errors from syn
-                    let _ = nested.parse::<TokenStream>();
+                        continue;
+                    }
+                    let arg_name = arg_name.require_ident()?;
+                    input.parse::<Token![=]>()?;
+                    let arg_value = input.parse::<syn::Expr>()?;
+                    match arg_name.to_string().as_str() {
+                        "code" => {
+                            self.code.set_once((), arg_name.span().unwrap());
+                            tokens.extend(quote! {
+                                diag.code(#arg_value);
+                            });
+                        }
+                        _ => {
+                            span_err(arg_name.span().unwrap(), "unknown argument")
+                                .note("only the `code` parameter is valid after the slug")
+                                .emit();
+                        }
+                    }
                 }
                 Ok(())
             })?;
+
             return Ok(tokens);
         }
 

@@ -80,20 +80,17 @@ struct InvalidNestedStructAttr {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense("foo"), code = E0123, slug = "foo")]
-//~^ ERROR diagnostic slug must be the first argument
-//~| ERROR diagnostic slug not specified
+//~^ ERROR derive(Diagnostic): diagnostic slug not specified
 struct InvalidNestedStructAttr1 {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense = "...", code = E0123, slug = "foo")]
-//~^ ERROR unknown argument
-//~| ERROR diagnostic slug not specified
+//~^ ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr2 {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense = 4, code = E0123, slug = "foo")]
-//~^ ERROR unknown argument
-//~| ERROR diagnostic slug not specified
+//~^ ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr3 {}
 
 #[derive(Diagnostic)]
@@ -113,7 +110,6 @@ struct WrongPlaceField {
 #[diag(no_crate_example, code = E0123)]
 #[diag(no_crate_example, code = E0456)]
 //~^ ERROR specified multiple times
-//~^^ ERROR specified multiple times
 struct DiagSpecifiedTwice {}
 
 #[derive(Diagnostic)]
