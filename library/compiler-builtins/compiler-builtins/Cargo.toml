@@ -34,7 +34,7 @@ core = { path = "../../core", optional = true }
 cc = { optional = true, version = "1.2" }
 
 [features]
-default = ["compiler-builtins"]
+default = []
 
 # Enable compilation of C code in compiler-rt, filling in some more optimized
 # implementations and also filling in unimplemented intrinsics
@@ -49,8 +49,9 @@ no-asm = []
 # `f128` support. Disabled any intrinsics which use those types.
 no-f16-f128 = []
 
-# Flag this library as the unstable compiler-builtins lib
-compiler-builtins = []
+# Flag this library as the unstable compiler-builtins lib. This must be enabled
+# when using as `std`'s dependency.'
+compiler-builtins = ["dep:core"]
 
 # Generate memory-related intrinsics like memcpy
 mem = []
@@ -58,9 +59,6 @@ mem = []
 # Mangle all names so this can be linked in with other versions or other
 # compiler-rt implementations. Also used for testing
 mangled-names = []
-
-# Only used in the compiler's build system
-rustc-dep-of-std = ["compiler-builtins", "dep:core"]
 
 # This makes certain traits and function specializations public that
 # are not normally public but are required by the `builtins-test`
