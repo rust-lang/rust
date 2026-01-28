@@ -7,7 +7,6 @@ mod simd;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, HasDataLayout, Size, VariantIdx};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_data_structures::assert_matches;
-use rustc_hir::LangItem;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
@@ -1269,36 +1268,26 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
-    fn va_list_key_index(&self) -> FieldIdx {
-        let def_id = self.tcx.lang_items().get(LangItem::VaList).unwrap();
-
-        // VaList is a transparent wrapper around a struct.
-        let va_list_ty = self.tcx.type_of(def_id).instantiate_identity();
-        let layout = self.layout_of(va_list_ty).unwrap();
-        let (_, inner) = layout.non_1zst_field(self).unwrap();
+    /// Get the MPlace of the key from the place storing the VaList.
+    pub(super) fn va_list_key_field<P: Projectable<'tcx, M::Provenance>>(
+        &self,
+        va_list: &P,
+    ) -> InterpResult<'tcx, P> {
+        // The struct wrapped by VaList.
+        let va_list_inner = self.project_field(va_list, FieldIdx::ZERO)?;
 
         // Find the first pointer field in this struct. The exact index is target-specific.
-        let ty::Adt(adt, _substs) = inner.ty.kind() else {
+        let ty::Adt(adt, _substs) = va_list_inner.layout().ty.kind() else {
             bug!("invalid VaListImpl layout");
         };
 
         for (i, field) in adt.non_enum_variant().fields.iter().enumerate() {
             let field_ty = self.tcx.type_of(field.did);
             if field_ty.skip_binder().is_raw_ptr() {
-                return FieldIdx::from_usize(i);
+                return self.project_field(&va_list_inner, FieldIdx::from_usize(i));
             }
         }
 
         bug!("no VaListImpl field is a pointer");
-    }
-
-    /// Get the MPlace of the key from the place storing the VaList.
-    pub(super) fn va_list_key_field<P: Projectable<'tcx, M::Provenance>>(
-        &self,
-        va_list: &P,
-    ) -> InterpResult<'tcx, P> {
-        let va_list_inner = self.project_field(va_list, FieldIdx::ZERO)?;
-        let field_idx = self.va_list_key_index();
-        self.project_field(&va_list_inner, field_idx)
     }
 }
