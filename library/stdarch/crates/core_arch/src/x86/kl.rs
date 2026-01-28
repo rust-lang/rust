@@ -352,45 +352,47 @@ mod tests {
     use stdarch_test::simd_test;
 
     #[target_feature(enable = "kl")]
-    unsafe fn encodekey128() -> [u8; 48] {
+    fn encodekey128() -> [u8; 48] {
         let mut handle = [0; 48];
-        let _ = _mm_encodekey128_u32(0, _mm_setzero_si128(), handle.as_mut_ptr());
+        let _ = unsafe { _mm_encodekey128_u32(0, _mm_setzero_si128(), handle.as_mut_ptr()) };
         handle
     }
 
     #[target_feature(enable = "kl")]
-    unsafe fn encodekey256() -> [u8; 64] {
+    fn encodekey256() -> [u8; 64] {
         let mut handle = [0; 64];
-        let _ = _mm_encodekey256_u32(
-            0,
-            _mm_setzero_si128(),
-            _mm_setzero_si128(),
-            handle.as_mut_ptr(),
-        );
+        let _ = unsafe {
+            _mm_encodekey256_u32(
+                0,
+                _mm_setzero_si128(),
+                _mm_setzero_si128(),
+                handle.as_mut_ptr(),
+            )
+        };
         handle
     }
 
     #[simd_test(enable = "kl")]
-    unsafe fn test_mm_encodekey128_u32() {
+    fn test_mm_encodekey128_u32() {
         encodekey128();
     }
 
     #[simd_test(enable = "kl")]
-    unsafe fn test_mm_encodekey256_u32() {
+    fn test_mm_encodekey256_u32() {
         encodekey256();
     }
 
     #[simd_test(enable = "kl")]
-    unsafe fn test_mm_aesenc128kl_u8() {
+    fn test_mm_aesenc128kl_u8() {
         let mut buffer = _mm_setzero_si128();
         let key = encodekey128();
 
         for _ in 0..100 {
-            let status = _mm_aesenc128kl_u8(&mut buffer, buffer, key.as_ptr());
+            let status = unsafe { _mm_aesenc128kl_u8(&mut buffer, buffer, key.as_ptr()) };
             assert_eq!(status, 0);
         }
         for _ in 0..100 {
-            let status = _mm_aesdec128kl_u8(&mut buffer, buffer, key.as_ptr());
+            let status = unsafe { _mm_aesdec128kl_u8(&mut buffer, buffer, key.as_ptr()) };
             assert_eq!(status, 0);
         }
 
@@ -398,33 +400,16 @@ mod tests {
     }
 
     #[simd_test(enable = "kl")]
-    unsafe fn test_mm_aesdec128kl_u8() {
+    fn test_mm_aesdec128kl_u8() {
         let mut buffer = _mm_setzero_si128();
         let key = encodekey128();
 
         for _ in 0..100 {
-            let status = _mm_aesdec128kl_u8(&mut buffer, buffer, key.as_ptr());
+            let status = unsafe { _mm_aesdec128kl_u8(&mut buffer, buffer, key.as_ptr()) };
             assert_eq!(status, 0);
         }
         for _ in 0..100 {
-            let status = _mm_aesenc128kl_u8(&mut buffer, buffer, key.as_ptr());
-            assert_eq!(status, 0);
-        }
-
-        assert_eq_m128i(buffer, _mm_setzero_si128());
-    }
-
-    #[simd_test(enable = "kl")]
-    unsafe fn test_mm_aesenc256kl_u8() {
-        let mut buffer = _mm_setzero_si128();
-        let key = encodekey256();
-
-        for _ in 0..100 {
-            let status = _mm_aesenc256kl_u8(&mut buffer, buffer, key.as_ptr());
-            assert_eq!(status, 0);
-        }
-        for _ in 0..100 {
-            let status = _mm_aesdec256kl_u8(&mut buffer, buffer, key.as_ptr());
+            let status = unsafe { _mm_aesenc128kl_u8(&mut buffer, buffer, key.as_ptr()) };
             assert_eq!(status, 0);
         }
 
@@ -432,16 +417,33 @@ mod tests {
     }
 
     #[simd_test(enable = "kl")]
-    unsafe fn test_mm_aesdec256kl_u8() {
+    fn test_mm_aesenc256kl_u8() {
         let mut buffer = _mm_setzero_si128();
         let key = encodekey256();
 
         for _ in 0..100 {
-            let status = _mm_aesdec256kl_u8(&mut buffer, buffer, key.as_ptr());
+            let status = unsafe { _mm_aesenc256kl_u8(&mut buffer, buffer, key.as_ptr()) };
             assert_eq!(status, 0);
         }
         for _ in 0..100 {
-            let status = _mm_aesenc256kl_u8(&mut buffer, buffer, key.as_ptr());
+            let status = unsafe { _mm_aesdec256kl_u8(&mut buffer, buffer, key.as_ptr()) };
+            assert_eq!(status, 0);
+        }
+
+        assert_eq_m128i(buffer, _mm_setzero_si128());
+    }
+
+    #[simd_test(enable = "kl")]
+    fn test_mm_aesdec256kl_u8() {
+        let mut buffer = _mm_setzero_si128();
+        let key = encodekey256();
+
+        for _ in 0..100 {
+            let status = unsafe { _mm_aesdec256kl_u8(&mut buffer, buffer, key.as_ptr()) };
+            assert_eq!(status, 0);
+        }
+        for _ in 0..100 {
+            let status = unsafe { _mm_aesenc256kl_u8(&mut buffer, buffer, key.as_ptr()) };
             assert_eq!(status, 0);
         }
 
@@ -449,16 +451,20 @@ mod tests {
     }
 
     #[simd_test(enable = "widekl")]
-    unsafe fn test_mm_aesencwide128kl_u8() {
+    fn test_mm_aesencwide128kl_u8() {
         let mut buffer = [_mm_setzero_si128(); 8];
         let key = encodekey128();
 
         for _ in 0..100 {
-            let status = _mm_aesencwide128kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr());
+            let status = unsafe {
+                _mm_aesencwide128kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr())
+            };
             assert_eq!(status, 0);
         }
         for _ in 0..100 {
-            let status = _mm_aesdecwide128kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr());
+            let status = unsafe {
+                _mm_aesdecwide128kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr())
+            };
             assert_eq!(status, 0);
         }
 
@@ -468,35 +474,20 @@ mod tests {
     }
 
     #[simd_test(enable = "widekl")]
-    unsafe fn test_mm_aesdecwide128kl_u8() {
+    fn test_mm_aesdecwide128kl_u8() {
         let mut buffer = [_mm_setzero_si128(); 8];
         let key = encodekey128();
 
         for _ in 0..100 {
-            let status = _mm_aesdecwide128kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr());
+            let status = unsafe {
+                _mm_aesdecwide128kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr())
+            };
             assert_eq!(status, 0);
         }
         for _ in 0..100 {
-            let status = _mm_aesencwide128kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr());
-            assert_eq!(status, 0);
-        }
-
-        for elem in buffer {
-            assert_eq_m128i(elem, _mm_setzero_si128());
-        }
-    }
-
-    #[simd_test(enable = "widekl")]
-    unsafe fn test_mm_aesencwide256kl_u8() {
-        let mut buffer = [_mm_setzero_si128(); 8];
-        let key = encodekey256();
-
-        for _ in 0..100 {
-            let status = _mm_aesencwide256kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr());
-            assert_eq!(status, 0);
-        }
-        for _ in 0..100 {
-            let status = _mm_aesdecwide256kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr());
+            let status = unsafe {
+                _mm_aesencwide128kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr())
+            };
             assert_eq!(status, 0);
         }
 
@@ -506,16 +497,43 @@ mod tests {
     }
 
     #[simd_test(enable = "widekl")]
-    unsafe fn test_mm_aesdecwide256kl_u8() {
+    fn test_mm_aesencwide256kl_u8() {
         let mut buffer = [_mm_setzero_si128(); 8];
         let key = encodekey256();
 
         for _ in 0..100 {
-            let status = _mm_aesdecwide256kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr());
+            let status = unsafe {
+                _mm_aesencwide256kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr())
+            };
             assert_eq!(status, 0);
         }
         for _ in 0..100 {
-            let status = _mm_aesencwide256kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr());
+            let status = unsafe {
+                _mm_aesdecwide256kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr())
+            };
+            assert_eq!(status, 0);
+        }
+
+        for elem in buffer {
+            assert_eq_m128i(elem, _mm_setzero_si128());
+        }
+    }
+
+    #[simd_test(enable = "widekl")]
+    fn test_mm_aesdecwide256kl_u8() {
+        let mut buffer = [_mm_setzero_si128(); 8];
+        let key = encodekey256();
+
+        for _ in 0..100 {
+            let status = unsafe {
+                _mm_aesdecwide256kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr())
+            };
+            assert_eq!(status, 0);
+        }
+        for _ in 0..100 {
+            let status = unsafe {
+                _mm_aesencwide256kl_u8(buffer.as_mut_ptr(), buffer.as_ptr(), key.as_ptr())
+            };
             assert_eq!(status, 0);
         }
 

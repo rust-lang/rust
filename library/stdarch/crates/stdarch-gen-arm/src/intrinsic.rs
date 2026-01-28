@@ -840,7 +840,7 @@ impl fmt::Display for UnsafetyComment {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Custom(s) => s.fmt(f),
-            Self::Neon => write!(f, "Neon instrinsic unsafe"),
+            Self::Neon => write!(f, "Neon intrinsic unsafe"),
             Self::Uninitialized => write!(
                 f,
                 "This creates an uninitialized value, and may be unsound (like \

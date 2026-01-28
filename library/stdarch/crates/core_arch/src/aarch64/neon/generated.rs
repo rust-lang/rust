@@ -733,10 +733,42 @@ pub fn vaddvq_u64(a: uint64x2_t) -> u64 {
     unsafe { simd_reduce_add_ordered(a, 0) }
 }
 #[doc = "Multi-vector floating-point absolute maximum"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamax_f16)"]
+#[inline(always)]
+#[target_feature(enable = "neon,faminmax")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famax))]
+#[unstable(feature = "faminmax", issue = "137933")]
+pub fn vamax_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.famax.v4f16"
+        )]
+        fn _vamax_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t;
+    }
+    unsafe { _vamax_f16(a, b) }
+}
+#[doc = "Multi-vector floating-point absolute maximum"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamaxq_f16)"]
+#[inline(always)]
+#[target_feature(enable = "neon,faminmax")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famax))]
+#[unstable(feature = "faminmax", issue = "137933")]
+pub fn vamaxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.famax.v8f16"
+        )]
+        fn _vamaxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t;
+    }
+    unsafe { _vamaxq_f16(a, b) }
+}
+#[doc = "Multi-vector floating-point absolute maximum"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamax_f32)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famax))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vamax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unsafe extern "unadjusted" {
@@ -752,7 +784,7 @@ pub fn vamax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamaxq_f32)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famax))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vamaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     unsafe extern "unadjusted" {
@@ -768,7 +800,7 @@ pub fn vamaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamaxq_f64)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famax))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vamaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     unsafe extern "unadjusted" {
@@ -781,10 +813,42 @@ pub fn vamaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     unsafe { _vamaxq_f64(a, b) }
 }
 #[doc = "Multi-vector floating-point absolute minimum"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamin_f16)"]
+#[inline(always)]
+#[target_feature(enable = "neon,faminmax")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famin))]
+#[unstable(feature = "faminmax", issue = "137933")]
+pub fn vamin_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.famin.v4f16"
+        )]
+        fn _vamin_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t;
+    }
+    unsafe { _vamin_f16(a, b) }
+}
+#[doc = "Multi-vector floating-point absolute minimum"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaminq_f16)"]
+#[inline(always)]
+#[target_feature(enable = "neon,faminmax")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famin))]
+#[unstable(feature = "faminmax", issue = "137933")]
+pub fn vaminq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.famin.v8f16"
+        )]
+        fn _vaminq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t;
+    }
+    unsafe { _vaminq_f16(a, b) }
+}
+#[doc = "Multi-vector floating-point absolute minimum"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamin_f32)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famin))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vamin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unsafe extern "unadjusted" {
@@ -800,7 +864,7 @@ pub fn vamin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaminq_f32)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famin))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vaminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     unsafe extern "unadjusted" {
@@ -816,7 +880,7 @@ pub fn vaminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaminq_f64)"]
 #[inline(always)]
 #[target_feature(enable = "neon,faminmax")]
-#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(famin))]
 #[unstable(feature = "faminmax", issue = "137933")]
 pub fn vaminq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     unsafe extern "unadjusted" {
@@ -9491,68 +9555,6 @@ pub fn vdivq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 pub fn vdivh_f16(a: f16, b: f16) -> f16 {
     a / b
 }
-#[doc = "Dot product arithmetic (indexed)"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_laneq_s32)"]
-#[inline(always)]
-#[target_feature(enable = "neon,dotprod")]
-#[cfg_attr(test, assert_instr(sdot, LANE = 0))]
-#[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_dotprod", issue = "117224")]
-pub fn vdot_laneq_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x16_t) -> int32x2_t {
-    static_assert_uimm_bits!(LANE, 2);
-    let c: int32x4_t = vreinterpretq_s32_s8(c);
-    unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
-        vdot_s32(a, b, vreinterpret_s8_s32(c))
-    }
-}
-#[doc = "Dot product arithmetic (indexed)"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdotq_laneq_s32)"]
-#[inline(always)]
-#[target_feature(enable = "neon,dotprod")]
-#[cfg_attr(test, assert_instr(sdot, LANE = 0))]
-#[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_dotprod", issue = "117224")]
-pub fn vdotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
-    static_assert_uimm_bits!(LANE, 2);
-    let c: int32x4_t = vreinterpretq_s32_s8(c);
-    unsafe {
-        let c: int32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vdotq_s32(a, b, vreinterpretq_s8_s32(c))
-    }
-}
-#[doc = "Dot product arithmetic (indexed)"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_laneq_u32)"]
-#[inline(always)]
-#[target_feature(enable = "neon,dotprod")]
-#[cfg_attr(test, assert_instr(udot, LANE = 0))]
-#[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_dotprod", issue = "117224")]
-pub fn vdot_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x16_t) -> uint32x2_t {
-    static_assert_uimm_bits!(LANE, 2);
-    let c: uint32x4_t = vreinterpretq_u32_u8(c);
-    unsafe {
-        let c: uint32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
-        vdot_u32(a, b, vreinterpret_u8_u32(c))
-    }
-}
-#[doc = "Dot product arithmetic (indexed)"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdotq_laneq_u32)"]
-#[inline(always)]
-#[target_feature(enable = "neon,dotprod")]
-#[cfg_attr(test, assert_instr(udot, LANE = 0))]
-#[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_dotprod", issue = "117224")]
-pub fn vdotq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
-    static_assert_uimm_bits!(LANE, 2);
-    let c: uint32x4_t = vreinterpretq_u32_u8(c);
-    unsafe {
-        let c: uint32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vdotq_u32(a, b, vreinterpretq_u8_u32(c))
-    }
-}
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_f64)"]
 #[inline(always)]
@@ -11172,7 +11174,7 @@ pub fn vfmsd_laneq_f64<const LANE: i32>(a: f64, b: f64, c: float64x2_t) -> f64 {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11184,7 +11186,7 @@ pub unsafe fn vld1_f16(ptr: *const f16) -> float16x4_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11196,7 +11198,7 @@ pub unsafe fn vld1q_f16(ptr: *const f16) -> float16x8_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f32)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11207,7 +11209,7 @@ pub unsafe fn vld1_f32(ptr: *const f32) -> float32x2_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f32)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11218,7 +11220,7 @@ pub unsafe fn vld1q_f32(ptr: *const f32) -> float32x4_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11229,7 +11231,7 @@ pub unsafe fn vld1_f64(ptr: *const f64) -> float64x1_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11240,7 +11242,7 @@ pub unsafe fn vld1q_f64(ptr: *const f64) -> float64x2_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11251,7 +11253,7 @@ pub unsafe fn vld1_s8(ptr: *const i8) -> int8x8_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11262,7 +11264,7 @@ pub unsafe fn vld1q_s8(ptr: *const i8) -> int8x16_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11273,7 +11275,7 @@ pub unsafe fn vld1_s16(ptr: *const i16) -> int16x4_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11284,7 +11286,7 @@ pub unsafe fn vld1q_s16(ptr: *const i16) -> int16x8_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s32)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11295,7 +11297,7 @@ pub unsafe fn vld1_s32(ptr: *const i32) -> int32x2_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s32)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11306,7 +11308,7 @@ pub unsafe fn vld1q_s32(ptr: *const i32) -> int32x4_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11317,7 +11319,7 @@ pub unsafe fn vld1_s64(ptr: *const i64) -> int64x1_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11328,7 +11330,7 @@ pub unsafe fn vld1q_s64(ptr: *const i64) -> int64x2_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11339,7 +11341,7 @@ pub unsafe fn vld1_u8(ptr: *const u8) -> uint8x8_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11350,7 +11352,7 @@ pub unsafe fn vld1q_u8(ptr: *const u8) -> uint8x16_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11361,7 +11363,7 @@ pub unsafe fn vld1_u16(ptr: *const u16) -> uint16x4_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11372,7 +11374,7 @@ pub unsafe fn vld1q_u16(ptr: *const u16) -> uint16x8_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u32)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11383,7 +11385,7 @@ pub unsafe fn vld1_u32(ptr: *const u32) -> uint32x2_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u32)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11394,7 +11396,7 @@ pub unsafe fn vld1q_u32(ptr: *const u32) -> uint32x4_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11405,7 +11407,7 @@ pub unsafe fn vld1_u64(ptr: *const u64) -> uint64x1_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11416,7 +11418,7 @@ pub unsafe fn vld1q_u64(ptr: *const u64) -> uint64x2_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11427,7 +11429,7 @@ pub unsafe fn vld1_p8(ptr: *const p8) -> poly8x8_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11438,7 +11440,7 @@ pub unsafe fn vld1q_p8(ptr: *const p8) -> poly8x16_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11449,7 +11451,7 @@ pub unsafe fn vld1_p16(ptr: *const p16) -> poly16x4_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11460,7 +11462,7 @@ pub unsafe fn vld1q_p16(ptr: *const p16) -> poly16x8_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11471,7 +11473,7 @@ pub unsafe fn vld1_p64(ptr: *const p64) -> poly64x1_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -11482,7 +11484,7 @@ pub unsafe fn vld1q_p64(ptr: *const p64) -> poly64x2_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f64_x2)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -11500,7 +11502,7 @@ pub unsafe fn vld1_f64_x2(a: *const f64) -> float64x1x2_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f64_x3)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -11518,7 +11520,7 @@ pub unsafe fn vld1_f64_x3(a: *const f64) -> float64x1x3_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f64_x4)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -11536,7 +11538,7 @@ pub unsafe fn vld1_f64_x4(a: *const f64) -> float64x1x4_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f64_x2)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -11554,7 +11556,7 @@ pub unsafe fn vld1q_f64_x2(a: *const f64) -> float64x2x2_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f64_x3)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -11572,7 +11574,7 @@ pub unsafe fn vld1q_f64_x3(a: *const f64) -> float64x2x3_t {
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f64_x4)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -11590,7 +11592,7 @@ pub unsafe fn vld1q_f64_x4(a: *const f64) -> float64x2x4_t {
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -11608,7 +11610,7 @@ pub unsafe fn vld2_dup_f64(a: *const f64) -> float64x1x2_t {
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -11626,7 +11628,7 @@ pub unsafe fn vld2q_dup_f64(a: *const f64) -> float64x2x2_t {
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -11644,7 +11646,7 @@ pub unsafe fn vld2q_dup_s64(a: *const i64) -> int64x2x2_t {
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -11662,7 +11664,7 @@ pub unsafe fn vld2_f64(a: *const f64) -> float64x1x2_t {
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld2, LANE = 0))]
@@ -11682,7 +11684,7 @@ pub unsafe fn vld2_lane_f64<const LANE: i32>(a: *const f64, b: float64x1x2_t) ->
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld2, LANE = 0))]
@@ -11702,7 +11704,7 @@ pub unsafe fn vld2_lane_s64<const LANE: i32>(a: *const i64, b: int64x1x2_t) -> i
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(ld2, LANE = 0))]
@@ -11715,7 +11717,7 @@ pub unsafe fn vld2_lane_p64<const LANE: i32>(a: *const p64, b: poly64x1x2_t) -> 
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld2, LANE = 0))]
@@ -11728,7 +11730,7 @@ pub unsafe fn vld2_lane_u64<const LANE: i32>(a: *const u64, b: uint64x1x2_t) -> 
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon,aes")]
@@ -11740,7 +11742,7 @@ pub unsafe fn vld2q_dup_p64(a: *const p64) -> poly64x2x2_t {
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon,aes")]
@@ -11755,7 +11757,7 @@ pub unsafe fn vld2q_dup_p64(a: *const p64) -> poly64x2x2_t {
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
@@ -11767,7 +11769,7 @@ pub unsafe fn vld2q_dup_u64(a: *const u64) -> uint64x2x2_t {
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
@@ -11782,7 +11784,7 @@ pub unsafe fn vld2q_dup_u64(a: *const u64) -> uint64x2x2_t {
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -11800,7 +11802,7 @@ pub unsafe fn vld2q_f64(a: *const f64) -> float64x2x2_t {
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -11818,7 +11820,7 @@ pub unsafe fn vld2q_s64(a: *const i64) -> int64x2x2_t {
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld2, LANE = 0))]
@@ -11839,7 +11841,7 @@ pub unsafe fn vld2q_lane_f64<const LANE: i32>(a: *const f64, b: float64x2x2_t) -
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_s8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld2, LANE = 0))]
@@ -11859,7 +11861,7 @@ pub unsafe fn vld2q_lane_s8<const LANE: i32>(a: *const i8, b: int8x16x2_t) -> in
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld2, LANE = 0))]
@@ -11879,7 +11881,7 @@ pub unsafe fn vld2q_lane_s64<const LANE: i32>(a: *const i64, b: int64x2x2_t) -> 
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(ld2, LANE = 0))]
@@ -11892,7 +11894,7 @@ pub unsafe fn vld2q_lane_p64<const LANE: i32>(a: *const p64, b: poly64x2x2_t) ->
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_u8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld2, LANE = 0))]
@@ -11905,7 +11907,7 @@ pub unsafe fn vld2q_lane_u8<const LANE: i32>(a: *const u8, b: uint8x16x2_t) -> u
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld2, LANE = 0))]
@@ -11918,7 +11920,7 @@ pub unsafe fn vld2q_lane_u64<const LANE: i32>(a: *const u64, b: uint64x2x2_t) ->
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_p8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld2, LANE = 0))]
@@ -11931,7 +11933,7 @@ pub unsafe fn vld2q_lane_p8<const LANE: i32>(a: *const p8, b: poly8x16x2_t) -> p
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon,aes")]
@@ -11943,7 +11945,7 @@ pub unsafe fn vld2q_p64(a: *const p64) -> poly64x2x2_t {
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon,aes")]
@@ -11958,7 +11960,7 @@ pub unsafe fn vld2q_p64(a: *const p64) -> poly64x2x2_t {
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
@@ -11970,7 +11972,7 @@ pub unsafe fn vld2q_u64(a: *const u64) -> uint64x2x2_t {
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
@@ -11985,7 +11987,7 @@ pub unsafe fn vld2q_u64(a: *const u64) -> uint64x2x2_t {
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -12003,7 +12005,7 @@ pub unsafe fn vld3_dup_f64(a: *const f64) -> float64x1x3_t {
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -12021,7 +12023,7 @@ pub unsafe fn vld3q_dup_f64(a: *const f64) -> float64x2x3_t {
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -12039,7 +12041,7 @@ pub unsafe fn vld3q_dup_s64(a: *const i64) -> int64x2x3_t {
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -12057,7 +12059,7 @@ pub unsafe fn vld3_f64(a: *const f64) -> float64x1x3_t {
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld3, LANE = 0))]
@@ -12083,7 +12085,7 @@ pub unsafe fn vld3_lane_f64<const LANE: i32>(a: *const f64, b: float64x1x3_t) ->
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(ld3, LANE = 0))]
@@ -12096,7 +12098,7 @@ pub unsafe fn vld3_lane_p64<const LANE: i32>(a: *const p64, b: poly64x1x3_t) -> 
 #[doc = "Load multiple 3-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld3, LANE = 0))]
@@ -12122,7 +12124,7 @@ pub unsafe fn vld3_lane_s64<const LANE: i32>(a: *const i64, b: int64x1x3_t) -> i
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld3, LANE = 0))]
@@ -12135,7 +12137,7 @@ pub unsafe fn vld3_lane_u64<const LANE: i32>(a: *const u64, b: uint64x1x3_t) -> 
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon,aes")]
@@ -12147,7 +12149,7 @@ pub unsafe fn vld3q_dup_p64(a: *const p64) -> poly64x2x3_t {
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon,aes")]
@@ -12163,7 +12165,7 @@ pub unsafe fn vld3q_dup_p64(a: *const p64) -> poly64x2x3_t {
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
@@ -12175,7 +12177,7 @@ pub unsafe fn vld3q_dup_u64(a: *const u64) -> uint64x2x3_t {
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
@@ -12191,7 +12193,7 @@ pub unsafe fn vld3q_dup_u64(a: *const u64) -> uint64x2x3_t {
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -12209,7 +12211,7 @@ pub unsafe fn vld3q_f64(a: *const f64) -> float64x2x3_t {
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -12227,7 +12229,7 @@ pub unsafe fn vld3q_s64(a: *const i64) -> int64x2x3_t {
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld3, LANE = 0))]
@@ -12253,7 +12255,7 @@ pub unsafe fn vld3q_lane_f64<const LANE: i32>(a: *const f64, b: float64x2x3_t) -
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(ld3, LANE = 0))]
@@ -12266,7 +12268,7 @@ pub unsafe fn vld3q_lane_p64<const LANE: i32>(a: *const p64, b: poly64x2x3_t) ->
 #[doc = "Load multiple 3-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_s8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld3, LANE = 0))]
@@ -12292,7 +12294,7 @@ pub unsafe fn vld3q_lane_s8<const LANE: i32>(a: *const i8, b: int8x16x3_t) -> in
 #[doc = "Load multiple 3-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld3, LANE = 0))]
@@ -12318,7 +12320,7 @@ pub unsafe fn vld3q_lane_s64<const LANE: i32>(a: *const i64, b: int64x2x3_t) -> 
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_u8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld3, LANE = 0))]
@@ -12331,7 +12333,7 @@ pub unsafe fn vld3q_lane_u8<const LANE: i32>(a: *const u8, b: uint8x16x3_t) -> u
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld3, LANE = 0))]
@@ -12344,7 +12346,7 @@ pub unsafe fn vld3q_lane_u64<const LANE: i32>(a: *const u64, b: uint64x2x3_t) ->
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_p8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld3, LANE = 0))]
@@ -12357,7 +12359,7 @@ pub unsafe fn vld3q_lane_p8<const LANE: i32>(a: *const p8, b: poly8x16x3_t) -> p
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon,aes")]
@@ -12369,7 +12371,7 @@ pub unsafe fn vld3q_p64(a: *const p64) -> poly64x2x3_t {
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon,aes")]
@@ -12385,7 +12387,7 @@ pub unsafe fn vld3q_p64(a: *const p64) -> poly64x2x3_t {
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
@@ -12397,7 +12399,7 @@ pub unsafe fn vld3q_u64(a: *const u64) -> uint64x2x3_t {
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
@@ -12413,7 +12415,7 @@ pub unsafe fn vld3q_u64(a: *const u64) -> uint64x2x3_t {
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld4r))]
@@ -12431,7 +12433,7 @@ pub unsafe fn vld4_dup_f64(a: *const f64) -> float64x1x4_t {
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld4r))]
@@ -12449,7 +12451,7 @@ pub unsafe fn vld4q_dup_f64(a: *const f64) -> float64x2x4_t {
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld4r))]
@@ -12467,7 +12469,7 @@ pub unsafe fn vld4q_dup_s64(a: *const i64) -> int64x2x4_t {
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -12485,7 +12487,7 @@ pub unsafe fn vld4_f64(a: *const f64) -> float64x1x4_t {
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld4, LANE = 0))]
@@ -12512,7 +12514,7 @@ pub unsafe fn vld4_lane_f64<const LANE: i32>(a: *const f64, b: float64x1x4_t) ->
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld4, LANE = 0))]
@@ -12539,7 +12541,7 @@ pub unsafe fn vld4_lane_s64<const LANE: i32>(a: *const i64, b: int64x1x4_t) -> i
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(ld4, LANE = 0))]
@@ -12552,7 +12554,7 @@ pub unsafe fn vld4_lane_p64<const LANE: i32>(a: *const p64, b: poly64x1x4_t) -> 
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld4, LANE = 0))]
@@ -12565,7 +12567,7 @@ pub unsafe fn vld4_lane_u64<const LANE: i32>(a: *const u64, b: uint64x1x4_t) -> 
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon,aes")]
@@ -12577,7 +12579,7 @@ pub unsafe fn vld4q_dup_p64(a: *const p64) -> poly64x2x4_t {
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon,aes")]
@@ -12594,7 +12596,7 @@ pub unsafe fn vld4q_dup_p64(a: *const p64) -> poly64x2x4_t {
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
@@ -12606,7 +12608,7 @@ pub unsafe fn vld4q_dup_u64(a: *const u64) -> uint64x2x4_t {
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
@@ -12623,7 +12625,7 @@ pub unsafe fn vld4q_dup_u64(a: *const u64) -> uint64x2x4_t {
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -12641,7 +12643,7 @@ pub unsafe fn vld4q_f64(a: *const f64) -> float64x2x4_t {
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -12659,7 +12661,7 @@ pub unsafe fn vld4q_s64(a: *const i64) -> int64x2x4_t {
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld4, LANE = 0))]
@@ -12686,7 +12688,7 @@ pub unsafe fn vld4q_lane_f64<const LANE: i32>(a: *const f64, b: float64x2x4_t) -
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_s8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld4, LANE = 0))]
@@ -12713,7 +12715,7 @@ pub unsafe fn vld4q_lane_s8<const LANE: i32>(a: *const i8, b: int8x16x4_t) -> in
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld4, LANE = 0))]
@@ -12740,7 +12742,7 @@ pub unsafe fn vld4q_lane_s64<const LANE: i32>(a: *const i64, b: int64x2x4_t) -> 
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(ld4, LANE = 0))]
@@ -12753,7 +12755,7 @@ pub unsafe fn vld4q_lane_p64<const LANE: i32>(a: *const p64, b: poly64x2x4_t) ->
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_u8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld4, LANE = 0))]
@@ -12766,7 +12768,7 @@ pub unsafe fn vld4q_lane_u8<const LANE: i32>(a: *const u8, b: uint8x16x4_t) -> u
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld4, LANE = 0))]
@@ -12779,7 +12781,7 @@ pub unsafe fn vld4q_lane_u64<const LANE: i32>(a: *const u64, b: uint64x2x4_t) ->
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_p8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld4, LANE = 0))]
@@ -12792,7 +12794,7 @@ pub unsafe fn vld4q_lane_p8<const LANE: i32>(a: *const p8, b: poly8x16x4_t) -> p
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -12804,7 +12806,7 @@ pub unsafe fn vld4q_p64(a: *const p64) -> poly64x2x4_t {
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -12821,7 +12823,7 @@ pub unsafe fn vld4q_p64(a: *const p64) -> poly64x2x4_t {
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
@@ -12833,7 +12835,7 @@ pub unsafe fn vld4q_u64(a: *const u64) -> uint64x2x4_t {
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
@@ -12847,10 +12849,241 @@ pub unsafe fn vld4q_u64(a: *const u64) -> uint64x2x4_t {
     ret_val.3 = unsafe { simd_shuffle!(ret_val.3, ret_val.3, [1, 0]) };
     ret_val
 }
+#[doc = "Load-acquire RCpc one single-element structure to one lane of one register"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vldap1_lane_s64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,rcpc3")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+pub unsafe fn vldap1_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x1_t) -> int64x1_t {
+    static_assert!(LANE == 0);
+    let atomic_src = crate::sync::atomic::AtomicI64::from_ptr(ptr as *mut i64);
+    simd_insert!(
+        src,
+        LANE as u32,
+        atomic_src.load(crate::sync::atomic::Ordering::Acquire)
+    )
+}
+#[doc = "Load-acquire RCpc one single-element structure to one lane of one register"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vldap1q_lane_s64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,rcpc3")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+pub unsafe fn vldap1q_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x2_t) -> int64x2_t {
+    static_assert_uimm_bits!(LANE, 1);
+    let atomic_src = crate::sync::atomic::AtomicI64::from_ptr(ptr as *mut i64);
+    simd_insert!(
+        src,
+        LANE as u32,
+        atomic_src.load(crate::sync::atomic::Ordering::Acquire)
+    )
+}
+#[doc = "Load-acquire RCpc one single-element structure to one lane of one register"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vldap1q_lane_f64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[rustc_legacy_const_generics(2)]
+#[target_feature(enable = "neon,rcpc3")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
+#[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+pub unsafe fn vldap1q_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x2_t) -> float64x2_t {
+    static_assert_uimm_bits!(LANE, 1);
+    transmute(vldap1q_lane_s64::<LANE>(ptr as *mut i64, transmute(src)))
+}
+#[doc = "Load-acquire RCpc one single-element structure to one lane of one register"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vldap1_lane_u64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[rustc_legacy_const_generics(2)]
+#[target_feature(enable = "neon,rcpc3")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
+#[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+pub unsafe fn vldap1_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x1_t) -> uint64x1_t {
+    static_assert!(LANE == 0);
+    transmute(vldap1_lane_s64::<LANE>(ptr as *mut i64, transmute(src)))
+}
+#[doc = "Load-acquire RCpc one single-element structure to one lane of one register"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vldap1q_lane_u64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[rustc_legacy_const_generics(2)]
+#[target_feature(enable = "neon,rcpc3")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
+#[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+pub unsafe fn vldap1q_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x2_t) -> uint64x2_t {
+    static_assert_uimm_bits!(LANE, 1);
+    transmute(vldap1q_lane_s64::<LANE>(ptr as *mut i64, transmute(src)))
+}
+#[doc = "Load-acquire RCpc one single-element structure to one lane of one register"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vldap1_lane_p64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[rustc_legacy_const_generics(2)]
+#[target_feature(enable = "neon,rcpc3")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
+#[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+pub unsafe fn vldap1_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x1_t) -> poly64x1_t {
+    static_assert!(LANE == 0);
+    transmute(vldap1_lane_s64::<LANE>(ptr as *mut i64, transmute(src)))
+}
+#[doc = "Load-acquire RCpc one single-element structure to one lane of one register"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vldap1q_lane_p64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[rustc_legacy_const_generics(2)]
+#[target_feature(enable = "neon,rcpc3")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(ldap1, LANE = 0))]
+#[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+pub unsafe fn vldap1q_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x2_t) -> poly64x2_t {
+    static_assert_uimm_bits!(LANE, 1);
+    transmute(vldap1q_lane_s64::<LANE>(ptr as *mut i64, transmute(src)))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2_lane_f16<const INDEX: i32>(a: float16x4_t, b: uint8x8_t) -> float16x8_t {
+    static_assert!(INDEX >= 0 && INDEX <= 3);
+    transmute(vluti2_lane_s16::<INDEX>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2q_lane_f16<const INDEX: i32>(a: float16x8_t, b: uint8x8_t) -> float16x8_t {
+    static_assert!(INDEX >= 0 && INDEX <= 3);
+    transmute(vluti2q_lane_s16::<INDEX>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_u8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2_lane_u8<const INDEX: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x16_t {
+    static_assert!(INDEX >= 0 && INDEX <= 1);
+    transmute(vluti2_lane_s8::<INDEX>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_u8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2q_lane_u8<const INDEX: i32>(a: uint8x16_t, b: uint8x8_t) -> uint8x16_t {
+    static_assert!(INDEX >= 0 && INDEX <= 1);
+    transmute(vluti2q_lane_s8::<INDEX>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_u16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2_lane_u16<const INDEX: i32>(a: uint16x4_t, b: uint8x8_t) -> uint16x8_t {
+    static_assert!(INDEX >= 0 && INDEX <= 3);
+    transmute(vluti2_lane_s16::<INDEX>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_u16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2q_lane_u16<const INDEX: i32>(a: uint16x8_t, b: uint8x8_t) -> uint16x8_t {
+    static_assert!(INDEX >= 0 && INDEX <= 3);
+    transmute(vluti2q_lane_s16::<INDEX>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_p8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2_lane_p8<const INDEX: i32>(a: poly8x8_t, b: uint8x8_t) -> poly8x16_t {
+    static_assert!(INDEX >= 0 && INDEX <= 1);
+    transmute(vluti2_lane_s8::<INDEX>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_p8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2q_lane_p8<const INDEX: i32>(a: poly8x16_t, b: uint8x8_t) -> poly8x16_t {
+    static_assert!(INDEX >= 0 && INDEX <= 1);
+    transmute(vluti2q_lane_s8::<INDEX>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_p16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2_lane_p16<const INDEX: i32>(a: poly16x4_t, b: uint8x8_t) -> poly16x8_t {
+    static_assert!(INDEX >= 0 && INDEX <= 3);
+    transmute(vluti2_lane_s16::<INDEX>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_p16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2q_lane_p16<const INDEX: i32>(a: poly16x8_t, b: uint8x8_t) -> poly16x8_t {
+    static_assert!(INDEX >= 0 && INDEX <= 3);
+    transmute(vluti2q_lane_s16::<INDEX>(transmute(a), b))
+}
 #[doc = "Lookup table read with 2-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_s8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 1))]
@@ -12870,7 +13103,7 @@ pub unsafe fn vluti2_lane_s8<const LANE: i32>(a: int8x8_t, b: uint8x8_t) -> int8
 #[doc = "Lookup table read with 2-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_s8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 1))]
@@ -12890,7 +13123,7 @@ pub unsafe fn vluti2q_lane_s8<const LANE: i32>(a: int8x16_t, b: uint8x8_t) -> in
 #[doc = "Lookup table read with 2-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_s16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 1))]
@@ -12910,7 +13143,7 @@ pub unsafe fn vluti2_lane_s16<const LANE: i32>(a: int16x4_t, b: uint8x8_t) -> in
 #[doc = "Lookup table read with 2-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_s16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 1))]
@@ -12928,113 +13161,219 @@ pub unsafe fn vluti2q_lane_s16<const LANE: i32>(a: int16x8_t, b: uint8x8_t) -> i
     _vluti2q_lane_s16(a, b, LANE)
 }
 #[doc = "Lookup table read with 2-bit indices"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_u8)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_laneq_f16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
-#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
 #[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
 #[rustc_legacy_const_generics(2)]
-pub unsafe fn vluti2_lane_u8<const LANE: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x16_t {
-    static_assert!(LANE >= 0 && LANE <= 1);
-    transmute(vluti2_lane_s8::<LANE>(transmute(a), b))
+pub unsafe fn vluti2_laneq_f16<const INDEX: i32>(a: float16x4_t, b: uint8x16_t) -> float16x8_t {
+    static_assert!(INDEX >= 0 && INDEX <= 7);
+    transmute(vluti2_laneq_s16::<INDEX>(transmute(a), b))
 }
 #[doc = "Lookup table read with 2-bit indices"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_u8)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_laneq_f16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
-#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
 #[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
 #[rustc_legacy_const_generics(2)]
-pub unsafe fn vluti2q_lane_u8<const LANE: i32>(a: uint8x16_t, b: uint8x8_t) -> uint8x16_t {
-    static_assert!(LANE >= 0 && LANE <= 1);
-    transmute(vluti2q_lane_s8::<LANE>(transmute(a), b))
+pub unsafe fn vluti2q_laneq_f16<const INDEX: i32>(a: float16x8_t, b: uint8x16_t) -> float16x8_t {
+    static_assert!(INDEX >= 0 && INDEX <= 7);
+    transmute(vluti2q_laneq_s16::<INDEX>(transmute(a), b))
 }
 #[doc = "Lookup table read with 2-bit indices"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_u16)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_laneq_u8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
-#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
 #[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
 #[rustc_legacy_const_generics(2)]
-pub unsafe fn vluti2_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint8x8_t) -> uint16x8_t {
-    static_assert!(LANE >= 0 && LANE <= 3);
-    transmute(vluti2_lane_s16::<LANE>(transmute(a), b))
+pub unsafe fn vluti2_laneq_u8<const INDEX: i32>(a: uint8x8_t, b: uint8x16_t) -> uint8x16_t {
+    static_assert!(INDEX >= 0 && INDEX <= 3);
+    transmute(vluti2_laneq_s8::<INDEX>(transmute(a), b))
 }
 #[doc = "Lookup table read with 2-bit indices"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_u16)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_laneq_u8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
-#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
 #[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
 #[rustc_legacy_const_generics(2)]
-pub unsafe fn vluti2q_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint8x8_t) -> uint16x8_t {
-    static_assert!(LANE >= 0 && LANE <= 3);
-    transmute(vluti2q_lane_s16::<LANE>(transmute(a), b))
+pub unsafe fn vluti2q_laneq_u8<const INDEX: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
+    static_assert!(INDEX >= 0 && INDEX <= 3);
+    transmute(vluti2q_laneq_s8::<INDEX>(transmute(a), b))
 }
 #[doc = "Lookup table read with 2-bit indices"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_p8)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_laneq_u16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
-#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
 #[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
 #[rustc_legacy_const_generics(2)]
-pub unsafe fn vluti2_lane_p8<const LANE: i32>(a: poly8x8_t, b: uint8x8_t) -> poly8x16_t {
-    static_assert!(LANE >= 0 && LANE <= 1);
-    transmute(vluti2_lane_s8::<LANE>(transmute(a), b))
+pub unsafe fn vluti2_laneq_u16<const INDEX: i32>(a: uint16x4_t, b: uint8x16_t) -> uint16x8_t {
+    static_assert!(INDEX >= 0 && INDEX <= 7);
+    transmute(vluti2_laneq_s16::<INDEX>(transmute(a), b))
 }
 #[doc = "Lookup table read with 2-bit indices"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_p8)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_laneq_u16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
-#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
 #[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
 #[rustc_legacy_const_generics(2)]
-pub unsafe fn vluti2q_lane_p8<const LANE: i32>(a: poly8x16_t, b: uint8x8_t) -> poly8x16_t {
-    static_assert!(LANE >= 0 && LANE <= 1);
-    transmute(vluti2q_lane_s8::<LANE>(transmute(a), b))
+pub unsafe fn vluti2q_laneq_u16<const INDEX: i32>(a: uint16x8_t, b: uint8x16_t) -> uint16x8_t {
+    static_assert!(INDEX >= 0 && INDEX <= 7);
+    transmute(vluti2q_laneq_s16::<INDEX>(transmute(a), b))
 }
 #[doc = "Lookup table read with 2-bit indices"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_p16)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_laneq_p8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
-#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
 #[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
 #[rustc_legacy_const_generics(2)]
-pub unsafe fn vluti2_lane_p16<const LANE: i32>(a: poly16x4_t, b: uint8x8_t) -> poly16x8_t {
-    static_assert!(LANE >= 0 && LANE <= 3);
-    transmute(vluti2_lane_s16::<LANE>(transmute(a), b))
+pub unsafe fn vluti2_laneq_p8<const INDEX: i32>(a: poly8x8_t, b: uint8x16_t) -> poly8x16_t {
+    static_assert!(INDEX >= 0 && INDEX <= 3);
+    transmute(vluti2_laneq_s8::<INDEX>(transmute(a), b))
 }
 #[doc = "Lookup table read with 2-bit indices"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_p16)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_laneq_p8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
-#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
 #[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
 #[rustc_legacy_const_generics(2)]
-pub unsafe fn vluti2q_lane_p16<const LANE: i32>(a: poly16x8_t, b: uint8x8_t) -> poly16x8_t {
-    static_assert!(LANE >= 0 && LANE <= 3);
-    transmute(vluti2q_lane_s16::<LANE>(transmute(a), b))
+pub unsafe fn vluti2q_laneq_p8<const INDEX: i32>(a: poly8x16_t, b: uint8x16_t) -> poly8x16_t {
+    static_assert!(INDEX >= 0 && INDEX <= 3);
+    transmute(vluti2q_laneq_s8::<INDEX>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_laneq_p16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2_laneq_p16<const INDEX: i32>(a: poly16x4_t, b: uint8x16_t) -> poly16x8_t {
+    static_assert!(INDEX >= 0 && INDEX <= 7);
+    transmute(vluti2_laneq_s16::<INDEX>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_laneq_p16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2q_laneq_p16<const INDEX: i32>(a: poly16x8_t, b: uint8x16_t) -> poly16x8_t {
+    static_assert!(INDEX >= 0 && INDEX <= 7);
+    transmute(vluti2q_laneq_s16::<INDEX>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_laneq_s8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2_laneq_s8<const INDEX: i32>(a: int8x8_t, b: uint8x16_t) -> int8x16_t {
+    static_assert!(INDEX >= 0 && INDEX <= 3);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vluti2.laneq.v16i8.v8i8"
+        )]
+        fn _vluti2_laneq_s8(a: int8x8_t, b: uint8x16_t, n: i32) -> int8x16_t;
+    }
+    _vluti2_laneq_s8(a, b, INDEX)
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_laneq_s8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2q_laneq_s8<const INDEX: i32>(a: int8x16_t, b: uint8x16_t) -> int8x16_t {
+    static_assert!(INDEX >= 0 && INDEX <= 3);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vluti2.laneq.v16i8.v16i8"
+        )]
+        fn _vluti2q_laneq_s8(a: int8x16_t, b: uint8x16_t, n: i32) -> int8x16_t;
+    }
+    _vluti2q_laneq_s8(a, b, INDEX)
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_laneq_s16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2_laneq_s16<const INDEX: i32>(a: int16x4_t, b: uint8x16_t) -> int16x8_t {
+    static_assert!(INDEX >= 0 && INDEX <= 7);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vluti2.laneq.v8i16.v4i16"
+        )]
+        fn _vluti2_laneq_s16(a: int16x4_t, b: uint8x16_t, n: i32) -> int16x8_t;
+    }
+    _vluti2_laneq_s16(a, b, INDEX)
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_laneq_s16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline(always)]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, INDEX = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2q_laneq_s16<const INDEX: i32>(a: int16x8_t, b: uint8x16_t) -> int16x8_t {
+    static_assert!(INDEX >= 0 && INDEX <= 7);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vluti2.laneq.v8i16.v8i16"
+        )]
+        fn _vluti2q_laneq_s16(a: int16x8_t, b: uint8x16_t, n: i32) -> int16x8_t;
+    }
+    _vluti2q_laneq_s16(a, b, INDEX)
 }
 #[doc = "Lookup table read with 4-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_lane_f16_x2)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut,fp16")]
 #[cfg_attr(test, assert_instr(nop, LANE = 0))]
@@ -13047,7 +13386,7 @@ pub unsafe fn vluti4q_lane_f16_x2<const LANE: i32>(a: float16x8x2_t, b: uint8x8_
 #[doc = "Lookup table read with 4-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_lane_u16_x2)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 0))]
@@ -13060,7 +13399,7 @@ pub unsafe fn vluti4q_lane_u16_x2<const LANE: i32>(a: uint16x8x2_t, b: uint8x8_t
 #[doc = "Lookup table read with 4-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_lane_p16_x2)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 0))]
@@ -13073,7 +13412,7 @@ pub unsafe fn vluti4q_lane_p16_x2<const LANE: i32>(a: poly16x8x2_t, b: uint8x8_t
 #[doc = "Lookup table read with 4-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_lane_s16_x2)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 0))]
@@ -13093,7 +13432,7 @@ pub unsafe fn vluti4q_lane_s16_x2<const LANE: i32>(a: int16x8x2_t, b: uint8x8_t)
 #[doc = "Lookup table read with 4-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_lane_s8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 0))]
@@ -13113,7 +13452,7 @@ pub unsafe fn vluti4q_lane_s8<const LANE: i32>(a: int8x16_t, b: uint8x8_t) -> in
 #[doc = "Lookup table read with 4-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_lane_u8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 0))]
@@ -13126,7 +13465,7 @@ pub unsafe fn vluti4q_lane_u8<const LANE: i32>(a: uint8x16_t, b: uint8x8_t) -> u
 #[doc = "Lookup table read with 4-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_lane_p8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 0))]
@@ -13139,7 +13478,7 @@ pub unsafe fn vluti4q_lane_p8<const LANE: i32>(a: poly8x16_t, b: uint8x8_t) -> p
 #[doc = "Lookup table read with 4-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_laneq_f16_x2)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut,fp16")]
 #[cfg_attr(test, assert_instr(nop, LANE = 3))]
@@ -13155,7 +13494,7 @@ pub unsafe fn vluti4q_laneq_f16_x2<const LANE: i32>(
 #[doc = "Lookup table read with 4-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_laneq_u16_x2)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 3))]
@@ -13168,7 +13507,7 @@ pub unsafe fn vluti4q_laneq_u16_x2<const LANE: i32>(a: uint16x8x2_t, b: uint8x16
 #[doc = "Lookup table read with 4-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_laneq_p16_x2)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 3))]
@@ -13181,7 +13520,7 @@ pub unsafe fn vluti4q_laneq_p16_x2<const LANE: i32>(a: poly16x8x2_t, b: uint8x16
 #[doc = "Lookup table read with 4-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_laneq_s16_x2)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 3))]
@@ -13201,7 +13540,7 @@ pub unsafe fn vluti4q_laneq_s16_x2<const LANE: i32>(a: int16x8x2_t, b: uint8x16_
 #[doc = "Lookup table read with 4-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_laneq_s8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 0))]
@@ -13221,7 +13560,7 @@ pub unsafe fn vluti4q_laneq_s8<const LANE: i32>(a: int8x16_t, b: uint8x16_t) -> 
 #[doc = "Lookup table read with 4-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_laneq_u8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 0))]
@@ -13234,7 +13573,7 @@ pub unsafe fn vluti4q_laneq_u8<const LANE: i32>(a: uint8x16_t, b: uint8x16_t) ->
 #[doc = "Lookup table read with 4-bit indices"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_laneq_p8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,lut")]
 #[cfg_attr(test, assert_instr(nop, LANE = 0))]
@@ -24113,6 +24452,86 @@ pub fn vrsubhn_high_u64(a: uint32x2_t, b: uint64x2_t, c: uint64x2_t) -> uint32x4
     let x: uint32x2_t = vrsubhn_u64(b, c);
     unsafe { simd_shuffle!(a, x, [0, 1, 2, 3]) }
 }
+#[doc = "Multi-vector floating-point adjust exponent"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vscale_f16)"]
+#[inline(always)]
+#[unstable(feature = "stdarch_neon_fp8", issue = "none")]
+#[target_feature(enable = "neon,fp8")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(fscale))]
+pub fn vscale_f16(vn: float16x4_t, vm: int16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fp8.fscale.v4f16"
+        )]
+        fn _vscale_f16(vn: float16x4_t, vm: int16x4_t) -> float16x4_t;
+    }
+    unsafe { _vscale_f16(vn, vm) }
+}
+#[doc = "Multi-vector floating-point adjust exponent"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vscaleq_f16)"]
+#[inline(always)]
+#[unstable(feature = "stdarch_neon_fp8", issue = "none")]
+#[target_feature(enable = "neon,fp8")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(fscale))]
+pub fn vscaleq_f16(vn: float16x8_t, vm: int16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fp8.fscale.v8f16"
+        )]
+        fn _vscaleq_f16(vn: float16x8_t, vm: int16x8_t) -> float16x8_t;
+    }
+    unsafe { _vscaleq_f16(vn, vm) }
+}
+#[doc = "Multi-vector floating-point adjust exponent"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vscale_f32)"]
+#[inline(always)]
+#[unstable(feature = "stdarch_neon_fp8", issue = "none")]
+#[target_feature(enable = "neon,fp8")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(fscale))]
+pub fn vscale_f32(vn: float32x2_t, vm: int32x2_t) -> float32x2_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fp8.fscale.v2f32"
+        )]
+        fn _vscale_f32(vn: float32x2_t, vm: int32x2_t) -> float32x2_t;
+    }
+    unsafe { _vscale_f32(vn, vm) }
+}
+#[doc = "Multi-vector floating-point adjust exponent"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vscaleq_f32)"]
+#[inline(always)]
+#[unstable(feature = "stdarch_neon_fp8", issue = "none")]
+#[target_feature(enable = "neon,fp8")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(fscale))]
+pub fn vscaleq_f32(vn: float32x4_t, vm: int32x4_t) -> float32x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fp8.fscale.v4f32"
+        )]
+        fn _vscaleq_f32(vn: float32x4_t, vm: int32x4_t) -> float32x4_t;
+    }
+    unsafe { _vscaleq_f32(vn, vm) }
+}
+#[doc = "Multi-vector floating-point adjust exponent"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vscaleq_f64)"]
+#[inline(always)]
+#[unstable(feature = "stdarch_neon_fp8", issue = "none")]
+#[target_feature(enable = "neon,fp8")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(fscale))]
+pub fn vscaleq_f64(vn: float64x2_t, vm: int64x2_t) -> float64x2_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fp8.fscale.v2f64"
+        )]
+        fn _vscaleq_f64(vn: float64x2_t, vm: int64x2_t) -> float64x2_t;
+    }
+    unsafe { _vscaleq_f64(vn, vm) }
+}
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_f64)"]
 #[inline(always)]
@@ -25418,7 +25837,7 @@ pub fn vsrid_n_u64<const N: i32>(a: u64, b: u64) -> u64 {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25431,7 +25850,7 @@ pub unsafe fn vst1_f16(ptr: *mut f16, a: float16x4_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25444,7 +25863,7 @@ pub unsafe fn vst1q_f16(ptr: *mut f16, a: float16x8_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f32)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25456,7 +25875,7 @@ pub unsafe fn vst1_f32(ptr: *mut f32, a: float32x2_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f32)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25468,7 +25887,7 @@ pub unsafe fn vst1q_f32(ptr: *mut f32, a: float32x4_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25480,7 +25899,7 @@ pub unsafe fn vst1_f64(ptr: *mut f64, a: float64x1_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25492,7 +25911,7 @@ pub unsafe fn vst1q_f64(ptr: *mut f64, a: float64x2_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25504,7 +25923,7 @@ pub unsafe fn vst1_s8(ptr: *mut i8, a: int8x8_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25516,7 +25935,7 @@ pub unsafe fn vst1q_s8(ptr: *mut i8, a: int8x16_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25528,7 +25947,7 @@ pub unsafe fn vst1_s16(ptr: *mut i16, a: int16x4_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25540,7 +25959,7 @@ pub unsafe fn vst1q_s16(ptr: *mut i16, a: int16x8_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s32)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25552,7 +25971,7 @@ pub unsafe fn vst1_s32(ptr: *mut i32, a: int32x2_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s32)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25564,7 +25983,7 @@ pub unsafe fn vst1q_s32(ptr: *mut i32, a: int32x4_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25576,7 +25995,7 @@ pub unsafe fn vst1_s64(ptr: *mut i64, a: int64x1_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25588,7 +26007,7 @@ pub unsafe fn vst1q_s64(ptr: *mut i64, a: int64x2_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25600,7 +26019,7 @@ pub unsafe fn vst1_u8(ptr: *mut u8, a: uint8x8_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25612,7 +26031,7 @@ pub unsafe fn vst1q_u8(ptr: *mut u8, a: uint8x16_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25624,7 +26043,7 @@ pub unsafe fn vst1_u16(ptr: *mut u16, a: uint16x4_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25636,7 +26055,7 @@ pub unsafe fn vst1q_u16(ptr: *mut u16, a: uint16x8_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u32)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25648,7 +26067,7 @@ pub unsafe fn vst1_u32(ptr: *mut u32, a: uint32x2_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u32)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25660,7 +26079,7 @@ pub unsafe fn vst1q_u32(ptr: *mut u32, a: uint32x4_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25672,7 +26091,7 @@ pub unsafe fn vst1_u64(ptr: *mut u64, a: uint64x1_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25684,7 +26103,7 @@ pub unsafe fn vst1q_u64(ptr: *mut u64, a: uint64x2_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25696,7 +26115,7 @@ pub unsafe fn vst1_p8(ptr: *mut p8, a: poly8x8_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25708,7 +26127,7 @@ pub unsafe fn vst1q_p8(ptr: *mut p8, a: poly8x16_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25720,7 +26139,7 @@ pub unsafe fn vst1_p16(ptr: *mut p16, a: poly16x4_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p16)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25732,7 +26151,7 @@ pub unsafe fn vst1q_p16(ptr: *mut p16, a: poly16x8_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25744,7 +26163,7 @@ pub unsafe fn vst1_p64(ptr: *mut p64, a: poly64x1_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(str))]
@@ -25756,7 +26175,7 @@ pub unsafe fn vst1q_p64(ptr: *mut p64, a: poly64x2_t) {
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f64_x2)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st1))]
@@ -25774,7 +26193,7 @@ pub unsafe fn vst1_f64_x2(a: *mut f64, b: float64x1x2_t) {
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f64_x2)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st1))]
@@ -25792,7 +26211,7 @@ pub unsafe fn vst1q_f64_x2(a: *mut f64, b: float64x2x2_t) {
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f64_x3)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st1))]
@@ -25810,7 +26229,7 @@ pub unsafe fn vst1_f64_x3(a: *mut f64, b: float64x1x3_t) {
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f64_x3)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st1))]
@@ -25828,7 +26247,7 @@ pub unsafe fn vst1q_f64_x3(a: *mut f64, b: float64x2x3_t) {
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f64_x4)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st1))]
@@ -25852,7 +26271,7 @@ pub unsafe fn vst1_f64_x4(a: *mut f64, b: float64x1x4_t) {
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f64_x4)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st1))]
@@ -25876,7 +26295,7 @@ pub unsafe fn vst1q_f64_x4(a: *mut f64, b: float64x2x4_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, LANE = 0))]
@@ -25889,7 +26308,7 @@ pub unsafe fn vst1_lane_f64<const LANE: i32>(a: *mut f64, b: float64x1_t) {
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop, LANE = 0))]
@@ -25902,7 +26321,7 @@ pub unsafe fn vst1q_lane_f64<const LANE: i32>(a: *mut f64, b: float64x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -25920,7 +26339,7 @@ pub unsafe fn vst2_f64(a: *mut f64, b: float64x1x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st2, LANE = 0))]
@@ -25940,7 +26359,7 @@ pub unsafe fn vst2_lane_f64<const LANE: i32>(a: *mut f64, b: float64x1x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st2, LANE = 0))]
@@ -25960,7 +26379,7 @@ pub unsafe fn vst2_lane_s64<const LANE: i32>(a: *mut i64, b: int64x1x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(st2, LANE = 0))]
@@ -25973,7 +26392,7 @@ pub unsafe fn vst2_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st2, LANE = 0))]
@@ -25986,7 +26405,7 @@ pub unsafe fn vst2_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26004,7 +26423,7 @@ pub unsafe fn vst2q_f64(a: *mut f64, b: float64x2x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26022,7 +26441,7 @@ pub unsafe fn vst2q_s64(a: *mut i64, b: int64x2x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st2, LANE = 0))]
@@ -26042,7 +26461,7 @@ pub unsafe fn vst2q_lane_f64<const LANE: i32>(a: *mut f64, b: float64x2x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_s8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st2, LANE = 0))]
@@ -26062,7 +26481,7 @@ pub unsafe fn vst2q_lane_s8<const LANE: i32>(a: *mut i8, b: int8x16x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st2, LANE = 0))]
@@ -26082,7 +26501,7 @@ pub unsafe fn vst2q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(st2, LANE = 0))]
@@ -26095,7 +26514,7 @@ pub unsafe fn vst2q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_u8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st2, LANE = 0))]
@@ -26108,7 +26527,7 @@ pub unsafe fn vst2q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st2, LANE = 0))]
@@ -26121,7 +26540,7 @@ pub unsafe fn vst2q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_p8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st2, LANE = 0))]
@@ -26134,7 +26553,7 @@ pub unsafe fn vst2q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(st2))]
@@ -26145,7 +26564,7 @@ pub unsafe fn vst2q_p64(a: *mut p64, b: poly64x2x2_t) {
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26156,7 +26575,7 @@ pub unsafe fn vst2q_u64(a: *mut u64, b: uint64x2x2_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26174,7 +26593,7 @@ pub unsafe fn vst3_f64(a: *mut f64, b: float64x1x3_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st3, LANE = 0))]
@@ -26194,7 +26613,7 @@ pub unsafe fn vst3_lane_f64<const LANE: i32>(a: *mut f64, b: float64x1x3_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st3, LANE = 0))]
@@ -26214,7 +26633,7 @@ pub unsafe fn vst3_lane_s64<const LANE: i32>(a: *mut i64, b: int64x1x3_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[target_feature(enable = "neon,aes")]
@@ -26227,7 +26646,7 @@ pub unsafe fn vst3_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1x3_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26240,7 +26659,7 @@ pub unsafe fn vst3_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1x3_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26258,7 +26677,7 @@ pub unsafe fn vst3q_f64(a: *mut f64, b: float64x2x3_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26276,7 +26695,7 @@ pub unsafe fn vst3q_s64(a: *mut i64, b: int64x2x3_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st3, LANE = 0))]
@@ -26296,7 +26715,7 @@ pub unsafe fn vst3q_lane_f64<const LANE: i32>(a: *mut f64, b: float64x2x3_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_s8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st3, LANE = 0))]
@@ -26316,7 +26735,7 @@ pub unsafe fn vst3q_lane_s8<const LANE: i32>(a: *mut i8, b: int8x16x3_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st3, LANE = 0))]
@@ -26336,7 +26755,7 @@ pub unsafe fn vst3q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2x3_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[target_feature(enable = "neon,aes")]
@@ -26349,7 +26768,7 @@ pub unsafe fn vst3q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2x3_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_u8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26362,7 +26781,7 @@ pub unsafe fn vst3q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16x3_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26375,7 +26794,7 @@ pub unsafe fn vst3q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2x3_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_p8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26388,7 +26807,7 @@ pub unsafe fn vst3q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16x3_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[target_feature(enable = "neon,aes")]
@@ -26399,7 +26818,7 @@ pub unsafe fn vst3q_p64(a: *mut p64, b: poly64x2x3_t) {
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26410,7 +26829,7 @@ pub unsafe fn vst3q_u64(a: *mut u64, b: uint64x2x3_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26428,7 +26847,7 @@ pub unsafe fn vst4_f64(a: *mut f64, b: float64x1x4_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st4, LANE = 0))]
@@ -26455,7 +26874,7 @@ pub unsafe fn vst4_lane_f64<const LANE: i32>(a: *mut f64, b: float64x1x4_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st4, LANE = 0))]
@@ -26482,7 +26901,7 @@ pub unsafe fn vst4_lane_s64<const LANE: i32>(a: *mut i64, b: int64x1x4_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[target_feature(enable = "neon,aes")]
@@ -26495,7 +26914,7 @@ pub unsafe fn vst4_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1x4_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26508,7 +26927,7 @@ pub unsafe fn vst4_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1x4_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26526,7 +26945,7 @@ pub unsafe fn vst4q_f64(a: *mut f64, b: float64x2x4_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26544,7 +26963,7 @@ pub unsafe fn vst4q_s64(a: *mut i64, b: int64x2x4_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_f64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st4, LANE = 0))]
@@ -26571,7 +26990,7 @@ pub unsafe fn vst4q_lane_f64<const LANE: i32>(a: *mut f64, b: float64x2x4_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_s8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st4, LANE = 0))]
@@ -26598,7 +27017,7 @@ pub unsafe fn vst4q_lane_s8<const LANE: i32>(a: *mut i8, b: int8x16x4_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_s64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(st4, LANE = 0))]
@@ -26625,7 +27044,7 @@ pub unsafe fn vst4q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2x4_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[target_feature(enable = "neon,aes")]
@@ -26638,7 +27057,7 @@ pub unsafe fn vst4q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2x4_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_u8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26651,7 +27070,7 @@ pub unsafe fn vst4q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16x4_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26664,7 +27083,7 @@ pub unsafe fn vst4q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2x4_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_p8)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -26677,7 +27096,7 @@ pub unsafe fn vst4q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16x4_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_p64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[target_feature(enable = "neon,aes")]
@@ -26688,13 +27107,109 @@ pub unsafe fn vst4q_p64(a: *mut p64, b: poly64x2x4_t) {
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_u64)"]
 #[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
+#[doc = "  * Neon intrinsic unsafe"]
 #[inline(always)]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(st4))]
 pub unsafe fn vst4q_u64(a: *mut u64, b: uint64x2x4_t) {
     vst4q_s64(transmute(a), transmute(b))
+}
+#[doc = "Store-Release a single-element structure from one lane of one register."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1_lane_f64)"]
+#[inline(always)]
+#[target_feature(enable = "neon,rcpc3")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+pub fn vstl1_lane_f64<const LANE: i32>(ptr: *mut f64, val: float64x1_t) {
+    static_assert!(LANE == 0);
+    unsafe { vstl1_lane_s64::<LANE>(ptr as *mut i64, transmute(val)) }
+}
+#[doc = "Store-Release a single-element structure from one lane of one register."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1q_lane_f64)"]
+#[inline(always)]
+#[target_feature(enable = "neon,rcpc3")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+pub fn vstl1q_lane_f64<const LANE: i32>(ptr: *mut f64, val: float64x2_t) {
+    static_assert_uimm_bits!(LANE, 1);
+    unsafe { vstl1q_lane_s64::<LANE>(ptr as *mut i64, transmute(val)) }
+}
+#[doc = "Store-Release a single-element structure from one lane of one register."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1_lane_u64)"]
+#[inline(always)]
+#[target_feature(enable = "neon,rcpc3")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+pub fn vstl1_lane_u64<const LANE: i32>(ptr: *mut u64, val: uint64x1_t) {
+    static_assert!(LANE == 0);
+    unsafe { vstl1_lane_s64::<LANE>(ptr as *mut i64, transmute(val)) }
+}
+#[doc = "Store-Release a single-element structure from one lane of one register."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1q_lane_u64)"]
+#[inline(always)]
+#[target_feature(enable = "neon,rcpc3")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+pub fn vstl1q_lane_u64<const LANE: i32>(ptr: *mut u64, val: uint64x2_t) {
+    static_assert_uimm_bits!(LANE, 1);
+    unsafe { vstl1q_lane_s64::<LANE>(ptr as *mut i64, transmute(val)) }
+}
+#[doc = "Store-Release a single-element structure from one lane of one register."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1_lane_p64)"]
+#[inline(always)]
+#[target_feature(enable = "neon,rcpc3")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+pub fn vstl1_lane_p64<const LANE: i32>(ptr: *mut p64, val: poly64x1_t) {
+    static_assert!(LANE == 0);
+    unsafe { vstl1_lane_s64::<LANE>(ptr as *mut i64, transmute(val)) }
+}
+#[doc = "Store-Release a single-element structure from one lane of one register."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1q_lane_p64)"]
+#[inline(always)]
+#[target_feature(enable = "neon,rcpc3")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+pub fn vstl1q_lane_p64<const LANE: i32>(ptr: *mut p64, val: poly64x2_t) {
+    static_assert_uimm_bits!(LANE, 1);
+    unsafe { vstl1q_lane_s64::<LANE>(ptr as *mut i64, transmute(val)) }
+}
+#[doc = "Store-Release a single-element structure from one lane of one register."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1_lane_s64)"]
+#[inline(always)]
+#[target_feature(enable = "neon,rcpc3")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+pub fn vstl1_lane_s64<const LANE: i32>(ptr: *mut i64, val: int64x1_t) {
+    static_assert!(LANE == 0);
+    let atomic_dst = ptr as *mut crate::sync::atomic::AtomicI64;
+    unsafe {
+        let lane: i64 = simd_extract!(val, LANE as u32);
+        (*atomic_dst).store(transmute(lane), crate::sync::atomic::Ordering::Release)
+    }
+}
+#[doc = "Store-Release a single-element structure from one lane of one register."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vstl1q_lane_s64)"]
+#[inline(always)]
+#[target_feature(enable = "neon,rcpc3")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(stl1, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+pub fn vstl1q_lane_s64<const LANE: i32>(ptr: *mut i64, val: int64x2_t) {
+    static_assert_uimm_bits!(LANE, 1);
+    let atomic_dst = ptr as *mut crate::sync::atomic::AtomicI64;
+    unsafe {
+        let lane: i64 = simd_extract!(val, LANE as u32);
+        (*atomic_dst).store(transmute(lane), crate::sync::atomic::Ordering::Release)
+    }
 }
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_f64)"]
@@ -26902,37 +27417,6 @@ pub fn vsubw_high_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
     unsafe {
         let c: uint32x2_t = simd_shuffle!(b, b, [2, 3]);
         simd_sub(a, simd_cast(c))
-    }
-}
-#[doc = "Dot product index form with signed and unsigned integers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsudot_laneq_s32)"]
-#[inline(always)]
-#[target_feature(enable = "neon,i8mm")]
-#[cfg_attr(test, assert_instr(sudot, LANE = 3))]
-#[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_i8mm", issue = "117223")]
-pub fn vsudot_laneq_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: uint8x16_t) -> int32x2_t {
-    static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: uint32x4_t = transmute(c);
-        let c: uint32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
-        vusdot_s32(a, transmute(c), b)
-    }
-}
-#[doc = "Dot product index form with signed and unsigned integers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsudotq_laneq_s32)"]
-#[inline(always)]
-#[target_feature(enable = "neon,i8mm")]
-#[cfg_attr(test, assert_instr(sudot, LANE = 3))]
-#[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_i8mm", issue = "117223")]
-pub fn vsudotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: uint8x16_t) -> int32x4_t {
-    static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: uint32x4_t = transmute(c);
-        let c: uint32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vusdotq_s32(a, transmute(c), b)
     }
 }
 #[doc = "Table look-up"]
@@ -28273,37 +28757,6 @@ pub fn vuqadds_s32(a: i32, b: u32) -> i32 {
         fn _vuqadds_s32(a: i32, b: u32) -> i32;
     }
     unsafe { _vuqadds_s32(a, b) }
-}
-#[doc = "Dot product index form with unsigned and signed integers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vusdot_laneq_s32)"]
-#[inline(always)]
-#[target_feature(enable = "neon,i8mm")]
-#[cfg_attr(test, assert_instr(usdot, LANE = 3))]
-#[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_i8mm", issue = "117223")]
-pub fn vusdot_laneq_s32<const LANE: i32>(a: int32x2_t, b: uint8x8_t, c: int8x16_t) -> int32x2_t {
-    static_assert_uimm_bits!(LANE, 2);
-    let c: int32x4_t = vreinterpretq_s32_s8(c);
-    unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
-        vusdot_s32(a, b, vreinterpret_s8_s32(c))
-    }
-}
-#[doc = "Dot product index form with unsigned and signed integers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vusdotq_laneq_s32)"]
-#[inline(always)]
-#[target_feature(enable = "neon,i8mm")]
-#[cfg_attr(test, assert_instr(usdot, LANE = 3))]
-#[rustc_legacy_const_generics(3)]
-#[unstable(feature = "stdarch_neon_i8mm", issue = "117223")]
-pub fn vusdotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4_t {
-    static_assert_uimm_bits!(LANE, 2);
-    let c: int32x4_t = vreinterpretq_s32_s8(c);
-    unsafe {
-        let c: int32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vusdotq_s32(a, b, vreinterpretq_s8_s32(c))
-    }
 }
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1_f16)"]
