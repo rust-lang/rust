@@ -144,6 +144,24 @@ pub(crate) struct ForbiddenDefault {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_forbidden_final)]
+pub(crate) struct ForbiddenFinal {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub def_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_forbidden_final_without_body)]
+pub(crate) struct ForbiddenFinalWithoutBody {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub def_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_assoc_const_without_body)]
 pub(crate) struct AssocConstWithoutBody {
     #[primary_span]

@@ -1,0 +1,151 @@
+error: a struct cannot be `final`
+  --> $DIR/positions.rs:7:1
+   |
+LL | final struct Foo {}
+   | ^^^^^ `final` because of this
+   |
+   = note: only associated functions in traits can be `final`
+
+error: a trait cannot be `final`
+  --> $DIR/positions.rs:10:1
+   |
+LL | final trait Trait {
+   | ^^^^^ `final` because of this
+   |
+   = note: only associated functions in traits can be `final`
+
+error: a static item cannot be `final`
+  --> $DIR/positions.rs:64:5
+   |
+LL |     final static FOO_EXTERN: usize = 0;
+   |     ^^^^^ `final` because of this
+   |
+   = note: only associated functions in traits can be `final`
+
+error: an extern block cannot be `final`
+  --> $DIR/positions.rs:55:1
+   |
+LL | final unsafe extern "C" {
+   | ^^^^^ `final` because of this
+   |
+   = note: only associated functions in traits can be `final`
+
+error: `final` is only allowed on associated functions in traits
+  --> $DIR/positions.rs:16:5
+   |
+LL |     final type Foo = ();
+   |     -----^^^^^^^^^^^^^^^
+   |     |
+   |     `final` because of this
+
+error: `final` is only allowed on associated functions in traits
+  --> $DIR/positions.rs:19:5
+   |
+LL |     final const FOO: usize = 1;
+   |     -----^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `final` because of this
+
+error: `final` is only allowed on associated functions in traits
+  --> $DIR/positions.rs:24:5
+   |
+LL |     final fn method() {}
+   |     -----^^^^^^^^^^^^
+   |     |
+   |     `final` because of this
+
+error: `final` is only allowed on associated functions in traits
+  --> $DIR/positions.rs:27:5
+   |
+LL |     final type Foo = ();
+   |     -----^^^^^^^^^^^^^^^
+   |     |
+   |     `final` because of this
+
+error: `final` is only allowed on associated functions in traits
+  --> $DIR/positions.rs:30:5
+   |
+LL |     final const FOO: usize = 1;
+   |     -----^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `final` because of this
+
+error: `final` is only allowed on associated functions in traits
+  --> $DIR/positions.rs:35:5
+   |
+LL |     final fn method() {}
+   |     -----^^^^^^^^^^^^
+   |     |
+   |     `final` because of this
+
+error: `final` is only allowed on associated functions in traits
+  --> $DIR/positions.rs:38:5
+   |
+LL |     final type Foo = ();
+   |     -----^^^^^^^^^^^^^^^
+   |     |
+   |     `final` because of this
+
+error: `final` is only allowed on associated functions in traits
+  --> $DIR/positions.rs:41:5
+   |
+LL |     final const FOO: usize = 1;
+   |     -----^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `final` because of this
+
+error: `final` is only allowed on associated functions in traits
+  --> $DIR/positions.rs:46:1
+   |
+LL | final fn foo() {}
+   | -----^^^^^^^^^
+   | |
+   | `final` because of this
+
+error: `final` is only allowed on associated functions in traits
+  --> $DIR/positions.rs:49:1
+   |
+LL | final type FooTy = ();
+   | -----^^^^^^^^^^^^^^^^^
+   | |
+   | `final` because of this
+
+error: `final` is only allowed on associated functions in traits
+  --> $DIR/positions.rs:52:1
+   |
+LL | final const FOO: usize = 0;
+   | -----^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | `final` because of this
+
+error: `final` is only allowed on associated functions in traits
+  --> $DIR/positions.rs:58:5
+   |
+LL |     final fn foo_extern();
+   |     -----^^^^^^^^^^^^^^^^^
+   |     |
+   |     `final` because of this
+
+error: `final` is only allowed on associated functions in traits
+  --> $DIR/positions.rs:61:5
+   |
+LL |     final type FooExtern;
+   |     -----^^^^^^^^^^^^^^^^
+   |     |
+   |     `final` because of this
+
+error: incorrect `static` inside `extern` block
+  --> $DIR/positions.rs:64:18
+   |
+LL | final unsafe extern "C" {
+   | ----------------------- `extern` blocks define existing foreign statics and statics inside of them cannot have a body
+...
+LL |     final static FOO_EXTERN: usize = 0;
+   |                  ^^^^^^^^^^          - the invalid body
+   |                  |
+   |                  cannot have a body
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: aborting due to 18 previous errors
+

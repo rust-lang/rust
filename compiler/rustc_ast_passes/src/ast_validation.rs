@@ -65,6 +65,28 @@ impl TraitOrImpl {
     }
 }
 
+enum AllowDefault {
+    Yes,
+    No,
+}
+
+impl AllowDefault {
+    fn when(b: bool) -> Self {
+        if b { Self::Yes } else { Self::No }
+    }
+}
+
+enum AllowFinal {
+    Yes,
+    No,
+}
+
+impl AllowFinal {
+    fn when(b: bool) -> Self {
+        if b { Self::Yes } else { Self::No }
+    }
+}
+
 struct AstValidator<'a> {
     sess: &'a Session,
     features: &'a Features,
@@ -563,10 +585,32 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_defaultness(&self, span: Span, defaultness: Defaultness) {
-        if let Defaultness::Default(def_span) = defaultness {
-            let span = self.sess.source_map().guess_head_span(span);
-            self.dcx().emit_err(errors::ForbiddenDefault { span, def_span });
+    fn check_defaultness(
+        &self,
+        span: Span,
+        defaultness: Defaultness,
+        allow_default: AllowDefault,
+        allow_final: AllowFinal,
+    ) {
+        match defaultness {
+            Defaultness::Default(def_span) if matches!(allow_default, AllowDefault::No) => {
+                let span = self.sess.source_map().guess_head_span(span);
+                self.dcx().emit_err(errors::ForbiddenDefault { span, def_span });
+            }
+            Defaultness::Final(def_span) if matches!(allow_final, AllowFinal::No) => {
+                let span = self.sess.source_map().guess_head_span(span);
+                self.dcx().emit_err(errors::ForbiddenFinal { span, def_span });
+            }
+            _ => (),
+        }
+    }
+
+    fn check_final_has_body(&self, item: &Item<AssocItemKind>, defaultness: Defaultness) {
+        if let AssocItemKind::Fn(box Fn { body: None, .. }) = &item.kind
+            && let Defaultness::Final(def_span) = defaultness
+        {
+            let span = self.sess.source_map().guess_head_span(item.span);
+            self.dcx().emit_err(errors::ForbiddenFinalWithoutBody { span, def_span });
         }
     }
 
@@ -1192,7 +1236,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 },
             ) => {
                 self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
-                self.check_defaultness(item.span, *defaultness);
+                self.check_defaultness(item.span, *defaultness, AllowDefault::No, AllowFinal::No);
 
                 for EiiImpl { eii_macro_path, .. } in eii_impls {
                     self.visit_path(eii_macro_path);
@@ -1362,7 +1406,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 });
             }
             ItemKind::Const(box ConstItem { defaultness, ident, rhs, .. }) => {
-                self.check_defaultness(item.span, *defaultness);
+                self.check_defaultness(item.span, *defaultness, AllowDefault::No, AllowFinal::No);
                 if rhs.is_none() {
                     self.dcx().emit_err(errors::ConstWithoutBody {
                         span: item.span,
@@ -1400,7 +1444,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::TyAlias(
                 ty_alias @ box TyAlias { defaultness, bounds, after_where_clause, ty, .. },
             ) => {
-                self.check_defaultness(item.span, *defaultness);
+                self.check_defaultness(item.span, *defaultness, AllowDefault::No, AllowFinal::No);
                 if ty.is_none() {
                     self.dcx().emit_err(errors::TyAliasWithoutBody {
                         span: item.span,
@@ -1430,7 +1474,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         match &fi.kind {
             ForeignItemKind::Fn(box Fn { defaultness, ident, sig, body, .. }) => {
-                self.check_defaultness(fi.span, *defaultness);
+                self.check_defaultness(fi.span, *defaultness, AllowDefault::No, AllowFinal::No);
                 self.check_foreign_fn_bodyless(*ident, body.as_deref());
                 self.check_foreign_fn_headerless(sig.header);
                 self.check_foreign_item_ascii_only(*ident);
@@ -1450,7 +1494,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 ty,
                 ..
             }) => {
-                self.check_defaultness(fi.span, *defaultness);
+                self.check_defaultness(fi.span, *defaultness, AllowDefault::No, AllowFinal::No);
                 self.check_foreign_kind_bodyless(*ident, "type", ty.as_ref().map(|b| b.span));
                 self.check_type_no_bounds(bounds, "`extern` blocks");
                 self.check_foreign_ty_genericless(generics, after_where_clause);
@@ -1709,9 +1753,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.check_nomangle_item_asciionly(ident, item.span);
         }
 
-        if ctxt == AssocCtxt::Trait || self.outer_trait_or_trait_impl.is_none() {
-            self.check_defaultness(item.span, item.kind.defaultness());
-        }
+        let defaultness = item.kind.defaultness();
+        self.check_defaultness(
+            item.span,
+            defaultness,
+            // `default` is allowed on all associated items in impls.
+            AllowDefault::when(matches!(ctxt, AssocCtxt::Impl { .. })),
+            // `final` is allowed on all associated *functions* in traits.
+            AllowFinal::when(
+                ctxt == AssocCtxt::Trait && matches!(item.kind, AssocItemKind::Fn(..)),
+            ),
+        );
+
+        self.check_final_has_body(item, defaultness);
 
         if let AssocCtxt::Impl { .. } = ctxt {
             match &item.kind {
