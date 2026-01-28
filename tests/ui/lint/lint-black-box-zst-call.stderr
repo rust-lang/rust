@@ -1,13 +1,13 @@
-error: `black_box` on zero-sized callable `fn(u32, u32) -> u32 {add}` has no effect on call opacity
+error: use of `black_box` on the zero-sized type `fn(u32, u32) -> u32 {add}` has no effect
   --> $DIR/lint-black-box-zst-call.rs:10:18
    |
 LL |     let add_bb = black_box(add);
    |                  ^^^^^^^^^^---^
    |                            |
-   |                            zero-sized callable passed here
+   |                            zero-sized value passed here
    |
-   = note: zero-sized callable values have no runtime representation, so the call still targets the original function directly
-   = help: coerce to a function pointer and call `black_box` on that pointer instead
+   = note: zero-sized values have no runtime representation, so the compiler can ignore the call
+   = help: if this is a function, coerce it to a function pointer first
 note: the lint level is defined here
   --> $DIR/lint-black-box-zst-call.rs:1:9
    |

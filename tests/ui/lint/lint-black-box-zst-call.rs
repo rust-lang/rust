@@ -8,6 +8,6 @@ fn add(a: u32, b: u32) -> u32 {
 
 fn main() {
     let add_bb = black_box(add);
-    //~^ ERROR `black_box` on zero-sized callable
+    //~^ ERROR use of `black_box` on the zero-sized type
     let _ = add_bb(1, 2);
 }

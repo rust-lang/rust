@@ -58,12 +58,12 @@ lint_builtin_allow_internal_unsafe =
 lint_builtin_anonymous_params = anonymous parameters are deprecated and will be removed in the next edition
     .suggestion = try naming the parameter or explicitly ignoring it
 
-lint_builtin_black_box_zst_call = `black_box` on zero-sized callable `{$ty}` has no effect on call opacity
-    .label = zero-sized callable passed here
+lint_builtin_black_box_zst_call = use of `black_box` on the zero-sized type `{$ty}` has no effect
+    .label = zero-sized value passed here
 
-lint_builtin_black_box_zst_help = coerce to a function pointer and call `black_box` on that pointer instead
+lint_builtin_black_box_zst_help = if this is a function, coerce it to a function pointer first
 
-lint_builtin_black_box_zst_note = zero-sized callable values have no runtime representation, so the call still targets the original function directly
+lint_builtin_black_box_zst_note = zero-sized values have no runtime representation, so the compiler can ignore the call
 
 lint_builtin_clashing_extern_diff_name = `{$this}` redeclares `{$orig}` with a different signature
     .previous_decl_label = `{$orig}` previously declared here
