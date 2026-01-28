@@ -974,7 +974,7 @@ impl<T: [const] Destruct> const Drop for Guard<'_, T> {
 /// All write accesses to this structure are unsafe and must maintain a correct
 /// count of `initialized` elements.
 struct GuardBack<'a, T> {
-    /// The array to be initialized.
+    /// The array to be initialized (will be filled from the end).
     pub array_mut: &'a mut [MaybeUninit<T>],
     /// The number of items that have been initialized so far.
     pub initialized: usize,
@@ -1041,7 +1041,11 @@ pub(crate) fn iter_next_chunk<T, const N: usize>(
     }
 }
 
-/// Version of [`iter_next_chunk`] using a passed-in slice.
+/// Version of [`iter_next_chunk`] using a passed-in slice in order to avoid
+/// needing to monomorphize for every array length.
+///
+/// Unfortunately this loop has two exit conditions, the buffer filling up
+/// or the iterator running out of items, making it tend to optimize poorly.
 #[inline]
 fn iter_next_chunk_erased<T>(
     buffer: &mut [MaybeUninit<T>],
