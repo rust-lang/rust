@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::NumericLiteral;
 use clippy_utils::res::MaybeResPath as _;
-use clippy_utils::source::{SpanRangeExt, snippet_opt};
+use clippy_utils::source::{SpanRangeExt, snippet_with_applicability};
 use clippy_utils::visitors::{Visitable, for_each_expr_without_closures};
 use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias, sym};
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, DiagMessage};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, FnRetTy, Lit, Node, Path, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LintContext};
@@ -24,7 +24,8 @@ pub(super) fn check<'tcx>(
     cast_from: Ty<'tcx>,
     cast_to: Ty<'tcx>,
 ) -> bool {
-    let cast_str = snippet_opt(cx, cast_expr.span).unwrap_or_default();
+    let mut app = Applicability::MachineApplicable;
+    let cast_str = snippet_with_applicability(cx, cast_expr.span, "_", &mut app);
 
     if let ty::RawPtr(..) = cast_from.kind()
         // check both mutability and type are the same
@@ -47,16 +48,15 @@ pub(super) fn check<'tcx>(
             _ => {},
         }
 
-        span_lint_and_sugg(
+        emit_lint(
             cx,
-            UNNECESSARY_CAST,
-            expr.span,
+            expr,
             format!(
                 "casting raw pointers to the same type and constness is unnecessary (`{cast_from}` -> `{cast_to}`)"
             ),
-            "try",
-            cast_str.clone(),
-            Applicability::MaybeIncorrect,
+            &cast_str,
+            MaybeParenOrBlock::Nothing,
+            app.max(Applicability::MaybeIncorrect),
         );
     }
 
@@ -143,12 +143,6 @@ pub(super) fn check<'tcx>(
     }
 
     if cast_from.kind() == cast_to.kind() && !expr.span.in_external_macro(cx.sess().source_map()) {
-        enum MaybeParenOrBlock {
-            Paren,
-            Block,
-            Nothing,
-        }
-
         fn is_borrow_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             matches!(expr.kind, ExprKind::AddrOf(..))
                 || cx
@@ -188,18 +182,13 @@ pub(super) fn check<'tcx>(
             _ => MaybeParenOrBlock::Nothing,
         };
 
-        span_lint_and_sugg(
+        emit_lint(
             cx,
-            UNNECESSARY_CAST,
-            expr.span,
+            expr,
             format!("casting to the same type is unnecessary (`{cast_from}` -> `{cast_to}`)"),
-            "try",
-            match surrounding {
-                MaybeParenOrBlock::Paren => format!("({cast_str})"),
-                MaybeParenOrBlock::Block => format!("{{ {cast_str} }}"),
-                MaybeParenOrBlock::Nothing => cast_str,
-            },
-            Applicability::MachineApplicable,
+            &cast_str,
+            surrounding,
+            app,
         );
         return true;
     }
@@ -311,4 +300,34 @@ fn is_cast_from_ty_alias<'tcx>(cx: &LateContext<'tcx>, expr: impl Visitable<'tcx
         ControlFlow::Continue(())
     })
     .is_some()
+}
+
+#[derive(Clone, Copy)]
+enum MaybeParenOrBlock {
+    Paren,
+    Block,
+    Nothing,
+}
+
+fn emit_lint(
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    msg: impl Into<DiagMessage>,
+    sugg: &str,
+    surrounding: MaybeParenOrBlock,
+    applicability: Applicability,
+) {
+    span_lint_and_sugg(
+        cx,
+        UNNECESSARY_CAST,
+        expr.span,
+        msg,
+        "try",
+        match surrounding {
+            MaybeParenOrBlock::Paren => format!("({sugg})"),
+            MaybeParenOrBlock::Block => format!("{{ {sugg} }}"),
+            MaybeParenOrBlock::Nothing => sugg.to_string(),
+        },
+        applicability,
+    );
 }
