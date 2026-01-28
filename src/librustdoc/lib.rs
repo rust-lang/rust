@@ -543,7 +543,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "[toolchain-shared-resources,invocation-specific,dep-info]",
         ),
         opt(
-            Stable,
+            Unstable,
             Multi,
             "",
             "print",

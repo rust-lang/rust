@@ -9,7 +9,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_session::config::{
     self, CodegenOptions, CrateType, ErrorOutputType, Externs, Input, JsonUnusedExterns,
-    OptionsTargetModifiers, OutFileName, PrintRequest, Sysroot, UnstableOptions,
+    OptionsTargetModifiers, OutFileName, PrintKind, PrintRequest, Sysroot, UnstableOptions,
     collect_print_requests, get_cmd_lint_options, nightly_options, parse_crate_types_from_list,
     parse_externs, parse_target_triple,
 };
@@ -568,8 +568,40 @@ impl Options {
             }
         };
 
-        let prints =
+        let mut prints =
             collect_print_requests(early_dcx, &mut codegen_options, &unstable_opts, matches);
+
+        {
+            use PrintKind::*;
+            prints.retain(|req| match req.kind {
+                // Compiler
+                TargetList
+                | AllTargetSpecsJson
+                | TargetSpecJson
+                | TargetSpecJsonSchema
+                | TargetCPUs
+                | TargetFeatures
+                | DeploymentTarget
+                | SupportedCrateTypes
+
+                // Codegen
+                | CallingConventions
+                | CodeModels
+                | SplitDebuginfo
+                | StackProtectorStrategies
+                | RelocationModels
+                | TlsModels
+                | BackendHasZstd
+
+                // Linker
+                | FileNames
+                | LinkArgs
+                | NativeStaticLibs
+                | TargetLibdir => false,
+
+                Cfg | CheckCfg | CrateName | CrateRootLintLevels | HostTuple | Sysroot => true,
+            });
+        }
 
         let externs = parse_externs(early_dcx, matches, &unstable_opts);
         let extern_html_root_urls = match parse_extern_html_roots(matches) {
