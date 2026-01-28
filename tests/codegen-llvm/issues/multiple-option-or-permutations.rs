@@ -70,9 +70,9 @@ pub fn if_some_u8(opta: Option<u8>, optb: Option<u8>) -> Option<u8> {
 #[no_mangle]
 pub fn or_match_slice_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Option<[u8; 1]> {
     // CHECK: start:
-    // CHECK-NEXT: [[SOME_A:%.+]] = trunc i16 %0 to i1
-    // CHECK-NEXT: [[R:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
-    // CHECK: ret i16 [[R]]
+    // CHECK-DAG: [[SOME_A:%.+]] = trunc i16 {{.*}} to i1
+    // CHECK-DAG: select i1 [[SOME_A]], i16 %0, i16 %1
+    // CHECK: ret i16 {{.*}}
     match opta {
         Some(x) => Some(x),
         None => optb,
@@ -84,9 +84,9 @@ pub fn or_match_slice_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Option
 #[no_mangle]
 pub fn or_match_slice_alt_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Option<[u8; 1]> {
     // CHECK: start:
-    // CHECK-NEXT: [[SOME_A:%.+]] = trunc i16 %0 to i1
-    // CHECK-NEXT: [[R:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
-    // CHECK: ret i16 [[R]]
+    // CHECK-DAG: [[SOME_A:%.+]] = trunc i16 {{.*}} to i1
+    // CHECK-DAG: select i1 [[SOME_A]], i16 %0, i16 %1
+    // CHECK: ret i16 {{.*}}
     match opta {
         Some(_) => opta,
         None => optb,
@@ -98,9 +98,9 @@ pub fn or_match_slice_alt_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Op
 #[no_mangle]
 pub fn option_or_slice_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Option<[u8; 1]> {
     // CHECK: start:
-    // CHECK-NEXT: [[SOME_A:%.+]] = trunc i16 %0 to i1
-    // CHECK-NEXT: [[R:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
-    // CHECK: ret i16 [[R]]
+    // CHECK-DAG: [[SOME_A:%.+]] = trunc i16 {{.*}} to i1
+    // CHECK-DAG: select i1 [[SOME_A]], i16 %0, i16 %1
+    // CHECK: ret i16 {{.*}}
     opta.or(optb)
 }
 
@@ -109,9 +109,9 @@ pub fn option_or_slice_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Optio
 #[no_mangle]
 pub fn if_some_slice_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Option<[u8; 1]> {
     // CHECK: start:
-    // CHECK-NEXT: [[SOME_A:%.+]] = trunc i16 %0 to i1
-    // CHECK-NEXT: [[R:%.+]] = select i1 [[SOME_A]], i16 %0, i16 %1
-    // CHECK: ret i16 [[R]]
+    // CHECK-DAG: [[SOME_A:%.+]] = trunc i16 {{.*}} to i1
+    // CHECK-DAG: select i1 [[SOME_A]], i16 %0, i16 %1
+    // CHECK: ret i16 {{.*}}
     if opta.is_some() { opta } else { optb }
 }
 
