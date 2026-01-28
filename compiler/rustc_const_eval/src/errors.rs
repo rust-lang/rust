@@ -381,6 +381,15 @@ pub struct NonConstClosure {
     pub non_or_conditionally: &'static str,
 }
 
+#[derive(Diagnostic)]
+#[diag(const_eval_c_variadic_call, code = E0015)]
+pub struct NonConstCVariadicCall {
+    #[primary_span]
+    pub span: Span,
+    pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
+}
+
 #[derive(Subdiagnostic)]
 pub enum NonConstClosureNote {
     #[note(const_eval_closure_fndef_not_const)]

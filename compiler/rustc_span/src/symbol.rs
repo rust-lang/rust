@@ -738,6 +738,7 @@ symbols! {
         const_compare_raw_pointers,
         const_constructor,
         const_continue,
+        const_c_variadic,
         const_deallocate,
         const_destruct,
         const_eval_limit,

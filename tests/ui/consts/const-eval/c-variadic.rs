@@ -3,6 +3,7 @@
 //@ ignore-backends: gcc
 
 #![feature(c_variadic)]
+#![feature(const_c_variadic)]
 #![feature(const_destruct)]
 #![feature(c_variadic_const)]
 #![feature(const_cmp)]

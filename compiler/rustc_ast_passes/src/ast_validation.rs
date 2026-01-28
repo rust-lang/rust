@@ -698,6 +698,13 @@ impl<'a> AstValidator<'a> {
             unreachable!("C variable argument list cannot be used in closures")
         };
 
+        if let Const::Yes(_) = sig.header.constness
+            && !self.features.enabled(sym::const_c_variadic)
+        {
+            let msg = format!("c-variadic const function definitions are unstable");
+            feature_err(&self.sess, sym::const_c_variadic, sig.span, msg).emit();
+        }
+
         if let Some(coroutine_kind) = sig.header.coroutine_kind {
             self.dcx().emit_err(errors::CoroutineAndCVariadic {
                 spans: vec![coroutine_kind.span(), variadic_param.span],

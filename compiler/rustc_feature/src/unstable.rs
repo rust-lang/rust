@@ -418,6 +418,8 @@ declare_features! (
     (unstable, const_block_items, "CURRENT_RUSTC_VERSION", Some(149226)),
     /// Allows `const || {}` closures in const contexts.
     (incomplete, const_closures, "1.68.0", Some(106003)),
+    /// Allows defining and calling c-variadic functions in const contexts.
+    (unstable, const_c_variadic, "CURRENT_RUSTC_VERSION", Some(151787)),
     /// Allows using `[const] Destruct` bounds and calling drop impls in const contexts.
     (unstable, const_destruct, "1.85.0", Some(133214)),
     /// Allows `for _ in _` loops in const contexts.

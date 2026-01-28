@@ -70,6 +70,9 @@ const_eval_const_make_global_with_offset = making {$ptr} global which does not p
 const_eval_copy_nonoverlapping_overlapping =
     `copy_nonoverlapping` called on overlapping ranges
 
+const_eval_c_variadic_call =
+    calling const c-variadic functions is unstable in {const_eval_const_context}s
+
 const_eval_dangling_int_pointer =
     {const_eval_bad_pointer_op_attempting}, but got {$pointer} which is a dangling pointer (it has no provenance)
 const_eval_dangling_null_pointer =

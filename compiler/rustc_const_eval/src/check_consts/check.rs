@@ -815,6 +815,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     });
                 }
 
+                if self.tcx.fn_sig(callee).skip_binder().c_variadic() {
+                    self.check_op(ops::FnCallCVariadic)
+                }
+
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...
 
                 // `begin_panic` and `panic_display` functions accept generic
