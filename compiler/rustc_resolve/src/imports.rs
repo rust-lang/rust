@@ -48,6 +48,28 @@ pub(crate) enum PendingDecl<'ra> {
     Pending,
 }
 
+/// The the side effect made when resolving the bindings for an underterminate import.
+enum SideEffectDecls<'ra> {
+    None,
+    /// Side effect that should be applied to the field `bindings` of `ImportKind::Single`.
+    ///
+    /// The inner `Option` is the actual side effect, it tells us whether we found a binding
+    /// when resolving the import in this particular namespace.
+    /// The outer `Option` tells us if this side effect is present.
+    Single {
+        import_decls: PerNS<Option<Option<Decl<'ra>>>>,
+    },
+    Glob {
+        imported_decls: Vec<(Decl<'ra>, BindingKey)>,
+    },
+}
+
+/// The side effect made when resolving an undeterminate import.
+struct SideEffect<'ra> {
+    imported_module: ModuleOrUniformRoot<'ra>,
+    decls: SideEffectDecls<'ra>,
+}
+
 impl<'ra> PendingDecl<'ra> {
     pub(crate) fn decl(self) -> Option<Decl<'ra>> {
         match self {
@@ -333,7 +355,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && (vis == import_vis
                 || max_vis.get().is_none_or(|max_vis| vis.is_at_least(max_vis, self.tcx)))
         {
-            max_vis.set_unchecked(Some(vis.expect_local()))
+            max_vis.set(Some(vis.expect_local()), self)
         }
 
         self.arenas.alloc_decl(DeclData {
@@ -432,6 +454,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             module.underscore_disambiguator.update_unchecked(|d| d + 1);
             module.underscore_disambiguator.get()
         });
+        // "Same res different import" ambiguity hack for macros introduced in #145108.
+        // See related discussion for more info:
+        // https://rust-lang.zulipchat.com/#narrow/channel/421156-gsoc/topic/Project.3A.20Parallel.20Macro.20Expansion/near/542057918.
+        if ns == MacroNS
+            && decl.is_glob_import()
+            && decl.vis.get().is_public() // is a glob that reexports a macro
+            && self.macro_use_prelude.contains_key(&ident.name) // which also lives in macro_use world
+            && let Some(def_id) = res.opt_def_id()
+        {
+            self.macro_vis_hack_map.insert((module, def_id));
+        }
         self.update_local_resolution(module, key, warn_ambiguity, |this, resolution| {
             if let Some(old_decl) = resolution.best_decl() {
                 assert_ne!(decl, old_decl);
@@ -561,11 +594,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     // Import resolution
     //
-    // This is a fixed-point algorithm. We resolve imports until our efforts
-    // are stymied by an unresolved import; then we bail out of the current
-    // module and continue. We terminate successfully once no more imports
-    // remain or unsuccessfully when no forward progress in resolving imports
-    // is made.
+    // This is a batched fixed-point algorithm. Each import is resolved in
+    // isolation, with any side effects collected for later.
+    // After a full pass over the current set of `indeterminate_imports`,
+    // the collected side effects are committed together. The process
+    // repeats until either no imports remain or no further progress can
+    // be made.
 
     /// Resolves all imports for the crate. This method performs the fixed-
     /// point iteration.
@@ -575,14 +609,130 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         while indeterminate_count < prev_indeterminate_count {
             prev_indeterminate_count = indeterminate_count;
             indeterminate_count = 0;
+            let mut side_effects = Vec::new();
             self.assert_speculative = true;
             for import in mem::take(&mut self.indeterminate_imports) {
-                let import_indeterminate_count = self.cm().resolve_import(import);
+                let (side_effect, import_indeterminate_count) = self.cm().resolve_import(import);
                 indeterminate_count += import_indeterminate_count;
                 match import_indeterminate_count {
                     0 => self.determined_imports.push(import),
                     _ => self.indeterminate_imports.push(import),
                 }
+                if let Some(side_effect) = side_effect {
+                    side_effects.push((import, side_effect));
+                }
+            }
+            self.assert_speculative = false;
+            self.commit_import_resolutions(side_effects);
+        }
+    }
+
+    fn commit_import_resolutions(
+        &mut self,
+        import_resolutions: Vec<(Import<'ra>, SideEffect<'ra>)>,
+    ) {
+        assert!(
+            !self.assert_speculative,
+            "`commit_import_resolutions` should not be called during speculative resolution"
+        );
+        for (import, side_effect) in import_resolutions.iter() {
+            let SideEffect { imported_module, .. } = side_effect;
+            import.imported_module.set_unchecked(Some(*imported_module));
+
+            if import.is_glob() {
+                let ModuleOrUniformRoot::Module(module) = imported_module else {
+                    self.dcx().emit_err(CannotGlobImportAllCrates { span: import.span });
+                    continue;
+                };
+                if import.parent_scope.module != *module {
+                    module.glob_importers.borrow_mut_unchecked().push(*import);
+                }
+            }
+        }
+
+        for (import, side_effect) in import_resolutions {
+            let SideEffect { imported_module, decls: side_effect_bindings } = side_effect;
+            let parent = import.parent_scope.module;
+            match (&import.kind, side_effect_bindings) {
+                (
+                    ImportKind::Single { target, decls, .. },
+                    SideEffectDecls::Single { import_decls },
+                ) => {
+                    self.per_ns(|this, ns| {
+                        match import_decls[ns] {
+                            Some(Some(import_decl)) => {
+                                if import_decl.is_assoc_item()
+                                    && !this.tcx.features().import_trait_associated_functions()
+                                {
+                                    feature_err(
+                                        this.tcx.sess,
+                                        sym::import_trait_associated_functions,
+                                        import.span,
+                                        "`use` associated items of traits is unstable",
+                                    )
+                                    .emit();
+                                }
+                                let target = Macros20NormalizedIdent::new(*target);
+                                this.plant_decl_into_local_module(target, ns, import_decl);
+                                decls[ns].set_unchecked(PendingDecl::Ready(Some(import_decl)));
+                            }
+                            Some(None) => {
+                                // Don't remove underscores from `single_imports`, they were never added.
+                                if target.name != kw::Underscore {
+                                    let target = Macros20NormalizedIdent::new(*target);
+                                    let key = BindingKey::new(target, ns);
+                                    this.update_local_resolution(
+                                        parent,
+                                        key,
+                                        false,
+                                        |_, resolution| {
+                                            resolution.single_imports.swap_remove(&import);
+                                        },
+                                    );
+                                }
+                                decls[ns].set_unchecked(PendingDecl::Ready(None));
+                            }
+                            None => {}
+                        }
+                    });
+                }
+                (ImportKind::Glob { id, .. }, SideEffectDecls::Glob { imported_decls }) => {
+                    let ModuleOrUniformRoot::Module(module) = imported_module else {
+                        continue;
+                    };
+
+                    if module.is_trait() && !self.tcx.features().import_trait_associated_functions()
+                    {
+                        feature_err(
+                            self.tcx.sess,
+                            sym::import_trait_associated_functions,
+                            import.span,
+                            "`use` associated items of traits is unstable",
+                        )
+                        .emit();
+                    }
+
+                    for (binding, key) in imported_decls {
+                        let import_decl = self.new_import_decl(binding, import);
+                        let warn_ambiguity = self
+                            .resolution(import.parent_scope.module, key)
+                            .and_then(|r| r.binding())
+                            .is_some_and(|binding| binding.warn_ambiguity_recursive());
+                        let _ = self.try_plant_decl_into_local_module(
+                            key.ident,
+                            key.ns,
+                            import_decl,
+                            warn_ambiguity,
+                        );
+                    }
+
+                    self.record_partial_res(*id, PartialRes::new(module.res().unwrap()));
+                }
+
+                (_, SideEffectDecls::None) => {}
+
+                // Something weird happened, which shouldn't have happened.
+                _ => unreachable!("Mismatched import kind and side effect"),
             }
             self.assert_speculative = false;
         }
@@ -855,12 +1005,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// - `0` means its resolution is determined.
     /// - Other values mean that indeterminate exists under certain namespaces.
     ///
-    /// Meanwhile, if resolve successful, the resolved bindings are written
-    /// into the module.
-    fn resolve_import<'r>(mut self: CmResolver<'r, 'ra, 'tcx>, import: Import<'ra>) -> usize {
+    /// Meanwhile, if resolution is successful, the side effect of the resolution is returned.
+    fn resolve_import<'r>(
+        mut self: CmResolver<'r, 'ra, 'tcx>,
+        import: Import<'ra>,
+    ) -> (Option<SideEffect<'ra>>, usize) {
         debug!(
-            "(resolving import for module) resolving import `{}::...` in `{}`",
+            "(resolving import for module) resolving import `{}::{}` in `{}`",
             Segment::names_to_string(&import.module_path),
+            import_kind_to_string(&import.kind),
             module_to_string(import.parent_scope.module).unwrap_or_else(|| "???".to_string()),
         );
         let module = if let Some(module) = import.imported_module.get() {
@@ -875,23 +1028,30 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             match path_res {
                 PathResult::Module(module) => module,
-                PathResult::Indeterminate => return 3,
-                PathResult::NonModule(..) | PathResult::Failed { .. } => return 0,
+                PathResult::Indeterminate => return (None, 3),
+                PathResult::NonModule(..) | PathResult::Failed { .. } => {
+                    return (None, 0);
+                }
             }
         };
 
-        import.imported_module.set_unchecked(Some(module));
-        let (source, target, bindings, type_ns_only) = match import.kind {
+        let (source, _, bindings, type_ns_only) = match import.kind {
             ImportKind::Single { source, target, ref decls, type_ns_only, .. } => {
                 (source, target, decls, type_ns_only)
             }
             ImportKind::Glob { .. } => {
-                self.get_mut_unchecked().resolve_glob_import(import);
-                return 0;
+                return (
+                    Some(SideEffect {
+                        imported_module: module,
+                        decls: self.resolve_glob_import(import, module),
+                    }),
+                    0,
+                );
             }
             _ => unreachable!(),
         };
 
+        let mut import_bindings = PerNS::default();
         let mut indeterminate_count = 0;
         self.per_ns_cm(|mut this, ns| {
             if !type_ns_only || ns == TypeNS {
@@ -905,54 +1065,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     &import.parent_scope,
                     Some(import),
                 );
-                let parent = import.parent_scope.module;
-                let binding = match binding_result {
+                let pending_binding = match binding_result {
                     Ok(binding) => {
-                        if binding.is_assoc_item()
-                            && !this.tcx.features().import_trait_associated_functions()
-                        {
-                            feature_err(
-                                this.tcx.sess,
-                                sym::import_trait_associated_functions,
-                                import.span,
-                                "`use` associated items of traits is unstable",
-                            )
-                            .emit();
-                        }
                         // We need the `target`, `source` can be extracted.
                         let import_decl = this.new_import_decl(binding, import);
-                        this.get_mut_unchecked().plant_decl_into_local_module(
-                            Macros20NormalizedIdent::new(target),
-                            ns,
-                            import_decl,
-                        );
-                        PendingDecl::Ready(Some(import_decl))
+                        Some(Some(import_decl))
                     }
-                    Err(Determinacy::Determined) => {
-                        // Don't remove underscores from `single_imports`, they were never added.
-                        if target.name != kw::Underscore {
-                            let key = BindingKey::new(Macros20NormalizedIdent::new(target), ns);
-                            this.get_mut_unchecked().update_local_resolution(
-                                parent,
-                                key,
-                                false,
-                                |_, resolution| {
-                                    resolution.single_imports.swap_remove(&import);
-                                },
-                            );
-                        }
-                        PendingDecl::Ready(None)
-                    }
+                    Err(Determinacy::Determined) => Some(None),
                     Err(Determinacy::Undetermined) => {
                         indeterminate_count += 1;
-                        PendingDecl::Pending
+                        None
                     }
                 };
-                bindings[ns].set_unchecked(binding);
+                import_bindings[ns] = pending_binding;
             }
         });
-
-        indeterminate_count
+        (
+            Some(SideEffect {
+                imported_module: module,
+                decls: SideEffectDecls::Single { import_decls: import_bindings },
+            }),
+            indeterminate_count,
+        )
     }
 
     /// Performs final import resolution, consistency checks and error reporting.
@@ -1498,65 +1632,40 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         false
     }
 
-    fn resolve_glob_import(&mut self, import: Import<'ra>) {
-        // This function is only called for glob imports.
-        let ImportKind::Glob { id, .. } = import.kind else { unreachable!() };
+    fn resolve_glob_import(
+        &self,
+        import: Import<'ra>,
+        imported_module: ModuleOrUniformRoot<'ra>,
+    ) -> SideEffectDecls<'ra> {
+        match imported_module {
+            ModuleOrUniformRoot::Module(module) if module != import.parent_scope.module => {
+                let import_bindings = self
+                    .resolutions(module)
+                    .borrow()
+                    .iter()
+                    .filter_map(|(key, resolution)| {
+                        let binding = resolution.borrow().binding()?;
+                        let mut key = *key;
+                        let scope = match key
+                            .ident
+                            .0
+                            .span
+                            .reverse_glob_adjust(module.expansion, import.span)
+                        {
+                            Some(Some(def)) => self.expn_def_scope(def),
+                            Some(None) => import.parent_scope.module,
+                            None => return None,
+                        };
+                        self.is_accessible_from(binding.vis.get(), scope).then(|| (binding, key))
+                    })
+                    .collect::<Vec<_>>();
 
-        let ModuleOrUniformRoot::Module(module) = import.imported_module.get().unwrap() else {
-            self.dcx().emit_err(CannotGlobImportAllCrates { span: import.span });
-            return;
-        };
-
-        if module.is_trait() && !self.tcx.features().import_trait_associated_functions() {
-            feature_err(
-                self.tcx.sess,
-                sym::import_trait_associated_functions,
-                import.span,
-                "`use` associated items of traits is unstable",
-            )
-            .emit();
-        }
-
-        if module == import.parent_scope.module {
-            return;
-        }
-
-        // Add to module's glob_importers
-        module.glob_importers.borrow_mut_unchecked().push(import);
-
-        // Ensure that `resolutions` isn't borrowed during `try_define`,
-        // since it might get updated via a glob cycle.
-        let bindings = self
-            .resolutions(module)
-            .borrow()
-            .iter()
-            .filter_map(|(key, resolution)| {
-                resolution.borrow().binding().map(|binding| (*key, binding))
-            })
-            .collect::<Vec<_>>();
-        for (mut key, binding) in bindings {
-            let scope = match key.ident.0.span.reverse_glob_adjust(module.expansion, import.span) {
-                Some(Some(def)) => self.expn_def_scope(def),
-                Some(None) => import.parent_scope.module,
-                None => continue,
-            };
-            if self.is_accessible_from(binding.vis(), scope) {
-                let import_decl = self.new_import_decl(binding, import);
-                let warn_ambiguity = self
-                    .resolution(import.parent_scope.module, key)
-                    .and_then(|r| r.binding())
-                    .is_some_and(|binding| binding.warn_ambiguity_recursive());
-                let _ = self.try_plant_decl_into_local_module(
-                    key.ident,
-                    key.ns,
-                    import_decl,
-                    warn_ambiguity,
-                );
+                SideEffectDecls::Glob { imported_decls: import_bindings }
             }
-        }
 
-        // Record the destination of this import
-        self.record_partial_res(id, PartialRes::new(module.res().unwrap()));
+            // Errors are reported in `commit_imports_resolutions`
+            _ => SideEffectDecls::None,
+        }
     }
 
     // Miscellaneous post-processing, including recording re-exports,
@@ -1578,12 +1687,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         module.for_each_child(self, |this, ident, _, binding| {
             let res = binding.res().expect_non_local();
             if res != def::Res::Err {
-                let child = |reexport_chain| ModChild {
-                    ident: ident.0,
-                    res,
-                    vis: binding.vis(),
-                    reexport_chain,
+                let vis = match res.opt_def_id() {
+                    Some(def_id) if self.macro_vis_hack_map.contains(&(module, def_id)) => {
+                        Visibility::Public
+                    }
+                    Some(_) | None => binding.vis.get(),
                 };
+                let child = |reexport_chain| ModChild { ident: ident.0, res, vis, reexport_chain };
                 if let Some((ambig_binding1, ambig_binding2)) = binding.descent_to_ambiguity() {
                     let main = child(ambig_binding1.reexport_chain(this));
                     let second = ModChild {

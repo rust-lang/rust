@@ -261,31 +261,6 @@ LL |         pub use self::{self as _self6};
    |                       +              +
 
 error[E0252]: the name `crate` is defined multiple times
-  --> $DIR/use-path-segment-kw.rs:134:13
-   |
-LL |         use crate;
-   |             ----- previous import of the module `crate` here
-...
-LL |         use self::crate;
-   |             ^^^^^^^^^^^ `crate` reimported here
-   |
-   = note: `crate` must be defined only once in the type namespace of this module
-
-error[E0252]: the name `crate` is defined multiple times
-  --> $DIR/use-path-segment-kw.rs:137:20
-   |
-LL |         use crate;
-   |             ----- previous import of the module `crate` here
-...
-LL |         use self::{crate};
-   |         -----------^^^^^--
-   |         |          |
-   |         |          `crate` reimported here
-   |         help: remove unnecessary import
-   |
-   = note: `crate` must be defined only once in the type namespace of this module
-
-error[E0252]: the name `crate` is defined multiple times
   --> $DIR/use-path-segment-kw.rs:202:13
    |
 LL |         use crate;
@@ -306,6 +281,31 @@ LL |         use crate::{self};
    |         ------------^^^^--
    |         |           |
    |         |           `crate` reimported here
+   |         help: remove unnecessary import
+   |
+   = note: `crate` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `crate` is defined multiple times
+  --> $DIR/use-path-segment-kw.rs:134:13
+   |
+LL |         use crate;
+   |             ----- previous import of the module `crate` here
+...
+LL |         use self::crate;
+   |             ^^^^^^^^^^^ `crate` reimported here
+   |
+   = note: `crate` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `crate` is defined multiple times
+  --> $DIR/use-path-segment-kw.rs:137:20
+   |
+LL |         use crate;
+   |             ----- previous import of the module `crate` here
+...
+LL |         use self::{crate};
+   |         -----------^^^^^--
+   |         |          |
+   |         |          `crate` reimported here
    |         help: remove unnecessary import
    |
    = note: `crate` must be defined only once in the type namespace of this module
