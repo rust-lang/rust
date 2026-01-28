@@ -143,7 +143,11 @@ impl<T, A: Allocator> Drain<'_, T, A> {
 
         let new_tail_start = tail_start + additional;
         unsafe {
-            deque.wrap_copy(tail_start, new_tail_start, self.tail_len);
+            deque.wrap_copy(
+                deque.to_physical_idx(tail_start),
+                deque.to_physical_idx(new_tail_start),
+                self.tail_len,
+            );
         }
         self.drain_len += additional;
     }
