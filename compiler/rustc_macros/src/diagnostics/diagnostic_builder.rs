@@ -12,7 +12,7 @@ use crate::diagnostics::error::{
     DiagnosticDeriveError, span_err, throw_invalid_attr, throw_span_err,
 };
 use crate::diagnostics::utils::{
-    FieldInfo, FieldInnerTy, FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
+    FieldInfo, FieldInnerTy, FieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
     build_field_mapping, is_doc_comment, report_error_if_not_applied_to_span, report_type_error,
     should_generate_arg, type_is_bool, type_is_unit, type_matches_path,
 };
@@ -48,12 +48,6 @@ pub(crate) struct DiagnosticDeriveVariantBuilder {
     /// Error codes are a optional part of the struct attribute - this is only set to detect
     /// multiple specifications.
     pub code: SpannedOption<()>,
-}
-
-impl HasFieldMap for DiagnosticDeriveVariantBuilder {
-    fn get_field_binding(&self, field: &String) -> Option<&TokenStream> {
-        self.field_map.get(field)
-    }
 }
 
 impl DiagnosticDeriveKind {
@@ -170,7 +164,7 @@ impl DiagnosticDeriveVariantBuilder {
         &self,
         attr: &Attribute,
     ) -> Result<Option<(SubdiagnosticKind, Path, bool)>, DiagnosticDeriveError> {
-        let Some(subdiag) = SubdiagnosticVariant::from_attr(attr, self)? else {
+        let Some(subdiag) = SubdiagnosticVariant::from_attr(attr, &self.field_map)? else {
             // Some attributes aren't errors - like documentation comments - but also aren't
             // subdiagnostics.
             return Ok(None);

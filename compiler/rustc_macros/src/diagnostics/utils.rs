@@ -261,108 +261,104 @@ impl<T> SetOnce<T> for SpannedOption<T> {
 
 pub(super) type FieldMap = HashMap<String, TokenStream>;
 
-pub(crate) trait HasFieldMap {
-    /// Returns the binding for the field with the given name, if it exists on the type.
-    fn get_field_binding(&self, field: &String) -> Option<&TokenStream>;
+/// In the strings in the attributes supplied to this macro, we want callers to be able to
+/// reference fields in the format string. For example:
+///
+/// ```ignore (not-usage-example)
+/// /// Suggest `==` when users wrote `===`.
+/// #[suggestion(slug = "parser-not-javascript-eq", code = "{lhs} == {rhs}")]
+/// struct NotJavaScriptEq {
+///     #[primary_span]
+///     span: Span,
+///     lhs: Ident,
+///     rhs: Ident,
+/// }
+/// ```
+///
+/// We want to automatically pick up that `{lhs}` refers `self.lhs` and `{rhs}` refers to
+/// `self.rhs`, then generate this call to `format!`:
+///
+/// ```ignore (not-usage-example)
+/// format!("{lhs} == {rhs}", lhs = self.lhs, rhs = self.rhs)
+/// ```
+///
+/// This function builds the entire call to `format!`.
+pub(super) fn build_format(
+    field_map: &FieldMap,
+    input: &str,
+    span: proc_macro2::Span,
+) -> TokenStream {
+    // This set is used later to generate the final format string. To keep builds reproducible,
+    // the iteration order needs to be deterministic, hence why we use a `BTreeSet` here
+    // instead of a `HashSet`.
+    let mut referenced_fields: BTreeSet<String> = BTreeSet::new();
 
-    /// In the strings in the attributes supplied to this macro, we want callers to be able to
-    /// reference fields in the format string. For example:
-    ///
-    /// ```ignore (not-usage-example)
-    /// /// Suggest `==` when users wrote `===`.
-    /// #[suggestion(slug = "parser-not-javascript-eq", code = "{lhs} == {rhs}")]
-    /// struct NotJavaScriptEq {
-    ///     #[primary_span]
-    ///     span: Span,
-    ///     lhs: Ident,
-    ///     rhs: Ident,
-    /// }
-    /// ```
-    ///
-    /// We want to automatically pick up that `{lhs}` refers `self.lhs` and `{rhs}` refers to
-    /// `self.rhs`, then generate this call to `format!`:
-    ///
-    /// ```ignore (not-usage-example)
-    /// format!("{lhs} == {rhs}", lhs = self.lhs, rhs = self.rhs)
-    /// ```
-    ///
-    /// This function builds the entire call to `format!`.
-    fn build_format(&self, input: &str, span: proc_macro2::Span) -> TokenStream {
-        // This set is used later to generate the final format string. To keep builds reproducible,
-        // the iteration order needs to be deterministic, hence why we use a `BTreeSet` here
-        // instead of a `HashSet`.
-        let mut referenced_fields: BTreeSet<String> = BTreeSet::new();
+    // At this point, we can start parsing the format string.
+    let mut it = input.chars().peekable();
 
-        // At this point, we can start parsing the format string.
-        let mut it = input.chars().peekable();
-
-        // Once the start of a format string has been found, process the format string and spit out
-        // the referenced fields. Leaves `it` sitting on the closing brace of the format string, so
-        // the next call to `it.next()` retrieves the next character.
-        while let Some(c) = it.next() {
-            if c != '{' {
-                continue;
-            }
-            if *it.peek().unwrap_or(&'\0') == '{' {
-                assert_eq!(it.next().unwrap(), '{');
-                continue;
-            }
-            let mut eat_argument = || -> Option<String> {
-                let mut result = String::new();
-                // Format specifiers look like:
-                //
-                //   format   := '{' [ argument ] [ ':' format_spec ] '}' .
-                //
-                // Therefore, we only need to eat until ':' or '}' to find the argument.
-                while let Some(c) = it.next() {
-                    result.push(c);
-                    let next = *it.peek().unwrap_or(&'\0');
-                    if next == '}' {
-                        break;
-                    } else if next == ':' {
-                        // Eat the ':' character.
-                        assert_eq!(it.next().unwrap(), ':');
-                        break;
-                    }
-                }
-                // Eat until (and including) the matching '}'
-                while it.next()? != '}' {
-                    continue;
-                }
-                Some(result)
-            };
-
-            if let Some(referenced_field) = eat_argument() {
-                referenced_fields.insert(referenced_field);
-            }
+    // Once the start of a format string has been found, process the format string and spit out
+    // the referenced fields. Leaves `it` sitting on the closing brace of the format string, so
+    // the next call to `it.next()` retrieves the next character.
+    while let Some(c) = it.next() {
+        if c != '{' {
+            continue;
         }
+        if *it.peek().unwrap_or(&'\0') == '{' {
+            assert_eq!(it.next().unwrap(), '{');
+            continue;
+        }
+        let mut eat_argument = || -> Option<String> {
+            let mut result = String::new();
+            // Format specifiers look like:
+            //
+            //   format   := '{' [ argument ] [ ':' format_spec ] '}' .
+            //
+            // Therefore, we only need to eat until ':' or '}' to find the argument.
+            while let Some(c) = it.next() {
+                result.push(c);
+                let next = *it.peek().unwrap_or(&'\0');
+                if next == '}' {
+                    break;
+                } else if next == ':' {
+                    // Eat the ':' character.
+                    assert_eq!(it.next().unwrap(), ':');
+                    break;
+                }
+            }
+            // Eat until (and including) the matching '}'
+            while it.next()? != '}' {
+                continue;
+            }
+            Some(result)
+        };
 
-        // At this point, `referenced_fields` contains a set of the unique fields that were
-        // referenced in the format string. Generate the corresponding "x = self.x" format
-        // string parameters:
-        let args = referenced_fields.into_iter().map(|field: String| {
-            let field_ident = format_ident!("{}", field);
-            let value = match self.get_field_binding(&field) {
-                Some(value) => value.clone(),
-                // This field doesn't exist. Emit a diagnostic.
-                None => {
-                    span_err(
-                        span.unwrap(),
-                        format!("`{field}` doesn't refer to a field on this type"),
-                    )
+        if let Some(referenced_field) = eat_argument() {
+            referenced_fields.insert(referenced_field);
+        }
+    }
+
+    // At this point, `referenced_fields` contains a set of the unique fields that were
+    // referenced in the format string. Generate the corresponding "x = self.x" format
+    // string parameters:
+    let args = referenced_fields.into_iter().map(|field: String| {
+        let field_ident = format_ident!("{}", field);
+        let value = match field_map.get(&field) {
+            Some(value) => value.clone(),
+            // This field doesn't exist. Emit a diagnostic.
+            None => {
+                span_err(span.unwrap(), format!("`{field}` doesn't refer to a field on this type"))
                     .emit();
-                    quote! {
-                        "{#field}"
-                    }
+                quote! {
+                    "{#field}"
                 }
-            };
-            quote! {
-                #field_ident = #value
             }
-        });
+        };
         quote! {
-            format!(#input #(,#args)*)
+            #field_ident = #value
         }
+    });
+    quote! {
+        format!(#input #(,#args)*)
     }
 }
 
@@ -467,7 +463,7 @@ fn parse_suggestion_values(
 pub(super) fn build_suggestion_code(
     code_field: &Ident,
     nested: ParseStream<'_>,
-    fields: &impl HasFieldMap,
+    fields: &FieldMap,
     allow_multiple: AllowMultipleAlternatives,
 ) -> Result<TokenStream, syn::Error> {
     let values = parse_suggestion_values(nested, allow_multiple)?;
@@ -475,11 +471,11 @@ pub(super) fn build_suggestion_code(
     Ok(if let AllowMultipleAlternatives::Yes = allow_multiple {
         let formatted_strings: Vec<_> = values
             .into_iter()
-            .map(|value| fields.build_format(&value.value(), value.span()))
+            .map(|value| build_format(fields, &value.value(), value.span()))
             .collect();
         quote! { let #code_field = [#(#formatted_strings),*].into_iter(); }
     } else if let [value] = values.as_slice() {
-        let formatted_str = fields.build_format(&value.value(), value.span());
+        let formatted_str = build_format(fields, &value.value(), value.span());
         quote! { let #code_field = #formatted_str; }
     } else {
         // error handled previously
@@ -600,7 +596,7 @@ impl SubdiagnosticVariant {
     /// `SubdiagnosticKind` and the diagnostic slug, if specified.
     pub(super) fn from_attr(
         attr: &Attribute,
-        fields: &impl HasFieldMap,
+        fields: &FieldMap,
     ) -> Result<Option<SubdiagnosticVariant>, DiagnosticDeriveError> {
         // Always allow documentation comments.
         if is_doc_comment(attr) {
