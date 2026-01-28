@@ -62,57 +62,23 @@ impl scc::Annotations<RegionVid> for SccAnnotations<'_, '_, RegionTracker> {
 }
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq)]
-enum PlaceholderReachability {
-    /// This SCC reaches no placeholders.
-    NoPlaceholders,
-    /// This SCC reaches at least one placeholder.
-    Placeholders {
-        /// The largest-universed placeholder we can reach
-        max_universe: (UniverseIndex, RegionVid),
+struct PlaceholderReachability {
+    /// The largest-universed placeholder we can reach
+    max_universe: (UniverseIndex, RegionVid),
 
-        /// The placeholder with the smallest ID
-        min_placeholder: RegionVid,
+    /// The placeholder with the smallest ID
+    min_placeholder: RegionVid,
 
-        /// The placeholder with the largest ID
-        max_placeholder: RegionVid,
-    },
+    /// The placeholder with the largest ID
+    max_placeholder: RegionVid,
 }
 
 impl PlaceholderReachability {
     /// Merge the reachable placeholders of two graph components.
-    fn merge(self, other: PlaceholderReachability) -> PlaceholderReachability {
-        use PlaceholderReachability::*;
-        match (self, other) {
-            (NoPlaceholders, NoPlaceholders) => NoPlaceholders,
-            (NoPlaceholders, p @ Placeholders { .. })
-            | (p @ Placeholders { .. }, NoPlaceholders) => p,
-            (
-                Placeholders {
-                    min_placeholder: min_pl,
-                    max_placeholder: max_pl,
-                    max_universe: max_u,
-                },
-                Placeholders { min_placeholder, max_placeholder, max_universe },
-            ) => Placeholders {
-                min_placeholder: min_pl.min(min_placeholder),
-                max_placeholder: max_pl.max(max_placeholder),
-                max_universe: max_u.max(max_universe),
-            },
-        }
-    }
-
-    fn max_universe(&self) -> Option<(UniverseIndex, RegionVid)> {
-        match self {
-            Self::NoPlaceholders => None,
-            Self::Placeholders { max_universe, .. } => Some(*max_universe),
-        }
-    }
-
-    /// If we have reached placeholders, determine if they can
-    /// be named from this universe.
-    fn can_be_named_by(&self, from: UniverseIndex) -> bool {
-        self.max_universe()
-            .is_none_or(|(max_placeholder_universe, _)| from.can_name(max_placeholder_universe))
+    fn merge(&mut self, other: &Self) {
+        self.max_universe = self.max_universe.max(other.max_universe);
+        self.min_placeholder = self.min_placeholder.min(other.min_placeholder);
+        self.max_placeholder = self.max_placeholder.max(other.max_placeholder);
     }
 }
 
@@ -120,7 +86,7 @@ impl PlaceholderReachability {
 /// the values of its elements. This annotates a single SCC.
 #[derive(Copy, Debug, Clone)]
 pub(crate) struct RegionTracker {
-    reachable_placeholders: PlaceholderReachability,
+    reachable_placeholders: Option<PlaceholderReachability>,
 
     /// The largest universe nameable from this SCC.
     /// It is the smallest nameable universes of all
@@ -135,13 +101,13 @@ impl RegionTracker {
     pub(crate) fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
         let reachable_placeholders =
             if matches!(definition.origin, NllRegionVariableOrigin::Placeholder(_)) {
-                PlaceholderReachability::Placeholders {
+                Some(PlaceholderReachability {
                     max_universe: (definition.universe, rvid),
                     min_placeholder: rvid,
                     max_placeholder: rvid,
-                }
+                })
             } else {
-                PlaceholderReachability::NoPlaceholders
+                None
             };
 
         Self {
@@ -159,43 +125,46 @@ impl RegionTracker {
     }
 
     pub(crate) fn max_placeholder_universe_reached(self) -> UniverseIndex {
-        if let Some((universe, _)) = self.reachable_placeholders.max_universe() {
-            universe
-        } else {
-            UniverseIndex::ROOT
-        }
+        self.reachable_placeholders.map(|pls| pls.max_universe.0).unwrap_or(UniverseIndex::ROOT)
+    }
+
+    /// Can all reachable placeholders be named from `from`?
+    /// True vacuously in case no placeholders were reached.
+    fn placeholders_can_be_named_by(&self, from: UniverseIndex) -> bool {
+        self.reachable_placeholders.is_none_or(|pls| from.can_name(pls.max_universe.0))
     }
 
     /// Determine if we can name all the placeholders in `other`.
     pub(crate) fn can_name_all_placeholders(&self, other: Self) -> bool {
-        other.reachable_placeholders.can_be_named_by(self.max_nameable_universe.0)
+        // HACK: We first check whether we can name the highest existential universe
+        // of `other`. This only exists to avoid errors in case that scc already
+        // depends on a placeholder it cannot name itself.
+        self.max_nameable_universe().can_name(other.max_nameable_universe())
+            || other.placeholders_can_be_named_by(self.max_nameable_universe.0)
     }
 
     /// If this SCC reaches a placeholder it can't name, return it.
     fn unnameable_placeholder(&self) -> Option<(UniverseIndex, RegionVid)> {
-        self.reachable_placeholders.max_universe().filter(|&(placeholder_universe, _)| {
-            !self.max_nameable_universe().can_name(placeholder_universe)
-        })
+        self.reachable_placeholders
+            .filter(|pls| !self.max_nameable_universe().can_name(pls.max_universe.0))
+            .map(|pls| pls.max_universe)
     }
 }
 
 impl scc::Annotation for RegionTracker {
-    fn merge_scc(self, other: Self) -> Self {
+    fn update_scc(&mut self, other: &Self) {
         trace!("{:?} << {:?}", self.representative, other.representative);
-
-        Self {
-            representative: self.representative.min(other.representative),
-            max_nameable_universe: self.max_nameable_universe.min(other.max_nameable_universe),
-            reachable_placeholders: self.reachable_placeholders.merge(other.reachable_placeholders),
-        }
+        self.representative = self.representative.min(other.representative);
+        self.update_reachable(other);
     }
 
-    fn merge_reached(self, other: Self) -> Self {
-        Self {
-            max_nameable_universe: self.max_nameable_universe.min(other.max_nameable_universe),
-            reachable_placeholders: self.reachable_placeholders.merge(other.reachable_placeholders),
-            representative: self.representative,
-        }
+    fn update_reachable(&mut self, other: &Self) {
+        self.max_nameable_universe = self.max_nameable_universe.min(other.max_nameable_universe);
+        match (self.reachable_placeholders.as_mut(), other.reachable_placeholders.as_ref()) {
+            (None, None) | (Some(_), None) => (),
+            (None, Some(theirs)) => self.reachable_placeholders = Some(*theirs),
+            (Some(ours), Some(theirs)) => ours.merge(theirs),
+        };
     }
 }
 
