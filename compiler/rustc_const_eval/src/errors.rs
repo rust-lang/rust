@@ -512,8 +512,11 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                 const_eval_invalid_niched_enum_variant_written
             }
             VaArgOutOfBounds => const_eval_va_arg_out_of_bounds,
+
             AbiMismatchArgument { .. } => const_eval_incompatible_arg_types,
             AbiMismatchReturn { .. } => const_eval_incompatible_return_types,
+            CVariadicMismatch { .. } => const_eval_c_variadic_mismatch,
+            CVariadicFixedCountMismatch { .. } => const_eval_c_variadic_fixed_count_mismatch,
         }
     }
 
@@ -652,6 +655,14 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             AbiMismatchReturn { caller_ty, callee_ty } => {
                 diag.arg("caller_ty", caller_ty);
                 diag.arg("callee_ty", callee_ty);
+            }
+            CVariadicMismatch { caller_is_c_variadic, callee_is_c_variadic } => {
+                diag.arg("caller_is_c_variadic", caller_is_c_variadic);
+                diag.arg("callee_is_c_variadic", callee_is_c_variadic);
+            }
+            CVariadicFixedCountMismatch { caller, callee } => {
+                diag.arg("caller", caller);
+                diag.arg("callee", callee);
             }
         }
     }

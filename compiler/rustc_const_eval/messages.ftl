@@ -139,6 +139,12 @@ const_eval_incompatible_calling_conventions =
 const_eval_incompatible_return_types =
     calling a function with return type {$callee_ty} passing return place of type {$caller_ty}
 
+const_eval_c_variadic_mismatch =
+    calling a function where the caller and callee disagree on whether the function is C-variadic
+
+const_eval_c_variadic_fixed_count_mismatch =
+    calling a C-variadic function with {$caller} fixed arguments, but the function expects {$callee}
+
 const_eval_interior_mutable_borrow_escaping =
     interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
     .label = this borrow of an interior mutable value refers to such a temporary

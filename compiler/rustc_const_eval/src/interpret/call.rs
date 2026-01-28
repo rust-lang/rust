@@ -5,6 +5,7 @@ use std::borrow::Cow;
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
 use rustc_data_structures::assert_matches;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
@@ -349,23 +350,27 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx> {
         let _trace = enter_trace_span!(M, step::init_stack_frame, %instance, tracing_separate_thread = Empty);
 
-        let (fixed_count, c_variadic_args) = if caller_fn_abi.c_variadic {
-            let sig = self.tcx.fn_sig(instance.def_id()).skip_binder();
-            let fixed_count = sig.inputs().skip_binder().len();
-            assert!(caller_fn_abi.args.len() >= fixed_count);
-            let extra_tys =
-                caller_fn_abi.args[fixed_count..].iter().map(|arg_abi| arg_abi.layout.ty);
+        // The check for the DefKind is so that we don't requiest the fn_sig of a closure.
+        // Otherwise, we hit:
+        //
+        // DefId(1:180 ~ std[269c]::rt::lang_start_internal::{closure#0}) does not have a "fn_sig"
+        let (fixed_count, callee_c_variadic_args) =
+            if matches!(self.tcx.def_kind(instance.def_id()), DefKind::Fn)
+                && let callee_fn_sig = self.tcx.fn_sig(instance.def_id()).skip_binder()
+                && callee_fn_sig.c_variadic()
+            {
+                // A mismatch in caller and callee fixed_count will error below.
+                let fixed_count = callee_fn_sig.inputs().skip_binder().len();
+                let extra_tys = caller_fn_abi.args[caller_fn_abi.fixed_count as usize..]
+                    .iter()
+                    .map(|arg_abi| arg_abi.layout.ty);
 
-            (fixed_count, self.tcx.mk_type_list_from_iter(extra_tys))
-        } else {
-            (caller_fn_abi.args.len(), ty::List::empty())
-        };
+                (fixed_count, self.tcx.mk_type_list_from_iter(extra_tys))
+            } else {
+                (caller_fn_abi.args.len(), ty::List::empty())
+            };
 
-        let callee_fn_abi = self.fn_abi_of_instance(instance, c_variadic_args)?;
-
-        if callee_fn_abi.c_variadic != caller_fn_abi.c_variadic {
-            unreachable!("caller and callee disagree on being c-variadic");
-        }
+        let callee_fn_abi = self.fn_abi_of_instance(instance, callee_c_variadic_args)?;
 
         if caller_fn_abi.conv != callee_fn_abi.conv {
             throw_ub_custom!(
@@ -373,6 +378,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 callee_conv = format!("{}", callee_fn_abi.conv),
                 caller_conv = format!("{}", caller_fn_abi.conv),
             )
+        }
+
+        if caller_fn_abi.c_variadic != callee_fn_abi.c_variadic {
+            throw_ub!(CVariadicMismatch {
+                caller_is_c_variadic: caller_fn_abi.c_variadic,
+                callee_is_c_variadic: callee_fn_abi.c_variadic,
+            });
+        }
+
+        if caller_fn_abi.fixed_count != callee_fn_abi.fixed_count {
+            throw_ub!(CVariadicFixedCountMismatch {
+                caller: caller_fn_abi.fixed_count,
+                callee: callee_fn_abi.fixed_count,
+            });
         }
 
         // Check that all target features required by the callee (i.e., from
