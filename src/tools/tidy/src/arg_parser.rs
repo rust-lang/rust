@@ -7,7 +7,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 mod tests;
 
 #[derive(Debug, Clone)]
-pub struct TidyParser {
+pub struct TidyArgParser {
     pub root_path: PathBuf,
     pub cargo: PathBuf,
     pub output_directory: PathBuf,
@@ -16,10 +16,10 @@ pub struct TidyParser {
     pub verbose: bool,
     pub bless: bool,
     pub extra_checks: Option<Vec<String>>,
-    pub pos: Vec<String>,
+    pub pos_args: Vec<String>,
 }
 
-impl TidyParser {
+impl TidyArgParser {
     fn command() -> Command {
         Command::new("rust-tidy")
             .arg(
@@ -66,7 +66,7 @@ impl TidyParser {
                     .value_delimiter(',')
                     .action(ArgAction::Append),
             )
-            .arg(Arg::new("pos").help("for extra checks. you can specify configs and target files for external check tools").action(ArgAction::Append).last(true))
+            .arg(Arg::new("pos_args").help("for extra checks. you can specify configs and target files for external check tools").action(ArgAction::Append).last(true))
     }
 
     fn build(matches: ArgMatches) -> Self {
@@ -79,15 +79,15 @@ impl TidyParser {
             verbose: *matches.get_one::<bool>("verbose").unwrap(),
             bless: *matches.get_one::<bool>("bless").unwrap(),
             extra_checks: None,
-            pos: vec![],
+            pos_args: vec![],
         };
 
         if let Some(extra_checks) = matches.get_many::<String>("extra_checks") {
             tidy_flags.extra_checks = Some(extra_checks.map(|s| s.to_string()).collect::<Vec<_>>());
         }
 
-        tidy_flags.pos = matches
-            .get_many::<String>("pos")
+        tidy_flags.pos_args = matches
+            .get_many::<String>("pos_args")
             .unwrap_or_default()
             .map(|v| v.to_string())
             .collect::<Vec<_>>();

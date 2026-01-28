@@ -8,8 +8,8 @@ use std::collections::VecDeque;
 use std::thread::{self, ScopedJoinHandle, scope};
 use std::{env, process};
 
+use tidy::arg_parser::TidyArgParser;
 use tidy::diagnostics::{COLOR_ERROR, COLOR_SUCCESS, TidyCtx, TidyFlags, output_message};
-use tidy::parser::TidyParser;
 use tidy::*;
 
 fn main() {
@@ -20,7 +20,7 @@ fn main() {
         env::set_var("RUSTC_BOOTSTRAP", "1");
     }
 
-    let parsed_args = TidyParser::parse();
+    let parsed_args = TidyArgParser::parse();
 
     let root_path = parsed_args.root_path;
     let cargo = parsed_args.cargo;
@@ -40,7 +40,7 @@ fn main() {
     let verbose = parsed_args.verbose;
     let bless = parsed_args.bless;
     let extra_checks = parsed_args.extra_checks;
-    let pos = parsed_args.pos;
+    let pos_args = parsed_args.pos_args;
 
     let tidy_ctx = TidyCtx::new(&root_path, verbose, TidyFlags::new(bless));
     let ci_info = CiInfo::new(tidy_ctx.clone());
@@ -161,7 +161,7 @@ fn main() {
             &npm,
             &cargo,
             extra_checks,
-            pos
+            pos_args
         );
     });
 

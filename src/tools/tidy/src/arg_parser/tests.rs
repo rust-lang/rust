@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::parser::TidyParser;
+use crate::arg_parser::TidyArgParser;
 
 // Test all arguments
 #[test]
@@ -21,12 +21,12 @@ fn test_tidy_parser_full() {
         "--bless",
         "--extra-checks",
         "if-installed:auto:js,auto:if-installed:py,if-installed:auto:cpp,if-installed:auto:spellcheck",
-        "--", // pos
+        "--", // pos_args
         "some-file",
         "some-file2",
     ];
-    let cmd = TidyParser::command();
-    let parsed_args = TidyParser::build(cmd.get_matches_from(args));
+    let cmd = TidyArgParser::command();
+    let parsed_args = TidyArgParser::build(cmd.get_matches_from(args));
 
     assert_eq!(parsed_args.root_path, PathBuf::from("/home/user/rust"));
     assert_eq!(
@@ -47,7 +47,7 @@ fn test_tidy_parser_full() {
             "if-installed:auto:spellcheck".to_string(),
         ])
     );
-    assert_eq!(parsed_args.pos, vec!["some-file".to_string(), "some-file2".to_string()]);
+    assert_eq!(parsed_args.pos_args, vec!["some-file".to_string(), "some-file2".to_string()]);
 }
 
 // The parser can take required args any order
@@ -66,8 +66,8 @@ fn test_tidy_parser_any_order() {
         "--root-path",
         "/home/user/rust",
     ];
-    let cmd = TidyParser::command();
-    let parsed_args = TidyParser::build(cmd.get_matches_from(args));
+    let cmd = TidyArgParser::command();
+    let parsed_args = TidyArgParser::build(cmd.get_matches_from(args));
 
     assert_eq!(parsed_args.root_path, PathBuf::from("/home/user/rust"));
     assert_eq!(
@@ -93,7 +93,7 @@ fn test_tidy_parser_missing_root_path() {
         "--cargo-path",
         "/home/user/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo",
     ];
-    let cmd = TidyParser::command();
+    let cmd = TidyArgParser::command();
     assert!(cmd.try_get_matches_from(args).is_err());
 }
 
@@ -111,7 +111,7 @@ fn test_tidy_parser_missing_cargo_path() {
         "--root-path",
         "/home/user/rust",
     ];
-    let cmd = TidyParser::command();
+    let cmd = TidyArgParser::command();
     assert!(cmd.try_get_matches_from(args).is_err());
 }
 
@@ -129,7 +129,7 @@ fn test_tidy_parser_missing_output_dir() {
         "--root-path",
         "/home/user/rust",
     ];
-    let cmd = TidyParser::command();
+    let cmd = TidyArgParser::command();
     assert!(cmd.try_get_matches_from(args).is_err());
 }
 
@@ -147,7 +147,7 @@ fn test_tidy_parser_missing_concurrency() {
         "--root-path",
         "/home/user/rust",
     ];
-    let cmd = TidyParser::command();
+    let cmd = TidyArgParser::command();
     assert!(cmd.try_get_matches_from(args).is_err());
 }
 
@@ -163,6 +163,6 @@ fn test_tidy_parser_missing_npm_path() {
         "--cargo-path",
         "/home/user/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo",
     ];
-    let cmd = TidyParser::command();
+    let cmd = TidyArgParser::command();
     assert!(cmd.try_get_matches_from(args).is_err());
 }

@@ -157,6 +157,7 @@ pub fn files_modified(ci_info: &CiInfo, pred: impl Fn(&str) -> bool) -> bool {
 }
 
 pub mod alphabetical;
+pub mod arg_parser;
 pub mod bins;
 pub mod debug_artifacts;
 pub mod deps;
@@ -176,7 +177,6 @@ pub(crate) mod iter_header;
 pub mod known_bug;
 pub mod mir_opt_tests;
 pub mod pal;
-pub mod parser;
 pub mod rustdoc_css_themes;
 pub mod rustdoc_gui_tests;
 pub mod rustdoc_json;
