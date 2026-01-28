@@ -973,8 +973,8 @@ function preLoadCss(cssUrl) {
         for (const impList of imp[nonnull(window.currentCrate)]) {
             const types = impList.slice(2);
             const text = impList[0];
-            const isTrait = impList[1] !== 0;
             const traitName = impList[1];
+            const isTrait = typeof traitName === "string";
             // @ts-expect-error
             if (types.indexOf(selfPath) === -1) {
                 continue;
@@ -1057,7 +1057,6 @@ function preLoadCss(cssUrl) {
                 const li = document.createElement("li");
                 const a = document.createElement("a");
                 a.href = `#${nonnull(template.content.querySelector(".impl")).id}`;
-                // @ts-expect-error
                 a.textContent = traitName;
                 li.appendChild(a);
                 // @ts-expect-error
