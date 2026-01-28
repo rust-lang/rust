@@ -979,7 +979,7 @@ const impl<T: [const] Destruct> Drop for Guard<'_, T> {
 /// All write accesses to this structure are unsafe and must maintain a correct
 /// count of `initialized` elements.
 struct GuardBack<'a, T> {
-    /// The array to be initialized.
+    /// The array to be initialized (will be filled from the end).
     pub array_mut: &'a mut [MaybeUninit<T>],
     /// The number of items that have been initialized so far.
     pub initialized: usize,
