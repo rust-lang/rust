@@ -24010,16 +24010,16 @@ mod tests {
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
     const fn test_mm256_reduce_mul_ph() {
-        let a = _mm256_set1_ph(2.0);
+        let a = _mm256_set1_ph(1.2);
         let r = _mm256_reduce_mul_ph(a);
-        assert_eq!(r, 65536.0);
+        assert_eq!(r, 18.5);
     }
 
     #[simd_test(enable = "avx512fp16")]
     const fn test_mm512_reduce_mul_ph() {
-        let a = _mm512_set1_ph(2.0);
+        let a = _mm512_set1_ph(1.2);
         let r = _mm512_reduce_mul_ph(a);
-        assert_eq!(r, 16777216.0);
+        assert_eq!(r, 342.3);
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]

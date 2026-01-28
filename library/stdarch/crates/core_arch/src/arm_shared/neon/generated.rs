@@ -42759,13 +42759,13 @@ pub fn vrecpsq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -42782,13 +42782,13 @@ pub fn vreinterpret_f32_f16(a: float16x4_t) -> float32x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -42809,13 +42809,13 @@ pub fn vreinterpret_f32_f16(a: float16x4_t) -> float32x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -42832,13 +42832,13 @@ pub fn vreinterpret_s8_f16(a: float16x4_t) -> int8x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -42859,13 +42859,13 @@ pub fn vreinterpret_s8_f16(a: float16x4_t) -> int8x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -42882,13 +42882,13 @@ pub fn vreinterpret_s16_f16(a: float16x4_t) -> int16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -42909,13 +42909,13 @@ pub fn vreinterpret_s16_f16(a: float16x4_t) -> int16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -42932,13 +42932,13 @@ pub fn vreinterpret_s32_f16(a: float16x4_t) -> int32x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -42959,13 +42959,13 @@ pub fn vreinterpret_s32_f16(a: float16x4_t) -> int32x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -42982,13 +42982,13 @@ pub fn vreinterpret_s64_f16(a: float16x4_t) -> int64x1_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43006,13 +43006,13 @@ pub fn vreinterpret_s64_f16(a: float16x4_t) -> int64x1_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43029,13 +43029,13 @@ pub fn vreinterpret_u8_f16(a: float16x4_t) -> uint8x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43056,13 +43056,13 @@ pub fn vreinterpret_u8_f16(a: float16x4_t) -> uint8x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43079,13 +43079,13 @@ pub fn vreinterpret_u16_f16(a: float16x4_t) -> uint16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43106,13 +43106,13 @@ pub fn vreinterpret_u16_f16(a: float16x4_t) -> uint16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43129,13 +43129,13 @@ pub fn vreinterpret_u32_f16(a: float16x4_t) -> uint32x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43156,13 +43156,13 @@ pub fn vreinterpret_u32_f16(a: float16x4_t) -> uint32x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43179,13 +43179,13 @@ pub fn vreinterpret_u64_f16(a: float16x4_t) -> uint64x1_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43203,13 +43203,13 @@ pub fn vreinterpret_u64_f16(a: float16x4_t) -> uint64x1_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43226,13 +43226,13 @@ pub fn vreinterpret_p8_f16(a: float16x4_t) -> poly8x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43253,13 +43253,13 @@ pub fn vreinterpret_p8_f16(a: float16x4_t) -> poly8x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43276,13 +43276,13 @@ pub fn vreinterpret_p16_f16(a: float16x4_t) -> poly16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43303,13 +43303,13 @@ pub fn vreinterpret_p16_f16(a: float16x4_t) -> poly16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43326,13 +43326,13 @@ pub fn vreinterpretq_f32_f16(a: float16x8_t) -> float32x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43353,13 +43353,13 @@ pub fn vreinterpretq_f32_f16(a: float16x8_t) -> float32x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43376,13 +43376,13 @@ pub fn vreinterpretq_s8_f16(a: float16x8_t) -> int8x16_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43407,13 +43407,13 @@ pub fn vreinterpretq_s8_f16(a: float16x8_t) -> int8x16_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43430,13 +43430,13 @@ pub fn vreinterpretq_s16_f16(a: float16x8_t) -> int16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43457,13 +43457,13 @@ pub fn vreinterpretq_s16_f16(a: float16x8_t) -> int16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43480,13 +43480,13 @@ pub fn vreinterpretq_s32_f16(a: float16x8_t) -> int32x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43507,13 +43507,13 @@ pub fn vreinterpretq_s32_f16(a: float16x8_t) -> int32x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43530,13 +43530,13 @@ pub fn vreinterpretq_s64_f16(a: float16x8_t) -> int64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43557,13 +43557,13 @@ pub fn vreinterpretq_s64_f16(a: float16x8_t) -> int64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43580,13 +43580,13 @@ pub fn vreinterpretq_u8_f16(a: float16x8_t) -> uint8x16_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43611,13 +43611,13 @@ pub fn vreinterpretq_u8_f16(a: float16x8_t) -> uint8x16_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43634,13 +43634,13 @@ pub fn vreinterpretq_u16_f16(a: float16x8_t) -> uint16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43661,13 +43661,13 @@ pub fn vreinterpretq_u16_f16(a: float16x8_t) -> uint16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43684,13 +43684,13 @@ pub fn vreinterpretq_u32_f16(a: float16x8_t) -> uint32x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43711,13 +43711,13 @@ pub fn vreinterpretq_u32_f16(a: float16x8_t) -> uint32x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43734,13 +43734,13 @@ pub fn vreinterpretq_u64_f16(a: float16x8_t) -> uint64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43761,13 +43761,13 @@ pub fn vreinterpretq_u64_f16(a: float16x8_t) -> uint64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43784,13 +43784,13 @@ pub fn vreinterpretq_p8_f16(a: float16x8_t) -> poly8x16_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43815,13 +43815,13 @@ pub fn vreinterpretq_p8_f16(a: float16x8_t) -> poly8x16_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43838,13 +43838,13 @@ pub fn vreinterpretq_p16_f16(a: float16x8_t) -> poly16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43865,13 +43865,13 @@ pub fn vreinterpretq_p16_f16(a: float16x8_t) -> poly16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_f32)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43888,13 +43888,13 @@ pub fn vreinterpret_f16_f32(a: float32x2_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_f32)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43915,13 +43915,13 @@ pub fn vreinterpret_f16_f32(a: float32x2_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_f32)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43938,13 +43938,13 @@ pub fn vreinterpretq_f16_f32(a: float32x4_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_f32)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43965,13 +43965,13 @@ pub fn vreinterpretq_f16_f32(a: float32x4_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_s8)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -43988,13 +43988,13 @@ pub fn vreinterpret_f16_s8(a: int8x8_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_s8)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44015,13 +44015,13 @@ pub fn vreinterpret_f16_s8(a: int8x8_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_s8)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44038,13 +44038,13 @@ pub fn vreinterpretq_f16_s8(a: int8x16_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_s8)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44066,13 +44066,13 @@ pub fn vreinterpretq_f16_s8(a: int8x16_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_s16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44089,13 +44089,13 @@ pub fn vreinterpret_f16_s16(a: int16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_s16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44116,13 +44116,13 @@ pub fn vreinterpret_f16_s16(a: int16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_s16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44139,13 +44139,13 @@ pub fn vreinterpretq_f16_s16(a: int16x8_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_s16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44166,13 +44166,13 @@ pub fn vreinterpretq_f16_s16(a: int16x8_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_s32)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44189,13 +44189,13 @@ pub fn vreinterpret_f16_s32(a: int32x2_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_s32)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44216,13 +44216,13 @@ pub fn vreinterpret_f16_s32(a: int32x2_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_s32)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44239,13 +44239,13 @@ pub fn vreinterpretq_f16_s32(a: int32x4_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_s32)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44266,13 +44266,13 @@ pub fn vreinterpretq_f16_s32(a: int32x4_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_s64)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44289,13 +44289,13 @@ pub fn vreinterpret_f16_s64(a: int64x1_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_s64)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44315,13 +44315,13 @@ pub fn vreinterpret_f16_s64(a: int64x1_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_s64)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44338,13 +44338,13 @@ pub fn vreinterpretq_f16_s64(a: int64x2_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_s64)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44365,13 +44365,13 @@ pub fn vreinterpretq_f16_s64(a: int64x2_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_u8)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44388,13 +44388,13 @@ pub fn vreinterpret_f16_u8(a: uint8x8_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_u8)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44415,13 +44415,13 @@ pub fn vreinterpret_f16_u8(a: uint8x8_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_u8)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44438,13 +44438,13 @@ pub fn vreinterpretq_f16_u8(a: uint8x16_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_u8)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44466,13 +44466,13 @@ pub fn vreinterpretq_f16_u8(a: uint8x16_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_u16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44489,13 +44489,13 @@ pub fn vreinterpret_f16_u16(a: uint16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_u16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44516,13 +44516,13 @@ pub fn vreinterpret_f16_u16(a: uint16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_u16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44539,13 +44539,13 @@ pub fn vreinterpretq_f16_u16(a: uint16x8_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_u16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44566,13 +44566,13 @@ pub fn vreinterpretq_f16_u16(a: uint16x8_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_u32)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44589,13 +44589,13 @@ pub fn vreinterpret_f16_u32(a: uint32x2_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_u32)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44616,13 +44616,13 @@ pub fn vreinterpret_f16_u32(a: uint32x2_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_u32)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44639,13 +44639,13 @@ pub fn vreinterpretq_f16_u32(a: uint32x4_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_u32)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44666,13 +44666,13 @@ pub fn vreinterpretq_f16_u32(a: uint32x4_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_u64)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44689,13 +44689,13 @@ pub fn vreinterpret_f16_u64(a: uint64x1_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_u64)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44715,13 +44715,13 @@ pub fn vreinterpret_f16_u64(a: uint64x1_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_u64)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44738,13 +44738,13 @@ pub fn vreinterpretq_f16_u64(a: uint64x2_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_u64)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44765,13 +44765,13 @@ pub fn vreinterpretq_f16_u64(a: uint64x2_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_p8)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44788,13 +44788,13 @@ pub fn vreinterpret_f16_p8(a: poly8x8_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_p8)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44815,13 +44815,13 @@ pub fn vreinterpret_f16_p8(a: poly8x8_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_p8)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44838,13 +44838,13 @@ pub fn vreinterpretq_f16_p8(a: poly8x16_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_p8)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44866,13 +44866,13 @@ pub fn vreinterpretq_f16_p8(a: poly8x16_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_p16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44889,13 +44889,13 @@ pub fn vreinterpret_f16_p16(a: poly16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_p16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44916,13 +44916,13 @@ pub fn vreinterpret_f16_p16(a: poly16x4_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_p16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44939,13 +44939,13 @@ pub fn vreinterpretq_f16_p16(a: poly16x8_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_p16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44966,13 +44966,13 @@ pub fn vreinterpretq_f16_p16(a: poly16x8_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_p128)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -44989,13 +44989,13 @@ pub fn vreinterpretq_f16_p128(a: p128) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_p128)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -45015,13 +45015,13 @@ pub fn vreinterpretq_f16_p128(a: p128) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -45038,13 +45038,13 @@ pub fn vreinterpret_p64_f16(a: float16x4_t) -> poly64x1_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -45062,13 +45062,13 @@ pub fn vreinterpret_p64_f16(a: float16x4_t) -> poly64x1_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -45085,13 +45085,13 @@ pub fn vreinterpretq_p128_f16(a: float16x8_t) -> p128 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -45109,13 +45109,13 @@ pub fn vreinterpretq_p128_f16(a: float16x8_t) -> p128 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -45132,13 +45132,13 @@ pub fn vreinterpretq_p64_f16(a: float16x8_t) -> poly64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_f16)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -45159,13 +45159,13 @@ pub fn vreinterpretq_p64_f16(a: float16x8_t) -> poly64x2_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_p64)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -45182,13 +45182,13 @@ pub fn vreinterpret_f16_p64(a: poly64x1_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_p64)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -45208,13 +45208,13 @@ pub fn vreinterpret_f16_p64(a: poly64x1_t) -> float16x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_p64)"]
 #[inline(always)]
 #[cfg(target_endian = "little")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
@@ -45231,13 +45231,13 @@ pub fn vreinterpretq_f16_p64(a: poly64x2_t) -> float16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_p64)"]
 #[inline(always)]
 #[cfg(target_endian = "big")]
+#[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(nop)
 )]
-#[target_feature(enable = "neon,fp16")]
 #[cfg_attr(
     not(target_arch = "arm"),
     stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")
