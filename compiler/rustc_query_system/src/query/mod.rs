@@ -58,22 +58,19 @@ pub struct QueryStackFrame<I> {
     pub def_id_for_ty_in_cycle: Option<DefId>,
 }
 
-impl<I> QueryStackFrame<I> {
+impl<'tcx> QueryStackFrame<QueryStackDeferred<'tcx>> {
     #[inline]
     pub fn new(
-        info: I,
+        info: QueryStackDeferred<'tcx>,
         dep_kind: DepKind,
-        hash: impl FnOnce() -> Hash64,
+        hash: Hash64,
         def_id: Option<DefId>,
         def_id_for_ty_in_cycle: Option<DefId>,
     ) -> Self {
-        Self { info, def_id, dep_kind, hash: hash(), def_id_for_ty_in_cycle }
+        Self { info, def_id, dep_kind, hash, def_id_for_ty_in_cycle }
     }
 
-    fn lift<Qcx: QueryContext<QueryInfo = I>>(
-        &self,
-        qcx: Qcx,
-    ) -> QueryStackFrame<QueryStackFrameExtra> {
+    fn lift<Qcx: QueryContext<'tcx>>(&self, qcx: Qcx) -> QueryStackFrame<QueryStackFrameExtra> {
         QueryStackFrame {
             info: qcx.lift_query_info(&self.info),
             dep_kind: self.dep_kind,
@@ -159,9 +156,7 @@ pub enum QuerySideEffect {
     Diagnostic(DiagInner),
 }
 
-pub trait QueryContext: HasDepContext {
-    type QueryInfo: Clone;
-
+pub trait QueryContext<'tcx>: HasDepContext {
     /// Gets a jobserver reference which is used to release then acquire
     /// a token while waiting on a query.
     fn jobserver_proxy(&self) -> &Proxy;
@@ -171,12 +166,9 @@ pub trait QueryContext: HasDepContext {
     /// Get the query information from the TLS context.
     fn current_query_job(self) -> Option<QueryJobId>;
 
-    fn collect_active_jobs(
-        self,
-        require_complete: bool,
-    ) -> Result<QueryMap<Self::QueryInfo>, QueryMap<Self::QueryInfo>>;
+    fn collect_active_jobs(self, require_complete: bool) -> Result<QueryMap<'tcx>, QueryMap<'tcx>>;
 
-    fn lift_query_info(self, info: &Self::QueryInfo) -> QueryStackFrameExtra;
+    fn lift_query_info(self, info: &QueryStackDeferred<'tcx>) -> QueryStackFrameExtra;
 
     /// Load a side effect associated to the node in the previous session.
     fn load_side_effect(

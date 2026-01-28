@@ -14,7 +14,7 @@ use crate::query::{CycleError, CycleErrorHandling, DepNodeIndex, QueryContext, Q
 
 pub type HashResult<V> = Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>;
 
-pub trait QueryConfig<Qcx: QueryContext>: Copy {
+pub trait QueryConfig<'tcx, Qcx: QueryContext<'tcx>>: Copy {
     fn name(self) -> &'static str;
 
     // `Key` and `Value` are `Copy` instead of `Clone` to ensure copying them stays cheap,
@@ -27,7 +27,7 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn format_value(self) -> fn(&Self::Value) -> String;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_state<'a>(self, tcx: Qcx) -> &'a QueryState<Self::Key, Qcx::QueryInfo>
+    fn query_state<'a>(self, tcx: Qcx) -> &'a QueryState<'tcx, Self::Key>
     where
         Qcx: 'a;
 

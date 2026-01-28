@@ -23,7 +23,7 @@ use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
     CycleError, CycleErrorHandling, HashResult, QueryCache, QueryConfig, QueryMap, QueryMode,
-    QueryStackDeferred, QueryState, get_query_incr, get_query_non_incr,
+    QueryState, get_query_incr, get_query_non_incr,
 };
 use rustc_span::{ErrorGuaranteed, Span};
 
@@ -60,7 +60,7 @@ impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDA
 }
 
 impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool>
-    QueryConfig<QueryCtxt<'tcx>> for DynamicConfig<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+    QueryConfig<'tcx, QueryCtxt<'tcx>> for DynamicConfig<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
 where
     for<'a> C::Key: HashStable<StableHashingContext<'a>>,
 {
@@ -79,10 +79,7 @@ where
     }
 
     #[inline(always)]
-    fn query_state<'a>(
-        self,
-        qcx: QueryCtxt<'tcx>,
-    ) -> &'a QueryState<Self::Key, QueryStackDeferred<'tcx>>
+    fn query_state<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a QueryState<'tcx, Self::Key>
     where
         QueryCtxt<'tcx>: 'a,
     {
@@ -91,7 +88,7 @@ where
         unsafe {
             &*(&qcx.tcx.query_system.states as *const QueryStates<'tcx>)
                 .byte_add(self.dynamic.query_state)
-                .cast::<QueryState<Self::Key, QueryStackDeferred<'tcx>>>()
+                .cast::<QueryState<'tcx, Self::Key>>()
         }
     }
 
@@ -198,13 +195,14 @@ where
 /// and constructing a QueryConfig.
 trait QueryConfigRestored<'tcx> {
     type RestoredValue;
-    type Config: QueryConfig<QueryCtxt<'tcx>>;
+    type Config: QueryConfig<'tcx, QueryCtxt<'tcx>>;
 
     const NAME: &'static &'static str;
 
     fn config(tcx: TyCtxt<'tcx>) -> Self::Config;
-    fn restore(value: <Self::Config as QueryConfig<QueryCtxt<'tcx>>>::Value)
-    -> Self::RestoredValue;
+    fn restore(
+        value: <Self::Config as QueryConfig<'tcx, QueryCtxt<'tcx>>>::Value,
+    ) -> Self::RestoredValue;
 }
 
 pub fn query_system<'a>(
