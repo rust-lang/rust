@@ -9,7 +9,7 @@
 //! zero-capacity length flowing into the memcpy arguments.
 
 // CHECK-LABEL: @vec_append_with_temp_alloc
-// CHECK-SAME: (ptr {{[^%]+}}%[[DST:[a-z0-9._]+]], ptr {{[^%]+}}%[[SRC:[a-z0-9._]+]],
+// CHECK-SAME: (ptr {{[^%]+}}%{{[a-z0-9._]+}}, ptr {{[^%]+}}%[[SRC:[a-z0-9._]+]],
 #[no_mangle]
 pub fn vec_append_with_temp_alloc(dst: &mut Vec<u8>, src: &[u8]) {
     // CHECK-NOT: call void @llvm.memcpy
@@ -21,7 +21,7 @@ pub fn vec_append_with_temp_alloc(dst: &mut Vec<u8>, src: &[u8]) {
 }
 
 // CHECK-LABEL: @string_append_with_temp_alloc
-// CHECK-SAME: (ptr {{[^%]+}}%[[DST:[a-z0-9._]+]], ptr {{[^%]+}}%[[SRC:[a-z0-9._]+]],
+// CHECK-SAME: (ptr {{[^%]+}}%{{[a-z0-9._]+}}, ptr {{[^%]+}}%[[SRC:[a-z0-9._]+]],
 #[no_mangle]
 pub fn string_append_with_temp_alloc(dst: &mut String, src: &str) {
     // CHECK-NOT: call void @llvm.memcpy
