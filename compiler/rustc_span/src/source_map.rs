@@ -369,7 +369,7 @@ impl SourceMap {
     /// information for things inlined from other crates.
     pub fn new_imported_source_file(
         &self,
-        filename: FileName,
+        mut filename: FileName,
         src_hash: SourceFileHash,
         checksum_hash: Option<SourceFileHash>,
         stable_id: StableSourceFileId,
@@ -381,6 +381,10 @@ impl SourceMap {
         normalized_pos: Vec<NormalizedPos>,
         metadata_index: u32,
     ) -> Arc<SourceFile> {
+        if let FileName::Real(name) = &mut filename {
+            let path = name.path(RemapPathScopeComponents::DIAGNOSTICS);
+            *name = self.path_mapping.to_real_filename(&self.working_dir, path);
+        }
         let normalized_source_len = RelativeBytePos::from_u32(normalized_source_len);
 
         let source_file = SourceFile {

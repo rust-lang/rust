@@ -1,13 +1,12 @@
 error[E0423]: expected value, found struct `remapped_dep::SomeStruct`
-  --> $DIR/remap-path-prefix-reverse.rs:15:13
+  --> $DIR/remap-path-prefix-reverse.rs:14:13
    |
 LL |     let _ = remapped_dep::SomeStruct;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: use struct literal syntax instead: `remapped_dep::SomeStruct {}`
    |
-  ::: remapped-aux/remapped_dep.rs:4:1
+  --> remapped-aux/remapped_dep.rs:4:0
    |
-LL | pub struct SomeStruct {} // This line should be show as part of the error.
-   | --------------------- `remapped_dep::SomeStruct` defined here
+   = note: `remapped_dep::SomeStruct` defined here
 
 error: aborting due to 1 previous error
 
