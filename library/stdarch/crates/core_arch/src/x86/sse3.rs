@@ -239,7 +239,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse3")]
-    unsafe fn test_mm_lddqu_si128() {
+    fn test_mm_lddqu_si128() {
         #[rustfmt::skip]
         let a = _mm_setr_epi8(
             1, 2, 3, 4,
@@ -247,7 +247,7 @@ mod tests {
             9, 10, 11, 12,
             13, 14, 15, 16,
         );
-        let r = _mm_lddqu_si128(&a);
+        let r = unsafe { _mm_lddqu_si128(&a) };
         assert_eq_m128i(a, r);
     }
 
@@ -273,9 +273,9 @@ mod tests {
     }
 
     #[simd_test(enable = "sse3")]
-    const unsafe fn test_mm_loaddup_pd() {
+    const fn test_mm_loaddup_pd() {
         let d = -5.0;
-        let r = _mm_loaddup_pd(&d);
+        let r = unsafe { _mm_loaddup_pd(&d) };
         assert_eq_m128d(r, _mm_setr_pd(d, d));
     }
 }

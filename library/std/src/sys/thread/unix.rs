@@ -542,7 +542,6 @@ pub fn sleep(dur: Duration) {
             target_os = "illumos",
             target_os = "dragonfly",
             target_os = "hurd",
-            target_os = "fuchsia",
             target_os = "vxworks",
             target_os = "wasi",
         ) => {
@@ -640,7 +639,6 @@ pub fn sleep(dur: Duration) {
     target_os = "illumos",
     target_os = "dragonfly",
     target_os = "hurd",
-    target_os = "fuchsia",
     target_os = "vxworks",
     target_os = "wasi",
 ))]

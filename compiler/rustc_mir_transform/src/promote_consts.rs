@@ -485,47 +485,33 @@ impl<'tcx> Validator<'_, 'tcx> {
                         if lhs_ty.is_integral() {
                             let sz = lhs_ty.primitive_size(self.tcx);
                             // Integer division: the RHS must be a non-zero const.
-                            let rhs_val = match rhs {
-                                Operand::Constant(c)
-                                    if self.should_evaluate_for_promotion_checks(c.const_) =>
-                                {
-                                    c.const_.try_eval_scalar_int(self.tcx, self.typing_env)
-                                }
-                                _ => None,
-                            };
-                            match rhs_val.map(|x| x.to_uint(sz)) {
+                            let rhs_val = if let Operand::Constant(rhs_c) = rhs
+                                && self.should_evaluate_for_promotion_checks(rhs_c.const_)
+                                && let Some(rhs_val) =
+                                    rhs_c.const_.try_eval_scalar_int(self.tcx, self.typing_env)
                                 // for the zero test, int vs uint does not matter
-                                Some(x) if x != 0 => {}        // okay
-                                _ => return Err(Unpromotable), // value not known or 0 -- not okay
-                            }
+                                && rhs_val.to_uint(sz) != 0
+                            {
+                                rhs_val
+                            } else {
+                                // value not known or 0 -- not okay
+                                return Err(Unpromotable);
+                            };
                             // Furthermore, for signed division, we also have to exclude `int::MIN /
                             // -1`.
-                            if lhs_ty.is_signed() {
-                                match rhs_val.map(|x| x.to_int(sz)) {
-                                    Some(-1) | None => {
-                                        // The RHS is -1 or unknown, so we have to be careful.
-                                        // But is the LHS int::MIN?
-                                        let lhs_val = match lhs {
-                                            Operand::Constant(c)
-                                                if self.should_evaluate_for_promotion_checks(
-                                                    c.const_,
-                                                ) =>
-                                            {
-                                                c.const_
-                                                    .try_eval_scalar_int(self.tcx, self.typing_env)
-                                            }
-                                            _ => None,
-                                        };
-                                        let lhs_min = sz.signed_int_min();
-                                        match lhs_val.map(|x| x.to_int(sz)) {
-                                            // okay
-                                            Some(x) if x != lhs_min => {}
-
-                                            // value not known or int::MIN -- not okay
-                                            _ => return Err(Unpromotable),
-                                        }
-                                    }
-                                    _ => {}
+                            if lhs_ty.is_signed() && rhs_val.to_int(sz) == -1 {
+                                // The RHS is -1, so we have to be careful. But is the LHS int::MIN?
+                                if let Operand::Constant(lhs_c) = lhs
+                                    && self.should_evaluate_for_promotion_checks(lhs_c.const_)
+                                    && let Some(lhs_val) =
+                                        lhs_c.const_.try_eval_scalar_int(self.tcx, self.typing_env)
+                                    && let lhs_min = sz.signed_int_min()
+                                    && lhs_val.to_int(sz) != lhs_min
+                                {
+                                    // okay
+                                } else {
+                                    // value not known or int::MIN -- not okay
+                                    return Err(Unpromotable);
                                 }
                             }
                         }

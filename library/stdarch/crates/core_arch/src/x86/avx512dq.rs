@@ -7401,27 +7401,25 @@ unsafe extern "C" {
 mod tests {
     use super::*;
     use crate::core_arch::assert_eq_const as assert_eq;
+    use crate::core_arch::x86::*;
 
     use stdarch_test::simd_test;
 
-    use crate::core_arch::x86::*;
-    use crate::mem::transmute;
+    const OPRND1_64: f64 = f64::from_bits(0x3333333333333333);
+    const OPRND2_64: f64 = f64::from_bits(0x5555555555555555);
 
-    const OPRND1_64: f64 = unsafe { transmute(0x3333333333333333_u64) };
-    const OPRND2_64: f64 = unsafe { transmute(0x5555555555555555_u64) };
+    const AND_64: f64 = f64::from_bits(0x1111111111111111);
+    const ANDN_64: f64 = f64::from_bits(0x4444444444444444);
+    const OR_64: f64 = f64::from_bits(0x7777777777777777);
+    const XOR_64: f64 = f64::from_bits(0x6666666666666666);
 
-    const AND_64: f64 = unsafe { transmute(0x1111111111111111_u64) };
-    const ANDN_64: f64 = unsafe { transmute(0x4444444444444444_u64) };
-    const OR_64: f64 = unsafe { transmute(0x7777777777777777_u64) };
-    const XOR_64: f64 = unsafe { transmute(0x6666666666666666_u64) };
+    const OPRND1_32: f32 = f32::from_bits(0x33333333);
+    const OPRND2_32: f32 = f32::from_bits(0x55555555);
 
-    const OPRND1_32: f32 = unsafe { transmute(0x33333333_u32) };
-    const OPRND2_32: f32 = unsafe { transmute(0x55555555_u32) };
-
-    const AND_32: f32 = unsafe { transmute(0x11111111_u32) };
-    const ANDN_32: f32 = unsafe { transmute(0x44444444_u32) };
-    const OR_32: f32 = unsafe { transmute(0x77777777_u32) };
-    const XOR_32: f32 = unsafe { transmute(0x66666666_u32) };
+    const AND_32: f32 = f32::from_bits(0x11111111);
+    const ANDN_32: f32 = f32::from_bits(0x44444444);
+    const OR_32: f32 = f32::from_bits(0x77777777);
+    const XOR_32: f32 = f32::from_bits(0x66666666);
 
     #[simd_test(enable = "avx512dq,avx512vl")]
     const fn test_mm_mask_and_pd() {
@@ -10023,11 +10021,11 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512dq")]
-    const unsafe fn test_kortest_mask8_u8() {
+    const fn test_kortest_mask8_u8() {
         let a: __mmask8 = 0b01101001;
         let b: __mmask8 = 0b10110110;
         let mut all_ones: u8 = 0;
-        let r = _kortest_mask8_u8(a, b, &mut all_ones);
+        let r = unsafe { _kortest_mask8_u8(a, b, &mut all_ones) };
         assert_eq!(r, 0);
         assert_eq!(all_ones, 1);
     }
@@ -10049,7 +10047,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512dq")]
-    const unsafe fn test_kshiftli_mask8() {
+    const fn test_kshiftli_mask8() {
         let a: __mmask8 = 0b01101001;
         let r = _kshiftli_mask8::<3>(a);
         let e: __mmask8 = 0b01001000;
@@ -10089,11 +10087,11 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512dq")]
-    const unsafe fn test_ktest_mask8_u8() {
+    const fn test_ktest_mask8_u8() {
         let a: __mmask8 = 0b01101001;
         let b: __mmask8 = 0b10010110;
         let mut and_not: u8 = 0;
-        let r = _ktest_mask8_u8(a, b, &mut and_not);
+        let r = unsafe { _ktest_mask8_u8(a, b, &mut and_not) };
         assert_eq!(r, 1);
         assert_eq!(and_not, 0);
     }
@@ -10115,11 +10113,11 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512dq")]
-    const unsafe fn test_ktest_mask16_u8() {
+    const fn test_ktest_mask16_u8() {
         let a: __mmask16 = 0b0110100100111100;
         let b: __mmask16 = 0b1001011011000011;
         let mut and_not: u8 = 0;
-        let r = _ktest_mask16_u8(a, b, &mut and_not);
+        let r = unsafe { _ktest_mask16_u8(a, b, &mut and_not) };
         assert_eq!(r, 1);
         assert_eq!(and_not, 0);
     }
@@ -10141,18 +10139,20 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512dq")]
-    const unsafe fn test_load_mask8() {
+    const fn test_load_mask8() {
         let a: __mmask8 = 0b01101001;
-        let r = _load_mask8(&a);
+        let r = unsafe { _load_mask8(&a) };
         let e: __mmask8 = 0b01101001;
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "avx512dq")]
-    const unsafe fn test_store_mask8() {
+    const fn test_store_mask8() {
         let a: __mmask8 = 0b01101001;
         let mut r = 0;
-        _store_mask8(&mut r, a);
+        unsafe {
+            _store_mask8(&mut r, a);
+        }
         let e: __mmask8 = 0b01101001;
         assert_eq!(r, e);
     }

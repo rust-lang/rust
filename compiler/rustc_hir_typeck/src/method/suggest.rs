@@ -3281,6 +3281,63 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Checks if we can suggest a derive macro for the unmet trait bound.
+    /// Returns Some(list_of_derives) if possible, or None if not.
+    fn consider_suggesting_derives_for_ty(
+        &self,
+        trait_pred: ty::TraitPredicate<'tcx>,
+        adt: ty::AdtDef<'tcx>,
+    ) -> Option<Vec<(String, Span, Symbol)>> {
+        let diagnostic_name = self.tcx.get_diagnostic_name(trait_pred.def_id())?;
+
+        let can_derive = match diagnostic_name {
+            sym::Default
+            | sym::Eq
+            | sym::PartialEq
+            | sym::Ord
+            | sym::PartialOrd
+            | sym::Clone
+            | sym::Copy
+            | sym::Hash
+            | sym::Debug => true,
+            _ => false,
+        };
+
+        if !can_derive {
+            return None;
+        }
+
+        let trait_def_id = trait_pred.def_id();
+        let self_ty = trait_pred.self_ty();
+
+        // We need to check if there is already a manual implementation of the trait
+        // for this specific ADT to avoid suggesting `#[derive(..)]` that would conflict.
+        if self.tcx.non_blanket_impls_for_ty(trait_def_id, self_ty).any(|impl_def_id| {
+            self.tcx
+                .type_of(impl_def_id)
+                .instantiate_identity()
+                .ty_adt_def()
+                .is_some_and(|def| def.did() == adt.did())
+        }) {
+            return None;
+        }
+
+        let mut derives = Vec::new();
+        let self_name = self_ty.to_string();
+        let self_span = self.tcx.def_span(adt.did());
+
+        for super_trait in supertraits(self.tcx, ty::Binder::dummy(trait_pred.trait_ref)) {
+            if let Some(parent_diagnostic_name) = self.tcx.get_diagnostic_name(super_trait.def_id())
+            {
+                derives.push((self_name.clone(), self_span, parent_diagnostic_name));
+            }
+        }
+
+        derives.push((self_name, self_span, diagnostic_name));
+
+        Some(derives)
+    }
+
     fn note_predicate_source_and_get_derives(
         &self,
         err: &mut Diag<'_>,
@@ -3298,35 +3355,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(adt) if adt.did().is_local() => adt,
                 _ => continue,
             };
-            if let Some(diagnostic_name) = self.tcx.get_diagnostic_name(trait_pred.def_id()) {
-                let can_derive = match diagnostic_name {
-                    sym::Default
-                    | sym::Eq
-                    | sym::PartialEq
-                    | sym::Ord
-                    | sym::PartialOrd
-                    | sym::Clone
-                    | sym::Copy
-                    | sym::Hash
-                    | sym::Debug => true,
-                    _ => false,
-                };
-                if can_derive {
-                    let self_name = trait_pred.self_ty().to_string();
-                    let self_span = self.tcx.def_span(adt.did());
-                    for super_trait in
-                        supertraits(self.tcx, ty::Binder::dummy(trait_pred.trait_ref))
-                    {
-                        if let Some(parent_diagnostic_name) =
-                            self.tcx.get_diagnostic_name(super_trait.def_id())
-                        {
-                            derives.push((self_name.clone(), self_span, parent_diagnostic_name));
-                        }
-                    }
-                    derives.push((self_name, self_span, diagnostic_name));
-                } else {
-                    traits.push(trait_pred.def_id());
-                }
+            if let Some(new_derives) = self.consider_suggesting_derives_for_ty(trait_pred, adt) {
+                derives.extend(new_derives);
             } else {
                 traits.push(trait_pred.def_id());
             }
