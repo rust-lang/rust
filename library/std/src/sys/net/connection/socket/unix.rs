@@ -295,7 +295,7 @@ impl Socket {
         })?;
 
         if ret == 0 && buf.capacity() == 0 {
-            return Err(io::const_error!(io::ErrorKind::InvalidInput, "0-byte buffer requested"))
+            return Err(io::const_error!(io::ErrorKind::InvalidInput, "0-byte buffer requested"));
         }
 
         unsafe {
