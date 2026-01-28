@@ -1,9 +1,10 @@
 #![deny(unused_must_use)]
 
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
+use syn::parse::ParseStream;
 use syn::spanned::Spanned;
-use syn::{Attribute, Meta, MetaList, Path};
+use syn::{Attribute, Meta, MetaList, Path, Token};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
 use super::utils::SubdiagnosticVariant;
@@ -437,23 +438,35 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
                 let mut code = None;
 
-                list.parse_nested_meta(|nested| {
-                    if nested.path.is_ident("code") {
-                        let code_field = new_code_ident();
-                        let span = nested.path.span().unwrap();
-                        let formatting_init = build_suggestion_code(
-                            &code_field,
-                            nested,
-                            self,
-                            AllowMultipleAlternatives::No,
-                        );
-                        code.set_once((code_field, formatting_init), span);
-                    } else {
-                        span_err(
-                            nested.path.span().unwrap(),
-                            "`code` is the only valid nested attribute",
-                        )
-                        .emit();
+                list.parse_args_with(|input: ParseStream<'_>| {
+                    while !input.is_empty() {
+                        let arg_name = input.parse::<Ident>()?;
+                        match arg_name.to_string().as_str() {
+                            "code" => {
+                                let code_field = new_code_ident();
+                                let formatting_init = build_suggestion_code(
+                                    &code_field,
+                                    input,
+                                    self,
+                                    AllowMultipleAlternatives::No,
+                                )?;
+                                code.set_once(
+                                    (code_field, formatting_init),
+                                    arg_name.span().unwrap(),
+                                );
+                            }
+                            _ => {
+                                span_err(
+                                    arg_name.span().unwrap(),
+                                    "`code` is the only valid nested attribute",
+                                )
+                                .emit();
+                            }
+                        }
+                        if input.is_empty() {
+                            break;
+                        }
+                        input.parse::<Token![,]>()?;
                     }
                     Ok(())
                 })?;

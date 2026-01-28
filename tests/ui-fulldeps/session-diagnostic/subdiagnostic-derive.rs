@@ -95,7 +95,7 @@ struct G {
 
 #[derive(Subdiagnostic)]
 #[label("...")]
-//~^ ERROR unexpected literal in nested attribute, expected ident
+//~^ ERROR expected identifier
 struct H {
     #[primary_span]
     span: Span,
@@ -775,7 +775,7 @@ struct SuggestionStyleInvalid1 {
 
 #[derive(Subdiagnostic)]
 #[suggestion(no_crate_example, code = "", style = 42)]
-//~^ ERROR expected `= "xxx"`
+//~^ ERROR expected string literal
 struct SuggestionStyleInvalid2 {
     #[primary_span]
     sub: Span,
@@ -791,8 +791,7 @@ struct SuggestionStyleInvalid3 {
 
 #[derive(Subdiagnostic)]
 #[suggestion(no_crate_example, code = "", style("foo"))]
-//~^ ERROR expected `= "xxx"`
-//~| ERROR expected `,`
+//~^ ERROR expected `=`
 struct SuggestionStyleInvalid4 {
     #[primary_span]
     sub: Span,

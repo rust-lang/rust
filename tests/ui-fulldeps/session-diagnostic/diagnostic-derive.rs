@@ -803,7 +803,7 @@ struct SuggestionsInvalidItem {
     sub: Span,
 }
 
-#[derive(Diagnostic)] //~ ERROR cannot find value `__code_34` in this scope
+#[derive(Diagnostic)]
 #[diag(no_crate_example)]
 struct SuggestionsInvalidLiteral {
     #[suggestion(code = 3)]
