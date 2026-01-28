@@ -115,11 +115,11 @@ fn main() {
 
     m::m!();
 
-    m::leak_anon1(); //~ ERROR trait `Trait` is private
+    m::leak_anon1(); //~ ERROR trait `m::Trait` is private
     m::leak_anon2(); //~ ERROR type `Priv` is private
     m::leak_anon3(); //~ ERROR type `Priv` is private
 
-    m::leak_dyn1(); //~ ERROR trait `Trait` is private
+    m::leak_dyn1(); //~ ERROR trait `m::Trait` is private
     m::leak_dyn2(); //~ ERROR type `Priv` is private
     m::leak_dyn3(); //~ ERROR type `Priv` is private
 

@@ -9,6 +9,7 @@ use tracing::instrument;
 use crate::interpret::InterpCx;
 
 mod dummy_machine;
+mod dyn_trait;
 mod error;
 mod eval_queries;
 mod fn_queries;

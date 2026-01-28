@@ -47,6 +47,8 @@ pub enum TypeKind {
     Array(Array),
     /// Slices.
     Slice(Slice),
+    /// Dynamic Traits.
+    DynTrait(DynTrait),
     /// Primitive boolean type.
     Bool(Bool),
     /// Primitive character type.
@@ -103,6 +105,36 @@ pub struct Array {
 pub struct Slice {
     /// The type of each element in the slice.
     pub element_ty: TypeId,
+}
+
+/// Compile-time type information about dynamic traits.
+/// FIXME(#146922): Add super traits and generics
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct DynTrait {
+    /// The predicates of  a dynamic trait.
+    pub predicates: &'static [DynTraitPredicate],
+}
+
+/// Compile-time type information about a dynamic trait predicate.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct DynTraitPredicate {
+    /// The type of the trait as a dynamic trait type.
+    pub trait_ty: Trait,
+}
+
+/// Compile-time type information about a trait.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Trait {
+    /// The TypeId of the trait as a dynamic type
+    pub ty: TypeId,
+    /// Whether the trait is an auto trait
+    pub is_auto: bool,
 }
 
 /// Compile-time type information about `bool`.
