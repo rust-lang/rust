@@ -2,10 +2,7 @@ error[E0599]: the method `quote_into_iter` exists for struct `Ipv4Addr`, but its
   --> $DIR/not-repeatable.rs:11:13
    |
 LL | struct Ipv4Addr;
-   | ---------------
-   | |
-   | method `quote_into_iter` not found for this struct
-   | `Ipv4Addr` doesn't implement `Iterator` or `ToTokens`
+   | --------------- method `quote_into_iter` not found for this struct because `Ipv4Addr` doesn't implement `Iterator` or `ToTokens`
 ...
 LL |     let _ = quote! { $($ip)* };
    |             ^^^^^^^^^^^^^^^^^^ method cannot be called on `Ipv4Addr` due to unsatisfied trait bounds

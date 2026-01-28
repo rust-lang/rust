@@ -1065,11 +1065,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (predicate, _parent_pred, _cause) in unsatisfied_predicates {
             if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =
                 predicate.kind().skip_binder()
+                && let self_ty = pred.trait_ref.self_ty()
+                && self_ty.peel_refs() == rcvr_ty
             {
-                let self_ty = pred.trait_ref.self_ty();
-                if self_ty.peel_refs() != rcvr_ty {
-                    continue;
-                }
                 let is_ref = matches!(self_ty.kind(), ty::Ref(..));
                 tracker.track(pred.trait_ref.def_id, is_ref);
             }
@@ -1102,19 +1100,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let is_ty_span = Some(span) == ty_span;
             if is_ty_span && should_condense {
                 ty_span.take();
-                err.span_label(
-                    span,
+                let label = if let Some(missing_trait_list) = &missing_trait_list {
+                    format!(
+                        "{item_kind} `{item_ident}` not found for this {} because `{rcvr_ty_str}` doesn't implement {missing_trait_list}",
+                        rcvr_ty.prefix_string(self.tcx)
+                    )
+                } else {
                     format!(
                         "{item_kind} `{item_ident}` not found for this {}",
                         rcvr_ty.prefix_string(self.tcx)
-                    ),
-                );
-                if let Some(missing_trait_list) = &missing_trait_list {
-                    err.span_label(
-                        span,
-                        format!("`{rcvr_ty_str}` doesn't implement {missing_trait_list}"),
-                    );
-                }
+                    )
+                };
+                err.span_label(span, label);
                 continue;
             }
             let pre = if is_ty_span {
