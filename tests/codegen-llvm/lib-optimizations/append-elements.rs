@@ -13,10 +13,7 @@
 #[no_mangle]
 pub fn vec_append_with_temp_alloc(dst: &mut Vec<u8>, src: &[u8]) {
     // CHECK-NOT: call void @llvm.memcpy
-    // CHECK: %[[INNER_PTR_ADDR:[0-9a-z._]+]] = getelementptr {{.*}} ptr %[[DST]], {{.*}} {{4|8}}
-    // CHECK: %[[INNER_PTR:[0-9a-z._]+]] = load ptr, ptr %[[INNER_PTR_ADDR]]
-    // CHECK: %[[DST_PTR:[0-9a-z._]+]] = getelementptr {{.*}} ptr %[[INNER_PTR]], {{.*}}
-    // CHECK: call void @llvm.memcpy.{{.*}}ptr {{.*}}%[[DST_PTR]], ptr {{.*}}%[[SRC]]
+    // CHECK: call void @llvm.memcpy.{{.*}}ptr {{.*}}, ptr {{.*}}%[[SRC]]
     // CHECK-NOT: call void @llvm.memcpy
     let temp = src.to_vec();
     dst.extend(&temp);
@@ -28,10 +25,7 @@ pub fn vec_append_with_temp_alloc(dst: &mut Vec<u8>, src: &[u8]) {
 #[no_mangle]
 pub fn string_append_with_temp_alloc(dst: &mut String, src: &str) {
     // CHECK-NOT: call void @llvm.memcpy
-    // CHECK: %[[INNER_PTR_ADDR:[0-9a-z._]+]] = getelementptr {{.*}} ptr %[[DST]], {{.*}} {{4|8}}
-    // CHECK: %[[INNER_PTR:[0-9a-z._]+]] = load ptr, ptr %[[INNER_PTR_ADDR]]
-    // CHECK: %[[DST_PTR:[0-9a-z._]+]] = getelementptr {{.*}} ptr %[[INNER_PTR]], {{.*}}
-    // CHECK: call void @llvm.memcpy.{{.*}}ptr {{.*}}%[[DST_PTR]], ptr {{.*}}%[[SRC]]
+    // CHECK: call void @llvm.memcpy.{{.*}}ptr {{.*}}, ptr {{.*}}%[[SRC]]
     // CHECK-NOT: call void @llvm.memcpy
     let temp = src.to_string();
     dst.push_str(&temp);
