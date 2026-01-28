@@ -26,7 +26,7 @@ hashbrown = { version = "0.16.1", default-features = false, features = [
 std_detect = { path = "../std_detect", public = true }
 
 # Dependencies of the `backtrace` crate
-rustc-demangle = { version = "0.1.24", features = ['rustc-dep-of-std'] }
+rustc-demangle = { version = "0.1.27", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))'.dependencies]
 miniz_oxide = { version = "0.8.0", optional = true, default-features = false }
