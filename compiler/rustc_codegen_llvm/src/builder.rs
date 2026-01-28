@@ -188,19 +188,6 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
             load
         }
     }
-
-    fn memset(&mut self, ptr: &'ll Value, fill_byte: &'ll Value, size: &'ll Value, align: Align) {
-        unsafe {
-            llvm::LLVMRustBuildMemSet(
-                self.llbuilder,
-                ptr,
-                align.bytes() as c_uint,
-                fill_byte,
-                size,
-                false,
-            );
-        }
-    }
 }
 
 /// Empty string, to be used where LLVM expects an instruction name, indicating

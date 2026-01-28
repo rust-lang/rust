@@ -163,3 +163,132 @@ fn test_pointers() {
         _ => unreachable!(),
     }
 }
+
+#[test]
+fn test_dynamic_traits() {
+    use std::collections::HashSet;
+    use std::mem::type_info::DynTraitPredicate;
+    trait A<T> {}
+
+    trait B<const CONST_NUM: i32> {
+        type Foo;
+    }
+
+    trait FooTrait<'a, 'b, const CONST_NUM: i32> {}
+
+    trait ProjectorTrait<'a, 'b> {}
+
+    fn preds_of<T: ?Sized + 'static>() -> &'static [DynTraitPredicate] {
+        match const { Type::of::<T>() }.kind {
+            TypeKind::DynTrait(d) => d.predicates,
+            _ => unreachable!(),
+        }
+    }
+
+    fn pred<'a>(preds: &'a [DynTraitPredicate], want: TypeId) -> &'a DynTraitPredicate {
+        preds
+            .iter()
+            .find(|p| p.trait_ty.ty == want)
+            .unwrap_or_else(|| panic!("missing predicate for {want:?}"))
+    }
+
+    fn assert_typeid_set_eq(actual: &[TypeId], expected: &[TypeId]) {
+        let actual_set: HashSet<TypeId> = actual.iter().copied().collect();
+        let expected_set: HashSet<TypeId> = expected.iter().copied().collect();
+        assert_eq!(actual.len(), actual_set.len(), "duplicates present: {actual:?}");
+        assert_eq!(
+            actual_set, expected_set,
+            "unexpected ids.\nactual: {actual:?}\nexpected: {expected:?}"
+        );
+    }
+
+    fn assert_predicates_exact(preds: &[DynTraitPredicate], expected_pred_ids: &[TypeId]) {
+        let actual_pred_ids: Vec<TypeId> = preds.iter().map(|p| p.trait_ty.ty).collect();
+        assert_typeid_set_eq(&actual_pred_ids, expected_pred_ids);
+    }
+
+    // dyn Send
+    {
+        let preds = preds_of::<dyn Send>();
+        assert_predicates_exact(preds, &[TypeId::of::<dyn Send>()]);
+
+        let p = pred(preds, TypeId::of::<dyn Send>());
+        assert!(p.trait_ty.is_auto);
+    }
+
+    // dyn A<i32>
+    {
+        let preds = preds_of::<dyn A<i32>>();
+        assert_predicates_exact(preds, &[TypeId::of::<dyn A<i32>>()]);
+
+        let p = pred(preds, TypeId::of::<dyn A<i32>>());
+        assert!(!p.trait_ty.is_auto);
+    }
+
+    // dyn B<5, Foo = i32>
+    {
+        let preds = preds_of::<dyn B<5, Foo = i32>>();
+        assert_predicates_exact(preds, &[TypeId::of::<dyn B<5, Foo = i32>>()]);
+
+        let e = pred(preds, TypeId::of::<dyn B<5, Foo = i32>>());
+        assert!(!e.trait_ty.is_auto);
+    }
+
+    // dyn for<'a> FooTrait<'a, 'a, 7>
+    {
+        let preds = preds_of::<dyn for<'a> FooTrait<'a, 'a, 7>>();
+        assert_predicates_exact(preds, &[TypeId::of::<dyn for<'a> FooTrait<'a, 'a, 7>>()]);
+
+        let foo = pred(preds, TypeId::of::<dyn for<'a> FooTrait<'a, 'a, 7>>());
+        assert!(!foo.trait_ty.is_auto);
+    }
+
+    // dyn FooTrait<'static, 'static, 7>
+    {
+        let preds = preds_of::<dyn FooTrait<'static, 'static, 7>>();
+        assert_predicates_exact(preds, &[TypeId::of::<dyn FooTrait<'static, 'static, 7>>()]);
+
+        let foo = pred(preds, TypeId::of::<dyn FooTrait<'static, 'static, 7>>());
+        assert!(!foo.trait_ty.is_auto);
+    }
+
+    // dyn for<'a, 'b> FooTrait<'a, 'b, 7>
+    {
+        let preds = preds_of::<dyn for<'a, 'b> FooTrait<'a, 'b, 7>>();
+        assert_predicates_exact(preds, &[TypeId::of::<dyn for<'a, 'b> FooTrait<'a, 'b, 7>>()]);
+
+        let foo = pred(preds, TypeId::of::<dyn for<'a, 'b> FooTrait<'a, 'b, 7>>());
+        assert!(!foo.trait_ty.is_auto);
+    }
+
+    // dyn for<'a, 'b> ProjectorTrait<'a, 'b>
+    {
+        let preds = preds_of::<dyn for<'a, 'b> ProjectorTrait<'a, 'b>>();
+        assert_predicates_exact(preds, &[TypeId::of::<dyn for<'a, 'b> ProjectorTrait<'a, 'b>>()]);
+
+        let proj = pred(preds, TypeId::of::<dyn for<'a, 'b> ProjectorTrait<'a, 'b>>());
+        assert!(!proj.trait_ty.is_auto);
+    }
+
+    // dyn for<'a> FooTrait<'a, 'a, 7> + Send + Sync
+    {
+        let preds = preds_of::<dyn for<'a> FooTrait<'a, 'a, 7> + Send + Sync>();
+        assert_predicates_exact(
+            preds,
+            &[
+                TypeId::of::<dyn for<'a> FooTrait<'a, 'a, 7>>(),
+                TypeId::of::<dyn Send>(),
+                TypeId::of::<dyn Sync>(),
+            ],
+        );
+
+        let foo = pred(preds, TypeId::of::<dyn for<'a> FooTrait<'a, 'a, 7>>());
+        assert!(!foo.trait_ty.is_auto);
+
+        let send = pred(preds, TypeId::of::<dyn Send>());
+        assert!(send.trait_ty.is_auto);
+
+        let sync = pred(preds, TypeId::of::<dyn Sync>());
+        assert!(sync.trait_ty.is_auto);
+    }
+}

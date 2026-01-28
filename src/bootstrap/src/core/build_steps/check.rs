@@ -87,7 +87,7 @@ impl Step for Std {
             Mode::Std,
             SourceType::InTree,
             target,
-            Kind::Check,
+            builder.config.cmd.kind(),
         );
 
         std_cargo(builder, target, &mut cargo, &self.crates);
@@ -97,7 +97,7 @@ impl Step for Std {
         }
 
         let _guard = builder.msg(
-            Kind::Check,
+            builder.config.cmd.kind(),
             format_args!("library artifacts{}", crate_description(&self.crates)),
             Mode::Std,
             build_compiler,

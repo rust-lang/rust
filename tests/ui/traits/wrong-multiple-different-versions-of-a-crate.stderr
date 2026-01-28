@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `MyStruct: Trait` is not satisfied
+error[E0277]: the trait bound `MyStruct: crate1::Trait` is not satisfied
   --> $DIR/wrong-multiple-different-versions-of-a-crate.rs:11:17
    |
 LL |     crate1::foo(MyStruct);
@@ -6,7 +6,7 @@ LL |     crate1::foo(MyStruct);
    |     |
    |     required by a bound introduced by this call
    |
-help: the trait `Trait` is not implemented for `MyStruct`
+help: the trait `crate1::Trait` is not implemented for `MyStruct`
   --> $DIR/wrong-multiple-different-versions-of-a-crate.rs:8:1
    |
 LL | struct MyStruct;
