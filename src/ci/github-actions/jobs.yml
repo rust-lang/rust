@@ -691,6 +691,7 @@ auto:
         --target=aarch64-pc-windows-gnullvm,i686-pc-windows-gnullvm
         --enable-full-tools
         --enable-profiler
+        --enable-llvm-link-shared
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
       CC_i686_pc_windows_gnullvm: i686-w64-mingw32-clang
@@ -703,6 +704,7 @@ auto:
         --build=x86_64-pc-windows-gnullvm
         --enable-full-tools
         --enable-profiler
+        --enable-llvm-link-shared
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-windows
