@@ -31,10 +31,6 @@
     any(target_arch = "powerpc", target_arch = "powerpc64"),
     feature(stdarch_powerpc)
 )]
-#![cfg_attr(
-    all(target_arch = "x86_64", target_feature = "avx512f"),
-    feature(stdarch_x86_avx512)
-)]
 #![warn(missing_docs, clippy::missing_inline_in_public_items)] // basically all items, really
 #![deny(
     unsafe_op_in_unsafe_fn,
