@@ -2341,7 +2341,6 @@ symbols! {
         type_id,
         type_id_eq,
         type_id_implements_trait,
-        type_id_is_trait,
         type_info,
         type_ir,
         type_ir_infer_ctxt_like,

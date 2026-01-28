@@ -2,7 +2,7 @@
 //! runtime or const-eval processable way.
 
 use crate::any::TypeId;
-use crate::intrinsics::{type_id_implements_trait, type_id_is_trait, type_of};
+use crate::intrinsics::{type_id_implements_trait, type_of};
 use crate::ptr;
 
 /// Compile-time type information.
@@ -49,11 +49,13 @@ impl Type {
     /// Checks if the type has the trait represented by the `TypeId`.
     /// Returns `None` if the `trait_represented_by_type_id` is not a trait represented by type id.
     /// It can only be called at compile time.
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     pub const fn has_trait_represented_by_type_id(
         self,
         trait_represented_by_type_id: TypeId,
     ) -> Option<bool> {
-        if type_id_is_trait(trait_represented_by_type_id) {
+        if matches!(trait_represented_by_type_id.info().kind, TypeKind::DynTrait(_)) {
             Some(type_id_implements_trait(self.id, trait_represented_by_type_id))
         } else {
             None

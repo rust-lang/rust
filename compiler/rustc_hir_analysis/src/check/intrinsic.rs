@@ -214,7 +214,6 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_id
         | sym::type_id_eq
         | sym::type_id_implements_trait
-        | sym::type_id_is_trait
         | sym::type_name
         | sym::type_of
         | sym::ub_checks
@@ -328,12 +327,6 @@ pub(crate) fn check_intrinsic_type(
             0,
             0,
             vec![tcx.type_of(tcx.lang_items().type_id().unwrap()).no_bound_vars().unwrap(); 2],
-            tcx.types.bool,
-        ),
-        sym::type_id_is_trait => (
-            0,
-            0,
-            vec![tcx.type_of(tcx.lang_items().type_id().unwrap()).no_bound_vars().unwrap()],
             tcx.types.bool,
         ),
         sym::type_of => (

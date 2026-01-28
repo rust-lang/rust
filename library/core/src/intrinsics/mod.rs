@@ -2852,15 +2852,6 @@ pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 #[rustc_intrinsic_const_stable_indirect]
 pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
 
-/// Check if a type represented by a `TypeId` is a dyn Trait.
-/// It can only be called at compile time, the backends do
-/// not implement it.
-#[rustc_intrinsic]
-#[unstable(feature = "core_intrinsics", issue = "none")]
-pub const fn type_id_is_trait(_trait: crate::any::TypeId) -> bool {
-    panic!("`TypeId::implements_trait_represented_by_type_id` can only be called at compile-time")
-}
-
 /// Check if a type represented by a `TypeId` implements a trait represented by a `TypeId`.
 /// It can only be called at compile time, the backends do
 /// not implement it.
