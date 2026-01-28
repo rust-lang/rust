@@ -28,7 +28,12 @@ pub enum Stability {
     /// set in the target spec. It is never set in `cfg(target_feature)`. Used in
     /// particular for features are actually ABI configuration flags (not all targets are as nice as
     /// RISC-V and have an explicit way to set the ABI separate from target features).
-    Forbidden { reason: &'static str },
+    Forbidden {
+        reason: &'static str,
+        /// True if this is always an error, false if this can be reported as a warning when set via
+        /// `-Ctarget-feature`.
+        hard_error: bool,
+    },
 }
 use Stability::*;
 
@@ -57,12 +62,12 @@ impl Stability {
     }
 
     /// Returns whether the feature may be toggled via `#[target_feature]` or `-Ctarget-feature`.
-    /// (It might still be nightly-only even if this returns `true`, so make sure to also check
+    /// (It might still be nightly-only even if this returns `Ok(())`, so make sure to also check
     /// `requires_nightly`.)
     pub fn toggle_allowed(&self) -> Result<(), &'static str> {
         match self {
             Stability::Unstable(_) | Stability::Stable { .. } => Ok(()),
-            Stability::Forbidden { reason } => Err(reason),
+            Stability::Forbidden { reason, hard_error: _ } => Err(reason),
         }
     }
 }
@@ -119,7 +124,10 @@ static ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("aes", Unstable(sym::arm_target_feature), &["neon"]),
     (
         "atomics-32",
-        Stability::Forbidden { reason: "unsound because it changes the ABI of atomic operations" },
+        Stability::Forbidden {
+            reason: "unsound because it changes the ABI of atomic operations",
+            hard_error: false,
+        },
         &[],
     ),
     ("crc", Unstable(sym::arm_target_feature), &[]),
@@ -195,7 +203,11 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // FEAT_FLAGM2
     ("flagm2", Unstable(sym::aarch64_unstable_target_feature), &[]),
     // We forbid directly toggling just `fp-armv8`; it must be toggled with `neon`.
-    ("fp-armv8", Stability::Forbidden { reason: "Rust ties `fp-armv8` to `neon`" }, &[]),
+    (
+        "fp-armv8",
+        Stability::Forbidden { reason: "Rust ties `fp-armv8` to `neon`", hard_error: false },
+        &[],
+    ),
     // FEAT_FP8
     ("fp8", Unstable(sym::aarch64_unstable_target_feature), &["faminmax", "lut", "bf16"]),
     // FEAT_FP8DOT2
@@ -258,7 +270,11 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rcpc3", Unstable(sym::aarch64_unstable_target_feature), &["rcpc2"]),
     // FEAT_RDM
     ("rdm", Stable, &["neon"]),
-    ("reserve-x18", Forbidden { reason: "use `-Zfixed-x18` compiler flag instead" }, &[]),
+    (
+        "reserve-x18",
+        Forbidden { reason: "use `-Zfixed-x18` compiler flag instead", hard_error: false },
+        &[],
+    ),
     // FEAT_SB
     ("sb", Stable, &[]),
     // FEAT_SHA1 & FEAT_SHA256
@@ -432,17 +448,26 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rdseed", Stable, &[]),
     (
         "retpoline-external-thunk",
-        Stability::Forbidden { reason: "use `-Zretpoline-external-thunk` compiler flag instead" },
+        Stability::Forbidden {
+            reason: "use `-Zretpoline-external-thunk` compiler flag instead",
+            hard_error: false,
+        },
         &[],
     ),
     (
         "retpoline-indirect-branches",
-        Stability::Forbidden { reason: "use `-Zretpoline` compiler flag instead" },
+        Stability::Forbidden {
+            reason: "use `-Zretpoline` compiler flag instead",
+            hard_error: false,
+        },
         &[],
     ),
     (
         "retpoline-indirect-calls",
-        Stability::Forbidden { reason: "use `-Zretpoline` compiler flag instead" },
+        Stability::Forbidden {
+            reason: "use `-Zretpoline` compiler flag instead",
+            hard_error: false,
+        },
         &[],
     ),
     ("rtm", Unstable(sym::rtm_target_feature), &[]),
@@ -450,7 +475,11 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sha512", Stable, &["avx2"]),
     ("sm3", Stable, &["avx"]),
     ("sm4", Stable, &["avx2"]),
-    ("soft-float", Stability::Forbidden { reason: "use a soft-float target instead" }, &[]),
+    (
+        "soft-float",
+        Stability::Forbidden { reason: "use a soft-float target instead", hard_error: false },
+        &[],
+    ),
     ("sse", Stable, &[]),
     ("sse2", Stable, &["sse"]),
     ("sse3", Stable, &["sse2"]),
@@ -592,7 +621,10 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("f", Unstable(sym::riscv_target_feature), &["zicsr"]),
     (
         "forced-atomics",
-        Stability::Forbidden { reason: "unsound because it changes the ABI of atomic operations" },
+        Stability::Forbidden {
+            reason: "unsound because it changes the ABI of atomic operations",
+            hard_error: false,
+        },
         &[],
     ),
     ("m", Stable, &[]),
@@ -847,7 +879,7 @@ const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("miscellaneous-extensions-3", Stable, &[]),
     ("miscellaneous-extensions-4", Stable, &[]),
     ("nnp-assist", Stable, &["vector"]),
-    ("soft-float", Forbidden { reason: "unsupported ABI-configuration feature" }, &[]),
+    ("soft-float", Forbidden { reason: "unsupported ABI-configuration feature", hard_error: false }, &[]),
     ("transactional-execution", Unstable(sym::s390x_target_feature), &[]),
     ("vector", Stable, &[]),
     ("vector-enhancements-1", Stable, &["vector"]),
@@ -899,7 +931,11 @@ static AVR_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rmw", Unstable(sym::avr_target_feature), &[]),
     ("spm", Unstable(sym::avr_target_feature), &[]),
     ("spmx", Unstable(sym::avr_target_feature), &[]),
-    ("sram", Forbidden { reason: "devices that have no SRAM are unsupported" }, &[]),
+    (
+        "sram",
+        Forbidden { reason: "devices that have no SRAM are unsupported", hard_error: false },
+        &[],
+    ),
     ("tinyencoding", Unstable(sym::avr_target_feature), &[]),
     // tidy-alphabetical-end
 ];
