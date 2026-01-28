@@ -3205,6 +3205,17 @@ pub(crate) struct RecoverImportAsUse {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_inappropriate_final)]
+#[note]
+pub(crate) struct InappropriateFinal {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub article: &'static str,
+    pub descr: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_single_colon_import_path)]
 #[note]
 pub(crate) struct SingleColonImportPath {

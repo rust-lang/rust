@@ -334,7 +334,7 @@ mod llvm_enzyme {
 
         // The first element of it is the name of the function to be generated
         let d_fn = Box::new(ast::Fn {
-            defaultness: ast::Defaultness::Final,
+            defaultness: ast::Defaultness::Implicit,
             sig: d_sig,
             ident: first_ident(&meta_item_vec[0]),
             generics,

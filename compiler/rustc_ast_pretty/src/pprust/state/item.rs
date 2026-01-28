@@ -51,7 +51,7 @@ impl<'a> State<'a> {
                 expr.as_deref(),
                 vis,
                 *safety,
-                ast::Defaultness::Final,
+                ast::Defaultness::Implicit,
                 define_opaque.as_deref(),
             ),
             ast::ForeignItemKind::TyAlias(box ast::TyAlias {
@@ -201,7 +201,7 @@ impl<'a> State<'a> {
                     body.as_deref(),
                     &item.vis,
                     ast::Safety::Default,
-                    ast::Defaultness::Final,
+                    ast::Defaultness::Implicit,
                     define_opaque.as_deref(),
                 );
             }
