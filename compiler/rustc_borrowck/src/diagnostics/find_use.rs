@@ -6,25 +6,22 @@ use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 
 use crate::def_use::{self, DefUse};
-use crate::region_infer::{Cause, InferredRegions, RegionInferenceContext};
+use crate::region_infer::{Cause, InferredRegions};
 
 pub(crate) fn find<'tcx>(
     body: &Body<'tcx>,
-    regioncx: &RegionInferenceContext<'tcx>,
     scc_values: &InferredRegions<'tcx>,
     tcx: TyCtxt<'tcx>,
     region_vid: RegionVid,
     start_point: Location,
 ) -> Option<Cause> {
-    let mut uf =
-        UseFinder { body, regioncx, tcx, region_vid, start_point, scc_values: &scc_values };
+    let mut uf = UseFinder { body, tcx, region_vid, start_point, scc_values: &scc_values };
 
     uf.find()
 }
 
 struct UseFinder<'a, 'tcx> {
     body: &'a Body<'tcx>,
-    regioncx: &'a RegionInferenceContext<'tcx>,
     scc_values: &'a InferredRegions<'tcx>,
     tcx: TyCtxt<'tcx>,
     region_vid: RegionVid,
@@ -38,7 +35,7 @@ impl<'a, 'tcx> UseFinder<'a, 'tcx> {
 
         queue.push_back(self.start_point);
         while let Some(p) = queue.pop_front() {
-            if !self.regioncx.region_contains(self.scc_values, self.region_vid, p) {
+            if !self.scc_values.region_contains(self.region_vid, p) {
                 continue;
             }
 

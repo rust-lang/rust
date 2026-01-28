@@ -24,14 +24,12 @@ use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use tracing::{debug, instrument};
 
 use super::reverse_sccs::ReverseSccGraph;
-use crate::BorrowckInferCtxt;
-use crate::consumers::RegionInferenceContext;
-use crate::region_infer::InferredRegions;
 use crate::session_diagnostics::LifetimeMismatchOpaqueParam;
 use crate::type_check::canonical::fully_perform_op_raw;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::universal_regions::{RegionClassification, UniversalRegions};
+use crate::{BorrowckInferCtxt, MirBorrowckCtxt};
 
 mod member_constraints;
 mod region_ctxt;
@@ -596,7 +594,7 @@ pub(crate) fn detect_opaque_types_added_while_handling_opaque_types<'tcx>(
     let _ = infcx.take_opaque_types();
 }
 
-impl<'tcx> RegionInferenceContext<'tcx> {
+impl<'a, 'infcx, 'tcx> MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// Map the regions in the type to named regions. This is similar to what
     /// `infer_opaque_types` does, but can infer any universal region, not only
     /// ones from the args for the opaque type. It also doesn't double check
@@ -609,22 +607,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// that universal region. This is useful for member region constraints since
     /// we want to suggest a universal region name to capture even if it's technically
     /// not equal to the error region.
-    pub(crate) fn name_regions_for_member_constraint<T>(
-        &self,
-        scc_values: &InferredRegions<'tcx>,
-        tcx: TyCtxt<'tcx>,
-        ty: T,
-    ) -> T
+    pub(crate) fn name_regions_for_member_constraint<T>(&self, tcx: TyCtxt<'tcx>, ty: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         fold_regions(tcx, ty, |region, _| match region.kind() {
             ty::ReVar(vid) => {
-                let scc = self.constraint_sccs.scc(vid);
-
                 // Special handling of higher-ranked regions.
-                if !self.max_nameable_universe(scc).is_root() {
-                    match scc_values.0.placeholders_contained_in(scc).enumerate().last() {
+                if !self.scc_values.max_nameable_universe(vid).is_root() {
+                    match self.scc_values.placeholders_contained_in(vid).enumerate().last() {
                         // If the region contains a single placeholder then they're equal.
                         Some((0, placeholder)) => {
                             return ty::Region::new_placeholder(tcx, placeholder);
@@ -636,7 +627,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
 
                 // Find something that we can name
-                let upper_bound = self.approx_universal_upper_bound(scc_values, vid);
+                let upper_bound = self.approx_universal_upper_bound(vid);
                 if let Some(universal_region) = self.definitions[upper_bound].external_name {
                     return universal_region;
                 }
@@ -645,11 +636,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // If there's >1 universal region, then we probably are dealing w/ an intersection
                 // region which cannot be mapped back to a universal.
                 // FIXME: We could probably compute the LUB if there is one.
-                let scc = self.constraint_sccs.scc(vid);
                 let rev_scc_graph =
-                    ReverseSccGraph::compute(&self.constraint_sccs, self.universal_regions());
+                    ReverseSccGraph::compute(&self.scc_values.sccs, self.universal_regions());
                 let upper_bounds: Vec<_> = rev_scc_graph
-                    .upper_bounds(scc)
+                    .upper_bounds(self.scc_values.scc(vid))
                     .filter_map(|vid| self.definitions[vid].external_name)
                     .filter(|r| !r.is_static())
                     .collect();

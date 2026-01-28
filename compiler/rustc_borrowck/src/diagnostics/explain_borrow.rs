@@ -21,7 +21,7 @@ use super::{RegionName, UseSpans, find_use};
 use crate::borrow_set::BorrowData;
 use crate::constraints::OutlivesConstraint;
 use crate::nll::ConstraintDescription;
-use crate::region_infer::{BlameConstraint, Cause};
+use crate::region_infer::{BlameConstraint, Cause, ConstraintSearch};
 use crate::{MirBorrowckCtxt, WriteKind};
 
 #[derive(Debug)]
@@ -572,14 +572,23 @@ fn suggest_rewrite_if_let<G: EmissionGuarantee>(
     }
 }
 
-impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
+impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
+    pub(crate) fn constraint_search<'mbc>(&'mbc self) -> ConstraintSearch<'mbc, 'tcx> {
+        ConstraintSearch {
+            definitions: self.definitions,
+            fr_static: self.universal_regions().fr_static,
+            constraint_graph: &self.constraint_graph,
+            constraints: &self.outlives_constraints,
+        }
+    }
+
     fn free_region_constraint_info(
         &self,
         borrow_region: RegionVid,
         outlived_region: RegionVid,
     ) -> (ConstraintCategory<'tcx>, bool, Span, Option<RegionName>, Vec<OutlivesConstraint<'tcx>>)
     {
-        let (blame_constraint, path) = self.regioncx.best_blame_constraint(
+        let (blame_constraint, path) = self.constraint_search().best_blame_constraint(
             borrow_region,
             NllRegionVariableOrigin::FreeRegion,
             outlived_region,
@@ -611,14 +620,17 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         borrow: &BorrowData<'tcx>,
         kind_place: Option<(WriteKind, Place<'tcx>)>,
     ) -> BorrowExplanation<'tcx> {
-        let regioncx = &self.regioncx;
         let body: &Body<'_> = self.body;
         let tcx = self.infcx.tcx;
 
         let borrow_region_vid = borrow.region;
         debug!(?borrow_region_vid);
 
-        let mut region_sub = self.regioncx.find_sub_region_live_at(borrow_region_vid, location);
+        let mut region_sub = self.constraint_search().find_sub_region_live_at(
+            &self.liveness_constraints,
+            borrow_region_vid,
+            location,
+        );
         debug!(?region_sub);
 
         let mut use_location = location;
@@ -629,13 +641,14 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             // is issued is the same location that invalidates the reference), this is likely a
             // loop iteration. In this case, try using the loop terminator location in
             // `find_sub_region_live_at`.
-            if let Some(loop_terminator_location) = self
-                .scc_values
-                .find_loop_terminator_location(self.regioncx.scc(borrow.region), body)
+            if let Some(loop_terminator_location) =
+                self.scc_values.find_loop_terminator_location(borrow.region, body)
             {
-                region_sub = self
-                    .regioncx
-                    .find_sub_region_live_at(borrow_region_vid, loop_terminator_location);
+                region_sub = self.constraint_search().find_sub_region_live_at(
+                    &self.liveness_constraints,
+                    borrow_region_vid,
+                    loop_terminator_location,
+                );
                 debug!("explain_why_borrow_contains_point: region_sub in loop={:?}", region_sub);
                 use_location = loop_terminator_location;
                 use_in_later_iteration_of_loop = true;
@@ -659,7 +672,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 false
             }
         };
-        match find_use::find(body, regioncx, self.scc_values, tcx, region_sub, use_location) {
+        match find_use::find(body, self.scc_values, tcx, region_sub, use_location) {
             Some(Cause::LiveVar(local, location)) if !is_local_boring(local) => {
                 let span = body.source_info(location).span;
                 let spans = self

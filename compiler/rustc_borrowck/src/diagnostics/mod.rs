@@ -667,7 +667,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let tcx = self.infcx.tcx;
         let Some((gat_hir_id, generics)) = path.iter().find_map(|constraint| {
             let outlived = constraint.sub;
-            if let Some(origin) = self.regioncx.definitions.get(outlived)
+            if let Some(origin) = self.definitions.get(outlived)
                 && let NllRegionVariableOrigin::Placeholder(placeholder) = origin.origin
                 && let Some(id) = placeholder.bound.kind.get_id()
                 && let Some(placeholder_id) = id.as_local()
