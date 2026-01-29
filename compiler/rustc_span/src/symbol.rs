@@ -641,6 +641,7 @@ symbols! {
         caller,
         caller_location,
         capture_disjoint_fields,
+        cargo_cfg_target_family: "CARGO_CFG_TARGET_FAMILY",
         carrying_mul_add,
         catch_unwind,
         cause,
