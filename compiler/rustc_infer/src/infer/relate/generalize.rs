@@ -279,6 +279,8 @@ impl<'tcx> InferCtxt<'tcx> {
             normalize,
         };
 
+        debug!(?root_vid, ?generalizer.root_term, "generalize");
+
         let value_may_be_infer = generalizer.relate(source_term, source_term)?;
         Ok(Generalization { value_may_be_infer })
     }
@@ -443,7 +445,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
                 let normalized_alias = (self.normalize)(alias);
 
                 self.state = GeneralizerState::ShallowStructurallyRelateAliases;
-                // recursively generalize, treat the outer alias as rigid to avoid infinite recursion
+                // recursively generalize, trCeat the outer alias as rigid to avoid infinite recursion
                 let res = self.relate(normalized_alias, normalized_alias);
 
                 // only one way to get here

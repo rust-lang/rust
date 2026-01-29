@@ -203,6 +203,12 @@ where
         }
 
         match (a.kind(), b.kind()) {
+            (_, ty::Alias(..)) | (ty::Alias(..), _)
+                if matches!(self.structurally_relate_aliases, StructurallyRelateAliases::No) =>
+            {
+                self.register_alias_relate_predicate(a, b);
+            }
+
             (ty::Infer(ty::TyVar(a_id)), ty::Infer(ty::TyVar(b_id))) => {
                 match self.ambient_variance {
                     ty::Covariant => {

@@ -377,6 +377,10 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
                 );
             }
 
+            (_, ty::Alias(..)) | (ty::Alias(..), _) if infcx.next_trait_solver() => {
+                self.register_alias_relate_predicate(a, b);
+            }
+
             (&ty::Infer(ty::TyVar(a_vid)), _) => {
                 infcx.instantiate_ty_var(self, true, a_vid, self.ambient_variance, b)?
             }
@@ -384,12 +388,9 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
             (
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
-            ) if a_def_id == b_def_id || infcx.next_trait_solver() => {
+            ) if a_def_id == b_def_id => {
+                debug_assert!(!infcx.next_trait_solver());
                 super_combine_tys(&infcx.infcx, self, a, b).map(|_| ()).or_else(|err| {
-                    // This behavior is only there for the old solver, the new solver
-                    // shouldn't ever fail. Instead, it unconditionally emits an
-                    // alias-relate goal.
-                    assert!(!self.type_checker.infcx.next_trait_solver());
                     self.cx().dcx().span_delayed_bug(
                         self.span(),
                         "failure to relate an opaque to itself should result in an error later on",
@@ -399,7 +400,7 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
             }
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
-                if def_id.is_local() && !self.type_checker.infcx.next_trait_solver() =>
+                if def_id.is_local() =>
             {
                 self.relate_opaques(a, b)?;
             }

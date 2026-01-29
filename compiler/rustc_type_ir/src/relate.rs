@@ -20,7 +20,7 @@ pub type RelateResult<I, T> = Result<T, TypeError<I>>;
 /// This should always be `No` unless in a few special-cases when
 /// instantiating canonical responses and in the new solver. Each
 /// such case should have a comment explaining why it is used.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum StructurallyRelateAliases {
     Yes,
     No,
