@@ -300,6 +300,30 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
 
     ins_sym!(sym::target_vendor, sess.target.vendor_symbol());
 
+    // Target modifiers affect the ABI of targets and need to be accounted for in assembly, which
+    // necessitates a way to detect whether a target modifier has been set.
+    let target_modifiers = sess.opts.gather_target_modifiers();
+    for target_modifier in target_modifiers {
+        if let Some(key) = target_modifier.opt.cfg() {
+            if target_modifier.value_name.is_empty() {
+                ins_none!(key);
+                break;
+            }
+
+            // Flags like `branch-protection` accept a list of options, but without hardcoding a
+            // check for each parsed target modifier flag here, it's not especially practical to
+            // do something more robust than just split on ','.
+            let values = if target_modifier.value_name.contains(',') {
+                target_modifier.value_name.split(',').collect()
+            } else {
+                vec![target_modifier.value_name.as_str()]
+            };
+            for value in values {
+                ins_sym!(key, Symbol::intern(value));
+            }
+        }
+    }
+
     // If the user wants a test runner, then add the test cfg.
     if sess.is_test_crate() {
         ins_none!(sym::test);

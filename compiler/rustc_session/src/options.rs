@@ -13,7 +13,7 @@ use rustc_hashes::Hash64;
 use rustc_hir::attrs::CollapseMacroDebuginfo;
 use rustc_macros::{BlobDecodable, Encodable};
 use rustc_span::edition::Edition;
-use rustc_span::{RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm};
+use rustc_span::{RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm, Symbol};
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility,
@@ -185,7 +185,15 @@ macro_rules! gather_tmods {
         compile_error!("SUBSTRUCT can't be target modifier");
     };
     ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
+        [SUBSTRUCT], [TARGET_MODIFIER_CFG]) => {
+        compile_error!("SUBSTRUCT can't be target modifier");
+    };
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [UNTRACKED], [TARGET_MODIFIER]) => {
+        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
+    };
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
+        [UNTRACKED], [TARGET_MODIFIER_CFG]) => {
         tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
     ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
@@ -193,7 +201,15 @@ macro_rules! gather_tmods {
         tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
     ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
+        [TRACKED], [TARGET_MODIFIER_CFG]) => {
+        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
+    };
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED_NO_CRATE_HASH], [TARGET_MODIFIER]) => {
+        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
+    };
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
+        [TRACKED_NO_CRATE_HASH], [TARGET_MODIFIER_CFG]) => {
         tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
     ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
@@ -240,13 +256,14 @@ macro_rules! gather_tmods_top_level {
 /// ```
 macro_rules! top_level_tmod_enum {
     ($( {$($optinfo:tt)*} ),* $(,)*) => {
-        top_level_tmod_enum! { @parse {}, (user_value){}; $($($optinfo)*|)* }
+        top_level_tmod_enum! { @parse {}, (user_value){}, {}; $($($optinfo)*|)* }
     };
     // Termination
     (
         @parse
         {$($variant:tt($substruct_enum:tt))*},
-        ($user_value:ident){$($pout:tt)*};
+        ($user_value:ident){$($pout:tt)*},
+        {$($cout:tt)*};
     ) => {
         #[allow(non_camel_case_types)]
         #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, BlobDecodable)]
@@ -265,11 +282,19 @@ macro_rules! top_level_tmod_enum {
             pub fn is_target_modifier(flag_name: &str) -> bool {
                 $($substruct_enum::is_target_modifier(flag_name))||*
             }
+            pub fn cfg(&self) -> Option<Symbol> {
+                #[allow(unreachable_patterns)]
+                match self {
+                    $($cout)*
+                    _ => panic!("unknown target modifier option: {:?}", *self)
+
+                }
+            }
         }
     };
     // Adding SUBSTRUCT option group into $eout
     (
-        @parse {$($eout:tt)*}, ($puser_value:ident){$($pout:tt)*};
+        @parse {$($eout:tt)*}, ($puser_value:ident){$($pout:tt)*}, {$($cout:tt)*};
             [SUBSTRUCT $substruct_enum:ident $variant:ident] |
         $($tail:tt)*
     ) => {
@@ -282,13 +307,17 @@ macro_rules! top_level_tmod_enum {
             ($puser_value){
                 $($pout)*
                 Self::$variant(v) => v.reparse($puser_value),
+            },
+            {
+                $($cout)*
+                Self::$variant(v) => v.cfg(),
             };
             $($tail)*
         }
     };
     // Skipping non-target-modifier and non-substruct
     (
-        @parse {$($eout:tt)*}, ($puser_value:ident){$($pout:tt)*};
+        @parse {$($eout:tt)*}, ($puser_value:ident){$($pout:tt)*}, {$($cout:tt)*};
             [$non_substruct:ident] |
         $($tail:tt)*
     ) => {
@@ -299,6 +328,9 @@ macro_rules! top_level_tmod_enum {
             },
             ($puser_value){
                 $($pout)*
+            },
+            {
+                $($cout)*
             };
             $($tail)*
         }
@@ -512,16 +544,20 @@ macro_rules! tmod_enum_opt {
     };
 }
 
+/// Prefix used for cfgs of target modifier flags.
+const TARGET_MODIFIER_CFG_PREFIX: &'static str = "target_modifier";
+
 macro_rules! tmod_enum {
     ($tmod_enum_name:ident, $prefix:expr, $( {$($optinfo:tt)*} ),* $(,)*) => {
-        tmod_enum! { $tmod_enum_name, $prefix, @parse {}, (user_value){}; $($($optinfo)*|)* }
+        tmod_enum! { $tmod_enum_name, $prefix, @parse {}, (user_value){}, {}; $($($optinfo)*|)* }
     };
     // Termination
     (
         $tmod_enum_name:ident, $prefix:expr,
         @parse
         {$($eout:tt)*},
-        ($user_value:ident){$($pout:tt)*};
+        ($user_value:ident){$($pout:tt)*},
+        {$($cout:tt)*};
     ) => {
         #[allow(non_camel_case_types)]
         #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, BlobDecodable)]
@@ -543,12 +579,19 @@ macro_rules! tmod_enum {
                     _ => false,
                 }
             }
+            pub fn cfg(&self) -> Option<Symbol> {
+                #[allow(unreachable_patterns)]
+                match self {
+                    $($cout)*
+                    _ => None,
+                }
+            }
         }
     };
     // Adding target-modifier option into $eout
     (
         $tmod_enum_name:ident, $prefix:expr,
-        @parse {$($eout:tt)*}, ($puser_value:ident){$($pout:tt)*};
+        @parse {$($eout:tt)*}, ($puser_value:ident){$($pout:tt)*}, {$($cout:tt)*};
             $opt:ident, $parse:ident, $t:ty, [TARGET_MODIFIER] |
         $($tail:tt)*
     ) => {
@@ -571,6 +614,47 @@ macro_rules! tmod_enum {
                         tech_value: format!("{:?}", parsed),
                     }
                 },
+            },
+            {
+                $($cout)*
+                Self::$opt => None,
+            };
+            $($tail)*
+        }
+    };
+    (
+        $tmod_enum_name:ident, $prefix:expr,
+        @parse {$($eout:tt)*}, ($puser_value:ident){$($pout:tt)*}, {$($cout:tt)*};
+            $opt:ident, $parse:ident, $t:ty, [TARGET_MODIFIER_CFG] |
+        $($tail:tt)*
+    ) => {
+        tmod_enum! {
+            $tmod_enum_name, $prefix,
+            @parse
+            {
+                $($eout)*
+                $opt
+            },
+            ($puser_value){
+                $($pout)*
+                Self::$opt => {
+                    let mut parsed : $t = Default::default();
+                    let val = if $puser_value.is_empty() { None } else { Some($puser_value) };
+                    parse::$parse(&mut parsed, val);
+                    ExtendedTargetModifierInfo {
+                        prefix: $prefix.to_string(),
+                        name: stringify!($opt).to_string().replace('_', "-"),
+                        tech_value: format!("{:?}", parsed),
+                    }
+                },
+            },
+            {
+                $($cout)*
+                Self::$opt => {
+                    Some(Symbol::intern(
+                        &format!("{TARGET_MODIFIER_CFG_PREFIX}_{}", stringify!($opt))
+                    ))
+                },
             };
             $($tail)*
         }
@@ -578,7 +662,7 @@ macro_rules! tmod_enum {
     // Skipping non-target-modifier
     (
         $tmod_enum_name:ident, $prefix:expr,
-        @parse {$($eout:tt)*}, ($puser_value:ident){$($pout:tt)*};
+        @parse {$($eout:tt)*}, ($puser_value:ident){$($pout:tt)*}, {$($cout:tt)*};
             $opt:ident, $parse:ident, $t:ty, [] |
         $($tail:tt)*
     ) => {
@@ -590,6 +674,9 @@ macro_rules! tmod_enum {
             },
             ($puser_value){
                 $($pout)*
+            },
+            {
+                $($cout)*
             };
             $($tail)*
         }
@@ -665,6 +752,10 @@ macro_rules! options {
         }
     }
 
+    impl OptionPrefix for $struct_name {
+        const PREFIX: &'static str = $prefix;
+    }
+
     pub const $stat: OptionDescrs<$struct_name> =
         &[ $( OptionDesc{ name: stringify!($opt), setter: $optmod::$opt,
             type_desc: desc::$parse, desc: $desc, is_deprecated_and_do_nothing: false $( || $dnn )?,
@@ -702,6 +793,10 @@ macro_rules! redirect_field {
     };
 }
 
+pub trait OptionPrefix {
+    const PREFIX: &'static str;
+}
+
 type OptionSetter<O> = fn(&mut O, v: Option<&str>) -> bool;
 type OptionDescrs<O> = &'static [OptionDesc<O>];
 
@@ -723,6 +818,16 @@ impl<O> OptionDesc<O> {
 
     pub fn desc(&self) -> &'static str {
         self.desc
+    }
+
+    pub fn target_modifier_cfg(&self) -> Option<Symbol> {
+        self.tmod.and_then(|tmod| tmod.cfg())
+    }
+}
+
+impl<O: OptionPrefix> OptionDesc<O> {
+    pub fn flag(&self) -> String {
+        format!("-{} {}", <O as OptionPrefix>::PREFIX, self.name().replace('_', "-"))
     }
 }
 
@@ -2353,7 +2458,7 @@ options! {
     fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
-    fixed_x18: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
+    fixed_x18: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER_CFG],
         "make the x18 register reserved on AArch64 (default: no)"),
     flatten_format_args: bool = (true, parse_bool, [TRACKED],
         "flatten nested format_args!() and literals into a simplified format_args!() call \
@@ -2397,7 +2502,7 @@ options! {
         - hashes of green query instances
         - hash collisions of query keys
         - hash collisions when creating dep-nodes"),
-    indirect_branch_cs_prefix: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
+    indirect_branch_cs_prefix: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER_CFG],
         "add `cs` prefix to `call` and `jmp` to indirect thunks (default: no)"),
     inline_llvm: bool = (true, parse_bool, [TRACKED],
         "enable LLVM inlining (default: yes)"),
@@ -2583,10 +2688,10 @@ options! {
         "enable queries of the dependency graph for regression testing (default: no)"),
     randomize_layout: bool = (false, parse_bool, [TRACKED],
         "randomize the layout of types (default: no)"),
-    reg_struct_return: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
+    reg_struct_return: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER_CFG],
         "On x86-32 targets, it overrides the default ABI to return small structs in registers.
         It is UNSOUND to link together crates that use different values for this flag!"),
-    regparm: Option<u32> = (None, parse_opt_number, [TRACKED TARGET_MODIFIER],
+    regparm: Option<u32> = (None, parse_opt_number, [TRACKED TARGET_MODIFIER_CFG],
         "On x86-32 targets, setting this to N causes the compiler to pass N arguments \
         in registers EAX, EDX, and ECX instead of on the stack for\
         \"C\", \"cdecl\", and \"stdcall\" fn.\
@@ -2598,9 +2703,9 @@ options! {
     remark_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "directory into which to write optimization remarks (if not specified, they will be \
 written to standard error output)"),
-    retpoline: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
+    retpoline: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER_CFG],
         "enables retpoline-indirect-branches and retpoline-indirect-calls target features (default: no)"),
-    retpoline_external_thunk: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
+    retpoline_external_thunk: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER_CFG],
         "enables retpoline-external-thunk, retpoline-indirect-branches and retpoline-indirect-calls \
         target features (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::sanitizers()` instead of this field")]
