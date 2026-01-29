@@ -11,10 +11,11 @@ use std::{env, fmt, fs, io, mem, str};
 
 use find_msvc_tools;
 use itertools::Itertools;
+use object::{Object, ObjectSection, ObjectSymbol};
 use regex::Regex;
 use rustc_arena::TypedArena;
 use rustc_attr_parsing::eval_config_entry;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{DiagCtxtHandle, LintDiagnostic};
@@ -2185,6 +2186,76 @@ fn add_rpath_args(
     }
 }
 
+fn add_c_staticlib_symbols(
+    sess: &Session,
+    lib: &NativeLib,
+    out: &mut Vec<(String, SymbolExportKind)>,
+) -> io::Result<()> {
+    let file_path = find_native_static_library(lib.name.as_str(), lib.verbatim, sess);
+
+    let archive_map = unsafe { Mmap::map(File::open(&file_path)?)? };
+
+    let archive = object::read::archive::ArchiveFile::parse(&*archive_map)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+    for member in archive.members() {
+        let member = member.map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+        let data = member
+            .data(&*archive_map)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+        // clang LTO: raw LLVM bitcode
+        if data.starts_with(b"BC\xc0\xde") {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "LLVM bitcode object in C static library (LTO not supported)",
+            ));
+        }
+
+        let object = object::File::parse(&*data)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+        // gcc / clang ELF / Mach-O LTO
+        if object.sections().any(|s| {
+            s.name().map(|n| n.starts_with(".gnu.lto_") || n == ".llvm.lto").unwrap_or(false)
+        }) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "LTO object in C static library is not supported",
+            ));
+        }
+
+        for symbol in object.symbols() {
+            if symbol.scope() != object::SymbolScope::Dynamic {
+                continue;
+            }
+
+            let mut name = match symbol.name() {
+                Ok(n) => n,
+                Err(_) => continue,
+            };
+
+            if sess.target.is_like_darwin {
+                if let Some(stripped) = name.strip_prefix('_') {
+                    name = stripped;
+                }
+            }
+
+            let export_kind = match symbol.kind() {
+                object::SymbolKind::Text => SymbolExportKind::Text,
+                object::SymbolKind::Data => SymbolExportKind::Data,
+                _ => continue,
+            };
+
+            // FIXME:The symbol mangle rules are slightly different in 32-bit Windows. Need to be resolved.
+            out.push((name.to_string(), export_kind));
+        }
+    }
+
+    Ok(())
+}
+
 /// Produce the linker command line containing linker path and arguments.
 ///
 /// When comments in the function say "order-(in)dependent" they mean order-dependence between
@@ -2217,6 +2288,25 @@ fn linker_with_args(
     );
     let link_output_kind = link_output_kind(sess, crate_type);
 
+    let mut export_symbols = codegen_results.crate_info.exported_symbols[&crate_type].clone();
+
+    if crate_type == CrateType::Cdylib {
+        let mut seen = FxHashSet::default();
+
+        for lib in &codegen_results.crate_info.used_libraries {
+            if let NativeLibKind::Static { export_symbols: Some(true), .. } = lib.kind
+                && seen.insert((lib.name, lib.verbatim))
+            {
+                if let Err(err) = add_c_staticlib_symbols(&sess, lib, &mut export_symbols) {
+                    sess.dcx().fatal(format!(
+                        "failed to process C static library `{}`: {}",
+                        lib.name, err
+                    ));
+                }
+            }
+        }
+    }
+
     // ------------ Early order-dependent options ------------
 
     // If we're building something like a dynamic library then some platforms
@@ -2224,11 +2314,7 @@ fn linker_with_args(
     // dynamic library.
     // Must be passed before any libraries to prevent the symbols to export from being thrown away,
     // at least on some platforms (e.g. windows-gnu).
-    cmd.export_symbols(
-        tmpdir,
-        crate_type,
-        &codegen_results.crate_info.exported_symbols[&crate_type],
-    );
+    cmd.export_symbols(tmpdir, crate_type, &export_symbols);
 
     // Can be used for adding custom CRT objects or overriding order-dependent options above.
     // FIXME: In practice built-in target specs use this for arbitrary order-independent options,
@@ -2678,7 +2764,7 @@ fn add_native_libs_from_crate(
         let name = lib.name.as_str();
         let verbatim = lib.verbatim;
         match lib.kind {
-            NativeLibKind::Static { bundle, whole_archive } => {
+            NativeLibKind::Static { bundle, whole_archive, .. } => {
                 if link_static {
                     let bundle = bundle.unwrap_or(true);
                     let whole_archive = whole_archive == Some(true);
