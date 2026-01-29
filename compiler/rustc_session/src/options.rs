@@ -2688,12 +2688,8 @@ written to standard error output)"),
     #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),
-    /// We default to 1 here since we want to behave like
-    /// a sequential compiler for now. This'll likely be adjusted
-    /// in the future. Note that -Zthreads=0 is the way to get
-    /// the num_cpus behavior.
     #[rustc_lint_opt_deny_field_access("use `Session::threads` instead of this field")]
-    threads: usize = (1, parse_threads, [UNTRACKED],
+    threads: usize = (std::thread::available_parallelism().map_or(1, NonZero::get), parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
     time_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each LLVM pass (default: no)"),
