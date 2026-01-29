@@ -1,0 +1,14 @@
+error[E0658]: omitting type on const item declaration is experimental
+  --> $DIR/feature-gate-const-items-unit-type-default.rs:1:8
+   |
+LL | const _ = {};
+   |        ^
+   |
+   = note: see issue #149226 <https://github.com/rust-lang/rust/issues/149226> for more information
+   = help: add `#![feature(const_items_unit_type_default)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider specifying the type explicitly
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

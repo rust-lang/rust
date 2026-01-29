@@ -12,9 +12,9 @@ fn main() {}
 
 #[cfg(false)]
 const C2 = 42;
-//~^ ERROR missing type for `const` item
-//~| HELP provide a type for the item
-//~| SUGGESTION : <type>
+//~^ ERROR: omitting type on const item declaration is experimental [E0658]
+//~| HELP: add `#![feature(const_items_unit_type_default)]` to the crate attributes to enable
+//~| HELP: consider specifying the type explicitly
 
 #[cfg(false)]
 static S2 = "abc";
@@ -31,14 +31,16 @@ static mut SM2 = "abc";
 // These will, so the diagnostics should be stolen by typeck:
 
 const C = 42;
-//~^ ERROR missing type for `const` item
-//~| HELP provide a type for the constant
-//~| SUGGESTION : i32
+//~^ ERROR: omitting type on const item declaration is experimental [E0658]
+//~| HELP: add `#![feature(const_items_unit_type_default)]` to the crate attributes to enable
+//~| HELP: consider specifying the type explicitly
+//~| ERROR: mismatched types [E0308]
 
 const D = &&42;
-//~^ ERROR missing type for `const` item
-//~| HELP provide a type for the constant
-//~| SUGGESTION : &&i32
+//~^ ERROR: omitting type on const item declaration is experimental [E0658]
+//~| HELP: add `#![feature(const_items_unit_type_default)]` to the crate attributes to enable
+//~| HELP: consider specifying the type explicitly
+//~| ERROR: mismatched types [E0308]
 
 static S = Vec::<String>::new();
 //~^ ERROR missing type for `static` item

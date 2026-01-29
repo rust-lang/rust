@@ -231,7 +231,7 @@ fn generate_default_impl(
         ecx.item_const(
             span,
             underscore,
-            unit,
+            ast::FnRetTy::Ty(unit),
             ast::ConstItemRhs::Body(ecx.expr_block(ecx.block(span, stmts))),
         )
     };

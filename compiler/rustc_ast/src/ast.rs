@@ -3237,6 +3237,13 @@ impl FnRetTy {
             FnRetTy::Ty(ty) => ty.span,
         }
     }
+
+    pub fn as_non_default(&self) -> Option<&Ty> {
+        match self {
+            Self::Default(_) => None,
+            Self::Ty(ty) => Some(&*ty),
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, Walkable)]
@@ -3872,7 +3879,7 @@ pub struct ConstItem {
     pub defaultness: Defaultness,
     pub ident: Ident,
     pub generics: Generics,
-    pub ty: Box<Ty>,
+    pub ty: FnRetTy,
     pub rhs: Option<ConstItemRhs>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
 }

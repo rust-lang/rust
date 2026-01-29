@@ -759,6 +759,7 @@ symbols! {
         const_impl_trait,
         const_in_array_repeat_expressions,
         const_indexing,
+        const_items_unit_type_default,
         const_let,
         const_loop,
         const_make_global,

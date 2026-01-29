@@ -1,22 +1,18 @@
 error[E0369]: cannot add `{integer}` to `&str`
-  --> $DIR/dont-suggest-type-error.rs:2:25
+  --> $DIR/dont-suggest-type-error.rs:2:28
    |
-LL |     const FOO = "hello" + 1;
-   |                 ------- ^ - {integer}
-   |                 |
-   |                 &str
+LL |     const FOO: _ = "hello" + 1;
+   |                    ------- ^ - {integer}
+   |                    |
+   |                    &str
 
-error: missing type for `const` item
-  --> $DIR/dont-suggest-type-error.rs:2:14
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/dont-suggest-type-error.rs:2:16
    |
-LL |     const FOO = "hello" + 1;
-   |              ^
-   |
-help: provide a type for the item
-   |
-LL |     const FOO: <type> = "hello" + 1;
-   |              ++++++++
+LL |     const FOO: _ = "hello" + 1;
+   |                ^ not allowed in type signatures
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0369`.
+Some errors have detailed explanations: E0121, E0369.
+For more information about an error, try `rustc --explain E0121`.

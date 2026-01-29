@@ -62,7 +62,7 @@ fn main() {
         ts
     }
 }
-const _: () =
+const _ =
     {
         extern crate proc_macro;
         #[rustc_proc_macro_decls]

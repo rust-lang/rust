@@ -1833,6 +1833,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::FnRetTy::Return(self.arena.alloc(opaque_ty))
     }
 
+    fn lower_fn_ret_ty_or_unit(
+        &mut self,
+        fn_ret_ty: &FnRetTy,
+        ictxt: ImplTraitContext,
+    ) -> &'hir hir::Ty<'hir> {
+        match fn_ret_ty {
+            FnRetTy::Ty(ty) => self.lower_ty_alloc(ty, ictxt),
+            FnRetTy::Default(span) => self.arena.alloc(self.ty_tup(*span, &[])),
+        }
+    }
+
     /// Transforms `-> T` into `Future<Output = T>`.
     fn lower_coroutine_fn_output_type_to_bound(
         &mut self,

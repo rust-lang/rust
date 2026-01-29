@@ -2005,7 +2005,7 @@ pub(crate) struct StaticParts<'a> {
     vis: &'a ast::Visibility,
     ident: symbol::Ident,
     generics: Option<&'a ast::Generics>,
-    ty: &'a ast::Ty,
+    ty: Option<&'a ast::Ty>,
     mutability: ast::Mutability,
     expr_opt: Option<&'a ast::Expr>,
     defaultness: Option<ast::Defaultness>,
@@ -2021,7 +2021,7 @@ impl<'a> StaticParts<'a> {
                     "static",
                     s.safety,
                     s.ident,
-                    &s.ty,
+                    Some(&*s.ty),
                     s.mutability,
                     s.expr.as_deref(),
                     None,
@@ -2031,7 +2031,7 @@ impl<'a> StaticParts<'a> {
                     "const",
                     ast::Safety::Default,
                     c.ident,
-                    &c.ty,
+                    c.ty.as_non_default(),
                     ast::Mutability::Not,
                     c.rhs.as_ref().map(|rhs| rhs.expr()),
                     Some(&c.generics),
@@ -2056,7 +2056,7 @@ impl<'a> StaticParts<'a> {
         let (defaultness, ty, expr_opt, generics) = match &ti.kind {
             ast::AssocItemKind::Const(c) => (
                 c.defaultness,
-                &c.ty,
+                c.ty.as_non_default(),
                 c.rhs.as_ref().map(|rhs| rhs.expr()),
                 Some(&c.generics),
             ),
@@ -2080,7 +2080,7 @@ impl<'a> StaticParts<'a> {
         let (defaultness, ty, expr_opt, generics) = match &ii.kind {
             ast::AssocItemKind::Const(c) => (
                 c.defaultness,
-                &c.ty,
+                c.ty.as_non_default(),
                 c.rhs.as_ref().map(|rhs| rhs.expr()),
                 Some(&c.generics),
             ),
@@ -2114,35 +2114,38 @@ fn rewrite_static(
         return None;
     }
 
-    let colon = colon_spaces(context.config);
     let mut prefix = format!(
-        "{}{}{}{} {}{}{}",
+        "{}{}{}{} {}{}",
         format_visibility(context, static_parts.vis),
         static_parts.defaultness.map_or("", format_defaultness),
         format_safety(static_parts.safety),
         static_parts.prefix,
         format_mutability(static_parts.mutability),
         rewrite_ident(context, static_parts.ident),
-        colon,
     );
-    // 2 = " =".len()
-    let ty_shape =
-        Shape::indented(offset.block_only(), context.config).offset_left(prefix.len() + 2)?;
-    let ty_str = match static_parts.ty.rewrite(context, ty_shape) {
-        Some(ty_str) => ty_str,
-        None => {
-            if prefix.ends_with(' ') {
-                prefix.pop();
+    let ty_str = match static_parts.ty {
+        Some(ty) => {
+            prefix.push_str(colon_spaces(context.config));
+            let ty_shape = Shape::indented(offset.block_only(), context.config)
+                .offset_left(prefix.len() + const { " =".len() })?;
+            match ty.rewrite(context, ty_shape) {
+                Some(ty_str) => ty_str,
+                None => {
+                    if prefix.ends_with(' ') {
+                        prefix.pop();
+                    }
+                    let nested_indent = offset.block_indent(context.config);
+                    let nested_shape = Shape::indented(nested_indent, context.config);
+                    let ty_str = ty.rewrite(context, nested_shape)?;
+                    format!(
+                        "{}{}",
+                        nested_indent.to_string_with_newline(context.config),
+                        ty_str
+                    )
+                }
             }
-            let nested_indent = offset.block_indent(context.config);
-            let nested_shape = Shape::indented(nested_indent, context.config);
-            let ty_str = static_parts.ty.rewrite(context, nested_shape)?;
-            format!(
-                "{}{}",
-                nested_indent.to_string_with_newline(context.config),
-                ty_str
-            )
         }
+        None => "".to_string(),
     };
 
     if let Some(expr) = static_parts.expr_opt {

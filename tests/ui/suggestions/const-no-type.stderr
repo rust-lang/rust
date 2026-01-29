@@ -1,37 +1,59 @@
-error: missing type for `const` item
-  --> $DIR/const-no-type.rs:33:8
-   |
-LL | const C = 42;
-   |        ^ help: provide a type for the constant: `: i32`
-
-error: missing type for `const` item
-  --> $DIR/const-no-type.rs:38:8
-   |
-LL | const D = &&42;
-   |        ^ help: provide a type for the constant: `: &&i32`
-
-error: missing type for `static` item
-  --> $DIR/const-no-type.rs:43:9
-   |
-LL | static S = Vec::<String>::new();
-   |         ^ help: provide a type for the static variable: `: Vec<String>`
-
-error: missing type for `static mut` item
-  --> $DIR/const-no-type.rs:48:14
-   |
-LL | static mut SM = "abc";
-   |              ^ help: provide a type for the static variable: `: &str`
-
-error: missing type for `const` item
+error[E0658]: omitting type on const item declaration is experimental
   --> $DIR/const-no-type.rs:14:9
    |
 LL | const C2 = 42;
    |         ^
    |
-help: provide a type for the item
+   = note: see issue #149226 <https://github.com/rust-lang/rust/issues/149226> for more information
+   = help: add `#![feature(const_items_unit_type_default)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider specifying the type explicitly
+
+error[E0658]: omitting type on const item declaration is experimental
+  --> $DIR/const-no-type.rs:33:8
    |
-LL | const C2: <type> = 42;
-   |         ++++++++
+LL | const C = 42;
+   |        ^
+   |
+   = note: see issue #149226 <https://github.com/rust-lang/rust/issues/149226> for more information
+   = help: add `#![feature(const_items_unit_type_default)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider specifying the type explicitly
+
+error[E0658]: omitting type on const item declaration is experimental
+  --> $DIR/const-no-type.rs:39:8
+   |
+LL | const D = &&42;
+   |        ^
+   |
+   = note: see issue #149226 <https://github.com/rust-lang/rust/issues/149226> for more information
+   = help: add `#![feature(const_items_unit_type_default)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider specifying the type explicitly
+
+error: missing type for `static` item
+  --> $DIR/const-no-type.rs:45:9
+   |
+LL | static S = Vec::<String>::new();
+   |         ^ help: provide a type for the static variable: `: Vec<String>`
+
+error: missing type for `static mut` item
+  --> $DIR/const-no-type.rs:50:14
+   |
+LL | static mut SM = "abc";
+   |              ^ help: provide a type for the static variable: `: &str`
+
+error[E0308]: mismatched types
+  --> $DIR/const-no-type.rs:33:11
+   |
+LL | const C = 42;
+   |           ^^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/const-no-type.rs:39:11
+   |
+LL | const D = &&42;
+   |           ^^^^ expected `()`, found `&&{integer}`
 
 error: missing type for `static` item
   --> $DIR/const-no-type.rs:20:10
@@ -55,5 +77,7 @@ help: provide a type for the item
 LL | static mut SM2: <type> = "abc";
    |               ++++++++
 
-error: aborting due to 7 previous errors
+error: aborting due to 9 previous errors
 
+Some errors have detailed explanations: E0308, E0658.
+For more information about an error, try `rustc --explain E0308`.

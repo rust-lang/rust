@@ -4,16 +4,16 @@ error: associated `static` items are not allowed
 LL |     static B;
    |     ^^^^^^^^^
 
-error: missing type for `const` item
+error[E0658]: omitting type on const item declaration is experimental
   --> $DIR/do-not-suggest-placeholder-to-const-static-without-type.rs:2:12
    |
 LL |     const A;
    |            ^
    |
-help: provide a type for the item
-   |
-LL |     const A: <type>;
-   |            ++++++++
+   = note: see issue #149226 <https://github.com/rust-lang/rust/issues/149226> for more information
+   = help: add `#![feature(const_items_unit_type_default)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider specifying the type explicitly
 
 error: missing type for `static` item
   --> $DIR/do-not-suggest-placeholder-to-const-static-without-type.rs:3:13
@@ -28,3 +28,4 @@ LL |     static B: <type>;
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

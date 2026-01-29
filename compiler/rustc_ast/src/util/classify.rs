@@ -314,10 +314,7 @@ fn path_return_type(path: &ast::Path) -> Option<&ast::Ty> {
     let last_segment = path.segments.last()?;
     let args = last_segment.args.as_ref()?;
     match &**args {
-        ast::GenericArgs::Parenthesized(args) => match &args.output {
-            ast::FnRetTy::Default(_) => None,
-            ast::FnRetTy::Ty(ret) => Some(ret),
-        },
+        ast::GenericArgs::Parenthesized(args) => args.output.as_non_default(),
         ast::GenericArgs::AngleBracketed(_) | ast::GenericArgs::ParenthesizedElided(_) => None,
     }
 }

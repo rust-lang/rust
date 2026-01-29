@@ -286,7 +286,9 @@ pub(crate) fn expand_test_or_bench(
                     defaultness: ast::Defaultness::Final,
                     ident: Ident::new(fn_.ident.name, sp),
                     generics: ast::Generics::default(),
-                    ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
+                    ty: ast::FnRetTy::Ty(
+                        cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
+                    ),
                     define_opaque: None,
                     // test::TestDescAndFn {
                     rhs: Some(ast::ConstItemRhs::Body(

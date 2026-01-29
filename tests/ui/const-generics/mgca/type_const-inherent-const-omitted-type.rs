@@ -6,7 +6,8 @@ struct A;
 impl A {
     #[type_const]
     const B = 4;
-    //~^ ERROR: missing type for `const` item
+    //~^ ERROR: omitting type on const item declaration is experimental [E0658]
+    //~| ERROR: mismatched types [E0308]
 }
 
 fn main() {}
