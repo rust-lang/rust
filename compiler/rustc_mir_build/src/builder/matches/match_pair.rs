@@ -291,22 +291,18 @@ impl<'tcx> MatchPairTree<'tcx> {
                 }
             }
 
-            PatKind::Variant { adt_def, variant_index, args, ref subpatterns } => {
+            PatKind::Variant { adt_def, variant_index, args: _, ref subpatterns } => {
                 let downcast_place = place_builder.downcast(adt_def, variant_index); // `(x as Variant)`
                 cx.field_match_pairs(&mut subpairs, extra_data, downcast_place, subpatterns);
 
-                let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
-                    i == variant_index
-                        || !v.inhabited_predicate(cx.tcx, adt_def).instantiate(cx.tcx, args).apply(
-                            cx.tcx,
-                            cx.infcx.typing_env(cx.param_env),
-                            cx.def_id.into(),
-                        )
-                }) && !adt_def.variant_list_has_applicable_non_exhaustive();
-                if irrefutable {
-                    None
-                } else {
+                // We treat non-exhaustive enums the same independent of the crate they are
+                // defined in, to avoid differences in the operational semantics between crates.
+                let refutable =
+                    adt_def.variants().len() > 1 || adt_def.is_variant_list_non_exhaustive();
+                if refutable {
                     Some(TestableCase::Variant { adt_def, variant_index })
+                } else {
+                    None
                 }
             }
 

@@ -1,5 +1,5 @@
 error: Undefined Behavior: read discriminant of an uninhabited enum variant
-  --> tests/fail/closures/uninhabited-variant.rs:LL:CC
+  --> tests/fail/match/closures/uninhabited-variant1.rs:LL:CC
    |
 LL |         match r {
    |               ^ Undefined Behavior occurred here
@@ -8,9 +8,9 @@ LL |         match r {
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: stack backtrace:
            0: main::{closure#0}
-               at tests/fail/closures/uninhabited-variant.rs:LL:CC
+               at tests/fail/match/closures/uninhabited-variant1.rs:LL:CC
            1: main
-               at tests/fail/closures/uninhabited-variant.rs:LL:CC
+               at tests/fail/match/closures/uninhabited-variant1.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

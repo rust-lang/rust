@@ -45,7 +45,7 @@ fn as_match() {
     // CHECK: bb0: {
     // CHECK: {{_.*}} = empty()
     // CHECK: bb1: {
-    // CHECK: [[eq:_.*]] = Ne({{.*}}, const 1_isize);
+    // CHECK: [[eq:_.*]] = Eq({{.*}}, const 0_isize);
     // CHECK-NEXT: assume(move [[eq]]);
     // CHECK-NEXT: goto -> [[return:bb.*]];
     // CHECK: [[return]]: {
