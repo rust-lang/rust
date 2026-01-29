@@ -2906,6 +2906,10 @@ pub(crate) struct RefOfMutStatic<'a> {
     pub shared_note: bool,
     #[note(lint_mut_note)]
     pub mut_note: bool,
+    #[help(lint_static_mut_refs_interior_mutability_help)]
+    pub interior_mutability_help: bool,
+    #[subdiagnostic]
+    pub interior_mutability_sugg: Option<StaticMutRefsInteriorMutabilitySugg>,
 }
 
 #[derive(Subdiagnostic)]
@@ -2924,6 +2928,18 @@ pub(crate) enum MutRefSugg {
         #[suggestion_part(code = "&raw mut ")]
         span: Span,
     },
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    lint_static_mut_refs_interior_mutability_suggestion,
+    style = "verbose",
+    applicability = "maybe-incorrect",
+    code = ""
+)]
+pub(crate) struct StaticMutRefsInteriorMutabilitySugg {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(LintDiagnostic)]

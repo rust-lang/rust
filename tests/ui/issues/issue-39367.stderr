@@ -11,7 +11,13 @@ LL | |             });
    |
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
+   = help: use a type that relies on "interior mutability" instead; to read more on this, visit <https://doc.rust-lang.org/reference/interior-mutability.html>
    = note: `#[warn(static_mut_refs)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+help: this type already provides "interior mutability", so its binding doesn't need to be declared as mutable
+   |
+LL -             static mut ONCE: Once = Once::new();
+LL +             static ONCE: Once = Once::new();
+   |
 
 warning: 1 warning emitted
 

@@ -842,13 +842,17 @@ lint_single_use_lifetime = lifetime parameter `{$ident}` only used once
 
 lint_span_use_eq_ctxt = use `.eq_ctxt()` instead of `.ctxt() == .ctxt()`
 
+lint_static_mut_refs_interior_mutability_help =
+    use a type that relies on "interior mutability" instead; to read more on this, visit <https://doc.rust-lang.org/reference/interior-mutability.html>
+lint_static_mut_refs_interior_mutability_suggestion =
+    this type already provides "interior mutability", so its binding doesn't need to be declared as mutable
+
 lint_static_mut_refs_lint = creating a {$shared_label}reference to mutable static
     .label = {$shared_label}reference to mutable static
     .suggestion = use `&raw const` instead to create a raw pointer
     .suggestion_mut = use `&raw mut` instead to create a raw pointer
     .shared_note = shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
     .mut_note = mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
-
 lint_supertrait_as_deref_target = this `Deref` implementation is covered by an implicit supertrait coercion
     .label = `{$self_ty}` implements `Deref<Target = dyn {$target_principal}>` which conflicts with supertrait `{$supertrait_principal}`
     .label2 = target type is a supertrait of `{$self_ty}`
