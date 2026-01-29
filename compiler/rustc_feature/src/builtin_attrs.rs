@@ -917,6 +917,12 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, pin_ergonomics, experimental!(pin_v2),
     ),
 
+    gated!(
+        transparent, Normal,
+        template!(Word, "https://github.com/rust-lang/rust/issues/79260#issuecomment-731773625"),
+        ErrorFollowing, EncodeCrossCrate::No, transparent_modules, experimental!(transparent)
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

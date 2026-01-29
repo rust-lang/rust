@@ -233,6 +233,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::CfgAttrTrace
                     | AttributeKind::CfgTrace(..)
                     | AttributeKind::CfiEncoding { .. }
+                    | AttributeKind::Transparent(_)
                     | AttributeKind::Coinductive(..)
                     | AttributeKind::Cold(..)
                     | AttributeKind::CollapseDebugInfo(..)

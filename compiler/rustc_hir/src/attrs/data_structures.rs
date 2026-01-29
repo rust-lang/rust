@@ -1177,6 +1177,9 @@ pub enum AttributeKind {
     /// Represents `#[track_caller]`
     TrackCaller(Span),
 
+    /// Represents `#[transparent]` mod attribute
+    Transparent(Span),
+
     /// Represents `#[type_const]`.
     TypeConst(Span),
 
