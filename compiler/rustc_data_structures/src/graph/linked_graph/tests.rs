@@ -1,8 +1,9 @@
+use rustc_index::Idx;
 use tracing::debug;
 
-use super::{Debug, LinkedGraph};
+use super::{Debug, LinkedGraph, FrozenLinkedGraph};
 
-type TestGraph = LinkedGraph<usize, &'static str, &'static str>;
+type TestGraph = FrozenLinkedGraph<usize, &'static str, &'static str>;
 
 fn create_graph() -> TestGraph {
     let mut graph = LinkedGraph::new();
@@ -17,12 +18,12 @@ fn create_graph() -> TestGraph {
     //          v     |
     //          D --> E
 
-    let a = graph.add_node(0, "A");
-    let b = graph.add_node(1, "B");
-    let c = graph.add_node(2, "C");
-    let d = graph.add_node(3, "D");
-    let e = graph.add_node(4, "E");
-    let f = graph.add_node(5, "F");
+    let a = 0; graph.add_node(a, "A");
+    let b = 1; graph.add_node(b, "B");
+    let c = 2; graph.add_node(c, "C");
+    let d = 3; graph.add_node(d, "D");
+    let e = 4; graph.add_node(e, "E");
+    let f = 5; graph.add_node(f, "F");
 
     graph.add_edge(a, b, "AB");
     graph.add_edge(b, c, "BC");
@@ -31,7 +32,7 @@ fn create_graph() -> TestGraph {
     graph.add_edge(e, c, "EC");
     graph.add_edge(f, b, "FB");
 
-    return graph;
+    return graph.freeze();
 }
 
 #[test]
@@ -39,8 +40,8 @@ fn each_node() {
     let graph = create_graph();
     let expected = ["A", "B", "C", "D", "E", "F"];
     graph.each_node(|idx, node| {
-        assert_eq!(&expected[idx.0], graph.node_data(idx));
-        assert_eq!(expected[idx.0], node.data);
+        assert_eq!(&expected[idx], graph.node_data(idx));
+        assert_eq!(expected[idx], node.data);
         true
     });
 }
@@ -55,9 +56,9 @@ fn each_edge() {
     });
 }
 
-fn test_adjacent_edges<N: PartialEq + Debug, E: PartialEq + Debug>(
-    graph: &LinkedGraph<N, E>,
-    start_index: usize,
+fn test_adjacent_edges<I: Idx, N: PartialEq + Debug, E: PartialEq + Debug>(
+    graph: &FrozenLinkedGraph<I, N, E>,
+    start_index: I,
     start_data: N,
     expected_incoming: &[(E, N)],
     expected_outgoing: &[(E, N)],
