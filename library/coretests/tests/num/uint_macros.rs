@@ -2,15 +2,14 @@ macro_rules! uint_module {
     ($T:ident) => {
         use core::num::ParseIntError;
         use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
-        use core::$T::*;
 
         use crate::num;
 
         #[test]
         fn test_overflows() {
-            assert!(MAX > 0);
-            assert!(MIN <= 0);
-            assert!((MIN + MAX).wrapping_add(1) == 0);
+            assert!($T::MAX > 0);
+            assert!($T::MIN <= 0);
+            assert!(($T::MIN + $T::MAX).wrapping_add(1) == 0);
         }
 
         #[test]
@@ -25,7 +24,7 @@ macro_rules! uint_module {
             assert!(0b0110 as $T == (0b1100 as $T).bitxor(0b1010 as $T));
             assert!(0b1110 as $T == (0b0111 as $T).shl(1));
             assert!(0b0111 as $T == (0b1110 as $T).shr(1));
-            assert!(MAX - (0b1011 as $T) == (0b1011 as $T).not());
+            assert!($T::MAX - (0b1011 as $T) == (0b1011 as $T).not());
         }
 
         const A: $T = 0b0101100;
@@ -354,7 +353,7 @@ macro_rules! uint_module {
                     assert_eq_const_safe!($T: R.wrapping_pow(2), 1 as $T);
                     assert_eq_const_safe!(Option<$T>: R.checked_pow(2), None);
                     assert_eq_const_safe!(($T, bool): R.overflowing_pow(2), (1 as $T, true));
-                    assert_eq_const_safe!($T: R.saturating_pow(2), MAX);
+                    assert_eq_const_safe!($T: R.saturating_pow(2), $T::MAX);
                 }
             }
 
@@ -461,14 +460,14 @@ macro_rules! uint_module {
             fn test_next_multiple_of() {
                 assert_eq_const_safe!($T: (16 as $T).next_multiple_of(8), 16);
                 assert_eq_const_safe!($T: (23 as $T).next_multiple_of(8), 24);
-                assert_eq_const_safe!($T: MAX.next_multiple_of(1), MAX);
+                assert_eq_const_safe!($T: $T::MAX.next_multiple_of(1), $T::MAX);
             }
 
             fn test_checked_next_multiple_of() {
                 assert_eq_const_safe!(Option<$T>: (16 as $T).checked_next_multiple_of(8), Some(16));
                 assert_eq_const_safe!(Option<$T>: (23 as $T).checked_next_multiple_of(8), Some(24));
                 assert_eq_const_safe!(Option<$T>: (1 as $T).checked_next_multiple_of(0), None);
-                assert_eq_const_safe!(Option<$T>: MAX.checked_next_multiple_of(2), None);
+                assert_eq_const_safe!(Option<$T>: $T::MAX.checked_next_multiple_of(2), None);
             }
 
             fn test_is_next_multiple_of() {
