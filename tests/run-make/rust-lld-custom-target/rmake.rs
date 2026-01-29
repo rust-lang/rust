@@ -15,7 +15,11 @@ fn main() {
     // Compile to a custom target spec with rust-lld enabled by default. We'll check that by asking
     // the linker to display its version number with a link-arg.
     assert_rustc_uses_lld(
-        rustc().crate_type("cdylib").target("custom-target.json").input("lib.rs"),
+        rustc()
+            .crate_type("cdylib")
+            .target("custom-target.json")
+            .arg("-Zunstable-options")
+            .input("lib.rs"),
     );
 
     // But it can also be disabled via linker features.
