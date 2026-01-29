@@ -1,7 +1,59 @@
 use std::iter::repeat;
+use std::mem::ManuallyDrop;
+use std::ptr;
 
 use rand::RngCore;
 use test::{Bencher, black_box};
+
+fn do_bench_push(b: &mut Bencher, n: usize) {
+    b.iter(|| {
+        let mut v = Vec::new();
+        for i in 0..n {
+            v.push(i);
+        }
+        v
+    });
+}
+
+#[bench]
+fn bench_push_0100(b: &mut Bencher) {
+    do_bench_push(b, 100);
+}
+
+#[bench]
+fn bench_push_1000(b: &mut Bencher) {
+    do_bench_push(b, 1000);
+}
+
+#[bench]
+fn bench_push_10000(b: &mut Bencher) {
+    do_bench_push(b, 10000);
+}
+
+fn do_bench_push_preallocated(b: &mut Bencher, n: usize) {
+    b.iter(|| {
+        let mut v = Vec::with_capacity(n);
+        for i in 0..n {
+            v.push(i);
+        }
+        black_box(v.as_slice());
+    });
+}
+
+#[bench]
+fn bench_push_preallocated_0100(b: &mut Bencher) {
+    do_bench_push_preallocated(b, 100);
+}
+
+#[bench]
+fn bench_push_preallocated_1000(b: &mut Bencher) {
+    do_bench_push_preallocated(b, 1000);
+}
+
+#[bench]
+fn bench_push_preallocated_10000(b: &mut Bencher) {
+    do_bench_push_preallocated(b, 10000);
+}
 
 #[bench]
 fn bench_new(b: &mut Bencher) {

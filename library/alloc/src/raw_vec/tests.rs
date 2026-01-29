@@ -42,9 +42,9 @@ fn allocator_param() {
 
     let a = BoundedAlloc { fuel: Cell::new(500) };
     let mut v: RawVec<u8, _> = RawVec::with_capacity_in(50, a);
-    assert_eq!(v.inner.alloc.fuel.get(), 450);
+    assert_eq!(v.allocator().fuel.get(), 450);
     v.reserve(50, 150); // (causes a realloc, thus using 50 + 150 = 200 units of fuel)
-    assert_eq!(v.inner.alloc.fuel.get(), 250);
+    assert_eq!(v.allocator().fuel.get(), 250);
 }
 
 #[test]
@@ -126,12 +126,18 @@ fn zst() {
     assert_eq!(v.try_reserve_exact(101, usize::MAX - 100), cap_err);
     zst_sanity(&v);
 
-    assert_eq!(unsafe { v.inner.grow_amortized(100, usize::MAX - 100, ZST::LAYOUT) }, cap_err);
-    assert_eq!(unsafe { v.inner.grow_amortized(101, usize::MAX - 100, ZST::LAYOUT) }, cap_err);
+    assert_eq!(
+        unsafe { v.inner.grow_amortized(100, usize::MAX - 100, ZST::LAYOUT, &Global) },
+        cap_err
+    );
+    assert_eq!(
+        unsafe { v.inner.grow_amortized(101, usize::MAX - 100, ZST::LAYOUT, &Global) },
+        cap_err
+    );
     zst_sanity(&v);
 
-    assert_eq!(unsafe { v.inner.grow_exact(100, usize::MAX - 100, ZST::LAYOUT) }, cap_err);
-    assert_eq!(unsafe { v.inner.grow_exact(101, usize::MAX - 100, ZST::LAYOUT) }, cap_err);
+    assert_eq!(unsafe { v.inner.grow_exact(100, usize::MAX - 100, ZST::LAYOUT, &Global) }, cap_err);
+    assert_eq!(unsafe { v.inner.grow_exact(101, usize::MAX - 100, ZST::LAYOUT, &Global) }, cap_err);
     zst_sanity(&v);
 }
 
