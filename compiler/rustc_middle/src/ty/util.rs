@@ -890,7 +890,7 @@ impl<'tcx> TyCtxt<'tcx> {
         value.fold_with(&mut FreeAliasTypeExpander { tcx: self, depth: 0 })
     }
 
-    /// Peel off all [free alias types] in this type until there are none left.
+    /// Peel off all [free alias types][free] in this type until there are none left.
     ///
     /// This only expands free alias types in “head” / outermost positions. It can
     /// be used over [expand_free_alias_tys] as an optimization in situations where
