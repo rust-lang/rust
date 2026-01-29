@@ -796,6 +796,14 @@ impl<'a> Linker for GccLinker<'a> {
             }
         }
 
+        if crate_type == CrateType::Dylib
+            && self.sess.target.is_like_darwin
+            && self.sess.opts.unstable_opts.export_llvm_symbols
+            && self.sess.opts.crate_name.as_deref() == Some("rustc_driver")
+        {
+            return;
+        }
+
         // We manually create a list of exported symbols to ensure we don't expose any more.
         // The object files have far more public symbols than we actually want to export,
         // so we hide them all here.

@@ -489,6 +489,7 @@ auto:
         --enable-full-tools
         --enable-sanitizers
         --enable-profiler
+        --set llvm.enzyme=true
         --set rust.jemalloc
         --set rust.lto=thin
         --set rust.codegen-units=1
