@@ -137,6 +137,18 @@ fn test_peek_and_pop() {
 }
 
 #[test]
+fn test_pop_if() {
+    let data = vec![9, 8, 7, 6, 5, 4, 3, 2, 1, 0];
+    let mut sorted = data.clone();
+    sorted.sort();
+    let mut heap = BinaryHeap::from(data);
+    while let Some(popped) = heap.pop_if(|x| *x > 2) {
+        assert_eq!(popped, sorted.pop().unwrap());
+    }
+    assert_eq!(heap.into_sorted_vec(), vec![1, 2]);
+}
+
+#[test]
 fn test_peek_mut() {
     let data = vec![2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1];
     let mut heap = BinaryHeap::from(data);
