@@ -889,7 +889,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
 
     let attrs = tcx.get_all_attrs(def_id);
 
-    let paren_sugar = find_attr!(attrs, AttributeKind::ParenSugar(_));
+    let paren_sugar = find_attr!(attrs, AttributeKind::RustcParenSugar(_));
     if paren_sugar && !tcx.features().unboxed_closures() {
         tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
     }
@@ -897,22 +897,23 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     // Only regular traits can be marker.
     let is_marker = !is_alias && find_attr!(attrs, AttributeKind::Marker(_));
 
-    let rustc_coinductive = find_attr!(attrs, AttributeKind::Coinductive(_));
+    let rustc_coinductive = find_attr!(attrs, AttributeKind::RustcCoinductive(_));
     let is_fundamental = find_attr!(attrs, AttributeKind::Fundamental);
 
     let [skip_array_during_method_dispatch, skip_boxed_slice_during_method_dispatch] = find_attr!(
         attrs,
-        AttributeKind::SkipDuringMethodDispatch { array, boxed_slice, span: _ } => [*array, *boxed_slice]
+        AttributeKind::RustcSkipDuringMethodDispatch { array, boxed_slice, span: _ } => [*array, *boxed_slice]
     )
     .unwrap_or([false; 2]);
 
-    let specialization_kind = if find_attr!(attrs, AttributeKind::UnsafeSpecializationMarker(_)) {
-        ty::trait_def::TraitSpecializationKind::Marker
-    } else if find_attr!(attrs, AttributeKind::SpecializationTrait(_)) {
-        ty::trait_def::TraitSpecializationKind::AlwaysApplicable
-    } else {
-        ty::trait_def::TraitSpecializationKind::None
-    };
+    let specialization_kind =
+        if find_attr!(attrs, AttributeKind::RustcUnsafeSpecializationMarker(_)) {
+            ty::trait_def::TraitSpecializationKind::Marker
+        } else if find_attr!(attrs, AttributeKind::RustcSpecializationTrait(_)) {
+            ty::trait_def::TraitSpecializationKind::AlwaysApplicable
+        } else {
+            ty::trait_def::TraitSpecializationKind::None
+        };
 
     let must_implement_one_of = find_attr!(
         attrs,
@@ -923,9 +924,9 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                 .collect::<Box<[_]>>()
     );
 
-    let deny_explicit_impl = find_attr!(attrs, AttributeKind::DenyExplicitImpl(_));
+    let deny_explicit_impl = find_attr!(attrs, AttributeKind::RustcDenyExplicitImpl(_));
     let force_dyn_incompatible =
-        find_attr!(attrs, AttributeKind::DynIncompatibleTrait(span) => *span);
+        find_attr!(attrs, AttributeKind::RustcDynIncompatibleTrait(span) => *span);
 
     ty::TraitDef {
         def_id: def_id.to_def_id(),

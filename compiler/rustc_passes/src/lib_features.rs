@@ -30,10 +30,10 @@ impl<'tcx> LibFeatureCollector<'tcx> {
             Attribute::Parsed(AttributeKind::Stability { stability, span }) => {
                 (stability.feature, stability.level, *span)
             }
-            Attribute::Parsed(AttributeKind::ConstStability { stability, span }) => {
+            Attribute::Parsed(AttributeKind::RustcConstStability { stability, span }) => {
                 (stability.feature, stability.level, *span)
             }
-            Attribute::Parsed(AttributeKind::BodyStability { stability, span }) => {
+            Attribute::Parsed(AttributeKind::RustcBodyStability { stability, span }) => {
                 (stability.feature, stability.level, *span)
             }
             _ => return None,

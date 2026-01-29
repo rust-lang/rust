@@ -16,6 +16,6 @@ impl<S: Stage> SingleAttributeParser<S> for DummyParser {
     const TEMPLATE: AttributeTemplate = template!(Word); // Anything, really
 
     fn convert(_: &mut AcceptContext<'_, '_, S>, _: &ArgParser) -> Option<AttributeKind> {
-        Some(AttributeKind::Dummy)
+        Some(AttributeKind::RustcDummy)
     }
 }

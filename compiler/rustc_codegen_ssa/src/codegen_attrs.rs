@@ -189,7 +189,7 @@ fn process_builtin_attrs(
             },
             AttributeKind::FfiConst(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST,
             AttributeKind::FfiPure(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE,
-            AttributeKind::StdInternalSymbol(_) => {
+            AttributeKind::RustcStdInternalSymbol(_) => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
             }
             AttributeKind::Linkage(linkage, span) => {
@@ -217,10 +217,10 @@ fn process_builtin_attrs(
             AttributeKind::Sanitize { span, .. } => {
                 interesting_spans.sanitize = Some(*span);
             }
-            AttributeKind::ObjcClass { classname, .. } => {
+            AttributeKind::RustcObjcClass { classname, .. } => {
                 codegen_fn_attrs.objc_class = Some(*classname);
             }
-            AttributeKind::ObjcSelector { methname, .. } => {
+            AttributeKind::RustcObjcSelector { methname, .. } => {
                 codegen_fn_attrs.objc_selector = Some(*methname);
             }
             AttributeKind::EiiForeignItem => {

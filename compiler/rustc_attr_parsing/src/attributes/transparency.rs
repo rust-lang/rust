@@ -32,6 +32,6 @@ impl<S: Stage> SingleAttributeParser<S> for TransparencyParser {
             }
             None => None,
         }
-        .map(AttributeKind::MacroTransparency)
+        .map(AttributeKind::RustcMacroTransparency)
     }
 }

@@ -173,7 +173,7 @@ impl<S: Stage> AttributeParser<S> for BodyStabilityParser {
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         let (stability, span) = self.stability?;
 
-        Some(AttributeKind::BodyStability { stability, span })
+        Some(AttributeKind::RustcBodyStability { stability, span })
     }
 }
 
@@ -185,7 +185,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for ConstStabilityIndirectParser {
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ConstStabilityIndirect;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcConstStabilityIndirect;
 }
 
 #[derive(Default)]
@@ -258,7 +258,7 @@ impl<S: Stage> AttributeParser<S> for ConstStabilityParser {
 
         let (stability, span) = self.stability?;
 
-        Some(AttributeKind::ConstStability { stability, span })
+        Some(AttributeKind::RustcConstStability { stability, span })
     }
 }
 

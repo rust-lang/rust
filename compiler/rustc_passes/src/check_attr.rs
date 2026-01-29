@@ -150,7 +150,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         span: attr_span,
                         stability: Stability { level, feature },
                     }
-                    | AttributeKind::ConstStability {
+                    | AttributeKind::RustcConstStability {
                         span: attr_span,
                         stability: PartialConstStability { level, feature, .. },
                     },
@@ -168,7 +168,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::AllowInternalUnsafe(attr_span) | AttributeKind::AllowInternalUnstable(.., attr_span)) => {
                     self.check_macro_only_attr(*attr_span, span, target, attrs)
                 }
-                Attribute::Parsed(AttributeKind::AllowConstFnUnstable(_, first_span)) => {
+                Attribute::Parsed(AttributeKind::RustcAllowConstFnUnstable(_, first_span)) => {
                     self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
                 }
                 Attribute::Parsed(AttributeKind::Deprecation {span: attr_span, .. }) => {
@@ -180,7 +180,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::RustcObjectLifetimeDefault) => {
                     self.check_object_lifetime_default(hir_id);
                 }
-                &Attribute::Parsed(AttributeKind::PubTransparent(attr_span)) => {
+                &Attribute::Parsed(AttributeKind::RustcPubTransparent(attr_span)) => {
                     self.check_rustc_pub_transparent(attr_span, span, attrs)
                 }
                 Attribute::Parsed(AttributeKind::Align { align, span: attr_span }) => {
@@ -226,29 +226,21 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
                 Attribute::Parsed(
                     // tidy-alphabetical-start
-                    AttributeKind::AllowIncoherentImpl(..)
-                    | AttributeKind::AsPtr(..)
+                    AttributeKind::RustcAllowIncoherentImpl(..)
                     | AttributeKind::AutomaticallyDerived(..)
-                    | AttributeKind::BodyStability { .. }
                     | AttributeKind::CfgAttrTrace
                     | AttributeKind::CfgTrace(..)
                     | AttributeKind::CfiEncoding { .. }
-                    | AttributeKind::Coinductive(..)
                     | AttributeKind::Cold(..)
                     | AttributeKind::CollapseDebugInfo(..)
                     | AttributeKind::CompilerBuiltins
-                    | AttributeKind::Confusables { .. }
-                    | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::Coroutine(..)
                     | AttributeKind::Coverage (..)
                     | AttributeKind::CrateName { .. }
                     | AttributeKind::CrateType(..)
                     | AttributeKind::DebuggerVisualizer(..)
-                    | AttributeKind::DenyExplicitImpl(..)
                     // `#[doc]` is actually a lot more than just doc comments, so is checked below
                     | AttributeKind::DocComment {..}
-                    | AttributeKind::Dummy
-                    | AttributeKind::DynIncompatibleTrait(..)
                     | AttributeKind::EiiDeclaration { .. }
                     | AttributeKind::EiiForeignItem
                     | AttributeKind::ExportName { .. }
@@ -262,7 +254,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::LinkSection { .. }
                     | AttributeKind::Linkage(..)
                     | AttributeKind::MacroEscape( .. )
-                    | AttributeKind::MacroTransparency(_)
                     | AttributeKind::MacroUse { .. }
                     | AttributeKind::Marker(..)
                     | AttributeKind::MoveSizeLimit { .. }
@@ -277,12 +268,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::NoMain
                     | AttributeKind::NoMangle(..)
                     | AttributeKind::NoStd { .. }
-                    | AttributeKind::ObjcClass { .. }
-                    | AttributeKind::ObjcSelector { .. }
                     | AttributeKind::Optimize(..)
                     | AttributeKind::PanicRuntime
-                    | AttributeKind::ParenSugar(..)
-                    | AttributeKind::PassByValue (..)
                     | AttributeKind::PatchableFunctionEntry { .. }
                     | AttributeKind::Path(..)
                     | AttributeKind::PatternComplexityLimit { .. }
@@ -295,14 +282,22 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcAllocator
                     | AttributeKind::RustcAllocatorZeroed
                     | AttributeKind::RustcAllocatorZeroedVariant { .. }
+                    | AttributeKind::RustcAsPtr(..)
+                    | AttributeKind::RustcBodyStability { .. }
                     | AttributeKind::RustcBuiltinMacro { .. }
                     | AttributeKind::RustcCoherenceIsCore(..)
+                    | AttributeKind::RustcCoinductive(..)
+                    | AttributeKind::RustcConfusables { .. }
+                    | AttributeKind::RustcConstStabilityIndirect
                     | AttributeKind::RustcDeallocator
+                    | AttributeKind::RustcDenyExplicitImpl(..)
+                    | AttributeKind::RustcDummy
                     | AttributeKind::RustcDumpDefParents
                     | AttributeKind::RustcDumpItemBounds
                     | AttributeKind::RustcDumpPredicates
                     | AttributeKind::RustcDumpUserArgs
                     | AttributeKind::RustcDumpVtable(..)
+                    | AttributeKind::RustcDynIncompatibleTrait(..)
                     | AttributeKind::RustcHasIncoherentInherentImpls
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
                     | AttributeKind::RustcLayoutScalarValidRangeStart(..)
@@ -310,26 +305,31 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcLintOptTy
                     | AttributeKind::RustcLintQueryInstability
                     | AttributeKind::RustcLintUntrackedQueryInformation
+                    | AttributeKind::RustcMacroTransparency(_)
                     | AttributeKind::RustcMain
                     | AttributeKind::RustcNeverReturnsNullPointer
                     | AttributeKind::RustcNoImplicitAutorefs
                     | AttributeKind::RustcNounwind
+                    | AttributeKind::RustcObjcClass { .. }
+                    | AttributeKind::RustcObjcSelector { .. }
                     | AttributeKind::RustcOffloadKernel
+                    | AttributeKind::RustcParenSugar(..)
+                    | AttributeKind::RustcPassByValue (..)
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
                     | AttributeKind::RustcReallocator
                     | AttributeKind::RustcScalableVector { .. }
                     | AttributeKind::RustcShouldNotBeCalledOnConstItems(..)
                     | AttributeKind::RustcSimdMonomorphizeLaneLimit(..)
+                    | AttributeKind::RustcSkipDuringMethodDispatch { .. }
+                    | AttributeKind::RustcSpecializationTrait(..)
+                    | AttributeKind::RustcStdInternalSymbol (..)
+                    | AttributeKind::RustcUnsafeSpecializationMarker(..)
                     | AttributeKind::RustcVariance
                     | AttributeKind::RustcVarianceOfOpaques
                     | AttributeKind::ShouldPanic { .. }
-                    | AttributeKind::SkipDuringMethodDispatch { .. }
-                    | AttributeKind::SpecializationTrait(..)
-                    | AttributeKind::StdInternalSymbol (..)
                     | AttributeKind::ThreadLocal
                     | AttributeKind::TypeConst{..}
                     | AttributeKind::TypeLengthLimit { .. }
-                    | AttributeKind::UnsafeSpecializationMarker(..)
                     | AttributeKind::UnstableFeatureBound(..)
                     | AttributeKind::Used { .. }
                     | AttributeKind::WindowsSubsystem(..)
