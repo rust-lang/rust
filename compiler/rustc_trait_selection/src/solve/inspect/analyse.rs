@@ -316,6 +316,10 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         self.depth
     }
 
+    pub fn orig_values(&self) -> &[ty::GenericArg<'tcx>] {
+        &self.orig_values
+    }
+
     fn candidates_recur(
         &'a self,
         candidates: &mut Vec<InspectCandidate<'a, 'tcx>>,
