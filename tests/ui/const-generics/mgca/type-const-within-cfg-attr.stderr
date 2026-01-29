@@ -1,0 +1,14 @@
+error: `type_const` within an `#[cfg_attr]` attribute is forbidden
+  --> $DIR/type-const-within-cfg-attr.rs:7:22
+   |
+LL |     #[cfg_attr(true, type_const)]
+   |                      ^^^^^^^^^^
+
+error: `type_const` within an `#[cfg_attr]` attribute is forbidden
+  --> $DIR/type-const-within-cfg-attr.rs:12:22
+   |
+LL |     #[cfg_attr(true, type_const)]
+   |                      ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

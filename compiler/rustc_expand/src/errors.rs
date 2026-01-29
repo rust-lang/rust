@@ -440,6 +440,13 @@ pub(crate) struct CrateTypeInCfgAttr {
 }
 
 #[derive(Diagnostic)]
+#[diag(expand_type_const_in_cfg_attr)]
+pub(crate) struct TypeConstInCfgAttr {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(expand_glob_delegation_traitless_qpath)]
 pub(crate) struct GlobDelegationTraitlessQpath {
     #[primary_span]

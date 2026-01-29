@@ -29,7 +29,7 @@ use tracing::instrument;
 use crate::errors::{
     CrateNameInCfgAttr, CrateTypeInCfgAttr, FeatureNotAllowed, FeatureRemoved,
     FeatureRemovedReason, InvalidCfg, MalformedFeatureAttribute, MalformedFeatureAttributeHelp,
-    RemoveExprNotSupported,
+    RemoveExprNotSupported, TypeConstInCfgAttr,
 };
 
 /// A folder that strips out items that do not belong in the current configuration.
@@ -319,11 +319,13 @@ impl<'a> StripUnconfigured<'a> {
             //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
             let expanded_attrs = expanded_attrs
                 .into_iter()
-                .flat_map(|item| self.process_cfg_attr(&self.expand_cfg_attr_item(cfg_attr, item)));
+                .flat_map(|item| self.expand_cfg_attr_item(cfg_attr, item))
+                .flat_map(|attr| self.process_cfg_attr(&attr));
             iter::once(trace_attr).chain(expanded_attrs).collect()
         } else {
-            let expanded_attrs =
-                expanded_attrs.into_iter().map(|item| self.expand_cfg_attr_item(cfg_attr, item));
+            let expanded_attrs = expanded_attrs
+                .into_iter()
+                .flat_map(|item| self.expand_cfg_attr_item(cfg_attr, item));
             iter::once(trace_attr).chain(expanded_attrs).collect()
         }
     }
@@ -332,7 +334,7 @@ impl<'a> StripUnconfigured<'a> {
         &self,
         cfg_attr: &Attribute,
         (item, item_span): (ast::AttrItem, Span),
-    ) -> Attribute {
+    ) -> Option<Attribute> {
         // Convert `#[cfg_attr(pred, attr)]` to `#[attr]`.
 
         // Use the `#` from `#[cfg_attr(pred, attr)]` in the result `#[attr]`.
@@ -388,7 +390,11 @@ impl<'a> StripUnconfigured<'a> {
         if attr.has_name(sym::crate_name) {
             self.sess.dcx().emit_err(CrateNameInCfgAttr { span: attr.span });
         }
-        attr
+        if attr.has_name(sym::type_const) {
+            self.sess.dcx().emit_err(TypeConstInCfgAttr { span: attr.span });
+            return None;
+        }
+        Some(attr)
     }
 
     /// Determines if a node with the given attributes should be included in this configuration.
