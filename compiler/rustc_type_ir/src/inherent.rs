@@ -564,6 +564,8 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
 
     fn is_struct(self) -> bool;
 
+    fn is_packed(self) -> bool;
+
     /// Returns the type of the struct tail.
     ///
     /// Expects the `AdtDef` to be a struct. If it is not, then this will panic.

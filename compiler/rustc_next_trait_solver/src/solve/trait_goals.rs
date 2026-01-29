@@ -851,7 +851,11 @@ where
             return Err(NoSolution);
         }
         if let ty::FRT(ty, _) = goal.predicate.self_ty().kind()
-            && !ty.is_packed()
+            && match ty.kind() {
+                ty::Adt(def, _) => def.is_struct() && !def.is_packed(),
+                ty::Tuple(..) => true,
+                _ => false,
+            }
         {
             ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
                 .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))

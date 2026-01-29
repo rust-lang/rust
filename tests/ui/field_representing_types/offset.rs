@@ -34,13 +34,14 @@ fn main() {
     assert_eq!(<field_of!(Struct, a)>::OFFSET, 0);
     assert_eq!(<field_of!(Struct, b)>::OFFSET, 8);
 
-    assert_eq!(<field_of!(Union, a)>::OFFSET, 0);
-    assert_eq!(<field_of!(Union, b)>::OFFSET, 0);
+    let _: field_of!(Union, a);
+    let _: field_of!(Union, b);
 
-    assert_eq!(<field_of!(Enum, A.a)>::OFFSET, 8);
-    assert_eq!(<field_of!(Enum, A.b)>::OFFSET, 16);
-    assert_eq!(<field_of!(Enum, B.x)>::OFFSET, 8);
-    assert_eq!(<field_of!(Enum, B.y)>::OFFSET, 16);
+    let _: field_of!(Enum, A.a);
+    let _: field_of!(Enum, A.b);
+    let _: field_of!(Enum, B.x);
+    let _: field_of!(Enum, B.y);
+
     let s = Struct { a: 42, b: 24 };
     let r = &s;
     let a = project_ref::<Struct, field_of!(Struct, a)>(r);

@@ -1460,7 +1460,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         if let ty::FRT(ty, _) = obligation.predicate.self_ty().skip_binder().kind()
-            && !ty.is_packed()
+            && match ty.kind() {
+                ty::Adt(def, _) => def.is_struct() && !def.repr().packed(),
+                ty::Tuple(..) => true,
+                _ => false,
+            }
         {
             candidates.vec.push(BuiltinCandidate);
         }
