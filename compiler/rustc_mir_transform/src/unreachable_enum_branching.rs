@@ -4,8 +4,7 @@ use rustc_abi::Variants;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::mir::{
-    BasicBlock, BasicBlockData, BasicBlocks, Body, Local, Operand, Rvalue, StatementKind,
-    TerminatorKind,
+    BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
@@ -125,43 +124,10 @@ impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
                     unreachable_targets.push(index);
                 }
             }
-            let otherwise_is_empty_unreachable =
-                body.basic_blocks[targets.otherwise()].is_empty_unreachable();
-            fn check_successors(basic_blocks: &BasicBlocks<'_>, bb: BasicBlock) -> bool {
-                // After resolving https://github.com/llvm/llvm-project/issues/78578,
-                // We can remove this check.
-                // The main issue here is that `early-tailduplication` causes compile time overhead
-                // and potential performance problems.
-                // Simply put, when encounter a switch (indirect branch) statement,
-                // `early-tailduplication` tries to duplicate the switch branch statement with BB
-                // into (each) predecessors. This makes CFG very complex.
-                // We can understand it as it transforms the following code
-                // ```rust
-                // match a { ... many cases };
-                // match b { ... many cases };
-                // ```
-                // into
-                // ```rust
-                // match a { ... many match b { goto BB cases } }
-                // ... BB cases
-                // ```
-                // Abandon this transformation when it is possible (the best effort)
-                // to encounter the problem.
-                let mut successors = basic_blocks[bb].terminator().successors();
-                let Some(first_successor) = successors.next() else { return true };
-                if successors.next().is_some() {
-                    return true;
-                }
-                if let TerminatorKind::SwitchInt { .. } =
-                    &basic_blocks[first_successor].terminator().kind
-                {
-                    return false;
-                };
-                true
-            }
+
             // If and only if there is a variant that does not have a branch set, change the
             // current of otherwise as the variant branch and set otherwise to unreachable. It
-            // transforms following code
+            // transforms the following code
             // ```rust
             // match c {
             //     Ordering::Less => 1,
@@ -177,15 +143,8 @@ impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
             //     Ordering::Greater => 3,
             // }
             // ```
-            let otherwise_is_last_variant = !otherwise_is_empty_unreachable
-                && allowed_variants.len() == 1
-                // Despite the LLVM issue, we hope that small enum can still be transformed.
-                // This is valuable for both `a <= b` and `if let Some/Ok(v)`.
-                && (targets.all_targets().len() <= 3
-                    || check_successors(&body.basic_blocks, targets.otherwise()));
-            let replace_otherwise_to_unreachable = otherwise_is_last_variant
-                || (!otherwise_is_empty_unreachable && allowed_variants.is_empty());
-
+            let replace_otherwise_to_unreachable = allowed_variants.len() <= 1
+                && !body.basic_blocks[targets.otherwise()].is_empty_unreachable();
             if unreachable_targets.is_empty() && !replace_otherwise_to_unreachable {
                 continue;
             }
@@ -193,6 +152,7 @@ impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
             let unreachable_block = patch.unreachable_no_cleanup_block();
             let mut targets = targets.clone();
             if replace_otherwise_to_unreachable {
+                let otherwise_is_last_variant = allowed_variants.len() == 1;
                 if otherwise_is_last_variant {
                     // We have checked that `allowed_variants` has only one element.
                     #[allow(rustc::potential_query_instability)]
