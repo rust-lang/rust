@@ -881,7 +881,7 @@ impl Command {
 
             // we send the 0-length message even if we failed to acquire the pidfd
             // so we get a consistent SEQPACKET order
-            match cvt_r(|| libc::sendmsg(sock.as_raw(), &msg, 0)) {
+            match cvt_r(|| libc::sendmsg(sock.as_raw(), &msg, libc::MSG_EOR)) {
                 Ok(0) => {}
                 other => rtabort!("failed to communicate with parent process. {:?}", other),
             }
