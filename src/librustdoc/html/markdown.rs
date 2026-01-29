@@ -109,13 +109,15 @@ pub(crate) struct MarkdownWithToc<'a> {
     pub(crate) edition: Edition,
     pub(crate) playground: &'a Option<Playground>,
 }
-/// A tuple struct like `Markdown` that renders the markdown escaping HTML tags
+
+/// A struct like `Markdown` that renders the markdown escaping HTML tags
 /// and includes no paragraph tags.
 pub(crate) struct MarkdownItemInfo<'a> {
     pub(crate) content: &'a str,
     pub(crate) links: &'a [RenderedLink],
     pub(crate) ids: &'a mut IdMap,
 }
+
 /// A tuple struct like `Markdown` that renders only the first paragraph.
 pub(crate) struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
 
@@ -1497,10 +1499,10 @@ impl<'a> MarkdownItemInfo<'a> {
             let p = SpannedLinkReplacer::new(p, links);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
-            let p = p.filter(|event| {
-                !matches!(event, Event::Start(Tag::Paragraph) | Event::End(TagEnd::Paragraph))
-            });
-            html::write_html_fmt(&mut f, p)
+            // in legacy wrap mode, strip <p> elements to avoid them inserting newlines
+            html::write_html_fmt(&mut f, p)?;
+
+            Ok(())
         })
     }
 }
