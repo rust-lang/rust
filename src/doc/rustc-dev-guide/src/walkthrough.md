@@ -41,18 +41,15 @@ Here is a quick list.
 We will go through each of these in order below.
 As I mentioned before, not all of these are needed for every type of contribution.
 
-- **Idea discussion/Pre-RFC**  A Pre-RFC is an early draft or design discussion
-  of a feature.
+- **Idea discussion/Pre-RFC**  A Pre-RFC is an early draft or design discussion of a feature.
   This stage is intended to flesh out the design space a bit and
   get a grasp on the different merits and problems with an idea.
-  It's a great way to get early feedback on your idea before presenting it to the wider
-  audience.
+  It's a great way to get early feedback on your idea before presenting it to the wider audience.
   You can find the original discussion [here][prerfc].
-- **RFC**  This is when you formally present your idea to the community for
-  consideration.
+- **RFC**  This is when you formally present your idea to the community for consideration.
   You can find the RFC [here][rfc].
-- **Implementation** Implement your idea unstably in the compiler. You can
-  find the original implementation [here][impl1].
+- **Implementation** Implement your idea unstably in the compiler.
+  You can find the original implementation [here][impl1].
 - **Possibly iterate/refine** As the community gets experience with your
   feature on the nightly compiler and in `std`, there may be additional
   feedback about design choice that might be adjusted.
@@ -114,8 +111,7 @@ In this case, the discussion converged pretty quickly, but for some
 ideas, a lot more discussion can happen (e.g. see [this RFC][nonascii] which
 received a whopping 684 comments!).
 If that happens, don't be discouraged;
-it means the community is interested in your idea, but it perhaps needs some
-adjustments.
+it means the community is interested in your idea, but it perhaps needs some adjustments.
 
 [nonascii]: https://github.com/rust-lang/rfcs/pull/2457
 
@@ -138,10 +134,10 @@ last chance for people to bring up objections.
 When the FCP is over, the disposition is adopted.
 Here are the three possible dispositions:
 
-- _Merge_: accept the feature. Here is the proposal to merge for our [`?` macro
-  feature][rfcmerge].
-- _Close_: this feature in its current form is not a good fit for rust. Don't
-  be discouraged if this happens to your RFC, and don't take it personally.
+- _Merge_: accept the feature.
+  Here is the proposal to merge for our [`?` macro feature][rfcmerge].
+- _Close_: this feature in its current form is not a good fit for rust.
+  Don't be discouraged if this happens to your RFC, and don't take it personally.
   This is not a reflection on you, but rather a community decision that rust
   will go a different direction.
 - _Postpone_: there is interest in going this direction but not at the moment.
@@ -164,10 +160,12 @@ Here is the tracking issue on for our [`?` macro feature][tracking].
 An eRFC is a variant of the RFC process used for complex features where the high-level need
 is clear, but the design space is too large to settle on a detailed specification upfront.
 Instead of providing a final design, an eRFC outlines a high-level strategy to authorize
-a period of active experimentation. This allows the team to implement the feature behind
+a period of active experimentation.
+This allows the team to implement the feature behind
 a feature gate and gather practical data, which then informs a subsequent formal RFC for stabilization.
 While this process was used for major features like coroutines ([see RFC 2033][rfc2033]),
-the explicit "eRFC" label is rarely used today. The project now generally prefers approving a standard
+the explicit "eRFC" label is rarely used today.
+The project now generally prefers approving a standard
 RFC for an initial version and iterating on it through the nightly channel before final stabilization.
 
 [rfc2033]: https://github.com/rust-lang/rfcs/pull/2033#issuecomment-309057591
@@ -199,8 +197,8 @@ When a new feature is implemented, it goes behind a _feature gate_, which means 
 you have to use `#![feature(my_feature_name)]` to use the feature.
 The feature gate is removed when the feature is stabilized.
 
-**Most bug fixes and improvements** don't require a feature gate. You can just
-make your changes/improvements.
+**Most bug fixes and improvements** don't require a feature gate.
+You can just make your changes/improvements.
 
 When you open a PR on the [rust-lang/rust], a bot will assign your PR to a reviewer.
 If there is a particular Rust team member you are working with, you can
@@ -217,8 +215,7 @@ When you finished iterating on the changes, you can mark the PR as
 `S-waiting-on-author` label and add the `S-waiting-on-review` label.
 
 Feel free to ask questions or discuss things you don't understand or disagree with.
-However, recognize that the PR won't be merged unless someone on the Rust team approves
-it.
+However, recognize that the PR won't be merged unless someone on the Rust team approves it.
 If a reviewer leave a comment like `r=me after fixing ...`, that means they approve the PR and
 you can merge it with comment with `@bors r=reviewer-github-id`(e.g. `@bors r=eddyb`) to merge it 
 after fixing trivial issues.
@@ -235,8 +232,7 @@ If all tests pass, the PR is merged and becomes part of the next nightly compile
 
 There are a couple of things that may happen for some PRs during the review process
 
-- If the change is substantial enough, the reviewer may request an FCP on
-  the PR.
+- If the change is substantial enough, the reviewer may request an FCP on the PR.
   This gives all members of the appropriate team a chance to review the changes.
 - If the change may cause breakage, the reviewer may request a [crater] run.
   This compiles the compiler with your changes and then attempts to compile all
