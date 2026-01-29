@@ -340,6 +340,11 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         } else if options.contains(InlineAsmOptions::READONLY) {
             attrs.push(llvm::MemoryEffects::ReadOnlyNotPure.create_attr(self.cx.llcx));
         }
+
+        if options.contains(InlineAsmOptions::NORETURN) {
+            attrs.push(llvm::AttributeKind::NoReturn.create_attr(self.cx.llcx));
+        }
+
         attributes::apply_to_callsite(result, llvm::AttributePlace::Function, &{ attrs });
 
         // Write results to outputs. We need to do this for all possible control flow.
