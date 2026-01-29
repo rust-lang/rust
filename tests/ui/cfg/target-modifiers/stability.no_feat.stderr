@@ -1,5 +1,5 @@
 error[E0658]: `cfg(target_modifier_fixed_x18)` is experimental and subject to change
-  --> $DIR/stability.rs:9:7
+  --> $DIR/stability.rs:8:7
    |
 LL | #[cfg(target_modifier_fixed_x18)]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #[cfg(target_modifier_fixed_x18)]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `cfg(target_modifier_indirect_branch_cs_prefix)` is experimental and subject to change
-  --> $DIR/stability.rs:13:7
+  --> $DIR/stability.rs:12:7
    |
 LL | #[cfg(target_modifier_indirect_branch_cs_prefix)]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | #[cfg(target_modifier_indirect_branch_cs_prefix)]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `cfg(target_modifier_reg_struct_return)` is experimental and subject to change
-  --> $DIR/stability.rs:17:7
+  --> $DIR/stability.rs:16:7
    |
 LL | #[cfg(target_modifier_reg_struct_return)]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL | #[cfg(target_modifier_reg_struct_return)]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `cfg(target_modifier_regparm)` is experimental and subject to change
-  --> $DIR/stability.rs:21:7
+  --> $DIR/stability.rs:20:7
    |
 LL | #[cfg(target_modifier_regparm="0")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL | #[cfg(target_modifier_regparm="0")]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `cfg(target_modifier_retpoline)` is experimental and subject to change
-  --> $DIR/stability.rs:25:7
+  --> $DIR/stability.rs:24:7
    |
 LL | #[cfg(target_modifier_retpoline)]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL | #[cfg(target_modifier_retpoline)]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `cfg(target_modifier_retpoline_external_thunk)` is experimental and subject to change
-  --> $DIR/stability.rs:29:7
+  --> $DIR/stability.rs:28:7
    |
 LL | #[cfg(target_modifier_retpoline_external_thunk)]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

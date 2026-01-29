@@ -3,7 +3,6 @@
 //@[feat] check-pass
 //@[no_feat] check-fail
 
-#![allow(unexpected_cfgs)]
 #![cfg_attr(feat, feature(cfg_unstable_target_modifier))]
 
 #[cfg(target_modifier_fixed_x18)]

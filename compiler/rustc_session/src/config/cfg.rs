@@ -452,6 +452,15 @@ impl CheckCfg {
                 .map(Symbol::intern),
         );
 
+        // FIXME(target_modifiers): Find a way to work out what the appropriate values for these
+        // options are here
+        for cfg in CG_OPTIONS.iter().filter_map(|desc| desc.target_modifier_cfg()) {
+            ins!(cfg, || ExpectedValues::Any);
+        }
+        for cfg in Z_OPTIONS.iter().filter_map(|desc| desc.target_modifier_cfg()) {
+            ins!(cfg, || ExpectedValues::Any);
+        }
+
         // sym::target_*
         {
             const VALUES: [&Symbol; 8] = [
