@@ -17,7 +17,6 @@ use rustc_type_ir::{
 };
 use tracing::{debug, instrument};
 
-use super::trait_goals::TraitGoalProvenVia;
 use super::{has_only_region_constraints, inspect};
 use crate::delegate::SolverDelegate;
 use crate::solve::inspect::ProbeKind;
@@ -363,6 +362,12 @@ pub(super) enum AssembleCandidatesFrom {
     /// user-written and built-in impls. We only expect `ParamEnv` and `AliasBound`
     /// candidates to be assembled.
     EnvAndBounds,
+    /// FIXME: only for the fast path of normalizes-to goal. The fast path is incomplete and
+    /// we shouldn't force ambiguity if no candidate exist when assembling for opaque self_ty.
+    /// See `try_assemble_bounds_via_registered_opaques`.
+    EnvAndBoundsFastPath,
+    Object,
+    Impl,
 }
 
 impl AssembleCandidatesFrom {
@@ -370,6 +375,9 @@ impl AssembleCandidatesFrom {
         match self {
             AssembleCandidatesFrom::All => true,
             AssembleCandidatesFrom::EnvAndBounds => false,
+            AssembleCandidatesFrom::EnvAndBoundsFastPath => false,
+            AssembleCandidatesFrom::Object => false,
+            AssembleCandidatesFrom::Impl => true,
         }
     }
 }
@@ -426,11 +434,14 @@ where
             return (candidates, failed_candidate_info);
         }
 
-        self.assemble_alias_bound_candidates(goal, &mut candidates);
-        self.assemble_param_env_candidates(goal, &mut candidates, &mut failed_candidate_info);
-
         match assemble_from {
             AssembleCandidatesFrom::All => {
+                self.assemble_alias_bound_candidates(goal, &mut candidates);
+                self.assemble_param_env_candidates(
+                    goal,
+                    &mut candidates,
+                    &mut failed_candidate_info,
+                );
                 self.assemble_builtin_impl_candidates(goal, &mut candidates);
                 // For performance we only assemble impls if there are no candidates
                 // which would shadow them. This is necessary to avoid hangs in rayon,
@@ -456,15 +467,21 @@ where
                     self.assemble_object_bound_candidates(goal, &mut candidates);
                 }
             }
-            AssembleCandidatesFrom::EnvAndBounds => {
-                // This is somewhat inconsistent and may make #57893 slightly easier to exploit.
-                // However, it matches the behavior of the old solver. See
-                // `tests/ui/traits/next-solver/normalization-shadowing/use_object_if_empty_env.rs`.
-                if matches!(normalized_self_ty.kind(), ty::Dynamic(..))
-                    && !candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
-                {
-                    self.assemble_object_bound_candidates(goal, &mut candidates);
-                }
+            AssembleCandidatesFrom::EnvAndBounds | AssembleCandidatesFrom::EnvAndBoundsFastPath => {
+                self.assemble_alias_bound_candidates(goal, &mut candidates);
+                self.assemble_param_env_candidates(
+                    goal,
+                    &mut candidates,
+                    &mut failed_candidate_info,
+                );
+            }
+            AssembleCandidatesFrom::Object => {
+                self.assemble_object_bound_candidates(goal, &mut candidates);
+            }
+            AssembleCandidatesFrom::Impl => {
+                self.assemble_builtin_impl_candidates(goal, &mut candidates);
+                self.assemble_impl_candidates(goal, &mut candidates);
+                self.assemble_object_bound_candidates(goal, &mut candidates);
             }
         }
 
@@ -1086,7 +1103,12 @@ where
             });
         }
 
-        if candidates.is_empty() {
+        // If we're on the fast path, it's possible that we still have applicable impl candidates.
+        // We should return empty list here rather than bail out with fallback candidate.
+        if candidates.is_empty()
+            && !matches!(assemble_from, AssembleCandidatesFrom::EnvAndBoundsFastPath)
+        {
+            debug!("no candidates found via registered opaques for self ty {self_ty:?}");
             let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
             let certainty = Certainty::Maybe {
                 cause: MaybeCause::Ambiguity,
@@ -1096,112 +1118,6 @@ where
                 .extend(self.probe_trait_candidate(source).enter(|this| {
                     this.evaluate_added_goals_and_make_canonical_response(certainty)
                 }));
-        }
-    }
-
-    /// Assemble and merge candidates for goals which are related to an underlying trait
-    /// goal. Right now, this is normalizes-to and host effect goals.
-    ///
-    /// We sadly can't simply take all possible candidates for normalization goals
-    /// and check whether they result in the same constraints. We want to make sure
-    /// that trying to normalize an alias doesn't result in constraints which aren't
-    /// otherwise required.
-    ///
-    /// Most notably, when proving a trait goal by via a where-bound, we should not
-    /// normalize via impls which have stricter region constraints than the where-bound:
-    ///
-    /// ```rust
-    /// trait Trait<'a> {
-    ///     type Assoc;
-    /// }
-    ///
-    /// impl<'a, T: 'a> Trait<'a> for T {
-    ///     type Assoc = u32;
-    /// }
-    ///
-    /// fn with_bound<'a, T: Trait<'a>>(_value: T::Assoc) {}
-    /// ```
-    ///
-    /// The where-bound of `with_bound` doesn't specify the associated type, so we would
-    /// only be able to normalize `<T as Trait<'a>>::Assoc` by using the impl. This impl
-    /// adds a `T: 'a` bound however, which would result in a region error. Given that the
-    /// user explicitly wrote that `T: Trait<'a>` holds, this is undesirable and we instead
-    /// treat the alias as rigid.
-    ///
-    /// See trait-system-refactor-initiative#124 for more details.
-    #[instrument(level = "debug", skip_all, fields(proven_via, goal), ret)]
-    pub(super) fn assemble_and_merge_candidates<G: GoalKind<D>>(
-        &mut self,
-        proven_via: Option<TraitGoalProvenVia>,
-        goal: Goal<I, G>,
-        inject_forced_ambiguity_candidate: impl FnOnce(&mut EvalCtxt<'_, D>) -> Option<QueryResult<I>>,
-        inject_normalize_to_rigid_candidate: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
-    ) -> QueryResult<I> {
-        let Some(proven_via) = proven_via else {
-            // We don't care about overflow. If proving the trait goal overflowed, then
-            // it's enough to report an overflow error for that, we don't also have to
-            // overflow during normalization.
-            //
-            // We use `forced_ambiguity` here over `make_ambiguous_response_no_constraints`
-            // because the former will also record a built-in candidate in the inspector.
-            return self.forced_ambiguity(MaybeCause::Ambiguity).map(|cand| cand.result);
-        };
-
-        match proven_via {
-            TraitGoalProvenVia::ParamEnv | TraitGoalProvenVia::AliasBound => {
-                // Even when a trait bound has been proven using a where-bound, we
-                // still need to consider alias-bounds for normalization, see
-                // `tests/ui/next-solver/alias-bound-shadowed-by-env.rs`.
-                let (mut candidates, _) = self
-                    .assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::EnvAndBounds);
-                debug!(?candidates);
-
-                // If the trait goal has been proven by using the environment, we want to treat
-                // aliases as rigid if there are no applicable projection bounds in the environment.
-                if candidates.is_empty() {
-                    return inject_normalize_to_rigid_candidate(self);
-                }
-
-                // If we're normalizing an GAT, we bail if using a where-bound would constrain
-                // its generic arguments.
-                if let Some(result) = inject_forced_ambiguity_candidate(self) {
-                    return result;
-                }
-
-                // We still need to prefer where-bounds over alias-bounds however.
-                // See `tests/ui/winnowing/norm-where-bound-gt-alias-bound.rs`.
-                if candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_))) {
-                    candidates.retain(|c| matches!(c.source, CandidateSource::ParamEnv(_)));
-                }
-
-                if let Some((response, _)) = self.try_merge_candidates(&candidates) {
-                    Ok(response)
-                } else {
-                    self.flounder(&candidates)
-                }
-            }
-            TraitGoalProvenVia::Misc => {
-                let (mut candidates, _) =
-                    self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
-
-                // Prefer "orphaned" param-env normalization predicates, which are used
-                // (for example, and ideally only) when proving item bounds for an impl.
-                if candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_))) {
-                    candidates.retain(|c| matches!(c.source, CandidateSource::ParamEnv(_)));
-                }
-
-                // We drop specialized impls to allow normalization via a final impl here. In case
-                // the specializing impl has different inference constraints from the specialized
-                // impl, proving the trait goal is already ambiguous, so we never get here. This
-                // means we can just ignore inference constraints and don't have to special-case
-                // constraining the normalized-to `term`.
-                self.filter_specialized_impls(AllowInferenceConstraints::Yes, &mut candidates);
-                if let Some((response, _)) = self.try_merge_candidates(&candidates) {
-                    Ok(response)
-                } else {
-                    self.flounder(&candidates)
-                }
-            }
         }
     }
 
