@@ -13,7 +13,7 @@ impl Drop for field_of!(MyStruct, 0) {
 }
 
 unsafe impl Send for field_of!(MyStruct, 0) {}
-//~^ ERROR: impls of auto traits for field representing types not supported
+//~^ ERROR: cross-crate traits with a default impl, like `Send`, can only be implemented for a struct/enum type, not `field_of!(MyStruct, 0)` [E0321]
 
 #[repr(packed)]
 pub struct MyStruct2(usize);

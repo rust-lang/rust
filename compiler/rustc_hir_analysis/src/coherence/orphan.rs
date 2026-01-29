@@ -82,10 +82,7 @@ pub(crate) fn orphan_check_impl(
     );
 
     if tcx.trait_is_auto(trait_def_id) {
-        let mut self_ty = trait_ref.self_ty();
-        if let ty::FRT(ty, _) = self_ty.kind() {
-            self_ty = *ty;
-        }
+        let self_ty = trait_ref.self_ty();
 
         // If the impl is in the same crate as the auto-trait, almost anything
         // goes.
@@ -152,6 +149,10 @@ pub(crate) fn orphan_check_impl(
                 } else {
                     NonlocalImpl::DisallowBecauseNonlocal
                 },
+            ),
+            ty::FRT(..) => (
+                LocalImpl::Disallow { problematic_kind: "field representing type" },
+                NonlocalImpl::DisallowOther,
             ),
 
             // extern { type OpaqueType; }
@@ -236,7 +237,6 @@ pub(crate) fn orphan_check_impl(
                 let sp = tcx.def_span(impl_def_id);
                 span_bug!(sp, "weird self type for autotrait impl")
             }
-            ty::FRT(..) => unreachable!("handled above"),
 
             ty::Error(..) => (LocalImpl::Allow, NonlocalImpl::Allow),
         };
