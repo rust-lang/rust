@@ -14,9 +14,7 @@ use std::ops::{Bound, Deref};
 use std::sync::{Arc, OnceLock};
 use std::{fmt, iter, mem};
 
-use rustc_abi::{
-    ExternAbi, FIRST_VARIANT, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx,
-};
+use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -31,8 +29,7 @@ use rustc_data_structures::sync::{
 };
 use rustc_data_structures::{debug_assert_matches, defer};
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, E0001, E0609, E0616, ErrorGuaranteed, LintDiagnostic,
-    MultiSpan, struct_span_code_err,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, MultiSpan,
 };
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
@@ -52,7 +49,7 @@ use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 pub use rustc_type_ir::lift::Lift;
@@ -3578,194 +3575,4 @@ pub fn provide(providers: &mut Providers) {
         tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())
     };
     providers.source_span = |tcx, def_id| tcx.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP);
-}
-
-pub fn lower_field_of<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>,
-    item_def_id: LocalDefId,
-    ty_span: Span,
-    hir_id: HirId,
-    variant: Option<Ident>,
-    field: Ident,
-) -> Ty<'tcx> {
-    let dcx = tcx.dcx();
-    match ty.kind() {
-        ty::Adt(def, _) => {
-            let base_did = def.did();
-            let kind_name = tcx.def_descr(base_did);
-            let (variant_idx, variant) = if def.is_enum() {
-                let Some(variant) = variant else {
-                    let adt_path = tcx.def_path_str(base_did);
-                    let err = struct_span_code_err!(
-                        dcx,
-                        field.span,
-                        // FIXME(FRTs): use correct error number
-                        E0001,
-                        "field access on {kind_name} `{adt_path}` requires a variant"
-                    )
-                    .with_span_help(field.span.shrink_to_lo(), "add the variant here `Variant.`")
-                    .emit();
-                    return Ty::new_error(tcx, err);
-                };
-
-                if let Some(res) = def
-                    .variants()
-                    .iter_enumerated()
-                    .find(|(_, f)| f.ident(tcx).normalize_to_macros_2_0() == variant)
-                {
-                    res
-                } else {
-                    let adt_path = tcx.def_path_str(base_did);
-                    let err = struct_span_code_err!(
-                        dcx,
-                        variant.span,
-                        // FIXME(FRTs): use correct error number
-                        E0001,
-                        "no variant `{variant}` on {kind_name} `{adt_path}`"
-                    )
-                    .with_span_label(variant.span, "unknown variant")
-                    .emit();
-                    return Ty::new_error(tcx, err);
-                }
-            } else {
-                if let Some(variant) = variant {
-                    let adt_path = tcx.def_path_str(base_did);
-                    struct_span_code_err!(
-                        dcx,
-                        variant.span,
-                        // FIXME(FRTs): use correct error number
-                        E0001,
-                        "{kind_name} `{adt_path}` does not have any variants",
-                    )
-                    .with_span_label(variant.span, "variant unknown")
-                    .emit();
-                }
-                (FIRST_VARIANT, def.non_enum_variant())
-            };
-            let block = tcx.local_def_id_to_hir_id(item_def_id);
-            let (ident, def_scope) = tcx.adjust_ident_and_get_scope(field, def.did(), block);
-            if let Some((field_idx, field)) = variant
-                .fields
-                .iter_enumerated()
-                .find(|(_, f)| f.ident(tcx).normalize_to_macros_2_0() == ident)
-            {
-                if field.vis.is_accessible_from(def_scope, tcx) {
-                    tcx.check_stability(field.did, Some(hir_id), ident.span, None);
-                } else {
-                    let adt_path = tcx.def_path_str(base_did);
-                    struct_span_code_err!(
-                        dcx,
-                        ident.span,
-                        E0616,
-                        "field `{ident}` of {kind_name} `{adt_path}` is private",
-                    )
-                    .with_span_label(ident.span, "private field")
-                    .emit();
-                }
-                Ty::new_field_representing_type(
-                    tcx,
-                    ty,
-                    FieldId { variant: variant_idx, field: field_idx },
-                )
-            } else {
-                let adt_path = tcx.def_path_str(base_did);
-                let err = struct_span_code_err!(
-                    dcx,
-                    ident.span,
-                    E0609,
-                    "no field `{ident}` on {kind_name} `{adt_path}`"
-                )
-                .with_span_label(ident.span, "unknown field")
-                .emit();
-                Ty::new_error(tcx, err)
-            }
-        }
-        ty::Tuple(tys) => {
-            let index = match field.as_str().parse::<usize>() {
-                Ok(idx) => idx,
-                Err(_) => {
-                    let err = struct_span_code_err!(
-                        dcx,
-                        field.span,
-                        E0609,
-                        "no field `{field}` on type `{ty}`"
-                    )
-                    .with_span_label(field.span, "unknown field")
-                    .emit();
-                    return Ty::new_error(tcx, err);
-                }
-            };
-            if field.name != sym::integer(index) {
-                bug!("we parsed above, but now not equal?");
-            }
-            if tys.get(index).is_some() {
-                Ty::new_field_representing_type(
-                    tcx,
-                    ty,
-                    FieldId { variant: FIRST_VARIANT, field: index.into() },
-                )
-            } else {
-                let err = struct_span_code_err!(
-                    dcx,
-                    field.span,
-                    E0609,
-                    "no field `{field}` on type `{ty}`"
-                )
-                .with_span_label(field.span, "unknown field")
-                .emit();
-                Ty::new_error(tcx, err)
-            }
-        }
-        // FIXME(FRTs): support type aliases
-        /*
-        ty::Alias(AliasTyKind::Free, ty) => {
-            return lower_field_of(
-                tcx,
-                ty.,
-                item_def_id,
-                ty_span,
-                hir_id,
-                variant,
-                field,
-            );
-        }*/
-        ty::Alias(..) => {
-            Ty::new_error(tcx, dcx.span_err(ty_span, format!("could not resolve fields of `{ty}`")))
-        }
-        ty::Error(err) => Ty::new_error(tcx, *err),
-        ty::Bool
-        | ty::Char
-        | ty::Int(_)
-        | ty::Uint(_)
-        | ty::Float(_)
-        | ty::Foreign(_)
-        | ty::Str
-        | ty::FRT(_, _)
-        | ty::RawPtr(_, _)
-        | ty::Ref(_, _, _)
-        | ty::FnDef(_, _)
-        | ty::FnPtr(_, _)
-        | ty::UnsafeBinder(_)
-        | ty::Dynamic(_, _)
-        | ty::Closure(_, _)
-        | ty::CoroutineClosure(_, _)
-        | ty::Coroutine(_, _)
-        | ty::CoroutineWitness(_, _)
-        | ty::Never
-        | ty::Param(_)
-        | ty::Bound(_, _)
-        | ty::Placeholder(_)
-        | ty::Slice(..) => {
-            Ty::new_error(tcx, dcx.span_err(ty_span, format!("type `{ty}` doesn't have fields")))
-        }
-        ty::Infer(_) => {
-            Ty::new_error(tcx, dcx.span_err(ty_span, format!("cannot use `{ty}` in this position")))
-        }
-        // FIXME(FRTs): support these types?
-        ty::Array(..) | ty::Pat(..) => Ty::new_error(
-            tcx,
-            dcx.span_err(ty_span, format!("type `{ty}` is not yet supported in `field_of!`")),
-        ),
-    }
 }

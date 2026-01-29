@@ -4,65 +4,65 @@ error[E0573]: expected type, found function `main`
 LL |     let _: field_of!(main, field);
    |                      ^^^^ not a type
 
-error[E0609]: no field `other` on struct `Struct`
+error[E0609]: no field `other` on type `Struct`
   --> $DIR/nonexistent.rs:23:30
    |
 LL |     let _: field_of!(Struct, other);
-   |                              ^^^^^ unknown field
+   |                              ^^^^^
 
-error[E0609]: no field `0` on struct `Struct`
+error[E0609]: no field `0` on type `Struct`
   --> $DIR/nonexistent.rs:24:30
    |
 LL |     let _: field_of!(Struct, 0);
-   |                              ^ unknown field
+   |                              ^
 
-error[E0609]: no field `other` on union `Union`
+error[E0609]: no field `other` on type `Union`
   --> $DIR/nonexistent.rs:25:29
    |
 LL |     let _: field_of!(Union, other);
-   |                             ^^^^^ unknown field
+   |                             ^^^^^
 
-error[E0609]: no field `0` on union `Union`
+error[E0609]: no field `0` on type `Union`
   --> $DIR/nonexistent.rs:26:29
    |
 LL |     let _: field_of!(Union, 0);
-   |                             ^ unknown field
+   |                             ^
 
-error[E0609]: no field `other` on enum `Enum`
+error[E0609]: no field `other` on type `Enum`
   --> $DIR/nonexistent.rs:28:36
    |
 LL |     let _: field_of!(Enum, Variant.other);
-   |                                    ^^^^^ unknown field
+   |                                    ^^^^^
 
-error[E0609]: no field `0` on enum `Enum`
+error[E0609]: no field `0` on type `Enum`
   --> $DIR/nonexistent.rs:29:36
    |
 LL |     let _: field_of!(Enum, Variant.0);
-   |                                    ^ unknown field
+   |                                    ^
 
-error[E0001]: no variant `OtherVariant` on enum `Enum`
+error[E0599]: no variant named `OtherVariant` found for enum `Enum`
   --> $DIR/nonexistent.rs:31:28
    |
 LL |     let _: field_of!(Enum, OtherVariant.field);
-   |                            ^^^^^^^^^^^^ unknown variant
+   |                            ^^^^^^^^^^^^
 
-error[E0001]: no variant `OtherVariant` on enum `Enum`
+error[E0599]: no variant named `OtherVariant` found for enum `Enum`
   --> $DIR/nonexistent.rs:32:28
    |
 LL |     let _: field_of!(Enum, OtherVariant.0);
-   |                            ^^^^^^^^^^^^ unknown variant
+   |                            ^^^^^^^^^^^^
 
 error[E0609]: no field `2` on type `((), ())`
   --> $DIR/nonexistent.rs:33:32
    |
 LL |     let _: field_of!(((), ()), 2);
-   |                                ^ unknown field
+   |                                ^
 
 error[E0609]: no field `field` on type `((), ())`
   --> $DIR/nonexistent.rs:34:32
    |
 LL |     let _: field_of!(((), ()), field);
-   |                                ^^^^^ unknown field
+   |                                ^^^^^
 
 error: type `i32` doesn't have fields
   --> $DIR/nonexistent.rs:36:22
@@ -120,5 +120,5 @@ LL |     let _: field_of!(T, field);
 
 error: aborting due to 20 previous errors
 
-Some errors have detailed explanations: E0001, E0573, E0609.
-For more information about an error, try `rustc --explain E0001`.
+Some errors have detailed explanations: E0573, E0599, E0609.
+For more information about an error, try `rustc --explain E0573`.

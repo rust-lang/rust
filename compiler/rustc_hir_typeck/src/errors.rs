@@ -451,15 +451,6 @@ impl HelpUseLatestEdition {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_no_field_on_type, code = E0609)]
-pub(crate) struct NoFieldOnType<'tcx> {
-    #[primary_span]
-    pub(crate) span: Span,
-    pub(crate) ty: Ty<'tcx>,
-    pub(crate) field: Ident,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_typeck_no_field_on_variant, code = E0609)]
 pub(crate) struct NoFieldOnVariant<'tcx> {
     #[primary_span]

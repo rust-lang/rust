@@ -376,6 +376,8 @@ hir_analysis_missing_trait_item_unstable = not all trait items implemented, miss
     .some_note = use of unstable library feature `{$feature}`: {$reason}
     .none_note = use of unstable library feature `{$feature}`
 
+hir_analysis_no_field_on_type = no field `{$field}` on type `{$ty}`
+
 hir_analysis_no_variant_named = no variant named `{$ident}` found for enum `{$ty}`
 
 hir_analysis_not_supported_delegation = {$descr}
