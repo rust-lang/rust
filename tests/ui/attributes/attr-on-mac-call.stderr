@@ -55,7 +55,7 @@ LL |     #[deprecated]
    |     ^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, unions, and use statements
+   = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, and use statements
 
 warning: `#[inline]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:24:5
@@ -136,7 +136,7 @@ LL |     #[deprecated]
    |     ^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, unions, and use statements
+   = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, and use statements
 
 warning: `#[automatically_derived]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:51:5
@@ -163,7 +163,7 @@ LL |     #[must_use]
    |     ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
+   = help: `#[must_use]` can be applied to data types, functions, and traits
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:60:5

@@ -365,6 +365,33 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
     }
+
+    #[inline]
+    fn hir_owner_parent_impl(self, owner_id: OwnerId) -> HirId {
+        self.opt_local_parent(owner_id.def_id).map_or(CRATE_HIR_ID, |parent_def_id| {
+            let parent_owner_id = self.local_def_id_to_hir_id(parent_def_id).owner;
+            HirId {
+                owner: parent_owner_id,
+                local_id: self.hir_crate(()).owners[parent_owner_id.def_id]
+                    .unwrap()
+                    .parenting
+                    .get(&owner_id.def_id)
+                    .copied()
+                    .unwrap_or(ItemLocalId::ZERO),
+            }
+        })
+    }
+
+    /// Optimization of `hir_owner_parent` query as an inlined function
+    /// in case of non-incremental build. The query itself renamed to `hir_owner_parent_q`.
+    #[inline]
+    pub fn hir_owner_parent(self, owner_id: OwnerId) -> HirId {
+        if self.dep_graph.is_fully_enabled() {
+            self.hir_owner_parent_q(owner_id)
+        } else {
+            self.hir_owner_parent_impl(owner_id)
+        }
+    }
 }
 
 /// Hashes computed by [`TyCtxt::hash_owner_nodes`] if necessary.
@@ -386,20 +413,7 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.opt_hir_owner_nodes =
         |tcx, id| tcx.hir_crate(()).owners.get(id)?.as_owner().map(|i| &i.nodes);
-    providers.hir_owner_parent = |tcx, owner_id| {
-        tcx.opt_local_parent(owner_id.def_id).map_or(CRATE_HIR_ID, |parent_def_id| {
-            let parent_owner_id = tcx.local_def_id_to_hir_id(parent_def_id).owner;
-            HirId {
-                owner: parent_owner_id,
-                local_id: tcx.hir_crate(()).owners[parent_owner_id.def_id]
-                    .unwrap()
-                    .parenting
-                    .get(&owner_id.def_id)
-                    .copied()
-                    .unwrap_or(ItemLocalId::ZERO),
-            }
-        })
-    };
+    providers.hir_owner_parent_q = |tcx, owner_id| tcx.hir_owner_parent_impl(owner_id);
     providers.hir_attr_map = |tcx, id| {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     };

@@ -5,7 +5,7 @@ LL |     #[must_use]
    |     ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to data types, foreign functions, functions, inherent methods, provided trait methods, required trait methods, traits, and unions
+   = help: `#[must_use]` can be applied to data types, foreign functions, functions, inherent methods, provided trait methods, required trait methods, and traits
    = note: requested on the command line with `-W unused-attributes`
 
 warning: unused return value of `need_to_use_this_value` that must be used

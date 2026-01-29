@@ -3,7 +3,8 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, QueryInput};
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalParamEnvCacheEntry, CanonicalVarKind, Flags, InferCtxtLike,
-    Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    Interner, PlaceholderConst, PlaceholderType, TypeFlags, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt,
 };
 
 use crate::delegate::SolverDelegate;
@@ -357,13 +358,13 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             },
             ty::Placeholder(placeholder) => match self.canonicalize_mode {
                 CanonicalizeMode::Input { .. } => CanonicalVarKind::PlaceholderTy(
-                    PlaceholderLike::new_anon(ty::UniverseIndex::ROOT, self.variables.len().into()),
+                    PlaceholderType::new_anon(ty::UniverseIndex::ROOT, self.variables.len().into()),
                 ),
                 CanonicalizeMode::Response { .. } => CanonicalVarKind::PlaceholderTy(placeholder),
             },
             ty::Param(_) => match self.canonicalize_mode {
                 CanonicalizeMode::Input { .. } => CanonicalVarKind::PlaceholderTy(
-                    PlaceholderLike::new_anon(ty::UniverseIndex::ROOT, self.variables.len().into()),
+                    PlaceholderType::new_anon(ty::UniverseIndex::ROOT, self.variables.len().into()),
                 ),
                 CanonicalizeMode::Response { .. } => panic!("param ty in response: {t:?}"),
             },
@@ -513,17 +514,23 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                 ty::InferConst::Fresh(_) => todo!(),
             },
             ty::ConstKind::Placeholder(placeholder) => match self.canonicalize_mode {
-                CanonicalizeMode::Input { .. } => CanonicalVarKind::PlaceholderConst(
-                    PlaceholderLike::new_anon(ty::UniverseIndex::ROOT, self.variables.len().into()),
-                ),
+                CanonicalizeMode::Input { .. } => {
+                    CanonicalVarKind::PlaceholderConst(PlaceholderConst::new_anon(
+                        ty::UniverseIndex::ROOT,
+                        self.variables.len().into(),
+                    ))
+                }
                 CanonicalizeMode::Response { .. } => {
                     CanonicalVarKind::PlaceholderConst(placeholder)
                 }
             },
             ty::ConstKind::Param(_) => match self.canonicalize_mode {
-                CanonicalizeMode::Input { .. } => CanonicalVarKind::PlaceholderConst(
-                    PlaceholderLike::new_anon(ty::UniverseIndex::ROOT, self.variables.len().into()),
-                ),
+                CanonicalizeMode::Input { .. } => {
+                    CanonicalVarKind::PlaceholderConst(PlaceholderConst::new_anon(
+                        ty::UniverseIndex::ROOT,
+                        self.variables.len().into(),
+                    ))
+                }
                 CanonicalizeMode::Response { .. } => panic!("param ty in response: {c:?}"),
             },
             // FIXME: See comment above -- we could fold the region separately or something.

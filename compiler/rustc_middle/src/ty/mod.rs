@@ -97,13 +97,13 @@ pub use self::predicate::{
     RegionOutlivesPredicate, SubtypePredicate, TraitPredicate, TraitRef, TypeOutlivesPredicate,
 };
 pub use self::region::{
-    BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region,
-    RegionKind, RegionVid,
+    EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region, RegionKind, RegionVid,
 };
 pub use self::sty::{
-    AliasTy, Article, Binder, BoundTy, BoundTyKind, BoundVariableKind, CanonicalPolyFnSig,
-    CoroutineArgsExt, EarlyBinder, FnSig, InlineConstArgs, InlineConstArgsParts, ParamConst,
-    ParamTy, PolyFnSig, TyKind, TypeAndMut, TypingMode, UpvarArgs,
+    AliasTy, Article, Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind,
+    BoundVariableKind, CanonicalPolyFnSig, CoroutineArgsExt, EarlyBinder, FnSig, InlineConstArgs,
+    InlineConstArgsParts, ParamConst, ParamTy, PlaceholderConst, PlaceholderRegion,
+    PlaceholderType, PolyFnSig, TyKind, TypeAndMut, TypingMode, UpvarArgs,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
@@ -911,100 +911,6 @@ impl<'tcx> DefinitionSiteHiddenType<'tcx> {
             other_span: other.span,
             sub: sub_diag,
         }))
-    }
-}
-
-pub type PlaceholderRegion<'tcx> = ty::Placeholder<TyCtxt<'tcx>, BoundRegion>;
-
-impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderRegion<'tcx> {
-    type Bound = BoundRegion;
-
-    fn universe(self) -> UniverseIndex {
-        self.universe
-    }
-
-    fn var(self) -> BoundVar {
-        self.bound.var
-    }
-
-    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
-        ty::Placeholder::new(ui, self.bound)
-    }
-
-    fn new(ui: UniverseIndex, bound: BoundRegion) -> Self {
-        ty::Placeholder::new(ui, bound)
-    }
-
-    fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
-        ty::Placeholder::new(ui, BoundRegion { var, kind: BoundRegionKind::Anon })
-    }
-}
-
-pub type PlaceholderType<'tcx> = ty::Placeholder<TyCtxt<'tcx>, BoundTy>;
-
-impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderType<'tcx> {
-    type Bound = BoundTy;
-
-    fn universe(self) -> UniverseIndex {
-        self.universe
-    }
-
-    fn var(self) -> BoundVar {
-        self.bound.var
-    }
-
-    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
-        ty::Placeholder::new(ui, self.bound)
-    }
-
-    fn new(ui: UniverseIndex, bound: BoundTy) -> Self {
-        ty::Placeholder::new(ui, bound)
-    }
-
-    fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
-        ty::Placeholder::new(ui, BoundTy { var, kind: BoundTyKind::Anon })
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
-#[derive(TyEncodable, TyDecodable)]
-pub struct BoundConst {
-    pub var: BoundVar,
-}
-
-impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundConst {
-    fn var(self) -> BoundVar {
-        self.var
-    }
-
-    fn assert_eq(self, var: ty::BoundVariableKind) {
-        var.expect_const()
-    }
-}
-
-pub type PlaceholderConst<'tcx> = ty::Placeholder<TyCtxt<'tcx>, BoundConst>;
-
-impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderConst<'tcx> {
-    type Bound = BoundConst;
-
-    fn universe(self) -> UniverseIndex {
-        self.universe
-    }
-
-    fn var(self) -> BoundVar {
-        self.bound.var
-    }
-
-    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
-        ty::Placeholder::new(ui, self.bound)
-    }
-
-    fn new(ui: UniverseIndex, bound: BoundConst) -> Self {
-        ty::Placeholder::new(ui, bound)
-    }
-
-    fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
-        ty::Placeholder::new(ui, BoundConst { var })
     }
 }
 

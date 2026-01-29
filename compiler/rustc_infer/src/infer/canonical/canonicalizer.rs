@@ -684,19 +684,19 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
                 CanonicalVarKind::Region(u) => CanonicalVarKind::Region(reverse_universe_map[&u]),
                 CanonicalVarKind::Const(u) => CanonicalVarKind::Const(reverse_universe_map[&u]),
                 CanonicalVarKind::PlaceholderTy(placeholder) => {
-                    CanonicalVarKind::PlaceholderTy(ty::Placeholder::new(
+                    CanonicalVarKind::PlaceholderTy(ty::PlaceholderType::new(
                         reverse_universe_map[&placeholder.universe],
                         placeholder.bound,
                     ))
                 }
                 CanonicalVarKind::PlaceholderRegion(placeholder) => {
-                    CanonicalVarKind::PlaceholderRegion(ty::Placeholder::new(
+                    CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion::new(
                         reverse_universe_map[&placeholder.universe],
                         placeholder.bound,
                     ))
                 }
                 CanonicalVarKind::PlaceholderConst(placeholder) => {
-                    CanonicalVarKind::PlaceholderConst(ty::Placeholder::new(
+                    CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst::new(
                         reverse_universe_map[&placeholder.universe],
                         placeholder.bound,
                     ))

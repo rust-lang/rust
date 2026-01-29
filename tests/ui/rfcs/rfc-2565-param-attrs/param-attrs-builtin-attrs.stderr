@@ -389,7 +389,7 @@ LL |     #[must_use]
    |     ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
+   = help: `#[must_use]` can be applied to data types, functions, and traits
    = note: requested on the command line with `-W unused-attributes`
 
 warning: `#[no_mangle]` attribute cannot be used on function params
@@ -408,7 +408,7 @@ LL |         #[must_use]
    |         ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
+   = help: `#[must_use]` can be applied to data types, functions, and traits
 
 warning: `#[no_mangle]` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:70:9
@@ -426,7 +426,7 @@ LL |         #[must_use]
    |         ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
+   = help: `#[must_use]` can be applied to data types, functions, and traits
 
 warning: `#[no_mangle]` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:89:9
@@ -444,7 +444,7 @@ LL |         #[must_use]
    |         ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
+   = help: `#[must_use]` can be applied to data types, functions, and traits
 
 warning: `#[no_mangle]` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:114:9
@@ -462,7 +462,7 @@ LL |         #[must_use]
    |         ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
+   = help: `#[must_use]` can be applied to data types, functions, and traits
 
 warning: `#[no_mangle]` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:137:9
@@ -480,7 +480,7 @@ LL |         #[must_use]
    |         ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
+   = help: `#[must_use]` can be applied to data types, functions, and traits
 
 warning: `#[no_mangle]` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:156:9
@@ -498,7 +498,7 @@ LL |         #[must_use]
    |         ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
+   = help: `#[must_use]` can be applied to data types, functions, and traits
 
 warning: `#[no_mangle]` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:180:9
@@ -516,7 +516,7 @@ LL |         #[must_use]
    |         ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
+   = help: `#[must_use]` can be applied to data types, functions, and traits
 
 warning: `#[no_mangle]` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:201:9

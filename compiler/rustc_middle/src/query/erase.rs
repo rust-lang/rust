@@ -1,3 +1,10 @@
+//! To improve compile times and code size for the compiler itself, query
+//! values are "erased" in some contexts (e.g. inside in-memory cache types),
+//! to reduce the number of generic instantiations created during codegen.
+//!
+//! See <https://github.com/rust-lang/rust/pull/151715> for some bootstrap-time
+//! and performance benchmarks.
+
 use std::ffi::OsStr;
 use std::intrinsics::transmute_unchecked;
 use std::mem::MaybeUninit;
@@ -14,138 +21,169 @@ use crate::ty::adjustment::CoerceUnsizedInfo;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::{mir, traits};
 
+/// Internal implementation detail of [`Erased`].
 #[derive(Copy, Clone)]
-pub struct Erased<T: Copy> {
-    // We use `MaybeUninit` here so we can store any value
-    // in `data` since we aren't actually storing a `T`.
-    data: MaybeUninit<T>,
+pub struct ErasedData<Storage: Copy> {
+    /// We use `MaybeUninit` here to make sure it's legal to store a transmuted
+    /// value that isn't actually of type `Storage`.
+    data: MaybeUninit<Storage>,
 }
 
-pub trait EraseType: Copy {
-    type Result: Copy;
+/// Trait for types that can be erased into [`Erased<Self>`].
+///
+/// Erasing and unerasing values is performed by [`erase_val`] and [`restore_val`].
+///
+/// FIXME: This whole trait could potentially be replaced by `T: Copy` and the
+/// storage type `[u8; size_of::<T>()]` when support for that is more mature.
+pub trait Erasable: Copy {
+    /// Storage type to used for erased values of this type.
+    /// Should be `[u8; N]`, where N is equal to `size_of::<Self>`.
+    ///
+    /// [`ErasedData`] wraps this storage type in `MaybeUninit` to ensure that
+    /// transmutes to/from erased storage are well-defined.
+    type Storage: Copy;
 }
 
-// Allow `type_alias_bounds` since compilation will fail without `EraseType`.
-#[allow(type_alias_bounds)]
-pub type Erase<T: EraseType> = Erased<impl Copy>;
+/// A value of `T` that has been "erased" into some opaque storage type.
+///
+/// This is helpful for reducing the number of concrete instantiations needed
+/// during codegen when building the compiler.
+///
+/// Using an opaque type alias allows the type checker to enforce that
+/// `Erased<T>` and `Erased<U>` are still distinct types, while allowing
+/// monomorphization to see that they might actually use the same storage type.
+pub type Erased<T: Erasable> = ErasedData<impl Copy>;
 
+/// Erases a value of type `T` into `Erased<T>`.
+///
+/// `Erased<T>` and `Erased<U>` are type-checked as distinct types, but codegen
+/// can see whether they actually have the same storage type.
+///
+/// FIXME: This might have soundness issues with erasable types that don't
+/// implement the same auto-traits as `[u8; _]`; see
+/// <https://github.com/rust-lang/rust/pull/151715#discussion_r2740113250>
 #[inline(always)]
-#[define_opaque(Erase)]
-pub fn erase<T: EraseType>(src: T) -> Erase<T> {
+#[define_opaque(Erased)]
+pub fn erase_val<T: Erasable>(value: T) -> Erased<T> {
     // Ensure the sizes match
     const {
-        if size_of::<T>() != size_of::<T::Result>() {
-            panic!("size of T must match erased type T::Result")
+        if size_of::<T>() != size_of::<T::Storage>() {
+            panic!("size of T must match erased type <T as Erasable>::Storage")
         }
     };
 
-    Erased::<<T as EraseType>::Result> {
+    ErasedData::<<T as Erasable>::Storage> {
         // `transmute_unchecked` is needed here because it does not have `transmute`'s size check
-        // (and thus allows to transmute between `T` and `MaybeUninit<T::Result>`) (we do the size
+        // (and thus allows to transmute between `T` and `MaybeUninit<T::Storage>`) (we do the size
         // check ourselves in the `const` block above).
         //
         // `transmute_copy` is also commonly used for this (and it would work here since
-        // `EraseType: Copy`), but `transmute_unchecked` better explains the intent.
+        // `Erasable: Copy`), but `transmute_unchecked` better explains the intent.
         //
         // SAFETY: It is safe to transmute to MaybeUninit for types with the same sizes.
-        data: unsafe { transmute_unchecked::<T, MaybeUninit<T::Result>>(src) },
+        data: unsafe { transmute_unchecked::<T, MaybeUninit<T::Storage>>(value) },
     }
 }
 
-/// Restores an erased value.
+/// Restores an erased value to its real type.
+///
+/// This relies on the fact that `Erased<T>` and `Erased<U>` are type-checked
+/// as distinct types, even if they use the same storage type.
 #[inline(always)]
-#[define_opaque(Erase)]
-pub fn restore<T: EraseType>(value: Erase<T>) -> T {
-    let value: Erased<<T as EraseType>::Result> = value;
-    // See comment in `erase` for why we use `transmute_unchecked`.
+#[define_opaque(Erased)]
+pub fn restore_val<T: Erasable>(erased_value: Erased<T>) -> T {
+    let ErasedData { data }: ErasedData<<T as Erasable>::Storage> = erased_value;
+    // See comment in `erase_val` for why we use `transmute_unchecked`.
     //
-    // SAFETY: Due to the use of impl Trait in `Erase` the only way to safely create an instance
-    // of `Erase` is to call `erase`, so we know that `value.data` is a valid instance of `T` of
-    // the right size.
-    unsafe { transmute_unchecked::<MaybeUninit<T::Result>, T>(value.data) }
+    // SAFETY: Due to the use of impl Trait in `Erased` the only way to safely create an instance
+    // of `Erased` is to call `erase_val`, so we know that `erased_value.data` is a valid instance
+    // of `T` of the right size.
+    unsafe { transmute_unchecked::<MaybeUninit<T::Storage>, T>(data) }
 }
 
-impl<T> EraseType for &'_ T {
-    type Result = [u8; size_of::<&'static ()>()];
+// FIXME(#151565): Using `T: ?Sized` here should let us remove the separate
+// impls for fat reference types.
+impl<T> Erasable for &'_ T {
+    type Storage = [u8; size_of::<&'static ()>()];
 }
 
-impl<T> EraseType for &'_ [T] {
-    type Result = [u8; size_of::<&'static [()]>()];
+impl<T> Erasable for &'_ [T] {
+    type Storage = [u8; size_of::<&'static [()]>()];
 }
 
-impl EraseType for &'_ OsStr {
-    type Result = [u8; size_of::<&'static OsStr>()];
+impl Erasable for &'_ OsStr {
+    type Storage = [u8; size_of::<&'static OsStr>()];
 }
 
-impl<T> EraseType for &'_ ty::List<T> {
-    type Result = [u8; size_of::<&'static ty::List<()>>()];
+impl<T> Erasable for &'_ ty::List<T> {
+    type Storage = [u8; size_of::<&'static ty::List<()>>()];
 }
 
-impl<T> EraseType for &'_ ty::ListWithCachedTypeInfo<T> {
-    type Result = [u8; size_of::<&'static ty::ListWithCachedTypeInfo<()>>()];
+impl<T> Erasable for &'_ ty::ListWithCachedTypeInfo<T> {
+    type Storage = [u8; size_of::<&'static ty::ListWithCachedTypeInfo<()>>()];
 }
 
-impl<I: rustc_index::Idx, T> EraseType for &'_ rustc_index::IndexSlice<I, T> {
-    type Result = [u8; size_of::<&'static rustc_index::IndexSlice<u32, ()>>()];
+impl<I: rustc_index::Idx, T> Erasable for &'_ rustc_index::IndexSlice<I, T> {
+    type Storage = [u8; size_of::<&'static rustc_index::IndexSlice<u32, ()>>()];
 }
 
-impl<T> EraseType for Result<&'_ T, traits::query::NoSolution> {
-    type Result = [u8; size_of::<Result<&'static (), traits::query::NoSolution>>()];
+impl<T> Erasable for Result<&'_ T, traits::query::NoSolution> {
+    type Storage = [u8; size_of::<Result<&'static (), traits::query::NoSolution>>()];
 }
 
-impl<T> EraseType for Result<&'_ [T], traits::query::NoSolution> {
-    type Result = [u8; size_of::<Result<&'static [()], traits::query::NoSolution>>()];
+impl<T> Erasable for Result<&'_ [T], traits::query::NoSolution> {
+    type Storage = [u8; size_of::<Result<&'static [()], traits::query::NoSolution>>()];
 }
 
-impl<T> EraseType for Result<&'_ T, rustc_errors::ErrorGuaranteed> {
-    type Result = [u8; size_of::<Result<&'static (), rustc_errors::ErrorGuaranteed>>()];
+impl<T> Erasable for Result<&'_ T, rustc_errors::ErrorGuaranteed> {
+    type Storage = [u8; size_of::<Result<&'static (), rustc_errors::ErrorGuaranteed>>()];
 }
 
-impl<T> EraseType for Result<&'_ [T], rustc_errors::ErrorGuaranteed> {
-    type Result = [u8; size_of::<Result<&'static [()], rustc_errors::ErrorGuaranteed>>()];
+impl<T> Erasable for Result<&'_ [T], rustc_errors::ErrorGuaranteed> {
+    type Storage = [u8; size_of::<Result<&'static [()], rustc_errors::ErrorGuaranteed>>()];
 }
 
-impl<T> EraseType for Result<&'_ T, traits::CodegenObligationError> {
-    type Result = [u8; size_of::<Result<&'static (), traits::CodegenObligationError>>()];
+impl<T> Erasable for Result<&'_ T, traits::CodegenObligationError> {
+    type Storage = [u8; size_of::<Result<&'static (), traits::CodegenObligationError>>()];
 }
 
-impl<T> EraseType for Result<&'_ T, &'_ ty::layout::FnAbiError<'_>> {
-    type Result = [u8; size_of::<Result<&'static (), &'static ty::layout::FnAbiError<'static>>>()];
+impl<T> Erasable for Result<&'_ T, &'_ ty::layout::FnAbiError<'_>> {
+    type Storage = [u8; size_of::<Result<&'static (), &'static ty::layout::FnAbiError<'static>>>()];
 }
 
-impl<T> EraseType for Result<(&'_ T, crate::thir::ExprId), rustc_errors::ErrorGuaranteed> {
-    type Result = [u8; size_of::<
+impl<T> Erasable for Result<(&'_ T, crate::thir::ExprId), rustc_errors::ErrorGuaranteed> {
+    type Storage = [u8; size_of::<
         Result<(&'static (), crate::thir::ExprId), rustc_errors::ErrorGuaranteed>,
     >()];
 }
 
-impl EraseType for Result<Option<ty::Instance<'_>>, rustc_errors::ErrorGuaranteed> {
-    type Result =
+impl Erasable for Result<Option<ty::Instance<'_>>, rustc_errors::ErrorGuaranteed> {
+    type Storage =
         [u8; size_of::<Result<Option<ty::Instance<'static>>, rustc_errors::ErrorGuaranteed>>()];
 }
 
-impl EraseType for Result<CoerceUnsizedInfo, rustc_errors::ErrorGuaranteed> {
-    type Result = [u8; size_of::<Result<CoerceUnsizedInfo, rustc_errors::ErrorGuaranteed>>()];
+impl Erasable for Result<CoerceUnsizedInfo, rustc_errors::ErrorGuaranteed> {
+    type Storage = [u8; size_of::<Result<CoerceUnsizedInfo, rustc_errors::ErrorGuaranteed>>()];
 }
 
-impl EraseType
+impl Erasable
     for Result<Option<ty::EarlyBinder<'_, ty::Const<'_>>>, rustc_errors::ErrorGuaranteed>
 {
-    type Result = [u8; size_of::<
+    type Storage = [u8; size_of::<
         Result<Option<ty::EarlyBinder<'static, ty::Const<'static>>>, rustc_errors::ErrorGuaranteed>,
     >()];
 }
 
-impl EraseType for Result<ty::GenericArg<'_>, traits::query::NoSolution> {
-    type Result = [u8; size_of::<Result<ty::GenericArg<'static>, traits::query::NoSolution>>()];
+impl Erasable for Result<ty::GenericArg<'_>, traits::query::NoSolution> {
+    type Storage = [u8; size_of::<Result<ty::GenericArg<'static>, traits::query::NoSolution>>()];
 }
 
-impl EraseType for Result<bool, &ty::layout::LayoutError<'_>> {
-    type Result = [u8; size_of::<Result<bool, &'static ty::layout::LayoutError<'static>>>()];
+impl Erasable for Result<bool, &ty::layout::LayoutError<'_>> {
+    type Storage = [u8; size_of::<Result<bool, &'static ty::layout::LayoutError<'static>>>()];
 }
 
-impl EraseType for Result<rustc_abi::TyAndLayout<'_, Ty<'_>>, &ty::layout::LayoutError<'_>> {
-    type Result = [u8; size_of::<
+impl Erasable for Result<rustc_abi::TyAndLayout<'_, Ty<'_>>, &ty::layout::LayoutError<'_>> {
+    type Storage = [u8; size_of::<
         Result<
             rustc_abi::TyAndLayout<'static, Ty<'static>>,
             &'static ty::layout::LayoutError<'static>,
@@ -153,35 +191,36 @@ impl EraseType for Result<rustc_abi::TyAndLayout<'_, Ty<'_>>, &ty::layout::Layou
     >()];
 }
 
-impl EraseType for Result<mir::ConstAlloc<'_>, mir::interpret::ErrorHandled> {
-    type Result = [u8; size_of::<Result<mir::ConstAlloc<'static>, mir::interpret::ErrorHandled>>()];
+impl Erasable for Result<mir::ConstAlloc<'_>, mir::interpret::ErrorHandled> {
+    type Storage =
+        [u8; size_of::<Result<mir::ConstAlloc<'static>, mir::interpret::ErrorHandled>>()];
 }
 
-impl EraseType for Result<mir::ConstValue, mir::interpret::ErrorHandled> {
-    type Result = [u8; size_of::<Result<mir::ConstValue, mir::interpret::ErrorHandled>>()];
+impl Erasable for Result<mir::ConstValue, mir::interpret::ErrorHandled> {
+    type Storage = [u8; size_of::<Result<mir::ConstValue, mir::interpret::ErrorHandled>>()];
 }
 
-impl EraseType for Option<(mir::ConstValue, Ty<'_>)> {
-    type Result = [u8; size_of::<Option<(mir::ConstValue, Ty<'_>)>>()];
+impl Erasable for Option<(mir::ConstValue, Ty<'_>)> {
+    type Storage = [u8; size_of::<Option<(mir::ConstValue, Ty<'_>)>>()];
 }
 
-impl EraseType for EvalToValTreeResult<'_> {
-    type Result = [u8; size_of::<EvalToValTreeResult<'static>>()];
+impl Erasable for EvalToValTreeResult<'_> {
+    type Storage = [u8; size_of::<EvalToValTreeResult<'static>>()];
 }
 
-impl EraseType for Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop> {
-    type Result =
+impl Erasable for Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop> {
+    type Storage =
         [u8; size_of::<Result<&'static ty::List<Ty<'static>>, ty::util::AlwaysRequiresDrop>>()];
 }
 
-impl EraseType for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
-    type Result = [u8; size_of::<Result<ty::EarlyBinder<'static, Ty<'_>>, CyclePlaceholder>>()];
+impl Erasable for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
+    type Storage = [u8; size_of::<Result<ty::EarlyBinder<'static, Ty<'_>>, CyclePlaceholder>>()];
 }
 
-impl EraseType
+impl Erasable
     for Result<(&'_ [Spanned<MonoItem<'_>>], &'_ [Spanned<MonoItem<'_>>]), NormalizationErrorInMono>
 {
-    type Result = [u8; size_of::<
+    type Storage = [u8; size_of::<
         Result<
             (&'static [Spanned<MonoItem<'static>>], &'static [Spanned<MonoItem<'static>>]),
             NormalizationErrorInMono,
@@ -189,86 +228,89 @@ impl EraseType
     >()];
 }
 
-impl EraseType for Result<&'_ TokenStream, ()> {
-    type Result = [u8; size_of::<Result<&'static TokenStream, ()>>()];
+impl Erasable for Result<&'_ TokenStream, ()> {
+    type Storage = [u8; size_of::<Result<&'static TokenStream, ()>>()];
 }
 
-impl<T> EraseType for Option<&'_ T> {
-    type Result = [u8; size_of::<Option<&'static ()>>()];
+impl<T> Erasable for Option<&'_ T> {
+    type Storage = [u8; size_of::<Option<&'static ()>>()];
 }
 
-impl<T> EraseType for Option<&'_ [T]> {
-    type Result = [u8; size_of::<Option<&'static [()]>>()];
+impl<T> Erasable for Option<&'_ [T]> {
+    type Storage = [u8; size_of::<Option<&'static [()]>>()];
 }
 
-impl EraseType for Option<&'_ OsStr> {
-    type Result = [u8; size_of::<Option<&'static OsStr>>()];
+impl Erasable for Option<&'_ OsStr> {
+    type Storage = [u8; size_of::<Option<&'static OsStr>>()];
 }
 
-impl EraseType for Option<mir::DestructuredConstant<'_>> {
-    type Result = [u8; size_of::<Option<mir::DestructuredConstant<'static>>>()];
+impl Erasable for Option<mir::DestructuredConstant<'_>> {
+    type Storage = [u8; size_of::<Option<mir::DestructuredConstant<'static>>>()];
 }
 
-impl EraseType for ty::ImplTraitHeader<'_> {
-    type Result = [u8; size_of::<ty::ImplTraitHeader<'static>>()];
+impl Erasable for ty::ImplTraitHeader<'_> {
+    type Storage = [u8; size_of::<ty::ImplTraitHeader<'static>>()];
 }
 
-impl EraseType for Option<ty::EarlyBinder<'_, Ty<'_>>> {
-    type Result = [u8; size_of::<Option<ty::EarlyBinder<'static, Ty<'static>>>>()];
+impl Erasable for Option<ty::EarlyBinder<'_, Ty<'_>>> {
+    type Storage = [u8; size_of::<Option<ty::EarlyBinder<'static, Ty<'static>>>>()];
 }
 
-impl EraseType for rustc_hir::MaybeOwner<'_> {
-    type Result = [u8; size_of::<rustc_hir::MaybeOwner<'static>>()];
+impl Erasable for rustc_hir::MaybeOwner<'_> {
+    type Storage = [u8; size_of::<rustc_hir::MaybeOwner<'static>>()];
 }
 
-impl<T: EraseType> EraseType for ty::EarlyBinder<'_, T> {
-    type Result = T::Result;
+impl<T: Erasable> Erasable for ty::EarlyBinder<'_, T> {
+    type Storage = T::Storage;
 }
 
-impl EraseType for ty::Binder<'_, ty::FnSig<'_>> {
-    type Result = [u8; size_of::<ty::Binder<'static, ty::FnSig<'static>>>()];
+impl Erasable for ty::Binder<'_, ty::FnSig<'_>> {
+    type Storage = [u8; size_of::<ty::Binder<'static, ty::FnSig<'static>>>()];
 }
 
-impl EraseType for ty::Binder<'_, ty::CoroutineWitnessTypes<TyCtxt<'_>>> {
-    type Result =
+impl Erasable for ty::Binder<'_, ty::CoroutineWitnessTypes<TyCtxt<'_>>> {
+    type Storage =
         [u8; size_of::<ty::Binder<'static, ty::CoroutineWitnessTypes<TyCtxt<'static>>>>()];
 }
 
-impl EraseType for ty::Binder<'_, &'_ ty::List<Ty<'_>>> {
-    type Result = [u8; size_of::<ty::Binder<'static, &'static ty::List<Ty<'static>>>>()];
+impl Erasable for ty::Binder<'_, &'_ ty::List<Ty<'_>>> {
+    type Storage = [u8; size_of::<ty::Binder<'static, &'static ty::List<Ty<'static>>>>()];
 }
 
-impl<T0, T1> EraseType for (&'_ T0, &'_ T1) {
-    type Result = [u8; size_of::<(&'static (), &'static ())>()];
+impl<T0, T1> Erasable for (&'_ T0, &'_ T1) {
+    type Storage = [u8; size_of::<(&'static (), &'static ())>()];
 }
 
-impl<T0> EraseType for (solve::QueryResult<'_>, &'_ T0) {
-    type Result = [u8; size_of::<(solve::QueryResult<'static>, &'static ())>()];
+impl<T0> Erasable for (solve::QueryResult<'_>, &'_ T0) {
+    type Storage = [u8; size_of::<(solve::QueryResult<'static>, &'static ())>()];
 }
 
-impl<T0, T1> EraseType for (&'_ T0, &'_ [T1]) {
-    type Result = [u8; size_of::<(&'static (), &'static [()])>()];
+impl<T0, T1> Erasable for (&'_ T0, &'_ [T1]) {
+    type Storage = [u8; size_of::<(&'static (), &'static [()])>()];
 }
 
-impl<T0, T1> EraseType for (&'_ [T0], &'_ [T1]) {
-    type Result = [u8; size_of::<(&'static [()], &'static [()])>()];
+impl<T0, T1> Erasable for (&'_ [T0], &'_ [T1]) {
+    type Storage = [u8; size_of::<(&'static [()], &'static [()])>()];
 }
 
-impl<T0> EraseType for (&'_ T0, Result<(), ErrorGuaranteed>) {
-    type Result = [u8; size_of::<(&'static (), Result<(), ErrorGuaranteed>)>()];
+impl<T0> Erasable for (&'_ T0, Result<(), ErrorGuaranteed>) {
+    type Storage = [u8; size_of::<(&'static (), Result<(), ErrorGuaranteed>)>()];
 }
 
-macro_rules! trivial {
+macro_rules! impl_erasable_for_simple_types {
     ($($ty:ty),+ $(,)?) => {
         $(
-            impl EraseType for $ty {
-                type Result = [u8; size_of::<$ty>()];
+            impl Erasable for $ty {
+                type Storage = [u8; size_of::<$ty>()];
             }
         )*
     }
 }
 
-trivial! {
+// For concrete types with no lifetimes, the erased storage for `Foo` is
+// `[u8; size_of::<Foo>()]`.
+impl_erasable_for_simple_types! {
+    // FIXME(#151565): Add `tidy-alphabetical-{start,end}` and sort this.
     (),
     bool,
     Option<(rustc_span::def_id::DefId, rustc_session::config::EntryFnType)>,
@@ -346,7 +388,6 @@ trivial! {
     rustc_middle::ty::AssocContainer,
     rustc_middle::ty::Asyncness,
     rustc_middle::ty::AsyncDestructor,
-    rustc_middle::ty::BoundVariableKind,
     rustc_middle::ty::AnonConstKind,
     rustc_middle::ty::Destructor,
     rustc_middle::ty::fast_reject::SimplifiedType,
@@ -378,17 +419,23 @@ trivial! {
     usize,
 }
 
-macro_rules! tcx_lifetime {
+macro_rules! impl_erasable_for_single_lifetime_types {
     ($($($fake_path:ident)::+),+ $(,)?) => {
         $(
-            impl<'tcx> EraseType for $($fake_path)::+<'tcx> {
-                type Result = [u8; size_of::<$($fake_path)::+<'static>>()];
+            impl<'tcx> Erasable for $($fake_path)::+<'tcx> {
+                type Storage = [u8; size_of::<$($fake_path)::+<'static>>()];
             }
         )*
     }
 }
 
-tcx_lifetime! {
+// For types containing a single lifetime and no other generics, e.g.
+// `Foo<'tcx>`, the erased storage is `[u8; size_of::<Foo<'static>>()]`.
+//
+// FIXME(#151565): Some of the hand-written impls above that only use one
+// lifetime can probably be migrated here.
+impl_erasable_for_single_lifetime_types! {
+    // FIXME(#151565): Add `tidy-alphabetical-{start,end}` and sort this.
     rustc_middle::middle::exported_symbols::ExportedSymbol,
     rustc_middle::mir::Const,
     rustc_middle::mir::DestructuredConstant,
@@ -415,6 +462,7 @@ tcx_lifetime! {
     rustc_middle::ty::ConstConditions,
     rustc_middle::ty::inhabitedness::InhabitedPredicate,
     rustc_middle::ty::Instance,
+    rustc_middle::ty::BoundVariableKind,
     rustc_middle::ty::InstanceKind,
     rustc_middle::ty::layout::FnAbiError,
     rustc_middle::ty::layout::LayoutError,

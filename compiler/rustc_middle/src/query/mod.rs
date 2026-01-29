@@ -121,7 +121,6 @@ use crate::mir::interpret::{
 use crate::mir::mono::{
     CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions, NormalizationErrorInMono,
 };
-use crate::query::erase::{Erase, erase, restore};
 use crate::query::plumbing::CyclePlaceholder;
 use crate::traits::query::{
     CanonicalAliasGoal, CanonicalDropckOutlivesGoal, CanonicalImpliedOutlivesBoundsGoal,
@@ -266,7 +265,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by `tcx.hir_*` methods.
     /// Avoid calling this query directly.
-    query hir_owner_parent(key: hir::OwnerId) -> hir::HirId {
+    query hir_owner_parent_q(key: hir::OwnerId) -> hir::HirId {
         desc { |tcx| "getting HIR parent of `{}`", tcx.def_path_str(key) }
     }
 
@@ -2116,7 +2115,7 @@ rustc_queries! {
     /// Does lifetime resolution on items. Importantly, we can't resolve
     /// lifetimes directly on things like trait methods, because of trait params.
     /// See `rustc_resolve::late::lifetimes` for details.
-    query resolve_bound_vars(owner_id: hir::OwnerId) -> &'tcx ResolveBoundVars {
+    query resolve_bound_vars(owner_id: hir::OwnerId) -> &'tcx ResolveBoundVars<'tcx> {
         arena_cache
         desc { |tcx| "resolving lifetimes for `{}`", tcx.def_path_str(owner_id) }
     }
@@ -2145,7 +2144,7 @@ rustc_queries! {
         separate_provide_extern
     }
     query late_bound_vars_map(owner_id: hir::OwnerId)
-        -> &'tcx SortedMap<ItemLocalId, Vec<ty::BoundVariableKind>> {
+        -> &'tcx SortedMap<ItemLocalId, Vec<ty::BoundVariableKind<'tcx>>> {
         desc { |tcx| "looking up late bound vars inside `{}`", tcx.def_path_str(owner_id) }
     }
     /// For an opaque type, return the list of (captured lifetime, inner generic param).
