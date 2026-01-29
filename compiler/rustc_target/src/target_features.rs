@@ -611,6 +611,7 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
         Stability::Forbidden { reason: "unsound because it changes the ABI of atomic operations" },
         &[],
     ),
+    ("h", Unstable(sym::riscv_target_feature), &["zicsr"]),
     ("m", Stable, &[]),
     ("relax", Unstable(sym::riscv_target_feature), &[]),
     (
@@ -656,6 +657,7 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
         ],
     ),
     ("supm", Unstable(sym::riscv_target_feature), &[]),
+    ("svinval", Unstable(sym::riscv_target_feature), &[]),
     ("unaligned-scalar-mem", Unstable(sym::riscv_target_feature), &[]),
     ("unaligned-vector-mem", Unstable(sym::riscv_target_feature), &[]),
     ("v", Unstable(sym::riscv_target_feature), &["zvl128b", "zve64d"]),
@@ -1186,6 +1188,9 @@ impl Target {
                         // Note that the `e` feature is not required: the ABI treats the extra
                         // registers as caller-save, so it is safe to use them only in some parts of
                         // a program while the rest doesn't know they even exist.
+                        // For the same reason, this ABI is *not* stated incompatible with `h`,
+                        // which requires a base integer ISA with 32 general purpose registers
+                        // and is incompatible with the `e` feature.
                         FeatureConstraints { required: &[], incompatible: &["d"] }
                     }
                     "lp64e" => {
