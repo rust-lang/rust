@@ -1,4 +1,4 @@
-//! Strip all doc(hidden) items from the output.
+//! Strip all `#[doc(hidden)]` items from the output.
 
 use std::mem;
 
@@ -12,16 +12,13 @@ use crate::clean::utils::inherits_doc_hidden;
 use crate::clean::{self, Item, ItemIdSet, reexport_chain};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, strip_item};
-use crate::passes::{ImplStripper, Pass};
+use crate::passes::ImplStripper;
 
-pub(crate) const STRIP_HIDDEN: Pass = Pass {
-    name: "strip-hidden",
-    run: Some(strip_hidden),
-    description: "strips all `#[doc(hidden)]` items from the output",
-};
-
-/// Strip items marked `#[doc(hidden)]`
 pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
+    if cx.document_hidden() {
+        return krate;
+    }
+
     let mut retained = ItemIdSet::default();
     let is_json_output = cx.is_json_output();
 
