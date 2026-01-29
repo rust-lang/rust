@@ -1,5 +1,5 @@
 error: invalid register class `foo`: unknown register class
-  --> $DIR/bad-reg.rs:12:20
+  --> $DIR/bad-reg.rs:20:20
    |
 LL |         asm!("{}", in(foo) foo);
    |                    ^^^^^^^^^^^
@@ -7,13 +7,13 @@ LL |         asm!("{}", in(foo) foo);
    = note: the following register classes are supported on this target: `reg`, `reg_abcd`, `reg_byte`, `xmm_reg`, `ymm_reg`, `zmm_reg`, `kreg`, `kreg0`, `mmx_reg`, `x87_reg`, `tmm_reg`
 
 error: invalid register `foo`: unknown register
-  --> $DIR/bad-reg.rs:14:18
+  --> $DIR/bad-reg.rs:22:18
    |
 LL |         asm!("", in("foo") foo);
    |                  ^^^^^^^^^^^^^
 
 error: invalid asm template modifier for this register class
-  --> $DIR/bad-reg.rs:16:15
+  --> $DIR/bad-reg.rs:24:15
    |
 LL |         asm!("{:z}", in(reg) foo);
    |               ^^^^   ----------- argument
@@ -23,7 +23,7 @@ LL |         asm!("{:z}", in(reg) foo);
    = note: the `reg` register class supports the following template modifiers: `l`, `x`, `e`, `r`
 
 error: invalid asm template modifier for this register class
-  --> $DIR/bad-reg.rs:18:15
+  --> $DIR/bad-reg.rs:26:15
    |
 LL |         asm!("{:r}", in(xmm_reg) foo);
    |               ^^^^   --------------- argument
@@ -33,7 +33,7 @@ LL |         asm!("{:r}", in(xmm_reg) foo);
    = note: the `xmm_reg` register class supports the following template modifiers: `x`, `y`, `z`
 
 error: asm template modifiers are not allowed for `const` arguments
-  --> $DIR/bad-reg.rs:20:15
+  --> $DIR/bad-reg.rs:28:15
    |
 LL |         asm!("{:a}", const 0);
    |               ^^^^   ------- argument
@@ -41,7 +41,7 @@ LL |         asm!("{:a}", const 0);
    |               template modifier
 
 error: asm template modifiers are not allowed for `sym` arguments
-  --> $DIR/bad-reg.rs:22:15
+  --> $DIR/bad-reg.rs:30:15
    |
 LL |         asm!("{:a}", sym main);
    |               ^^^^   -------- argument
@@ -49,67 +49,67 @@ LL |         asm!("{:a}", sym main);
    |               template modifier
 
 error: invalid register `ebp`: the frame pointer cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:24:18
+  --> $DIR/bad-reg.rs:32:18
    |
 LL |         asm!("", in("ebp") foo);
    |                  ^^^^^^^^^^^^^
 
 error: invalid register `rsp`: the stack pointer cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:26:18
+  --> $DIR/bad-reg.rs:34:18
    |
 LL |         asm!("", in("rsp") foo);
    |                  ^^^^^^^^^^^^^
 
 error: invalid register `ip`: the instruction pointer cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:28:18
+  --> $DIR/bad-reg.rs:36:18
    |
 LL |         asm!("", in("ip") foo);
    |                  ^^^^^^^^^^^^
 
 error: register class `x87_reg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:31:18
+  --> $DIR/bad-reg.rs:39:18
    |
 LL |         asm!("", in("st(2)") foo);
    |                  ^^^^^^^^^^^^^^^
 
 error: register class `mmx_reg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:34:18
+  --> $DIR/bad-reg.rs:42:18
    |
 LL |         asm!("", in("mm0") foo);
    |                  ^^^^^^^^^^^^^
 
 error: register class `kreg0` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:37:18
+  --> $DIR/bad-reg.rs:45:18
    |
 LL |         asm!("", in("k0") foo);
    |                  ^^^^^^^^^^^^
 
 error: register class `x87_reg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:42:20
+  --> $DIR/bad-reg.rs:50:20
    |
 LL |         asm!("{}", in(x87_reg) foo);
    |                    ^^^^^^^^^^^^^^^
 
 error: register class `mmx_reg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:45:20
+  --> $DIR/bad-reg.rs:53:20
    |
 LL |         asm!("{}", in(mmx_reg) foo);
    |                    ^^^^^^^^^^^^^^^
 
 error: register class `x87_reg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:48:20
+  --> $DIR/bad-reg.rs:56:20
    |
 LL |         asm!("{}", out(x87_reg) _);
    |                    ^^^^^^^^^^^^^^
 
 error: register class `mmx_reg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:50:20
+  --> $DIR/bad-reg.rs:58:20
    |
 LL |         asm!("{}", out(mmx_reg) _);
    |                    ^^^^^^^^^^^^^^
 
 error: register `al` conflicts with register `eax`
-  --> $DIR/bad-reg.rs:56:33
+  --> $DIR/bad-reg.rs:64:33
    |
 LL |         asm!("", in("eax") foo, in("al") bar);
    |                  -------------  ^^^^^^^^^^^^ register `al`
@@ -117,7 +117,7 @@ LL |         asm!("", in("eax") foo, in("al") bar);
    |                  register `eax`
 
 error: register `rax` conflicts with register `rax`
-  --> $DIR/bad-reg.rs:59:33
+  --> $DIR/bad-reg.rs:67:33
    |
 LL |         asm!("", in("rax") foo, out("rax") bar);
    |                  -------------  ^^^^^^^^^^^^^^ register `rax`
@@ -125,13 +125,13 @@ LL |         asm!("", in("rax") foo, out("rax") bar);
    |                  register `rax`
    |
 help: use `lateout` instead of `out` to avoid conflict
-  --> $DIR/bad-reg.rs:59:18
+  --> $DIR/bad-reg.rs:67:18
    |
 LL |         asm!("", in("rax") foo, out("rax") bar);
    |                  ^^^^^^^^^^^^^
 
 error: register `ymm0` conflicts with register `xmm0`
-  --> $DIR/bad-reg.rs:64:34
+  --> $DIR/bad-reg.rs:72:34
    |
 LL |         asm!("", in("xmm0") foo, in("ymm0") bar);
    |                  --------------  ^^^^^^^^^^^^^^ register `ymm0`
@@ -139,7 +139,7 @@ LL |         asm!("", in("xmm0") foo, in("ymm0") bar);
    |                  register `xmm0`
 
 error: register `ymm0` conflicts with register `xmm0`
-  --> $DIR/bad-reg.rs:66:34
+  --> $DIR/bad-reg.rs:74:34
    |
 LL |         asm!("", in("xmm0") foo, out("ymm0") bar);
    |                  --------------  ^^^^^^^^^^^^^^^ register `ymm0`
@@ -147,13 +147,13 @@ LL |         asm!("", in("xmm0") foo, out("ymm0") bar);
    |                  register `xmm0`
    |
 help: use `lateout` instead of `out` to avoid conflict
-  --> $DIR/bad-reg.rs:66:18
+  --> $DIR/bad-reg.rs:74:18
    |
 LL |         asm!("", in("xmm0") foo, out("ymm0") bar);
    |                  ^^^^^^^^^^^^^^
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:31:30
+  --> $DIR/bad-reg.rs:39:30
    |
 LL |         asm!("", in("st(2)") foo);
    |                              ^^^
@@ -161,7 +161,7 @@ LL |         asm!("", in("st(2)") foo);
    = note: register class `x87_reg` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:34:28
+  --> $DIR/bad-reg.rs:42:28
    |
 LL |         asm!("", in("mm0") foo);
    |                            ^^^
@@ -169,7 +169,7 @@ LL |         asm!("", in("mm0") foo);
    = note: register class `mmx_reg` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:37:27
+  --> $DIR/bad-reg.rs:45:27
    |
 LL |         asm!("", in("k0") foo);
    |                           ^^^
@@ -177,7 +177,7 @@ LL |         asm!("", in("k0") foo);
    = note: register class `kreg0` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:42:32
+  --> $DIR/bad-reg.rs:50:32
    |
 LL |         asm!("{}", in(x87_reg) foo);
    |                                ^^^
@@ -185,7 +185,7 @@ LL |         asm!("{}", in(x87_reg) foo);
    = note: register class `x87_reg` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:45:32
+  --> $DIR/bad-reg.rs:53:32
    |
 LL |         asm!("{}", in(mmx_reg) foo);
    |                                ^^^
@@ -193,7 +193,7 @@ LL |         asm!("{}", in(mmx_reg) foo);
    = note: register class `mmx_reg` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:56:42
+  --> $DIR/bad-reg.rs:64:42
    |
 LL |         asm!("", in("eax") foo, in("al") bar);
    |                                          ^^^
@@ -201,7 +201,7 @@ LL |         asm!("", in("eax") foo, in("al") bar);
    = note: register class `reg_byte` supports these types: i8
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:61:27
+  --> $DIR/bad-reg.rs:69:27
    |
 LL |         asm!("", in("al") foo, lateout("al") bar);
    |                           ^^^
@@ -209,12 +209,73 @@ LL |         asm!("", in("al") foo, lateout("al") bar);
    = note: register class `reg_byte` supports these types: i8
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:61:46
+  --> $DIR/bad-reg.rs:69:46
    |
 LL |         asm!("", in("al") foo, lateout("al") bar);
    |                                              ^^^
    |
    = note: register class `reg_byte` supports these types: i8
 
-error: aborting due to 28 previous errors
+error[E0658]: type `u128` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:81:40
+   |
+LL |         asm!("/* {:x} */", in(xmm_reg) xmmword); // requires asm_experimental_reg
+   |                                        ^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
+error[E0658]: type `u128` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:83:41
+   |
+LL |         asm!("/* {:x} */", out(xmm_reg) xmmword); // requires asm_experimental_reg
+   |                                         ^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: type `u128` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:86:40
+   |
+LL |         asm!("/* {:y} */", in(ymm_reg) xmmword); // requires asm_experimental_reg
+   |                                        ^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: type `u128` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:88:41
+   |
+LL |         asm!("/* {:y} */", out(ymm_reg) xmmword); // requires asm_experimental_reg
+   |                                         ^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: type `u128` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:91:40
+   |
+LL |         asm!("/* {:z} */", in(zmm_reg) xmmword); // requires asm_experimental_reg
+   |                                        ^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: type `u128` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:93:41
+   |
+LL |         asm!("/* {:z} */", out(zmm_reg) xmmword); // requires asm_experimental_reg
+   |                                         ^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 34 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
