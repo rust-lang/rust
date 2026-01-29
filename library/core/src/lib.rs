@@ -322,7 +322,7 @@ pub mod pat;
 pub mod pin;
 #[unstable(feature = "random", issue = "130703")]
 pub mod random;
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_rangeinclusive_api", since = "CURRENT_RUSTC_VERSION")]
 pub mod range;
 pub mod result;
 pub mod sync;

@@ -672,7 +672,7 @@ unsafe impl const SliceIndex<str> for ops::RangeInclusive<usize> {
     }
 }
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_rangeinclusive_api", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for range::RangeInclusive<usize> {
     type Output = str;

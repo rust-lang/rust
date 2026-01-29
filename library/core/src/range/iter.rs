@@ -11,6 +11,7 @@ use crate::{intrinsics, mem};
 pub struct RangeIter<A>(legacy::Range<A>);
 
 impl<A> RangeIter<A> {
+    #[unstable(feature = "new_range_api", issue = "125687")]
     /// Returns the remainder of the range being iterated over.
     pub fn remainder(self) -> Range<A> {
         Range { start: self.0.start, end: self.0.end }
@@ -152,7 +153,7 @@ impl<A: Step> IntoIterator for Range<A> {
 }
 
 /// By-value [`RangeInclusive`] iterator.
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_rangeinclusive_api", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Debug, Clone)]
 pub struct RangeInclusiveIter<A>(legacy::RangeInclusive<A>);
 
@@ -160,6 +161,7 @@ impl<A: Step> RangeInclusiveIter<A> {
     /// Returns the remainder of the range being iterated over.
     ///
     /// If the iterator is exhausted or empty, returns `None`.
+    #[stable(feature = "new_rangeinclusive_api", since = "CURRENT_RUSTC_VERSION")]
     pub fn remainder(self) -> Option<RangeInclusive<A>> {
         if self.0.is_empty() {
             return None;
@@ -169,7 +171,7 @@ impl<A: Step> RangeInclusiveIter<A> {
     }
 }
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_rangeinclusive_api", since = "CURRENT_RUSTC_VERSION")]
 impl<A: Step> Iterator for RangeInclusiveIter<A> {
     type Item = A;
 
@@ -225,7 +227,7 @@ impl<A: Step> Iterator for RangeInclusiveIter<A> {
     }
 }
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_rangeinclusive_api", since = "CURRENT_RUSTC_VERSION")]
 impl<A: Step> DoubleEndedIterator for RangeInclusiveIter<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
@@ -246,10 +248,10 @@ impl<A: Step> DoubleEndedIterator for RangeInclusiveIter<A> {
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A: TrustedStep> TrustedLen for RangeInclusiveIter<A> {}
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_rangeinclusive_api", since = "CURRENT_RUSTC_VERSION")]
 impl<A: Step> FusedIterator for RangeInclusiveIter<A> {}
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_rangeinclusive_api", since = "CURRENT_RUSTC_VERSION")]
 impl<A: Step> IntoIterator for RangeInclusive<A> {
     type Item = A;
     type IntoIter = RangeInclusiveIter<A>;
@@ -276,7 +278,7 @@ macro_rules! range_exact_iter_impl {
 
 macro_rules! range_incl_exact_iter_impl {
     ($($t:ty)*) => ($(
-        #[unstable(feature = "new_range_api", issue = "125687")]
+        #[stable(feature = "new_rangeinclusive_api", since = "CURRENT_RUSTC_VERSION")]
         impl ExactSizeIterator for RangeInclusiveIter<$t> { }
     )*)
 }
@@ -305,6 +307,7 @@ impl<A: Step> RangeFromIter<A> {
     /// Returns the remainder of the range being iterated over.
     #[inline]
     #[rustc_inherit_overflow_checks]
+    #[unstable(feature = "new_range_api", issue = "125687")]
     pub fn remainder(self) -> RangeFrom<A> {
         if intrinsics::overflow_checks() {
             if !self.first {
