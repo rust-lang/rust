@@ -208,6 +208,9 @@ auto:
   - name: dist-armv7-linux
     <<: *job-linux-4c
 
+  - name: dist-armv7-linux-musl
+    <<: *job-linux-4c
+
   - name: dist-i586-gnu-i586-i686-musl
     <<: *job-linux-4c
 
