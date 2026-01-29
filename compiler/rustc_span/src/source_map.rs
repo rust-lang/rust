@@ -945,7 +945,8 @@ impl SourceMap {
 
     /// Returns a new span representing just the last character of this span.
     pub fn end_point(&self, sp: Span) -> Span {
-        let sp = sp.data();
+        // We restrict the current span, so we cannot look around. Using the untracked data is ok.
+        let sp = sp.data_untracked();
         let pos = sp.hi.0;
 
         let width = self.find_width_of_character_at_span(sp, false);
