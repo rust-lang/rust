@@ -211,40 +211,40 @@
 //@ lldb-command:run
 
 //@ lldb-command:v/d nz_i8
-//@ lldb-check:[...] 11 { __0 = { 0 = 11 } }
+//@ lldb-check:[...] 11 { 0 = { 0 = 11 } }
 
 //@ lldb-command:v nz_i16
-//@ lldb-check:[...] 22 { __0 = { 0 = 22 } }
+//@ lldb-check:[...] 22 { 0 = { 0 = 22 } }
 
 //@ lldb-command:v nz_i32
-//@ lldb-check:[...] 33 { __0 = { 0 = 33 } }
+//@ lldb-check:[...] 33 { 0 = { 0 = 33 } }
 
 //@ lldb-command:v nz_i64
-//@ lldb-check:[...] 44 { __0 = { 0 = 44 } }
+//@ lldb-check:[...] 44 { 0 = { 0 = 44 } }
 
 //@ lldb-command:v nz_i128
-//@ lldb-check:[...] 55 { __0 = { 0 = 55 } }
+//@ lldb-check:[...] 55 { 0 = { 0 = 55 } }
 
 //@ lldb-command:v nz_isize
-//@ lldb-check:[...] 66 { __0 = { 0 = 66 } }
+//@ lldb-check:[...] 66 { 0 = { 0 = 66 } }
 
 //@ lldb-command:v/d nz_u8
-//@ lldb-check:[...] 77 { __0 = { 0 = 77 } }
+//@ lldb-check:[...] 77 { 0 = { 0 = 77 } }
 
 //@ lldb-command:v nz_u16
-//@ lldb-check:[...] 88 { __0 = { 0 = 88 } }
+//@ lldb-check:[...] 88 { 0 = { 0 = 88 } }
 
 //@ lldb-command:v nz_u32
-//@ lldb-check:[...] 99 { __0 = { 0 = 99 } }
+//@ lldb-check:[...] 99 { 0 = { 0 = 99 } }
 
 //@ lldb-command:v nz_u64
-//@ lldb-check:[...] 100 { __0 = { 0 = 100 } }
+//@ lldb-check:[...] 100 { 0 = { 0 = 100 } }
 
 //@ lldb-command:v nz_u128
-//@ lldb-check:[...] 111 { __0 = { 0 = 111 } }
+//@ lldb-check:[...] 111 { 0 = { 0 = 111 } }
 
 //@ lldb-command:v nz_usize
-//@ lldb-check:[...] 122 { __0 = { 0 = 122 } }
+//@ lldb-check:[...] 122 { 0 = { 0 = 122 } }
 
 use std::num::*;
 use std::sync::atomic::*;
