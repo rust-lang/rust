@@ -2399,6 +2399,9 @@ options! {
         - hash collisions when creating dep-nodes"),
     indirect_branch_cs_prefix: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
         "add `cs` prefix to `call` and `jmp` to indirect thunks (default: no)"),
+    inline_always_overrides: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
+        "comma-separated list of full paths to functions to treat as if they are inline(always)"
+    ),
     inline_llvm: bool = (true, parse_bool, [TRACKED],
         "enable LLVM inlining (default: yes)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],
