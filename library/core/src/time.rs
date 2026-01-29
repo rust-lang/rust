@@ -19,10 +19,10 @@
 //! assert_eq!(total, Duration::new(10, 7));
 //! ```
 
-use crate::fmt;
 use crate::iter::Sum;
 use crate::num::niche_types::Nanoseconds;
 use crate::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use crate::{fmt, hint};
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
 const NANOS_PER_MILLI: u32 = 1_000_000;
@@ -1020,7 +1020,71 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn mul_f64(self, rhs: f64) -> Duration {
-        Duration::from_secs_f64(rhs * self.as_secs_f64())
+        if !rhs.is_finite() {
+            panic!("result is not finite");
+        }
+
+        let lhs_nanos = self.as_nanos();
+        if lhs_nanos == 0 || f64_is_zero(rhs) {
+            return Duration::ZERO;
+        }
+
+        let lhs_log2 = lhs_nanos.ilog2() as i32;
+        let (rhs_significand, rhs_log2) = f64_normalize(rhs);
+
+        let prod_log2_floor = lhs_log2 + rhs_log2;
+        if prod_log2_floor > Duration::MAX.as_nanos().ilog2() as i32 {
+            // Product is definitely more than Duration::MAX
+            panic!("result overflows `Duration`");
+        }
+
+        let prod_log2_ceil = prod_log2_floor + 1;
+        if prod_log2_ceil < -1 {
+            // Product is definitely less than 0.5ns
+            return Duration::ZERO;
+        }
+
+        // Denormalize to a purely integer significand.
+        let exp = rhs_log2 + 1 - f64::MANTISSA_DIGITS as i32;
+        let rhs_significand = rhs_significand as u128;
+
+        let nanos = if exp >= 0 {
+            // `rhs` has no fractional precision, so mere integer multiplication is sufficient.
+            (lhs_nanos * rhs_significand) << exp
+        } else {
+            // Perform long-multiplication to calculate the 2 most significant 128-bit chunks of the
+            // product: hi (most significant) and lo (least significant).
+            let (lo, hi) = lhs_nanos.carrying_mul(rhs_significand, 0);
+
+            let nexp = -exp as u32;
+
+            if nexp < 128 {
+                // The result spans the two chunks, hi and lo; shift their concatenation down.
+                // The rounding bit is the most significant from lo that was shifted out of the
+                // result.
+                debug_assert!(nexp > 128 - hi.leading_zeros());
+                let round_up = (lo >> (nexp - 1)) & 1;
+                hi.funnel_shr(lo, nexp) + round_up
+            } else {
+                // The result is entirely within the most significant chunk, hi; implicitly shift
+                // down by discarding the least significant chunk, lo.
+                let shift = nexp - 128;
+                let round_up = if let Some(one_shift_less) = shift.checked_sub(1) {
+                    // Bits were shifted from hi; the most significant of them is the rounding bit.
+                    (hi >> one_shift_less) & 1
+                } else {
+                    // No shift; the most significant bit from discarded lo is the rounding bit.
+                    lo >> 127
+                };
+                (hi >> shift) + round_up
+            }
+        };
+
+        if nanos != 0 && rhs.is_sign_negative() {
+            panic!("result is negative")
+        }
+
+        Duration::from_nanos_u128(nanos)
     }
 
     /// Multiplies `Duration` by `f32`.
@@ -1033,7 +1097,7 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
-    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_641));
+    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_283));
     /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847_800, 0));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
@@ -1041,7 +1105,7 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn mul_f32(self, rhs: f32) -> Duration {
-        Duration::from_secs_f32(rhs * self.as_secs_f32())
+        self.mul_f64(rhs.into())
     }
 
     /// Divides `Duration` by `f64`.
@@ -1062,7 +1126,100 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn div_f64(self, rhs: f64) -> Duration {
-        Duration::from_secs_f64(self.as_secs_f64() / rhs)
+        if rhs.is_nan() || f64_is_zero(rhs) {
+            panic!("result is not finite");
+        }
+
+        let lhs_nanos = self.as_nanos();
+        if lhs_nanos == 0 || rhs.is_infinite() {
+            return Duration::ZERO;
+        }
+
+        let lhs_log2 = lhs_nanos.ilog2() as i32;
+        let (rhs_significand, rhs_log2) = f64_normalize(rhs);
+
+        // Avoid needless div-by-zero checks.
+        // SAFETY: if `rhs` is normal, the implied bit has been set in `normalized_significand`;
+        //         if it is subnormal, then the mantissa cannot be zero (we already panicked above
+        //         in the event that `rhs` is NaN or zero, and early-returned in the event that it
+        //         is infinite).
+        unsafe {
+            hint::assert_unchecked(rhs_significand != 0);
+        }
+
+        let quot_log2_ceil = lhs_log2 - rhs_log2;
+        if quot_log2_ceil < -1 {
+            // Quotient is definitely less than 0.5ns
+            return Duration::ZERO;
+        }
+
+        // To assist the compiler in eliminating the bounds check on funnel_shl, The following `if`
+        // condition has been manually expanded & rewritten from:
+        //     let quot_log2_floor = quot_log2_ceil - 1;
+        //     if quot_log2_floor > Duration::MAX.as_nanos().ilog2() { ... }
+        if rhs_log2 < lhs_log2 - Duration::MAX.as_nanos().ilog2() as i32 - 1 {
+            // Quotient is definitely more than Duration::MAX
+            panic!("result overflows `Duration`");
+        }
+
+        // Denormalize to a purely integer significand.
+        let exp = rhs_log2 + 1 - f64::MANTISSA_DIGITS as i32;
+        let rhs_significand = rhs_significand as u128;
+
+        let nanos = if let Ok(shift) = u32::try_from(exp) {
+            // `rhs` has no fractional precision, so mere integer division is sufficient.
+            let unshifted_q = lhs_nanos / rhs_significand;
+            let round_up = if let Some(one_shift_less) = shift.checked_sub(1) {
+                // Bits are to be shifted; the most significant of them is the rounding bit.
+                (unshifted_q >> one_shift_less) & 1
+            } else {
+                // Nothing is to be shifted out, there is nothing to round.
+                0
+            };
+            (unshifted_q >> shift) + round_up
+        } else {
+            // Calculate the first 127 bits of the significand's reciprocal, and any remainder.
+            const RECIP_N: u128 = u128::rotate_right(1, 1);
+            let recip_q = RECIP_N / rhs_significand;
+            let recip_r = RECIP_N % rhs_significand;
+
+            // Calculate the next 127 bits of the reciprocal, and shift them into the most
+            // significant bits of a u128.  Whilst the least significant bit may be incorrect,
+            // it is immaterial to the result.
+            let recip_f = ((recip_q * recip_r) + (recip_r * recip_r) / rhs_significand) << 1;
+
+            // Long-multiply lhs with the reciprocal to calculate the 3 most significant 128-bit
+            // chunks of the quotient: q2 (most significant) to q0 (least significant).
+            let (q0, carry) = lhs_nanos.carrying_mul(recip_f, 0);
+            let (q1, q2) = lhs_nanos.carrying_mul(recip_q, carry);
+
+            // Offset exponent by 1 because reciprocal is calculated as 2^127/significand,
+            // rather than 2^128/significand (which obviously requires greater width than u128).
+            let nexp = (1 - exp) as u32;
+
+            let (hi, lo, shift) = if nexp < 128 {
+                // The result spans the most significant two chunks, q2 and q1; their concatenation
+                // simply needs to be shifted by `nexp` bits.
+                (q2, q1, nexp)
+            } else {
+                // The result spans the least significant two chunks, q1 and q0: implicitly shift up
+                // by discarding the most signiciant chunk q2; the resulting concatenation then
+                // simply needs to be shifted by `nexp - 128` bits.
+                debug_assert_eq!(q2, 0);
+                (q1, q0, nexp - 128)
+            };
+
+            debug_assert!(shift <= hi.leading_zeros());
+
+            let round_up = (lo >> (127 - shift)) & 1;
+            hi.funnel_shl(lo, shift) + round_up
+        };
+
+        if nanos != 0 && rhs.is_sign_negative() {
+            panic!("result is negative")
+        }
+
+        Duration::from_nanos_u128(nanos)
     }
 
     /// Divides `Duration` by `f32`.
@@ -1077,7 +1234,7 @@ impl Duration {
     /// let dur = Duration::new(2, 700_000_000);
     /// // note that due to rounding errors result is slightly
     /// // different from 0.859_872_611
-    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_580));
+    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_583));
     /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_599));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
@@ -1085,7 +1242,7 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn div_f32(self, rhs: f32) -> Duration {
-        Duration::from_secs_f32(self.as_secs_f32() / rhs)
+        self.div_f64(rhs.into())
     }
 
     /// Divides `Duration` by `Duration` and returns `f64`.
@@ -1781,4 +1938,41 @@ impl Duration {
             double_ty = u128,
         )
     }
+}
+
+/// For the input `f`, returns its `(normalized_significand, exponent)` pair where the
+/// `normalized_significand` is a `f64::MANTISSA_DIGITS`-bit fixed point number in [0b1, 0b10) -
+/// and therefore its `f64::MANTISSA_DIGITS`th bit is always set and is always its most significant
+/// significant set bit; and where the `exponent` is the base-2 exponent of that
+/// `normalized_significand` such that, together, they evaluate to `f`.
+///
+/// The return values are unspecified if `f` is neither normal nor subnormal (ie is zero, NaN or
+/// infinite).
+fn f64_normalize(f: f64) -> (u64, i32) {
+    const NUM_BITS_MANT: u32 = f64::MANTISSA_DIGITS - 1;
+    const NUM_BITS_EXP: u32 = 64 - f64::MANTISSA_DIGITS;
+
+    const MANT_IMPLIED_BIT: u64 = 1 << NUM_BITS_MANT;
+    const MANT_MASK: u64 = MANT_IMPLIED_BIT - 1;
+    const EXP_MASK: u64 = ((1 << NUM_BITS_EXP) - 1) << NUM_BITS_MANT;
+    const EXP_BIAS: i32 = 1 - f64::MAX_EXP;
+
+    let raw = f.to_bits();
+    let mantissa = raw & MANT_MASK;
+    let (significand, biased_exp) = if f.is_normal() {
+        let biased_exp = ((raw & EXP_MASK) >> NUM_BITS_MANT) as i32;
+        (mantissa | MANT_IMPLIED_BIT, biased_exp)
+    } else {
+        // f is subnormal: renormalize by shifting so that the highest set bit is in the correct
+        // leading bit position.
+        let shift = mantissa.leading_zeros() - NUM_BITS_EXP;
+        (mantissa << shift, 1 - shift as i32)
+    };
+
+    (significand, biased_exp + EXP_BIAS)
+}
+
+fn f64_is_zero(f: f64) -> bool {
+    const SIGN_BIT: u64 = u64::rotate_right(1, 1);
+    f.to_bits() & !SIGN_BIT == 0
 }
