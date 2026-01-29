@@ -1015,7 +1015,7 @@ fn fmt_type(
                 {
                     true
                 }
-                clean::ImplTrait(ref bounds) if bounds.len() > 1 => true,
+                clean::ImplTrait { ref bounds, .. } if bounds.len() > 1 => true,
                 _ => false,
             };
             Wrapped::with_parens()
@@ -1023,7 +1023,7 @@ fn fmt_type(
                 .wrap_fn(|f| fmt_type(ty, f, use_absolute, cx))
                 .fmt(f)
         }
-        clean::ImplTrait(bounds) => {
+        clean::ImplTrait { bounds, .. } => {
             f.write_str("impl ")?;
             print_generic_bounds(bounds, cx).fmt(f)
         }

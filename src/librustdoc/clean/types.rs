@@ -1292,6 +1292,15 @@ pub(crate) struct PolyTrait {
     pub(crate) generic_params: Vec<GenericParamDef>,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub(crate) enum ImplTraitOrigin {
+    /// Synthetic type parameter for `impl Trait` in argument position.
+    Param { def_id: DefId },
+
+    /// Opaque type backing `impl Trait`, such as in RPIT or TAIT.
+    Opaque { def_id: DefId },
+}
+
 /// Rustdoc's representation of types, mostly based on the [`hir::Ty`].
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum Type {
@@ -1337,7 +1346,25 @@ pub(crate) enum Type {
     Infer,
 
     /// An `impl Trait`: `impl TraitA + TraitB + ...`
-    ImplTrait(Vec<GenericBound>),
+    ImplTrait {
+        /// The bounds that are syntactically present:
+        /// ```rust
+        /// # trait TraitA {}
+        /// # trait TraitB {}
+        /// # struct Both;
+        /// # impl TraitA for Both {}
+        /// # impl TraitB for Both {}
+        /// fn example() -> impl TraitA + TraitB {
+        ///     //               ^^^^^^   ^^^^^^
+        ///     // ...
+        /// #   Both
+        /// }
+        /// ```
+        bounds: Vec<GenericBound>,
+        /// Whether this `impl Trait` is syntactic sugar for an anonymous generic parameter,
+        /// or represents an opaque type.
+        origin: ImplTraitOrigin,
+    },
 
     UnsafeBinder(Box<UnsafeBinderTy>),
 }
@@ -1465,8 +1492,8 @@ impl Type {
     /// This function will panic if the return type does not match the expected sugaring for async
     /// functions.
     pub(crate) fn sugared_async_return_type(self) -> Type {
-        if let Type::ImplTrait(mut v) = self
-            && let Some(GenericBound::TraitBound(PolyTrait { mut trait_, .. }, _)) = v.pop()
+        if let Type::ImplTrait { mut bounds, .. } = self
+            && let Some(GenericBound::TraitBound(PolyTrait { mut trait_, .. }, _)) = bounds.pop()
             && let Some(segment) = trait_.segments.pop()
             && let GenericArgs::AngleBracketed { mut constraints, .. } = segment.args
             && let Some(constraint) = constraints.pop()
@@ -1536,7 +1563,7 @@ impl Type {
             Type::Pat(..) => PrimitiveType::Pat,
             RawPointer(..) => PrimitiveType::RawPointer,
             QPath(box QPathData { self_type, .. }) => return self_type.def_id(cache),
-            Generic(_) | SelfTy | Infer | ImplTrait(_) | UnsafeBinder(_) => return None,
+            Generic(_) | SelfTy | Infer | ImplTrait { .. } | UnsafeBinder(_) => return None,
         };
         Primitive(t).def_id(cache)
     }
@@ -2392,7 +2419,7 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(Crate, 16); // frequently moved by-value
     static_assert_size!(DocFragment, 48);
-    static_assert_size!(GenericArg, 32);
+    static_assert_size!(GenericArg, 40);
     static_assert_size!(GenericArgs, 24);
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
@@ -2400,6 +2427,6 @@ mod size_asserts {
     static_assert_size!(ItemInner, 144);
     static_assert_size!(ItemKind, 48);
     static_assert_size!(PathSegment, 32);
-    static_assert_size!(Type, 32);
+    static_assert_size!(Type, 40);
     // tidy-alphabetical-end
 }
