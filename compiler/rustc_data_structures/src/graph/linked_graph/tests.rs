@@ -1,8 +1,8 @@
 use tracing::debug;
 
-use super::{Debug, LinkedGraph, NodeIndex};
+use super::{Debug, LinkedGraph};
 
-type TestGraph = LinkedGraph<&'static str, &'static str>;
+type TestGraph = LinkedGraph<usize, &'static str, &'static str>;
 
 fn create_graph() -> TestGraph {
     let mut graph = LinkedGraph::new();
@@ -17,12 +17,12 @@ fn create_graph() -> TestGraph {
     //          v     |
     //          D --> E
 
-    let a = graph.add_node("A");
-    let b = graph.add_node("B");
-    let c = graph.add_node("C");
-    let d = graph.add_node("D");
-    let e = graph.add_node("E");
-    let f = graph.add_node("F");
+    let a = graph.add_node(0, "A");
+    let b = graph.add_node(1, "B");
+    let c = graph.add_node(2, "C");
+    let d = graph.add_node(3, "D");
+    let e = graph.add_node(4, "E");
+    let f = graph.add_node(5, "F");
 
     graph.add_edge(a, b, "AB");
     graph.add_edge(b, c, "BC");
@@ -57,7 +57,7 @@ fn each_edge() {
 
 fn test_adjacent_edges<N: PartialEq + Debug, E: PartialEq + Debug>(
     graph: &LinkedGraph<N, E>,
-    start_index: NodeIndex,
+    start_index: usize,
     start_data: N,
     expected_incoming: &[(E, N)],
     expected_outgoing: &[(E, N)],
@@ -104,7 +104,7 @@ fn test_adjacent_edges<N: PartialEq + Debug, E: PartialEq + Debug>(
 #[test]
 fn each_adjacent_from_a() {
     let graph = create_graph();
-    test_adjacent_edges(&graph, NodeIndex(0), "A", &[], &[("AB", "B")]);
+    test_adjacent_edges(&graph, 0, "A", &[], &[("AB", "B")]);
 }
 
 #[test]
@@ -112,7 +112,7 @@ fn each_adjacent_from_b() {
     let graph = create_graph();
     test_adjacent_edges(
         &graph,
-        NodeIndex(1),
+        1,
         "B",
         &[("FB", "F"), ("AB", "A")],
         &[("BD", "D"), ("BC", "C")],
@@ -122,11 +122,11 @@ fn each_adjacent_from_b() {
 #[test]
 fn each_adjacent_from_c() {
     let graph = create_graph();
-    test_adjacent_edges(&graph, NodeIndex(2), "C", &[("EC", "E"), ("BC", "B")], &[]);
+    test_adjacent_edges(&graph, 2, "C", &[("EC", "E"), ("BC", "B")], &[]);
 }
 
 #[test]
 fn each_adjacent_from_d() {
     let graph = create_graph();
-    test_adjacent_edges(&graph, NodeIndex(3), "D", &[("BD", "B")], &[("DE", "E")]);
+    test_adjacent_edges(&graph, 3, "D", &[("BD", "B")], &[("DE", "E")]);
 }

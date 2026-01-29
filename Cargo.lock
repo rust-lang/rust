@@ -4059,6 +4059,7 @@ dependencies = [
  "rustc_graphviz",
  "rustc_hashes",
  "rustc_hir",
+ "rustc_index",
  "rustc_macros",
  "rustc_middle",
  "rustc_serialize",

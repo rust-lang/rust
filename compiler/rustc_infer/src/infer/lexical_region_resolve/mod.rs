@@ -4,7 +4,7 @@ use std::fmt;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::linked_graph::{
-    Direction, INCOMING, LinkedGraph, NodeIndex, OUTGOING,
+    Direction, FrozenLinkedGraph, INCOMING, LinkedGraph, OUTGOING
 };
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::unord::UnordSet;
@@ -118,7 +118,7 @@ struct RegionAndOrigin<'tcx> {
     origin: SubregionOrigin<'tcx>,
 }
 
-type RegionGraph<'tcx> = LinkedGraph<(), Constraint<'tcx>>;
+type RegionGraph<'tcx> = FrozenLinkedGraph<RegionVid, (), Constraint<'tcx>>;
 
 struct LexicalResolver<'cx, 'tcx> {
     region_rels: &'cx RegionRelations<'cx, 'tcx>,
@@ -671,33 +671,30 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
     fn construct_graph(&self) -> RegionGraph<'tcx> {
         let num_vars = self.num_vars();
-
-        let mut graph = LinkedGraph::new();
-
-        for _ in 0..num_vars {
-            graph.add_node(());
-        }
+        let mut graph = LinkedGraph::from_node_n((), num_vars);
 
         // Issue #30438: two distinct dummy nodes, one for incoming
         // edges (dummy_source) and another for outgoing edges
         // (dummy_sink). In `dummy -> a -> b -> dummy`, using one
         // dummy node leads one to think (erroneously) there exists a
         // path from `b` to `a`. Two dummy nodes sidesteps the issue.
-        let dummy_source = graph.add_node(());
-        let dummy_sink = graph.add_node(());
+        let dummy_source = RegionVid::from_usize(num_vars);
+        graph.add_node(dummy_source, ());
+        let dummy_sink = RegionVid::from_usize(num_vars + 1);
+        graph.add_node(dummy_sink, ());
 
         for (c, _) in &self.data.constraints {
             match c.kind {
                 ConstraintKind::VarSubVar => {
                     let sub_vid = c.sub.as_var();
                     let sup_vid = c.sup.as_var();
-                    graph.add_edge(NodeIndex(sub_vid.index()), NodeIndex(sup_vid.index()), *c);
+                    graph.add_edge(sub_vid, sup_vid, *c);
                 }
                 ConstraintKind::RegSubVar => {
-                    graph.add_edge(dummy_source, NodeIndex(c.sup.as_var().index()), *c);
+                    graph.add_edge(dummy_source, c.sup.as_var(), *c);
                 }
                 ConstraintKind::VarSubReg => {
-                    graph.add_edge(NodeIndex(c.sub.as_var().index()), dummy_sink, *c);
+                    graph.add_edge(c.sub.as_var(), dummy_sink, *c);
                 }
                 ConstraintKind::RegSubReg => {
                     // this would be an edge from `dummy_source` to
@@ -706,7 +703,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
         }
 
-        graph
+        graph.freeze()
     }
 
     fn collect_error_for_expanding_node(
@@ -882,8 +879,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         ) {
             debug!("process_edges(source_vid={:?}, dir={:?})", source_vid, dir);
 
-            let source_node_index = NodeIndex(source_vid.index());
-            for (_, edge) in graph.adjacent_edges(source_node_index, dir) {
+            for (_, edge) in graph.adjacent_edges(source_vid, dir) {
                 let get_origin =
                     || this.constraints.iter().find(|(c, _)| *c == edge.data).unwrap().1.clone();
 
