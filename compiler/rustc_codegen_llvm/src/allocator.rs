@@ -136,6 +136,17 @@ fn create_wrapper_function(
         None
     };
 
+    if tcx.sess.target.is_like_gpu {
+        // Conservatively apply convergent to all functions in case they may call
+        // a convergent function. Rely on LLVM to optimize away the unnecessary
+        // convergent attributes.
+        attributes::apply_to_llfn(
+            llfn,
+            llvm::AttributePlace::Function,
+            &[llvm::AttributeKind::Convergent.create_attr(cx.llcx)],
+        );
+    }
+
     let llbb = unsafe { llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, c"entry".as_ptr()) };
     let mut bx = SBuilder::build(&cx, llbb);
 
