@@ -470,7 +470,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 callee_fn_abi.args[..fixed_count].iter().enumerate()
             } else {
                 // NOTE: this handles the extra caller location argument
-                // when `#[track_caller]` is used.
+                // when `#[track_caller]` is used. This attribute is only allowed on `extern "Rust"`
+                // functions, so the c-variadic case does not need to handle the extra argument.
                 callee_fn_abi.args.iter().enumerate()
             };
 

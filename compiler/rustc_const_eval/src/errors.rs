@@ -387,7 +387,6 @@ pub struct NonConstCVariadicCall {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
-    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Subdiagnostic)]

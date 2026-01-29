@@ -32,14 +32,17 @@ extern "C" fn f3_3(_: ..., x: isize) {}
 
 const unsafe extern "C" fn f4_1(x: isize, _: ...) {}
 //~^ ERROR destructor of `VaList<'_>` cannot be evaluated at compile-time
+//~| ERROR c-variadic const function definitions are unstable
 
 const extern "C" fn f4_2(x: isize, _: ...) {}
 //~^ ERROR functions with a C variable argument list must be unsafe
 //~| ERROR destructor of `VaList<'_>` cannot be evaluated at compile-time
+//~| ERROR c-variadic const function definitions are unstable
 
 const extern "C" fn f4_3(_: ..., x: isize, _: ...) {}
 //~^ ERROR functions with a C variable argument list must be unsafe
 //~| ERROR `...` must be the last argument of a C-variadic function
+//~| ERROR c-variadic const function definitions are unstable
 
 extern "C" {
     fn e_f2(..., x: isize);
@@ -62,6 +65,7 @@ impl X {
     const fn i_f5(x: isize, _: ...) {}
     //~^ ERROR `...` is not supported for non-extern functions
     //~| ERROR destructor of `VaList<'_>` cannot be evaluated at compile-time
+    //~| ERROR c-variadic const function definitions are unstable
 }
 
 trait T {

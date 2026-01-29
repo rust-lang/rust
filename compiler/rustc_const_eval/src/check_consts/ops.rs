@@ -90,11 +90,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallCVariadic {
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         ccx.tcx.sess.create_feature_err(
-            errors::NonConstCVariadicCall {
-                span,
-                kind: ccx.const_kind(),
-                non_or_conditionally: "non",
-            },
+            errors::NonConstCVariadicCall { span, kind: ccx.const_kind() },
             sym::const_c_variadic,
         )
     }

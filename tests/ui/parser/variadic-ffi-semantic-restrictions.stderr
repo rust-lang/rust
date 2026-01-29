@@ -80,8 +80,28 @@ error: `...` must be the last argument of a C-variadic function
 LL | extern "C" fn f3_3(_: ..., x: isize) {}
    |                    ^^^^^^
 
+error[E0658]: c-variadic const function definitions are unstable
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:33:1
+   |
+LL | const unsafe extern "C" fn f4_1(x: isize, _: ...) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151787 <https://github.com/rust-lang/rust/issues/151787> for more information
+   = help: add `#![feature(const_c_variadic)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: c-variadic const function definitions are unstable
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:37:1
+   |
+LL | const extern "C" fn f4_2(x: isize, _: ...) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151787 <https://github.com/rust-lang/rust/issues/151787> for more information
+   = help: add `#![feature(const_c_variadic)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error: functions with a C variable argument list must be unsafe
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:36:36
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:37:36
    |
 LL | const extern "C" fn f4_2(x: isize, _: ...) {}
    |                                    ^^^^^^
@@ -92,13 +112,23 @@ LL | const unsafe extern "C" fn f4_2(x: isize, _: ...) {}
    |       ++++++
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:40:26
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:42:26
    |
 LL | const extern "C" fn f4_3(_: ..., x: isize, _: ...) {}
    |                          ^^^^^^
 
+error[E0658]: c-variadic const function definitions are unstable
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:42:1
+   |
+LL | const extern "C" fn f4_3(_: ..., x: isize, _: ...) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151787 <https://github.com/rust-lang/rust/issues/151787> for more information
+   = help: add `#![feature(const_c_variadic)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error: functions with a C variable argument list must be unsafe
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:40:44
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:42:44
    |
 LL | const extern "C" fn f4_3(_: ..., x: isize, _: ...) {}
    |                                            ^^^^^^
@@ -109,13 +139,13 @@ LL | const unsafe extern "C" fn f4_3(_: ..., x: isize, _: ...) {}
    |       ++++++
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:45:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:48:13
    |
 LL |     fn e_f2(..., x: isize);
    |             ^^^
 
 error: `...` is not supported for non-extern functions
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:52:23
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:55:23
    |
 LL |     fn i_f1(x: isize, _: ...) {}
    |                       ^^^^^^
@@ -123,7 +153,7 @@ LL |     fn i_f1(x: isize, _: ...) {}
    = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error: `...` is not supported for non-extern functions
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:54:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:57:13
    |
 LL |     fn i_f2(_: ...) {}
    |             ^^^^^^
@@ -131,13 +161,13 @@ LL |     fn i_f2(_: ...) {}
    = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:56:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:59:13
    |
 LL |     fn i_f3(_: ..., x: isize, _: ...) {}
    |             ^^^^^^
 
 error: `...` is not supported for non-extern functions
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:56:31
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:59:31
    |
 LL |     fn i_f3(_: ..., x: isize, _: ...) {}
    |                               ^^^^^^
@@ -145,21 +175,31 @@ LL |     fn i_f3(_: ..., x: isize, _: ...) {}
    = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:59:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:62:13
    |
 LL |     fn i_f4(_: ..., x: isize, _: ...) {}
    |             ^^^^^^
 
 error: `...` is not supported for non-extern functions
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:59:31
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:62:31
    |
 LL |     fn i_f4(_: ..., x: isize, _: ...) {}
    |                               ^^^^^^
    |
    = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
+error[E0658]: c-variadic const function definitions are unstable
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:65:5
+   |
+LL |     const fn i_f5(x: isize, _: ...) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151787 <https://github.com/rust-lang/rust/issues/151787> for more information
+   = help: add `#![feature(const_c_variadic)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error: `...` is not supported for non-extern functions
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:62:29
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:65:29
    |
 LL |     const fn i_f5(x: isize, _: ...) {}
    |                             ^^^^^^
@@ -167,7 +207,7 @@ LL |     const fn i_f5(x: isize, _: ...) {}
    = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error: `...` is not supported for non-extern functions
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:68:23
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:72:23
    |
 LL |     fn t_f1(x: isize, _: ...) {}
    |                       ^^^^^^
@@ -175,7 +215,7 @@ LL |     fn t_f1(x: isize, _: ...) {}
    = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error: `...` is not supported for non-extern functions
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:70:23
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:74:23
    |
 LL |     fn t_f2(x: isize, _: ...);
    |                       ^^^^^^
@@ -183,7 +223,7 @@ LL |     fn t_f2(x: isize, _: ...);
    = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error: `...` is not supported for non-extern functions
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:72:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:76:13
    |
 LL |     fn t_f3(_: ...) {}
    |             ^^^^^^
@@ -191,7 +231,7 @@ LL |     fn t_f3(_: ...) {}
    = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error: `...` is not supported for non-extern functions
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:74:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:78:13
    |
 LL |     fn t_f4(_: ...);
    |             ^^^^^^
@@ -199,13 +239,13 @@ LL |     fn t_f4(_: ...);
    = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:76:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:80:13
    |
 LL |     fn t_f5(_: ..., x: isize) {}
    |             ^^^^^^
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:78:13
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:82:13
    |
 LL |     fn t_f6(_: ..., x: isize);
    |             ^^^^^^
@@ -223,7 +263,7 @@ LL | const unsafe extern "C" fn f4_1(x: isize, _: ...) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0493]: destructor of `VaList<'_>` cannot be evaluated at compile-time
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:36:36
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:37:36
    |
 LL | const extern "C" fn f4_2(x: isize, _: ...) {}
    |                                    ^        - value is dropped here
@@ -235,7 +275,7 @@ LL | const extern "C" fn f4_2(x: isize, _: ...) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0493]: destructor of `VaList<'_>` cannot be evaluated at compile-time
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:62:29
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:65:29
    |
 LL |     const fn i_f5(x: isize, _: ...) {}
    |                             ^        - value is dropped here
@@ -246,6 +286,7 @@ LL |     const fn i_f5(x: isize, _: ...) {}
    = help: add `#![feature(const_destruct)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 29 previous errors
+error: aborting due to 33 previous errors
 
-For more information about this error, try `rustc --explain E0493`.
+Some errors have detailed explanations: E0493, E0658.
+For more information about an error, try `rustc --explain E0493`.
