@@ -1,19 +1,10 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::graph::linked_graph::{
-    Direction, FrozenLinkedGraph, INCOMING, LinkedGraph,
-};
+use rustc_data_structures::graph::linked_graph::{Direction, INCOMING, LinkedGraph};
 
 use super::{DepNode, DepNodeIndex};
 
-#[derive(Clone)]
 pub struct DepGraphQuery {
     pub graph: LinkedGraph<DepNodeIndex, DepNode, ()>,
-    pub indices: FxHashMap<DepNode, DepNodeIndex>,
-}
-
-#[derive(Clone)]
-pub struct FrozenDepGraphQuery {
-    pub graph: FrozenLinkedGraph<DepNodeIndex, DepNode, ()>,
     pub indices: FxHashMap<DepNode, DepNodeIndex>,
 }
 
@@ -37,25 +28,6 @@ impl DepGraphQuery {
         }
     }
 
-    pub fn nodes(&self) -> Vec<&DepNode> {
-        self.graph.nodes_iter().map(|n| &n.data).collect()
-    }
-
-    pub fn edges(&self) -> Vec<(&DepNode, &DepNode)> {
-        self.graph
-            .all_edges()
-            .iter()
-            .map(|edge| (edge.source(), edge.target()))
-            .map(|(s, t)| (self.graph.node_data(s), self.graph.node_data(t)))
-            .collect()
-    }
-
-    pub fn freeze(self) -> FrozenDepGraphQuery {
-        FrozenDepGraphQuery { graph: self.graph.freeze(), indices: self.indices }
-    }
-}
-
-impl FrozenDepGraphQuery {
     pub fn nodes(&self) -> Vec<&DepNode> {
         self.graph.nodes_iter().map(|n| &n.data).collect()
     }

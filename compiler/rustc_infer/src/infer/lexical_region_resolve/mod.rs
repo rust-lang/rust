@@ -3,9 +3,7 @@
 use std::fmt;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::linked_graph::{
-    Direction, FrozenLinkedGraph, INCOMING, LinkedGraph, OUTGOING,
-};
+use rustc_data_structures::graph::linked_graph::{Direction, INCOMING, LinkedGraph, OUTGOING};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::unord::UnordSet;
 use rustc_index::{IndexSlice, IndexVec};
@@ -118,7 +116,7 @@ struct RegionAndOrigin<'tcx> {
     origin: SubregionOrigin<'tcx>,
 }
 
-type RegionGraph<'tcx> = FrozenLinkedGraph<RegionVid, (), Constraint<'tcx>>;
+type RegionGraph<'tcx> = LinkedGraph<RegionVid, (), Constraint<'tcx>>;
 
 struct LexicalResolver<'cx, 'tcx> {
     region_rels: &'cx RegionRelations<'cx, 'tcx>,
@@ -671,7 +669,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
     fn construct_graph(&self) -> RegionGraph<'tcx> {
         let num_vars = self.num_vars();
-        let mut graph = LinkedGraph::from_node_n((), num_vars);
+        let mut graph = LinkedGraph::from_node_n((), num_vars + 2);
 
         // Issue #30438: two distinct dummy nodes, one for incoming
         // edges (dummy_source) and another for outgoing edges
@@ -679,9 +677,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // dummy node leads one to think (erroneously) there exists a
         // path from `b` to `a`. Two dummy nodes sidesteps the issue.
         let dummy_source = RegionVid::from_usize(num_vars);
-        graph.add_node(dummy_source, ());
         let dummy_sink = RegionVid::from_usize(num_vars + 1);
-        graph.add_node(dummy_sink, ());
 
         for (c, _) in &self.data.constraints {
             match c.kind {
@@ -703,7 +699,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
         }
 
-        graph.freeze()
+        graph
     }
 
     fn collect_error_for_expanding_node(

@@ -43,8 +43,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
 use rustc_middle::dep_graph::{
-    DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, DepNodeIndex, EdgeFilter,
-    FrozenDepGraphQuery, dep_kinds,
+    DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, DepNodeIndex, EdgeFilter, dep_kinds,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
@@ -210,7 +209,6 @@ fn check_paths<'tcx>(tcx: TyCtxt<'tcx>, if_this_changed: &Sources, then_this_wou
         return;
     }
     tcx.dep_graph.with_query(|query| {
-        let query = query.clone().freeze();
         for &(_, source_def_id, ref source_dep_node) in if_this_changed {
             let dependents = query.transitive_predecessors(source_dep_node);
             for &(target_span, ref target_pass, _, ref target_dep_node) in then_this_would_need {
@@ -231,20 +229,18 @@ fn check_paths<'tcx>(tcx: TyCtxt<'tcx>, if_this_changed: &Sources, then_this_wou
 fn dump_graph(query: &DepGraphQuery) {
     let path: String = env::var("RUST_DEP_GRAPH").unwrap_or_else(|_| "dep_graph".to_string());
 
-    let query = query.clone().freeze();
-
     let nodes = match env::var("RUST_DEP_GRAPH_FILTER") {
         Ok(string) => {
             // Expect one of: "-> target", "source -> target", or "source ->".
             let edge_filter =
                 EdgeFilter::new(&string).unwrap_or_else(|e| bug!("invalid filter: {}", e));
-            let sources = node_set(&query, &edge_filter.source);
-            let targets = node_set(&query, &edge_filter.target);
-            filter_nodes(&query, &sources, &targets)
+            let sources = node_set(query, &edge_filter.source);
+            let targets = node_set(query, &edge_filter.target);
+            filter_nodes(query, &sources, &targets)
         }
         Err(_) => query.nodes().into_iter().map(|n| n.kind).collect(),
     };
-    let edges = filter_edges(&query, &nodes);
+    let edges = filter_edges(query, &nodes);
 
     {
         // dump a .txt file with just the edges:
@@ -308,7 +304,7 @@ impl<'a> dot::Labeller<'a> for GraphvizDepGraph {
 // filter) or the set of nodes whose labels contain all of those
 // substrings.
 fn node_set<'q>(
-    query: &'q FrozenDepGraphQuery,
+    query: &'q DepGraphQuery,
     filter: &DepNodeFilter,
 ) -> Option<FxIndexSet<&'q DepNode>> {
     debug!("node_set(filter={:?})", filter);
@@ -321,7 +317,7 @@ fn node_set<'q>(
 }
 
 fn filter_nodes<'q>(
-    query: &'q FrozenDepGraphQuery,
+    query: &'q DepGraphQuery,
     sources: &Option<FxIndexSet<&'q DepNode>>,
     targets: &Option<FxIndexSet<&'q DepNode>>,
 ) -> FxIndexSet<DepKind> {
@@ -339,7 +335,7 @@ fn filter_nodes<'q>(
 }
 
 fn walk_nodes<'q>(
-    query: &'q FrozenDepGraphQuery,
+    query: &'q DepGraphQuery,
     starts: &FxIndexSet<&'q DepNode>,
     direction: Direction,
 ) -> FxIndexSet<DepKind> {
@@ -363,7 +359,7 @@ fn walk_nodes<'q>(
 }
 
 fn walk_between<'q>(
-    query: &'q FrozenDepGraphQuery,
+    query: &'q DepGraphQuery,
     sources: &FxIndexSet<&'q DepNode>,
     targets: &FxIndexSet<&'q DepNode>,
 ) -> FxIndexSet<DepKind> {
@@ -401,7 +397,7 @@ fn walk_between<'q>(
         .collect();
 
     fn recurse(
-        query: &FrozenDepGraphQuery,
+        query: &DepGraphQuery,
         node_states: &mut IndexVec<DepNodeIndex, State>,
         node: DepNodeIndex,
     ) -> bool {
@@ -437,10 +433,7 @@ fn walk_between<'q>(
     }
 }
 
-fn filter_edges(
-    query: &FrozenDepGraphQuery,
-    nodes: &FxIndexSet<DepKind>,
-) -> Vec<(DepKind, DepKind)> {
+fn filter_edges(query: &DepGraphQuery, nodes: &FxIndexSet<DepKind>) -> Vec<(DepKind, DepKind)> {
     let uniq: FxIndexSet<_> = query
         .edges()
         .into_iter()

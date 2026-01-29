@@ -10,7 +10,7 @@ use std::panic;
 pub use dep_node::{DepKind, DepKindVTable, DepNode, DepNodeParams, WorkProductId};
 pub(crate) use graph::DepGraphData;
 pub use graph::{DepGraph, DepNodeIndex, TaskDepsRef, WorkProduct, WorkProductMap, hash_result};
-pub use query::{DepGraphQuery, FrozenDepGraphQuery};
+pub use query::DepGraphQuery;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::DynSync;
 use rustc_session::Session;

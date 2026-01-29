@@ -1,9 +1,9 @@
 use rustc_index::Idx;
 use tracing::debug;
 
-use super::{Debug, FrozenLinkedGraph, LinkedGraph};
+use super::{Debug, LinkedGraph};
 
-type TestGraph = FrozenLinkedGraph<usize, &'static str, &'static str>;
+type TestGraph = LinkedGraph<usize, &'static str, &'static str>;
 
 fn create_graph() -> TestGraph {
     let mut graph = LinkedGraph::new();
@@ -38,7 +38,7 @@ fn create_graph() -> TestGraph {
     graph.add_edge(e, c, "EC");
     graph.add_edge(f, b, "FB");
 
-    return graph.freeze();
+    graph
 }
 
 #[test]
@@ -63,7 +63,7 @@ fn each_edge() {
 }
 
 fn test_adjacent_edges<I: Idx, N: PartialEq + Debug, E: PartialEq + Debug>(
-    graph: &FrozenLinkedGraph<I, N, E>,
+    graph: &LinkedGraph<I, N, E>,
     start_index: I,
     start_data: N,
     expected_incoming: &[(E, N)],
