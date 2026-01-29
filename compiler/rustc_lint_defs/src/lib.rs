@@ -826,6 +826,28 @@ pub enum AttributeLintKind {
         span: Span,
         suggested: Option<Symbol>,
     },
+    MalformedOnUnimplementedAttr {
+        span: Span,
+    },
+    MalformedDiagnosticFormat {
+        warning: FormatWarning,
+    },
+    DiagnosticWrappedParserError {
+        description: String,
+        label: String,
+    },
+    IgnoredDiagnosticOption {
+        option_name: &'static str,
+        first_span: Span,
+        later_span: Span,
+    },
+    MissingOptionsForOnUnimplemented,
+}
+
+#[derive(Debug, Clone, HashStable_Generic)]
+pub enum FormatWarning {
+    PositionalArgument { span: Span, help: String },
+    InvalidSpecifier { name: String, span: Span },
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;

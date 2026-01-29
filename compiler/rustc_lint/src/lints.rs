@@ -3325,3 +3325,43 @@ pub(crate) struct UnknownCrateTypesSuggestion {
     pub span: Span,
     pub snippet: Symbol,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_malformed_on_unimplemented_attr)]
+#[help]
+pub(crate) struct MalformedOnUnimplementedAttrLint {
+    #[label]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_disallowed_positional_argument)]
+#[help]
+pub(crate) struct DisallowedPositionalArgument;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_invalid_format_specifier)]
+#[help]
+pub(crate) struct InvalidFormatSpecifier;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_wrapped_parser_error)]
+pub(crate) struct WrappedParserError<'a> {
+    pub description: &'a str,
+    pub label: &'a str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_ignored_diagnostic_option)]
+pub(crate) struct IgnoredDiagnosticOption {
+    pub option_name: &'static str,
+    #[label]
+    pub first_span: Span,
+    #[label(lint_later_label)]
+    pub later_span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_missing_options_for_on_unimplemented_attr)]
+#[help]
+pub(crate) struct MissingOptionsForOnUnimplementedAttr;

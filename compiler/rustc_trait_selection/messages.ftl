@@ -172,8 +172,8 @@ trait_selection_fps_use_ref = consider using a reference
 trait_selection_fulfill_req_lifetime = the type `{$ty}` does not fulfill the required lifetime
 
 trait_selection_ignored_diagnostic_option = `{$option_name}` is ignored due to previous definition of `{$option_name}`
-    .other_label = `{$option_name}` is first declared here
-    .label = `{$option_name}` is already declared here
+    .later_label = `{$option_name}` is later redundantly declared here
+    .label = `{$option_name}` is first declared here
 
 trait_selection_implicit_static_lifetime_note = this has an implicit `'static` lifetime requirement
 trait_selection_implicit_static_lifetime_suggestion = consider relaxing the implicit `'static` requirement

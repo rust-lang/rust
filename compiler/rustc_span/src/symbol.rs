@@ -966,6 +966,7 @@ symbols! {
         //   it's clearer that it's intended as a dummy value, and more likely
         //   to be detected if it accidentally does get used.
         empty: "",
+        empty_braces: "{}",
         emscripten_wasm_eh,
         enable,
         encode,
