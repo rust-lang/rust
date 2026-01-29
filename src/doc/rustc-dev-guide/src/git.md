@@ -220,7 +220,7 @@ hint: See the 'Note about fast-forwards' in 'git push --help' for details.
 ```
 
 The advice this gives is incorrect!
-Because of Rust's ["no-merge" policy](#no-merge-policy) the merge commit created by `git pull`
+Because of Rust's ["no-merge" policy](#no-merge-policy), the merge commit created by `git pull`
 will not be allowed in the final PR, in addition to defeating the point of the rebase!
 Use `git push --force-with-lease` instead.
 
@@ -280,7 +280,7 @@ out if you're using `download-ci-llvm`.
 
 When you edit your code locally, you are making changes to the version of
 rust-lang/rust that existed when you created your feature branch.
-As such, when you submit your PR it is possible that some of the changes that have been made
+As such, when you submit your PR, it is possible that some of the changes that have been made
 to rust-lang/rust since then are in conflict with the changes you've made.
 When this happens, you need to resolve the conflicts before your changes can be merged.
 To do that, you need to rebase your work on top of rust-lang/rust.
@@ -309,7 +309,7 @@ In other words, Git tries to
 pretend that the changes you made to the old version of `main` were instead
 made to the new version of `main`.
 During this process, you should expect to
-encounter at least one "rebase conflict." This happens when Git's attempt to
+encounter at least one "rebase conflict". This happens when Git's attempt to
 reapply the changes fails because your changes conflicted with other changes that have been made.
 You can tell that this happened because you'll see lines in the output that look like
 
@@ -472,7 +472,7 @@ command useful, especially their ["Examples" section][range-diff-example-docs].
 
 ## No-Merge Policy
 
-The rust-lang/rust repo uses what is known as a "rebase workflow." This means
+The rust-lang/rust repo uses what is known as a "rebase workflow". This means
 that merge commits in PRs are not accepted.
 As a result, if you are running
 `git merge` locally, chances are good that you should be rebasing instead.
@@ -483,7 +483,7 @@ Running `git config merge.ff only` (this will apply the config to the local repo
 once will ensure that all the merges you perform are of this type, so that you
 cannot make a mistake.
 
-There are a number of reasons for this decision and like all others, it is a tradeoff.
+There are a number of reasons for this decision, and like all others, it is a tradeoff.
 The main advantage is the generally linear commit history.
 This greatly simplifies bisecting and makes the history and commit log much easier
 to follow and understand.
@@ -560,7 +560,7 @@ you might want to get used to the main concepts of Git before reading this secti
 The `rust-lang/rust` repository uses [Git submodules] as a way to use other
 Rust projects from within the `rust` repo.
 Examples include Rust's fork of
-`llvm-project`, `cargo`  and libraries like `stdarch` and `backtrace`.
+`llvm-project`, `cargo`, and libraries like `stdarch` and `backtrace`.
 
 Those projects are developed and maintained in an separate Git (and GitHub)
 repository, and they have their own Git history/commits, issue tracker and PRs.
