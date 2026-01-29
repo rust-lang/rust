@@ -246,6 +246,19 @@ impl TrimmedSubstitutionPart {
 /// `BB` is. Return the length of the prefix, the "trimmed" suggestion, and the length
 /// of the suffix.
 fn as_substr<'a>(original: &'a str, suggestion: &'a str) -> Option<(usize, &'a str, usize)> {
+    // Case for import paths where the suggestion shares a prefix with the original.
+    // Without this, suggesting `std::sync` for `sync` would incorrectly highlight `td::s`
+    // instead of `std::` because of the common 's' prefix. See #148070.
+    if suggestion.contains("::")
+        && suggestion.ends_with(original)
+        && suggestion.len() > original.len()
+        && let prefix = &suggestion[..suggestion.len() - original.len()]
+        && prefix.ends_with("::")
+        && suggestion.chars().next() == original.chars().next()
+    {
+        return Some((0, prefix, original.len()));
+    }
+
     let common_prefix = original
         .chars()
         .zip(suggestion.chars())
