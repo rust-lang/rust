@@ -151,7 +151,7 @@ fn check_addr_of_expr(
             );
             return true;
         }
-        if let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
+        if let Some(deref_trait_id) = cx.tcx.lang_items().deref_trait()
             && implements_trait(cx, receiver_ty, deref_trait_id, &[])
             && cx.get_associated_type(receiver_ty, deref_trait_id, sym::Target) == Some(target_ty)
             // Make sure that it's actually calling the right `.to_string()`, (#10033)
@@ -320,7 +320,7 @@ fn check_split_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symb
         // implements `AsRef<str>` but does not implement `Deref<Target = str>`. In this case, we have to
         // add `.as_ref()` to the suggestion.
         let as_ref = if cx.typeck_results().expr_ty(expr).is_lang_item(cx, LangItem::String)
-            && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
+            && let Some(deref_trait_id) = cx.tcx.lang_items().deref_trait()
             && cx.get_associated_type(cx.typeck_results().expr_ty(receiver), deref_trait_id, sym::Target)
                 != Some(cx.tcx.types.str_)
         {
@@ -394,7 +394,7 @@ fn check_other_call_arg<'tcx>(
             .filter(|trait_predicate| trait_predicate.def_id() != sized_def_id)
             .filter(|trait_predicate| trait_predicate.def_id() != meta_sized_def_id)
             .collect::<Vec<_>>()[..]
-        && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
+        && let Some(deref_trait_id) = cx.tcx.lang_items().deref_trait()
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)
         && (trait_predicate.def_id() == deref_trait_id || trait_predicate.def_id() == as_ref_trait_id)
         && let receiver_ty = cx.typeck_results().expr_ty(receiver)
@@ -653,7 +653,7 @@ fn is_to_string_on_string_like<'a>(
     if let Some(args) = cx.typeck_results().node_args_opt(call_expr.hir_id)
         && let [generic_arg] = args.as_slice()
         && let GenericArgKind::Type(ty) = generic_arg.kind()
-        && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
+        && let Some(deref_trait_id) = cx.tcx.lang_items().deref_trait()
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)
         && (cx.get_associated_type(ty, deref_trait_id, sym::Target) == Some(cx.tcx.types.str_)
             || implements_trait(cx, ty, as_ref_trait_id, &[cx.tcx.types.str_.into()]))
