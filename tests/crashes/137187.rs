@@ -1,10 +1,13 @@
 //@ known-bug: #137187
-use std::ops::Add;
+#![feature(const_trait_impl, const_ops)]
 
+use std::ops::Add;
 const trait A where
-    *const Self: Add,
+    *const Self: const Add,
 {
     fn b(c: *const Self) -> <*const Self as Add>::Output {
         c + c
     }
 }
+
+fn main() {}

@@ -901,14 +901,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_did: DefId,
         callee_args: GenericArgsRef<'tcx>,
     ) {
-        // FIXME(const_trait_impl): We should be enforcing these effects unconditionally.
-        // This can be done as soon as we convert the standard library back to
-        // using const traits, since if we were to enforce these conditions now,
-        // we'd fail on basically every builtin trait call (i.e. `1 + 2`).
-        if !self.tcx.features().const_trait_impl() {
-            return;
-        }
-
         // If we have `rustc_do_not_const_check`, do not check `[const]` bounds.
         if self.has_rustc_attrs && self.tcx.has_attr(self.body_id, sym::rustc_do_not_const_check) {
             return;
