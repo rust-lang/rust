@@ -8,7 +8,8 @@ use crate::fmt;
 use crate::fs::File;
 use crate::io::prelude::*;
 use crate::io::{
-    self, BorrowedCursor, BufReader, IoSlice, IoSliceMut, LineWriter, Lines, SpecReadByte,
+    self, BorrowedCursor, BufReader, BufWriter, IoSlice, IoSliceMut, LineWriter, Lines,
+    SpecReadByte,
 };
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
@@ -43,19 +44,19 @@ static OUTPUT_CAPTURE_USED: Atomic<bool> = AtomicBool::new(false);
 ///
 /// This handle is not synchronized or buffered in any fashion. Constructed via
 /// the `std::io::stdio::stdin_raw` function.
-struct StdinRaw(stdio::Stdin);
+pub(crate) struct StdinRaw(stdio::Stdin);
 
 /// A handle to a raw instance of the standard output stream of this process.
 ///
 /// This handle is not synchronized or buffered in any fashion. Constructed via
 /// the `std::io::stdio::stdout_raw` function.
-struct StdoutRaw(stdio::Stdout);
+pub(crate) struct StdoutRaw(stdio::Stdout);
 
 /// A handle to a raw instance of the standard output stream of this process.
 ///
 /// This handle is not synchronized or buffered in any fashion. Constructed via
 /// the `std::io::stdio::stderr_raw` function.
-struct StderrRaw(stdio::Stderr);
+pub(crate) struct StderrRaw(stdio::Stderr);
 
 /// Constructs a new raw handle to the standard input of this process.
 ///
@@ -576,6 +577,76 @@ impl fmt::Debug for StdinLock<'_> {
     }
 }
 
+/// A buffered writer for stdout and stderr.
+///
+/// This writer may be either [line-buffered](LineWriter) or [block-buffered](BufWriter), depending
+/// on whether the underlying file is a terminal or not.
+#[derive(Debug)]
+enum StdioBufWriter<W: Write> {
+    LineBuffered(LineWriter<W>),
+    BlockBuffered(BufWriter<W>),
+}
+
+impl<W: Write + IsTerminal> StdioBufWriter<W> {
+    /// Wraps a writer using the most appropriate buffering method.
+    ///
+    /// If `w` is a terminal, then the resulting `StdioBufWriter` will be line-buffered, otherwise
+    /// it will be block-buffered.
+    fn new(w: W) -> Self {
+        if w.is_terminal() {
+            Self::LineBuffered(LineWriter::new(w))
+        } else {
+            Self::BlockBuffered(BufWriter::new(w))
+        }
+    }
+}
+
+impl<W: Write> StdioBufWriter<W> {
+    /// Wraps a writer using a block-buffer with the given capacity.
+    fn with_capacity(cap: usize, w: W) -> Self {
+        Self::BlockBuffered(BufWriter::with_capacity(cap, w))
+    }
+}
+
+impl<W: Write> Write for StdioBufWriter<W> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match self {
+            Self::LineBuffered(w) => w.write(buf),
+            Self::BlockBuffered(w) => w.write(buf),
+        }
+    }
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        match self {
+            Self::LineBuffered(w) => w.write_vectored(bufs),
+            Self::BlockBuffered(w) => w.write_vectored(bufs),
+        }
+    }
+    fn is_write_vectored(&self) -> bool {
+        match self {
+            Self::LineBuffered(w) => w.is_write_vectored(),
+            Self::BlockBuffered(w) => w.is_write_vectored(),
+        }
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        match self {
+            Self::LineBuffered(w) => w.flush(),
+            Self::BlockBuffered(w) => w.flush(),
+        }
+    }
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        match self {
+            Self::LineBuffered(w) => w.write_all(buf),
+            Self::BlockBuffered(w) => w.write_all(buf),
+        }
+    }
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        match self {
+            Self::LineBuffered(w) => w.write_all_vectored(bufs),
+            Self::BlockBuffered(w) => w.write_all_vectored(bufs),
+        }
+    }
+}
+
 /// A handle to the global standard output stream of the current process.
 ///
 /// Each handle shares a global buffer of data to be written to the standard
@@ -606,10 +677,9 @@ impl fmt::Debug for StdinLock<'_> {
 /// [`io::stdout`]: stdout
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdout {
-    // FIXME: this should be LineWriter or BufWriter depending on the state of
-    //        stdout (tty or not). Note that if this is not line buffered it
-    //        should also flush-on-panic or some form of flush-on-abort.
-    inner: &'static ReentrantLock<RefCell<LineWriter<StdoutRaw>>>,
+    // FIXME: if this is not line buffered it should flush-on-panic or some
+    //        form of flush-on-abort.
+    inner: &'static ReentrantLock<RefCell<StdioBufWriter<StdoutRaw>>>,
 }
 
 /// A locked reference to the [`Stdout`] handle.
@@ -638,10 +708,10 @@ pub struct Stdout {
 #[must_use = "if unused stdout will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdoutLock<'a> {
-    inner: ReentrantLockGuard<'a, RefCell<LineWriter<StdoutRaw>>>,
+    inner: ReentrantLockGuard<'a, RefCell<StdioBufWriter<StdoutRaw>>>,
 }
 
-static STDOUT: OnceLock<ReentrantLock<RefCell<LineWriter<StdoutRaw>>>> = OnceLock::new();
+static STDOUT: OnceLock<ReentrantLock<RefCell<StdioBufWriter<StdoutRaw>>>> = OnceLock::new();
 
 /// Constructs a new handle to the standard output of the current process.
 ///
@@ -716,7 +786,7 @@ static STDOUT: OnceLock<ReentrantLock<RefCell<LineWriter<StdoutRaw>>>> = OnceLoc
 pub fn stdout() -> Stdout {
     Stdout {
         inner: STDOUT
-            .get_or_init(|| ReentrantLock::new(RefCell::new(LineWriter::new(stdout_raw())))),
+            .get_or_init(|| ReentrantLock::new(RefCell::new(StdioBufWriter::new(stdout_raw())))),
     }
 }
 
@@ -727,7 +797,7 @@ pub fn cleanup() {
     let mut initialized = false;
     let stdout = STDOUT.get_or_init(|| {
         initialized = true;
-        ReentrantLock::new(RefCell::new(LineWriter::with_capacity(0, stdout_raw())))
+        ReentrantLock::new(RefCell::new(StdioBufWriter::with_capacity(0, stdout_raw())))
     });
 
     if !initialized {
@@ -736,7 +806,7 @@ pub fn cleanup() {
         // might have leaked a StdoutLock, which would
         // otherwise cause a deadlock here.
         if let Some(lock) = stdout.try_lock() {
-            *lock.borrow_mut() = LineWriter::with_capacity(0, stdout_raw());
+            *lock.borrow_mut() = StdioBufWriter::with_capacity(0, stdout_raw());
         }
     }
 }
@@ -1262,7 +1332,18 @@ macro_rules! impl_is_terminal {
     )*}
 }
 
-impl_is_terminal!(File, Stdin, StdinLock<'_>, Stdout, StdoutLock<'_>, Stderr, StderrLock<'_>);
+impl_is_terminal!(
+    File,
+    Stdin,
+    StdinLock<'_>,
+    StdinRaw,
+    Stdout,
+    StdoutLock<'_>,
+    StdoutRaw,
+    Stderr,
+    StderrLock<'_>,
+    StderrRaw,
+);
 
 #[unstable(
     feature = "print_internals",
