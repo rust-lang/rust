@@ -3035,18 +3035,6 @@ fn repr_attribute<'tcx>(
         return is_public.then(|| "#[repr(transparent)]".into());
     }
 
-    // Fast path which avoids looking through the variants and fields in
-    // the common case of no `#[repr]` or in the case of `#[repr(Rust)]`.
-    // FIXME: This check is not very robust / forward compatible!
-    if !repr.c()
-        && !repr.simd()
-        && repr.int.is_none()
-        && repr.pack.is_none()
-        && repr.align.is_none()
-    {
-        return None;
-    }
-
     // The repr is public iff all components are public and visible.
     let is_public = adt
         .variants()
