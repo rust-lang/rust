@@ -950,7 +950,7 @@ impl Builder<'_> {
         cargo.env(profile_var("STRIP"), self.config.rust_strip.to_string());
 
         if let Some(stack_protector) = &self.config.rust_stack_protector {
-            rustflags.arg(&format!("-Zstack-protector={stack_protector}"));
+            rustflags.arg(&format!("-Cstack-protector={stack_protector}"));
         }
 
         let debuginfo_level = match mode {
