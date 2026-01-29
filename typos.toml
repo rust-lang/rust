@@ -45,6 +45,7 @@ unstalled = "unstalled" # short for un-stalled
 # the non-empty form can be automatically fixed by `--bless`.
 #
 # tidy-alphabetical-start
+definitinon = "definition"
 # tidy-alphabetical-end
 
 [default.extend-identifiers]
