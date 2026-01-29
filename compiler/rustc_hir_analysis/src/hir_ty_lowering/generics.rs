@@ -422,7 +422,7 @@ pub(crate) fn check_generic_arg_count(
     let named_type_param_count = param_counts.types - has_self as usize - synth_type_param_count;
     let named_const_param_count = param_counts.consts;
     let infer_lifetimes =
-        (gen_pos != GenericArgPosition::Type || seg.infer_args) && !gen_args.has_lifetime_params();
+        (gen_pos != GenericArgPosition::Type || seg.infer_args) && !gen_args.has_lifetime_args();
 
     if gen_pos != GenericArgPosition::Type
         && let Some(c) = gen_args.constraints.first()
@@ -472,7 +472,7 @@ pub(crate) fn check_generic_arg_count(
 
     let min_expected_lifetime_args = if infer_lifetimes { 0 } else { param_counts.lifetimes };
     let max_expected_lifetime_args = param_counts.lifetimes;
-    let num_provided_lifetime_args = gen_args.num_lifetime_params();
+    let num_provided_lifetime_args = gen_args.num_lifetime_args();
 
     let lifetimes_correct = check_lifetime_args(
         min_expected_lifetime_args,
@@ -596,7 +596,7 @@ pub(crate) fn check_generic_arg_count(
                 - default_counts.consts
         };
         debug!(?expected_min);
-        debug!(arg_counts.lifetimes=?gen_args.num_lifetime_params());
+        debug!(arg_counts.lifetimes=?gen_args.num_lifetime_args());
 
         let provided = gen_args.num_generic_params();
 
@@ -606,7 +606,7 @@ pub(crate) fn check_generic_arg_count(
             named_const_param_count + named_type_param_count + synth_type_param_count,
             provided,
             param_counts.lifetimes + has_self as usize,
-            gen_args.num_lifetime_params(),
+            gen_args.num_lifetime_args(),
         )
     };
 
@@ -629,7 +629,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
     let param_counts = def.own_counts();
 
     if let Some(span_late) = def.has_late_bound_regions
-        && args.has_lifetime_params()
+        && args.has_lifetime_args()
     {
         let msg = "cannot specify lifetime arguments explicitly \
                        if late bound lifetime parameters are present";
@@ -637,7 +637,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         let span = args.args[0].span();
 
         if position == GenericArgPosition::Value
-            && args.num_lifetime_params() != param_counts.lifetimes
+            && args.num_lifetime_args() != param_counts.lifetimes
         {
             struct_span_code_err!(cx.dcx(), span, E0794, "{}", msg)
                 .with_span_note(span_late, note)
