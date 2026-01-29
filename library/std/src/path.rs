@@ -3221,7 +3221,8 @@ impl Path {
     /// it helps dereferencing other `PathBuf`-like types to `Path`s,
     /// for example references to `Box<Path>` or `Arc<Path>`.
     #[inline]
-    #[unstable(feature = "str_as_str", issue = "130366")]
+    #[stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_path(&self) -> &Path {
         self
     }

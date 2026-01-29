@@ -3121,7 +3121,8 @@ impl str {
     /// it helps dereferencing other string-like types to string slices,
     /// for example references to `Box<str>` or `Arc<str>`.
     #[inline]
-    #[unstable(feature = "str_as_str", issue = "130366")]
+    #[stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_str(&self) -> &str {
         self
     }

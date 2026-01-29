@@ -5126,7 +5126,8 @@ impl<T> [T] {
     /// it helps dereferencing other "container" types to slices,
     /// for example `Box<[T]>` or `Arc<[T]>`.
     #[inline]
-    #[unstable(feature = "str_as_str", issue = "130366")]
+    #[stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_slice(&self) -> &[T] {
         self
     }
@@ -5137,7 +5138,8 @@ impl<T> [T] {
     /// it helps dereferencing other "container" types to slices,
     /// for example `Box<[T]>` or `MutexGuard<[T]>`.
     #[inline]
-    #[unstable(feature = "str_as_str", issue = "130366")]
+    #[stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_mut_slice(&mut self) -> &mut [T] {
         self
     }
