@@ -92,7 +92,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
                     | Rvalue::BinaryOp(..)
                     | Rvalue::Ref(..)
                     | Rvalue::RawPtr(..)
-                    | Rvalue::Discriminant(..) => false,
+                    | Rvalue::Discriminant(..)
+                    | Rvalue::Reborrow(..) => false,
                 };
                 // The sides of an assignment must not alias.
                 if forbid_aliasing {

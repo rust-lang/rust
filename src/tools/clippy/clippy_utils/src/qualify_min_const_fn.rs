@@ -130,6 +130,7 @@ fn check_rvalue<'tcx>(
             check_place(cx, *place, span, body, msrv)
         },
         Rvalue::CopyForDeref(place) => check_place(cx, *place, span, body, msrv),
+        Rvalue::Reborrow(_, place) => check_place(cx, *place, span, body, msrv),
         Rvalue::Repeat(operand, _)
         | Rvalue::Use(operand)
         | Rvalue::WrapUnsafeBinder(operand, _)

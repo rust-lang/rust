@@ -137,6 +137,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         Ord: ord::expand_deriving_ord,
         PartialEq: partial_eq::expand_deriving_partial_eq,
         PartialOrd: partial_ord::expand_deriving_partial_ord,
+        Reborrow: reborrow::expand_deriving_reborrow,
         CoercePointee: coerce_pointee::expand_deriving_coerce_pointee,
         From: from::expand_deriving_from,
     }

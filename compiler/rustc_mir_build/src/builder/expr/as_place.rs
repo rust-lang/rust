@@ -592,6 +592,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let temp = unpack!(block = this.as_temp(block, temp_lifetime, expr_id, mutability));
                 block.and(PlaceBuilder::from(temp))
             }
+            ExprKind::Reborrow { source: _, mutability: _, ty: _ } => {
+                todo!();
+            }
         }
     }
 

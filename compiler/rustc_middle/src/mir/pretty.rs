@@ -1244,6 +1244,14 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             WrapUnsafeBinder(ref op, ty) => {
                 with_no_trimmed_paths!(write!(fmt, "wrap_binder!({op:?}; {ty})"))
             }
+
+            Reborrow(mutability, ref place) => {
+                if mutability.is_mut() {
+                    write!(fmt, "reborrow {place:?}")
+                } else {
+                    write!(fmt, "coerceshared {place:?}")
+                }
+            }
         }
     }
 }

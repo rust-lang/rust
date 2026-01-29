@@ -468,7 +468,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             Rvalue::Use(operand) => return self.handle_operand(operand, state),
             Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
             Rvalue::ShallowInitBox(..) => bug!("`ShallowInitBox` in runtime MIR"),
-            Rvalue::Ref(..) | Rvalue::RawPtr(..) => {
+            Rvalue::Ref(..) | Rvalue::RawPtr(..) | Rvalue::Reborrow(..) => {
                 // We don't track such places.
                 return ValueOrPlace::TOP;
             }

@@ -265,7 +265,7 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(op, location);
                         self.visit_ty(ty, location);
                     }
-                    Rvalue::CopyForDeref(place) | Rvalue::Discriminant(place) | Rvalue::Len(place) => {
+                    Rvalue::CopyForDeref(place) | Rvalue::Discriminant(place) | Rvalue::Len(place) | Rvalue::Reborrow(place) => {
                         self.visit_place(place, PlaceContext::NON_MUTATING, location);
                     }
                     Rvalue::Ref(region, kind, place) => {

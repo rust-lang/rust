@@ -769,8 +769,15 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::Discriminant(_)
             | Rvalue::Aggregate(_, _)
             | Rvalue::ShallowInitBox(_, _)
-            | Rvalue::WrapUnsafeBinder(_, _) => true,
+            | Rvalue::WrapUnsafeBinder(_, _)
+            | Rvalue::Reborrow(..) => true,
         }
+    }
+
+    /// Returns true if rvalue is a generic Reborrow coercion (usage of Reborrow or CoerceShared
+    /// trait).
+    pub fn is_generic_reborrow(&self) -> bool {
+        matches!(self, Self::Reborrow(..))
     }
 
     pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
@@ -818,6 +825,7 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::ShallowInitBox(_, ty) => Ty::new_box(tcx, ty),
             Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,
             Rvalue::WrapUnsafeBinder(_, ty) => ty,
+            Rvalue::Reborrow(_, ref place) => place.ty(local_decls, tcx).ty,
         }
     }
 

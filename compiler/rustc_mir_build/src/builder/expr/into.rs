@@ -802,6 +802,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
+            ExprKind::Reborrow { source, mutability, ty: _ } => {
+                // if !this.tcx.type_is_copy_modulo_regions(this.typing_env(), ty) {
+                //     panic!("Reborrow currently requires self to be Copy");
+                // }
+                // let arg_place = match borrow_kind {
+                //     BorrowKind::Shared => {
+                //         unpack!(block = this.as_read_only_place(block, source))
+                //     }
+                //     _ => unpack!(block = this.as_place(block, source)),
+                // };
+                // let borrow = Rvalue::Ref(this.tcx.lifetimes.re_erased, borrow_kind, arg_place);
+                let place = unpack!(block = this.as_place(block, source));
+                this.cfg.push_assign(
+                    block,
+                    source_info,
+                    destination,
+                    Rvalue::Reborrow(mutability, place.into()),
+                );
+                block.unit()
+            }
         };
 
         if !expr_is_block_or_scope {
