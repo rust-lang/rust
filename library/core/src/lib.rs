@@ -113,6 +113,7 @@
 #![feature(internal_impls_macro)]
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]
+#![feature(iter_contains)]
 #![feature(link_cfg)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
