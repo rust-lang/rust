@@ -363,7 +363,7 @@ impl Command {
                 // Compare results (inspired by hyperfine)
                 let ratio = new_result.mean / baseline_result.mean;
                 // https://en.wikipedia.org/wiki/Propagation_of_uncertainty#Example_formulae
-                // Covariance asssumed to be 0, i.e. variables are assumed to be independent
+                // Covariance assumed to be 0, i.e. variables are assumed to be independent
                 let ratio_stddev = ratio
                     * f64::sqrt(
                         (new_result.stddev / new_result.mean).powi(2)
