@@ -37,7 +37,7 @@ fn bless_test(before: &str, after: &str) {
     let temp_path = tempfile::Builder::new().tempfile().unwrap().into_temp_path();
     std::fs::write(&temp_path, before).unwrap();
 
-    let tidy_ctx = TidyCtx::new(Path::new("/"), false, TidyFlags::new(&["--bless".to_owned()]));
+    let tidy_ctx = TidyCtx::new(Path::new("/"), false, TidyFlags::new(true));
 
     let mut check = tidy_ctx.start_check("alphabetical-test");
     check_lines(&temp_path, before, &tidy_ctx, &mut check);
