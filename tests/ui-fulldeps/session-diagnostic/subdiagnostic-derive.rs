@@ -85,7 +85,7 @@ struct F {
 
 #[derive(Subdiagnostic)]
 #[label(bug = "...")]
-//~^ ERROR only `no_span` is a valid nested attribute
+//~^ ERROR no nested attribute expected here
 //~| ERROR diagnostic slug must be first argument
 struct G {
     #[primary_span]
@@ -95,7 +95,7 @@ struct G {
 
 #[derive(Subdiagnostic)]
 #[label("...")]
-//~^ ERROR unexpected literal in nested attribute, expected ident
+//~^ ERROR expected identifier
 struct H {
     #[primary_span]
     span: Span,
@@ -104,7 +104,7 @@ struct H {
 
 #[derive(Subdiagnostic)]
 #[label(slug = 4)]
-//~^ ERROR only `no_span` is a valid nested attribute
+//~^ ERROR no nested attribute expected here
 //~| ERROR diagnostic slug must be first argument
 struct J {
     #[primary_span]
@@ -114,7 +114,7 @@ struct J {
 
 #[derive(Subdiagnostic)]
 #[label(slug("..."))]
-//~^ ERROR only `no_span` is a valid nested attribute
+//~^ ERROR no nested attribute expected here
 //~| ERROR diagnostic slug must be first argument
 struct K {
     #[primary_span]
@@ -133,7 +133,7 @@ struct M {
 
 #[derive(Subdiagnostic)]
 #[label(no_crate_example, code = "...")]
-//~^ ERROR only `no_span` is a valid nested attribute
+//~^ ERROR no nested attribute expected here
 struct N {
     #[primary_span]
     span: Span,
@@ -142,7 +142,7 @@ struct N {
 
 #[derive(Subdiagnostic)]
 #[label(no_crate_example, applicability = "machine-applicable")]
-//~^ ERROR only `no_span` is a valid nested attribute
+//~^ ERROR no nested attribute expected here
 struct O {
     #[primary_span]
     span: Span,
@@ -214,7 +214,7 @@ enum T {
 enum U {
     #[label(code = "...")]
     //~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
-    //~| ERROR only `no_span` is a valid nested attribute
+    //~| ERROR no nested attribute expected here
     A {
         #[primary_span]
         span: Span,
@@ -775,7 +775,7 @@ struct SuggestionStyleInvalid1 {
 
 #[derive(Subdiagnostic)]
 #[suggestion(no_crate_example, code = "", style = 42)]
-//~^ ERROR expected `= "xxx"`
+//~^ ERROR expected string literal
 struct SuggestionStyleInvalid2 {
     #[primary_span]
     sub: Span,
@@ -791,8 +791,7 @@ struct SuggestionStyleInvalid3 {
 
 #[derive(Subdiagnostic)]
 #[suggestion(no_crate_example, code = "", style("foo"))]
-//~^ ERROR expected `= "xxx"`
-//~| ERROR expected `,`
+//~^ ERROR expected `=`
 struct SuggestionStyleInvalid4 {
     #[primary_span]
     sub: Span,

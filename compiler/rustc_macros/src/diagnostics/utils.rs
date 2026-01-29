@@ -6,7 +6,7 @@ use std::str::FromStr;
 use proc_macro::Span;
 use proc_macro2::{Ident, TokenStream};
 use quote::{ToTokens, format_ident, quote};
-use syn::meta::ParseNestedMeta;
+use syn::parse::ParseStream;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{Attribute, Field, LitStr, Meta, Path, Token, Type, TypeTuple, parenthesized};
@@ -261,108 +261,104 @@ impl<T> SetOnce<T> for SpannedOption<T> {
 
 pub(super) type FieldMap = HashMap<String, TokenStream>;
 
-pub(crate) trait HasFieldMap {
-    /// Returns the binding for the field with the given name, if it exists on the type.
-    fn get_field_binding(&self, field: &String) -> Option<&TokenStream>;
+/// In the strings in the attributes supplied to this macro, we want callers to be able to
+/// reference fields in the format string. For example:
+///
+/// ```ignore (not-usage-example)
+/// /// Suggest `==` when users wrote `===`.
+/// #[suggestion(slug = "parser-not-javascript-eq", code = "{lhs} == {rhs}")]
+/// struct NotJavaScriptEq {
+///     #[primary_span]
+///     span: Span,
+///     lhs: Ident,
+///     rhs: Ident,
+/// }
+/// ```
+///
+/// We want to automatically pick up that `{lhs}` refers `self.lhs` and `{rhs}` refers to
+/// `self.rhs`, then generate this call to `format!`:
+///
+/// ```ignore (not-usage-example)
+/// format!("{lhs} == {rhs}", lhs = self.lhs, rhs = self.rhs)
+/// ```
+///
+/// This function builds the entire call to `format!`.
+pub(super) fn build_format(
+    field_map: &FieldMap,
+    input: &str,
+    span: proc_macro2::Span,
+) -> TokenStream {
+    // This set is used later to generate the final format string. To keep builds reproducible,
+    // the iteration order needs to be deterministic, hence why we use a `BTreeSet` here
+    // instead of a `HashSet`.
+    let mut referenced_fields: BTreeSet<String> = BTreeSet::new();
 
-    /// In the strings in the attributes supplied to this macro, we want callers to be able to
-    /// reference fields in the format string. For example:
-    ///
-    /// ```ignore (not-usage-example)
-    /// /// Suggest `==` when users wrote `===`.
-    /// #[suggestion(slug = "parser-not-javascript-eq", code = "{lhs} == {rhs}")]
-    /// struct NotJavaScriptEq {
-    ///     #[primary_span]
-    ///     span: Span,
-    ///     lhs: Ident,
-    ///     rhs: Ident,
-    /// }
-    /// ```
-    ///
-    /// We want to automatically pick up that `{lhs}` refers `self.lhs` and `{rhs}` refers to
-    /// `self.rhs`, then generate this call to `format!`:
-    ///
-    /// ```ignore (not-usage-example)
-    /// format!("{lhs} == {rhs}", lhs = self.lhs, rhs = self.rhs)
-    /// ```
-    ///
-    /// This function builds the entire call to `format!`.
-    fn build_format(&self, input: &str, span: proc_macro2::Span) -> TokenStream {
-        // This set is used later to generate the final format string. To keep builds reproducible,
-        // the iteration order needs to be deterministic, hence why we use a `BTreeSet` here
-        // instead of a `HashSet`.
-        let mut referenced_fields: BTreeSet<String> = BTreeSet::new();
+    // At this point, we can start parsing the format string.
+    let mut it = input.chars().peekable();
 
-        // At this point, we can start parsing the format string.
-        let mut it = input.chars().peekable();
-
-        // Once the start of a format string has been found, process the format string and spit out
-        // the referenced fields. Leaves `it` sitting on the closing brace of the format string, so
-        // the next call to `it.next()` retrieves the next character.
-        while let Some(c) = it.next() {
-            if c != '{' {
-                continue;
-            }
-            if *it.peek().unwrap_or(&'\0') == '{' {
-                assert_eq!(it.next().unwrap(), '{');
-                continue;
-            }
-            let mut eat_argument = || -> Option<String> {
-                let mut result = String::new();
-                // Format specifiers look like:
-                //
-                //   format   := '{' [ argument ] [ ':' format_spec ] '}' .
-                //
-                // Therefore, we only need to eat until ':' or '}' to find the argument.
-                while let Some(c) = it.next() {
-                    result.push(c);
-                    let next = *it.peek().unwrap_or(&'\0');
-                    if next == '}' {
-                        break;
-                    } else if next == ':' {
-                        // Eat the ':' character.
-                        assert_eq!(it.next().unwrap(), ':');
-                        break;
-                    }
-                }
-                // Eat until (and including) the matching '}'
-                while it.next()? != '}' {
-                    continue;
-                }
-                Some(result)
-            };
-
-            if let Some(referenced_field) = eat_argument() {
-                referenced_fields.insert(referenced_field);
-            }
+    // Once the start of a format string has been found, process the format string and spit out
+    // the referenced fields. Leaves `it` sitting on the closing brace of the format string, so
+    // the next call to `it.next()` retrieves the next character.
+    while let Some(c) = it.next() {
+        if c != '{' {
+            continue;
         }
+        if *it.peek().unwrap_or(&'\0') == '{' {
+            assert_eq!(it.next().unwrap(), '{');
+            continue;
+        }
+        let mut eat_argument = || -> Option<String> {
+            let mut result = String::new();
+            // Format specifiers look like:
+            //
+            //   format   := '{' [ argument ] [ ':' format_spec ] '}' .
+            //
+            // Therefore, we only need to eat until ':' or '}' to find the argument.
+            while let Some(c) = it.next() {
+                result.push(c);
+                let next = *it.peek().unwrap_or(&'\0');
+                if next == '}' {
+                    break;
+                } else if next == ':' {
+                    // Eat the ':' character.
+                    assert_eq!(it.next().unwrap(), ':');
+                    break;
+                }
+            }
+            // Eat until (and including) the matching '}'
+            while it.next()? != '}' {
+                continue;
+            }
+            Some(result)
+        };
 
-        // At this point, `referenced_fields` contains a set of the unique fields that were
-        // referenced in the format string. Generate the corresponding "x = self.x" format
-        // string parameters:
-        let args = referenced_fields.into_iter().map(|field: String| {
-            let field_ident = format_ident!("{}", field);
-            let value = match self.get_field_binding(&field) {
-                Some(value) => value.clone(),
-                // This field doesn't exist. Emit a diagnostic.
-                None => {
-                    span_err(
-                        span.unwrap(),
-                        format!("`{field}` doesn't refer to a field on this type"),
-                    )
+        if let Some(referenced_field) = eat_argument() {
+            referenced_fields.insert(referenced_field);
+        }
+    }
+
+    // At this point, `referenced_fields` contains a set of the unique fields that were
+    // referenced in the format string. Generate the corresponding "x = self.x" format
+    // string parameters:
+    let args = referenced_fields.into_iter().map(|field: String| {
+        let field_ident = format_ident!("{}", field);
+        let value = match field_map.get(&field) {
+            Some(value) => value.clone(),
+            // This field doesn't exist. Emit a diagnostic.
+            None => {
+                span_err(span.unwrap(), format!("`{field}` doesn't refer to a field on this type"))
                     .emit();
-                    quote! {
-                        "{#field}"
-                    }
+                quote! {
+                    "{#field}"
                 }
-            };
-            quote! {
-                #field_ident = #value
             }
-        });
+        };
         quote! {
-            format!(#input #(,#args)*)
+            #field_ident = #value
         }
+    });
+    quote! {
+        format!(#input #(,#args)*)
     }
 }
 
@@ -428,76 +424,63 @@ pub(super) enum AllowMultipleAlternatives {
 }
 
 fn parse_suggestion_values(
-    nested: ParseNestedMeta<'_>,
+    nested: ParseStream<'_>,
     allow_multiple: AllowMultipleAlternatives,
 ) -> syn::Result<Vec<LitStr>> {
-    let values = if let Ok(val) = nested.value() {
-        vec![val.parse()?]
-    } else {
-        let content;
-        parenthesized!(content in nested.input);
+    if nested.parse::<Token![=]>().is_ok() {
+        return Ok(vec![nested.parse::<LitStr>()?]);
+    }
 
-        if let AllowMultipleAlternatives::No = allow_multiple {
+    let content;
+    parenthesized!(content in nested);
+    if let AllowMultipleAlternatives::No = allow_multiple {
+        span_err(content.span().unwrap(), "expected exactly one string literal for `code = ...`")
+            .emit();
+        return Ok(vec![]);
+    }
+
+    let literals = Punctuated::<LitStr, Token![,]>::parse_terminated(&content);
+    Ok(match literals {
+        Ok(p) if p.is_empty() => {
             span_err(
-                nested.input.span().unwrap(),
-                "expected exactly one string literal for `code = ...`",
+                content.span().unwrap(),
+                "expected at least one string literal for `code(...)`",
             )
             .emit();
             vec![]
-        } else {
-            let literals = Punctuated::<LitStr, Token![,]>::parse_terminated(&content);
-
-            match literals {
-                Ok(p) if p.is_empty() => {
-                    span_err(
-                        content.span().unwrap(),
-                        "expected at least one string literal for `code(...)`",
-                    )
-                    .emit();
-                    vec![]
-                }
-                Ok(p) => p.into_iter().collect(),
-                Err(_) => {
-                    span_err(
-                        content.span().unwrap(),
-                        "`code(...)` must contain only string literals",
-                    )
-                    .emit();
-                    vec![]
-                }
-            }
         }
-    };
-
-    Ok(values)
+        Ok(p) => p.into_iter().collect(),
+        Err(_) => {
+            span_err(content.span().unwrap(), "`code(...)` must contain only string literals")
+                .emit();
+            vec![]
+        }
+    })
 }
 
 /// Constructs the `format!()` invocation(s) necessary for a `#[suggestion*(code = "foo")]` or
 /// `#[suggestion*(code("foo", "bar"))]` attribute field
 pub(super) fn build_suggestion_code(
     code_field: &Ident,
-    nested: ParseNestedMeta<'_>,
-    fields: &impl HasFieldMap,
+    nested: ParseStream<'_>,
+    fields: &FieldMap,
     allow_multiple: AllowMultipleAlternatives,
-) -> TokenStream {
-    let values = match parse_suggestion_values(nested, allow_multiple) {
-        Ok(x) => x,
-        Err(e) => return e.into_compile_error(),
-    };
+) -> Result<TokenStream, syn::Error> {
+    let values = parse_suggestion_values(nested, allow_multiple)?;
 
-    if let AllowMultipleAlternatives::Yes = allow_multiple {
+    Ok(if let AllowMultipleAlternatives::Yes = allow_multiple {
         let formatted_strings: Vec<_> = values
             .into_iter()
-            .map(|value| fields.build_format(&value.value(), value.span()))
+            .map(|value| build_format(fields, &value.value(), value.span()))
             .collect();
         quote! { let #code_field = [#(#formatted_strings),*].into_iter(); }
     } else if let [value] = values.as_slice() {
-        let formatted_str = fields.build_format(&value.value(), value.span());
+        let formatted_str = build_format(fields, &value.value(), value.span());
         quote! { let #code_field = #formatted_str; }
     } else {
         // error handled previously
         quote! { let #code_field = String::new(); }
-    }
+    })
 }
 
 /// Possible styles for suggestion subdiagnostics.
@@ -605,16 +588,15 @@ pub(super) enum SubdiagnosticKind {
 pub(super) struct SubdiagnosticVariant {
     pub(super) kind: SubdiagnosticKind,
     pub(super) slug: Option<Path>,
-    pub(super) no_span: bool,
 }
 
 impl SubdiagnosticVariant {
     /// Constructs a `SubdiagnosticVariant` from a field or type attribute such as `#[note]`,
-    /// `#[error(parser::add_paren, no_span)]` or `#[suggestion(code = "...")]`. Returns the
+    /// `#[error(parser::add_paren)]` or `#[suggestion(code = "...")]`. Returns the
     /// `SubdiagnosticKind` and the diagnostic slug, if specified.
     pub(super) fn from_attr(
         attr: &Attribute,
-        fields: &impl HasFieldMap,
+        fields: &FieldMap,
     ) -> Result<Option<SubdiagnosticVariant>, DiagnosticDeriveError> {
         // Always allow documentation comments.
         if is_doc_comment(attr) {
@@ -694,7 +676,7 @@ impl SubdiagnosticVariant {
                     | SubdiagnosticKind::HelpOnce
                     | SubdiagnosticKind::Warn
                     | SubdiagnosticKind::MultipartSuggestion { .. } => {
-                        return Ok(Some(SubdiagnosticVariant { kind, slug: None, no_span: false }));
+                        return Ok(Some(SubdiagnosticVariant { kind, slug: None }));
                     }
                     SubdiagnosticKind::Suggestion { .. } => {
                         throw_span_err!(span, "suggestion without `code = \"...\"`")
@@ -709,112 +691,93 @@ impl SubdiagnosticVariant {
         let mut code = None;
         let mut suggestion_kind = None;
 
-        let mut first = true;
         let mut slug = None;
-        let mut no_span = false;
 
-        list.parse_nested_meta(|nested| {
-            if nested.input.is_empty() || nested.input.peek(Token![,]) {
-                if first {
-                    slug = Some(nested.path);
-                } else if nested.path.is_ident("no_span") {
-                    no_span = true;
-                } else {
-                    span_err(nested.input.span().unwrap(), "a diagnostic slug must be the first argument to the attribute").emit();
+        list.parse_args_with(|input: ParseStream<'_>| {
+            let mut is_first = true;
+            while !input.is_empty() {
+                let arg_name: Path = input.parse::<Path>()?;
+                let arg_name_span = arg_name.span().unwrap();
+                if input.is_empty() || input.parse::<Token![,]>().is_ok() {
+                    if is_first {
+                        slug = Some(arg_name);
+                        is_first = false;
+                    } else {
+                        span_err(arg_name_span, "a diagnostic slug must be the first argument to the attribute").emit();
+                    }
+                    continue
                 }
+                is_first = false;
 
-                first = false;
-                return Ok(());
-            }
+                match (arg_name.require_ident()?.to_string().as_str(), &mut kind) {
+                    ("code", SubdiagnosticKind::Suggestion { code_field, .. }) => {
+                        let code_init = build_suggestion_code(
+                            &code_field,
+                            &input,
+                            fields,
+                            AllowMultipleAlternatives::Yes,
+                        )?;
+                        code.set_once(code_init, arg_name_span);
+                    }
+                    (
+                        "applicability",
+                        SubdiagnosticKind::Suggestion { applicability, .. }
+                        | SubdiagnosticKind::MultipartSuggestion { applicability, .. },
+                    ) => {
+                        input.parse::<Token![=]>()?;
+                        let value = input.parse::<LitStr>()?;
+                        let value = Applicability::from_str(&value.value()).unwrap_or_else(|()| {
+                            span_err(value.span().unwrap(), "invalid applicability").emit();
+                            Applicability::Unspecified
+                        });
+                        applicability.set_once(value, span);
+                    }
+                    (
+                        "style",
+                        SubdiagnosticKind::Suggestion { .. }
+                        | SubdiagnosticKind::MultipartSuggestion { .. },
+                    ) => {
+                        input.parse::<Token![=]>()?;
+                        let value = input.parse::<LitStr>()?;
 
-            first = false;
+                        let value = value.value().parse().unwrap_or_else(|()| {
+                            span_err(value.span().unwrap(), "invalid suggestion style")
+                                .help("valid styles are `normal`, `short`, `hidden`, `verbose` and `tool-only`")
+                                .emit();
+                            SuggestionKind::Normal
+                        });
 
-            let nested_name = nested.path.segments.last().unwrap().ident.to_string();
-            let nested_name = nested_name.as_str();
+                        suggestion_kind.set_once(value, span);
+                    }
 
-            let path_span = nested.path.span().unwrap();
-            let val_span = nested.input.span().unwrap();
 
-            macro_rules! get_string {
-                () => {{
-                    let Ok(value) = nested.value().and_then(|x| x.parse::<LitStr>()) else {
-                        span_err(val_span, "expected `= \"xxx\"`").emit();
-                        return Ok(());
-                    };
-                    value
-                }};
-            }
-
-            let mut has_errors = false;
-            let input = nested.input;
-
-            match (nested_name, &mut kind) {
-                ("code", SubdiagnosticKind::Suggestion { code_field, .. }) => {
-                    let code_init = build_suggestion_code(
-                        code_field,
-                        nested,
-                        fields,
-                        AllowMultipleAlternatives::Yes,
-                    );
-                    code.set_once(code_init, path_span);
-                }
-                (
-                    "applicability",
-                    SubdiagnosticKind::Suggestion { applicability, .. }
-                    | SubdiagnosticKind::MultipartSuggestion { applicability, .. },
-                ) => {
-                    let value = get_string!();
-                    let value = Applicability::from_str(&value.value()).unwrap_or_else(|()| {
-                        span_err(value.span().unwrap(), "invalid applicability").emit();
-                        has_errors = true;
-                        Applicability::Unspecified
-                    });
-                    applicability.set_once(value, span);
-                }
-                (
-                    "style",
-                    SubdiagnosticKind::Suggestion { .. }
-                    | SubdiagnosticKind::MultipartSuggestion { .. },
-                ) => {
-                    let value = get_string!();
-
-                    let value = value.value().parse().unwrap_or_else(|()| {
-                        span_err(value.span().unwrap(), "invalid suggestion style")
-                            .help("valid styles are `normal`, `short`, `hidden`, `verbose` and `tool-only`")
+                    // Invalid nested attribute
+                    (_, SubdiagnosticKind::Suggestion { .. }) => {
+                        span_err(arg_name_span, "invalid nested attribute")
+                            .help(
+                                "only `style`, `code` and `applicability` are valid nested attributes",
+                            )
                             .emit();
-                        has_errors = true;
-                        SuggestionKind::Normal
-                    });
-
-                    suggestion_kind.set_once(value, span);
+                        // Consume the rest of the input to avoid spamming errors
+                        let _ = input.parse::<TokenStream>();
+                    }
+                    (_, SubdiagnosticKind::MultipartSuggestion { .. }) => {
+                        span_err(arg_name_span, "invalid nested attribute")
+                            .help("only `style` and `applicability` are valid nested attributes")
+                            .emit();
+                        // Consume the rest of the input to avoid spamming errors
+                        let _ = input.parse::<TokenStream>();
+                    }
+                    _ => {
+                        span_err(arg_name_span, "no nested attribute expected here").emit();
+                        // Consume the rest of the input to avoid spamming errors
+                        let _ = input.parse::<TokenStream>();
+                    }
                 }
 
-                // Invalid nested attribute
-                (_, SubdiagnosticKind::Suggestion { .. }) => {
-                    span_err(path_span, "invalid nested attribute")
-                        .help(
-                            "only `no_span`, `style`, `code` and `applicability` are valid nested attributes",
-                        )
-                        .emit();
-                    has_errors = true;
-                }
-                (_, SubdiagnosticKind::MultipartSuggestion { .. }) => {
-                    span_err(path_span, "invalid nested attribute")
-                        .help("only `no_span`, `style` and `applicability` are valid nested attributes")
-                        .emit();
-                    has_errors = true;
-                }
-                _ => {
-                    span_err(path_span, "only `no_span` is a valid nested attribute").emit();
-                    has_errors = true;
-                }
+                if input.is_empty() { break }
+                input.parse::<Token![,]>()?;
             }
-
-            if has_errors {
-                // Consume the rest of the input to avoid spamming errors
-                let _ = input.parse::<TokenStream>();
-            }
-
             Ok(())
         })?;
 
@@ -851,7 +814,7 @@ impl SubdiagnosticVariant {
             | SubdiagnosticKind::Warn => {}
         }
 
-        Ok(Some(SubdiagnosticVariant { kind, slug, no_span }))
+        Ok(Some(SubdiagnosticVariant { kind, slug }))
     }
 }
 
