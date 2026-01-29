@@ -2760,9 +2760,13 @@ impl<'a> Parser<'a> {
         let (mut cond, _) =
             self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL | Restrictions::ALLOW_LET, attrs)?;
 
-        CondChecker::new(self, let_chains_policy).visit_expr(&mut cond);
-
-        Ok(cond)
+        let mut checker = CondChecker::new(self, let_chains_policy);
+        checker.visit_expr(&mut cond);
+        Ok(if let Some(guar) = checker.found_incorrect_let_chain {
+            self.mk_expr_err(cond.span, guar)
+        } else {
+            cond
+        })
     }
 
     /// Parses a `let $pat = $expr` pseudo-expression.
@@ -3484,13 +3488,19 @@ impl<'a> Parser<'a> {
         let if_span = self.prev_token.span;
         let mut cond = self.parse_match_guard_condition()?;
 
-        CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
+        let mut checker = CondChecker::new(self, LetChainsPolicy::AlwaysAllowed);
+        checker.visit_expr(&mut cond);
 
         if has_let_expr(&cond) {
             let span = if_span.to(cond.span);
             self.psess.gated_spans.gate(sym::if_let_guard, span);
         }
-        Ok(Some(cond))
+
+        Ok(Some(if let Some(guar) = checker.found_incorrect_let_chain {
+            self.mk_expr_err(cond.span, guar)
+        } else {
+            cond
+        }))
     }
 
     fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (Pat, Option<Box<Expr>>)> {
@@ -3511,13 +3521,23 @@ impl<'a> Parser<'a> {
                 let ast::PatKind::Paren(subpat) = pat.kind else { unreachable!() };
                 let ast::PatKind::Guard(_, mut cond) = subpat.kind else { unreachable!() };
                 self.psess.gated_spans.ungate_last(sym::guard_patterns, cond.span);
-                CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
+                let mut checker = CondChecker::new(self, LetChainsPolicy::AlwaysAllowed);
+                checker.visit_expr(&mut cond);
+
                 let right = self.prev_token.span;
                 self.dcx().emit_err(errors::ParenthesesInMatchPat {
                     span: vec![left, right],
                     sugg: errors::ParenthesesInMatchPatSugg { left, right },
                 });
-                Ok((self.mk_pat(span, ast::PatKind::Wild), Some(cond)))
+
+                Ok((
+                    self.mk_pat(span, ast::PatKind::Wild),
+                    (if let Some(guar) = checker.found_incorrect_let_chain {
+                        Some(self.mk_expr_err(cond.span, guar))
+                    } else {
+                        Some(cond)
+                    }),
+                ))
             } else {
                 Ok((pat, self.parse_match_arm_guard()?))
             }
@@ -4208,6 +4228,7 @@ struct CondChecker<'a> {
     forbid_let_reason: Option<ForbiddenLetReason>,
     missing_let: Option<errors::MaybeMissingLet>,
     comparison: Option<errors::MaybeComparison>,
+    found_incorrect_let_chain: Option<ErrorGuaranteed>,
 }
 
 impl<'a> CondChecker<'a> {
@@ -4218,6 +4239,7 @@ impl<'a> CondChecker<'a> {
             missing_let: None,
             comparison: None,
             let_chains_policy,
+            found_incorrect_let_chain: None,
             depth: 0,
         }
     }
@@ -4236,12 +4258,19 @@ impl MutVisitor for CondChecker<'_> {
                         NotSupportedOr(or_span) => {
                             self.parser.dcx().emit_err(errors::OrInLetChain { span: or_span })
                         }
-                        _ => self.parser.dcx().emit_err(errors::ExpectedExpressionFoundLet {
-                            span,
-                            reason,
-                            missing_let: self.missing_let,
-                            comparison: self.comparison,
-                        }),
+                        _ => {
+                            let guar =
+                                self.parser.dcx().emit_err(errors::ExpectedExpressionFoundLet {
+                                    span,
+                                    reason,
+                                    missing_let: self.missing_let,
+                                    comparison: self.comparison,
+                                });
+                            if let Some(_) = self.missing_let {
+                                self.found_incorrect_let_chain = Some(guar);
+                            }
+                            guar
+                        }
                     };
                     *recovered = Recovered::Yes(error);
                 } else if self.depth > 1 {

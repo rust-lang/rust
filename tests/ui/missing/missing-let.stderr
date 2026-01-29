@@ -1,0 +1,18 @@
+error: expected expression, found `let` statement
+  --> $DIR/missing-let.rs:3:8
+   |
+LL |     if let Some(_) = x
+   |        ^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+help: you might have meant to continue the let-chain
+   |
+LL |         && let Some(x) = x
+   |            +++
+help: you might have meant to compare for equality
+   |
+LL |         && Some(x) == x
+   |                     +
+
+error: aborting due to 1 previous error
+
