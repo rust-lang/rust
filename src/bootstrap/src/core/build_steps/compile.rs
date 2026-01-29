@@ -1167,13 +1167,15 @@ impl Step for Rustc {
                 {
                     // jemalloc_sys and rustc_public_bridge are not linked into librustc_driver.so,
                     // so we need to distribute them as rlib to be able to use them.
-                    filename.ends_with(".rlib")
-                } else {
-                    // Distribute the rest of the rustc crates as rmeta files only to reduce
-                    // the tarball sizes by about 50%. The object files are linked into
-                    // librustc_driver.so, so it is still possible to link against them.
-                    filename.ends_with(".rmeta")
+                    if filename.ends_with(".rlib") {
+                        return true;
+                    }
                 }
+
+                // Distribute the rest of the rustc crates as rmeta files only to reduce
+                // the tarball sizes by about 50%. The object files are linked into
+                // librustc_driver.so, so it is still possible to link against them.
+                filename.ends_with(".rmeta")
             })),
         );
 
@@ -1723,7 +1725,7 @@ impl Step for GccCodegenBackend {
 
         let _guard =
             builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, host);
-        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], ArtifactKeepMode::OnlyRlib);
+        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], ArtifactKeepMode::OnlyDylib);
 
         GccCodegenBackendOutput {
             stamp: write_codegen_backend_stamp(stamp, files, builder.config.dry_run()),
@@ -1799,7 +1801,7 @@ impl Step for CraneliftCodegenBackend {
             build_compiler,
             target,
         );
-        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], ArtifactKeepMode::OnlyRlib);
+        let files = run_cargo(builder, cargo, vec![], &stamp, vec![], ArtifactKeepMode::OnlyDylib);
         write_codegen_backend_stamp(stamp, files, builder.config.dry_run())
     }
 
@@ -2623,6 +2625,8 @@ pub fn add_to_sysroot(
 /// build stamp, and thus be included in dist archives and copied into sysroots by default.
 /// Note that some kinds of artifacts are copied automatically (e.g. native libraries).
 pub enum ArtifactKeepMode {
+    /// Only keep .so files, ignore .rlib and .rmeta files
+    OnlyDylib,
     /// Only keep .rlib files, ignore .rmeta files
     OnlyRlib,
     /// Only keep .rmeta files, ignore .rlib files
@@ -2638,7 +2642,7 @@ pub enum ArtifactKeepMode {
 
 pub fn run_cargo(
     builder: &Builder<'_>,
-    cargo: Cargo,
+    mut cargo: Cargo,
     tail_args: Vec<String>,
     stamp: &BuildStamp,
     additional_target_deps: Vec<(PathBuf, DependencyType)>,
@@ -2655,6 +2659,16 @@ pub fn run_cargo(
         .parent()
         .unwrap() // chop off `$target`
         .join(target_root_dir.file_name().unwrap());
+
+    match artifact_keep_mode {
+        ArtifactKeepMode::OnlyDylib
+        | ArtifactKeepMode::OnlyRmeta
+        | ArtifactKeepMode::BothRlibAndRmeta
+        | ArtifactKeepMode::Custom(_) => {
+            cargo.arg("-Zno-embed-metadata");
+        }
+        ArtifactKeepMode::OnlyRlib => {}
+    }
 
     // Spawn Cargo slurping up its JSON output. We'll start building up the
     // `deps` array of all files it generated along with a `toplevel` array of
@@ -2685,6 +2699,7 @@ pub fn run_cargo(
                 true
             } else {
                 match &artifact_keep_mode {
+                    ArtifactKeepMode::OnlyDylib => false,
                     ArtifactKeepMode::OnlyRlib => filename.ends_with(".rlib"),
                     ArtifactKeepMode::OnlyRmeta => filename.ends_with(".rmeta"),
                     ArtifactKeepMode::BothRlibAndRmeta => {
