@@ -1,4 +1,4 @@
-use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount, cmp::SimdPartialEq};
+use crate::simd::{Select, Simd, SimdElement, cmp::SimdPartialEq};
 use core::ops::{Add, Mul};
 use core::ops::{BitAnd, BitOr, BitXor};
 use core::ops::{Div, Rem, Sub};
@@ -12,7 +12,6 @@ mod unary;
 impl<I, T, const N: usize> core::ops::Index<I> for Simd<T, N>
 where
     T: SimdElement,
-    LaneCount<N>: SupportedLaneCount,
     I: core::slice::SliceIndex<[T]>,
 {
     type Output = I::Output;
@@ -25,7 +24,6 @@ where
 impl<I, T, const N: usize> core::ops::IndexMut<I> for Simd<T, N>
 where
     T: SimdElement,
-    LaneCount<N>: SupportedLaneCount,
     I: core::slice::SliceIndex<[T]>,
 {
     #[inline]
@@ -130,7 +128,6 @@ macro_rules! for_base_types {
                 impl<const N: usize> $op<Self> for Simd<$scalar, N>
                 where
                     $scalar: SimdElement,
-                    LaneCount<N>: SupportedLaneCount,
                 {
                     type Output = $out;
 

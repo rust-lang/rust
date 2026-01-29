@@ -65,9 +65,9 @@ macro_rules! test_mask_api {
             fn roundtrip_int_conversion() {
                 let values = [true, false, false, true, false, false, true, false];
                 let mask = Mask::<$type, 8>::from_array(values);
-                let int = mask.to_int();
+                let int = mask.to_simd();
                 assert_eq!(int.to_array(), [-1, 0, 0, -1, 0, 0, -1, 0]);
-                assert_eq!(Mask::<$type, 8>::from_int(int), mask);
+                assert_eq!(Mask::<$type, 8>::from_simd(int), mask);
             }
 
             #[test]

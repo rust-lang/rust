@@ -21,7 +21,6 @@ macro_rules! assign_ops {
         where
             Self: $trait<U, Output = Self>,
             T: SimdElement,
-            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn $assign_call(&mut self, rhs: U) {

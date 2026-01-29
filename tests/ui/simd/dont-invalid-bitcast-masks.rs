@@ -12,6 +12,6 @@ use std::simd::num::*;
 pub unsafe fn mask_to_array(mask: u8) -> [i32; 8] {
     let mut output = [0; 8];
     let m = masksizex8::from_bitmask(mask as _);
-    output.copy_from_slice(&m.to_int().cast::<i32>().to_array());
+    output.copy_from_slice(&m.to_simd().cast::<i32>().to_array());
     output
 }
