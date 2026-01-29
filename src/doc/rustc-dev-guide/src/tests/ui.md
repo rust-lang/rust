@@ -232,9 +232,8 @@ The space character between `//~` (or other variants) and the subsequent text is
 negligible (i.e. there is no semantic difference between `//~ ERROR` and
 `//~ERROR` although the former is more common in the codebase).
 
-`~?
-<diagnostic kind>` (example being `~?
-ERROR`) is used to match diagnostics _without_ line info at all,
+`~? <diagnostic kind>` (example being `~? ERROR`)
+is used to match diagnostics _without_ line info at all,
 or where the line info is outside the main test file[^main test file].
 These annotations can be placed on any line in the test file.
 

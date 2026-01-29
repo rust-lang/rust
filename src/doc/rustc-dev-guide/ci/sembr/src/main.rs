@@ -24,7 +24,7 @@ static REGEX_IGNORE_END: LazyLock<Regex> =
 static REGEX_IGNORE_LINK_TARGETS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\[.+\]: ").unwrap());
 static REGEX_SPLIT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"([^\.\d\-\*]\.|[^r]\?|!)\s").unwrap());
+    LazyLock::new(|| Regex::new(r"([^\.\d\-\*]\.|[^r\~]\?|!)\s").unwrap());
 // list elements, numbered (1.) or not  (- and *)
 static REGEX_LIST_ENTRY: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\s*(\d\.|\-|\*|\d\))\s+").unwrap());
@@ -205,6 +205,7 @@ git log main.. compiler
 o? whatever
 r? @reviewer
  r? @reviewer
+~? diagnostic
 ";
     let expected = "
 # some. heading
@@ -237,6 +238,7 @@ o?
 whatever
 r? @reviewer
  r? @reviewer
+~? diagnostic
 ";
     assert_eq!(expected, comply(original));
 }
