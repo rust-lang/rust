@@ -390,6 +390,10 @@ impl f64 {
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const RADIX: u32 = 2;
 
+    /// The size of this float type in bits.
+    #[unstable(feature = "float_bits_const", issue = "151073")]
+    pub const BITS: u32 = 64;
+
     /// Number of significant digits in base 2.
     ///
     /// Note that the size of the mantissa in the bitwise representation is one

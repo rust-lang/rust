@@ -138,6 +138,11 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     pub const RADIX: u32 = 2;
 
+    /// The size of this float type in bits.
+    // #[unstable(feature = "f16", issue = "116909")]
+    #[unstable(feature = "float_bits_const", issue = "151073")]
+    pub const BITS: u32 = 16;
+
     /// Number of significant digits in base 2.
     ///
     /// Note that the size of the mantissa in the bitwise representation is one
