@@ -1462,7 +1462,7 @@ impl f16 {
     ///
     /// # Examples
     ///
-    /// ```ignore (f16 support is platform-specific)
+    /// ```
     /// #![feature(f16)]
     /// #![feature(float_mul_add_relaxed)]
     /// # #[cfg(reliable_f16)] {
@@ -1480,6 +1480,7 @@ impl f16 {
     /// assert_eq!(result, 100.0);
     /// # }
     /// ```
+    #[cfg(target_has_reliable_f16_math)]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_mul_add_relaxed", issue = "151770")]
     #[rustc_const_unstable(feature = "float_mul_add_relaxed", issue = "151770")]

@@ -1477,7 +1477,7 @@ impl f128 {
     ///
     /// # Examples
     ///
-    /// ```ignore (f128 support is platform-specific)
+    /// ```
     /// #![feature(f128)]
     /// #![feature(float_mul_add_relaxed)]
     /// # #[cfg(reliable_f128)] {
@@ -1495,6 +1495,7 @@ impl f128 {
     /// assert_eq!(result, 100.0);
     /// # }
     /// ```
+    #[cfg(target_has_reliable_f128_math)]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_mul_add_relaxed", issue = "151770")]
     #[rustc_const_unstable(feature = "float_mul_add_relaxed", issue = "151770")]

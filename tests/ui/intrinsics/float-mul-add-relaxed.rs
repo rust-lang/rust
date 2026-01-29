@@ -25,7 +25,7 @@ fn test_f32() {
     // Test edge cases
     assert!(f32::NAN.mul_add_relaxed(1.0, 1.0).is_nan());
     assert_eq!(f32::INFINITY.mul_add_relaxed(2.0, 1.0), f32::INFINITY);
-    assert_eq!(0.0_f32.mul_add_relaxed(f32::INFINITY, 1.0), 1.0);
+    assert!(0.0_f32.mul_add_relaxed(f32::INFINITY, 1.0).is_nan());
 }
 
 fn test_f64() {
@@ -45,5 +45,5 @@ fn test_f64() {
     // Test edge cases
     assert!(f64::NAN.mul_add_relaxed(1.0, 1.0).is_nan());
     assert_eq!(f64::INFINITY.mul_add_relaxed(2.0, 1.0), f64::INFINITY);
-    assert_eq!(0.0_f64.mul_add_relaxed(f64::INFINITY, 1.0), 1.0);
+    assert!(0.0_f64.mul_add_relaxed(f64::INFINITY, 1.0).is_nan());
 }
