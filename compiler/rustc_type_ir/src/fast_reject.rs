@@ -47,7 +47,6 @@ pub enum SimplifiedType<DefId> {
     UnsafeBinder,
     Placeholder,
     /// Field representing type.
-    // FIXME(FRTs): should we have a `Option<DefId>` here that gets filled with the Adt's DefId?
     FRT,
     Error,
 }

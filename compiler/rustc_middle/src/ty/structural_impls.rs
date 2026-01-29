@@ -469,7 +469,6 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
                 try_visit!(ty.visit_with(visitor));
                 pat.visit_with(visitor)
             }
-            // FIXME(FRTs): add FieldId to the visitor infrastructure if we need to visit it.
             ty::FRT(ty, _field) => ty.visit_with(visitor),
 
             ty::Error(guar) => guar.visit_with(visitor),
