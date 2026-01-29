@@ -145,7 +145,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 let (mut result, mut total) = from_fields_at(*self, Size::ZERO)?;
 
                 match &self.variants {
-                    Variants::Single { .. } | Variants::Empty => {}
+                    Variants::Single { .. } | Variants::Empty { .. } => {}
                     Variants::Multiple { variants, .. } => {
                         // Treat enum variants like union members.
                         // HACK(eddyb) pretend the `enum` field (discriminant)

@@ -204,10 +204,13 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Variants<rustc_abi::FieldIdx, rustc_abi::
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         match self {
-            rustc_abi::Variants::Single { index } => {
-                VariantsShape::Single { index: index.stable(tables, cx) }
-            }
-            rustc_abi::Variants::Empty => VariantsShape::Empty,
+            rustc_abi::Variants::Single { index, variants } => VariantsShape::Single {
+                index: index.stable(tables, cx),
+                variants: variants.as_ref().map(|v| v.iter().as_slice().stable(tables, cx)),
+            },
+            rustc_abi::Variants::Empty { variants } => VariantsShape::Empty {
+                variants: variants.as_ref().map(|v| v.iter().as_slice().stable(tables, cx)),
+            },
             rustc_abi::Variants::Multiple { tag, tag_encoding, tag_field, variants } => {
                 VariantsShape::Multiple {
                     tag: tag.stable(tables, cx),

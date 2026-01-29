@@ -434,8 +434,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         }
 
         let (tag_scalar, tag_encoding, tag_field) = match self.layout.variants {
-            Variants::Empty => unreachable!("we already handled uninhabited types"),
-            Variants::Single { index } => {
+            Variants::Empty { .. } => unreachable!("we already handled uninhabited types"),
+            Variants::Single { index, .. } => {
                 let discr_val =
                     if let Some(discr) = self.layout.ty.discriminant_for_variant(bx.tcx(), index) {
                         discr.val
@@ -986,10 +986,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             o = o.extract_field(self, bx, f.index());
                         }
                         mir::PlaceElem::Downcast(_, vidx) => {
-                            debug_assert_eq!(
-                                o.layout.variants,
-                                abi::Variants::Single { index: vidx },
-                            );
+                            if cfg!(debug_assertions) {
+                                match o.layout.variants {
+                                    abi::Variants::Single { index, .. } if index == vidx => {}
+                                    ref v => bug!(
+                                        "expected Variants::Single {{ index: {vidx:?}, .. }}, got {v:?}"
+                                    ),
+                                }
+                            }
                             let layout = o.layout.for_variant(bx.cx(), vidx);
                             o = OperandRef { layout, ..o }
                         }

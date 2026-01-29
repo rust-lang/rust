@@ -868,9 +868,10 @@ fn variant_info_for_adt<'tcx>(
     };
 
     match layout.variants {
-        Variants::Empty => (vec![], None),
+        // FIXME: handle uninhabited non-absent enum variants.
+        Variants::Empty { .. } => (vec![], None),
 
-        Variants::Single { index } => {
+        Variants::Single { index, .. } => {
             debug!("print-type-size `{:#?}` variant {}", layout, adt_def.variant(index).name);
             let variant_def = &adt_def.variant(index);
             let fields: Vec<_> = variant_def.fields.iter().map(|f| f.name).collect();

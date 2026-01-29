@@ -68,7 +68,7 @@ where
                 }
 
                 match &layout.variants {
-                    Variants::Single { .. } | Variants::Empty => {}
+                    Variants::Single { .. } | Variants::Empty { .. } => {}
                     Variants::Multiple { variants, .. } => {
                         // Treat enum variants like union members.
                         for variant_idx in variants.indices() {

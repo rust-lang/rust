@@ -68,6 +68,7 @@ error: layout_of(UnivariantU8) = Layout {
                        uninhabited: true,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -166,6 +167,7 @@ error: layout_of(TwoVariantsU8) = Layout {
                        uninhabited: true,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -203,6 +205,7 @@ error: layout_of(TwoVariantsU8) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 1,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -279,6 +282,7 @@ error: layout_of(DeadBranchHasOtherFieldU8) = Layout {
                        uninhabited: true,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: Some(
                            Align(8 bytes),
@@ -306,6 +310,7 @@ error: layout_of(DeadBranchHasOtherFieldU8) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 1,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(8 bytes),

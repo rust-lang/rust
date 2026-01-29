@@ -187,7 +187,7 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
                 self.visit_variant(v, idx, &inner)?;
             }
             // For single-variant layouts, we already did everything there is to do.
-            Variants::Single { .. } | Variants::Empty => {}
+            Variants::Single { .. } | Variants::Empty { .. } => {}
         }
 
         interp_ok(())

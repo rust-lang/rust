@@ -22,6 +22,7 @@ error: fn_abi_of(test) = FnAbi {
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -69,6 +70,7 @@ error: fn_abi_of(test) = FnAbi {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -127,6 +129,7 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -165,6 +168,7 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -215,6 +219,7 @@ error: fn_abi_of(test_generic) = FnAbi {
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -250,6 +255,7 @@ error: fn_abi_of(test_generic) = FnAbi {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -299,6 +305,7 @@ error: ABIs are not compatible
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -334,6 +341,7 @@ error: ABIs are not compatible
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -371,6 +379,7 @@ error: ABIs are not compatible
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -406,6 +415,7 @@ error: ABIs are not compatible
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -446,6 +456,7 @@ error: ABIs are not compatible
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -485,6 +496,7 @@ error: ABIs are not compatible
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -519,6 +531,7 @@ error: ABIs are not compatible
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -558,6 +571,7 @@ error: ABIs are not compatible
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -600,6 +614,7 @@ error: ABIs are not compatible
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -635,6 +650,7 @@ error: ABIs are not compatible
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -672,6 +688,7 @@ error: ABIs are not compatible
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -707,6 +724,7 @@ error: ABIs are not compatible
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -750,6 +768,7 @@ error: ABIs are not compatible
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -785,6 +804,7 @@ error: ABIs are not compatible
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -822,6 +842,7 @@ error: ABIs are not compatible
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -857,6 +878,7 @@ error: ABIs are not compatible
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -931,6 +953,7 @@ error: fn_abi_of(assoc_test) = FnAbi {
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -968,6 +991,7 @@ error: fn_abi_of(assoc_test) = FnAbi {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
