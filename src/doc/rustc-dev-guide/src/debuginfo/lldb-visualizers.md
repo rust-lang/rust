@@ -1,6 +1,6 @@
 # LLDB - Python Providers
 
-> NOTE: LLDB's C++<->Python FFI expects a version of python designated at the time LLDB was
+> NOTE: LLDB's C++<->Python FFI expects a version of Python designated at the time LLDB was
 >compiled. LLDB is careful to correspond this version to the minimum in typical Linux and macOS
 >distributions, but on Windows there is no easy solution. If you receive an import error regarding
 >`_lldb` not existing, a mismatched Python version is likely the cause.
@@ -11,14 +11,15 @@
 [minimal_python_install]: https://discourse.llvm.org/t/a-minimal-python-install-for-lldb/88658
 [issue_167001]: https://github.com/llvm/llvm-project/issues/167001
 
-> NOTE: Currently (Nov 2025), LLDB's minimum supported Python version is 3.8 with plans to update it to
->3.9 or 3.10 depending on several outside factors. Scripts should ideally be written with only the
->features available in the minimum supported Python version. Please see [this discussion][mrpv] for
->more info.
+> NOTE: As of <!-- date-check --> Nov 2025,
+> LLDB's minimum supported Python version is 3.8, with plans to update it to
+> 3.9 or 3.10, depending on several outside factors. Scripts should ideally be written with only the
+> features available in the minimum supported Python version. Please see [this discussion][mrpv] for
+> more info.
 
 [mrpv]: https://discourse.llvm.org/t/rfc-upgrading-llvm-s-minimum-required-python-version/88605/
 
-> NOTE: The path to LLDB's python package can be located via the CLI command `lldb -P`
+> NOTE: The path to LLDB's Python package can be located via the CLI command `lldb -P`
 
 LLDB provides 3 mechanisms for customizing output:
 
@@ -91,7 +92,7 @@ If a method overrides an `SBValue` method, that method will be listed.
 
 ### `__init__`
 
-This function is called once per object, and must store the `valobj` in the python class so that it
+This function is called once per object, and must store the `valobj` in the Python class so that it
 is accessible elsewhere.
 Very little else should be done here.
 
@@ -114,7 +115,8 @@ determining an enum variable's variant, or checking which slots of a `HashMap` a
 The bool returned from this function is somewhat complicated, see:
 [`update` caching](#update-caching) below for more info.
 When in doubt, return `False`/`None`.
-Currently (Nov 2025), none of the visualizers return `True`, but that may change as the debug info
+As of <!-- date-check --> Nov 2025,
+none of the visualizers return `True`, but that may change as the debug info
 test suite is improved.
 
 #### `update` caching
@@ -155,7 +157,7 @@ children if they do not already exist in the `SyntheticProvider`'s list.
 For further clarification, see [this discussion](https://discourse.llvm.org/t/when-is-it-safe-to-cache-syntheticprovider-update/88608)
 
 > NOTE: when testing the caching behavior, do not rely on LLDB's heuristic to persist variables when
-> stepping. Instead, store the variable in a python object (e.g. `v = lldb.frame.var("var_name")`),
+> stepping. Instead, store the variable in a Python object (e.g. `v = lldb.frame.var("var_name")`),
 > step forward, and then inspect the stored variable.
 
 ### (optional) `has_children`
@@ -248,13 +250,14 @@ access the generic parameters of the type.
 The `SBValue` returned is expected to be a primitive type or pointer, and is treated as the value of
 the variable in expressions.
 
-> IMPORTANT: The `SBValue` returned **must be stored in the `SyntheticProvider`**. There is
->currently (Nov 2025) a bug where if the `SBValue` is acquired within `get_value` and not stored
->anywhere, Python will segfault when LLDB attempts to access the value.
+> IMPORTANT: The `SBValue` returned **must be stored in the `SyntheticProvider`**.
+> As of <!-- date-check --> Nov 2025,
+> there is a bug where if the `SBValue` is acquired within `get_value` and not stored
+> anywhere, Python will segfault when LLDB attempts to access the value.
 
 ## Summary Providers
 
-Summary providers are python functions of the following form:
+Summary providers are Python functions of the following form:
 
 ```python
 def SummaryProvider(valobj: SBValue, _lldb_internal) -> str: ...
@@ -280,7 +283,7 @@ That `SBValue` will reflect the type's
 any of its internal implementation details.
 This is deterimental in cases where we need some of
 those internal details to help complete the summary.
-Currently (Nov 2025), in the synthetic we just
+As of <!-- date-check --> Nov 2025, in the synthetic we just
 run the non-synthetic value through the synthetic provider
 (`synth = SyntheticProvider(valobj.GetNonSyntheticValue(), _dict)`), but this is obviously
 suboptimal and there are plans to use the method outlined below.
@@ -344,7 +347,8 @@ The category we use will be called `Rust`.
 > TIP: all LLDB commands can be prefixed with `help` (e.g. `help type synthetic add`) for a brief
 description, list of arguments, and examples.
 
-Currently (Nov 2025) we use `command source ...`, which executes a series of CLI commands from the
+As of <!-- date-check --> Nov 2025,
+we use `command source ...`, which executes a series of CLI commands from the
 file [`lldb_commands`](https://github.com/rust-lang/rust/blob/main/src/etc/lldb_commands) to add
 providers.
 This file is somewhat unwieldy, and will soon be supplanted by the Python API equivalent
@@ -391,7 +395,7 @@ synthetic for the former, but a more generalized synthetic for the latter.
 
 LLDB's API is very powerful, but there are some "gotchas" and unintuitive behavior, some of which
 will be outlined below.
-The python implementation can be viewed at the path returned by the CLI
+The Python implementation can be viewed at the path returned by the CLI
 command `lldb -P` in `lldb\__init__.py`.
 In addition to the
 [examples in the lldb repo][synth_examples], there are also [C++ visualizers][plugin_cpp] that can
@@ -586,7 +590,8 @@ We use `get_template_args` instead of `self.element_type.GetName()` for 3 reason
 the user know what the real type of the element is
 2. Type names are not subject to the limitations of DWARF and PDB nodes, so the template type in
 the name will reflect things like `*const`/`*mut` and `&`/`&mut`.
-3. We do not currently (Nov 2025) normalize MSVC type names, but once we do, we will need to work with the
+3. As of <!-- date-check --> Nov 2025,
+we don't normalize MSVC type names, but once we do, we will need to work with the
 string-names of types anyway.
 It's also much easier to cache a string-to-string conversion compared
 to an `SBType`-to-string conversion.
