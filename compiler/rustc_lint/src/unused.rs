@@ -794,7 +794,10 @@ trait UnusedDelimLint {
 
                 ExprKind::Break(_label, None) => return false,
                 ExprKind::Break(_label, Some(break_expr)) => {
-                    return matches!(break_expr.kind, ExprKind::Block(..));
+                    // `if (break 'label i) { ... }` removing parens would make `i { ... }`
+                    // be parsed as a struct literal, so keep parentheses if the break value
+                    // ends with a path (which could be mistaken for a struct name).
+                    return matches!(break_expr.kind, ExprKind::Block(..) | ExprKind::Path(..));
                 }
 
                 ExprKind::Range(_lhs, Some(rhs), _limits) => {
