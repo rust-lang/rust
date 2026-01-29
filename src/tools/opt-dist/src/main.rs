@@ -1,7 +1,12 @@
+#![allow(unused, warnings)]
+
 use anyhow::Context;
+use build_helper::ci::CiEnv;
+use build_helper::git::{GitConfig, get_closest_upstream_commit};
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::Parser;
 use log::LevelFilter;
+use ureq::http::StatusCode;
 use utils::io;
 
 use crate::bolt::{bolt_optimize, with_bolt_instrumented};
@@ -10,11 +15,11 @@ use crate::exec::{Bootstrap, cmd};
 use crate::tests::run_tests;
 use crate::timer::Timer;
 use crate::training::{
-    gather_bolt_profiles, gather_llvm_profiles, gather_rustc_profiles, llvm_benchmarks,
-    rustc_benchmarks,
+    BoltProfile, LlvmPGOProfile, RustcPGOProfile, gather_bolt_profiles, gather_llvm_profiles,
+    gather_rustc_profiles, llvm_benchmarks, rustc_benchmarks,
 };
 use crate::utils::artifact_size::print_binary_sizes;
-use crate::utils::io::{copy_directory, reset_directory};
+use crate::utils::io::{copy_directory, find_file_in_dir, reset_directory};
 use crate::utils::{
     clear_llvm_files, format_env_variables, print_free_disk_space, with_log_group,
     write_timer_to_summary,
@@ -466,7 +471,47 @@ fn main() -> anyhow::Result<()> {
 
     let mut timer = Timer::new();
 
-    let result = execute_pipeline(&env, &mut timer, build_args);
+    let parent_sha = get_closest_upstream_commit(
+        None,
+        &GitConfig { nightly_branch: "main", git_merge_commit_email: "bors@rust-lang.org" },
+        CiEnv::GitHubActions,
+    )
+    .unwrap()
+    .unwrap();
+
+    let url = format!(
+        "https://ci-artifacts.rust-lang.org/rustc-builds/{parent_sha}/reproducible-artifacts-nightly-x86_64-unknown-linux-gnu.tar.xz"
+    );
+    let response = ureq::get(url).call()?;
+    if !response.status().is_success() {
+        return Err(anyhow::anyhow!("Error while downloading PGO: {}", response.status()));
+    }
+    let mut body = response.into_body();
+    let mut archive = tar::Archive::new(xz::read::XzDecoder::new(body.as_reader()));
+
+    let pgo_dir = Utf8Path::new("pgo-profiles");
+    archive.unpack(pgo_dir)?;
+    let dir = find_file_in_dir(pgo_dir, "reproducible-artifacts", "")?;
+    let dir = dir.join("reproducible-artifacts");
+    let llvm_pgo_profile = LlvmPGOProfile(dir.join("llvm-pgo.profdata"));
+    let rustc_pgo_profile = RustcPGOProfile(dir.join("rustc-pgo.profdata"));
+    let bolt_profiles =
+        [BoltProfile(dir.join("LLVM-bolt.profdata")), BoltProfile(dir.join("rustc-bolt.profdata"))];
+
+    let mut dist = Bootstrap::dist(&env, &build_args)
+        .llvm_pgo_optimize(Some(&llvm_pgo_profile))
+        .rustc_pgo_optimize(&rustc_pgo_profile);
+
+    // for bolt_profile in bolt_profiles {
+    //     dist = dist.with_bolt_profile(Some(bolt_profile));
+    // }
+    // dist = dist.with_llvm_bolt_ldflags().with_rustc_bolt_ldflags();
+
+    // Final stage: Assemble the dist artifacts
+    // The previous PGO optimized rustc build and PGO optimized LLVM builds should be reused.
+    timer.section("Stage 5 (final build)", |stage| dist.run(stage))?;
+
+    // let result = execute_pipeline(&env, &mut timer, build_args);
     log::info!("Timer results\n{}", timer.format_stats());
 
     if let Ok(summary_path) = std::env::var("GITHUB_STEP_SUMMARY") {
@@ -474,7 +519,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     print_free_disk_space()?;
-    result.context("Optimized build pipeline has failed")?;
+    // result.context("Optimized build pipeline has failed")?;
     print_binary_sizes(&env)?;
 
     Ok(())
