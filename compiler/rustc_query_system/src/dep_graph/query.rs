@@ -1,5 +1,7 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::graph::linked_graph::{Direction, FrozenLinkedGraph, INCOMING, LinkedGraph};
+use rustc_data_structures::graph::linked_graph::{
+    Direction, FrozenLinkedGraph, INCOMING, LinkedGraph,
+};
 
 use super::{DepNode, DepNodeIndex};
 

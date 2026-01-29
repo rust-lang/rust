@@ -12,8 +12,8 @@ pub use dep_node::{DepKind, DepNode, DepNodeExt, dep_kind_from_label, dep_kinds,
 pub(crate) use dep_node::{make_compile_codegen_unit, make_compile_mono_item, make_metadata};
 pub use rustc_query_system::dep_graph::debug::{DepNodeFilter, EdgeFilter};
 pub use rustc_query_system::dep_graph::{
-    DepContext, DepGraphQuery, FrozenDepGraphQuery, DepNodeIndex, Deps, SerializedDepGraph, SerializedDepNodeIndex,
-    TaskDepsRef, WorkProduct, WorkProductId, WorkProductMap, hash_result,
+    DepContext, DepGraphQuery, DepNodeIndex, Deps, FrozenDepGraphQuery, SerializedDepGraph,
+    SerializedDepNodeIndex, TaskDepsRef, WorkProduct, WorkProductId, WorkProductMap, hash_result,
 };
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepsType>;

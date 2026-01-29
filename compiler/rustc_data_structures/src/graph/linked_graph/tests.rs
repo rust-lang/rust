@@ -110,13 +110,7 @@ fn each_adjacent_from_a() {
 #[test]
 fn each_adjacent_from_b() {
     let graph = create_graph();
-    test_adjacent_edges(
-        &graph,
-        1,
-        "B",
-        &[("FB", "F"), ("AB", "A")],
-        &[("BD", "D"), ("BC", "C")],
-    );
+    test_adjacent_edges(&graph, 1, "B", &[("FB", "F"), ("AB", "A")], &[("BD", "D"), ("BC", "C")]);
 }
 
 #[test]

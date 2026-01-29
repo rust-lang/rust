@@ -20,9 +20,12 @@
 //! the field `next_edge`). Each of those fields is an array that should
 //! be indexed by the direction (see the type `Direction`).
 
-use std::{fmt::Debug, mem, ops::Deref};
+use std::fmt::Debug;
+use std::mem;
+use std::ops::Deref;
 
-use rustc_index::{Idx, IndexVec, bit_set::DenseBitSet};
+use rustc_index::bit_set::DenseBitSet;
+use rustc_index::{Idx, IndexVec};
 use tracing::debug;
 
 #[cfg(test)]
@@ -97,7 +100,10 @@ impl<I: Idx, N, E> LinkedGraph<I, N, E> {
         Self { nodes: IndexVec::new(), edges: Vec::new() }
     }
 
-    pub fn from_node_n(data: N, n: usize) -> Self where N: Copy {
+    pub fn from_node_n(data: N, n: usize) -> Self
+    where
+        N: Copy,
+    {
         Self { nodes: IndexVec::from_fn_n(|_| Some(Node::new(data)), n), edges: Vec::new() }
     }
 
@@ -183,8 +189,14 @@ impl<I: Idx, N, E> LinkedGraph<I, N, E> {
     fn generate_lists(&mut self) {
         for (idx, edge) in self.edges.iter_mut().enumerate() {
             // read and adjust current first of the list of edges from each node
-            let source_first = mem::replace(&mut self.nodes[edge.source].as_mut().unwrap().first_edge[OUTGOING.repr], EdgeIndex(idx));
-            let target_first = mem::replace(&mut self.nodes[edge.target].as_mut().unwrap().first_edge[INCOMING.repr], EdgeIndex(idx));
+            let source_first = mem::replace(
+                &mut self.nodes[edge.source].as_mut().unwrap().first_edge[OUTGOING.repr],
+                EdgeIndex(idx),
+            );
+            let target_first = mem::replace(
+                &mut self.nodes[edge.target].as_mut().unwrap().first_edge[INCOMING.repr],
+                EdgeIndex(idx),
+            );
 
             // populate edges lists, with the previous firsts from each node
             // as the next pointers
@@ -203,17 +215,18 @@ impl<I: Idx, N: Debug, E: Debug> LinkedGraph<I, N, E> {
         debug!("graph: add_edge({:?}, {:?}, {:?})", source, target, data);
 
         let idx = self.next_edge_index();
-        self.edges.push(Edge { next_edge: [INVALID_EDGE_INDEX, INVALID_EDGE_INDEX], source, target, data });
+        self.edges.push(Edge {
+            next_edge: [INVALID_EDGE_INDEX, INVALID_EDGE_INDEX],
+            source,
+            target,
+            data,
+        });
         idx
     }
 }
 
 impl<I: Idx, N, E> FrozenLinkedGraph<I, N, E> {
-    pub fn adjacent_edges(
-        &self,
-        source: I,
-        direction: Direction,
-    ) -> AdjacentEdges<'_, I, N, E> {
+    pub fn adjacent_edges(&self, source: I, direction: Direction) -> AdjacentEdges<'_, I, N, E> {
         let first_edge = self.inner.node(source).first_edge[direction.repr];
         AdjacentEdges { graph: &self.inner, direction, next: first_edge }
     }
@@ -242,11 +255,7 @@ impl<I: Idx, N, E> FrozenLinkedGraph<I, N, E> {
         DepthFirstTraversal::with_start_node(self, start, direction)
     }
 
-    pub fn nodes_in_postorder(
-        self,
-        direction: Direction,
-        entry_node: I,
-    ) -> Vec<I> {
+    pub fn nodes_in_postorder(self, direction: Direction, entry_node: I) -> Vec<I> {
         let mut visited = DenseBitSet::new_empty(self.len_nodes());
         let mut stack = vec![];
         let mut result = Vec::with_capacity(self.len_nodes());

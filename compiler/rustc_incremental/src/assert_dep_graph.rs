@@ -42,7 +42,9 @@ use rustc_data_structures::graph::linked_graph::{Direction, INCOMING, OUTGOING};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
-use rustc_middle::dep_graph::{DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, DepNodeIndex, EdgeFilter, FrozenDepGraphQuery, dep_kinds
+use rustc_middle::dep_graph::{
+    DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, DepNodeIndex, EdgeFilter,
+    FrozenDepGraphQuery, dep_kinds,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
@@ -398,7 +400,11 @@ fn walk_between<'q>(
         .map(|n| n.kind)
         .collect();
 
-    fn recurse(query: &FrozenDepGraphQuery, node_states: &mut IndexVec<DepNodeIndex, State>, node: DepNodeIndex) -> bool {
+    fn recurse(
+        query: &FrozenDepGraphQuery,
+        node_states: &mut IndexVec<DepNodeIndex, State>,
+        node: DepNodeIndex,
+    ) -> bool {
         match node_states[node] {
             // known to reach a target
             State::Included => return true,
@@ -431,7 +437,10 @@ fn walk_between<'q>(
     }
 }
 
-fn filter_edges(query: &FrozenDepGraphQuery, nodes: &FxIndexSet<DepKind>) -> Vec<(DepKind, DepKind)> {
+fn filter_edges(
+    query: &FrozenDepGraphQuery,
+    nodes: &FxIndexSet<DepKind>,
+) -> Vec<(DepKind, DepKind)> {
     let uniq: FxIndexSet<_> = query
         .edges()
         .into_iter()
