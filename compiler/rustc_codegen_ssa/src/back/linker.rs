@@ -756,7 +756,7 @@ impl<'a> Linker for GccLinker<'a> {
                 self.link_arg("--strip-all");
             }
         }
-        match self.sess.opts.unstable_opts.debuginfo_compression {
+        match self.sess.debuginfo_compression() {
             config::DebugInfoCompression::None => {}
             config::DebugInfoCompression::Zlib => {
                 self.link_arg("--compress-debug-sections=zlib");

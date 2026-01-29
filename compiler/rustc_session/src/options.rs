@@ -1359,15 +1359,15 @@ pub mod parse {
     }
 
     pub(crate) fn parse_debuginfo_compression(
-        slot: &mut DebugInfoCompression,
+        slot: &mut Option<DebugInfoCompression>,
         v: Option<&str>,
     ) -> bool {
-        match v {
-            Some("none") => *slot = DebugInfoCompression::None,
-            Some("zlib") => *slot = DebugInfoCompression::Zlib,
-            Some("zstd") => *slot = DebugInfoCompression::Zstd,
+        *slot = Some(match v {
+            Some("none") => DebugInfoCompression::None,
+            Some("zlib") => DebugInfoCompression::Zlib,
+            Some("zstd") => DebugInfoCompression::Zstd,
             _ => return false,
-        };
+        });
         true
     }
 
@@ -2087,6 +2087,9 @@ options! {
     debuginfo: DebugInfo = (DebugInfo::None, parse_debuginfo, [TRACKED],
         "debug info emission level (0-2, none, line-directives-only, \
         line-tables-only, limited, or full; default: 0)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::debuginfo_compression` instead of this field")]
+    debuginfo_compression: Option<DebugInfoCompression> = (None, parse_debuginfo_compression, [TRACKED],
+        "compress debug info sections (none, zlib, zstd, default: none)"),
     default_linker_libraries: bool = (false, parse_bool, [UNTRACKED],
         "allow the linker to link its default libraries (default: no)"),
     dlltool: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
@@ -2280,7 +2283,8 @@ options! {
         "emit discriminators and other data necessary for AutoFDO"),
     debug_info_type_line_numbers: bool = (false, parse_bool, [TRACKED],
         "emit type and line information for additional data types (default: no)"),
-    debuginfo_compression: DebugInfoCompression = (DebugInfoCompression::None, parse_debuginfo_compression, [TRACKED],
+    #[rustc_lint_opt_deny_field_access("use `Session::debuginfo_compression` instead of this field")]
+    debuginfo_compression: Option<DebugInfoCompression> = (None, parse_debuginfo_compression, [TRACKED],
         "compress debug info sections (none, zlib, zstd, default: none)"),
     deduplicate_diagnostics: bool = (true, parse_bool, [UNTRACKED],
         "deduplicate identical diagnostics (default: yes)"),

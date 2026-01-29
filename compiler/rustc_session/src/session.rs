@@ -37,8 +37,9 @@ use rustc_target::spec::{
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType, FunctionReturn,
-    Input, InstrumentCoverage, OptLevel, OutFileName, OutputType, SwitchWithOptPath,
+    self, CoverageLevel, CoverageOptions, CrateType, DebugInfo, DebugInfoCompression,
+    ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, OptLevel, OutFileName, OutputType,
+    SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -710,6 +711,14 @@ impl Session {
             .dwarf_version
             .or(self.opts.unstable_opts.dwarf_version)
             .unwrap_or(self.target.default_dwarf_version)
+    }
+
+    pub fn debuginfo_compression(&self) -> DebugInfoCompression {
+        self.opts
+            .cg
+            .debuginfo_compression
+            .or(self.opts.unstable_opts.debuginfo_compression)
+            .unwrap_or(DebugInfoCompression::None)
     }
 
     pub fn stack_protector(&self) -> StackProtector {
