@@ -428,9 +428,8 @@ impl fmt::Display for AccessError {
 impl Error for AccessError {}
 
 // This ensures the panicking code is outlined from `with` for `LocalKey`.
-#[cfg_attr(not(panic = "immediate-abort"), inline(never))]
 #[track_caller]
-#[cold]
+#[rustc_panic_entrypoint]
 fn panic_access_error(err: AccessError) -> ! {
     panic!("cannot access a Thread Local Storage value during or after destruction: {err:?}")
 }

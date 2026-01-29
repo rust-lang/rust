@@ -3325,3 +3325,7 @@ pub(crate) struct UnknownCrateTypesSuggestion {
     pub span: Span,
     pub snippet: Symbol,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_missing_panic_entrypoint)]
+pub(crate) struct MissingPanicEntrypoint;

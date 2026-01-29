@@ -23,7 +23,7 @@ mod tests;
 // ensure that the code generation related to these panics is minimal as there's
 // only one location which panics rather than a bunch throughout the module.
 #[cfg(not(no_global_oom_handling))]
-#[cfg_attr(not(panic = "immediate-abort"), inline(never))]
+#[rustc_panic_entrypoint]
 const fn capacity_overflow() -> ! {
     panic!("capacity overflow");
 }
@@ -852,8 +852,7 @@ impl<A: Allocator> RawVecInner<A> {
 
 // Central function for reserve error handling.
 #[cfg(not(no_global_oom_handling))]
-#[cold]
-#[optimize(size)]
+#[rustc_panic_entrypoint]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 const fn handle_error(e: TryReserveError) -> ! {
     match e.kind() {

@@ -1860,9 +1860,8 @@ impl<T, E> Result<Result<T, E>, E> {
 
 // This is a separate function to reduce the code size of the methods
 #[cfg(not(panic = "immediate-abort"))]
-#[inline(never)]
-#[cold]
 #[track_caller]
+#[rustc_panic_entrypoint]
 fn unwrap_failed(msg: &str, error: &dyn fmt::Debug) -> ! {
     panic!("{msg}: {error:?}");
 }
@@ -1872,9 +1871,8 @@ fn unwrap_failed(msg: &str, error: &dyn fmt::Debug) -> ! {
 // by dead code elimination if a trait object is constructed even if it goes
 // unused
 #[cfg(panic = "immediate-abort")]
-#[inline]
-#[cold]
 #[track_caller]
+#[rustc_panic_entrypoint]
 const fn unwrap_failed<T>(_msg: &str, _error: &T) -> ! {
     panic!()
 }

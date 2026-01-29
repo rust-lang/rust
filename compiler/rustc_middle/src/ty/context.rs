@@ -49,7 +49,7 @@ use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 pub use rustc_type_ir::lift::Lift;
@@ -3555,6 +3555,10 @@ impl<'tcx> TyCtxt<'tcx> {
             return true;
         }
         false
+    }
+
+    pub fn is_panic_entrypoint(self, def_id: impl Into<DefId>) -> bool {
+        self.has_attr(def_id, sym::rustc_panic_entrypoint)
     }
 }
 

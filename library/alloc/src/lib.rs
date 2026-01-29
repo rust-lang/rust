@@ -82,6 +82,7 @@
 #![warn(rustdoc::unescaped_backticks)]
 #![deny(ffi_unwind_calls)]
 #![warn(unreachable_pub)]
+#![warn(rustc::missing_panic_entrypoint)]
 //
 // Library features:
 // tidy-alphabetical-start

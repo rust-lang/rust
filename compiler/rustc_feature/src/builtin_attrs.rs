@@ -1329,6 +1329,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`#[rustc_has_incoherent_inherent_impls]` allows the addition of incoherent inherent impls for \
          the given type by annotating all impl items with `#[rustc_allow_incoherent_impl]`"
     ),
+    rustc_attr!(
+        rustc_panic_entrypoint, Normal, template!(Word), WarnFollowing,
+        EncodeCrossCrate::Yes, "`#[rustc_panic_entrypoint]` makes this function patchable by panic=immediate-abort",
+    ),
 
     BuiltinAttribute {
         name: sym::rustc_diagnostic_item,

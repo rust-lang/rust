@@ -4,7 +4,7 @@ use rustc_abi::{Align, ExternAbi};
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{LitKind, MetaItem, MetaItemInner};
 use rustc_hir::attrs::{
-    AttributeKind, EiiImplResolution, InlineAttr, Linkage, RtsanSetting, UsedBy,
+    AttributeKind, EiiImplResolution, InlineAttr, Linkage, OptimizeAttr, RtsanSetting, UsedBy,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -19,7 +19,7 @@ use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, sym};
-use rustc_target::spec::Os;
+use rustc_target::spec::{Os, PanicStrategy};
 
 use crate::errors;
 use crate::target_features::{
@@ -389,6 +389,24 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
             //
             // if none of the exceptions apply; apply no_mangle
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+        }
+    }
+
+    if tcx.is_panic_entrypoint(did) {
+        // Panic entrypoints are always cold.
+        //
+        // If we have immediate-abort enabled, we want them to be inlined.
+        // They shouldn't be called, but on the off-chance that they are, they should be inlined.
+        //
+        // When the panic strategies that support panic messages are enabled, we want panic
+        // entrypoints outlined and optimized for size.
+        // Most panic entrypoints want #[track_caller] but not all, so we do not add it.
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
+        if tcx.sess.panic_strategy() == PanicStrategy::ImmediateAbort {
+            codegen_fn_attrs.inline = InlineAttr::Always;
+        } else {
+            codegen_fn_attrs.inline = InlineAttr::Never;
+            codegen_fn_attrs.optimize = OptimizeAttr::Size;
         }
     }
 }

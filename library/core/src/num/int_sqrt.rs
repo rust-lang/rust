@@ -309,8 +309,8 @@ unsigned_fn!(u128, u64, u128_stages);
 
 /// Instantiate this panic logic once, rather than for all the isqrt methods
 /// on every single primitive type.
-#[cold]
 #[track_caller]
+#[rustc_panic_entrypoint]
 pub(super) const fn panic_for_negative_argument() -> ! {
     panic!("argument of integer square root cannot be negative")
 }

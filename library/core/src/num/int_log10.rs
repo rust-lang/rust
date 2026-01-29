@@ -164,8 +164,8 @@ define_signed_ilog10! {
 
 /// Instantiate this panic logic once, rather than for all the ilog methods
 /// on every single primitive type.
-#[cold]
 #[track_caller]
+#[rustc_panic_entrypoint]
 pub(super) const fn panic_for_nonpositive_argument() -> ! {
     panic!("argument of integer logarithm must be positive")
 }
