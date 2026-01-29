@@ -47,7 +47,10 @@ pub trait InternalCx<'tcx>: Copy + Clone {
     fn mk_bound_variable_kinds_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: ty::CollectAndApply<ty::BoundVariableKind, &'tcx List<ty::BoundVariableKind>>;
+        T: ty::CollectAndApply<
+                ty::BoundVariableKind<'tcx>,
+                &'tcx List<ty::BoundVariableKind<'tcx>>,
+            >;
 
     fn mk_place_elems(self, v: &[mir::PlaceElem<'tcx>]) -> &'tcx List<mir::PlaceElem<'tcx>>;
 

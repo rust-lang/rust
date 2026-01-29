@@ -197,7 +197,7 @@ pub struct RegionHighlightMode<'tcx> {
     /// This is used when you have a signature like `fn foo(x: &u32,
     /// y: &'a u32)` and we want to give a name to the region of the
     /// reference `x`.
-    highlight_bound_region: Option<(ty::BoundRegionKind, usize)>,
+    highlight_bound_region: Option<(ty::BoundRegionKind<'tcx>, usize)>,
 }
 
 impl<'tcx> RegionHighlightMode<'tcx> {
@@ -246,7 +246,7 @@ impl<'tcx> RegionHighlightMode<'tcx> {
     /// Highlight the given bound region.
     /// We can only highlight one bound region at a time. See
     /// the field `highlight_bound_region` for more detailed notes.
-    pub fn highlighting_bound_region(&mut self, br: ty::BoundRegionKind, number: usize) {
+    pub fn highlighting_bound_region(&mut self, br: ty::BoundRegionKind<'tcx>, number: usize) {
         assert!(self.highlight_bound_region.is_none());
         self.highlight_bound_region = Some((br, number));
     }
@@ -2639,12 +2639,12 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 struct RegionFolder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     current_index: ty::DebruijnIndex,
-    region_map: UnordMap<ty::BoundRegion, ty::Region<'tcx>>,
+    region_map: UnordMap<ty::BoundRegion<'tcx>, ty::Region<'tcx>>,
     name: &'a mut (
                 dyn FnMut(
         Option<ty::DebruijnIndex>, // Debruijn index of the folded late-bound region
         ty::DebruijnIndex,         // Index corresponding to binder level
-        ty::BoundRegion,
+        ty::BoundRegion<'tcx>,
     ) -> ty::Region<'tcx>
                     + 'a
             ),
@@ -2717,7 +2717,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         &mut self,
         value: &ty::Binder<'tcx, T>,
         mode: WrapBinderMode,
-    ) -> Result<(T, UnordMap<ty::BoundRegion, ty::Region<'tcx>>), fmt::Error>
+    ) -> Result<(T, UnordMap<ty::BoundRegion<'tcx>, ty::Region<'tcx>>), fmt::Error>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -2810,12 +2810,12 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             // see issue #102392.
             let mut name = |lifetime_idx: Option<ty::DebruijnIndex>,
                             binder_level_idx: ty::DebruijnIndex,
-                            br: ty::BoundRegion| {
+                            br: ty::BoundRegion<'tcx>| {
                 let (name, kind) = if let Some(name) = br.kind.get_name(tcx) {
                     (name, br.kind)
                 } else {
                     let name = next_name(self);
-                    (name, ty::BoundRegionKind::NamedAnon(name))
+                    (name, ty::BoundRegionKind::NamedForPrinting(name))
                 };
 
                 if let Some(lt_idx) = lifetime_idx {

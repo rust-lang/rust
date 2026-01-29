@@ -447,7 +447,7 @@ pub enum RegionVariableOrigin<'tcx> {
 
     /// Region variables created when instantiating a binder with
     /// existential variables, e.g. when calling a function or method.
-    BoundRegion(Span, ty::BoundRegionKind, BoundRegionConversionTime),
+    BoundRegion(Span, ty::BoundRegionKind<'tcx>, BoundRegionConversionTime),
 
     UpvarRegion(ty::UpvarId, Span),
 
@@ -1300,13 +1300,13 @@ impl<'tcx> InferCtxt<'tcx> {
         }
 
         impl<'tcx> BoundVarReplacerDelegate<'tcx> for ToFreshVars<'tcx> {
-            fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx> {
+            fn replace_region(&mut self, br: ty::BoundRegion<'tcx>) -> ty::Region<'tcx> {
                 self.args[br.var.index()].expect_region()
             }
-            fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx> {
+            fn replace_ty(&mut self, bt: ty::BoundTy<'tcx>) -> Ty<'tcx> {
                 self.args[bt.var.index()].expect_ty()
             }
-            fn replace_const(&mut self, bc: ty::BoundConst) -> ty::Const<'tcx> {
+            fn replace_const(&mut self, bc: ty::BoundConst<'tcx>) -> ty::Const<'tcx> {
                 self.args[bc.var.index()].expect_const()
             }
         }

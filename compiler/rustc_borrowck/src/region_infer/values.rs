@@ -10,8 +10,8 @@ use rustc_middle::ty::{self, RegionVid};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use tracing::debug;
 
+use crate::BorrowIndex;
 use crate::polonius::LiveLoans;
-use crate::{BorrowIndex, TyCtxt};
 
 rustc_index::newtype_index! {
     /// A single integer representing a `ty::Placeholder`.
@@ -420,18 +420,18 @@ impl ToElementIndex<'_> for RegionVid {
 impl<'tcx> ToElementIndex<'tcx> for ty::PlaceholderRegion<'tcx> {
     fn add_to_row<N: Idx>(self, values: &mut RegionValues<'tcx, N>, row: N) -> bool
     where
-        Self: Into<ty::Placeholder<TyCtxt<'tcx>, ty::BoundRegion>>,
+        Self: Into<ty::PlaceholderRegion<'tcx>>,
     {
-        let placeholder: ty::Placeholder<TyCtxt<'tcx>, ty::BoundRegion> = self.into();
+        let placeholder: ty::PlaceholderRegion<'tcx> = self.into();
         let index = values.placeholder_indices.lookup_index(placeholder);
         values.placeholders.insert(row, index)
     }
 
     fn contained_in_row<N: Idx>(self, values: &RegionValues<'tcx, N>, row: N) -> bool
     where
-        Self: Into<ty::Placeholder<TyCtxt<'tcx>, ty::BoundRegion>>,
+        Self: Into<ty::PlaceholderRegion<'tcx>>,
     {
-        let placeholder: ty::Placeholder<TyCtxt<'tcx>, ty::BoundRegion> = self.into();
+        let placeholder: ty::PlaceholderRegion<'tcx> = self.into();
         let index = values.placeholder_indices.lookup_index(placeholder);
         values.placeholders.contains(row, index)
     }

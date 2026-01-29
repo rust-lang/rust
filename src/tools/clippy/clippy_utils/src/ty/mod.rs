@@ -782,15 +782,15 @@ pub fn is_c_void(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     }
 }
 
-pub fn for_each_top_level_late_bound_region<B>(
-    ty: Ty<'_>,
-    f: impl FnMut(BoundRegion) -> ControlFlow<B>,
+pub fn for_each_top_level_late_bound_region<'cx, B>(
+    ty: Ty<'cx>,
+    f: impl FnMut(BoundRegion<'cx>) -> ControlFlow<B>,
 ) -> ControlFlow<B> {
     struct V<F> {
         index: u32,
         f: F,
     }
-    impl<'tcx, B, F: FnMut(BoundRegion) -> ControlFlow<B>> TypeVisitor<TyCtxt<'tcx>> for V<F> {
+    impl<'tcx, B, F: FnMut(BoundRegion<'tcx>) -> ControlFlow<B>> TypeVisitor<TyCtxt<'tcx>> for V<F> {
         type Result = ControlFlow<B>;
         fn visit_region(&mut self, r: Region<'tcx>) -> Self::Result {
             if let RegionKind::ReBound(BoundVarIndexKind::Bound(idx), bound) = r.kind()

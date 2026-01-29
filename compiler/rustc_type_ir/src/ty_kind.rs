@@ -233,7 +233,7 @@ pub enum TyKind<I: Interner> {
     ///
     /// [1]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
     /// [2]: https://rustc-dev-guide.rust-lang.org/traits/canonical-queries.html
-    Bound(BoundVarIndexKind, I::BoundTy),
+    Bound(BoundVarIndexKind, ty::BoundTy<I>),
 
     /// A placeholder type, used during higher ranked subtyping to instantiate
     /// bound variables.
@@ -243,7 +243,7 @@ pub enum TyKind<I: Interner> {
     /// to the bound variable's index from the binder from which it was instantiated),
     /// and `U` is the universe index in which it is instantiated, or totally omitted
     /// if the universe index is zero.
-    Placeholder(I::PlaceholderTy),
+    Placeholder(ty::PlaceholderType<I>),
 
     /// A type variable used during type checking.
     ///

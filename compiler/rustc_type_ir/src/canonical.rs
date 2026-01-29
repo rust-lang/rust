@@ -108,7 +108,7 @@ pub enum CanonicalVarKind<I: Interner> {
     Float,
 
     /// A "placeholder" that represents "any type".
-    PlaceholderTy(I::PlaceholderTy),
+    PlaceholderTy(ty::PlaceholderType<I>),
 
     /// Region variable `'?R`.
     Region(UniverseIndex),
@@ -116,13 +116,13 @@ pub enum CanonicalVarKind<I: Interner> {
     /// A "placeholder" that represents "any region". Created when you
     /// are solving a goal like `for<'a> T: Foo<'a>` to represent the
     /// bound region `'a`.
-    PlaceholderRegion(I::PlaceholderRegion),
+    PlaceholderRegion(ty::PlaceholderRegion<I>),
 
     /// Some kind of const inference variable.
     Const(UniverseIndex),
 
     /// A "placeholder" that represents "any const".
-    PlaceholderConst(I::PlaceholderConst),
+    PlaceholderConst(ty::PlaceholderConst<I>),
 }
 
 impl<I: Interner> Eq for CanonicalVarKind<I> {}

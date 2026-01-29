@@ -592,7 +592,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 ty,
                 Ty::new_placeholder(
                     tcx,
-                    ty::Placeholder::new(
+                    ty::PlaceholderType::new(
                         universe,
                         ty::BoundTy { var: idx, kind: ty::BoundTyKind::Anon },
                     ),
@@ -2551,7 +2551,7 @@ fn param_env_with_gat_bounds<'tcx>(
             }
         };
 
-        let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
+        let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind<'tcx>; 8]> =
             smallvec::SmallVec::with_capacity(tcx.generics_of(impl_ty.def_id).own_params.len());
         // Extend the impl's identity args with late-bound GAT vars
         let normalize_impl_ty_args = ty::GenericArgs::identity_for_item(tcx, container_id)
@@ -2587,7 +2587,7 @@ fn param_env_with_gat_bounds<'tcx>(
                     ty::Const::new_bound(
                         tcx,
                         ty::INNERMOST,
-                        ty::BoundConst { var: ty::BoundVar::from_usize(bound_vars.len() - 1) },
+                        ty::BoundConst::new(ty::BoundVar::from_usize(bound_vars.len() - 1)),
                     )
                     .into()
                 }
