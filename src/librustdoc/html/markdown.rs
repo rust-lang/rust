@@ -849,11 +849,12 @@ pub(crate) enum Ignore {
     Some(Vec<String>),
 }
 
-/// This is the parser for fenced codeblocks attributes. It implements the following eBNF:
+/// This is the parser for fenced codeblocks attributes.
 ///
-/// ```eBNF
+/// It implements the following grammar as expressed in ABNF:
+///
+/// ```ABNF
 /// lang-string = *(token-list / delimited-attribute-list / comment)
-///
 /// bareword = LEADINGCHAR *(CHAR)
 /// bareword-without-leading-char = CHAR *(CHAR)
 /// quoted-string = QUOTE *(NONQUOTE) QUOTE
@@ -864,7 +865,7 @@ pub(crate) enum Ignore {
 /// attribute-list = [sep] attribute *(sep attribute) [sep]
 /// delimited-attribute-list = OPEN-CURLY-BRACKET attribute-list CLOSE-CURLY-BRACKET
 /// token-list = [sep] token *(sep token) [sep]
-/// comment = OPEN_PAREN *(all characters) CLOSE_PAREN
+/// comment = OPEN_PAREN *<all characters except closing parentheses> CLOSE_PAREN
 ///
 /// OPEN_PAREN = "("
 /// CLOSE_PARENT = ")"
