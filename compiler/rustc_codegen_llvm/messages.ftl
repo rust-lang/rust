@@ -61,7 +61,7 @@ codegen_llvm_symbol_already_defined =
 codegen_llvm_target_machine = could not create LLVM TargetMachine for triple: {$triple}
 codegen_llvm_target_machine_with_llvm_err = could not create LLVM TargetMachine for triple: {$triple}: {$llvm_err}
 
-codegen_llvm_unknown_debuginfo_compression = unknown debuginfo compression algorithm {$algorithm} - will fall back to uncompressed debuginfo
+codegen_llvm_unsupported_debuginfo_compression = unsupported debuginfo compression algorithm {$algorithm} - will fall back to uncompressed debuginfo
 
 codegen_llvm_write_bytecode = failed to write bytecode to {$path}: {$err}
 
