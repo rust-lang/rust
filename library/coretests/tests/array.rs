@@ -646,7 +646,7 @@ fn array_mixed_equality_integers() {
 
 #[test]
 fn array_mixed_equality_nans() {
-    let array3: [f32; 3] = [1.0, std::f32::NAN, 3.0];
+    let array3: [f32; 3] = [1.0, f32::NAN, 3.0];
 
     let slice3: &[f32] = &{ array3 };
     assert!(!(array3 == slice3));
