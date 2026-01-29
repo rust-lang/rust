@@ -284,7 +284,7 @@ cd <path to rustc repo>
 rustup override set nightly
 ```
 
-after [installing a nightly toolchain] with `rustup`.
+After [installing a nightly toolchain] with `rustup`.
 Don't forget to do this for all directories you have [setup a worktree for].
 You may need to use the
 pinned nightly version from `src/stage0`, but often the normal `nightly` channel will work.
