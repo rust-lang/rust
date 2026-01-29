@@ -99,7 +99,7 @@ This means that you have the right to instruct
 The guidelines for reviewers are as follows:
 
 - You are always welcome to review any PR, regardless of who it is assigned to.
-   However, do not r+ PRs unless:
+  However, do not r+ PRs unless:
   - You are confident in that part of the code.
   - You are confident that nobody else wants to review it first.
     - For example, sometimes people will express a desire to review a
