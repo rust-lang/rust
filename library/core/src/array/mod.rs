@@ -999,7 +999,7 @@ impl<T> GuardBack<'_, T> {
     }
 }
 
-impl<T: Destruct> Drop for GuardBack<'_, T> {
+impl<T> Drop for GuardBack<'_, T> {
     #[inline]
     fn drop(&mut self) {
         debug_assert!(self.initialized <= self.array_mut.len());
