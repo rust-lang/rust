@@ -878,6 +878,7 @@ mod desc {
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or a non-negative number";
     pub(crate) const parse_llvm_module_flag: &str = "<key>:<type>:<value>:<behavior>. Type must currently be `u32`. Behavior should be one of (`error`, `warning`, `require`, `override`, `append`, `appendunique`, `max`, `min`)";
     pub(crate) const parse_function_return: &str = "`keep` or `thunk-extern`";
+    pub(crate) const parse_harden_sls: &str = "`none`, `all`, `return` or `indirect-jmp`";
     pub(crate) const parse_wasm_c_abi: &str = "`spec`";
     pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
@@ -2029,6 +2030,17 @@ pub mod parse {
         true
     }
 
+    pub(crate) fn parse_harden_sls(slot: &mut HardenSls, v: Option<&str>) -> bool {
+        match v {
+            Some("none") => *slot = HardenSls::None,
+            Some("all") => *slot = HardenSls::All,
+            Some("return") => *slot = HardenSls::Return,
+            Some("indirect-jmp") => *slot = HardenSls::IndirectJmp,
+            _ => return false,
+        }
+        true
+    }
+
     pub(crate) fn parse_wasm_c_abi(_slot: &mut (), v: Option<&str>) -> bool {
         v == Some("spec")
     }
@@ -2374,6 +2386,9 @@ options! {
     graphviz_font: String = ("Courier, monospace".to_string(), parse_string, [UNTRACKED],
         "use the given `fontname` in graphviz output; can be overridden by setting \
         environment variable `RUSTC_GRAPHVIZ_FONT` (default: `Courier, monospace`)"),
+    harden_sls: HardenSls = (HardenSls::None, parse_harden_sls, [TRACKED TARGET_MODIFIER],
+        "flag to mitigate against straight line speculation (SLS) [none|all|return|indirect-jmp] \
+        (default: none)"),
     has_thread_local: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the `cfg(target_thread_local)` directive"),
     help: bool = (false, parse_no_value, [UNTRACKED], "Print unstable compiler options"),

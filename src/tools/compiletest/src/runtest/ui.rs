@@ -234,6 +234,7 @@ impl TestCx<'_> {
                 AllowUnused::No,
                 LinkToAux::Yes,
                 Vec::new(),
+                false,
             );
 
             // If a test is revisioned, it's fixed source file can be named "a.foo.fixed", which,

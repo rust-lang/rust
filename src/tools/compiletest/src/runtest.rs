@@ -1004,6 +1004,7 @@ impl<'test> TestCx<'test> {
             allow_unused,
             LinkToAux::Yes,
             passes,
+            false,
         );
 
         self.compose_and_run_compiler(rustc, None)
@@ -1364,6 +1365,7 @@ impl<'test> TestCx<'test> {
             AllowUnused::Yes,
             LinkToAux::No,
             vec![],
+            true,
         );
 
         rustc.args(&["--crate-type", "rlib"]);
@@ -1423,6 +1425,7 @@ impl<'test> TestCx<'test> {
             AllowUnused::No,
             LinkToAux::No,
             Vec::new(),
+            false,
         );
         aux_cx.build_all_auxiliary(&aux_dir, &mut aux_rustc);
 
@@ -1608,6 +1611,7 @@ impl<'test> TestCx<'test> {
         allow_unused: AllowUnused,
         link_to_aux: LinkToAux,
         passes: Vec<String>, // Vec of passes under mir-opt test to be dumped
+        for_minicore: bool,
     ) -> Command {
         // FIXME(Zalathar): We should have a cleaner distinction between
         // `rustc` flags, `rustdoc` flags, and flags shared by both.
@@ -1956,6 +1960,10 @@ impl<'test> TestCx<'test> {
         }
 
         compiler.args(&self.props.compile_flags);
+        let is_aux = input_file.components().map(|c| c.as_os_str()).any(|c| c == "auxiliary");
+        if !for_minicore && !is_aux {
+            compiler.args(&self.props.non_aux_compile_flags);
+        }
 
         compiler
     }
@@ -2177,6 +2185,7 @@ impl<'test> TestCx<'test> {
             AllowUnused::No,
             LinkToAux::Yes,
             Vec::new(),
+            false,
         );
 
         let proc_res = self.compose_and_run_compiler(rustc, None);
