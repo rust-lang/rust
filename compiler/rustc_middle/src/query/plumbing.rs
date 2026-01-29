@@ -266,6 +266,7 @@ macro_rules! define_callbacks {
         pub mod queries {
             $(pub mod $name {
                 use super::super::*;
+                use $crate::query::erase::{self, Erased};
 
                 pub type Key<'tcx> = $($K)*;
                 pub type Value<'tcx> = $V;
@@ -288,29 +289,33 @@ macro_rules! define_callbacks {
                 #[inline(always)]
                 pub fn provided_to_erased<'tcx>(
                     _tcx: TyCtxt<'tcx>,
-                    value: ProvidedValue<'tcx>,
-                ) -> Erase<Value<'tcx>> {
-                    erase(query_if_arena!([$($modifiers)*]
+                    provided_value: ProvidedValue<'tcx>,
+                ) -> Erased<Value<'tcx>> {
+                    // Store the provided value in an arena and get a reference
+                    // to it, for queries with `arena_cache`.
+                    let value: Value<'tcx> = query_if_arena!([$($modifiers)*]
                         {
                             use $crate::query::arena_cached::ArenaCached;
 
                             if mem::needs_drop::<<$V as ArenaCached<'tcx>>::Allocated>() {
                                 <$V as ArenaCached>::alloc_in_arena(
                                     |v| _tcx.query_system.arenas.$name.alloc(v),
-                                    value,
+                                    provided_value,
                                 )
                             } else {
                                 <$V as ArenaCached>::alloc_in_arena(
                                     |v| _tcx.arena.dropless.alloc(v),
-                                    value,
+                                    provided_value,
                                 )
                             }
                         }
-                        (value)
-                    ))
+                        // Otherwise, the provided value is the value.
+                        (provided_value)
+                    );
+                    erase::erase_val(value)
                 }
 
-                pub type Storage<'tcx> = <$($K)* as keys::Key>::Cache<Erase<$V>>;
+                pub type Storage<'tcx> = <$($K)* as keys::Key>::Cache<Erased<$V>>;
 
                 // Ensure that keys grow no larger than 88 bytes by accident.
                 // Increase this limit if necessary, but do try to keep the size low if possible
@@ -411,7 +416,9 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
-                restore::<$V>(crate::query::inner::query_get_at(
+                use $crate::query::{erase, inner};
+
+                erase::restore_val::<$V>(inner::query_get_at(
                     self.tcx,
                     self.tcx.query_system.fns.engine.$name,
                     &self.tcx.query_system.caches.$name,
@@ -480,7 +487,7 @@ macro_rules! define_callbacks {
                 Span,
                 queries::$name::Key<'tcx>,
                 QueryMode,
-            ) -> Option<Erase<$V>>,)*
+            ) -> Option<$crate::query::erase::Erased<$V>>,)*
         }
     };
 }

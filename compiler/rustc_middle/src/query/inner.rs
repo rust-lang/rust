@@ -11,7 +11,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use crate::dep_graph;
 use crate::query::IntoQueryParam;
-use crate::query::erase::{self, Erase, EraseType};
+use crate::query::erase::{self, Erasable, Erased};
 use crate::ty::TyCtxt;
 
 /// Shared implementation of `tcx.$query(..)` and `tcx.at(span).$query(..)`
@@ -63,15 +63,15 @@ pub(crate) fn query_ensure_error_guaranteed<'tcx, Cache, T>(
     check_cache: bool,
 ) -> Result<(), ErrorGuaranteed>
 where
-    Cache: QueryCache<Value = Erase<Result<T, ErrorGuaranteed>>>,
-    Result<T, ErrorGuaranteed>: EraseType,
+    Cache: QueryCache<Value = Erased<Result<T, ErrorGuaranteed>>>,
+    Result<T, ErrorGuaranteed>: Erasable,
 {
     let key = key.into_query_param();
     if let Some(res) = try_get_cached(tcx, query_cache, &key) {
-        erase::restore(res).map(drop)
+        erase::restore_val(res).map(drop)
     } else {
         execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache })
-            .map(erase::restore)
+            .map(erase::restore_val)
             .map(|res| res.map(drop))
             // Either we actually executed the query, which means we got a full `Result`,
             // or we can just assume the query succeeded, because it was green in the
@@ -90,17 +90,17 @@ pub(crate) fn query_feed<'tcx, Cache, Value>(
     hasher: Option<fn(&mut StableHashingContext<'_>, &Value) -> Fingerprint>,
     cache: &Cache,
     key: Cache::Key,
-    erased: Erase<Value>,
+    erased: Erased<Value>,
 ) where
-    Cache: QueryCache<Value = Erase<Value>>,
+    Cache: QueryCache<Value = Erased<Value>>,
     Cache::Key: DepNodeParams<TyCtxt<'tcx>>,
-    Value: EraseType + Debug,
+    Value: Erasable + Debug,
 {
-    let value = erase::restore::<Value>(erased);
+    let value = erase::restore_val::<Value>(erased);
 
     match try_get_cached(tcx, cache, &key) {
         Some(old) => {
-            let old = erase::restore::<Value>(old);
+            let old = erase::restore_val::<Value>(old);
             if let Some(hasher) = hasher {
                 let (value_hash, old_hash): (Fingerprint, Fingerprint) = tcx
                     .with_stable_hashing_context(|mut hcx| {
