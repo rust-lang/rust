@@ -9,6 +9,7 @@ use crate::spec::{RelocModel, Target};
 def_reg_class! {
     RiscV RiscVInlineAsmRegClass {
         reg,
+        reg_pair,
         freg,
         vreg,
     }
@@ -38,6 +39,7 @@ impl RiscVInlineAsmRegClass {
     pub fn supported_types(
         self,
         arch: InlineAsmArch,
+        allow_experimental_reg: bool,
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
             Self::reg => {
@@ -45,6 +47,18 @@ impl RiscVInlineAsmRegClass {
                     types! { _: I8, I16, I32, I64, F16, F32, F64; }
                 } else {
                     types! { _: I8, I16, I32, F16, F32; }
+                }
+            }
+            Self::reg_pair => {
+                if allow_experimental_reg {
+                    // register pair support is unstable.
+                    if arch == InlineAsmArch::RiscV64 {
+                        types! { _: I128; }
+                    } else {
+                        types! { _: I64; }
+                    }
+                } else {
+                    &[]
                 }
             }
             // FIXME(f128): Add `q: F128;` once LLVM support the `Q` extension.
