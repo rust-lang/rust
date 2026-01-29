@@ -85,7 +85,7 @@ impl Step for Docs {
         // FIXME: explicitly enumerate the steps that should be executed here, and gather their
         // documentation, rather than running all default steps and then read their output
         // from a shared directory.
-        builder.run_default_doc_steps();
+        builder.run_host_default_doc_steps();
 
         let dest = "share/doc/rust/html";
 

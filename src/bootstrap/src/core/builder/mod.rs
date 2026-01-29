@@ -1121,6 +1121,11 @@ impl<'a> Builder<'a> {
     }
 
     /// Run all default documentation steps to build documentation.
+    pub fn run_host_default_doc_steps(&self) {
+        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &self.paths);
+    }
+
+    /// Run all default documentation steps to build documentation.
     pub fn run_default_doc_steps(&self) {
         self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
     }
