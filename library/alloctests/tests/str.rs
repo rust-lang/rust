@@ -2356,10 +2356,26 @@ fn utf8_char_counts() {
 
                     assert!(!target.starts_with(" ") && !target.ends_with(" "));
                     let expected_count = tmpl_char_count * repeat;
+
                     assert_eq!(
                         expected_count,
                         target.chars().count(),
-                        "wrong count for `{:?}.repeat({})` (padding: `{:?}`)",
+                        "wrong count for `{:?}.repeat({}).count()` (padding: `{:?}`)",
+                        tmpl_str,
+                        repeat,
+                        (pad_start.len(), pad_end.len()),
+                    );
+
+                    // `.advance_by(n)` can also be used to count chars.
+                    let mut iter = target.chars();
+                    let remaining = match iter.advance_by(usize::MAX) {
+                        Ok(()) => 0,
+                        Err(remaining) => remaining.get(),
+                    };
+                    assert_eq!(
+                        expected_count,
+                        usize::MAX - remaining,
+                        "wrong count for `{:?}.repeat({}).advance_by(usize::MAX)` (padding: `{:?}`)",
                         tmpl_str,
                         repeat,
                         (pad_start.len(), pad_end.len()),
