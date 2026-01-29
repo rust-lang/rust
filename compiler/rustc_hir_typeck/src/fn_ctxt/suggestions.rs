@@ -2509,16 +2509,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (open, close) = match ctor_kind {
                     Some(CtorKind::Fn) => ("(".to_owned(), ")"),
                     None => (format!(" {{ {field_name}: "), " }"),
-
                     Some(CtorKind::Const) => unreachable!("unit variants don't have fields"),
                 };
 
-                // Suggest constructor as deep into the block tree as possible.
-                // This fixes https://github.com/rust-lang/rust/issues/101065,
-                // and also just helps make the most minimal suggestions.
+                // Find the deepest expression in the block tree while staying within the same
+                // context. This ensures that suggestions point to user-visible code
+                // rather than macro-expanded internal code.
+                //
+                // For example, with `println!("A")`, we want to suggest wrapping the entire
+                // `println!("A")` call, not some internal macro-generated code.
+                // See #101065, #142359
                 let mut expr = expr;
                 while let hir::ExprKind::Block(block, _) = &expr.kind
                     && let Some(expr_) = &block.expr
+                    // Only traverse blocks in same context
+                    && expr_.span.eq_ctxt(expr.span)
                 {
                     expr = expr_
                 }
