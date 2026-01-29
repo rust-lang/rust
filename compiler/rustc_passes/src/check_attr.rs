@@ -313,6 +313,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcMain
                     | AttributeKind::RustcNeverReturnsNullPointer
                     | AttributeKind::RustcNoImplicitAutorefs
+                    | AttributeKind::RustcNonConstTraitMethod
                     | AttributeKind::RustcNounwind
                     | AttributeKind::RustcOffloadKernel
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
@@ -334,7 +335,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Used { .. }
                     | AttributeKind::WindowsSubsystem(..)
                     // tidy-alphabetical-end
-
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);

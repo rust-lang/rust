@@ -128,6 +128,7 @@ impl AttributeKind {
             RustcMustImplementOneOf { .. } => No,
             RustcNeverReturnsNullPointer => Yes,
             RustcNoImplicitAutorefs => Yes,
+            RustcNonConstTraitMethod => No, // should be reported via other queries like `constness`
             RustcNounwind => No,
             RustcObjectLifetimeDefault => No,
             RustcOffloadKernel => Yes,

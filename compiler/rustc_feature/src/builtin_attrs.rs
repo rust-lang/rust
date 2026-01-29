@@ -1329,6 +1329,12 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`#[rustc_has_incoherent_inherent_impls]` allows the addition of incoherent inherent impls for \
          the given type by annotating all impl items with `#[rustc_allow_incoherent_impl]`"
     ),
+    rustc_attr!(
+        rustc_non_const_trait_method, AttributeType::Normal, template!(Word),
+        ErrorFollowing, EncodeCrossCrate::No,
+        "`#[rustc_non_const_trait_method]` should only used by the standard library to mark trait methods \
+        as non-const to allow large traits an easier transition to const"
+    ),
 
     BuiltinAttribute {
         name: sym::rustc_diagnostic_item,

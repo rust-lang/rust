@@ -329,3 +329,15 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcOffloadKernelParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcOffloadKernel;
 }
+
+pub(crate) struct RustcNonConstTraitMethodParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcNonConstTraitMethodParser {
+    const PATH: &'static [Symbol] = &[sym::rustc_non_const_trait_method];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNonConstTraitMethod;
+}

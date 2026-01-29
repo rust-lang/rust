@@ -1,4 +1,4 @@
-# Effects and const condition checking
+# Effects, const traits, and const condition checking
 
 ## The `HostEffect` predicate
 
@@ -154,3 +154,18 @@ be dropped at compile time.
 
 [old solver]: https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_trait_selection/traits/effects.rs.html
 [new trait solver]: https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_next_trait_solver/solve/effect_goals.rs.html
+
+## More on const traits
+
+To be expanded later.
+
+### The `#[rustc_non_const_trait_method]` attribute
+
+This is intended for internal (standard library) usage only. With this attribute
+applied to a trait method, the compiler will not check the default body of this
+method for ability to run in compile time. Users of the trait will also not be
+allowed to use this trait method in const contexts. This attribute is primarily
+used for constifying large traits such as `Iterator` without having to make all
+its methods `const` at the same time.
+
+This attribute should not be present while stabilizing the trait as `const`.

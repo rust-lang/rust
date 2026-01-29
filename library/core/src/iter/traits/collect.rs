@@ -279,7 +279,8 @@ pub trait FromIterator<A>: Sized {
 )]
 #[rustc_skip_during_method_dispatch(array, boxed_slice)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait IntoIterator {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+pub const trait IntoIterator {
     /// The type of the elements being iterated over.
     #[rustc_diagnostic_item = "IntoIteratorItem"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -312,7 +313,8 @@ pub trait IntoIterator {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator> IntoIterator for I {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl<I: [const] Iterator> const IntoIterator for I {
     type Item = I::Item;
     type IntoIter = I;
 
