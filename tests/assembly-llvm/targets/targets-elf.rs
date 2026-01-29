@@ -544,6 +544,9 @@
 //@ revisions: s390x_unknown_linux_musl
 //@ [s390x_unknown_linux_musl] compile-flags: --target s390x-unknown-linux-musl
 //@ [s390x_unknown_linux_musl] needs-llvm-components: systemz
+//@ revisions: s390x_unknown_none_softfloat
+//@ [s390x_unknown_none_softfloat] compile-flags: --target s390x-unknown-none-softfloat
+//@ [s390x_unknown_none_softfloat] needs-llvm-components: systemz
 //@ revisions: sparc64_unknown_helenos
 //@ [sparc64_unknown_helenos] compile-flags: --target sparc64-unknown-helenos
 //@ [sparc64_unknown_helenos] needs-llvm-components: sparc

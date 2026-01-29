@@ -188,6 +188,7 @@ target | std | notes
 [`riscv64im-unknown-none-elf`](platform-support/riscv64im-unknown-none-elf.md) | * | Bare RISC-V (RV64IM ISA)
 `riscv64imac-unknown-none-elf` | * | Bare RISC-V (RV64IMAC ISA)
 `sparc64-unknown-linux-gnu` | ✓ | SPARC Linux (kernel 4.4+, glibc 2.23)
+[`s390x-unknown-none-softfloat`](platform-support/s390x-unknown-none-softfloat.md) | * | Bare S390x (softfloat ABI)
 [`thumbv6m-none-eabi`](platform-support/thumbv6m-none-eabi.md) | * | Bare Armv6-M
 [`thumbv7em-none-eabi`](platform-support/thumbv7em-none-eabi.md) | * | Bare Armv7E-M
 [`thumbv7em-none-eabihf`](platform-support/thumbv7em-none-eabi.md) | * | Bare Armv7E-M, hardfloat
