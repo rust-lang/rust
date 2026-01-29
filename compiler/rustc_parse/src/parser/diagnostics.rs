@@ -35,10 +35,10 @@ use crate::errors::{
     ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, GenericParamsWithoutAngleBrackets,
     GenericParamsWithoutAngleBracketsSugg, HelpIdentifierStartsWithNumber, HelpUseLatestEdition,
     InInTypo, IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse,
-    PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
-    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt,
-    SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator, TernaryOperatorSuggestion,
-    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    MisspelledKw, PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg,
+    SelfParamNotFirst, StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg,
+    SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
+    TernaryOperatorSuggestion, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
     UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
 use crate::parser::FnContext;
@@ -210,22 +210,6 @@ impl std::fmt::Display for UnaryFixity {
             Self::Post => write!(f, "postfix"),
         }
     }
-}
-
-#[derive(Debug, rustc_macros::Subdiagnostic)]
-#[suggestion(
-    parse_misspelled_kw,
-    applicability = "machine-applicable",
-    code = "{similar_kw}",
-    style = "verbose"
-)]
-struct MisspelledKw {
-    // We use a String here because `Symbol::into_diag_arg` calls `Symbol::to_ident_string`, which
-    // prefix the keyword with a `r#` because it aims to print the symbol as an identifier.
-    similar_kw: String,
-    #[primary_span]
-    span: Span,
-    is_incorrect_case: bool,
 }
 
 /// Checks if the given `lookup` identifier is similar to any keyword symbol in `candidates`.
