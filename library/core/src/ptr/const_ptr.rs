@@ -1386,6 +1386,43 @@ impl<T> *const T {
     pub const fn cast_uninit(self) -> *const MaybeUninit<T> {
         self as _
     }
+
+    /// Forms a raw slice from a pointer and a length.
+    ///
+    /// The `len` argument is the number of **elements**, not the number of bytes.
+    ///
+    /// This function is safe, but actually using the return value is unsafe.
+    /// See the documentation of [`slice::from_raw_parts`] for slice safety requirements.
+    ///
+    /// [`slice::from_raw_parts`]: crate::slice::from_raw_parts
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(ptr_cast_slice)]
+    /// // create a slice pointer when starting out with a pointer to the first element
+    /// let x = [5, 6, 7];
+    /// let raw_pointer = x.as_ptr();
+    /// let slice = raw_pointer.cast_slice(3);
+    /// assert_eq!(unsafe { &*slice }[2], 7);
+    /// ```
+    ///
+    /// You must ensure that the pointer is valid and not null before dereferencing
+    /// the raw slice. A slice reference must never have a null pointer, even if it's empty.
+    ///
+    /// ```rust,should_panic
+    /// #![feature(ptr_cast_slice)]
+    /// use std::ptr;
+    /// let danger: *const [u8] = ptr::null::<u8>().cast_slice(0);
+    /// unsafe {
+    ///     danger.as_ref().expect("references must not be null");
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "ptr_cast_slice", issue = "149103")]
+    pub const fn cast_slice(self, len: usize) -> *const [T] {
+        slice_from_raw_parts(self, len)
+    }
 }
 impl<T> *const MaybeUninit<T> {
     /// Casts from a maybe-uninitialized type to its initialized version.
