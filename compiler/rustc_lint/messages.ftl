@@ -1,6 +1,9 @@
 lint_abs_path_with_module = absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
     .suggestion = use `crate`
 
+lint_ambiguous_derive_helpers =
+    there exists a built-in attribute with the same name
+
 lint_ambiguous_glob_reexport = ambiguous glob re-exports
     .label_first_reexport = the name `{$name}` in the {$namespace} namespace is first re-exported here
     .label_duplicate_reexport = but the name `{$name}` in the {$namespace} namespace is also re-exported here

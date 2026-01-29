@@ -375,6 +375,10 @@ pub fn decorate_attribute_lint(
             lints::DocAutoCfgExpectsHideOrShow.decorate_lint(diag)
         }
 
+        &AttributeLintKind::AmbiguousDeriveHelpers => {
+            lints::AmbiguousDeriveHelpers.decorate_lint(diag)
+        }
+
         &AttributeLintKind::DocAutoCfgHideShowUnexpectedItem { attr_name } => {
             lints::DocAutoCfgHideShowUnexpectedItem { attr_name }.decorate_lint(diag)
         }

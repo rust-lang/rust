@@ -1,0 +1,16 @@
+error: there exists a built-in attribute with the same name
+  --> $DIR/ambiguous_derive_helpers.rs:8:39
+   |
+LL | #[proc_macro_derive(Trait, attributes(ignore))]
+   |                                       ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #151276 <https://github.com/rust-lang/rust/issues/151276>
+note: the lint level is defined here
+  --> $DIR/ambiguous_derive_helpers.rs:2:9
+   |
+LL | #![deny(ambiguous_derive_helpers)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
