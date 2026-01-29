@@ -32,7 +32,7 @@ It uses [JSONPath] as a query language, which takes a path, and returns a *list*
 
 - `//@ has <path>`: Checks `<path>` exists, i.e. matches at least 1 value.
 - `//@ !has <path>`: Checks `<path>` doesn't exist, i.e. matches 0 values.
-- `//@ has <path> <value>`: Check `<path>` exists, and at least 1 of the matches is equal to the given `<value>` 
+- `//@ has <path> <value>`: Check `<path>` exists, and at least 1 of the matches is equal to the given `<value>`
 - `//@ !has <path> <value>`: Checks `<path>` exists, but none of the matches equal the given `<value>`.
 - `//@ is <path> <value>`: Check `<path>` matches exactly one value, and it's equal to the given `<value>`.
 - `//@ is <path> <value> <value>...`: Check that `<path>` matches to exactly every given `<value>`.
@@ -47,7 +47,7 @@ These are defined in [`directive.rs`].
 
 Values can be either JSON values, or variables.
 
-- JSON values are JSON literals, e.g. `true`, `"string"`, `{"key": "value"}`. 
+- JSON values are JSON literals, e.g. `true`, `"string"`, `{"key": "value"}`.
   These often need to be quoted using `'`, to be processed as 1 value.
   See [§Argument splitting](#argument-splitting)
 - Variables can be used to store the value in one path, and use it in later queries.
