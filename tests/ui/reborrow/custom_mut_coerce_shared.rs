@@ -14,7 +14,7 @@ impl<'a, T> Clone for CustomRef<'a, T> {
 }
 impl<'a, T> Copy for CustomRef<'a, T> {}
 
-fn method(a: CustomRef<'_, ()>) {}
+fn method(_a: CustomRef<'_, ()>) {}
 
 fn main() {
     let a = CustomMut(&mut ());
