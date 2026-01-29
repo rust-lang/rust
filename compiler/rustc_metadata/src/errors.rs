@@ -614,3 +614,15 @@ pub struct RawDylibMalformed {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(metadata_mitigation_less_strict_in_dependency)]
+#[help]
+#[note]
+pub struct MitigationLessStrictInDependency {
+    #[primary_span]
+    pub span: Span,
+    pub mitigation_name: String,
+    pub mitigation_level: String,
+    pub extern_crate: Symbol,
+}

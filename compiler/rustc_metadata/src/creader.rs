@@ -1,5 +1,6 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
+use std::collections::BTreeMap;
 use std::error::Error;
 use std::path::Path;
 use std::str::FromStr;
@@ -24,6 +25,7 @@ use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_session::Session;
+use rustc_session::config::mitigation_coverage::DeniedPartialMitigationLevel;
 use rustc_session::config::{
     CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
     TargetModifier,
@@ -457,6 +459,12 @@ impl CStore {
         }
     }
 
+    pub fn report_session_incompatibilities(&self, tcx: TyCtxt<'_>, krate: &Crate) {
+        self.report_incompatible_target_modifiers(tcx, krate);
+        self.report_incompatible_partial_mitigations(tcx, krate);
+        self.report_incompatible_async_drop_feature(tcx, krate);
+    }
+
     pub fn report_incompatible_target_modifiers(&self, tcx: TyCtxt<'_>, krate: &Crate) {
         for flag_name in &tcx.sess.opts.cg.unsafe_allow_abi_mismatch {
             if !OptionsTargetModifiers::is_target_modifier(flag_name) {
@@ -474,6 +482,43 @@ impl CStore {
             let dep_mods = data.target_modifiers();
             if mods != dep_mods {
                 Self::report_target_modifiers_extended(tcx, krate, &mods, &dep_mods, data);
+            }
+        }
+    }
+
+    pub fn report_incompatible_partial_mitigations(&self, tcx: TyCtxt<'_>, krate: &Crate) {
+        let my_mitigations = tcx.sess.gather_enabled_denied_partial_mitigations();
+        let mut my_mitigations: BTreeMap<_, _> =
+            my_mitigations.iter().map(|mitigation| (mitigation.kind, mitigation)).collect();
+        for skipped_mitigation in tcx.sess.opts.allowed_partial_mitigations(tcx.sess.edition()) {
+            my_mitigations.remove(&skipped_mitigation);
+        }
+        const MAX_ERRORS_PER_MITIGATION: usize = 5;
+        let mut errors_per_mitigation = BTreeMap::new();
+        for (_cnum, data) in self.iter_crate_data() {
+            if data.is_proc_macro_crate() {
+                continue;
+            }
+            let their_mitigations = data.enabled_denied_partial_mitigations();
+            for my_mitigation in my_mitigations.values() {
+                let their_mitigation = their_mitigations
+                    .iter()
+                    .find(|mitigation| mitigation.kind == my_mitigation.kind)
+                    .map_or(DeniedPartialMitigationLevel::Enabled(false), |m| m.level);
+                if their_mitigation < my_mitigation.level {
+                    let errors = errors_per_mitigation.entry(my_mitigation.kind).or_insert(0);
+                    if *errors >= MAX_ERRORS_PER_MITIGATION {
+                        continue;
+                    }
+                    *errors += 1;
+
+                    tcx.dcx().emit_err(errors::MitigationLessStrictInDependency {
+                        span: krate.spans.inner_span.shrink_to_lo(),
+                        mitigation_name: my_mitigation.kind.to_string(),
+                        mitigation_level: my_mitigation.level.level_str().to_string(),
+                        extern_crate: data.name(),
+                    });
+                }
             }
         }
     }

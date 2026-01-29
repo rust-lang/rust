@@ -20,6 +20,7 @@ use rustc_target::spec::{
     TargetTuple, TlsModel,
 };
 
+use crate::config::mitigation_coverage::MitigationCoverage;
 use crate::config::*;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
@@ -83,6 +84,8 @@ pub struct TargetModifier {
     /// User-provided option value (before parsing)
     pub value_name: String,
 }
+
+pub mod mitigation_coverage;
 
 mod target_modifier_consistency_check {
     use super::*;
@@ -691,6 +694,9 @@ impl CodegenOptions {
 // Sometimes different options need to build a common structure.
 // That structure can be kept in one of the options' fields, the others become dummy.
 macro_rules! redirect_field {
+    ($cg:ident.deny_partial_mitigations) => {
+        $cg.allow_partial_mitigations
+    };
     ($cg:ident.link_arg) => {
         $cg.link_args
     };
@@ -882,12 +888,17 @@ mod desc {
     pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
     pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
+    pub(crate) const parse_allow_partial_mitigations: &str =
+        super::mitigation_coverage::DeniedPartialMitigationKind::KINDS;
+    pub(crate) const parse_deny_partial_mitigations: &str =
+        super::mitigation_coverage::DeniedPartialMitigationKind::KINDS;
 }
 
 pub mod parse {
     use std::str::FromStr;
 
     pub(crate) use super::*;
+    use crate::config::mitigation_coverage::MitigationCoverage;
     pub(crate) const MAX_THREADS_CAP: usize = 256;
 
     /// This is for boolean options that don't take a value, and are true simply
@@ -2058,6 +2069,39 @@ pub mod parse {
 
         true
     }
+
+    fn parse_partial_mitigations(
+        slot: &mut Vec<MitigationCoverage>,
+        v: Option<&str>,
+        enabled: bool,
+    ) -> bool {
+        match v {
+            Some(s) => {
+                for sub in s.split(',') {
+                    match sub.parse() {
+                        Ok(kind) => slot.push(MitigationCoverage { kind, enabled }),
+                        Err(_) => return false,
+                    }
+                }
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub(crate) fn parse_allow_partial_mitigations(
+        slot: &mut Vec<MitigationCoverage>,
+        v: Option<&str>,
+    ) -> bool {
+        parse_partial_mitigations(slot, v, true)
+    }
+
+    pub(crate) fn parse_deny_partial_mitigations(
+        slot: &mut Vec<MitigationCoverage>,
+        v: Option<&str>,
+    ) -> bool {
+        parse_partial_mitigations(slot, v, false)
+    }
 }
 
 options! {
@@ -2219,6 +2263,8 @@ options! {
     // tidy-alphabetical-start
     allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
         "only allow the listed language features to be enabled in code (comma separated)"),
+    allow_partial_mitigations: Vec<MitigationCoverage> = (Vec::new(), parse_allow_partial_mitigations, [UNTRACKED],
+        "Allow mitigations not enabled for all dependency crates (comma separated list)"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
         "encode MIR of all functions into the crate metadata (default: no)"),
     annotate_moves: AnnotateMoves = (AnnotateMoves::Disabled, parse_annotate_moves, [TRACKED],
@@ -2286,6 +2332,8 @@ options! {
         "deduplicate identical diagnostics (default: yes)"),
     default_visibility: Option<SymbolVisibility> = (None, parse_opt_symbol_visibility, [TRACKED],
         "overrides the `default_visibility` setting of the target"),
+    deny_partial_mitigations: Vec<MitigationCoverage> = (Vec::new(), parse_deny_partial_mitigations, [UNTRACKED],
+        "Deny mitigations not enabled for all dependency crates (comma separated list)"),
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
         themselves (default: no)"),
