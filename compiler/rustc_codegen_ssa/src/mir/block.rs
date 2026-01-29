@@ -621,7 +621,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             args1 = [place.val.llval];
             &args1[..]
         };
-        let (maybe_null, drop_fn, fn_abi, drop_instance) = match ty.kind() {
+        let (maybe_null, drop_fn, fn_abi, drop_instance, vtable) = match ty.kind() {
             // FIXME(eddyb) perhaps move some of this logic into
             // `Instance::resolve_drop_in_place`?
             ty::Dynamic(_, _) => {
@@ -654,6 +654,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         .get_optional_fn(bx, vtable, ty, fn_abi),
                     fn_abi,
                     virtual_drop,
+                    Some(vtable),
                 )
             }
             _ => (
@@ -661,6 +662,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.get_fn_addr(drop_fn),
                 bx.fn_abi_of_instance(drop_fn, ty::List::empty()),
                 drop_fn,
+                None,
             ),
         };
 
@@ -668,10 +670,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // generated for no-op drops.
         if maybe_null {
             let is_not_null = bx.append_sibling_block("is_not_null");
-            let llty = bx.fn_ptr_backend_type(fn_abi);
-            let null = bx.const_null(llty);
             let non_null =
-                bx.icmp(base::bin_op_to_icmp_predicate(mir::BinOp::Ne, false), drop_fn, null);
+                if bx.cx().sess().opts.unstable_opts.experimental_relative_rust_abi_vtables {
+                    bx.icmp(
+                        base::bin_op_to_icmp_predicate(mir::BinOp::Ne, /*signed*/ false),
+                        drop_fn,
+                        vtable.unwrap(),
+                    )
+                } else {
+                    let llty = bx.fn_ptr_backend_type(fn_abi);
+                    let null = bx.const_null(llty);
+                    bx.icmp(base::bin_op_to_icmp_predicate(mir::BinOp::Ne, false), drop_fn, null)
+                };
             bx.cond_br(non_null, is_not_null, helper.llbb_with_cleanup(self, target));
             bx.switch_to_block(is_not_null);
             self.set_debug_loc(bx, *source_info);
