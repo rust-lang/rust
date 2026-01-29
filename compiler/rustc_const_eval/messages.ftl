@@ -35,6 +35,16 @@ const_eval_bad_pointer_op_attempting = {const_eval_bad_pointer_op}: {$operation 
 
 const_eval_bounds_check_failed =
     indexing out of bounds: the len is {$len} but the index is {$index}
+
+const_eval_c_variadic_call =
+    calling const c-variadic functions is unstable in {const_eval_const_context}s
+
+const_eval_c_variadic_fixed_count_mismatch =
+    calling a C-variadic function with {$caller} fixed arguments, but the function expects {$callee}
+
+const_eval_c_variadic_mismatch =
+    calling a function where the caller and callee disagree on whether the function is C-variadic
+
 const_eval_call_nonzero_intrinsic =
     `{$name}` called on 0
 
@@ -69,9 +79,6 @@ const_eval_const_make_global_with_offset = making {$ptr} global which does not p
 
 const_eval_copy_nonoverlapping_overlapping =
     `copy_nonoverlapping` called on overlapping ranges
-
-const_eval_c_variadic_call =
-    calling const c-variadic functions is unstable in {const_eval_const_context}s
 
 const_eval_dangling_int_pointer =
     {const_eval_bad_pointer_op_attempting}, but got {$pointer} which is a dangling pointer (it has no provenance)
@@ -141,12 +148,6 @@ const_eval_incompatible_calling_conventions =
 
 const_eval_incompatible_return_types =
     calling a function with return type {$callee_ty} passing return place of type {$caller_ty}
-
-const_eval_c_variadic_mismatch =
-    calling a function where the caller and callee disagree on whether the function is C-variadic
-
-const_eval_c_variadic_fixed_count_mismatch =
-    calling a C-variadic function with {$caller} fixed arguments, but the function expects {$callee}
 
 const_eval_interior_mutable_borrow_escaping =
     interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed

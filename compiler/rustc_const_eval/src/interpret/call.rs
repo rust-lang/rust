@@ -350,7 +350,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx> {
         let _trace = enter_trace_span!(M, step::init_stack_frame, %instance, tracing_separate_thread = Empty);
 
-        // The check for the DefKind is so that we don't requiest the fn_sig of a closure.
+        // The check for the DefKind is so that we don't request the fn_sig of a closure.
         // Otherwise, we hit:
         //
         // DefId(1:180 ~ std[269c]::rt::lang_start_internal::{closure#0}) does not have a "fn_sig"
