@@ -14,7 +14,7 @@
 
 // tidy-alphabetical-start
 #![allow(rustc::direct_use_of_rustc_type_ir)]
-#![feature(assert_matches)]
+#![cfg_attr(bootstrap, feature(assert_matches))]
 #![feature(extend_one)]
 #![recursion_limit = "512"] // For rustdoc
 // tidy-alphabetical-end

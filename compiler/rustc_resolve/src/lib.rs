@@ -8,8 +8,8 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(assert_matches))]
 #![feature(arbitrary_self_types)]
-#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(const_default)]
 #![feature(const_trait_impl)]

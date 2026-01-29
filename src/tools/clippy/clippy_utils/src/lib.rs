@@ -3,7 +3,7 @@
 #![feature(macro_metavar_expr)]
 #![feature(never_type)]
 #![feature(rustc_private)]
-#![feature(assert_matches)]
+#![cfg_attr(bootstrap, feature(assert_matches))]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
