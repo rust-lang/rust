@@ -3099,8 +3099,6 @@ impl str {
     ///
     /// # Examples
     /// ```
-    /// #![feature(substr_range)]
-    ///
     /// let data = "a, b, b, a";
     /// let mut iter = data.split(", ").map(|s| data.substr_range(s).unwrap());
     ///
@@ -3110,7 +3108,7 @@ impl str {
     /// assert_eq!(iter.next(), Some(9..10));
     /// ```
     #[must_use]
-    #[unstable(feature = "substr_range", issue = "126769")]
+    #[stable(feature = "substr_range", since = "CURRENT_RUSTC_VERSION")]
     pub fn substr_range(&self, substr: &str) -> Option<Range<usize>> {
         self.as_bytes().subslice_range(substr.as_bytes())
     }
