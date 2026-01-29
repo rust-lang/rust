@@ -1462,7 +1462,7 @@ impl f16 {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore (f16 support is platform-specific)
     /// #![feature(f16)]
     /// #![feature(float_mul_add_relaxed)]
     /// # #[cfg(reliable_f16)] {

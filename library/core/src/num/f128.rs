@@ -1477,7 +1477,7 @@ impl f128 {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore (f128 support is platform-specific)
     /// #![feature(f128)]
     /// #![feature(float_mul_add_relaxed)]
     /// # #[cfg(reliable_f128)] {
