@@ -1,27 +1,29 @@
 # Suggested workflows
 
-The full bootstrapping process takes quite a while. Here are some suggestions to
-make your life easier.
+The full bootstrapping process takes quite a while.
+Here are some suggestions to make your life easier.
 
 ## Installing a pre-push hook
 
 CI will automatically fail your build if it doesn't pass `tidy`, our internal
-tool for ensuring code quality. If you'd like, you can install a [Git
+tool for ensuring code quality.
+If you'd like, you can install a [Git
 hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks) that will
-automatically run `./x test tidy` on each push, to ensure your code is up to
-par. If the hook fails then run `./x test tidy --bless` and commit the changes.
+automatically run `./x test tidy` on each push, to ensure your code is up to par.
+If the hook fails then run `./x test tidy --bless` and commit the changes.
 If you decide later that the pre-push behavior is undesirable, you can delete
 the `pre-push` file in `.git/hooks`.
 
-A prebuilt git hook lives at [`src/etc/pre-push.sh`].  It can be copied into
-your `.git/hooks` folder as `pre-push` (without the `.sh` extension!).
+A prebuilt git hook lives at [`src/etc/pre-push.sh`].
+ It can be copied into your `.git/hooks` folder as `pre-push` (without the `.sh` extension!).
 
 You can also install the hook as a step of running `./x setup`!
 
 ## Config extensions
 
 When working on different tasks, you might need to switch between different bootstrap configurations.
-Sometimes you may want to keep an old configuration for future use. But saving raw config values in
+Sometimes you may want to keep an old configuration for future use.
+But saving raw config values in
 random files and manually copying and pasting them can quickly become messy, especially if you have a
 long history of different configurations.
 
@@ -51,9 +53,10 @@ include = ["cross.toml"]
 
 You can also include extensions within extensions recursively.
 
-**Note:** In the `include` field, the overriding logic follows a right-to-left order. For example,
-in `include = ["a.toml", "b.toml"]`, extension `b.toml` overrides `a.toml`. Also, parent extensions
-always overrides the inner ones.
+**Note:** In the `include` field, the overriding logic follows a right-to-left order.
+For example,
+in `include = ["a.toml", "b.toml"]`, extension `b.toml` overrides `a.toml`.
+Also, parent extensions always overrides the inner ones.
 
 ## Configuring `rust-analyzer` for `rustc`
 
@@ -61,34 +64,37 @@ always overrides the inner ones.
 
 Checking the "library" tree requires a stage1 compiler, which can be a heavy process on some computers.
 For this reason, bootstrap has a flag called `--skip-std-check-if-no-download-rustc` that skips checking the
-"library" tree if `rust.download-rustc` isn't available. If you want to avoid putting a heavy load on your computer
+"library" tree if `rust.download-rustc` isn't available.
+If you want to avoid putting a heavy load on your computer
 with `rust-analyzer`, you can add the `--skip-std-check-if-no-download-rustc` flag to your `./x check` command in
 the `rust-analyzer` configuration.
 
 ### Project-local rust-analyzer setup
 
-`rust-analyzer` can help you check and format your code whenever you save a
-file. By default, `rust-analyzer` runs the `cargo check` and `rustfmt` commands,
+`rust-analyzer` can help you check and format your code whenever you save a file.
+By default, `rust-analyzer` runs the `cargo check` and `rustfmt` commands,
 but you can override these commands to use more adapted versions of these tools
-when hacking on `rustc`. With custom setup, `rust-analyzer` can use `./x check`
+when hacking on `rustc`.
+With custom setup, `rust-analyzer` can use `./x check`
 to check the sources, and the stage 0 rustfmt to format them.
 
 The default `rust-analyzer.check.overrideCommand` command line will check all
-the crates and tools in the repository. If you are working on a specific part,
-you can override the command to only check the part you are working on to save
-checking time. For example, if you are working on the compiler, you can override
+the crates and tools in the repository.
+If you are working on a specific part,
+you can override the command to only check the part you are working on to save checking time.
+For example, if you are working on the compiler, you can override
 the command to `x check compiler --json-output` to only check the compiler part.
 You can run `x check --help --verbose` to see the available parts.
 
 Running `./x setup editor` will prompt you to create a project-local LSP config
-file for one of the supported editors. You can also create the config file as a
-step of running `./x setup`.
+file for one of the supported editors.
+You can also create the config file as a step of running `./x setup`.
 
 ### Using a separate build directory for rust-analyzer
 
 By default, when rust-analyzer runs a check or format command, it will share
-the same build directory as manual command-line builds. This can be inconvenient
-for two reasons:
+the same build directory as manual command-line builds.
+This can be inconvenient for two reasons:
 - Each build will lock the build directory and force the other to wait, so it
   becomes impossible to run command-line builds while rust-analyzer is running
   commands in the background.
@@ -111,12 +117,11 @@ requires extra disk space.
 ### Visual Studio Code
 
 Selecting `vscode` in `./x setup editor` will prompt you to create a
-`.vscode/settings.json` file which will configure Visual Studio code. The
-recommended `rust-analyzer` settings live at
+`.vscode/settings.json` file which will configure Visual Studio code.
+The recommended `rust-analyzer` settings live at
 [`src/etc/rust_analyzer_settings.json`].
 
-If running `./x check` on save is inconvenient, in VS Code you can use a [Build
-Task] instead:
+If running `./x check` on save is inconvenient, in VS Code you can use a [Build Task] instead:
 
 ```JSON
 // .vscode/tasks.json
@@ -140,27 +145,26 @@ Task] instead:
 
 ### Neovim
 
-For Neovim users, there are a few options. The
-easiest way is by using [neoconf.nvim](https://github.com/folke/neoconf.nvim/),
-which allows for project-local configuration files with the native LSP. The
-steps for how to use it are below. Note that they require rust-analyzer to
-already be configured with Neovim. Steps for this can be [found
-here](https://rust-analyzer.github.io/manual.html#nvim-lsp).
+For Neovim users, there are a few options.
+The easiest way is by using [neoconf.nvim](https://github.com/folke/neoconf.nvim/),
+which allows for project-local configuration files with the native LSP.
+The steps for how to use it are below.
+Note that they require rust-analyzer to already be configured with Neovim.
+Steps for this can be [found here](https://rust-analyzer.github.io/manual.html#nvim-lsp).
 
-1. First install the plugin. This can be done by following the steps in the
-   README.
-2. Run `./x setup editor`, and select `vscode` to create a
-   `.vscode/settings.json` file. `neoconf` is able to read and update
-   rust-analyzer settings automatically when the project is opened when this
-   file is detected.
+1. First install the plugin.
+   This can be done by following the steps in the README.
+2. Run `./x setup editor`, and select `vscode` to create a `.vscode/settings.json` file.
+   `neoconf` is able to read and update
+   rust-analyzer settings automatically when the project is opened when this file is detected.
 
 If you're using `coc.nvim`, you can run `./x setup editor` and select `vim` to
-create a `.vim/coc-settings.json`. The settings can be edited with
-`:CocLocalConfig`. The recommended settings live at
-[`src/etc/rust_analyzer_settings.json`].
+create a `.vim/coc-settings.json`.
+The settings can be edited with `:CocLocalConfig`.
+The recommended settings live at [`src/etc/rust_analyzer_settings.json`].
 
-Another way is without a plugin, and creating your own logic in your
-configuration. The following code will work for any checkout of rust-lang/rust (newer than February 2025):
+Another way is without a plugin, and creating your own logic in your configuration.
+The following code will work for any checkout of rust-lang/rust (newer than February 2025):
 
 ```lua
 local function expand_config_variables(option)
@@ -216,8 +220,7 @@ lspconfig.rust_analyzer.setup {
 
 If you would like to use the build task that is described above, you may either
 make your own command in your config, or you can install a plugin such as
-[overseer.nvim](https://github.com/stevearc/overseer.nvim) that can [read
-VSCode's `task.json`
+[overseer.nvim](https://github.com/stevearc/overseer.nvim) that can [read VSCode's `task.json`
 files](https://github.com/stevearc/overseer.nvim/blob/master/doc/guides.md#vs-code-tasks),
 and follow the same instructions as above.
 
@@ -240,55 +243,58 @@ Helix comes with built-in LSP and rust-analyzer support.
 It can be configured through `languages.toml`, as described
 [here](https://docs.helix-editor.com/languages.html).
 You can run `./x setup editor` and select `helix`, which will prompt you to
-create `languages.toml` with the recommended configuration for Helix. The
-recommended settings live at [`src/etc/rust_analyzer_helix.toml`].
+create `languages.toml` with the recommended configuration for Helix.
+The recommended settings live at [`src/etc/rust_analyzer_helix.toml`].
 
 ### Zed
 
 Zed comes with built-in LSP and rust-analyzer support.
 It can be configured through `.zed/settings.json`, as described
-[here](https://zed.dev/docs/configuring-languages). Selecting `zed`
-in `./x setup editor` will prompt you to create a `.zed/settings.json`
-file which will configure Zed with the recommended configuration. The
-recommended `rust-analyzer` settings live
+[here](https://zed.dev/docs/configuring-languages).
+Selecting `zed` in `./x setup editor` will prompt you to create a `.zed/settings.json`
+file which will configure Zed with the recommended configuration.
+The recommended `rust-analyzer` settings live
 at [`src/etc/rust_analyzer_zed.json`].
 
 ## Check, check, and check again
 
-When doing simple refactoring, it can be useful to run `./x check`
-continuously. If you set up `rust-analyzer` as described above, this will be
-done for you every time you save a file. Here you are just checking that the
+When doing simple refactoring, it can be useful to run `./x check` continuously.
+If you set up `rust-analyzer` as described above, this will be
+done for you every time you save a file.
+Here you are just checking that the
 compiler can **build**, but often that is all you need (e.g., when renaming a
-method). You can then run `./x build` when you actually need to run tests.
+method).
+You can then run `./x build` when you actually need to run tests.
 
-In fact, it is sometimes useful to put off tests even when you are not 100% sure
-the code will work. You can then keep building up refactoring commits and only
-run the tests at some later time. You can then use `git bisect` to track down
-**precisely** which commit caused the problem. A nice side-effect of this style
+In fact, it is sometimes useful to put off tests even when you are not 100% sure the code will work.
+You can then keep building up refactoring commits and only run the tests at some later time.
+You can then use `git bisect` to track down **precisely** which commit caused the problem.
+A nice side-effect of this style
 is that you are left with a fairly fine-grained set of commits at the end, all
-of which build and pass tests. This often helps reviewing.
+of which build and pass tests.
+This often helps reviewing.
 
 ## Configuring `rustup` to use nightly
 
-Some parts of the bootstrap process uses pinned, nightly versions of tools like
-rustfmt. To make things like `cargo fmt` work correctly in your repo, run
+Some parts of the bootstrap process uses pinned, nightly versions of tools like rustfmt.
+To make things like `cargo fmt` work correctly in your repo, run
 
 ```console
 cd <path to rustc repo>
 rustup override set nightly
 ```
 
-after [installing a nightly toolchain] with `rustup`. Don't forget to do this
-for all directories you have [setup a worktree for]. You may need to use the
-pinned nightly version from `src/stage0`, but often the normal `nightly` channel
-will work.
+after [installing a nightly toolchain] with `rustup`.
+Don't forget to do this for all directories you have [setup a worktree for].
+You may need to use the
+pinned nightly version from `src/stage0`, but often the normal `nightly` channel will work.
 
 **Note** see [the section on vscode] for how to configure it with this real
 rustfmt `x` uses, and [the section on rustup] for how to setup `rustup`
 toolchain for your bootstrapped compiler
 
-**Note** This does _not_ allow you to build `rustc` with cargo directly. You
-still have to use `x` to work on the compiler or standard library, this just
+**Note** This does _not_ allow you to build `rustc` with cargo directly.
+You still have to use `x` to work on the compiler or standard library, this just
 lets you use `cargo fmt`.
 
 [installing a nightly toolchain]: https://rust-lang.github.io/rustup/concepts/channels.html?highlight=nightl#working-with-nightly-rust
@@ -300,18 +306,22 @@ lets you use `cargo fmt`.
 
 If you are not working on the compiler, you often don't need to build the compiler tree.
 For example, you can skip building the compiler and only build the `library` tree or the
-tools under `src/tools`. To achieve that, you have to enable this by setting the `download-rustc`
-option in your configuration. This tells bootstrap to use the latest nightly compiler for `stage > 0`
+tools under `src/tools`.
+To achieve that, you have to enable this by setting the `download-rustc`
+option in your configuration.
+This tells bootstrap to use the latest nightly compiler for `stage > 0`
 steps, meaning it will have two precompiled compilers: stage0 compiler and `download-rustc` compiler
-for `stage > 0` steps. This way, it will never need to build the in-tree compiler. As a result, your
-build time will be significantly reduced by not building the in-tree compiler.
+for `stage > 0` steps.
+This way, it will never need to build the in-tree compiler.
+As a result, your build time will be significantly reduced by not building the in-tree compiler.
 
 ## Faster rebuilds with `--keep-stage-std`
 
-Sometimes just checking whether the compiler builds is not enough. A common
-example is that you need to add a `debug!` statement to inspect the value of
-some state or better understand the problem. In that case, you don't really need
-a full build. By bypassing bootstrap's cache invalidation, you can often get
+Sometimes just checking whether the compiler builds is not enough.
+A common example is that you need to add a `debug!` statement to inspect the value of
+some state or better understand the problem.
+In that case, you don't really need a full build.
+By bypassing bootstrap's cache invalidation, you can often get
 these builds to complete very fast (e.g., around 30 seconds). The only catch is
 this requires a bit of fudging and may produce compilers that don't work (but
 that is easily detected and fixed).
@@ -323,53 +333,54 @@ The sequence of commands you want is as follows:
   - Note that we added the `--keep-stage-std=1` flag here
 
 As mentioned, the effect of `--keep-stage-std=1` is that we just _assume_ that the
-old standard library can be re-used. If you are editing the compiler, this is
-often true: you haven't changed the standard library, after all. But
-sometimes, it's not true: for example, if you are editing the "metadata" part of
+old standard library can be re-used.
+If you are editing the compiler, this is
+often true: you haven't changed the standard library, after all.
+But sometimes, it's not true: for example, if you are editing the "metadata" part of
 the compiler, which controls how the compiler encodes types and other states
 into the `rlib` files, or if you are editing things that wind up in the metadata
 (such as the definition of the MIR).
 
 **The TL;DR is that you might get weird behavior from a compile when using
 `--keep-stage-std=1`** -- for example, strange [ICEs](../appendix/glossary.html#ice)
-or other panics. In that case, you should simply remove the `--keep-stage-std=1`
-from the command and rebuild. That ought to fix the problem.
+or other panics.
+In that case, you should simply remove the `--keep-stage-std=1` from the command and rebuild.
+That ought to fix the problem.
 
-You can also use `--keep-stage-std=1` when running tests. Something like this:
+You can also use `--keep-stage-std=1` when running tests.
+Something like this:
 
 - Initial test run: `./x test tests/ui`
 - Subsequent test run: `./x test tests/ui --keep-stage-std=1`
 
 ## Using incremental compilation
 
-You can further enable the `--incremental` flag to save additional time in
-subsequent rebuilds:
+You can further enable the `--incremental` flag to save additional time in subsequent rebuilds:
 
 ```bash
 ./x test tests/ui --incremental --test-args issue-1234
 ```
 
-If you don't want to include the flag with every command, you can enable it in
-the `bootstrap.toml`:
+If you don't want to include the flag with every command, you can enable it in the `bootstrap.toml`:
 
 ```toml
 [rust]
 incremental = true
 ```
 
-Note that incremental compilation will use more disk space than usual. If disk
-space is a concern for you, you might want to check the size of the `build`
+Note that incremental compilation will use more disk space than usual.
+If disk space is a concern for you, you might want to check the size of the `build`
 directory from time to time.
 
 ## Fine-tuning optimizations
 
-Setting `optimize = false` makes the compiler too slow for tests. However, to
-improve the test cycle, you can disable optimizations selectively only for the
+Setting `optimize = false` makes the compiler too slow for tests.
+However, to improve the test cycle, you can disable optimizations selectively only for the
 crates you'll have to rebuild
 ([source](https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/incremental.20compilation.20question/near/202712165)).
 For example, when working on `rustc_mir_build`, the `rustc_mir_build` and
-`rustc_driver` crates take the most time to incrementally rebuild. You could
-therefore set the following in the root `Cargo.toml`:
+`rustc_driver` crates take the most time to incrementally rebuild.
+You could therefore set the following in the root `Cargo.toml`:
 
 ```toml
 [profile.release.package.rustc_mir_build]
@@ -382,22 +393,24 @@ opt-level = 0
 
 Working on multiple branches in parallel can be a little annoying, since
 building the compiler on one branch will cause the old build and the incremental
-compilation cache to be overwritten. One solution would be to have multiple
+compilation cache to be overwritten.
+One solution would be to have multiple
 clones of the repository, but that would mean storing the Git metadata multiple
 times, and having to update each clone individually.
 
-Fortunately, Git has a better solution called [worktrees]. This lets you create
-multiple "working trees", which all share the same Git database. Moreover,
+Fortunately, Git has a better solution called [worktrees].
+This lets you create multiple "working trees", which all share the same Git database.
+Moreover,
 because all of the worktrees share the same object database, if you update a
 branch (e.g. `main`) in any of them, you can use the new commits from any of the
-worktrees. One caveat, though, is that submodules do not get shared. They will
-still be cloned multiple times.
+worktrees.
+One caveat, though, is that submodules do not get shared.
+They will still be cloned multiple times.
 
 [worktrees]: https://git-scm.com/docs/git-worktree
 
 Given you are inside the root directory for your Rust repository, you can create
-a "linked working tree" in a new "rust2" directory by running the following
-command:
+a "linked working tree" in a new "rust2" directory by running the following command:
 
 ```bash
 git worktree add ../rust2
@@ -409,8 +422,7 @@ Creating a new worktree for a new branch based on `main` looks like:
 git worktree add -b my-feature ../rust2 main
 ```
 
-You can then use that rust2 folder as a separate workspace for modifying and
-building `rustc`!
+You can then use that rust2 folder as a separate workspace for modifying and building `rustc`!
 
 ## Working with nix
 
