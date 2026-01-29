@@ -1421,6 +1421,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 visit::walk_item(self, item);
             }
+
+            ItemKind::AutoImpl(..) => {
+                self.dcx().emit_err(errors::AutoImplOutsideTraitOrImplTrait { span: item.span });
+            }
+
             _ => visit::walk_item(self, item),
         }
 

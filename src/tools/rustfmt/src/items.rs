@@ -759,11 +759,16 @@ impl<'a> FmtVisitor<'a> {
                 }
                 (Const(ca), Const(cb)) => ca.ident.as_str().cmp(cb.ident.as_str()),
                 (MacCall(..), MacCall(..)) => Ordering::Equal,
-                (Fn(..), Fn(..)) | (Delegation(..), Delegation(..)) => {
-                    a.span.lo().cmp(&b.span.lo())
-                }
+                (AutoImpl(..), AutoImpl(..))
+                | (ExternImpl(..), ExternImpl(..))
+                | (Fn(..), Fn(..))
+                | (Delegation(..), Delegation(..)) => a.span.lo().cmp(&b.span.lo()),
                 (Type(ty), _) if is_type(&ty.ty) => Ordering::Less,
                 (_, Type(ty)) if is_type(&ty.ty) => Ordering::Greater,
+                (AutoImpl(..), _) => Ordering::Less,
+                (_, AutoImpl(..)) => Ordering::Greater,
+                (ExternImpl(..), _) => Ordering::Less,
+                (_, ExternImpl(..)) => Ordering::Greater,
                 (Type(..), _) => Ordering::Less,
                 (_, Type(..)) => Ordering::Greater,
                 (Const(..), _) => Ordering::Less,
@@ -796,6 +801,13 @@ impl<'a> FmtVisitor<'a> {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SourceImplKind {
+    Original,
+    AutoImpl,
+    ExternImpl,
+}
+
 pub(crate) fn format_impl(
     context: &RewriteContext<'_>,
     item: &ast::Item,
@@ -806,10 +818,102 @@ pub(crate) fn format_impl(
         generics,
         self_ty,
         items,
+        of_trait,
+        constness,
         ..
     } = iimpl;
+    format_impl_inner(
+        context,
+        &item.vis,
+        item.span,
+        offset,
+        generics,
+        of_trait.as_deref(),
+        *constness,
+        Some(&**self_ty),
+        self_ty.span.hi(),
+        items,
+        &item.attrs,
+        SourceImplKind::Original,
+    )
+}
+
+pub(crate) fn format_auto_impl(
+    context: &RewriteContext<'_>,
+    aimpl: &ast::AutoImpl,
+    span: Span,
+    attrs: &[ast::Attribute],
+    offset: Indent,
+) -> Option<String> {
+    let ast::AutoImpl {
+        generics,
+        items,
+        of_trait,
+        constness,
+    } = aimpl;
+    let impl_head_end = of_trait.trait_ref.path.span.hi();
+    format_impl_inner(
+        context,
+        &DEFAULT_VISIBILITY,
+        span,
+        offset,
+        generics,
+        Some(&**of_trait),
+        *constness,
+        None,
+        impl_head_end,
+        items,
+        attrs,
+        SourceImplKind::AutoImpl,
+    )
+}
+
+pub(crate) fn format_extern_impl(
+    context: &RewriteContext<'_>,
+    eimpl: &ast::ExternImpl,
+    span: Span,
+    attrs: &[ast::Attribute],
+    offset: Indent,
+) -> Option<String> {
+    let ast::ExternImpl { generics, of_trait } = eimpl;
+    let impl_head_end = of_trait.trait_ref.path.span.hi();
+    format_impl_inner(
+        context,
+        &DEFAULT_VISIBILITY,
+        span,
+        offset,
+        generics,
+        Some(&**of_trait),
+        ast::Const::No,
+        None,
+        impl_head_end,
+        &[],
+        &attrs,
+        SourceImplKind::ExternImpl,
+    )
+}
+
+/// `impl_header_end` points at the 1-past-end of proper `impl` header.
+/// For instance, in case of `impl Trait for Type {`, `impl_header_end` points at
+/// the space coming right after the token `Type`.
+fn format_impl_inner(
+    context: &RewriteContext<'_>,
+    visibility: &ast::Visibility,
+    item_span: Span,
+    offset: Indent,
+    generics: &ast::Generics,
+    of_trait: Option<&ast::TraitImplHeader>,
+    constness: ast::Const,
+    self_ty: Option<&ast::Ty>,
+    impl_header_end: BytePos,
+    items: &[Box<ast::AssocItem>],
+    attrs: &[ast::Attribute],
+    impl_kind: SourceImplKind,
+) -> Option<String> {
     let mut result = String::with_capacity(128);
-    let ref_and_type = format_impl_ref_and_type(context, item, iimpl, offset)?;
+    let ref_and_type = format_impl_ref_and_type(
+        context, visibility, impl_kind, generics, of_trait, self_ty, constness, offset,
+    )?;
     let sep = offset.to_string_with_newline(context.config);
     result.push_str(&ref_and_type);
 
@@ -820,7 +924,7 @@ pub(crate) fn format_impl(
     };
 
     let mut option = WhereClauseOption::snuggled(&ref_and_type);
-    let snippet = context.snippet(item.span);
+    let snippet = context.snippet(item_span);
     let open_pos = snippet.find_uncommented("{")? + 1;
     if !contains_comment(&snippet[open_pos..])
         && items.is_empty()
@@ -832,7 +936,7 @@ pub(crate) fn format_impl(
         option.allow_single_line();
     }
 
-    let missing_span = mk_sp(self_ty.span.hi(), item.span.hi());
+    let missing_span = mk_sp(impl_header_end, item_span.hi());
     let where_span_end = context.snippet_provider.opt_span_before(missing_span, "{");
     let where_clause_str = rewrite_where_clause(
         context,
@@ -842,7 +946,7 @@ pub(crate) fn format_impl(
         false,
         "{",
         where_span_end,
-        self_ty.span.hi(),
+        impl_header_end,
         option,
     )
     .ok()?;
@@ -852,7 +956,7 @@ pub(crate) fn format_impl(
     if generics.where_clause.predicates.is_empty() {
         if let Some(hi) = where_span_end {
             match recover_missing_comment_in_span(
-                mk_sp(self_ty.span.hi(), hi),
+                mk_sp(impl_header_end, hi),
                 Shape::indented(offset, context.config),
                 context,
                 last_line_width(&result),
@@ -865,7 +969,7 @@ pub(crate) fn format_impl(
         }
     }
 
-    if is_impl_single_line(context, items.as_slice(), &result, &where_clause_str, item)? {
+    if is_impl_single_line(context, items, &result, &where_clause_str, item_span)? {
         result.push_str(&where_clause_str);
         if where_clause_str.contains('\n') {
             // If there is only one where-clause predicate
@@ -885,6 +989,21 @@ pub(crate) fn format_impl(
 
     result.push_str(&where_clause_str);
 
+    match impl_kind {
+        SourceImplKind::Original => {}
+        SourceImplKind::ExternImpl => {
+            debug_assert!(items.is_empty());
+            result.push_str(";");
+            return Some(result);
+        }
+        SourceImplKind::AutoImpl => {
+            if items.is_empty() {
+                result.push_str(";");
+                return Some(result);
+            }
+        }
+    }
+
     let need_newline = last_line_contains_single_line_comment(&result) || result.contains('\n');
     match context.config.brace_style() {
         _ if need_newline => result.push_str(&sep),
@@ -901,8 +1020,8 @@ pub(crate) fn format_impl(
 
     result.push('{');
     // this is an impl body snippet(impl SampleImpl { /* here */ })
-    let lo = max(self_ty.span.hi(), generics.where_clause.span.hi());
-    let snippet = context.snippet(mk_sp(lo, item.span.hi()));
+    let lo = max(impl_header_end, generics.where_clause.span.hi());
+    let snippet = context.snippet(mk_sp(lo, item_span.hi()));
     let open_pos = snippet.find_uncommented("{")? + 1;
 
     if !items.is_empty() || contains_comment(&snippet[open_pos..]) {
@@ -911,10 +1030,10 @@ pub(crate) fn format_impl(
         visitor.block_indent = item_indent;
         visitor.last_pos = lo + BytePos(open_pos as u32);
 
-        visitor.visit_attrs(&item.attrs, ast::AttrStyle::Inner);
+        visitor.visit_attrs(&attrs, ast::AttrStyle::Inner);
         visitor.visit_impl_items(items);
 
-        visitor.format_missing(item.span.hi() - BytePos(1));
+        visitor.format_missing(item_span.hi() - BytePos(1));
 
         let inner_indent_str = visitor.block_indent.to_string_with_newline(context.config);
         let outer_indent_str = offset.block_only().to_string_with_newline(context.config);
@@ -936,9 +1055,9 @@ fn is_impl_single_line(
     items: &[Box<ast::AssocItem>],
     result: &str,
     where_clause_str: &str,
-    item: &ast::Item,
+    span: Span,
 ) -> Option<bool> {
-    let snippet = context.snippet(item.span);
+    let snippet = context.snippet(span);
     let open_pos = snippet.find_uncommented("{")? + 1;
 
     Some(
@@ -952,26 +1071,23 @@ fn is_impl_single_line(
 
 fn format_impl_ref_and_type(
     context: &RewriteContext<'_>,
-    item: &ast::Item,
-    iimpl: &ast::Impl,
+    visibility: &ast::Visibility,
+    impl_kind: SourceImplKind,
+    generics: &ast::Generics,
+    of_trait: Option<&ast::TraitImplHeader>,
+    self_ty: Option<&ast::Ty>,
+    constness: ast::Const,
     offset: Indent,
 ) -> Option<String> {
-    let ast::Impl {
-        generics,
-        of_trait,
-        self_ty,
-        items: _,
-        constness,
-    } = iimpl;
     let mut result = String::with_capacity(128);
 
-    result.push_str(&format_visibility(context, &item.vis));
+    result.push_str(&format_visibility(context, &visibility));
 
-    if let Some(of_trait) = of_trait.as_deref() {
+    if let Some(of_trait) = of_trait {
         result.push_str(format_defaultness(of_trait.defaultness));
         result.push_str(format_safety(of_trait.safety));
     } else {
-        result.push_str(format_constness(*constness));
+        result.push_str(format_constness(constness));
     }
 
     let shape = if context.config.style_edition() >= StyleEdition::Edition2024 {
@@ -983,12 +1099,22 @@ fn format_impl_ref_and_type(
             0,
         )?
     };
-    let generics_str = rewrite_generics(context, "impl", generics, shape).ok()?;
+    let generics_str = rewrite_generics(
+        context,
+        match impl_kind {
+            SourceImplKind::Original => "impl",
+            SourceImplKind::AutoImpl => "auto impl",
+            SourceImplKind::ExternImpl => "extern impl",
+        },
+        generics,
+        shape,
+    )
+    .ok()?;
     result.push_str(&generics_str);
 
     let trait_ref_overhead;
     if let Some(of_trait) = of_trait.as_deref() {
-        result.push_str(format_constness_right(*constness));
+        result.push_str(format_constness_right(constness));
         let polarity_str = match of_trait.polarity {
             ast::ImplPolarity::Negative(_) => "!",
             ast::ImplPolarity::Positive => "",
@@ -1001,7 +1127,10 @@ fn format_impl_ref_and_type(
             polarity_str,
             result_len,
         )?);
-        trait_ref_overhead = " for".len();
+        trait_ref_overhead = match impl_kind {
+            SourceImplKind::Original => " for".len(),
+            SourceImplKind::AutoImpl | SourceImplKind::ExternImpl => 0,
+        };
     } else {
         trait_ref_overhead = 0;
     }
@@ -1020,16 +1149,27 @@ fn format_impl_ref_and_type(
     let used_space = last_line_width(&result) + trait_ref_overhead + curly_brace_overhead;
     // 1 = space before the type.
     let budget = context.budget(used_space + 1);
-    if let Some(self_ty_str) = self_ty.rewrite(context, Shape::legacy(budget, offset)) {
-        if !self_ty_str.contains('\n') {
-            if of_trait.is_some() {
-                result.push_str(" for ");
-            } else {
-                result.push(' ');
+    if let Some(self_ty) = self_ty {
+        debug_assert!(matches!(impl_kind, SourceImplKind::Original));
+        if let Some(self_ty_str) = self_ty.rewrite(context, Shape::legacy(budget, offset)) {
+            if !self_ty_str.contains('\n') {
+                if of_trait.is_some() {
+                    result.push_str(" for ");
+                } else {
+                    result.push(' ');
+                }
+                result.push_str(&self_ty_str);
+                dbg!(&result);
+                return Some(result);
             }
-            result.push_str(&self_ty_str);
-            return Some(result);
         }
+    } else if matches!(
+        impl_kind,
+        SourceImplKind::AutoImpl | SourceImplKind::ExternImpl
+    ) {
+        debug_assert!(of_trait.is_some());
+        // Yes, that is all for `auto/extern impl`
+        return Some(result);
     }
 
     // Couldn't fit the self type on a single line, put it on a new line.
@@ -1045,7 +1185,9 @@ fn format_impl_ref_and_type(
         IndentStyle::Visual => new_line_offset + trait_ref_overhead,
         IndentStyle::Block => new_line_offset,
     };
-    result.push_str(&*self_ty.rewrite(context, Shape::legacy(budget, type_offset))?);
+    if let Some(self_ty) = self_ty {
+        result.push_str(&*self_ty.rewrite(context, Shape::legacy(budget, type_offset))?);
+    }
     Some(result)
 }
 

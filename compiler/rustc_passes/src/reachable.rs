@@ -146,12 +146,13 @@ impl<'tcx> ReachableContext<'tcx> {
             },
             Node::TraitItem(trait_method) => match trait_method.kind {
                 hir::TraitItemKind::Const(_, ref default) => default.is_some(),
-                hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => true,
+                hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_))
+                | hir::TraitItemKind::AutoImpl(..) => true,
                 hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_))
                 | hir::TraitItemKind::Type(..) => false,
             },
             Node::ImplItem(impl_item) => match impl_item.kind {
-                hir::ImplItemKind::Const(..) => true,
+                hir::ImplItemKind::Const(..) | hir::ImplItemKind::AutoImpl(..) => true,
                 hir::ImplItemKind::Fn(..) => {
                     recursively_reachable(self.tcx, impl_item.hir_id().owner.to_def_id())
                 }
@@ -259,6 +260,7 @@ impl<'tcx> ReachableContext<'tcx> {
             Node::TraitItem(trait_method) => {
                 match trait_method.kind {
                     hir::TraitItemKind::Const(_, None)
+                    | hir::TraitItemKind::AutoImpl(..)
                     | hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_)) => {
                         // Keep going, nothing to get exported
                     }
@@ -278,7 +280,7 @@ impl<'tcx> ReachableContext<'tcx> {
                         self.visit_nested_body(body)
                     }
                 }
-                hir::ImplItemKind::Type(_) => {}
+                hir::ImplItemKind::Type(_) | hir::ImplItemKind::AutoImpl(..) => {}
             },
             Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { body, .. }),

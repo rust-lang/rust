@@ -115,6 +115,7 @@ fn is_not_const(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | DefKind::ForeignMod
         | DefKind::GlobalAsm
         | DefKind::Impl { .. }
+        | DefKind::AutoImpl
         | DefKind::OpaqueTy
         | DefKind::SyntheticCoroutineBody
         | DefKind::TyParam => true,

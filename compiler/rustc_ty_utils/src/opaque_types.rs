@@ -333,6 +333,7 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::ForeignMod
         | DefKind::Field
         | DefKind::LifetimeParam
+        | DefKind::AutoImpl
         | DefKind::Impl { .. } => {
             span_bug!(
                 tcx.def_span(item),

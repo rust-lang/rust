@@ -20,8 +20,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, ErrorGuaranteed, IntoDiagArg, MultiSpan, StashKey,
-    Suggestions, pluralize,
+    Applicability, Diag, DiagArgValue, ErrorGuaranteed, FatalError, IntoDiagArg, MultiSpan,
+    StashKey, Suggestions, pluralize,
 };
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
@@ -2770,6 +2770,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.diag_metadata.current_impl_items = None;
             }
 
+            ItemKind::AutoImpl(..) | ItemKind::ExternImpl(..) => {
+                unreachable!("ast lowering should not allow us here")
+            }
+
             ItemKind::Trait(box Trait { generics, bounds, items, .. }) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
@@ -2974,6 +2978,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, f))]
     fn with_generic_param_rib<F>(
         &mut self,
         params: &[GenericParam],
@@ -2985,7 +2990,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     ) where
         F: FnOnce(&mut Self),
     {
-        debug!("with_generic_param_rib");
         let lifetime_kind =
             LifetimeRibKind::Generics { binder, span: generics_span, kind: generics_kind };
 
@@ -3298,6 +3302,34 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                     self.resolve_define_opaques(define_opaque);
                 }
+                AssocItemKind::AutoImpl(_ai) => {
+                    let tcx = self.r.tcx();
+                    if !tcx.features().supertrait_auto_impl() {
+                        feature_err(
+                            &tcx.sess,
+                            sym::supertrait_auto_impl,
+                            item.span,
+                            "feature is under construction",
+                        )
+                        .emit();
+                        return;
+                    }
+                    FatalError.raise()
+                }
+                AssocItemKind::ExternImpl(_ei) => {
+                    let tcx = self.r.tcx();
+                    if !tcx.features().supertrait_auto_impl() {
+                        feature_err(
+                            &tcx.sess,
+                            sym::supertrait_auto_impl,
+                            item.span,
+                            "feature is under construction",
+                        )
+                        .emit();
+                        return;
+                    }
+                    FatalError.raise()
+                }
                 AssocItemKind::Delegation(delegation) => {
                     self.with_generic_param_rib(
                         &[],
@@ -3368,6 +3400,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         self.with_self_rib_ns(TypeNS, self_res, f)
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn resolve_implementation(
         &mut self,
         attrs: &[ast::Attribute],
@@ -3377,7 +3410,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         item_id: NodeId,
         impl_items: &'ast [Box<AssocItem>],
     ) {
-        debug!("resolve_implementation");
         // If applicable, create a rib for the type parameters.
         self.with_generic_param_rib(
             &generics.params,
@@ -3601,6 +3633,34 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
                 self.diag_metadata.in_non_gat_assoc_type = None;
             }
+            AssocItemKind::AutoImpl(_) => {
+                let tcx = self.r.tcx();
+                if !tcx.features().supertrait_auto_impl() {
+                    feature_err(
+                        &tcx.sess,
+                        sym::supertrait_auto_impl,
+                        item.span,
+                        "feature is under construction",
+                    )
+                    .emit();
+                    return;
+                }
+                FatalError.raise()
+            }
+            AssocItemKind::ExternImpl(_) => {
+                let tcx = self.r.tcx();
+                if !tcx.features().supertrait_auto_impl() {
+                    feature_err(
+                        &tcx.sess,
+                        sym::supertrait_auto_impl,
+                        item.span,
+                        "feature is under construction",
+                    )
+                    .emit();
+                    return;
+                }
+                FatalError.raise()
+            }
             AssocItemKind::Delegation(box delegation) => {
                 debug!("resolve_implementation AssocItemKind::Delegation");
                 self.with_generic_param_rib(
@@ -3728,6 +3788,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             AssocItemKind::Const(..) => (E0323, "const"),
             AssocItemKind::Fn(..) => (E0324, "method"),
             AssocItemKind::Type(..) => (E0325, "type"),
+            AssocItemKind::AutoImpl(..) => (E0325, "auto impl"),
+            AssocItemKind::ExternImpl(..) => (E0325, "extern impl"),
             AssocItemKind::Delegation(..) => (E0324, "method"),
             AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
                 span_bug!(span, "unexpanded macro")
@@ -5485,6 +5547,8 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
             }
 
             ItemKind::Mod(..)
+            | ItemKind::AutoImpl(..)
+            | ItemKind::ExternImpl(..)
             | ItemKind::Static(..)
             | ItemKind::ConstBlock(..)
             | ItemKind::Use(..)

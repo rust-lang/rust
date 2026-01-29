@@ -1,0 +1,18 @@
+error: implementation is not supported in `trait`s or `impl`s
+  --> $DIR/supertrait-auto-impls.rs:45:5
+   |
+LL |     const impl Super {}
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the implementation out to a nearby module scope
+
+error: implementation is not supported in `trait`s or `impl`s
+  --> $DIR/supertrait-auto-impls.rs:49:5
+   |
+LL |     impl Super {}
+   |     ^^^^^^^^^^
+   |
+   = help: consider moving the implementation out to a nearby module scope
+
+error: aborting due to 2 previous errors
+

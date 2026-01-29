@@ -231,7 +231,7 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         case: Case,
     ) -> PResult<'a, Option<ItemKind>> {
-        let check_pub = def == &Defaultness::Final;
+        let check_pub = matches!(def, Defaultness::Final);
         let mut def_ = || mem::replace(def, Defaultness::Final);
 
         let info = if !self.is_use_closure() && self.eat_keyword_case(exp!(Use), case) {
@@ -250,6 +250,16 @@ impl<'a> Parser<'a> {
                 define_opaque: None,
                 eii_impls: ThinVec::new(),
             }))
+        } else if self.is_maybe_unsafe_extern_impl() {
+            // EXTERN IMPL directive
+            self.parse_item_extern_impl()?
+        } else if self.check_keyword(exp!(Unsafe))
+            && self.is_keyword_ahead(1, &[kw::Auto])
+            && self.is_keyword_ahead(2, &[kw::Impl])
+            || self.check_keyword(exp!(Auto)) && self.is_keyword_ahead(1, &[kw::Impl])
+        {
+            // AUTO IMPL ITEM
+            self.parse_item_auto_impl(attrs)?
         } else if self.eat_keyword_case(exp!(Extern), case) {
             if self.eat_keyword_case(exp!(Crate), case) {
                 // EXTERN CRATE
@@ -744,6 +754,85 @@ impl<'a> Parser<'a> {
         Ok(ItemKind::Impl(Impl { generics, of_trait, self_ty, items: impl_items, constness }))
     }
 
+    fn parse_item_extern_impl(&mut self) -> PResult<'a, ItemKind> {
+        let safety = self.parse_safety(Case::Sensitive);
+        assert!(self.eat_keyword(exp!(Extern)));
+        assert!(self.eat_keyword(exp!(Impl)));
+        self.psess.gated_spans.gate(sym::supertrait_auto_impl, self.token.span);
+
+        let generics = if self.choose_generics_over_qpath(0) {
+            self.parse_generics()?
+        } else {
+            let mut generics = Generics::default();
+            // extern impl Super;
+            //    /\ this is where `generics.span` should point when there are no type params.
+            generics.span = self.prev_token.span.shrink_to_hi();
+            generics
+        };
+        let polarity = self.parse_polarity();
+        let target_trait = self.parse_ty()?;
+        self.expect(exp!(Semi))?;
+        let path = if let TyKind::Path(None, path) = target_trait.kind {
+            path
+        } else {
+            return Err(self.dcx().create_err(errors::ExpectedTraitInTraitImplFoundType {
+                span: target_trait.span,
+            }));
+        };
+        let trait_ref = TraitRef { path, ref_id: target_trait.id };
+        let of_trait = Box::new(TraitImplHeader {
+            defaultness: Defaultness::Final,
+            safety,
+            polarity,
+            trait_ref,
+        });
+        Ok(ItemKind::ExternImpl(Box::new(ExternImpl { generics, of_trait })))
+    }
+
+    fn parse_item_auto_impl(&mut self, attrs: &mut AttrVec) -> PResult<'a, ItemKind> {
+        let safety = self.parse_safety(Case::Sensitive);
+        assert!(self.eat_keyword(exp!(Auto)));
+        assert!(self.eat_keyword(exp!(Impl)));
+        self.psess.gated_spans.gate(sym::supertrait_auto_impl, self.token.span);
+
+        let generics = if self.choose_generics_over_qpath(0) {
+            self.parse_generics()?
+        } else {
+            let mut generics = Generics::default();
+            // auto impl Super {}
+            //         /\ this is where `generics.span` should point when there are no type params.
+            generics.span = self.prev_token.span.shrink_to_hi();
+            generics
+        };
+
+        let polarity = self.parse_polarity();
+
+        let constness = self.parse_constness(Case::Sensitive);
+        if let Const::Yes(span) = constness {
+            self.psess.gated_spans.gate(sym::const_trait_impl, span);
+        }
+
+        let target_trait = self.parse_ty()?;
+
+        let items = self.parse_semi_or_item_list(attrs, |p| p.parse_impl_item(ForceCollect::No))?;
+
+        let path = if let TyKind::Path(None, path) = target_trait.kind {
+            path
+        } else {
+            return Err(self.dcx().create_err(errors::ExpectedTraitInTraitImplFoundType {
+                span: target_trait.span,
+            }));
+        };
+        let trait_ref = TraitRef { path, ref_id: target_trait.id };
+        let of_trait = Box::new(TraitImplHeader {
+            defaultness: Defaultness::Final,
+            safety,
+            polarity,
+            trait_ref,
+        });
+        Ok(ItemKind::AutoImpl(Box::new(AutoImpl { items, of_trait, constness, generics })))
+    }
+
     fn parse_item_delegation(
         &mut self,
         attrs: &mut AttrVec,
@@ -858,16 +947,35 @@ impl<'a> Parser<'a> {
     fn parse_item_list<T>(
         &mut self,
         attrs: &mut AttrVec,
-        mut parse_item: impl FnMut(&mut Parser<'a>) -> PResult<'a, Option<Option<T>>>,
+        parse_item: impl FnMut(&mut Parser<'a>) -> PResult<'a, Option<Option<T>>>,
     ) -> PResult<'a, ThinVec<T>> {
-        let open_brace_span = self.token.span;
-
         // Recover `impl Ty;` instead of `impl Ty {}`
         if self.token == TokenKind::Semi {
             self.dcx().emit_err(errors::UseEmptyBlockNotSemi { span: self.token.span });
             self.bump();
             return Ok(ThinVec::new());
         }
+        self.parse_item_list_inner(attrs, parse_item)
+    }
+
+    fn parse_semi_or_item_list<T>(
+        &mut self,
+        attrs: &mut AttrVec,
+        parse_item: impl FnMut(&mut Parser<'a>) -> PResult<'a, Option<Option<T>>>,
+    ) -> PResult<'a, ThinVec<T>> {
+        if self.eat_noexpect(&TokenKind::Semi) {
+            Ok(ThinVec::new())
+        } else {
+            self.parse_item_list_inner(attrs, parse_item)
+        }
+    }
+
+    fn parse_item_list_inner<T>(
+        &mut self,
+        attrs: &mut AttrVec,
+        mut parse_item: impl FnMut(&mut Parser<'a>) -> PResult<'a, Option<Option<T>>>,
+    ) -> PResult<'a, ThinVec<T>> {
+        let open_brace_span = self.token.span;
 
         self.expect(exp!(OpenBrace))?;
         attrs.extend(self.parse_inner_attributes()?);
@@ -996,12 +1104,25 @@ impl<'a> Parser<'a> {
 
     /// Is this an `(const unsafe? auto?| unsafe auto? | auto) trait` item?
     fn check_trait_front_matter(&mut self) -> bool {
-        // auto trait
-        self.check_keyword(exp!(Auto)) && self.is_keyword_ahead(1, &[kw::Trait])
-            // unsafe auto trait
-            || self.check_keyword(exp!(Unsafe)) && self.is_keyword_ahead(1, &[kw::Trait, kw::Auto])
-            || self.check_keyword(exp!(Const)) && ((self.is_keyword_ahead(1, &[kw::Trait]) || self.is_keyword_ahead(1, &[kw::Auto]) && self.is_keyword_ahead(2, &[kw::Trait]))
-                || self.is_keyword_ahead(1, &[kw::Unsafe]) && self.is_keyword_ahead(2, &[kw::Trait, kw::Auto]))
+        // * trait
+        if self.is_keyword_ahead(1, &[kw::Trait]) {
+            self.check_keyword(exp!(Auto))
+                || self.check_keyword(exp!(Const))
+                || self.check_keyword(exp!(Unsafe))
+        }
+        // * * trait
+        else if self.is_keyword_ahead(2, &[kw::Trait]) {
+            self.check_keyword(exp!(Unsafe)) && self.is_keyword_ahead(1, &[kw::Auto])
+                || self.check_keyword(exp!(Const)) && self.is_keyword_ahead(1, &[kw::Auto])
+                || self.check_keyword(exp!(Const)) && self.is_keyword_ahead(1, &[kw::Unsafe])
+        }
+        // * * * trait
+        else {
+            self.is_keyword_ahead(3, &[kw::Trait])
+                && self.check_keyword(exp!(Const))
+                && self.is_keyword_ahead(1, &[kw::Unsafe])
+                && self.is_keyword_ahead(2, &[kw::Auto])
+        }
     }
 
     /// Parses `unsafe? auto? trait Foo { ... }` or `trait Foo = Bar;`.
@@ -1432,6 +1553,13 @@ impl<'a> Parser<'a> {
         // ahead.
         self.tree_look_ahead(n, |t| matches!(t, TokenTree::Delimited(_, _, Delimiter::Brace, _)))
             == Some(true)
+    }
+
+    fn is_maybe_unsafe_extern_impl(&self) -> bool {
+        self.token.is_keyword(kw::Unsafe)
+            && self.is_keyword_ahead(1, &[kw::Extern])
+            && self.is_keyword_ahead(2, &[kw::Impl])
+            || self.token.is_keyword(kw::Extern) && self.is_keyword_ahead(1, &[kw::Impl])
     }
 
     fn parse_global_static_front_matter(&mut self, case: Case) -> Option<Safety> {
@@ -2793,6 +2921,8 @@ impl<'a> Parser<'a> {
                         && !self.is_async_gen_block()
                         // Rule out `const unsafe auto` and `const unsafe trait`.
                         && !self.is_keyword_ahead(2, &[kw::Auto, kw::Trait])
+                        // Rule out `unsafe? extern impl`.
+                        && !self.is_maybe_unsafe_extern_impl()
                     )
                 })
             // `extern ABI fn`
@@ -2806,7 +2936,7 @@ impl<'a> Parser<'a> {
                         TokenTree::Token(t, _) => t.is_keyword_case(kw::Fn, case),
                         TokenTree::Delimited(..) => false,
                     }
-                }) == Some(true) ||
+                }).unwrap_or(false) ||
                     // This branch is only for better diagnostics; `pub`, `unsafe`, etc. are not
                     // allowed here.
                     (self.may_recover()
@@ -2818,13 +2948,13 @@ impl<'a> Parser<'a> {
                                     }),
                                 TokenTree::Delimited(..) => false,
                             }
-                        }) == Some(true)
+                        }).unwrap_or(false)
                         && self.tree_look_ahead(3, |tt| {
                             match tt {
                                 TokenTree::Token(t, _) => t.is_keyword_case(kw::Fn, case),
                                 TokenTree::Delimited(..) => false,
                             }
-                        }) == Some(true)
+                        }).unwrap_or(false)
                     )
                 )
     }

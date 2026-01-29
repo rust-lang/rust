@@ -291,11 +291,13 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                 TraitItemKind::Fn(..) => ("Node::TraitItem", LABELS_FN_IN_TRAIT),
                 TraitItemKind::Const(..) => ("NodeTraitConst", LABELS_CONST_IN_TRAIT),
                 TraitItemKind::Type(..) => ("NodeTraitType", LABELS_CONST_IN_TRAIT),
+                TraitItemKind::AutoImpl(..) => todo!(),
             },
             HirNode::ImplItem(item) => match item.kind {
                 ImplItemKind::Fn(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
                 ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
                 ImplItemKind::Type(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
+                ImplItemKind::AutoImpl(..) => todo!(),
             },
             _ => self.tcx.dcx().emit_fatal(errors::UndefinedCleanDirty {
                 span: attr.span(),

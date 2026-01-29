@@ -1,3 +1,4 @@
+use itertools::Either;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatorState};
@@ -30,9 +31,15 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
             let rpitit_items = tcx.associated_types_for_impl_traits_in_trait_or_impl(def_id);
             tcx.arena.alloc_from_iter(trait_item_refs.iter().flat_map(|trait_item_ref| {
                 let item_def_id = trait_item_ref.owner_id.to_def_id();
-                [item_def_id]
-                    .into_iter()
-                    .chain(rpitit_items.get(&item_def_id).into_iter().flatten().copied())
+                if matches!(tcx.def_kind(item_def_id), DefKind::AutoImpl) {
+                    Either::Left([].into_iter())
+                } else {
+                    Either::Right(
+                        [item_def_id]
+                            .into_iter()
+                            .chain(rpitit_items.get(&item_def_id).into_iter().flatten().copied()),
+                    )
+                }
             }))
         }
         hir::ItemKind::Impl(impl_) => {
@@ -42,9 +49,15 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
             let rpitit_items = tcx.associated_types_for_impl_traits_in_trait_or_impl(def_id);
             tcx.arena.alloc_from_iter(impl_.items.iter().flat_map(|impl_item_ref| {
                 let item_def_id = impl_item_ref.owner_id.to_def_id();
-                [item_def_id]
-                    .into_iter()
-                    .chain(rpitit_items.get(&item_def_id).into_iter().flatten().copied())
+                if matches!(tcx.def_kind(item_def_id), DefKind::AutoImpl) {
+                    Either::Left([].into_iter())
+                } else {
+                    Either::Right(
+                        [item_def_id]
+                            .into_iter()
+                            .chain(rpitit_items.get(&item_def_id).into_iter().flatten().copied()),
+                    )
+                }
             }))
         }
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),
@@ -95,6 +108,9 @@ fn associated_item_from_trait_item(
         hir::TraitItemKind::Type { .. } => {
             ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) }
         }
+        hir::TraitItemKind::AutoImpl(..) => {
+            span_bug!(trait_item.span, "auto impl is not type-level associated items")
+        }
     };
 
     ty::AssocItem { kind, def_id: owner_id.to_def_id(), container: ty::AssocContainer::Trait }
@@ -110,6 +126,9 @@ fn associated_item_from_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>
         }
         hir::ImplItemKind::Type { .. } => {
             ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) }
+        }
+        hir::ImplItemKind::AutoImpl(..) => {
+            span_bug!(impl_item.span, "auto/extern impl is not type-level associated items")
         }
     };
 

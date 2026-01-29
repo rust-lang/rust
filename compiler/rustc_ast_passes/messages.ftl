@@ -50,6 +50,9 @@ ast_passes_auto_generic = auto traits cannot have generic parameters
     .label = auto trait cannot have generic parameters
     .suggestion = remove the parameters
 
+ast_passes_auto_impl_outside_trait_or_impl_trait =
+    `auto impl` is outside a `trait` block or trait-`impl` block
+
 ast_passes_auto_items = auto traits cannot have associated items
     .label = {ast_passes_auto_items}
     .suggestion = remove the associated items
