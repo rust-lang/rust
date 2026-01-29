@@ -1,12 +1,14 @@
 //@ add-minicore
-//@ revisions: linux win_x86 win_i686 macos thumb
+//@ revisions: linux win_x86_msvc win_x86_gnu win_i686_gnu macos thumb
 //
 //@[linux] compile-flags: --target x86_64-unknown-linux-gnu
 //@[linux] needs-llvm-components: x86
-//@[win_x86] compile-flags: --target x86_64-pc-windows-gnu
-//@[win_x86] needs-llvm-components: x86
-//@[win_i686] compile-flags: --target i686-pc-windows-gnu
-//@[win_i686] needs-llvm-components: x86
+//@[win_x86_gnu] compile-flags: --target x86_64-pc-windows-gnu
+//@[win_x86_gnu] needs-llvm-components: x86
+//@[win_x86_msvc] compile-flags: --target x86_64-pc-windows-msvc
+//@[win_x86_msvc] needs-llvm-components: x86
+//@[win_i686_gnu] compile-flags: --target i686-pc-windows-gnu
+//@[win_i686_gnu] needs-llvm-components: x86
 //@[macos] compile-flags: --target aarch64-apple-darwin
 //@[macos] needs-llvm-components: aarch64
 //@[thumb] compile-flags: --target thumbv7em-none-eabi
@@ -22,9 +24,10 @@ use minicore::*;
 // linux,win: .intel_syntax
 //
 // linux:    .pushsection .text.naked_empty,\22ax\22, @progbits
-// macos:    .pushsection __TEXT,__text,regular,pure_instructions
-// win_x86:  .pushsection .text.naked_empty,\22xr\22
-// win_i686: .pushsection .text._naked_empty,\22xr\22
+// macos-NOT: .pushsection
+// win_x86_msvc:     .pushsection .text$naked_empty,\22xr\22
+// win_x86_gnu-NOT:  .pushsection
+// win_i686_gnu-NOT: .pushsection
 // thumb:    .pushsection .text.naked_empty,\22ax\22, %progbits
 //
 // CHECK: .balign 4
@@ -37,12 +40,12 @@ use minicore::*;
 //
 // linux: .type naked_empty, @function
 //
-// win_x86:  .def naked_empty
-// win_i686: .def _naked_empty
+// win_x86_msvc,win_x86_gnu:  .def naked_empty
+// win_i686_gnu: .def _naked_empty
 //
-// win_x86,win_i686: .scl 2
-// win_x86,win_i686: .type 32
-// win_x86,win_i686: .endef
+// win_x86_msvc,win_x86_gnu,win_i686_gnu: .scl 2
+// win_x86_msvc,win_x86_gnu,win_i686_gnu: .type 32
+// win_x86_msvc,win_x86_gnu,win_i686_gnu: .endef
 //
 // thumb: .type naked_empty, %function
 // thumb: .thumb
@@ -53,7 +56,8 @@ use minicore::*;
 // linux,macos,win: ret
 // thumb: bx lr
 //
-// CHECK: .popsection
+// linux,windows,win_x86_msvc,thumb: .popsection
+// win_x86_gnu-NOT,win_i686_gnu-NOT: .popsection
 //
 // thumb: .thumb
 //
@@ -75,9 +79,10 @@ pub extern "C" fn naked_empty() {
 // linux,win: .intel_syntax
 //
 // linux:    .pushsection .text.naked_with_args_and_return,\22ax\22, @progbits
-// macos:    .pushsection __TEXT,__text,regular,pure_instructions
-// win_x86:  .pushsection .text.naked_with_args_and_return,\22xr\22
-// win_i686: .pushsection .text._naked_with_args_and_return,\22xr\22
+// macos-NOT: .pushsection
+// win_x86_msvc:     .pushsection .text$naked_with_args_and_return,\22xr\22
+// win_x86_gnu-NOT:  .pushsection
+// win_i686_gnu-NOT: .pushsection
 // thumb:    .pushsection .text.naked_with_args_and_return,\22ax\22, %progbits
 //
 // CHECK: .balign 4
@@ -90,12 +95,12 @@ pub extern "C" fn naked_empty() {
 //
 // linux: .type naked_with_args_and_return, @function
 //
-// win_x86:  .def naked_with_args_and_return
-// win_i686: .def _naked_with_args_and_return
+// win_x86_msvc,win_x86_gnu:  .def naked_with_args_and_return
+// win_i686_gnu: .def _naked_with_args_and_return
 //
-// win_x86,win_i686: .scl 2
-// win_x86,win_i686: .type 32
-// win_x86,win_i686: .endef
+// win_x86_msvc,win_x86_gnu,win_i686_gnu: .scl 2
+// win_x86_msvc,win_x86_gnu,win_i686_gnu: .type 32
+// win_x86_msvc,win_x86_gnu,win_i686_gnu: .endef
 //
 // thumb: .type naked_with_args_and_return, %function
 // thumb: .thumb
@@ -103,14 +108,15 @@ pub extern "C" fn naked_empty() {
 //
 // CHECK-LABEL: naked_with_args_and_return:
 //
-// linux, win_x86,win_i686: lea rax, [rdi + rsi]
+// linux,win_x86_msvc,win_x86_gnu,win_i686_gnu: lea rax, [rdi + rsi]
 // macos: add x0, x0, x1
 // thumb: adds r0, r0, r1
 //
 // linux,macos,win: ret
 // thumb: bx lr
 //
-// CHECK: .popsection
+// linux,windows,win_x86_msvc,thumb: .popsection
+// win_x86_gnu-NOT,win_i686_gnu-NOT: .popsection
 //
 // thumb: .thumb
 //
@@ -134,7 +140,7 @@ pub extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize {
 
 // linux:            .pushsection .text.some_different_name,\22ax\22, @progbits
 // macos:            .pushsection .text.some_different_name,regular,pure_instructions
-// win_x86,win_i686: .pushsection .text.some_different_name,\22xr\22
+// win_x86_msvc,win_x86_gnu,win_i686_gnu: .pushsection .text.some_different_name,\22xr\22
 // thumb:            .pushsection .text.some_different_name,\22ax\22, %progbits
 // CHECK-LABEL: test_link_section:
 #[no_mangle]
@@ -151,15 +157,15 @@ pub extern "C" fn test_link_section() {
     }
 }
 
-// win_x86:  .def fastcall_cc
-// win_i686: .def @fastcall_cc@4
+// win_x86_msvc,win_x86_gnu:  .def fastcall_cc
+// win_i686_gnu: .def @fastcall_cc@4
 //
-// win_x86,win_i686: .scl 2
-// win_x86,win_i686: .type 32
-// win_x86,win_i686: .endef
+// win_x86_msvc,win_x86_gnu,win_i686_gnu: .scl 2
+// win_x86_msvc,win_x86_gnu,win_i686_gnu: .type 32
+// win_x86_msvc,win_x86_gnu,win_i686_gnu: .endef
 //
-// win_x86-LABEL: fastcall_cc:
-// win_i686-LABEL: @fastcall_cc@4:
+// win_x86_msvc-LABEL,win_x86_gnu-LABEL: fastcall_cc:
+// win_i686_gnu-LABEL: @fastcall_cc@4:
 #[cfg(target_os = "windows")]
 #[no_mangle]
 #[unsafe(naked)]
