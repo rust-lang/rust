@@ -1311,7 +1311,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             let ident = IdentKey::new(orig_ident);
             self.r.macro_names.insert(ident);
             let is_macro_export = ast::attr::contains_name(&item.attrs, sym::macro_export);
-            let vis = if is_macro_export {
+            let vis = if is_macro_export || self.r.tcx().features().macro_implicit_pub() {
                 Visibility::Public
             } else {
                 Visibility::Restricted(CRATE_DEF_ID)
