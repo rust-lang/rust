@@ -4,7 +4,7 @@ error: `#[pin_v2]` attribute cannot be used on macro calls
 LL | #[pin_v2]
    | ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/pin_v2-attr.rs:84:12
@@ -18,7 +18,7 @@ error: `#[pin_v2]` attribute cannot be used on crates
 LL | #![pin_v2]
    | ^^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on type parameters
   --> $DIR/pin_v2-attr.rs:27:10
@@ -26,7 +26,7 @@ error: `#[pin_v2]` attribute cannot be used on type parameters
 LL | enum Foo<#[pin_v2] T, #[pin_v2] U = ()> {
    |          ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on type parameters
   --> $DIR/pin_v2-attr.rs:27:23
@@ -34,7 +34,7 @@ error: `#[pin_v2]` attribute cannot be used on type parameters
 LL | enum Foo<#[pin_v2] T, #[pin_v2] U = ()> {
    |                       ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on enum variants
   --> $DIR/pin_v2-attr.rs:30:5
@@ -42,7 +42,7 @@ error: `#[pin_v2]` attribute cannot be used on enum variants
 LL |     #[pin_v2]
    |     ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on struct fields
   --> $DIR/pin_v2-attr.rs:32:18
@@ -50,7 +50,7 @@ error: `#[pin_v2]` attribute cannot be used on struct fields
 LL |     TupleVariant(#[pin_v2] T),
    |                  ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on struct fields
   --> $DIR/pin_v2-attr.rs:34:9
@@ -58,7 +58,7 @@ error: `#[pin_v2]` attribute cannot be used on struct fields
 LL |         #[pin_v2]
    |         ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on traits
   --> $DIR/pin_v2-attr.rs:39:1
@@ -66,7 +66,7 @@ error: `#[pin_v2]` attribute cannot be used on traits
 LL | #[pin_v2]
    | ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on associated consts
   --> $DIR/pin_v2-attr.rs:41:5
@@ -74,7 +74,7 @@ error: `#[pin_v2]` attribute cannot be used on associated consts
 LL |     #[pin_v2]
    |     ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on associated types
   --> $DIR/pin_v2-attr.rs:43:5
@@ -82,7 +82,7 @@ error: `#[pin_v2]` attribute cannot be used on associated types
 LL |     #[pin_v2]
    |     ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on required trait methods
   --> $DIR/pin_v2-attr.rs:46:5
@@ -90,7 +90,7 @@ error: `#[pin_v2]` attribute cannot be used on required trait methods
 LL |     #[pin_v2]
    |     ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on provided trait methods
   --> $DIR/pin_v2-attr.rs:48:5
@@ -98,7 +98,7 @@ error: `#[pin_v2]` attribute cannot be used on provided trait methods
 LL |     #[pin_v2]
    |     ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on trait aliases
   --> $DIR/pin_v2-attr.rs:52:1
@@ -106,7 +106,7 @@ error: `#[pin_v2]` attribute cannot be used on trait aliases
 LL | #[pin_v2]
    | ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on inherent impl blocks
   --> $DIR/pin_v2-attr.rs:55:1
@@ -114,7 +114,7 @@ error: `#[pin_v2]` attribute cannot be used on inherent impl blocks
 LL | #[pin_v2]
    | ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on delegations
   --> $DIR/pin_v2-attr.rs:58:5
@@ -122,7 +122,7 @@ error: `#[pin_v2]` attribute cannot be used on delegations
 LL |     #[pin_v2]
    |     ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on inherent methods
   --> $DIR/pin_v2-attr.rs:61:5
@@ -130,7 +130,7 @@ error: `#[pin_v2]` attribute cannot be used on inherent methods
 LL |     #[pin_v2]
    |     ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on trait impl blocks
   --> $DIR/pin_v2-attr.rs:65:1
@@ -138,7 +138,7 @@ error: `#[pin_v2]` attribute cannot be used on trait impl blocks
 LL | #[pin_v2]
    | ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on trait methods in impl blocks
   --> $DIR/pin_v2-attr.rs:67:5
@@ -146,7 +146,7 @@ error: `#[pin_v2]` attribute cannot be used on trait methods in impl blocks
 LL |     #[pin_v2]
    |     ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on extern crates
   --> $DIR/pin_v2-attr.rs:71:1
@@ -154,7 +154,7 @@ error: `#[pin_v2]` attribute cannot be used on extern crates
 LL | #[pin_v2]
    | ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on use statements
   --> $DIR/pin_v2-attr.rs:74:1
@@ -162,7 +162,7 @@ error: `#[pin_v2]` attribute cannot be used on use statements
 LL | #[pin_v2]
    | ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on statics
   --> $DIR/pin_v2-attr.rs:77:1
@@ -170,7 +170,7 @@ error: `#[pin_v2]` attribute cannot be used on statics
 LL | #[pin_v2]
    | ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on constants
   --> $DIR/pin_v2-attr.rs:80:1
@@ -178,7 +178,7 @@ error: `#[pin_v2]` attribute cannot be used on constants
 LL | #[pin_v2]
    | ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on functions
   --> $DIR/pin_v2-attr.rs:83:1
@@ -186,7 +186,7 @@ error: `#[pin_v2]` attribute cannot be used on functions
 LL | #[pin_v2]
    | ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on function params
   --> $DIR/pin_v2-attr.rs:84:12
@@ -194,7 +194,7 @@ error: `#[pin_v2]` attribute cannot be used on function params
 LL | fn f<T, U>(#[pin_v2] param: Foo<T, U>)
    |            ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on closures
   --> $DIR/pin_v2-attr.rs:92:5
@@ -202,7 +202,7 @@ error: `#[pin_v2]` attribute cannot be used on closures
 LL |     #[pin_v2]
    |     ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on expressions
   --> $DIR/pin_v2-attr.rs:94:5
@@ -210,7 +210,7 @@ error: `#[pin_v2]` attribute cannot be used on expressions
 LL |     #[pin_v2]
    |     ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on struct fields
   --> $DIR/pin_v2-attr.rs:98:9
@@ -218,7 +218,7 @@ error: `#[pin_v2]` attribute cannot be used on struct fields
 LL |         #[pin_v2]
    |         ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on statements
   --> $DIR/pin_v2-attr.rs:96:5
@@ -226,7 +226,7 @@ error: `#[pin_v2]` attribute cannot be used on statements
 LL |     #[pin_v2]
    |     ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on match arms
   --> $DIR/pin_v2-attr.rs:102:9
@@ -234,7 +234,7 @@ error: `#[pin_v2]` attribute cannot be used on match arms
 LL |         #[pin_v2]
    |         ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on pattern fields
   --> $DIR/pin_v2-attr.rs:106:13
@@ -242,7 +242,7 @@ error: `#[pin_v2]` attribute cannot be used on pattern fields
 LL |             #[pin_v2]
    |             ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on where predicates
   --> $DIR/pin_v2-attr.rs:88:5
@@ -250,7 +250,7 @@ error: `#[pin_v2]` attribute cannot be used on where predicates
 LL |     #[pin_v2]
    |     ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on modules
   --> $DIR/pin_v2-attr.rs:112:1
@@ -258,7 +258,7 @@ error: `#[pin_v2]` attribute cannot be used on modules
 LL | #[pin_v2]
    | ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on foreign modules
   --> $DIR/pin_v2-attr.rs:115:1
@@ -266,7 +266,7 @@ error: `#[pin_v2]` attribute cannot be used on foreign modules
 LL | #[pin_v2]
    | ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on foreign types
   --> $DIR/pin_v2-attr.rs:117:5
@@ -274,7 +274,7 @@ error: `#[pin_v2]` attribute cannot be used on foreign types
 LL |     #[pin_v2]
    |     ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on foreign statics
   --> $DIR/pin_v2-attr.rs:120:5
@@ -282,7 +282,7 @@ error: `#[pin_v2]` attribute cannot be used on foreign statics
 LL |     #[pin_v2]
    |     ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on foreign functions
   --> $DIR/pin_v2-attr.rs:123:5
@@ -290,7 +290,7 @@ error: `#[pin_v2]` attribute cannot be used on foreign functions
 LL |     #[pin_v2]
    |     ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on type aliases
   --> $DIR/pin_v2-attr.rs:127:1
@@ -298,7 +298,7 @@ error: `#[pin_v2]` attribute cannot be used on type aliases
 LL | #[pin_v2]
    | ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: `#[pin_v2]` attribute cannot be used on macro defs
   --> $DIR/pin_v2-attr.rs:130:1
@@ -306,7 +306,7 @@ error: `#[pin_v2]` attribute cannot be used on macro defs
 LL | #[pin_v2]
    | ^^^^^^^^^
    |
-   = help: `#[pin_v2]` can be applied to data types and unions
+   = help: `#[pin_v2]` can only be applied to data types
 
 error: aborting due to 39 previous errors
 
