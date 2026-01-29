@@ -2,7 +2,8 @@
 //! runtime or const-eval processable way.
 
 use crate::any::TypeId;
-use crate::intrinsics::type_of;
+use crate::intrinsics::{type_id_implements_trait, type_of};
+use crate::ptr;
 
 /// Compile-time type information.
 #[derive(Debug)]
@@ -14,6 +15,8 @@ pub struct Type {
     pub kind: TypeKind,
     /// Size of the type. `None` if it is unsized
     pub size: Option<usize>,
+    /// `TypeId` that the type was gathered from.
+    pub id: TypeId,
 }
 
 impl TypeId {
@@ -33,6 +36,30 @@ impl Type {
     // FIXME(reflection): don't require the 'static bound
     pub const fn of<T: ?Sized + 'static>() -> Self {
         const { TypeId::of::<T>().info() }
+    }
+
+    /// Checks if the type has the trait.
+    /// It can only be called at compile time.
+    pub const fn has_trait<T: ptr::Pointee<Metadata = ptr::DynMetadata<T>> + ?Sized + 'static>(
+        self,
+    ) -> bool {
+        type_id_implements_trait(self.id, TypeId::of::<T>())
+    }
+
+    /// Checks if the type has the trait represented by the `TypeId`.
+    /// Returns `None` if the `trait_represented_by_type_id` is not a trait represented by type id.
+    /// It can only be called at compile time.
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    pub const fn has_trait_represented_by_type_id(
+        self,
+        trait_represented_by_type_id: TypeId,
+    ) -> Option<bool> {
+        if matches!(trait_represented_by_type_id.info().kind, TypeKind::DynTrait(_)) {
+            Some(type_id_implements_trait(self.id, trait_represented_by_type_id))
+        } else {
+            None
+        }
     }
 }
 

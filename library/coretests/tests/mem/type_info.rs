@@ -292,3 +292,16 @@ fn test_dynamic_traits() {
         assert!(sync.trait_ty.is_auto);
     }
 }
+
+#[test]
+fn test_implements_trait() {
+    struct Garlic;
+    trait Blah {}
+    impl Blah for Garlic {}
+
+    const {
+        assert!(TypeId::of::<Garlic>().info().has_trait::<dyn Blah>());
+        assert!(TypeId::of::<Garlic>().info().has_trait::<dyn Blah + Send>());
+        assert!(!TypeId::of::<*const Box<Garlic>>().info().has_trait::<dyn Sync>());
+    }
+}
