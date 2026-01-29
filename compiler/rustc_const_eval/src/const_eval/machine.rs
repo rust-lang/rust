@@ -871,6 +871,36 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         interp_ok(())
     }
 
+    fn before_static_ref_eval(
+        tcx: TyCtxtAt<'tcx>,
+        machine: &Self,
+        ptr: Pointer<Self::Provenance>,
+        static_def_id: DefId,
+    ) -> InterpResult<'tcx> {
+        // We are only interested in immediate references to statics here.
+        // Indirect references should not be checked because:
+        //  - they may be references to some other legitimate static reference
+        //    (e.g. via a raw pointer), and
+        //  - if they originate from an illegal static reference, that illegal
+        //    reference must already appear in the body and will be checked there.
+        if ptr.provenance.shared_ref() {
+            return interp_ok(());
+        }
+
+        // Check if this is the currently evaluated static.
+        if Some(static_def_id) == machine.static_root_ids.map(|(_, def_id)| def_id.into()) {
+            return Err(ConstEvalErrKind::RecursiveStatic).into();
+        }
+
+        if !tcx.is_foreign_item(static_def_id) {
+            // Fire the query to detect cycles. We cannot restrict this to only when
+            // evaluating statics, since static reference cycles can also be formed
+            // through consts, especially promoted ones.
+            tcx.eval_static_initializer(static_def_id)?;
+        }
+        interp_ok(())
+    }
+
     fn cached_union_data_range<'e>(
         ecx: &'e mut InterpCx<'tcx, Self>,
         ty: Ty<'tcx>,

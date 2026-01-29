@@ -447,6 +447,20 @@ pub trait Machine<'tcx>: Sized {
         interp_ok(())
     }
 
+    /// Hook for performing extra checks on any reference to static.
+    /// This is not invoked for raw pointers such as `unsafe { &*&raw const STATIC }`.
+    ///
+    /// Used to prevent statics from constructing uninhabitated values by referencing themselves
+    /// as it is being initialized.
+    fn before_static_ref_eval(
+        _tcx: TyCtxtAt<'tcx>,
+        _machine: &Self,
+        _ptr: Pointer<Self::Provenance>,
+        _static_def_id: DefId,
+    ) -> InterpResult<'tcx> {
+        interp_ok(())
+    }
+
     /// Hook for performing extra checks on a memory write access.
     /// This is not invoked for ZST accesses, as no write actually happens.
     /// `ptr` will always be a pointer with the provenance in `prov` pointing to the beginning of

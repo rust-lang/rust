@@ -1,0 +1,23 @@
+error[E0391]: cycle detected when evaluating initializer of static `VALUE`
+  --> $DIR/cycle-static-promoted.rs:7:13
+   |
+LL |     values: &[&VALUE],
+   |             ^^^^^^^^^
+   |
+note: ...which requires simplifying constant for the type system `VALUE::promoted[0]`...
+  --> $DIR/cycle-static-promoted.rs:6:1
+   |
+LL | static VALUE: Value = Value {
+   | ^^^^^^^^^^^^^^^^^^^
+note: ...which requires const-evaluating + checking `VALUE::promoted[0]`...
+  --> $DIR/cycle-static-promoted.rs:6:1
+   |
+LL | static VALUE: Value = Value {
+   | ^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires evaluating initializer of static `VALUE`, completing the cycle
+   = note: cycle used when running analysis passes on crate `cycle_static_promoted`
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

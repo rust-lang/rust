@@ -1,0 +1,56 @@
+error[E0080]: encountered static that tried to access itself during initialization
+  --> $DIR/static-ref-cycle-issue-143047.rs:6:13
+   |
+LL |     let x = &FOO;
+   |             ^^^^ evaluation of `FOO` failed here
+
+error[E0080]: encountered static that tried to access itself during initialization
+  --> $DIR/static-ref-cycle-issue-143047.rs:12:22
+   |
+LL |     let x = unsafe { &mut BAR };
+   |                      ^^^^^^^^ evaluation of `BAR` failed here
+
+error[E0391]: cycle detected when evaluating initializer of static `QUX`
+  --> $DIR/static-ref-cycle-issue-143047.rs:26:1
+   |
+LL | static QUX: u8 = {
+   | ^^^^^^^^^^^^^^
+   |
+note: ...which requires evaluating initializer of static `QUUX`...
+  --> $DIR/static-ref-cycle-issue-143047.rs:32:1
+   |
+LL | static QUUX: u8 = {
+   | ^^^^^^^^^^^^^^^
+note: ...which requires evaluating initializer of static `QUUUX`...
+  --> $DIR/static-ref-cycle-issue-143047.rs:37:1
+   |
+LL | static QUUUX: u8 = {
+   | ^^^^^^^^^^^^^^^^
+   = note: ...which again requires evaluating initializer of static `QUX`, completing the cycle
+   = note: cycle used when running analysis passes on crate `static_ref_cycle_issue_143047`
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when evaluating initializer of static `PROMOTED`
+  --> $DIR/static-ref-cycle-issue-143047.rs:43:13
+   |
+LL |     let x = &&&PROMOTED;
+   |             ^^^^^^^^^^^
+   |
+note: ...which requires simplifying constant for the type system `PROMOTED::promoted[0]`...
+  --> $DIR/static-ref-cycle-issue-143047.rs:42:1
+   |
+LL | static PROMOTED: u8 = {
+   | ^^^^^^^^^^^^^^^^^^^
+note: ...which requires const-evaluating + checking `PROMOTED::promoted[0]`...
+  --> $DIR/static-ref-cycle-issue-143047.rs:42:1
+   |
+LL | static PROMOTED: u8 = {
+   | ^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires evaluating initializer of static `PROMOTED`, completing the cycle
+   = note: cycle used when running analysis passes on crate `static_ref_cycle_issue_143047`
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0080, E0391.
+For more information about an error, try `rustc --explain E0080`.
