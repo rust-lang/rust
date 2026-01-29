@@ -60,7 +60,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    /// Create a name definitinon from the given components, and put it into the local module.
+    /// Create a name definition from the given components, and put it into the local module.
     fn define_local(
         &mut self,
         parent: Module<'ra>,
@@ -76,7 +76,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.plant_decl_into_local_module(ident, orig_ident.span, ns, decl);
     }
 
-    /// Create a name definitinon from the given components, and put it into the extern module.
+    /// Create a name definition from the given components, and put it into the extern module.
     fn define_extern(
         &self,
         parent: Module<'ra>,

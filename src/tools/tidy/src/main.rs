@@ -32,6 +32,7 @@ fn main() {
     let npm: PathBuf = env::args_os().nth(5).expect("need name/path of npm command").into();
 
     let root_manifest = root_path.join("Cargo.toml");
+    let typos_toml = root_path.join("typos.toml");
     let src_path = root_path.join("src");
     let tests_path = root_path.join("tests");
     let library_path = root_path.join("library");
@@ -143,6 +144,7 @@ fn main() {
         check!(edition, &library_path);
 
         check!(alphabetical, &root_manifest);
+        check!(alphabetical, &typos_toml);
         check!(alphabetical, &src_path);
         check!(alphabetical, &tests_path);
         check!(alphabetical, &compiler_path);
