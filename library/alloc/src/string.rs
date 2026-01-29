@@ -3206,7 +3206,8 @@ impl<'a> From<Cow<'a, str>> for String {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a str> for Cow<'a, str> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<'a> const From<&'a str> for Cow<'a, str> {
     /// Converts a string slice into a [`Borrowed`] variant.
     /// No heap allocation is performed, and the string
     /// is not copied.
