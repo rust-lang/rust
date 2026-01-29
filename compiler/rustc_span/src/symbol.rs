@@ -2309,6 +2309,7 @@ symbols! {
         transmute_unchecked,
         transparent,
         transparent_enums,
+        transparent_modules,
         transparent_unions,
         trivial_bounds,
         trivial_clone,
