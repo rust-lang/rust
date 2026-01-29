@@ -259,6 +259,18 @@ impl UdpSocket {
     /// object references. Both handles will read and write the same port, and
     /// options set on one socket will be propagated to the other.
     ///
+    /// # Platform-specific behavior
+    ///
+    /// On Unix, this method uses `F_DUPFD_CLOEXEC` to duplicate the file descriptor
+    /// atomically with the close-on-exec flag set. This means the duplicated socket
+    /// will be automatically closed when calling `exec()`, and thus will not be
+    /// available in child processes created via [`Command`].
+    ///
+    /// On Windows, the duplicated socket is created without the `HANDLE_FLAG_INHERIT`
+    /// flag, so it will similarly not be inherited by child processes.
+    ///
+    /// [`Command`]: crate::process::Command
+    ///
     /// # Examples
     ///
     /// ```no_run
