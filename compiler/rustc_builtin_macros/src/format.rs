@@ -160,6 +160,7 @@ fn make_format_args(
     ecx: &mut ExtCtxt<'_>,
     input: MacroInput,
     append_newline: bool,
+    macro_span: Span,
 ) -> ExpandResult<Result<FormatArgs, ErrorGuaranteed>, ()> {
     let msg = "format argument must be a string literal";
     let unexpanded_fmt_span = input.fmtstr.span;
@@ -332,6 +333,44 @@ fn make_format_args(
             parse::Suggestion::AddMissingColon(span) => {
                 let span = fmt_span.from_inner(InnerSpan::new(span.start, span.end));
                 e.sugg_ = Some(errors::InvalidFormatStringSuggestion::AddMissingColon { span });
+            }
+            parse::Suggestion::UseRustDebugPrintingMacro() => {
+                // there should only be suggestion when we have only one argument
+                if args.all_args().len() == 1 {
+                    let arg = &args.all_args()[0];
+                    match &arg.kind {
+                        // println!("{x=}")
+                        FormatArgumentKind::Captured(ident) => {
+                            let ident_name = ident.name.to_ident_string();
+
+                            let replacement = format!("!({}{})", "dbg", ident_name);
+
+                            e.sugg_ = Some(
+                                errors::InvalidFormatStringSuggestion::UseRustDebugPrintingMacro {
+                                    macro_span,
+                                    replacement,
+                                },
+                            );
+                        }
+
+                        // println!("{=}", x) or println!("{0=}", x)
+                        FormatArgumentKind::Normal => {
+                            let expr_span = arg.expr.span;
+
+                            if let Ok(expr_snippet) = ecx.source_map().span_to_snippet(expr_span) {
+                                let replacement = format!("{}!({})", "dbg", expr_snippet);
+
+                                e.sugg_ = Some(
+                                    errors::InvalidFormatStringSuggestion::UseRustDebugPrintingMacro {
+                                        macro_span,
+                                        replacement,
+                                    },
+                                );
+                            }
+                        }
+                        _ => {}
+                    }
+                }
             }
         }
         let guar = ecx.dcx().emit_err(e);
@@ -1048,7 +1087,7 @@ fn expand_format_args_impl<'cx>(
     sp = ecx.with_def_site_ctxt(sp);
     ExpandResult::Ready(match parse_args(ecx, sp, tts) {
         Ok(input) => {
-            let ExpandResult::Ready(mac) = make_format_args(ecx, input, nl) else {
+            let ExpandResult::Ready(mac) = make_format_args(ecx, input, nl, sp) else {
                 return ExpandResult::Retry(());
             };
             match mac {
