@@ -299,6 +299,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDumpVtable(..)
                     | AttributeKind::RustcDynIncompatibleTrait(..)
                     | AttributeKind::RustcHasIncoherentInherentImpls
+                    | AttributeKind::RustcLayout(..)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
                     | AttributeKind::RustcLayoutScalarValidRangeStart(..)
                     | AttributeKind::RustcLintOptDenyFieldAccess { .. }

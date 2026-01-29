@@ -302,8 +302,6 @@ passes_layout_align =
     align: {$align}
 passes_layout_homogeneous_aggregate =
     homogeneous_aggregate: {$homogeneous_aggregate}
-passes_layout_invalid_attribute =
-    `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarations and type aliases
 passes_layout_of =
     layout_of({$normalized_ty}) = {$ty_layout}
 passes_layout_size =
