@@ -1591,10 +1591,12 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     (Transmute, PtrToPtr) if self.pointers_have_same_metadata(from, to) => {
                         Some(Transmute)
                     }
-                    // If would be legal to always do this, but we don't want to hide information
+                    // It would be legal to always do this, but we don't want to hide information
                     // from the backend that it'd otherwise be able to use for optimizations.
                     (Transmute, Transmute)
-                        if !self.type_may_have_niche_of_interest_to_backend(from) =>
+                        if !self.transmute_may_have_niche_of_interest_to_backend(
+                            inner_from, from, to,
+                        ) =>
                     {
                         Some(Transmute)
                     }
@@ -1642,24 +1644,65 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         }
     }
 
-    /// Returns `false` if we know for sure that this type has no interesting niche,
-    /// and thus we can skip transmuting through it without worrying.
+    /// Returns `false` if we're confident that the middle type doesn't have an
+    /// interesting niche so we can skip that step when transmuting.
     ///
     /// The backend will emit `assume`s when transmuting between types with niches,
     /// so we want to preserve `i32 -> char -> u32` so that that data is around,
     /// but it's fine to skip whole-range-is-value steps like `A -> u32 -> B`.
-    fn type_may_have_niche_of_interest_to_backend(&self, ty: Ty<'tcx>) -> bool {
-        let Ok(layout) = self.ecx.layout_of(ty) else {
+    fn transmute_may_have_niche_of_interest_to_backend(
+        &self,
+        from_ty: Ty<'tcx>,
+        middle_ty: Ty<'tcx>,
+        to_ty: Ty<'tcx>,
+    ) -> bool {
+        let Ok(middle_layout) = self.ecx.layout_of(middle_ty) else {
             // If it's too generic or something, then assume it might be interesting later.
             return true;
         };
 
-        if layout.uninhabited {
+        if middle_layout.uninhabited {
             return true;
         }
 
-        match layout.backend_repr {
-            BackendRepr::Scalar(a) => !a.is_always_valid(&self.ecx),
+        match middle_layout.backend_repr {
+            BackendRepr::Scalar(mid) => {
+                if mid.is_always_valid(&self.ecx) {
+                    // With no niche it's never interesting, so don't bother
+                    // looking at the layout of the other two types.
+                    false
+                } else if let Ok(from_layout) = self.ecx.layout_of(from_ty)
+                    && !from_layout.uninhabited
+                    && from_layout.size == middle_layout.size
+                    && let BackendRepr::Scalar(from_a) = from_layout.backend_repr
+                    && let mid_range = mid.valid_range(&self.ecx)
+                    && let from_range = from_a.valid_range(&self.ecx)
+                    && mid_range.contains_range(from_range, middle_layout.size)
+                {
+                    // The `from_range` is a (non-strict) subset of `mid_range`
+                    // such as if we're doing `bool` -> `ascii::Char` -> `_`,
+                    // where `from_range: 0..=1` and `mid_range: 0..=127`,
+                    // and thus the middle doesn't tell us anything we don't
+                    // already know from the initial type.
+                    false
+                } else if let Ok(to_layout) = self.ecx.layout_of(to_ty)
+                    && !to_layout.uninhabited
+                    && to_layout.size == middle_layout.size
+                    && let BackendRepr::Scalar(to_a) = to_layout.backend_repr
+                    && let mid_range = mid.valid_range(&self.ecx)
+                    && let to_range = to_a.valid_range(&self.ecx)
+                    && mid_range.contains_range(to_range, middle_layout.size)
+                {
+                    // The `to_range` is a (non-strict) subset of `mid_range`
+                    // such as if we're doing `_` -> `ascii::Char` -> `bool`,
+                    // where `mid_range: 0..=127` and `to_range: 0..=1`,
+                    // and thus the middle doesn't tell us anything we don't
+                    // already know from the final type.
+                    false
+                } else {
+                    true
+                }
+            }
             BackendRepr::ScalarPair(a, b) => {
                 !a.is_always_valid(&self.ecx) || !b.is_always_valid(&self.ecx)
             }

@@ -1,71 +1,135 @@
 - // MIR for `transmute_then_transmute_again` before GVN
 + // MIR for `transmute_then_transmute_again` after GVN
   
-  fn transmute_then_transmute_again(_1: u32, _2: char) -> () {
+  fn transmute_then_transmute_again(_1: u32, _2: char, _3: bool, _4: u8) -> () {
       debug a => _1;
       debug c => _2;
+      debug b => _3;
+      debug d => _4;
       let mut _0: ();
-      let _3: char;
-      let mut _4: u32;
-      let _5: ();
-      let mut _6: i32;
-      let mut _7: char;
+      let _5: char;
+      let mut _6: u32;
+      let _7: ();
+      let mut _8: i32;
       let mut _9: char;
-      let _10: ();
-      let mut _11: i32;
-      let mut _12: u32;
+      let mut _11: char;
+      let _12: ();
+      let mut _13: i32;
+      let mut _14: u32;
+      let mut _16: bool;
+      let _17: ();
+      let mut _18: u8;
+      let mut _19: ZeroOneTwo;
+      let mut _21: u8;
+      let _22: ();
+      let mut _23: bool;
+      let mut _24: ZeroOneTwo;
       scope 1 {
-          debug x => _3;
-          let _8: u32;
+          debug x => _5;
+          let _10: u32;
           scope 2 {
-              debug x => _8;
+              debug x => _10;
+              let _15: ZeroOneTwo;
+              scope 3 {
+                  debug x => _15;
+                  let _20: ZeroOneTwo;
+                  scope 4 {
+                      debug x => _20;
+                  }
+              }
           }
       }
   
       bb0: {
--         StorageLive(_3);
+-         StorageLive(_5);
 +         nop;
-          StorageLive(_4);
-          _4 = copy _1;
--         _3 = move _4 as char (Transmute);
-+         _3 = copy _1 as char (Transmute);
-          StorageDead(_4);
-          StorageLive(_5);
           StorageLive(_6);
+          _6 = copy _1;
+-         _5 = move _6 as char (Transmute);
++         _5 = copy _1 as char (Transmute);
+          StorageDead(_6);
           StorageLive(_7);
-          _7 = copy _3;
--         _6 = move _7 as i32 (Transmute);
-+         _6 = copy _3 as i32 (Transmute);
-          StorageDead(_7);
-          _5 = opaque::<i32>(move _6) -> [return: bb1, unwind unreachable];
+          StorageLive(_8);
+          StorageLive(_9);
+          _9 = copy _5;
+-         _8 = move _9 as i32 (Transmute);
++         _8 = copy _5 as i32 (Transmute);
+          StorageDead(_9);
+          _7 = opaque::<i32>(move _8) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
-          StorageDead(_6);
-          StorageDead(_5);
--         StorageLive(_8);
+          StorageDead(_8);
+          StorageDead(_7);
+-         StorageLive(_10);
 +         nop;
-          StorageLive(_9);
-          _9 = copy _2;
--         _8 = move _9 as u32 (Transmute);
-+         _8 = copy _2 as u32 (Transmute);
-          StorageDead(_9);
-          StorageLive(_10);
           StorageLive(_11);
+          _11 = copy _2;
+-         _10 = move _11 as u32 (Transmute);
++         _10 = copy _2 as u32 (Transmute);
+          StorageDead(_11);
           StorageLive(_12);
-          _12 = copy _8;
--         _11 = move _12 as i32 (Transmute);
-+         _11 = copy _2 as i32 (Transmute);
-          StorageDead(_12);
-          _10 = opaque::<i32>(move _11) -> [return: bb2, unwind unreachable];
+          StorageLive(_13);
+          StorageLive(_14);
+          _14 = copy _10;
+-         _13 = move _14 as i32 (Transmute);
++         _13 = copy _2 as i32 (Transmute);
+          StorageDead(_14);
+          _12 = opaque::<i32>(move _13) -> [return: bb2, unwind unreachable];
       }
   
       bb2: {
-          StorageDead(_11);
-          StorageDead(_10);
+          StorageDead(_13);
+          StorageDead(_12);
+-         StorageLive(_15);
++         nop;
+          StorageLive(_16);
+          _16 = copy _3;
+-         _15 = move _16 as ZeroOneTwo (Transmute);
++         _15 = copy _3 as ZeroOneTwo (Transmute);
+          StorageDead(_16);
+          StorageLive(_17);
+          StorageLive(_18);
+          StorageLive(_19);
+-         _19 = move _15;
+-         _18 = move _19 as u8 (Transmute);
++         _19 = copy _15;
++         _18 = copy _3 as u8 (Transmute);
+          StorageDead(_19);
+          _17 = opaque::<u8>(move _18) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          StorageDead(_18);
+          StorageDead(_17);
+-         StorageLive(_20);
++         nop;
+          StorageLive(_21);
+          _21 = copy _4;
+-         _20 = move _21 as ZeroOneTwo (Transmute);
++         _20 = copy _4 as ZeroOneTwo (Transmute);
+          StorageDead(_21);
+          StorageLive(_22);
+          StorageLive(_23);
+          StorageLive(_24);
+-         _24 = move _20;
+-         _23 = move _24 as bool (Transmute);
++         _24 = copy _20;
++         _23 = copy _4 as bool (Transmute);
+          StorageDead(_24);
+          _22 = opaque::<bool>(move _23) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
+          StorageDead(_23);
+          StorageDead(_22);
           _0 = const ();
--         StorageDead(_8);
--         StorageDead(_3);
+-         StorageDead(_20);
+-         StorageDead(_15);
+-         StorageDead(_10);
+-         StorageDead(_5);
++         nop;
++         nop;
 +         nop;
 +         nop;
           return;
