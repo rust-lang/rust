@@ -211,6 +211,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         Err(error) => return crate::wrap_return(dcx, Err(error)),
     };
     let args_path = temp_dir.path().join("rustdoc-cfgs");
+    let temp_dir_path = temp_dir.path().to_path_buf();
     crate::wrap_return(dcx, generate_args_file(&args_path, &options));
 
     let extract_doctests = options.output_format == OutputFormat::Doctest;
@@ -218,7 +219,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
     let result = interface::run_compiler(config, |compiler| {
         let krate = rustc_interface::passes::parse(&compiler.sess);
 
-        let collector = rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
+        rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
             let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
             let opts = scrape_test_config(tcx, crate_name, args_path);
 
@@ -227,6 +228,8 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
                 tcx,
             );
             let tests = hir_collector.collect_crate();
+            tcx.dcx().abort_if_errors();
+
             if extract_doctests {
                 let mut collector = extracted::ExtractedDocTests::new();
                 tests.into_iter().for_each(|t| collector.add_test(t, &opts, &options));
@@ -235,93 +238,90 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
                 let mut stdout = stdout.lock();
                 if let Err(error) = serde_json::ser::to_writer(&mut stdout, &collector) {
                     eprintln!();
-                    Err(format!("Failed to generate JSON output for doctests: {error:?}"))
+                    return Err(format!("Failed to generate JSON output for doctests: {error:?}"));
                 } else {
-                    Ok(None)
+                    return Ok(());
                 }
-            } else {
-                let mut collector = CreateRunnableDocTests::new(options, opts);
-                tests.into_iter().for_each(|t| collector.add_test(t, Some(compiler.sess.dcx())));
-
-                Ok(Some(collector))
             }
-        });
-        compiler.sess.dcx().abort_if_errors();
+            let mut collector = CreateRunnableDocTests::new(options, opts);
+            tests.into_iter().for_each(|t| collector.add_test(t, Some(compiler.sess.dcx())));
 
-        collector
+            let CreateRunnableDocTests {
+                standalone_tests,
+                mergeable_tests,
+                rustdoc_options,
+                opts,
+                unused_extern_reports,
+                compiling_test_count,
+                ..
+            } = collector;
+
+            run_tests(
+                compiler.sess.dcx(),
+                opts,
+                &rustdoc_options,
+                &unused_extern_reports,
+                standalone_tests,
+                mergeable_tests,
+                Some(temp_dir),
+                Some(tcx),
+            );
+
+            let compiling_test_count = compiling_test_count.load(Ordering::SeqCst);
+
+            // Collect and warn about unused externs, but only if we've gotten
+            // reports for each doctest
+            if json_unused_externs.is_enabled() {
+                let unused_extern_reports: Vec<_> =
+                    std::mem::take(&mut unused_extern_reports.lock().unwrap());
+                if unused_extern_reports.len() == compiling_test_count {
+                    let extern_names =
+                        externs.iter().map(|(name, _)| name).collect::<FxIndexSet<&String>>();
+                    let mut unused_extern_names = unused_extern_reports
+                        .iter()
+                        .map(|uexts| {
+                            uexts.unused_extern_names.iter().collect::<FxIndexSet<&String>>()
+                        })
+                        .fold(extern_names, |uextsa, uextsb| {
+                            uextsa.intersection(&uextsb).copied().collect::<FxIndexSet<&String>>()
+                        })
+                        .iter()
+                        .map(|v| (*v).clone())
+                        .collect::<Vec<String>>();
+                    unused_extern_names.sort();
+                    // Take the most severe lint level
+                    let lint_level = unused_extern_reports
+                        .iter()
+                        .map(|uexts| uexts.lint_level.as_str())
+                        .max_by_key(|v| match *v {
+                            "warn" => 1,
+                            "deny" => 2,
+                            "forbid" => 3,
+                            // The allow lint level is not expected,
+                            // as if allow is specified, no message
+                            // is to be emitted.
+                            v => unreachable!("Invalid lint level '{v}'"),
+                        })
+                        .unwrap_or("warn")
+                        .to_string();
+                    let uext = UnusedExterns { lint_level, unused_extern_names };
+                    let unused_extern_json = serde_json::to_string(&uext).unwrap();
+                    eprintln!("{unused_extern_json}");
+                }
+            }
+
+            Ok(())
+        })
     });
 
-    let CreateRunnableDocTests {
-        standalone_tests,
-        mergeable_tests,
-        rustdoc_options,
-        opts,
-        unused_extern_reports,
-        compiling_test_count,
-        ..
-    } = match result {
-        Ok(Some(collector)) => collector,
-        Ok(None) => return,
-        Err(error) => {
-            eprintln!("{error}");
-            // Since some files in the temporary folder are still owned and alive, we need
-            // to manually remove the folder.
-            if !save_temps {
-                let _ = std::fs::remove_dir_all(temp_dir.path());
-            }
-            std::process::exit(1);
+    if let Err(error) = result {
+        eprintln!("{error}");
+        // Since some files in the temporary folder are still owned and alive, we need
+        // to manually remove the folder.
+        if !save_temps {
+            let _ = std::fs::remove_dir_all(temp_dir_path);
         }
-    };
-
-    run_tests(
-        dcx,
-        opts,
-        &rustdoc_options,
-        &unused_extern_reports,
-        standalone_tests,
-        mergeable_tests,
-        Some(temp_dir),
-    );
-
-    let compiling_test_count = compiling_test_count.load(Ordering::SeqCst);
-
-    // Collect and warn about unused externs, but only if we've gotten
-    // reports for each doctest
-    if json_unused_externs.is_enabled() {
-        let unused_extern_reports: Vec<_> =
-            std::mem::take(&mut unused_extern_reports.lock().unwrap());
-        if unused_extern_reports.len() == compiling_test_count {
-            let extern_names =
-                externs.iter().map(|(name, _)| name).collect::<FxIndexSet<&String>>();
-            let mut unused_extern_names = unused_extern_reports
-                .iter()
-                .map(|uexts| uexts.unused_extern_names.iter().collect::<FxIndexSet<&String>>())
-                .fold(extern_names, |uextsa, uextsb| {
-                    uextsa.intersection(&uextsb).copied().collect::<FxIndexSet<&String>>()
-                })
-                .iter()
-                .map(|v| (*v).clone())
-                .collect::<Vec<String>>();
-            unused_extern_names.sort();
-            // Take the most severe lint level
-            let lint_level = unused_extern_reports
-                .iter()
-                .map(|uexts| uexts.lint_level.as_str())
-                .max_by_key(|v| match *v {
-                    "warn" => 1,
-                    "deny" => 2,
-                    "forbid" => 3,
-                    // The allow lint level is not expected,
-                    // as if allow is specified, no message
-                    // is to be emitted.
-                    v => unreachable!("Invalid lint level '{v}'"),
-                })
-                .unwrap_or("warn")
-                .to_string();
-            let uext = UnusedExterns { lint_level, unused_extern_names };
-            let unused_extern_json = serde_json::to_string(&uext).unwrap();
-            eprintln!("{unused_extern_json}");
-        }
+        std::process::exit(1);
     }
 }
 
@@ -334,6 +334,7 @@ pub(crate) fn run_tests(
     mergeable_tests: FxIndexMap<MergeableTestKey, Vec<(DocTestBuilder, ScrapedDocTest)>>,
     // We pass this argument so we can drop it manually before using `exit`.
     mut temp_dir: Option<TempDir>,
+    tcx: Option<TyCtxt<'_>>,
 ) {
     let mut test_args = Vec::with_capacity(rustdoc_options.test_args.len() + 1);
     test_args.insert(0, "rustdoctest".to_string());
@@ -384,6 +385,20 @@ pub(crate) fn run_tests(
             let mut diag = dcx.struct_fatal("failed to merge doctests");
             diag.note("requested explicitly on the command line with `--merge-doctests=yes`");
             diag.emit();
+        }
+
+        if let Some(tcx) = tcx {
+            tcx.node_span_lint(
+                crate::lint::FAILED_MERGED_DOCTEST_COMPILATION,
+                CRATE_HIR_ID,
+                tcx.hir_span(CRATE_HIR_ID),
+                |lint| {
+                    lint.primary_message(format!(
+                        "failed to compile merged doctests for edition {edition}. \
+                             Reverting to standalone doctests."
+                    ));
+                },
+            );
         }
 
         // We failed to compile all compatible tests as one so we push them into the
