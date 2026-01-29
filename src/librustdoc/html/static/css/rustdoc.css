@@ -359,7 +359,8 @@ summary.hideme,
 .rustdoc-breadcrumbs,
 .search-switcher,
 /* This selector is for the items listed in the "all items" page. */
-ul.all-items {
+ul.all-items,
+.deprecated-count {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
@@ -2671,6 +2672,18 @@ However, it's not needed with smaller screen width because the doc/code block is
 	display: none;
 }
 
+.deprecated-count {
+	display: none;
+}
+/*
+The `:not(:empty)` is a little trick to not have to add conditions in JS to hide/show the marker.
+It's entirely based on whether it has content and if the setting is enabled.
+*/
+.hide-deprecated-items .deprecated-count:not(:empty) {
+	display: block;
+	margin: 10px 0;
+}
+
 /*
 WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
 If you update this line, then you also need to update the line with the same warning
@@ -3286,7 +3299,7 @@ by default.
 	--headings-border-bottom-color: #d2d2d2;
 	--border-color: #e0e0e0;
 	--button-background-color: #f0f0f0;
-	--right-side-color: grey;
+	--right-side-color: #d0d0d0;
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: invert(100%);

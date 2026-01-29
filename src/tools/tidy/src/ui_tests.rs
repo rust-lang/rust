@@ -73,6 +73,57 @@ pub fn check(root_path: &Path, tidy_ctx: TidyCtx) {
             ));
         }
     }
+
+    // The list of subdirectories in ui tests.
+    // Compare previous subdirectory with current subdirectory
+    // to sync with `tests/ui/README.md`.
+    // See <https://github.com/rust-lang/rust/issues/150399>
+    let mut prev_line = String::new();
+    let mut is_sorted = true;
+    let documented_subdirs: BTreeSet<_> = include_str!("../../../../tests/ui/README.md")
+        .lines()
+        .filter_map(|line| {
+            static_regex!(r"^##.*?`(?<dir>[^`]+)`").captures(line).map(|cap| {
+                let dir = &cap["dir"];
+                // FIXME(reddevilmidzy) normalize subdirs title in tests/ui/README.md
+                if dir.ends_with('/') {
+                    dir.strip_suffix('/').unwrap().to_string()
+                } else {
+                    dir.to_string()
+                }
+            })
+        })
+        .inspect(|line| {
+            if prev_line.as_str() > line.as_str() {
+                is_sorted = false;
+            }
+
+            prev_line = line.clone();
+        })
+        .collect();
+    let filesystem_subdirs = collect_ui_tests_subdirs(&path);
+    let is_modified = !filesystem_subdirs.eq(&documented_subdirs);
+
+    if !is_sorted {
+        check.error("`tests/ui/README.md` is not in order");
+    }
+    if is_modified {
+        for directory in documented_subdirs.symmetric_difference(&filesystem_subdirs) {
+            if documented_subdirs.contains(directory) {
+                check.error(format!(
+                               "ui subdirectory `{directory}` is listed in `tests/ui/README.md` but does not exist in the filesystem"
+                           ));
+            } else {
+                check.error(format!(
+                               "ui subdirectory `{directory}` exists in the filesystem but is not documented in `tests/ui/README.md`"
+                           ));
+            }
+        }
+        check.error(
+                   "`tests/ui/README.md` subdirectory listing is out of sync with the filesystem. \
+                    Please add or remove subdirectory entries (## headers with backtick-wrapped names) to match the actual directories in `tests/ui/`"
+               );
+    }
 }
 
 fn deny_new_top_level_ui_tests(check: &mut RunningCheck, tests_path: &Path) {
@@ -135,6 +186,24 @@ fn recursively_check_ui_tests<'issues>(
         }
     });
     remaining_issue_names
+}
+
+fn collect_ui_tests_subdirs(path: &Path) -> BTreeSet<String> {
+    let ui = path.join("ui");
+    let entries = std::fs::read_dir(ui.as_path()).unwrap();
+
+    entries
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.path())
+        .filter(|path| path.is_dir())
+        .map(|dir_path| {
+            let dir_path = dir_path.strip_prefix(path).unwrap();
+            format!(
+                "tests/{}",
+                dir_path.to_string_lossy().replace(std::path::MAIN_SEPARATOR_STR, "/")
+            )
+        })
+        .collect()
 }
 
 fn check_unexpected_extension(check: &mut RunningCheck, file_path: &Path, ext: &str) {
