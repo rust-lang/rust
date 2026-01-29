@@ -889,7 +889,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             RetagKind::FnEntry => RetagCause::FnEntry,
             RetagKind::Default | RetagKind::Raw => RetagCause::Normal,
         };
-        let mut visitor = RetagVisitor { ecx: this, kind, retag_cause, in_field: false };
+        let mut visitor =
+            RetagVisitor { ecx: this, kind, retag_cause, in_field: false, may_dangle: false };
         return visitor.visit_value(place);
 
         // The actual visitor.
@@ -898,6 +899,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             kind: RetagKind,
             retag_cause: RetagCause,
             in_field: bool,
+            may_dangle: bool,
         }
         impl<'ecx, 'tcx> RetagVisitor<'ecx, 'tcx> {
             #[inline(always)] // yes this helps in our benchmarks
@@ -906,13 +908,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 place: &PlaceTy<'tcx>,
                 new_perm: NewPermission,
             ) -> InterpResult<'tcx> {
-                let val = self.ecx.read_immediate(&self.ecx.place_to_op(place)?)?;
-                let val = self.ecx.sb_retag_reference(
-                    &val,
-                    new_perm,
-                    RetagInfo { cause: self.retag_cause, in_field: self.in_field },
-                )?;
-                self.ecx.write_immediate(*val, place)?;
+                if !self.may_dangle {
+                    let val = self.ecx.read_immediate(&self.ecx.place_to_op(place)?)?;
+                    let val = self.ecx.sb_retag_reference(
+                        &val,
+                        new_perm,
+                        RetagInfo { cause: self.retag_cause, in_field: self.in_field },
+                    )?;
+                    self.ecx.write_immediate(*val, place)?;
+                }
+
                 interp_ok(())
             }
         }
@@ -959,6 +964,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // (Yes this means we technically also recursively retag the allocator itself
                         // even if field retagging is not enabled. *shrug*)
                         self.walk_value(place)?;
+                    }
+                    ty::Adt(adt, _) if adt.is_maybe_dangling() => {
+                        let in_field = mem::replace(&mut self.in_field, true); // remember and restore old value
+                        let may_dangle = mem::replace(&mut self.may_dangle, true); // remember and restore old value
+                        self.walk_value(place)?;
+                        self.may_dangle = may_dangle;
+                        self.in_field = in_field;
                     }
                     _ => {
                         // Not a reference/pointer/box. Recurse.
