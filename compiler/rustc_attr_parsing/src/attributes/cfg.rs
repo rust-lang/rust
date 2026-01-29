@@ -13,7 +13,7 @@ use rustc_hir::{AttrPath, RustcVersion, Target};
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
-use rustc_session::config::ExpectedValues;
+use rustc_session::config::{ExpectedValues, Z_OPTIONS};
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::parse::{ParseSess, feature_err};
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
@@ -410,6 +410,20 @@ fn try_gate_cfg(name: Symbol, span: Span, sess: &Session, features: Option<&Feat
     let gate = find_gated_cfg(|sym| sym == name);
     if let (Some(feats), Some(gated_cfg)) = (features, gate) {
         gate_cfg(gated_cfg, span, sess, feats);
+    }
+
+    let gate =
+        Z_OPTIONS.iter().filter_map(|opt| opt.target_modifier_cfg()).find(|cfg| *cfg == name).map(
+            |cfg| {
+                (
+                    cfg,
+                    sym::cfg_unstable_target_modifier,
+                    Features::cfg_unstable_target_modifier as for<'a> fn(&'a Features) -> _,
+                )
+            },
+        );
+    if let (Some(feats), Some(gated_cfg)) = (features, gate) {
+        gate_cfg(&gated_cfg, span, sess, feats);
     }
 }
 
