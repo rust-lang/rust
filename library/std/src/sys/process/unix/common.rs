@@ -15,7 +15,7 @@ use crate::sys::fs::File;
 #[cfg(not(target_os = "fuchsia"))]
 use crate::sys::fs::OpenOptions;
 use crate::sys::pipe::pipe;
-use crate::sys::process::env::{CommandEnv, CommandEnvs};
+use crate::sys::process::env::{CommandEnv, CommandEnvs, ResolvedEnvs};
 use crate::sys::{FromInner, IntoInner, cvt_r};
 use crate::{fmt, io, mem};
 
@@ -265,6 +265,10 @@ impl Command {
 
     pub fn get_env_clear(&self) -> bool {
         self.env.does_clear()
+    }
+
+    pub fn get_resolved_envs(&self) -> ResolvedEnvs {
+        ResolvedEnvs::new(self.env.capture())
     }
 
     pub fn get_current_dir(&self) -> Option<&Path> {

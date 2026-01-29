@@ -1,5 +1,5 @@
 use super::CommandEnvs;
-use super::env::CommandEnv;
+use super::env::{CommandEnv, ResolvedEnvs};
 use crate::ffi::OsStr;
 pub use crate::ffi::OsString as EnvKey;
 use crate::num::NonZeroI32;
@@ -98,6 +98,10 @@ impl Command {
 
     pub fn get_env_clear(&self) -> bool {
         self.env.does_clear()
+    }
+
+    pub fn get_resolved_envs(&self) -> ResolvedEnvs {
+        ResolvedEnvs::new(self.env.capture())
     }
 
     pub fn get_current_dir(&self) -> Option<&Path> {
