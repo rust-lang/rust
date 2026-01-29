@@ -204,7 +204,7 @@ commit - they won't slow down the performance of what we ship.
 
 That said, there can also be excessive tracing calls, especially
 when they are redundant with other calls nearby or in functions called from here.
-There is no perfect balance to hit here, and is left to the reviewer's
+There is no perfect balance to hit here, and it is left to the reviewer's
 discretion to decide whether to let you leave `debug!` statements in or whether to ask
 you to remove them before merging.
 
