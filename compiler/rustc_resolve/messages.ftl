@@ -213,8 +213,6 @@ resolve_ident_in_scope_but_it_is_desc =
 
 resolve_implicit_elided_lifetimes_not_allowed_here = implicit elided lifetime not allowed here
 
-resolve_imported_crate = `$crate` may not be imported
-
 resolve_imported_macro_not_found = imported macro not found
 
 resolve_imports_cannot_refer_to =
@@ -397,14 +395,6 @@ resolve_remove_surrounding_derive =
 
 resolve_remove_unnecessary_import = remove unnecessary import
 
-resolve_self_import_can_only_appear_once_in_the_list =
-    `self` import can only appear once in an import list
-    .label = can only appear once in an import list
-
-resolve_self_import_only_in_import_list_with_non_empty_prefix =
-    `self` import can only appear in an import list with a non-empty prefix
-    .label = can only appear in an import list with a non-empty prefix
-
 resolve_self_imports_only_allowed_within =
     `self` imports are only allowed within a {"{"} {"}"} list
 
@@ -487,8 +477,8 @@ resolve_unexpected_res_use_at_op_in_slice_pat_with_range_sugg =
 resolve_unknown_diagnostic_attribute = unknown diagnostic attribute
 resolve_unknown_diagnostic_attribute_typo_sugg = an attribute with a similar name exists
 
-resolve_unnamed_crate_root_import =
-    crate root imports need to be explicitly named: `use crate as name;`
+resolve_unnamed_import = imports need to be explicitly named
+resolve_unnamed_import_sugg = try renaming it with a name
 
 resolve_unreachable_label =
     use of unreachable label `{$name}`

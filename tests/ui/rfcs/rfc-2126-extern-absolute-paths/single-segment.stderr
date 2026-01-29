@@ -1,8 +1,13 @@
-error: crate root imports need to be explicitly named: `use crate as name;`
+error: imports need to be explicitly named
   --> $DIR/single-segment.rs:5:5
    |
 LL | use crate;
    |     ^^^^^
+   |
+help: try renaming it with a name
+   |
+LL | use crate as name;
+   |           +++++++
 
 error: cannot glob-import all possible crates
   --> $DIR/single-segment.rs:6:5

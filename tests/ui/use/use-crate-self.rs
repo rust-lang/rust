@@ -1,4 +1,4 @@
 use crate::{self};
-        //~^ ERROR crate root imports need to be explicitly named: `use crate as name;`
+        //~^ ERROR imports need to be explicitly named
 
 fn main() {}
