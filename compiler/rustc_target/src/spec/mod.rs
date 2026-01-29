@@ -128,6 +128,8 @@ pub enum LinkerFlavor {
     /// Emscripten Compiler Frontend, a wrapper around `WasmLld(Cc::Yes)` that has a different
     /// interface and produces some additional JavaScript output.
     EmCc,
+    // TODO: This needs some design on how to proceed
+    Wild,
     // Below: other linker-like tools with unique interfaces for exotic targets.
     /// Linker tool for BPF.
     Bpf,
@@ -154,6 +156,7 @@ pub enum LinkerFlavorCli {
     Bpf,
     Ptx,
     Llbc,
+    Wild,
 
     // Legacy stable values
     Gcc,
@@ -179,7 +182,8 @@ impl LinkerFlavorCli {
             | LinkerFlavorCli::Ld
             | LinkerFlavorCli::Lld(..)
             | LinkerFlavorCli::Msvc(Lld::No)
-            | LinkerFlavorCli::Em => false,
+            | LinkerFlavorCli::Em
+            | LinkerFlavorCli::Wild => false,
         }
     }
 }
@@ -211,6 +215,7 @@ impl LinkerFlavor {
             LinkerFlavorCli::Bpf => LinkerFlavor::Bpf,
             LinkerFlavorCli::Llbc => LinkerFlavor::Llbc,
             LinkerFlavorCli::Ptx => LinkerFlavor::Ptx,
+            LinkerFlavorCli::Wild => LinkerFlavor::Wild,
 
             // Below: legacy stable values
             LinkerFlavorCli::Gcc => match lld_flavor {
@@ -251,6 +256,7 @@ impl LinkerFlavor {
             LinkerFlavor::Bpf => LinkerFlavorCli::Bpf,
             LinkerFlavor::Llbc => LinkerFlavorCli::Llbc,
             LinkerFlavor::Ptx => LinkerFlavorCli::Ptx,
+            LinkerFlavor::Wild => LinkerFlavorCli::Wild,
         }
     }
 
@@ -266,6 +272,7 @@ impl LinkerFlavor {
             LinkerFlavor::Bpf => LinkerFlavorCli::Bpf,
             LinkerFlavor::Llbc => LinkerFlavorCli::Llbc,
             LinkerFlavor::Ptx => LinkerFlavorCli::Ptx,
+            LinkerFlavor::Wild => LinkerFlavorCli::Wild,
         }
     }
 
@@ -280,6 +287,7 @@ impl LinkerFlavor {
             LinkerFlavorCli::EmCc => (Some(Cc::Yes), Some(Lld::Yes)),
             LinkerFlavorCli::Bpf | LinkerFlavorCli::Ptx => (None, None),
             LinkerFlavorCli::Llbc => (None, None),
+            LinkerFlavorCli::Wild => (None, None),
 
             // Below: legacy stable values
             LinkerFlavorCli::Gcc => (Some(Cc::Yes), None),
@@ -298,6 +306,8 @@ impl LinkerFlavor {
 
         if stem == "llvm-bitcode-linker" {
             Ok(Self::Llbc)
+        } else if stem == "wild" {
+            Ok(Self::Wild)
         } else if stem == "emcc" // GCC/Clang can have an optional target prefix.
             || stem == "gcc"
             || stem.ends_with("-gcc")
@@ -335,7 +345,11 @@ impl LinkerFlavor {
             LinkerFlavor::WasmLld(cc) => LinkerFlavor::WasmLld(cc_hint.unwrap_or(cc)),
             LinkerFlavor::Unix(cc) => LinkerFlavor::Unix(cc_hint.unwrap_or(cc)),
             LinkerFlavor::Msvc(lld) => LinkerFlavor::Msvc(lld_hint.unwrap_or(lld)),
-            LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Llbc | LinkerFlavor::Ptx => self,
+            LinkerFlavor::EmCc
+            | LinkerFlavor::Bpf
+            | LinkerFlavor::Llbc
+            | LinkerFlavor::Ptx
+            | LinkerFlavor::Wild => self,
         }
     }
 
@@ -363,7 +377,8 @@ impl LinkerFlavor {
                 | (LinkerFlavor::EmCc, LinkerFlavorCli::EmCc)
                 | (LinkerFlavor::Bpf, LinkerFlavorCli::Bpf)
                 | (LinkerFlavor::Llbc, LinkerFlavorCli::Llbc)
-                | (LinkerFlavor::Ptx, LinkerFlavorCli::Ptx) => return true,
+                | (LinkerFlavor::Ptx, LinkerFlavorCli::Ptx)
+                | (LinkerFlavor::Wild, LinkerFlavorCli::Wild) => return true,
                 // 2. The linker flavor is independent of target and compatible
                 (LinkerFlavor::Ptx, LinkerFlavorCli::Llbc) => return true,
                 _ => {}
@@ -389,7 +404,8 @@ impl LinkerFlavor {
             | LinkerFlavor::EmCc
             | LinkerFlavor::Bpf
             | LinkerFlavor::Llbc
-            | LinkerFlavor::Ptx => LldFlavor::Ld,
+            | LinkerFlavor::Ptx
+            | LinkerFlavor::Wild => LldFlavor::Ld,
             LinkerFlavor::Darwin(..) => LldFlavor::Ld64,
             LinkerFlavor::WasmLld(..) => LldFlavor::Wasm,
             LinkerFlavor::Msvc(..) => LldFlavor::Link,
@@ -415,7 +431,8 @@ impl LinkerFlavor {
             | LinkerFlavor::Unix(_)
             | LinkerFlavor::Bpf
             | LinkerFlavor::Llbc
-            | LinkerFlavor::Ptx => false,
+            | LinkerFlavor::Ptx
+            | LinkerFlavor::Wild => false,
         }
     }
 
@@ -427,7 +444,8 @@ impl LinkerFlavor {
             | LinkerFlavor::Darwin(Cc::Yes, _)
             | LinkerFlavor::WasmLld(Cc::Yes)
             | LinkerFlavor::Unix(Cc::Yes)
-            | LinkerFlavor::EmCc => true,
+            | LinkerFlavor::EmCc
+            | LinkerFlavor::Wild => true,
             LinkerFlavor::Gnu(..)
             | LinkerFlavor::Darwin(..)
             | LinkerFlavor::WasmLld(_)
@@ -512,6 +530,7 @@ linker_flavor_cli_impls! {
     (LinkerFlavorCli::Bpf) "bpf"
     (LinkerFlavorCli::Llbc) "llbc"
     (LinkerFlavorCli::Ptx) "ptx"
+    (LinkerFlavorCli::Wild) "wild"
 
     // Legacy stable flavors
     (LinkerFlavorCli::Gcc) "gcc"
@@ -2630,6 +2649,7 @@ fn add_link_args_iter(
             assert_eq!(lld, Lld::No);
             insert(LinkerFlavor::Msvc(Lld::Yes));
         }
+        LinkerFlavor::Wild => insert(LinkerFlavor::Wild),
         LinkerFlavor::WasmLld(..)
         | LinkerFlavor::Unix(..)
         | LinkerFlavor::EmCc
@@ -3027,6 +3047,7 @@ impl Target {
                     | LinkerFlavor::Llbc => {
                         check_eq!(flavor, self.linker_flavor, "mixing different linker flavors")
                     }
+                    LinkerFlavor::Wild => todo!(),
                 }
 
                 // Check that link args for cc and non-cc versions of flavors are consistent.

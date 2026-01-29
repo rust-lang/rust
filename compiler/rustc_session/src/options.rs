@@ -865,7 +865,7 @@ mod desc {
     pub(crate) const parse_link_self_contained: &str = "one of: `y`, `yes`, `on`, `n`, `no`, `off`, or a list of enabled (`+` prefix) and disabled (`-` prefix) \
         components: `crto`, `libc`, `unwind`, `linker`, `sanitizers`, `mingw`";
     pub(crate) const parse_linker_features: &str =
-        "a list of enabled (`+` prefix) and disabled (`-` prefix) features: `lld`";
+        "a list of enabled (`+` prefix) and disabled (`-` prefix) features: `lld`, `wild`";
     pub(crate) const parse_polonius: &str = "either no value or `legacy` (the default), or `next`";
     pub(crate) const parse_annotate_moves: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc.), or a size limit in bytes";
