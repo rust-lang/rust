@@ -1,8 +1,10 @@
-warning: method `into_future` is never used
-  --> $DIR/issue-38033.rs:22:8
+warning: associated items `Future` and `into_future` are never used
+  --> $DIR/issue-38033.rs:18:10
    |
 LL | trait IntoFuture {
-   |       ---------- method in this trait
+   |       ---------- associated items in this trait
+LL |     type Future: Future<Item=Self::Item, Error=Self::Error>;
+   |          ^^^^^^
 ...
 LL |     fn into_future(self) -> Self::Future;
    |        ^^^^^^^^^^^
