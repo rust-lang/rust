@@ -1,3 +1,4 @@
+use std::assert_matches::assert_matches;
 use std::cmp;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
@@ -24,7 +25,6 @@ use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::Spanned;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
@@ -611,7 +611,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.write_ty(*hir_id, ty);
                 ty
             }
-            PatKind::Expr(lt) => self.check_pat_lit(pat.span, lt, expected, &pat_info.top_info),
+            PatKind::Expr(expr @ PatExpr { kind: PatExprKind::Lit { lit, .. }, .. }) => {
+                self.check_pat_lit(pat.span, expr, &lit.node, expected, &pat_info.top_info)
+            }
             PatKind::Range(lhs, rhs, _) => {
                 self.check_pat_range(pat.span, lhs, rhs, expected, &pat_info.top_info)
             }
@@ -938,23 +940,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_lit(
         &self,
         span: Span,
-        lt: &hir::PatExpr<'tcx>,
+        expr: &hir::PatExpr<'tcx>,
+        lit_kind: &ast::LitKind,
         expected: Ty<'tcx>,
         ti: &TopInfo<'tcx>,
     ) -> Ty<'tcx> {
+        assert_matches!(expr.kind, hir::PatExprKind::Lit { .. });
+
         // We've already computed the type above (when checking for a non-ref pat),
         // so avoid computing it again.
-        let ty = self.node_ty(lt.hir_id);
+        let ty = self.node_ty(expr.hir_id);
 
         // Byte string patterns behave the same way as array patterns
         // They can denote both statically and dynamically-sized byte arrays.
         // Additionally, when `deref_patterns` is enabled, byte string literal patterns may have
         // types `[u8]` or `[u8; N]`, in order to type, e.g., `deref!(b"..."): Vec<u8>`.
         let mut pat_ty = ty;
-        if let hir::PatExprKind::Lit {
-            lit: Spanned { node: ast::LitKind::ByteStr(..), .. }, ..
-        } = lt.kind
-        {
+        if matches!(lit_kind, ast::LitKind::ByteStr(..)) {
             let tcx = self.tcx;
             let expected = self.structurally_resolve_type(span, expected);
             match *expected.kind() {
@@ -962,7 +964,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Ref(_, inner_ty, _)
                     if self.try_structurally_resolve_type(span, inner_ty).is_slice() =>
                 {
-                    trace!(?lt.hir_id.local_id, "polymorphic byte string lit");
+                    trace!(?expr.hir_id.local_id, "polymorphic byte string lit");
                     pat_ty = Ty::new_imm_ref(
                         tcx,
                         tcx.lifetimes.re_static,
@@ -988,9 +990,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // When `deref_patterns` is enabled, in order to allow `deref!("..."): String`, we allow
         // string literal patterns to have type `str`. This is accounted for when lowering to MIR.
         if self.tcx.features().deref_patterns()
-            && let hir::PatExprKind::Lit {
-                lit: Spanned { node: ast::LitKind::Str(..), .. }, ..
-            } = lt.kind
+            && matches!(lit_kind, ast::LitKind::Str(..))
             && self.try_structurally_resolve_type(span, expected).is_str()
         {
             pat_ty = self.tcx.types.str_;
