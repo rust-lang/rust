@@ -1272,6 +1272,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         Funclet::new(ret.expect("LLVM does not have support for catchpad"))
     }
 
+    fn funclet_pad_value(&self, funclet: &Funclet<'ll>) -> &'ll Value {
+        funclet.cleanuppad()
+    }
+
     fn catch_switch(
         &mut self,
         parent: Option<&'ll Value>,
