@@ -1050,7 +1050,7 @@ impl<'a> MethodDef<'a> {
 
         let args = {
             let self_arg = explicit_self.map(|explicit_self| {
-                let ident = Ident::with_dummy_span(kw::SelfLower).with_span_pos(span);
+                let ident = Ident::new(kw::SelfLower, span);
                 ast::Param::from_self(ast::AttrVec::default(), explicit_self, ident)
             });
             let nonself_args =

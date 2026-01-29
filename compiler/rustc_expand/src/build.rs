@@ -316,7 +316,7 @@ impl<'a> ExtCtxt<'a> {
         self.expr_path(self.path_ident(span, id))
     }
     pub fn expr_self(&self, span: Span) -> Box<ast::Expr> {
-        self.expr_ident(span, Ident::with_dummy_span(kw::SelfLower))
+        self.expr_ident(span, Ident::new(kw::SelfLower, span))
     }
 
     pub fn expr_macro_call(&self, span: Span, call: Box<ast::MacCall>) -> Box<ast::Expr> {
