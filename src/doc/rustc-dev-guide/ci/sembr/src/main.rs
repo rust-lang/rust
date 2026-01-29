@@ -83,7 +83,8 @@ fn ignore(line: &str, in_code_block: bool) -> bool {
         || line.contains(" etc.")
         || line.contains("i.e.")
         || line.contains("et. al")
-        || line.contains("<!-- date-check ")
+        || line.contains("<!--")
+        || line.contains("-->")
         || line.contains('|')
         || line.trim_start().starts_with('>')
         || line.starts_with('#')
@@ -266,6 +267,11 @@ leave the
 text alone
 ```
 
+<!-- ignore
+html comment opening
+--> ignore
+html comment closing
+
  handle the
  indented well
 
@@ -291,6 +297,11 @@ do not mess with code block chars
 leave the
 text alone
 ```
+
+<!-- ignore
+html comment opening
+--> ignore
+html comment closing
 
  handle the indented well
 

@@ -18,7 +18,8 @@ Each crate's json output is checked by 2 programs: [jsondoclint](#jsondocck) and
 This makes sure there are no dangling [`Id`]s.
 
 <!-- TODO: It does some more things too?
-Also, talk about how it works -->
+Also, talk about how it works
+ -->
 
 ## jsondocck
 
