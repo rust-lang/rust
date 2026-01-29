@@ -92,4 +92,7 @@ codegen-units = 1
 # If you want to use a crate with local modifications, you can set a path or git dependency here.
 # For git dependencies, also add your source to ALLOWED_SOURCES in src/tools/tidy/src/extdeps.rs.
 #[patch.crates-io]
+# FIXME: Remove after the experiment
+[patch.crates-io]
+ena = { git = "https://github.com/ShoyuVanilla/ena.git", rev = "6adb30a6b8aa0d1863439983173be5ef2e14aecb" }
 
