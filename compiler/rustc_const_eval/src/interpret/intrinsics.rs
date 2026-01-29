@@ -12,7 +12,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{FieldIdData, FloatTy, PolyExistentialPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{FloatTy, PolyExistentialPredicate, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_span::{Symbol, sym};
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
@@ -235,17 +235,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         span_bug!(self.cur_span(), "expected field representing type, got {frt_ty}")
                     }
                 };
-                let FieldIdData::Resolved { variant, field } = &*field.0 else {
-                    span_bug!(
-                        self.cur_span(),
-                        "expected resolved field representing type, got `field_of!({ty}, {field:?})`"
-                    )
-                };
                 let layout = self.layout_of(ty)?;
                 let cx = ty::layout::LayoutCx::new(*self.tcx, self.typing_env);
 
-                let layout = layout.for_variant(&cx, *variant);
-                let offset = layout.fields.offset(field.index()).bytes();
+                let layout = layout.for_variant(&cx, field.variant);
+                let offset = layout.fields.offset(field.field.index()).bytes();
 
                 self.write_scalar(Scalar::from_target_usize(offset, self), dest)?;
             }

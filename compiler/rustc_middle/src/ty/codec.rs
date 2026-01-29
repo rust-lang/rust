@@ -23,7 +23,7 @@ use crate::mir::interpret::{AllocId, ConstAllocation, CtfeProvenance};
 use crate::mir::mono::MonoItem;
 use crate::mir::{self};
 use crate::traits;
-use crate::ty::{self, AdtDef, FieldId, GenericArgsRef, Ty, TyCtxt};
+use crate::ty::{self, AdtDef, GenericArgsRef, Ty, TyCtxt};
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.
@@ -190,12 +190,6 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ConstAllocation<'tcx> {
 }
 
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for AdtDef<'tcx> {
-    fn encode(&self, e: &mut E) {
-        self.0.0.encode(e)
-    }
-}
-
-impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for FieldId<'tcx> {
     fn encode(&self, e: &mut E) {
         self.0.0.encode(e)
     }
@@ -397,12 +391,6 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::ValTree<'tcx> {
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ConstAllocation<'tcx> {
     fn decode(decoder: &mut D) -> Self {
         decoder.interner().mk_const_alloc(Decodable::decode(decoder))
-    }
-}
-
-impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for FieldId<'tcx> {
-    fn decode(decoder: &mut D) -> Self {
-        decoder.interner().mk_field_id_from_data(Decodable::decode(decoder))
     }
 }
 

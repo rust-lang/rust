@@ -80,11 +80,11 @@ use crate::traits::solve::{
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, FieldId, FieldIdData,
-    GenericArg, GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo,
-    ParamConst, ParamTy, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate,
-    PredicateKind, PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty,
-    TyKind, TyVid, ValTree, ValTreeKind, Visibility,
+    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, FieldId, GenericArg,
+    GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst,
+    ParamTy, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
+    PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
+    ValTree, ValTreeKind, Visibility,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -247,7 +247,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.adt_def(adt_def_id)
     }
 
-    type FieldId = FieldId<'tcx>;
+    type FieldId = FieldId;
 
     fn alias_ty_kind(self, alias: ty::AliasTy<'tcx>) -> ty::AliasTyKind {
         match self.def_kind(alias.def_id) {
@@ -950,7 +950,6 @@ pub struct CtxtInterners<'tcx> {
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind<'tcx>>>,
     layout: InternedSet<'tcx, LayoutData<FieldIdx, VariantIdx>>,
     adt_def: InternedSet<'tcx, AdtDefData>,
-    field_id: InternedSet<'tcx, FieldIdData>,
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<TyCtxt<'tcx>>>,
     predefined_opaques_in_body: InternedSet<'tcx, List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
@@ -988,7 +987,6 @@ impl<'tcx> CtxtInterners<'tcx> {
             bound_variable_kinds: InternedSet::with_capacity(N * 2),
             layout: InternedSet::with_capacity(N),
             adt_def: InternedSet::with_capacity(N),
-            field_id: InternedSet::with_capacity(N),
             external_constraints: InternedSet::with_capacity(N),
             predefined_opaques_in_body: InternedSet::with_capacity(N),
             fields: InternedSet::with_capacity(N * 4),
@@ -2798,7 +2796,6 @@ direct_interners! {
     const_allocation: pub mk_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
     layout: pub mk_layout(LayoutData<FieldIdx, VariantIdx>): Layout -> Layout<'tcx>,
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
-    field_id: pub mk_field_id_from_data(FieldIdData): FieldId -> FieldId<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<TyCtxt<'tcx>>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
 }
@@ -3588,7 +3585,6 @@ pub fn lower_field_of<'tcx>(
     ty: Ty<'tcx>,
     item_def_id: LocalDefId,
     ty_span: Span,
-    full_span: Span,
     hir_id: HirId,
     variant: Option<Ident>,
     field: Ident,
@@ -3670,10 +3666,7 @@ pub fn lower_field_of<'tcx>(
                 Ty::new_field_representing_type(
                     tcx,
                     ty,
-                    tcx.mk_field_id_from_data(FieldIdData::Resolved {
-                        variant: variant_idx,
-                        field: field_idx,
-                    }),
+                    FieldId { variant: variant_idx, field: field_idx },
                 )
             } else {
                 let adt_path = tcx.def_path_str(base_did);
@@ -3710,10 +3703,7 @@ pub fn lower_field_of<'tcx>(
                 Ty::new_field_representing_type(
                     tcx,
                     ty,
-                    tcx.mk_field_id_from_data(FieldIdData::Resolved {
-                        variant: FIRST_VARIANT,
-                        field: index.into(),
-                    }),
+                    FieldId { variant: FIRST_VARIANT, field: index.into() },
                 )
             } else {
                 let err = struct_span_code_err!(
@@ -3727,18 +3717,23 @@ pub fn lower_field_of<'tcx>(
                 Ty::new_error(tcx, err)
             }
         }
-        ty::Alias(..) | ty::Error(..) => Ty::new_field_representing_type(
-            tcx,
-            ty,
-            tcx.mk_field_id_from_data(FieldIdData::Unresolved {
-                hir_id,
-                full_span,
-                ty_span,
+        // FIXME(FRTs): support type aliases
+        /*
+        ty::Alias(AliasTyKind::Free, ty) => {
+            return lower_field_of(
+                tcx,
+                ty.,
                 item_def_id,
+                ty_span,
+                hir_id,
                 variant,
                 field,
-            }),
-        ),
+            );
+        }*/
+        ty::Alias(..) => {
+            Ty::new_error(tcx, dcx.span_err(ty_span, format!("could not resolve fields of `{ty}`")))
+        }
+        ty::Error(err) => Ty::new_error(tcx, *err),
         ty::Bool
         | ty::Char
         | ty::Int(_)

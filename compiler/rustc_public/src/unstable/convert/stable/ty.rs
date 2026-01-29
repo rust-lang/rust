@@ -1,6 +1,6 @@
 //! Conversion of internal Rust compiler `ty` items to stable ones.
 
-use rustc_middle::ty::{FieldIdData, Ty};
+use rustc_middle::ty::Ty;
 use rustc_middle::{bug, mir, ty};
 use rustc_public_bridge::Tables;
 use rustc_public_bridge::context::CompilerCtxt;
@@ -413,14 +413,7 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Pat(ty, pat) => {
                 TyKind::RigidTy(RigidTy::Pat(ty.stable(tables, cx), pat.stable(tables, cx)))
             }
-            ty::FRT(ty, field) => match &*field.0 {
-                FieldIdData::Resolved { variant, field } => {
-                    TyKind::RigidTy(RigidTy::FRT(ty.stable(tables, cx), *variant, *field))
-                }
-                unresolved @ FieldIdData::Unresolved { .. } => {
-                    bug!("encountered unresolved FieldId: {unresolved:?}")
-                }
-            },
+            ty::FRT(ty, field) => TyKind::RigidTy(RigidTy::FRT(ty.stable(tables, cx), *field)),
             ty::Slice(ty) => TyKind::RigidTy(RigidTy::Slice(ty.stable(tables, cx))),
             ty::RawPtr(ty, mutbl) => {
                 TyKind::RigidTy(RigidTy::RawPtr(ty.stable(tables, cx), mutbl.stable(tables, cx)))

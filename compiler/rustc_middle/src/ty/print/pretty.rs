@@ -725,37 +725,22 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 write!(self, "field_of!(")?;
                 ty.print(self)?;
                 write!(self, ", ")?;
-                match &*field.0 {
-                    ty::FieldIdData::Resolved { variant, field } => match ty.kind() {
-                        ty::Adt(def, _) => {
-                            let variant = if def.is_enum() {
-                                let variant = &def.variants()[*variant];
-                                write!(self, "{}.", variant.name)?;
-                                variant
-                            } else {
-                                def.non_enum_variant()
-                            };
-                            write!(self, "{}", variant.fields[*field].name)?;
-                        }
-                        ty::Tuple(_) => {
-                            debug_assert_eq!(*variant, FIRST_VARIANT);
-                            write!(self, "{}", field.index())?;
-                        }
-                        _ => bug!("unexpected ty in resolved FRT: {ty}"),
-                    },
-                    ty::FieldIdData::Unresolved {
-                        variant,
-                        field,
-                        hir_id: _,
-                        ty_span: _,
-                        full_span: _,
-                        item_def_id: _,
-                    } => {
-                        if let Some(variant) = variant {
-                            write!(self, "{variant}.")?;
-                        }
-                        write!(self, "{field}")?;
+                match ty.kind() {
+                    ty::Adt(def, _) => {
+                        let variant = if def.is_enum() {
+                            let variant = &def.variants()[field.variant];
+                            write!(self, "{}.", variant.name)?;
+                            variant
+                        } else {
+                            def.non_enum_variant()
+                        };
+                        write!(self, "{}", variant.fields[field.field].name)?;
                     }
+                    ty::Tuple(_) => {
+                        debug_assert_eq!(field.variant, FIRST_VARIANT);
+                        write!(self, "{}", field.field.index())?;
+                    }
+                    _ => bug!("unexpected ty in resolved FRT: {ty}"),
                 }
                 write!(self, ")")?;
             }

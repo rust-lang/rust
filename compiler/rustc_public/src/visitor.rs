@@ -158,7 +158,7 @@ impl Visitable for RigidTy {
                 c.visit(visitor)
             }
             RigidTy::Pat(t, _p) => t.visit(visitor),
-            RigidTy::FRT(t, _v, _f) => t.visit(visitor),
+            RigidTy::FRT(t, _f) => t.visit(visitor),
             RigidTy::Slice(inner) => inner.visit(visitor),
             RigidTy::RawPtr(ty, _) => ty.visit(visitor),
             RigidTy::Ref(reg, ty, _) => {

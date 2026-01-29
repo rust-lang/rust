@@ -491,7 +491,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn new_field_representing_type(
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
-        field_id: FieldId<'tcx>,
+        field_id: FieldId,
     ) -> Ty<'tcx> {
         Ty::new(tcx, FRT(ty, field_id))
     }
@@ -1072,7 +1072,7 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_pat(interner, ty, pat)
     }
 
-    fn new_field_representing_type(tcx: TyCtxt<'tcx>, ty: Self, field_id: FieldId<'tcx>) -> Self {
+    fn new_field_representing_type(tcx: TyCtxt<'tcx>, ty: Self, field_id: FieldId) -> Self {
         Self::new_field_representing_type(tcx, ty, field_id)
     }
 

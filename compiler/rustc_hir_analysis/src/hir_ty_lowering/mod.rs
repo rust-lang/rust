@@ -3009,7 +3009,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 self.lower_ty(ty),
                 self.item_def_id(),
                 ty.span,
-                hir_ty.span,
                 hir_ty.hir_id,
                 *variant,
                 *field,
