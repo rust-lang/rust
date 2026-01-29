@@ -1688,7 +1688,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // as potential fallback candidates (#142006). To temporarily mask that issue, let's not
         // select at all if there are no early inherent candidates.
         if candidates.is_empty() {
-            return Ok(None);
+            return match assoc_tag {
+                ty::AssocTag::Type => Ok(None),
+                ty::AssocTag::Const => Err(self.report_unresolved_inherent_assoc_item(
+                    name,
+                    self_ty,
+                    candidates,
+                    vec![],
+                    span,
+                    assoc_tag,
+                )),
+                ty::AssocTag::Fn => unreachable!(),
+            };
         }
 
         let (applicable_candidates, fulfillment_errors) =
