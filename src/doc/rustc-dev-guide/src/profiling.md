@@ -12,7 +12,7 @@ Depending on what you're trying to measure, there are several different approach
     See [their docs](https://github.com/rust-lang/measureme/blob/master/summarize/README.md) for more information.
 
 - If you want function level performance data or even just more details than the above approaches:
-  - Consider using a native code profiler such as [perf](profiling/with_perf.md)
+  - Consider using a native code profiler such as [perf](profiling/with-perf.md)
   - or [tracy](https://github.com/nagisa/rust_tracy_client) for a nanosecond-precision,
     full-featured graphical interface.
 
@@ -23,7 +23,7 @@ Depending on what you're trying to measure, there are several different approach
 
 - If you want to profile memory usage, you can use various tools depending on what operating system
   you are using.
-  - For Windows, read our [WPA guide](profiling/wpa_profiling.md).
+  - For Windows, read our [WPA guide](profiling/wpa-profiling.md).
 
 ## Optimizing rustc's bootstrap times with `cargo-llvm-lines`
 
