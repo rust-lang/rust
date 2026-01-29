@@ -287,6 +287,7 @@
 #![feature(f128)]
 #![feature(ffi_const)]
 #![feature(formatting_options)]
+#![feature(from_utf8_error_internals)]
 #![feature(funnel_shifts)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
