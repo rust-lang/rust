@@ -16,9 +16,10 @@ use rustc_trait_selection::errors::impl_trait_overcapture_suggestion;
 
 use crate::MirBorrowckCtxt;
 use crate::borrow_set::BorrowData;
-use crate::consumers::RegionInferenceContext;
+use crate::region_infer::ConstraintSearch;
 use crate::region_infer::opaque_types::DeferredOpaqueTypeError;
 use crate::type_check::Locations;
+use crate::universal_regions::UniversalRegions;
 
 impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     pub(crate) fn report_opaque_type_errors(&mut self, errors: Vec<DeferredOpaqueTypeError<'tcx>>) {
@@ -42,12 +43,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     member_region,
                 } => {
                     let named_ty =
-                        self.regioncx.name_regions_for_member_constraint(infcx.tcx, hidden_type.ty);
-                    let named_key = self
-                        .regioncx
-                        .name_regions_for_member_constraint(infcx.tcx, opaque_type_key);
+                        self.name_regions_for_member_constraint(infcx.tcx, hidden_type.ty);
+                    let named_key =
+                        self.name_regions_for_member_constraint(infcx.tcx, opaque_type_key);
                     let named_region =
-                        self.regioncx.name_regions_for_member_constraint(infcx.tcx, member_region);
+                        self.name_regions_for_member_constraint(infcx.tcx, member_region);
                     let diag = unexpected_hidden_region_diagnostic(
                         infcx,
                         self.mir_def_id(),
@@ -107,9 +107,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let tcx = self.infcx.tcx;
             let ControlFlow::Break((opaque_def_id, offending_region_idx, location)) = ty
                 .visit_with(&mut FindOpaqueRegion {
-                    regioncx: &self.regioncx,
                     tcx,
                     borrow_region: borrow.region,
+                    universal_regions: self.universal_regions(),
+                    constraint_search: self.constraint_search(),
                 })
             else {
                 continue;
@@ -209,8 +210,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 /// This visitor contains the bulk of the logic for this lint.
 struct FindOpaqueRegion<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    regioncx: &'a RegionInferenceContext<'tcx>,
+    constraint_search: ConstraintSearch<'a, 'tcx>,
     borrow_region: ty::RegionVid,
+    universal_regions: &'a UniversalRegions<'tcx>,
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindOpaqueRegion<'_, 'tcx> {
@@ -237,11 +239,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindOpaqueRegion<'_, 'tcx> {
                 if opaque_region.is_bound() {
                     continue;
                 }
-                let opaque_region_vid = self.regioncx.to_region_vid(opaque_region);
+                let opaque_region_vid = self.universal_regions.to_region_vid(opaque_region);
 
                 // Find a path between the borrow region and our opaque capture.
                 if let Some(path) = self
-                    .regioncx
+                    .constraint_search
                     .constraint_path_between_regions(self.borrow_region, opaque_region_vid)
                 {
                     for constraint in path {

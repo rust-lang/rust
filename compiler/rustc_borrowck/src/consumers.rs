@@ -18,6 +18,7 @@ pub use super::polonius::legacy::{
 };
 pub use super::region_infer::RegionInferenceContext;
 use crate::BorrowCheckRootCtxt;
+use crate::region_infer::InferredRegions;
 
 /// Struct used during mir borrowck to collect bodies with facts for a typeck root and all
 /// its nested bodies.
@@ -89,9 +90,10 @@ pub struct BodyWithBorrowckFacts<'tcx> {
     pub promoted: IndexVec<Promoted, Body<'tcx>>,
     /// The set of borrows occurring in `body` with data about them.
     pub borrow_set: BorrowSet<'tcx>,
-    /// Context generated during borrowck, intended to be passed to
+    /// The inferred region values. These are included because they
+    /// are necessary as input to
     /// [`calculate_borrows_out_of_scope_at_location`].
-    pub region_inference_context: RegionInferenceContext<'tcx>,
+    pub inferred_regions: InferredRegions<'tcx>,
     /// The table that maps Polonius points to locations in the table.
     /// Populated when using [`ConsumerOptions::PoloniusInputFacts`]
     /// or [`ConsumerOptions::PoloniusOutputFacts`].

@@ -153,7 +153,7 @@ impl PoloniusContext {
     pub(crate) fn compute_loan_liveness<'tcx>(
         self,
         tcx: TyCtxt<'tcx>,
-        regioncx: &mut RegionInferenceContext<'tcx>,
+        regioncx: &mut RegionInferenceContext<'_, 'tcx>,
         body: &Body<'tcx>,
         borrow_set: &BorrowSet<'tcx>,
     ) -> PoloniusDiagnosticsContext {

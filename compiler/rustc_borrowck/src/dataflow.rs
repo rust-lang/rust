@@ -14,7 +14,9 @@ use rustc_mir_dataflow::impls::{
 use rustc_mir_dataflow::{Analysis, GenKill, JoinSemiLattice};
 use tracing::debug;
 
-use crate::{BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, places_conflict};
+use crate::region_infer::InferredRegions;
+use crate::region_infer::values::LivenessValues;
+use crate::{BorrowSet, PlaceConflictBias, PlaceExt, places_conflict};
 
 // This analysis is different to most others. Its results aren't computed with
 // `iterate_to_fixpoint`, but are instead composed from the results of three sub-analyses that are
@@ -182,27 +184,25 @@ struct OutOfScopePrecomputer<'a, 'tcx> {
     visited: DenseBitSet<mir::BasicBlock>,
     visit_stack: Vec<mir::BasicBlock>,
     body: &'a Body<'tcx>,
-    regioncx: &'a RegionInferenceContext<'tcx>,
     borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
 impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
     fn compute(
         body: &Body<'tcx>,
-        regioncx: &RegionInferenceContext<'tcx>,
+        scc_values: &InferredRegions<'tcx>,
         borrow_set: &BorrowSet<'tcx>,
     ) -> FxIndexMap<Location, Vec<BorrowIndex>> {
         let mut prec = OutOfScopePrecomputer {
             visited: DenseBitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],
             body,
-            regioncx,
             borrows_out_of_scope_at_location: FxIndexMap::default(),
         };
         for (borrow_index, borrow_data) in borrow_set.iter_enumerated() {
             let borrow_region = borrow_data.region;
             let location = borrow_data.reserve_location;
-            prec.precompute_borrows_out_of_scope(borrow_index, borrow_region, location);
+            prec.precompute_borrows_out_of_scope(scc_values, borrow_index, borrow_region, location);
         }
 
         prec.borrows_out_of_scope_at_location
@@ -210,6 +210,7 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
 
     fn precompute_borrows_out_of_scope(
         &mut self,
+        scc_values: &InferredRegions<'tcx>,
         borrow_index: BorrowIndex,
         borrow_region: RegionVid,
         first_location: Location,
@@ -222,12 +223,9 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
         let first_lo = first_location.statement_index;
         let first_hi = first_bb_data.statements.len();
 
-        if let Some(kill_stmt) = self.regioncx.first_non_contained_inclusive(
-            borrow_region,
-            first_block,
-            first_lo,
-            first_hi,
-        ) {
+        if let Some(kill_stmt) =
+            scc_values.first_non_contained_inclusive(borrow_region, first_block, first_lo, first_hi)
+        {
             let kill_location = Location { block: first_block, statement_index: kill_stmt };
             // If region does not contain a point at the location, then add to list and skip
             // successor locations.
@@ -255,7 +253,7 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
             let bb_data = &self.body[block];
             let num_stmts = bb_data.statements.len();
             if let Some(kill_stmt) =
-                self.regioncx.first_non_contained_inclusive(borrow_region, block, 0, num_stmts)
+                scc_values.first_non_contained_inclusive(borrow_region, block, 0, num_stmts)
             {
                 let kill_location = Location { block, statement_index: kill_stmt };
                 // If region does not contain a point at the location, then add to list and skip
@@ -285,25 +283,24 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
 // This is `pub` because it's used by unstable external borrowck data users, see `consumers.rs`.
 pub fn calculate_borrows_out_of_scope_at_location<'tcx>(
     body: &Body<'tcx>,
-    regioncx: &RegionInferenceContext<'tcx>,
+    scc_values: &InferredRegions<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) -> FxIndexMap<Location, Vec<BorrowIndex>> {
-    OutOfScopePrecomputer::compute(body, regioncx, borrow_set)
+    OutOfScopePrecomputer::compute(body, scc_values, borrow_set)
 }
 
 struct PoloniusOutOfScopePrecomputer<'a, 'tcx> {
     visited: DenseBitSet<mir::BasicBlock>,
     visit_stack: Vec<mir::BasicBlock>,
     body: &'a Body<'tcx>,
-    regioncx: &'a RegionInferenceContext<'tcx>,
-
+    liveness_values: &'a LivenessValues,
     loans_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
 impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
     fn compute(
         body: &Body<'tcx>,
-        regioncx: &RegionInferenceContext<'tcx>,
+        liveness_values: &LivenessValues,
         borrow_set: &BorrowSet<'tcx>,
     ) -> FxIndexMap<Location, Vec<BorrowIndex>> {
         // The in-tree polonius analysis computes loans going out of scope using the
@@ -312,7 +309,7 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
             visited: DenseBitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],
             body,
-            regioncx,
+            liveness_values,
             loans_out_of_scope_at_location: FxIndexMap::default(),
         };
         for (loan_idx, loan_data) in borrow_set.iter_enumerated() {
@@ -412,7 +409,8 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
             // Reachability is location-insensitive, and we could take advantage of that, by jumping
             // to a further point than just the next statement: we can jump to the furthest point
             // within the block where `r` is live.
-            if self.regioncx.is_loan_live_at(loan_idx, location) {
+            let point = self.liveness_values.point_from_location(location);
+            if self.liveness_values.is_loan_live_at(loan_idx, point) {
                 continue;
             }
 
@@ -429,14 +427,15 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         body: &'a Body<'tcx>,
-        regioncx: &RegionInferenceContext<'tcx>,
+        liveness_values: &'a LivenessValues,
+        scc_values: &InferredRegions<'tcx>,
         borrow_set: &'a BorrowSet<'tcx>,
     ) -> Self {
         let borrows_out_of_scope_at_location =
             if !tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
-                calculate_borrows_out_of_scope_at_location(body, regioncx, borrow_set)
+                calculate_borrows_out_of_scope_at_location(body, scc_values, borrow_set)
             } else {
-                PoloniusOutOfScopePrecomputer::compute(body, regioncx, borrow_set)
+                PoloniusOutOfScopePrecomputer::compute(body, liveness_values, borrow_set)
             };
         Borrows { tcx, body, borrow_set, borrows_out_of_scope_at_location }
     }

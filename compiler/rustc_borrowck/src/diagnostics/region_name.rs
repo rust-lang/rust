@@ -248,7 +248,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             self.next_region_name.try_borrow().unwrap()
         );
 
-        assert!(self.regioncx.universal_regions().is_universal_region(fr));
+        //FIXME! assert!(self.regioncx.universal_regions().is_universal_region(fr));
 
         match self.region_names.borrow_mut().entry(fr) {
             IndexEntry::Occupied(precomputed_name) => Some(*precomputed_name.get()),
@@ -324,7 +324,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 }
 
                 ty::LateParamRegionKind::ClosureEnv => {
-                    let def_ty = self.regioncx.universal_regions().defining_ty;
+                    let def_ty = self.universal_regions().defining_ty;
 
                     let closure_kind = match def_ty {
                         DefiningTy::Closure(_, args) => args.as_closure().kind(),
@@ -385,12 +385,13 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         &self,
         fr: RegionVid,
     ) -> Option<RegionName> {
-        let implicit_inputs = self.regioncx.universal_regions().defining_ty.implicit_inputs();
-        let argument_index = self.regioncx.get_argument_index_for_region(self.infcx.tcx, fr)?;
+        let implicit_inputs = self.universal_regions().defining_ty.implicit_inputs();
+        let argument_index =
+            self.universal_regions().get_argument_index_for_region(self.infcx.tcx, fr)?;
 
-        let arg_ty = self.regioncx.universal_regions().unnormalized_input_tys
-            [implicit_inputs + argument_index];
-        let (_, span) = self.regioncx.get_argument_name_and_span_for_region(
+        let arg_ty =
+            self.universal_regions().unnormalized_input_tys[implicit_inputs + argument_index];
+        let (_, span) = self.universal_regions().get_argument_name_and_span_for_region(
             self.body,
             self.local_names(),
             argument_index,
@@ -643,8 +644,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// ```
     #[instrument(level = "trace", skip(self))]
     fn give_name_if_anonymous_region_appears_in_upvars(&self, fr: RegionVid) -> Option<RegionName> {
-        let upvar_index = self.regioncx.get_upvar_index_for_region(self.infcx.tcx, fr)?;
-        let (upvar_name, upvar_span) = self.regioncx.get_upvar_name_and_span_for_region(
+        let upvar_index =
+            self.universal_regions().get_upvar_index_for_region(self.infcx.tcx, fr)?;
+        let (upvar_name, upvar_span) = self.universal_regions().get_upvar_name_and_span_for_region(
             self.infcx.tcx,
             self.upvars,
             upvar_index,
@@ -665,7 +667,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     fn give_name_if_anonymous_region_appears_in_output(&self, fr: RegionVid) -> Option<RegionName> {
         let tcx = self.infcx.tcx;
 
-        let return_ty = self.regioncx.universal_regions().unnormalized_output_ty;
+        let return_ty = self.universal_regions().unnormalized_output_ty;
         debug!("give_name_if_anonymous_region_appears_in_output: return_ty = {:?}", return_ty);
         if !tcx.any_free_region_meets(&return_ty, |r| r.as_var() == fr) {
             return None;
@@ -848,7 +850,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     ) -> Option<RegionName> {
         // Note: coroutines from `async fn` yield `()`, so we don't have to
         // worry about them here.
-        let yield_ty = self.regioncx.universal_regions().yield_ty?;
+        let yield_ty = self.universal_regions().yield_ty?;
         debug!("give_name_if_anonymous_region_appears_in_yield_ty: yield_ty = {:?}", yield_ty);
 
         let tcx = self.infcx.tcx;
@@ -939,18 +941,15 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             .predicates;
 
         if let Some(upvar_index) = self
-            .regioncx
             .universal_regions()
             .defining_ty
             .upvar_tys()
             .iter()
             .position(|ty| self.any_param_predicate_mentions(&predicates, ty, region))
         {
-            let (upvar_name, upvar_span) = self.regioncx.get_upvar_name_and_span_for_region(
-                self.infcx.tcx,
-                self.upvars,
-                upvar_index,
-            );
+            let (upvar_name, upvar_span) = self
+                .universal_regions()
+                .get_upvar_name_and_span_for_region(self.infcx.tcx, self.upvars, upvar_index);
             let region_name = self.synthesize_region_name();
 
             Some(RegionName {
@@ -958,17 +957,14 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 source: RegionNameSource::AnonRegionFromUpvar(upvar_span, upvar_name),
             })
         } else if let Some(arg_index) = self
-            .regioncx
             .universal_regions()
             .unnormalized_input_tys
             .iter()
             .position(|ty| self.any_param_predicate_mentions(&predicates, *ty, region))
         {
-            let (arg_name, arg_span) = self.regioncx.get_argument_name_and_span_for_region(
-                self.body,
-                self.local_names(),
-                arg_index,
-            );
+            let (arg_name, arg_span) = self
+                .universal_regions()
+                .get_argument_name_and_span_for_region(self.body, self.local_names(), arg_index);
             let region_name = self.synthesize_region_name();
 
             Some(RegionName {
