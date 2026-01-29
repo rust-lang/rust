@@ -19,7 +19,6 @@ extend-exclude = [
 arange = "arange"
 childs = "childs"
 clonable = "clonable"
-Datas = "Datas"
 filetimes = "filetimes"
 leafs = "leafs"
 makro = "makro"
@@ -28,7 +27,6 @@ moreso = "moreso"
 optin = "optin"
 publically = "publically"
 rplace = "rplace"
-smove = "smove"
 splitted = "splitted"
 taits = "taits"
 targetting = "targetting"
@@ -36,9 +34,6 @@ unparseable = "unparseable"
 unstability = "unstability"
 unstalled = "unstalled"
 numer = "numer"
-
-# this can be valid word, depends on dictionary edition
-#matcheable = "matcheable"
 
 [default.extend-identifiers]
 # An entry goes here if the typo is part of some existing ident
@@ -63,6 +58,7 @@ Oppen = "Oppen"
 # typos treats this as two different camelcase words (`SETTIN` and `Gs`)
 # Tracked in: https://github.com/crate-ci/typos/issues/745
 SETTINGs = "SETTINGs"
+key_smove = "key_smove" # shifted move key, used by terminfo
 tolen = "tolen"
 
 [default]
