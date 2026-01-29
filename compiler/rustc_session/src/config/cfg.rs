@@ -20,6 +20,7 @@
 //!  - Add the cfg in [`disallow_cfgs`] to disallow users from setting it via `--cfg`
 //!  - Add the feature gating in `compiler/rustc_feature/src/builtin_attrs.rs`
 
+use std::borrow::Cow;
 use std::hash::Hash;
 use std::iter;
 
@@ -30,7 +31,7 @@ use rustc_lint_defs::builtin::EXPLICIT_BUILTIN_CFGS_IN_FLAGS;
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, Target};
 
-use crate::config::{CrateType, FmtDebug};
+use crate::config::{CG_OPTIONS, CrateType, FmtDebug, OptionDesc, OptionPrefix, Z_OPTIONS};
 use crate::{Session, errors};
 
 /// The parsed `--cfg` options that define the compilation environment of the
@@ -115,20 +116,20 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
 
     for cfg in user_cfgs {
         match cfg {
-            (sym::overflow_checks, None) => disallow(cfg, "-C overflow-checks"),
-            (sym::debug_assertions, None) => disallow(cfg, "-C debug-assertions"),
-            (sym::ub_checks, None) => disallow(cfg, "-Z ub-checks"),
-            (sym::contract_checks, None) => disallow(cfg, "-Z contract-checks"),
-            (sym::sanitize, None | Some(_)) => disallow(cfg, "-Z sanitizer"),
+            (sym::overflow_checks, None) => disallow(cfg, Cow::Borrowed("-C overflow-checks")),
+            (sym::debug_assertions, None) => disallow(cfg, Cow::Borrowed("-C debug-assertions")),
+            (sym::ub_checks, None) => disallow(cfg, Cow::Borrowed("-Z ub-checks")),
+            (sym::contract_checks, None) => disallow(cfg, Cow::Borrowed("-Z contract-checks")),
+            (sym::sanitize, None | Some(_)) => disallow(cfg, Cow::Borrowed("-Z sanitizer")),
             (
                 sym::sanitizer_cfi_generalize_pointers | sym::sanitizer_cfi_normalize_integers,
                 None | Some(_),
-            ) => disallow(cfg, "-Z sanitizer=cfi"),
-            (sym::proc_macro, None) => disallow(cfg, "--crate-type proc-macro"),
+            ) => disallow(cfg, Cow::Borrowed("-Z sanitizer=cfi")),
+            (sym::proc_macro, None) => disallow(cfg, Cow::Borrowed("--crate-type proc-macro")),
             (sym::panic, Some(sym::abort | sym::unwind | sym::immediate_abort)) => {
-                disallow(cfg, "-C panic")
+                disallow(cfg, Cow::Borrowed("-C panic"))
             }
-            (sym::target_feature, Some(_)) => disallow(cfg, "-C target-feature"),
+            (sym::target_feature, Some(_)) => disallow(cfg, Cow::Borrowed("-C target-feature")),
             (sym::unix, None)
             | (sym::windows, None)
             | (sym::relocation_model, Some(_))
@@ -147,11 +148,31 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             | (sym::target_has_reliable_f16_math, None | Some(_))
             | (sym::target_has_reliable_f128, None | Some(_))
             | (sym::target_has_reliable_f128_math, None | Some(_))
-            | (sym::target_thread_local, None) => disallow(cfg, "--target"),
-            (sym::fmt_debug, None | Some(_)) => disallow(cfg, "-Z fmt-debug"),
-            (sym::emscripten_wasm_eh, None | Some(_)) => disallow(cfg, "-Z emscripten_wasm_eh"),
+            | (sym::target_thread_local, None) => disallow(cfg, Cow::Borrowed("--target")),
+            (sym::fmt_debug, None | Some(_)) => disallow(cfg, Cow::Borrowed("-Z fmt-debug")),
+            (sym::emscripten_wasm_eh, None | Some(_)) => {
+                disallow(cfg, Cow::Borrowed("-Z emscripten_wasm_eh"))
+            }
             _ => {}
         }
+    }
+
+    // Also prohibit setting any target modifier cfgs, these all have corresponding flags.
+    fn target_modifiers_with_cfgs(
+        desc: &OptionDesc<impl OptionPrefix>,
+    ) -> Option<(String, Symbol)> {
+        desc.target_modifier_cfg().map(|sym| (desc.flag(), sym))
+    }
+    let check_target_modifier_with_cfg = |flag, flag_cfg| {
+        if let Some(matching_cfg) = user_cfgs.iter().find(|(cfg, _)| *cfg == flag_cfg) {
+            disallow(matching_cfg, Cow::Owned(flag));
+        }
+    };
+    for (flag, cfg) in CG_OPTIONS.iter().filter_map(target_modifiers_with_cfgs) {
+        check_target_modifier_with_cfg(flag, cfg);
+    }
+    for (flag, cfg) in Z_OPTIONS.iter().filter_map(target_modifiers_with_cfgs) {
+        check_target_modifier_with_cfg(flag, cfg);
     }
 }
 

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::num::{NonZero, ParseIntError};
 
 use rustc_ast::token;
@@ -514,5 +515,5 @@ pub(crate) struct SoftFloatDeprecated;
 pub(crate) struct UnexpectedBuiltinCfg {
     pub(crate) cfg: String,
     pub(crate) cfg_name: Symbol,
-    pub(crate) controlled_by: &'static str,
+    pub(crate) controlled_by: Cow<'static, str>,
 }
