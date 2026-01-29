@@ -1,6 +1,8 @@
-use super::PidFd as InternalPidFd;
 use crate::assert_matches;
 use crate::os::fd::AsRawFd;
+#[cfg(target_os = "freebsd")]
+use crate::os::freebsd::process::{ChildExt, CommandExt as _};
+#[cfg(target_os = "linux")]
 use crate::os::linux::process::{ChildExt, CommandExt as _};
 use crate::os::unix::process::{CommandExt as _, ExitStatusExt};
 use crate::process::Command;
@@ -107,6 +109,12 @@ fn test_pidfd() {
     assert_matches!(res, Err(e) if e.raw_os_error() == Some(libc::ESRCH));
 }
 
+#[cfg(target_os = "freebsd")]
 fn probe_pidfd_support() -> bool {
-    InternalPidFd::current_process().is_ok()
+    true
+}
+
+#[cfg(target_os = "linux")]
+fn probe_pidfd_support() -> bool {
+    super::PidFd::current_process().is_ok()
 }

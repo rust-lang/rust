@@ -2,6 +2,8 @@
 
 use crate::io;
 
+#[cfg(target_os = "freebsd")]
+pub mod freebsd;
 #[cfg(target_os = "fuchsia")]
 pub mod fuchsia;
 pub mod futex;
