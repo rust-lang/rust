@@ -342,6 +342,9 @@ pub enum AnonConstKind {
     GCE,
     /// stable `min_const_generics` anon consts are not allowed to use any generic parameters
     MCG,
+    /// `feature(opaque_generic_const_args)` anon consts are allowed to use arbitrary
+    /// generic parameters in scope, but only if they syntactically reference them.
+    OGCA,
     /// anon consts used as the length of a repeat expr are syntactically allowed to use generic parameters
     /// but must not depend on the actual instantiation. See #76200 for more information
     RepeatExprCount,

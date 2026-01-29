@@ -440,6 +440,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     maybe_stage_features(sess, features, krate);
     check_incompatible_features(sess, features);
+    check_dependent_features(sess, features);
     check_new_solver_banned_features(sess, features);
 
     let mut visitor = PostExpansionVisitor { sess, features };
@@ -644,6 +645,27 @@ fn check_incompatible_features(sess: &Session, features: &Features) {
         {
             let spans = vec![f1_span, f2_span];
             sess.dcx().emit_err(errors::IncompatibleFeatures { spans, f1: f1_name, f2: f2_name });
+        }
+    }
+}
+
+fn check_dependent_features(sess: &Session, features: &Features) {
+    for &(parent, children) in
+        rustc_feature::DEPENDENT_FEATURES.iter().filter(|(parent, _)| features.enabled(*parent))
+    {
+        if children.iter().any(|f| !features.enabled(*f)) {
+            let parent_span = features
+                .enabled_features_iter_stable_order()
+                .find_map(|(name, span)| (name == parent).then_some(span))
+                .unwrap();
+            // FIXME: should probably format this in fluent instead of here
+            let missing = children
+                .iter()
+                .filter(|f| !features.enabled(**f))
+                .map(|s| format!("`{}`", s.as_str()))
+                .intersperse(String::from(", "))
+                .collect();
+            sess.dcx().emit_err(errors::MissingDependentFeatures { parent_span, parent, missing });
         }
     }
 }

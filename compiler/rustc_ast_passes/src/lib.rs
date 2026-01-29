@@ -5,6 +5,7 @@
 // tidy-alphabetical-start
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
+#![feature(iter_intersperse)]
 #![feature(iter_is_partitioned)]
 // tidy-alphabetical-end
 

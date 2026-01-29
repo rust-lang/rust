@@ -35,7 +35,6 @@ const NON_TYPE_CONST: usize = const { 1 };
 #[type_const]
 //~^ ERROR: the `#[type_const]` attribute is an experimental feature
 const TYPE_CONST: usize = const { 1 };
-//~^ ERROR: unbraced const blocks as const args are experimental
 
 static STATIC: usize = const { 1 };
 

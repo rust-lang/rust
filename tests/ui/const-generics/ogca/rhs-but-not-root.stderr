@@ -1,0 +1,8 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/rhs-but-not-root.rs:8:49
+   |
+LL | const FOO<const N: usize>: usize = ID::<const { N + 1 }>;
+   |                                                 ^
+
+error: aborting due to 1 previous error
+

@@ -835,6 +835,16 @@ pub(crate) struct IncompatibleFeatures {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_missing_dependent_features)]
+#[help]
+pub(crate) struct MissingDependentFeatures {
+    #[primary_span]
+    pub parent_span: Span,
+    pub parent: Symbol,
+    pub missing: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_negative_bound_not_supported)]
 pub(crate) struct NegativeBoundUnsupported {
     #[primary_span]

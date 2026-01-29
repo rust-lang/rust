@@ -228,6 +228,9 @@ ast_passes_match_arm_with_no_body =
     `match` arm with no body
     .suggestion = add a body after the pattern
 
+ast_passes_missing_dependent_features = `{$parent}` requires {$missing} to be enabled
+    .help = enable all of these features
+
 ast_passes_missing_unsafe_on_extern = extern blocks must be unsafe
     .suggestion = needs `unsafe` before the extern keyword
 

@@ -3,12 +3,16 @@ error: generic parameters may not be used in const operations
    |
 LL | const FREE1<T>: usize = const { std::mem::size_of::<T>() };
    |                                                     ^
+   |
+   = help: add `#![feature(opaque_generic_const_args)]` to allow generic expressions as the RHS of const items
 
 error: generic parameters may not be used in const operations
   --> $DIR/type_const-on-generic-expr.rs:8:46
    |
 LL | const FREE2<const I: usize>: usize = const { I + 1 };
    |                                              ^
+   |
+   = help: add `#![feature(opaque_generic_const_args)]` to allow generic expressions as the RHS of const items
 
 error: aborting due to 2 previous errors
 
