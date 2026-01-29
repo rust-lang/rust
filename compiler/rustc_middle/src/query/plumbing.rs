@@ -33,7 +33,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub query_cache: usize,
     pub cache_on_disk: fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool,
     pub execute_query: fn(tcx: TyCtxt<'tcx>, k: C::Key) -> C::Value,
-    pub compute: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
+    pub compute_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
     pub can_load_from_disk: bool,
     pub try_load_from_disk: fn(
         tcx: TyCtxt<'tcx>,
