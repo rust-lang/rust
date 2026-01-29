@@ -86,6 +86,9 @@ attr_parsing_invalid_attr_unsafe = `{$name}` is not an unsafe attribute
     .suggestion = remove the `unsafe(...)`
     .note = extraneous unsafe is not allowed in attributes
 
+attr_parsing_invalid_export_visibility =
+    invalid export visibility: {$unrecognized_visibility}
+
 attr_parsing_invalid_issue_string =
     `issue` must be a non-zero numeric string or "none"
     .must_not_be_zero = `issue` must not be "0", use "none" instead

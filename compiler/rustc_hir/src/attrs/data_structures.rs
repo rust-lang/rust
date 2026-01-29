@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 pub use ReprAttr::*;
 use rustc_abi::Align;
@@ -184,6 +185,26 @@ impl Deprecation {
 
     pub fn is_since_rustc_version(&self) -> bool {
         matches!(self.since, DeprecatedSince::RustcVersion(_))
+    }
+}
+
+/// Pre-parsed value of `#[export_visibility = ...]` attribute.
+///
+/// In a future RFC we may consider adding support for `Hidden`, `Protected`, and/or
+/// `Interposable`.
+#[derive(Clone, Copy, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub enum ExportVisibilityAttrValue {
+    TargetDefault,
+}
+
+impl FromStr for ExportVisibilityAttrValue {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<ExportVisibilityAttrValue, Self::Err> {
+        match s {
+            "target_default" => Ok(ExportVisibilityAttrValue::TargetDefault),
+            _ => Err(()),
+        }
     }
 }
 
@@ -873,6 +894,9 @@ pub enum AttributeKind {
 
     /// Represents `#[export_stable]`.
     ExportStable,
+
+    /// Represents [`#[export_visibility = ...]`](https://github.com/rust-lang/rust/issues/151425)
+    ExportVisibility { visibility: ExportVisibilityAttrValue, span: Span },
 
     /// Represents `#[ffi_const]`.
     FfiConst(Span),

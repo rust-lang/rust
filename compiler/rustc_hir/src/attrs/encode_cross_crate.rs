@@ -55,6 +55,7 @@ impl AttributeKind {
             EiiImpls(..) => No,
             ExportName { .. } => Yes,
             ExportStable => No,
+            ExportVisibility { .. } => Yes,
             FfiConst(..) => No,
             FfiPure(..) => No,
             Fundamental { .. } => Yes,

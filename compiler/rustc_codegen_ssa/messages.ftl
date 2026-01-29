@@ -48,6 +48,12 @@ codegen_ssa_error_creating_remark_dir = failed to create remark directory: {$err
 codegen_ssa_error_writing_def_file =
     error writing .DEF file: {$error}
 
+codegen_ssa_export_visibility_with_rustc_std_internal_symbol =
+    `#[export_visibility = ...]` cannot be used on internal language items
+
+codegen_ssa_export_visibility_without_no_mangle_nor_export_name =
+    `#[export_visibility = ...]` will be ignored without `export_name`, `no_mangle`, or similar attribute
+
 codegen_ssa_extern_funcs_not_found = some `extern` functions couldn't be found; some native libraries may need to be installed or have their path specified
 
 codegen_ssa_extract_bundled_libs_archive_member = failed to get data from archive member '{$rlib}': {$error}

@@ -1,10 +1,14 @@
-use rustc_hir::attrs::{CoverageAttrKind, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy};
+use std::str::FromStr;
+
+use rustc_hir::attrs::{
+    CoverageAttrKind, ExportVisibilityAttrValue, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy,
+};
 use rustc_session::parse::feature_err;
 
 use super::prelude::*;
 use crate::session_diagnostics::{
-    NakedFunctionIncompatibleAttribute, NullOnExport, NullOnObjcClass, NullOnObjcSelector,
-    ObjcClassExpectedStringLiteral, ObjcSelectorExpectedStringLiteral,
+    InvalidExportVisibility, NakedFunctionIncompatibleAttribute, NullOnExport, NullOnObjcClass,
+    NullOnObjcSelector, ObjcClassExpectedStringLiteral, ObjcSelectorExpectedStringLiteral,
 };
 use crate::target_checking::Policy::AllowSilent;
 
@@ -150,6 +154,36 @@ impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
             return None;
         }
         Some(AttributeKind::ExportName { name, span: cx.attr_span })
+    }
+}
+
+pub(crate) struct ExportVisibilityParser;
+
+impl<S: Stage> SingleAttributeParser<S> for ExportVisibilityParser {
+    const PATH: &[rustc_span::Symbol] = &[sym::export_visibility];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::Static)]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "visibility");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(nv) = args.name_value() else {
+            cx.expected_name_value(cx.attr_span, None);
+            return None;
+        };
+        let Some(sv) = nv.value_as_str() else {
+            cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+            return None;
+        };
+        let Ok(visibility) = ExportVisibilityAttrValue::from_str(sv.as_str()) else {
+            cx.emit_err(InvalidExportVisibility {
+                span: nv.value_span,
+                unrecognized_visibility: sv.to_string(),
+            });
+            return None;
+        };
+        Some(AttributeKind::ExportVisibility { visibility, span: cx.attr_span })
     }
 }
 
