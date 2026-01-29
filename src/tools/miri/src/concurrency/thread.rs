@@ -343,8 +343,8 @@ impl VisitProvenance for Thread<'_> {
 
 impl VisitProvenance for Frame<'_, Provenance, FrameExtra<'_>> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
+        let return_place = self.return_place();
         let Frame {
-            return_place,
             locals,
             extra,
             // There are some private fields we cannot access; they contain no tags.
