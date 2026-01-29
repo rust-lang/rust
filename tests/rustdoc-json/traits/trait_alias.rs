@@ -19,7 +19,7 @@ pub struct Struct;
 impl Orig<i32> for Struct {}
 
 //@ has "$.index[?(@.name=='takes_alias')].inner.function.sig.inputs[0][1].impl_trait"
-//@ is "$.index[?(@.name=='takes_alias')].inner.function.sig.inputs[0][1].impl_trait[0].trait_bound.trait.id" $Alias
+//@ is "$.index[?(@.name=='takes_alias')].inner.function.sig.inputs[0][1].impl_trait.bounds[0].trait_bound.trait.id" $Alias
 //@ is "$.index[?(@.name=='takes_alias')].inner.function.generics.params[0].kind.type.bounds[0].trait_bound.trait.id" $Alias
 pub fn takes_alias(_: impl Alias) {}
 // FIXME: Should the trait be mentioned in both the decl and generics?

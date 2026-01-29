@@ -10,6 +10,8 @@ pub trait GenericFoo<'a> {}
 //@ is "$.index[?(@.name=='generics')].inner.function.generics.params[0].kind.type.default" 'null'
 //@ count "$.index[?(@.name=='generics')].inner.function.generics.params[0].kind.type.bounds[*]" 1
 //@ is "$.index[?(@.name=='generics')].inner.function.generics.params[0].kind.type.bounds[0].trait_bound.trait.id" '$foo'
+//@ has "$.index[?(@.name=='generics')].inner.function.generics.params[0].kind.type.implied_bounds[?(@.trait_bound.trait.path=='Sized')]"
+//@ !has "$.index[?(@.name=='generics')].inner.function.generics.params[0].kind.type.implied_bounds[?(@.trait_bound.modifier=='maybe')]"
 //@ count "$.index[?(@.name=='generics')].inner.function.sig.inputs[*]" 1
 //@ is "$.index[?(@.name=='generics')].inner.function.sig.inputs[0][0]" '"f"'
 //@ is "$.index[?(@.name=='generics')].inner.function.sig.inputs[0][1].generic" '"F"'
@@ -19,15 +21,33 @@ pub fn generics<F: Foo>(f: F) {}
 //@ count "$.index[?(@.name=='impl_trait')].inner.function.generics.params[*]" 1
 //@ is "$.index[?(@.name=='impl_trait')].inner.function.generics.params[0].name" '"impl Foo"'
 //@ is "$.index[?(@.name=='impl_trait')].inner.function.generics.params[0].kind.type.bounds[0].trait_bound.trait.id" $foo
+//@ has "$.index[?(@.name=='impl_trait')].inner.function.generics.params[0].kind.type.implied_bounds[?(@.trait_bound.trait.path=='Sized')]"
+//@ !has "$.index[?(@.name=='impl_trait')].inner.function.generics.params[0].kind.type.implied_bounds[?(@.trait_bound.modifier=='maybe')]"
 //@ count "$.index[?(@.name=='impl_trait')].inner.function.sig.inputs[*]" 1
 //@ is "$.index[?(@.name=='impl_trait')].inner.function.sig.inputs[0][0]" '"f"'
-//@ count "$.index[?(@.name=='impl_trait')].inner.function.sig.inputs[0][1].impl_trait[*]" 1
-//@ is "$.index[?(@.name=='impl_trait')].inner.function.sig.inputs[0][1].impl_trait[0].trait_bound.trait.id" $foo
+//@ count "$.index[?(@.name=='impl_trait')].inner.function.sig.inputs[0][1].impl_trait.bounds[*]" 1
+//@ is "$.index[?(@.name=='impl_trait')].inner.function.sig.inputs[0][1].impl_trait.bounds[0].trait_bound.trait.id" $foo
+//@ has "$.index[?(@.name=='impl_trait')].inner.function.sig.inputs[0][1].impl_trait.implied_bounds[?(@.trait_bound.trait.path=='Sized')]"
+//@ !has "$.index[?(@.name=='impl_trait')].inner.function.sig.inputs[0][1].impl_trait.implied_bounds[?(@.trait_bound.modifier=='maybe')]"
+//@ !has "$.index[?(@.name=='impl_trait')].inner.function.sig.inputs[0][1].impl_trait.implied_bounds[?(@.trait_bound.trait.path=='Foo')]"
 pub fn impl_trait(f: impl Foo) {}
 
 //@ count "$.index[?(@.name=='where_clase')].inner.function.generics.params[*]" 3
 //@ is "$.index[?(@.name=='where_clase')].inner.function.generics.params[0].name" '"F"'
-//@ is "$.index[?(@.name=='where_clase')].inner.function.generics.params[0].kind" '{"type": {"bounds": [], "default": null, "is_synthetic": false}}'
+//@ is "$.index[?(@.name=='where_clase')].inner.function.generics.params[0].kind.type.bounds" "[]"
+//@ is "$.index[?(@.name=='where_clase')].inner.function.generics.params[0].kind.type.default" 'null'
+//@ is "$.index[?(@.name=='where_clase')].inner.function.generics.params[0].kind.type.is_synthetic" 'false'
+//@ !has "$.index[?(@.name=='where_clase')].inner.function.generics.params[0].kind.type.implied_bounds[?(@.trait_bound.trait.path=='Foo')]"
+//@ has "$.index[?(@.name=='where_clase')].inner.function.generics.params[0].kind.type.implied_bounds[?(@.trait_bound.trait.path=='Sized')]"
+//@ !has "$.index[?(@.name=='where_clase')].inner.function.generics.params[0].kind.type.implied_bounds[?(@.trait_bound.modifier=='maybe')]"
+//@ is "$.index[?(@.name=='where_clase')].inner.function.generics.params[1].name" '"G"'
+//@ !has "$.index[?(@.name=='where_clase')].inner.function.generics.params[1].kind.type.implied_bounds[?(@.trait_bound.trait.path=='GenericFoo')]"
+//@ has "$.index[?(@.name=='where_clase')].inner.function.generics.params[1].kind.type.implied_bounds[?(@.trait_bound.trait.path=='Sized')]"
+//@ !has "$.index[?(@.name=='where_clase')].inner.function.generics.params[1].kind.type.implied_bounds[?(@.trait_bound.modifier=='maybe')]"
+//@ is "$.index[?(@.name=='where_clase')].inner.function.generics.params[2].name" '"H"'
+//@ !has "$.index[?(@.name=='where_clase')].inner.function.generics.params[2].kind.type.implied_bounds[?(@.trait_bound.trait.path=='Foo')]"
+//@ has "$.index[?(@.name=='where_clase')].inner.function.generics.params[2].kind.type.implied_bounds[?(@.trait_bound.trait.path=='Sized')]"
+//@ !has "$.index[?(@.name=='where_clase')].inner.function.generics.params[2].kind.type.implied_bounds[?(@.trait_bound.modifier=='maybe')]"
 //@ count "$.index[?(@.name=='where_clase')].inner.function.sig.inputs[*]" 3
 //@ is "$.index[?(@.name=='where_clase')].inner.function.sig.inputs[0][0]" '"f"'
 //@ is "$.index[?(@.name=='where_clase')].inner.function.sig.inputs[0][1].generic" '"F"'
@@ -36,7 +56,6 @@ pub fn impl_trait(f: impl Foo) {}
 //@ is "$.index[?(@.name=='where_clase')].inner.function.generics.where_predicates[0].bound_predicate.type.generic" \"F\"
 //@ count "$.index[?(@.name=='where_clase')].inner.function.generics.where_predicates[0].bound_predicate.bounds[*]" 1
 //@ is "$.index[?(@.name=='where_clase')].inner.function.generics.where_predicates[0].bound_predicate.bounds[0].trait_bound.trait.id" $foo
-
 //@ is "$.index[?(@.name=='where_clase')].inner.function.generics.where_predicates[1].bound_predicate.type.generic" \"G\"
 //@ count "$.index[?(@.name=='where_clase')].inner.function.generics.where_predicates[1].bound_predicate.bounds[*]" 1
 //@ is "$.index[?(@.name=='where_clase')].inner.function.generics.where_predicates[1].bound_predicate.bounds[0].trait_bound.trait.id" $generic_foo

@@ -2043,7 +2043,7 @@ fn get_index_type_id(
         clean::Type::Pat(..)
         | clean::Generic(_)
         | clean::SelfTy
-        | clean::ImplTrait(_)
+        | clean::ImplTrait { .. }
         | clean::Infer
         | clean::UnsafeBinder(_) => None,
     }
@@ -2141,7 +2141,7 @@ fn simplify_fn_type<'a, 'tcx>(
                 RenderType { id: Some(RenderTypeId::Index(idx)), generics: None, bindings: None }
             })
         }
-        Type::ImplTrait(ref bounds) => {
+        Type::ImplTrait { ref bounds, .. } => {
             let type_bounds = bounds
                 .iter()
                 .filter_map(|bound| bound.get_trait_path())

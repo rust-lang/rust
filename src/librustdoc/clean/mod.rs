@@ -264,7 +264,7 @@ pub(crate) fn clean_trait_ref_with_constraints<'tcx>(
     path
 }
 
-fn clean_poly_trait_ref_with_constraints<'tcx>(
+pub(crate) fn clean_poly_trait_ref_with_constraints<'tcx>(
     cx: &mut DocContext<'tcx>,
     poly_trait_ref: ty::PolyTraitRef<'tcx>,
     constraints: ThinVec<AssocItemConstraint>,
@@ -458,7 +458,7 @@ fn clean_type_outlives_predicate<'tcx>(
     }
 }
 
-fn clean_middle_term<'tcx>(
+pub(crate) fn clean_middle_term<'tcx>(
     term: ty::Binder<'tcx, ty::Term<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> Term {
@@ -526,7 +526,7 @@ fn should_fully_qualify_path(self_def_id: Option<DefId>, trait_: &Path, self_typ
             .map_or(!self_type.is_self_type(), |(id, trait_)| id != trait_)
 }
 
-fn projection_to_path_segment<'tcx>(
+pub(crate) fn projection_to_path_segment<'tcx>(
     proj: ty::Binder<'tcx, ty::AliasTerm<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> PathSegment {
@@ -698,8 +698,13 @@ pub(crate) fn clean_generics<'tcx>(
             let param = clean_generic_param(cx, Some(gens), param);
             match param.kind {
                 GenericParamDefKind::Lifetime { .. } => unreachable!(),
-                GenericParamDefKind::Type { ref bounds, .. } => {
-                    cx.impl_trait_bounds.insert(param.def_id.into(), bounds.to_vec());
+                GenericParamDefKind::Type { ref bounds, ref synthetic, .. } => {
+                    debug_assert!(*synthetic, "non-synthetic generic for impl trait: {param:?}");
+                    let param_def_id = param.def_id;
+                    cx.impl_trait_bounds.insert(
+                        param_def_id.into(),
+                        (bounds.to_vec(), ImplTraitOrigin::Param { def_id: param_def_id }),
+                    );
                 }
                 GenericParamDefKind::Const { .. } => unreachable!(),
             }
@@ -819,7 +824,7 @@ fn clean_ty_generics_inner<'tcx>(
 ) -> Generics {
     // Don't populate `cx.impl_trait_bounds` before cleaning where clauses,
     // since `clean_predicate` would consume them.
-    let mut impl_trait = BTreeMap::<u32, Vec<GenericBound>>::default();
+    let mut impl_trait = BTreeMap::<u32, (DefId, Vec<GenericBound>)>::default();
 
     let params: ThinVec<_> = gens
         .own_params
@@ -832,7 +837,7 @@ fn clean_ty_generics_inner<'tcx>(
                     return false;
                 }
                 if synthetic {
-                    impl_trait.insert(param.index, vec![]);
+                    impl_trait.insert(param.index, (param.def_id, vec![]));
                     return false;
                 }
                 true
@@ -873,7 +878,7 @@ fn clean_ty_generics_inner<'tcx>(
             };
 
             if let Some(param_idx) = param_idx
-                && let Some(bounds) = impl_trait.get_mut(&param_idx)
+                && let Some((_, bounds)) = impl_trait.get_mut(&param_idx)
             {
                 let pred = clean_predicate(*pred, cx)?;
 
@@ -895,7 +900,7 @@ fn clean_ty_generics_inner<'tcx>(
         })
         .collect::<Vec<_>>();
 
-    for (idx, mut bounds) in impl_trait {
+    for (idx, (param_def_id, mut bounds)) in impl_trait {
         let mut has_sized = false;
         bounds.retain(|b| {
             if b.is_sized_bound(cx) {
@@ -929,7 +934,8 @@ fn clean_ty_generics_inner<'tcx>(
             }
         }
 
-        cx.impl_trait_bounds.insert(idx.into(), bounds);
+        cx.impl_trait_bounds
+            .insert(idx.into(), (bounds, ImplTraitOrigin::Param { def_id: param_def_id }));
     }
 
     // Now that `cx.impl_trait_bounds` is populated, we can process
@@ -1157,7 +1163,7 @@ fn clean_poly_fn_sig<'tcx>(
     // function isn't async without needing to execute the query `asyncness` at
     // all which gives us a noticeable performance boost.
     if let Some(did) = did
-        && let Type::ImplTrait(_) = output
+        && let Type::ImplTrait { .. } = output
         && cx.tcx.asyncness(did).is_async()
     {
         output = output.sugared_async_return_type();
@@ -1648,8 +1654,8 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
                 if let Some(new_ty) = cx.args.get(&did).and_then(|p| p.as_ty()).cloned() {
                     return new_ty;
                 }
-                if let Some(bounds) = cx.impl_trait_bounds.remove(&did.into()) {
-                    return ImplTrait(bounds);
+                if let Some((bounds, origin)) = cx.impl_trait_bounds.remove(&did.into()) {
+                    return ImplTrait { bounds, origin };
                 }
             }
 
@@ -1838,7 +1844,9 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         }
         TyKind::Tup(tys) => Tuple(tys.iter().map(|ty| clean_ty(ty, cx)).collect()),
         TyKind::OpaqueDef(ty) => {
-            ImplTrait(ty.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect())
+            let bounds =
+                ty.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect::<Vec<_>>();
+            ImplTrait { bounds, origin: ImplTraitOrigin::Opaque { def_id: ty.def_id.to_def_id() } }
         }
         TyKind::Path(_) => clean_qpath(ty, cx),
         TyKind::TraitObject(bounds, lifetime) => {
@@ -2226,8 +2234,8 @@ pub(crate) fn clean_middle_ty<'tcx>(
         }
 
         ty::Param(ref p) => {
-            if let Some(bounds) = cx.impl_trait_bounds.remove(&p.index.into()) {
-                ImplTrait(bounds)
+            if let Some((bounds, origin)) = cx.impl_trait_bounds.remove(&p.index.into()) {
+                ImplTrait { bounds, origin }
             } else if p.name == kw::SelfUpper {
                 SelfTy
             } else {
@@ -2363,7 +2371,7 @@ fn clean_middle_opaque_bounds<'tcx>(
         ));
     }
 
-    ImplTrait(bounds)
+    ImplTrait { bounds, origin: ImplTraitOrigin::Opaque { def_id: impl_trait_def_id } }
 }
 
 pub(crate) fn clean_field<'tcx>(field: &hir::FieldDef<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
@@ -3177,7 +3185,7 @@ fn clean_assoc_item_constraint<'tcx>(
     }
 }
 
-fn clean_bound_vars<'tcx>(
+pub(crate) fn clean_bound_vars<'tcx>(
     bound_vars: &ty::List<ty::BoundVariableKind>,
     cx: &mut DocContext<'tcx>,
 ) -> Vec<GenericParamDef> {
