@@ -2,7 +2,7 @@
 
 use alloc::vec::Vec;
 
-mod auxvec;
+pub(super) mod auxvec;
 
 fn read_file(orig_path: &str) -> Result<Vec<u8>, alloc::string::String> {
     use alloc::format;
@@ -37,7 +37,7 @@ fn read_file(orig_path: &str) -> Result<Vec<u8>, alloc::string::String> {
 
 cfg_select! {
     target_arch = "aarch64" => {
-        mod aarch64;
+        pub(super) mod aarch64;
         pub(crate) use self::aarch64::detect_features;
     }
     target_arch = "arm" => {

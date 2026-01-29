@@ -33,7 +33,7 @@ pub struct Std {
 }
 
 impl Std {
-    const CRATE_OR_DEPS: &[&str] = &["sysroot", "coretests", "alloctests"];
+    const CRATE_OR_DEPS: &[&str] = &["sysroot", "coretests", "alloctests", "std_detect_tests"];
 }
 
 impl Step for Std {

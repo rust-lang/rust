@@ -65,6 +65,7 @@ expression: test
     - Set({test::library/rustc-std-workspace-core})
     - Set({test::library/std})
     - Set({test::library/std_detect})
+    - Set({test::library/std_detect_tests})
     - Set({test::library/sysroot})
     - Set({test::library/test})
     - Set({test::library/unwind})

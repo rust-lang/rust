@@ -15,6 +15,7 @@ expression: bench
     - Set({bench::library/rustc-std-workspace-core})
     - Set({bench::library/std})
     - Set({bench::library/std_detect})
+    - Set({bench::library/std_detect_tests})
     - Set({bench::library/sysroot})
     - Set({bench::library/test})
     - Set({bench::library/unwind})

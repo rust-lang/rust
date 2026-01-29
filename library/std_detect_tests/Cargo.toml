@@ -1,0 +1,9 @@
+[package]
+name = "std_detect_tests"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+description = "Tests for std_detect"
+edition = "2024"
+
+[dependencies]
+std_detect = { path = "../std_detect" }

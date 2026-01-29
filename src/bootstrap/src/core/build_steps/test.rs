@@ -3018,7 +3018,10 @@ impl Step for Crate {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("sysroot").crate_or_deps("coretests").crate_or_deps("alloctests")
+        run.crate_or_deps("sysroot")
+            .crate_or_deps("coretests")
+            .crate_or_deps("alloctests")
+            .crate_or_deps("std_detect_tests")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -3137,6 +3140,9 @@ impl Step for Crate {
         }
         if crates.iter().any(|crate_| crate_ == "alloc") {
             crates.push("alloctests".to_owned());
+        }
+        if crates.iter().any(|crate_| crate_ == "std_detect") {
+            crates.push("std_detect_tests".to_owned());
         }
 
         run_cargo_test(cargo, &[], &crates, &*crate_description(&self.crates), target, builder);

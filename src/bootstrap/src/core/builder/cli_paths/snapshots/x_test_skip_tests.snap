@@ -1,6 +1,5 @@
 ---
 source: src/bootstrap/src/core/builder/cli_paths/tests.rs
-assertion_line: 68
 expression: test --skip=tests
 ---
 [Test] test::Tidy
@@ -29,6 +28,7 @@ expression: test --skip=tests
     - Set({test::library/rustc-std-workspace-core})
     - Set({test::library/std})
     - Set({test::library/std_detect})
+    - Set({test::library/std_detect_tests})
     - Set({test::library/sysroot})
     - Set({test::library/test})
     - Set({test::library/unwind})
