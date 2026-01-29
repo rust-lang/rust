@@ -835,23 +835,63 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             .collect::<Vec<_>>()
             .join(", ");
 
-        if matches!(obligation.cause.code(), ObligationCauseCode::FunctionArg { .. })
+        if let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = obligation.cause.code()
             && obligation.cause.span.can_be_used_for_suggestions()
         {
-            let (span, sugg) = if let Some(snippet) =
-                self.tcx.sess.source_map().span_to_snippet(obligation.cause.span).ok()
-                && snippet.starts_with("|")
-            {
-                (obligation.cause.span, format!("({snippet})({args})"))
-            } else {
-                (obligation.cause.span.shrink_to_hi(), format!("({args})"))
+            let span = obligation.cause.span;
+
+            let arg_expr = match self.tcx.hir_node(*arg_hir_id) {
+                hir::Node::Expr(expr) => Some(expr),
+                _ => None,
             };
 
-            // When the obligation error has been ensured to have been caused by
-            // an argument, the `obligation.cause.span` points at the expression
-            // of the argument, so we can provide a suggestion. Otherwise, we give
-            // a more general note.
-            err.span_suggestion_verbose(span, msg, sugg, Applicability::HasPlaceholders);
+            let is_closure_expr =
+                arg_expr.is_some_and(|expr| matches!(expr.kind, hir::ExprKind::Closure(..)));
+
+            // If the user wrote `|| {}()`, suggesting to call the closure would produce `(|| {}())()`,
+            // which doesn't help and is often outright wrong.
+            if args.is_empty()
+                && let Some(expr) = arg_expr
+                && let hir::ExprKind::Closure(closure) = expr.kind
+            {
+                let mut body = self.tcx.hir_body(closure.body).value;
+
+                // Async closures desugar to a closure returning a coroutine
+                if let hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async) =
+                    closure.kind
+                {
+                    let peeled = body.peel_blocks().peel_drop_temps();
+                    if let hir::ExprKind::Closure(inner) = peeled.kind {
+                        body = self.tcx.hir_body(inner.body).value;
+                    }
+                }
+
+                let peeled_body = body.peel_blocks().peel_drop_temps();
+                if let hir::ExprKind::Call(callee, call_args) = peeled_body.kind
+                    && call_args.is_empty()
+                    && let hir::ExprKind::Block(..) = callee.peel_blocks().peel_drop_temps().kind
+                {
+                    return false;
+                }
+            }
+
+            if is_closure_expr {
+                err.multipart_suggestion_verbose(
+                    msg,
+                    vec![
+                        (span.shrink_to_lo(), "(".to_string()),
+                        (span.shrink_to_hi(), format!(")({args})")),
+                    ],
+                    Applicability::HasPlaceholders,
+                );
+            } else {
+                err.span_suggestion_verbose(
+                    span.shrink_to_hi(),
+                    msg,
+                    format!("({args})"),
+                    Applicability::HasPlaceholders,
+                );
+            }
         } else if let DefIdOrName::DefId(def_id) = def_id_or_name {
             let name = match self.tcx.hir_get_if_local(def_id) {
                 Some(hir::Node::Expr(hir::Expr {
