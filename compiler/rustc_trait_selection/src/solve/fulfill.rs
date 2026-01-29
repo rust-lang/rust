@@ -185,6 +185,7 @@ where
         loop {
             let mut any_changed = false;
             for (mut obligation, stalled_on) in self.obligations.drain_pending(|_| true) {
+                tracing::debug!(?obligation);
                 if !infcx.tcx.recursion_limit().value_within_limit(obligation.recursion_depth) {
                     self.obligations.on_fulfillment_overflow(infcx);
                     // Only return true errors that we have accumulated while processing.

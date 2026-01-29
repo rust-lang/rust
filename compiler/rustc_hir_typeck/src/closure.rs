@@ -11,7 +11,7 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_macros::{TypeFoldable, TypeVisitable};
-use rustc_middle::span_bug;
+use rustc_middle::{bug, span_bug};
 use rustc_middle::ty::{
     self, ClosureKind, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
@@ -340,6 +340,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (None, None)
                 }
             },
+            ty::Closure(_, args) => match closure_kind {
+                hir::ClosureKind::Closure => {
+                    let closure_args = args.as_closure();
+                    let sig = closure_args.sig();
+                    tracing::debug!(?closure_args, ?sig);
+                    let sig = sig.map_bound(|sig| {
+                        let inputs = sig.inputs_and_output.first().unwrap();
+                        let inputs = match inputs.kind() {
+                            ty::Tuple(tys) => tys,
+                            _ => bug!(),
+                        };
+                        let output = sig.inputs_and_output.last().unwrap();
+                        let inputs_and_output = self.tcx.mk_type_list(&inputs.iter().chain([*output]).collect::<smallvec::SmallVec<[_; 4]>>());
+                        ty::FnSig {
+                            abi: sig.abi,
+                            safety: sig.safety,
+                            c_variadic: sig.c_variadic,
+                            inputs_and_output,
+                        }
+                    });
+                    tracing::debug!(?sig);
+                    let expected_sig = ExpectedSig { cause_span: None, sig };
+                    let kind = closure_args.kind_ty().to_opt_closure_kind();
+                    (Some(expected_sig), kind)
+                }
+                hir::ClosureKind::Coroutine(_) | hir::ClosureKind::CoroutineClosure(_) => {
+                    (None, None)
+                }
+            }
             _ => (None, None),
         }
     }
