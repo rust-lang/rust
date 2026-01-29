@@ -1,5 +1,6 @@
 #![feature(cfg_select)]
 #![crate_type = "lib"]
+#![warn(unreachable_cfg_select_predicates)] // Unused warnings are disabled by default in UI tests.
 
 fn print() {
     println!(cfg_select! {
@@ -133,7 +134,7 @@ extern "C" {
 cfg_select! {
     _ => {}
     true => {}
-    //~^ WARN unreachable predicate
+    //~^ WARN unreachable configuration predicate
 }
 
 cfg_select! {

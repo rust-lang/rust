@@ -3325,3 +3325,13 @@ pub(crate) struct UnknownCrateTypesSuggestion {
     pub span: Span,
     pub snippet: Symbol,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unreachable_cfg_select_predicate)]
+pub(crate) struct UnreachableCfgSelectPredicate {
+    #[label(lint_label2)]
+    pub span: Span,
+
+    #[label]
+    pub wildcard_span: Span,
+}
