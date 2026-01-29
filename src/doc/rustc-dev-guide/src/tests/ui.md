@@ -202,8 +202,8 @@ Finally, they ensure that no additional unexpected errors are generated.
 
 They have several forms, but generally are a comment with the diagnostic level
 (such as `ERROR`) and a substring of the expected error output.
-You don't have to write out the entire message, just make sure to include the important part of
-the message to make it self-documenting.
+You don't have to write out the entire message,
+but be sure to include the important part of the message to make it self-documenting.
 
 Most error annotations need to match with the line of the diagnostic.
 There are several ways to match the message with the line (see the examples below):
@@ -469,15 +469,14 @@ Just add one of the following [directives](directives.md):
   - `//@ run-crash` — compilation should succeed, but running the resulting
     binary should fail with a crash.
     Crashing is defined as "not exiting with a code in the range `0..=127`".
-    Example on Linux: Termination by `SIGABRT` or `SIGSEGV`.
-    Example on Windows: Exiting with the code for `STATUS_ILLEGAL_INSTRUCTION` (`0xC000001D`).
+    - Example on Linux: Termination by `SIGABRT` or `SIGSEGV`.
+    - Example on Windows: Exiting with the code for `STATUS_ILLEGAL_INSTRUCTION` (`0xC000001D`).
   - `//@ run-fail-or-crash` — compilation should succeed, but running the
     resulting binary should either `run-fail` or `run-crash`.
     Useful if a test crashes on some targets but just fails on others.
 
-For `run-pass`.
-`run-fail`, `run-crash` and `run-fail-or-crash` tests, by
-default the output of the program itself is not checked.
+For `run-pass`, `run-fail`, `run-crash`, and `run-fail-or-crash` tests,
+the output of the program itself is not checked by default.
 
 If you want to check the output of running the program, include the `check-run-results` directive.
 This will check for a `.run.stderr` and
@@ -526,7 +525,7 @@ The test should still include other normal directives and stdout/stderr files.
 When deciding where to place a test file, please try to find a subdirectory that
 best matches what you are trying to exercise.
 Do your best to keep things organized.
-Admittedly it can be difficult as some tests can overlap different
+Admittedly, it can be difficult as some tests can overlap different
 categories, and the existing layout may not fit well.
 
 Name the test by a concise description of what the test is checking.
@@ -621,7 +620,7 @@ The compiler defines several perma-unstable `#[rustc_*]` attributes gated behind
 the internal feature `rustc_attrs` that dump extra compiler-internal information.
 See the corresponding subsection in [compiler debugging] for more details.
 
-They can be used in tests to more precisely, legibly and easily test internal
+They can be used in tests to more precisely, legibly, and easily test internal
 compiler state in cases where it would otherwise be very hard to do the same
 with "user-facing" Rust alone.
 Indeed, one could say that this slightly abuses
