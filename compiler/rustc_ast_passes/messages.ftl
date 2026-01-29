@@ -187,6 +187,14 @@ ast_passes_forbidden_default =
     `default` is only allowed on items in trait impls
     .label = `default` because of this
 
+ast_passes_forbidden_final =
+    `final` is only allowed on associated functions in traits
+    .label = `final` because of this
+
+ast_passes_forbidden_final_without_body =
+    `final` is only allowed on associated functions if they have a body
+    .label = `final` because of this
+
 ast_passes_forbidden_non_lifetime_param =
     only lifetime parameters can be used in this context
 

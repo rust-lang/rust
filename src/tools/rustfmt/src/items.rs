@@ -319,12 +319,13 @@ impl<'a> FnSig<'a> {
         method_sig: &'a ast::FnSig,
         generics: &'a ast::Generics,
         visibility: &'a ast::Visibility,
+        defaultness: ast::Defaultness,
     ) -> FnSig<'a> {
         FnSig {
             safety: method_sig.header.safety,
             coroutine_kind: Cow::Borrowed(&method_sig.header.coroutine_kind),
             constness: method_sig.header.constness,
-            defaultness: ast::Defaultness::Final,
+            defaultness,
             ext: method_sig.header.ext,
             decl: &*method_sig.decl,
             generics,
@@ -339,9 +340,7 @@ impl<'a> FnSig<'a> {
     ) -> FnSig<'a> {
         match *fn_kind {
             visit::FnKind::Fn(visit::FnCtxt::Assoc(..), vis, ast::Fn { sig, generics, .. }) => {
-                let mut fn_sig = FnSig::from_method_sig(sig, generics, vis);
-                fn_sig.defaultness = defaultness;
-                fn_sig
+                FnSig::from_method_sig(sig, generics, vis, defaultness)
             }
             visit::FnKind::Fn(_, vis, ast::Fn { sig, generics, .. }) => FnSig {
                 decl,
@@ -459,6 +458,7 @@ impl<'a> FmtVisitor<'a> {
         sig: &ast::FnSig,
         vis: &ast::Visibility,
         generics: &ast::Generics,
+        defaultness: ast::Defaultness,
         span: Span,
     ) -> RewriteResult {
         // Drop semicolon or it will be interpreted as comment.
@@ -469,7 +469,7 @@ impl<'a> FmtVisitor<'a> {
             &context,
             indent,
             ident,
-            &FnSig::from_method_sig(sig, generics, vis),
+            &FnSig::from_method_sig(sig, generics, vis, defaultness),
             span,
             FnBraceStyle::None,
         )?;
@@ -3475,7 +3475,7 @@ impl Rewrite for ast::ForeignItem {
                         context,
                         shape.indent,
                         ident,
-                        &FnSig::from_method_sig(sig, generics, &self.vis),
+                        &FnSig::from_method_sig(sig, generics, &self.vis, defaultness),
                         span,
                         FnBraceStyle::None,
                     )

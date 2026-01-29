@@ -3135,8 +3135,16 @@ pub enum Const {
 /// For details see the [RFC #2532](https://github.com/rust-lang/rfcs/pull/2532).
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
 pub enum Defaultness {
+    /// Item is unmarked. Implicitly determined based off of position.
+    /// For impls, this is `final`; for traits, this is `default`.
+    ///
+    /// If you're expanding an item in a built-in macro or parsing an item
+    /// by hand, you probably want to use this.
+    Implicit,
+    /// `default`
     Default(Span),
-    Final,
+    /// `final`; per RFC 3678, only trait items may be *explicitly* marked final.
+    Final(Span),
 }
 
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic, Walkable)]
@@ -4127,7 +4135,7 @@ impl AssocItemKind {
             | Self::Fn(box Fn { defaultness, .. })
             | Self::Type(box TyAlias { defaultness, .. }) => defaultness,
             Self::MacCall(..) | Self::Delegation(..) | Self::DelegationMac(..) => {
-                Defaultness::Final
+                Defaultness::Implicit
             }
         }
     }

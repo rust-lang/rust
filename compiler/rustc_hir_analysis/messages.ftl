@@ -411,6 +411,9 @@ hir_analysis_opaque_captures_higher_ranked_lifetime = `impl Trait` cannot captur
     .label = `impl Trait` implicitly captures all lifetimes in scope
     .note = lifetime declared here
 
+hir_analysis_overriding_final_trait_function = cannot override `{$ident}` because it already has a `final` definition in the trait
+    .note = `{$ident}` is marked final here
+
 hir_analysis_param_in_ty_of_assoc_const_binding =
     the type of the associated constant `{$assoc_const}` must not depend on {$param_category ->
         [self] `Self`

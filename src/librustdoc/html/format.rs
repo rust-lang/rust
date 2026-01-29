@@ -1566,10 +1566,6 @@ pub(crate) fn print_abi_with_space(abi: ExternAbi) -> impl Display {
     })
 }
 
-pub(crate) fn print_default_space(v: bool) -> &'static str {
-    if v { "default " } else { "" }
-}
-
 fn print_generic_arg(generic_arg: &clean::GenericArg, cx: &Context<'_>) -> impl Display {
     fmt::from_fn(move |f| match generic_arg {
         clean::GenericArg::Lifetime(lt) => f.write_str(print_lifetime(lt)),

@@ -613,7 +613,7 @@ impl<'a> TraitDef<'a> {
                 },
                 attrs: ast::AttrVec::new(),
                 kind: ast::AssocItemKind::Type(Box::new(ast::TyAlias {
-                    defaultness: ast::Defaultness::Final,
+                    defaultness: ast::Defaultness::Implicit,
                     ident,
                     generics: Generics::default(),
                     after_where_clause: ast::WhereClause::default(),
@@ -849,7 +849,7 @@ impl<'a> TraitDef<'a> {
                 of_trait: Some(Box::new(ast::TraitImplHeader {
                     safety: self.safety,
                     polarity: ast::ImplPolarity::Positive,
-                    defaultness: ast::Defaultness::Final,
+                    defaultness: ast::Defaultness::Implicit,
                     trait_ref,
                 })),
                 constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
@@ -1071,7 +1071,7 @@ impl<'a> MethodDef<'a> {
         let trait_lo_sp = span.shrink_to_lo();
 
         let sig = ast::FnSig { header: ast::FnHeader::default(), decl: fn_decl, span };
-        let defaultness = ast::Defaultness::Final;
+        let defaultness = ast::Defaultness::Implicit;
 
         // Create the method.
         Box::new(ast::AssocItem {
