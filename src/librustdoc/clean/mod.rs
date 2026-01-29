@@ -3147,6 +3147,24 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     })
 }
 
+fn find_assoc_item_in_trait<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_did: DefId,
+    ident: Ident,
+    assoc_tag: ty::AssocTag,
+) -> Option<DefId> {
+    if let Some(item) =
+        tcx.associated_items(trait_did).find_by_ident_and_kind(tcx, ident, assoc_tag, trait_did)
+    {
+        return Some(item.def_id);
+    }
+
+    tcx.explicit_super_predicates_of(trait_did)
+        .iter_identity_copied()
+        .filter_map(|(pred, _)| pred.as_trait_clause())
+        .find_map(|trait_ref| find_assoc_item_in_trait(tcx, trait_ref.def_id(), ident, assoc_tag))
+}
+
 fn clean_assoc_item_constraint<'tcx>(
     trait_did: DefId,
     constraint: &hir::AssocItemConstraint<'tcx>,
@@ -3163,11 +3181,8 @@ fn clean_assoc_item_constraint<'tcx>(
                     hir::Term::Ty(_) => ty::AssocTag::Type,
                     hir::Term::Const(_) => ty::AssocTag::Const,
                 };
-                let assoc_item = cx
-                    .tcx
-                    .associated_items(trait_did)
-                    .find_by_ident_and_kind(cx.tcx, constraint.ident, assoc_tag, trait_did)
-                    .map(|item| item.def_id);
+                let assoc_item =
+                    find_assoc_item_in_trait(cx.tcx, trait_did, constraint.ident, assoc_tag);
                 AssocItemConstraintKind::Equality { term: clean_hir_term(assoc_item, term, cx) }
             }
             hir::AssocItemConstraintKind::Bound { bounds } => AssocItemConstraintKind::Bound {

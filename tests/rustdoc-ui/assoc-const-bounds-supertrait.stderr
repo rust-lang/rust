@@ -1,0 +1,8 @@
+error: anonymous constants referencing generics are not yet supported
+  --> $DIR/assoc-const-bounds-supertrait.rs:22:27
+   |
+LL | fn take(_: impl Trait<K = 0>) {}
+   |                           ^
+
+error: aborting due to 1 previous error
+
