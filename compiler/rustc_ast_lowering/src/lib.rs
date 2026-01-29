@@ -39,6 +39,8 @@ use std::mem;
 use std::sync::Arc;
 
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::token::Token;
+use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::{self as ast, *};
 use rustc_attr_parsing::{AttributeParser, Late, OmitDoc};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -1045,8 +1047,36 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_delim_args(&self, args: &DelimArgs) -> DelimArgs {
-        args.clone()
+    fn lower_token_tree(&self, tt: &TokenTree) -> TokenTree {
+        match tt {
+            TokenTree::Token(Token { kind, span }, spacing) => {
+                TokenTree::Token(Token { kind: *kind, span: self.lower_span(*span) }, *spacing)
+            }
+            TokenTree::Delimited(delim_span, delim_spacing, delimiter, token_stream) => {
+                TokenTree::Delimited(
+                    self.lower_delim_span(delim_span),
+                    *delim_spacing,
+                    *delimiter,
+                    self.lower_token_stream(token_stream),
+                )
+            }
+        }
+    }
+
+    fn lower_token_stream(&self, ts: &TokenStream) -> TokenStream {
+        TokenStream::new(ts.iter().map(|i| self.lower_token_tree(i)).collect())
+    }
+
+    fn lower_delim_span(&self, DelimSpan { open, close }: &DelimSpan) -> DelimSpan {
+        DelimSpan { open: self.lower_span(*open), close: self.lower_span(*close) }
+    }
+
+    fn lower_delim_args(&self, DelimArgs { dspan, delim, tokens }: &DelimArgs) -> DelimArgs {
+        DelimArgs {
+            dspan: self.lower_delim_span(dspan),
+            delim: *delim,
+            tokens: self.lower_token_stream(tokens),
+        }
     }
 
     /// Lower an associated item constraint.

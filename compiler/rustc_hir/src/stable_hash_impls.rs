@@ -1,5 +1,7 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_span::def_id::DefPathHash;
+#[cfg(debug_assertions)]
+use rustc_span::def_id::LocalDefId;
 
 use crate::HashIgnoredAttrId;
 use crate::hir::{
@@ -13,6 +15,9 @@ use crate::lints::DelayedLints;
 /// instead of implementing everything in `rustc_middle`.
 pub trait HashStableContext: rustc_ast::HashStableContext + rustc_abi::HashStableContext {
     fn hash_attr_id(&mut self, id: &HashIgnoredAttrId, hasher: &mut StableHasher);
+
+    #[cfg(debug_assertions)]
+    fn set_current_owner_node_defid(&mut self, local_def_id: Option<LocalDefId>);
 }
 
 impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for BodyId {
