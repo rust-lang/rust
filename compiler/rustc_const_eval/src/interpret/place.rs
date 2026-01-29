@@ -1045,11 +1045,16 @@ where
         &mut self,
         s: &str,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        let bytes = s.as_bytes();
-        let ptr = self.allocate_bytes_dedup(bytes)?;
+        let ptr = if !s.contains('\0') {
+            let mut bytes = s.as_bytes().to_owned();
+            bytes.extend(b"\xff\0");
+            self.allocate_bytes_dedup(&bytes)?
+        } else {
+            self.allocate_bytes_dedup(s.as_bytes())?
+        };
 
         // Create length metadata for the string.
-        let meta = Scalar::from_target_usize(u64::try_from(bytes.len()).unwrap(), self);
+        let meta = Scalar::from_target_usize(u64::try_from(s.len()).unwrap(), self);
 
         // Get layout for Rust's str type.
         let layout = self.layout_of(self.tcx.types.str_).unwrap();
