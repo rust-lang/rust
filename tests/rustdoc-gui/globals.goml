@@ -11,7 +11,7 @@ assert-window-property-false: {"searchIndex": null}
 // Form input
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 call-function: ("perform-search", {"query": "Foo"})
-assert-window-property-false: {"searchIndex": null}
+wait-for-window-property-false: {"searchIndex": null}
 
 // source sidebar
 go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
