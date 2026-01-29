@@ -430,9 +430,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let expected_inner = match unop {
-            hir::UnOp::Not | hir::UnOp::Neg => expected,
-            hir::UnOp::Deref => NoExpectation,
+        // To get better diagnostics for negative numeric literals, use the expected result type as
+        // the expected operand type in that case.
+        let expected_inner = if unop == hir::UnOp::Neg
+            && let hir::ExprKind::Lit(lit) = oprnd.kind
+            && matches!(lit.node, ast::LitKind::Int(..) | ast::LitKind::Float(..))
+        {
+            expected
+        } else {
+            NoExpectation
         };
         let oprnd_t = self.check_expr_with_expectation(oprnd, expected_inner);
 
@@ -452,12 +458,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_error(tcx, err.emit())
             }),
             hir::UnOp::Not => {
-                let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
+                let result = self.check_user_unop(expr, oprnd_t, unop, expected);
                 // If it's builtin, we can reuse the type, this helps inference.
                 if oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool { oprnd_t } else { result }
             }
             hir::UnOp::Neg => {
-                let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
+                let result = self.check_user_unop(expr, oprnd_t, unop, expected);
                 // If it's builtin, we can reuse the type, this helps inference.
                 if oprnd_t.is_numeric() { oprnd_t } else { result }
             }
