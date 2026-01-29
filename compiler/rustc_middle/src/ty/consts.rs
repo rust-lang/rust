@@ -94,7 +94,7 @@ impl<'tcx> Const<'tcx> {
     pub fn new_bound(
         tcx: TyCtxt<'tcx>,
         debruijn: ty::DebruijnIndex,
-        bound_const: ty::BoundConst,
+        bound_const: ty::BoundConst<'tcx>,
     ) -> Const<'tcx> {
         Const::new(tcx, ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_const))
     }
@@ -103,7 +103,7 @@ impl<'tcx> Const<'tcx> {
     pub fn new_canonical_bound(tcx: TyCtxt<'tcx>, var: ty::BoundVar) -> Const<'tcx> {
         Const::new(
             tcx,
-            ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, ty::BoundConst { var }),
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, ty::BoundConst::new(var)),
         )
     }
 
@@ -183,13 +183,13 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
     fn new_bound(
         interner: TyCtxt<'tcx>,
         debruijn: ty::DebruijnIndex,
-        bound_const: ty::BoundConst,
+        bound_const: ty::BoundConst<'tcx>,
     ) -> Self {
         Const::new_bound(interner, debruijn, bound_const)
     }
 
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
-        Const::new_bound(tcx, debruijn, ty::BoundConst { var })
+        Const::new_bound(tcx, debruijn, ty::BoundConst::new(var))
     }
 
     fn new_canonical_bound(tcx: TyCtxt<'tcx>, var: rustc_type_ir::BoundVar) -> Self {

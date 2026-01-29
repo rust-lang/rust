@@ -108,9 +108,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type GenericArgsSlice = &'tcx [ty::GenericArg<'tcx>];
     type GenericArg = ty::GenericArg<'tcx>;
     type Term = ty::Term<'tcx>;
-    type BoundVarKinds = &'tcx List<ty::BoundVariableKind>;
+    type BoundVarKinds = &'tcx List<ty::BoundVariableKind<'tcx>>;
 
-    type BoundVarKind = ty::BoundVariableKind;
     type PredefinedOpaques = solve::PredefinedOpaques<'tcx>;
 
     fn mk_predefined_opaques_in_body(
@@ -144,10 +143,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type FnInputTys = &'tcx [Ty<'tcx>];
     type ParamTy = ParamTy;
-    type BoundTy = ty::BoundTy;
     type Symbol = Symbol;
 
-    type PlaceholderTy = ty::PlaceholderType<'tcx>;
     type ErrorGuaranteed = ErrorGuaranteed;
     type BoundExistentialPredicates = &'tcx List<PolyExistentialPredicate<'tcx>>;
 
@@ -157,10 +154,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Safety = hir::Safety;
     type Abi = ExternAbi;
     type Const = ty::Const<'tcx>;
-    type PlaceholderConst = ty::PlaceholderConst<'tcx>;
 
     type ParamConst = ty::ParamConst;
-    type BoundConst = ty::BoundConst;
     type ValueConst = ty::Value<'tcx>;
     type ExprConst = ty::Expr<'tcx>;
     type ValTree = ty::ValTree<'tcx>;
@@ -169,8 +164,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Region = Region<'tcx>;
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegion = ty::LateParamRegion;
-    type BoundRegion = ty::BoundRegion;
-    type PlaceholderRegion = ty::PlaceholderRegion<'tcx>;
 
     type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>>;
 
@@ -776,6 +769,13 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     ) -> (QueryResult<'tcx>, &'tcx inspect::Probe<TyCtxt<'tcx>>) {
         self.evaluate_root_goal_for_proof_tree_raw(canonical_goal)
     }
+
+    fn item_name(self, id: DefId) -> Symbol {
+        let id = id.into_query_param();
+        self.opt_item_name(id).unwrap_or_else(|| {
+            bug!("item_name: no name for {:?}", self.def_path(id));
+        })
+    }
 }
 
 macro_rules! bidirectional_lang_item_map {
@@ -938,7 +938,7 @@ pub struct CtxtInterners<'tcx> {
     const_: InternedSet<'tcx, WithCachedTypeInfo<ty::ConstKind<'tcx>>>,
     pat: InternedSet<'tcx, PatternKind<'tcx>>,
     const_allocation: InternedSet<'tcx, Allocation>,
-    bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
+    bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind<'tcx>>>,
     layout: InternedSet<'tcx, LayoutData<FieldIdx, VariantIdx>>,
     adt_def: InternedSet<'tcx, AdtDefData>,
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<TyCtxt<'tcx>>>,
@@ -2530,7 +2530,7 @@ nop_list_lift! { type_lists; Ty<'a> => Ty<'tcx> }
 nop_list_lift! {
     poly_existential_predicates; PolyExistentialPredicate<'a> => PolyExistentialPredicate<'tcx>
 }
-nop_list_lift! { bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariableKind }
+nop_list_lift! { bound_variable_kinds; ty::BoundVariableKind<'a> => ty::BoundVariableKind<'tcx> }
 
 // This is the impl for `&'a GenericArgs<'a>`.
 nop_list_lift! { args; GenericArg<'a> => GenericArg<'tcx> }
@@ -2817,7 +2817,7 @@ slice_interners!(
     poly_existential_predicates: intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
     projs: pub mk_projs(ProjectionKind),
     place_elems: pub mk_place_elems(PlaceElem<'tcx>),
-    bound_variable_kinds: pub mk_bound_variable_kinds(ty::BoundVariableKind),
+    bound_variable_kinds: pub mk_bound_variable_kinds(ty::BoundVariableKind<'tcx>),
     fields: pub mk_fields(FieldIdx),
     local_def_ids: intern_local_def_ids(LocalDefId),
     captures: intern_captures(&'tcx ty::CapturedPlace<'tcx>),
@@ -3242,7 +3242,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_bound_variable_kinds_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: CollectAndApply<ty::BoundVariableKind, &'tcx List<ty::BoundVariableKind>>,
+        T: CollectAndApply<ty::BoundVariableKind<'tcx>, &'tcx List<ty::BoundVariableKind<'tcx>>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_bound_variable_kinds(xs))
     }
@@ -3362,7 +3362,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.is_late_bound_map(id.owner).is_some_and(|set| set.contains(&id.local_id))
     }
 
-    pub fn late_bound_vars(self, id: HirId) -> &'tcx List<ty::BoundVariableKind> {
+    pub fn late_bound_vars(self, id: HirId) -> &'tcx List<ty::BoundVariableKind<'tcx>> {
         self.mk_bound_variable_kinds(
             &self
                 .late_bound_vars_map(id.owner)

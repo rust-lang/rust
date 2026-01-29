@@ -1,11 +1,14 @@
 use std::fmt;
+use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
-use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
+use rustc_type_ir_macros::{
+    GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
+};
 use tracing::instrument;
 
 use crate::data_structures::SsoHashSet;
@@ -23,8 +26,11 @@ use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex};
 /// for more details.
 ///
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
-#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, T)]
+// FIXME(derive-where#136): Need to use separate `derive_where` for
+// `Copy` and `Ord` to prevent the emitted `Clone` and `PartialOrd`
+// impls from incorrectly relying on `T: Copy` and `T: Ord`.
 #[derive_where(Copy; I: Interner, T: Copy)]
+#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, T)]
 #[derive(GenericTypeVisitable)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct Binder<I: Interner, T> {
@@ -359,9 +365,12 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 /// `instantiate`.
 ///
 /// See <https://rustc-dev-guide.rust-lang.org/ty_module/early_binder.html> for more details.
-#[derive_where(Clone, PartialEq, Ord, Hash, Debug; I: Interner, T)]
-#[derive_where(PartialOrd; I: Interner, T: Ord)]
+// FIXME(derive-where#136): Need to use separate `derive_where` for
+// `Copy` and `Ord` to prevent the emitted `Clone` and `PartialOrd`
+// impls from incorrectly relying on `T: Copy` and `T: Ord`.
+#[derive_where(Ord; I: Interner, T: Ord)]
 #[derive_where(Copy; I: Interner, T: Copy)]
+#[derive_where(Clone, PartialOrd, PartialEq, Hash, Debug; I: Interner, T)]
 #[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
@@ -955,11 +964,12 @@ pub enum BoundVarIndexKind {
 /// The "placeholder index" fully defines a placeholder region, type, or const. Placeholders are
 /// identified by both a universe, as well as a name residing within that universe. Distinct bound
 /// regions/types/consts within the same universe simply have an unknown relationship to one
-/// another.
-#[derive_where(Clone, PartialEq, Ord, Hash; I: Interner, T)]
-#[derive_where(PartialOrd; I: Interner, T: Ord)]
-#[derive_where(Copy; I: Interner, T: Copy, T)]
-#[derive_where(Eq; T)]
+// FIXME(derive-where#136): Need to use separate `derive_where` for
+// `Copy` and `Ord` to prevent the emitted `Clone` and `PartialOrd`
+// impls from incorrectly relying on `T: Copy` and `T: Ord`.
+#[derive_where(Ord; I: Interner, T: Ord)]
+#[derive_where(Copy; I: Interner, T: Copy)]
+#[derive_where(Clone, PartialOrd, PartialEq, Eq, Hash; I: Interner, T)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",
@@ -971,12 +981,6 @@ pub struct Placeholder<I: Interner, T> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
     _tcx: PhantomData<fn() -> I>,
-}
-
-impl<I: Interner, T> Placeholder<I, T> {
-    pub fn new(universe: UniverseIndex, bound: T) -> Self {
-        Placeholder { universe, bound, _tcx: PhantomData }
-    }
 }
 
 impl<I: Interner, T: fmt::Debug> fmt::Debug for ty::Placeholder<I, T> {
@@ -1001,5 +1005,323 @@ where
             bound: self.bound.lift_to_interner(cx)?,
             _tcx: PhantomData,
         })
+    }
+}
+
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
+#[derive(Lift_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
+
+pub enum BoundRegionKind<I: Interner> {
+    /// An anonymous region parameter for a given fn (&T)
+    Anon,
+
+    /// An anonymous region parameter with a `Symbol` name.
+    ///
+    /// Used to give late-bound regions names for things like pretty printing.
+    NamedForPrinting(I::Symbol),
+
+    /// Late-bound regions that appear in the AST.
+    Named(I::DefId),
+
+    /// Anonymous region for the implicit env pointer parameter
+    /// to a closure
+    ClosureEnv,
+}
+
+impl<I: Interner> fmt::Debug for ty::BoundRegionKind<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            ty::BoundRegionKind::Anon => write!(f, "BrAnon"),
+            ty::BoundRegionKind::NamedForPrinting(name) => {
+                write!(f, "BrNamedForPrinting({:?})", name)
+            }
+            ty::BoundRegionKind::Named(did) => {
+                write!(f, "BrNamed({did:?})")
+            }
+            ty::BoundRegionKind::ClosureEnv => write!(f, "BrEnv"),
+        }
+    }
+}
+
+impl<I: Interner> BoundRegionKind<I> {
+    pub fn is_named(&self, tcx: I) -> bool {
+        self.get_name(tcx).is_some()
+    }
+
+    pub fn get_name(&self, tcx: I) -> Option<I::Symbol> {
+        match *self {
+            ty::BoundRegionKind::Named(def_id) => {
+                let name = tcx.item_name(def_id);
+                if name.is_kw_underscore_lifetime() { None } else { Some(name) }
+            }
+            ty::BoundRegionKind::NamedForPrinting(name) => Some(name),
+            _ => None,
+        }
+    }
+
+    pub fn get_id(&self) -> Option<I::DefId> {
+        match *self {
+            ty::BoundRegionKind::Named(id) => Some(id),
+            _ => None,
+        }
+    }
+}
+
+#[derive_where(Clone, Copy, PartialEq, Eq, Debug, Hash; I: Interner)]
+#[derive(Lift_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
+pub enum BoundTyKind<I: Interner> {
+    Anon,
+    Param(I::DefId),
+}
+
+#[derive_where(Clone, Copy, PartialEq, Eq, Debug, Hash; I: Interner)]
+#[derive(Lift_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
+pub enum BoundVariableKind<I: Interner> {
+    Ty(BoundTyKind<I>),
+    Region(BoundRegionKind<I>),
+    Const,
+}
+
+impl<I: Interner> BoundVariableKind<I> {
+    pub fn expect_region(self) -> BoundRegionKind<I> {
+        match self {
+            BoundVariableKind::Region(lt) => lt,
+            _ => panic!("expected a region, but found another kind"),
+        }
+    }
+
+    pub fn expect_ty(self) -> BoundTyKind<I> {
+        match self {
+            BoundVariableKind::Ty(ty) => ty,
+            _ => panic!("expected a type, but found another kind"),
+        }
+    }
+
+    pub fn expect_const(self) {
+        match self {
+            BoundVariableKind::Const => (),
+            _ => panic!("expected a const, but found another kind"),
+        }
+    }
+}
+
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, HashStable_NoContext, Decodable_NoContext)
+)]
+pub struct BoundRegion<I: Interner> {
+    pub var: ty::BoundVar,
+    pub kind: BoundRegionKind<I>,
+}
+
+impl<I: Interner> core::fmt::Debug for BoundRegion<I> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.kind {
+            BoundRegionKind::Anon => write!(f, "{:?}", self.var),
+            BoundRegionKind::ClosureEnv => write!(f, "{:?}.Env", self.var),
+            BoundRegionKind::Named(def) => {
+                write!(f, "{:?}.Named({:?})", self.var, def)
+            }
+            BoundRegionKind::NamedForPrinting(symbol) => {
+                write!(f, "{:?}.NamedAnon({:?})", self.var, symbol)
+            }
+        }
+    }
+}
+
+impl<I: Interner> BoundRegion<I> {
+    pub fn var(self) -> ty::BoundVar {
+        self.var
+    }
+
+    pub fn assert_eq(self, var: BoundVariableKind<I>) {
+        assert_eq!(self.kind, var.expect_region())
+    }
+}
+
+pub type PlaceholderRegion<I> = ty::Placeholder<I, BoundRegion<I>>;
+
+impl<I: Interner> PlaceholderRegion<I> {
+    pub fn universe(self) -> UniverseIndex {
+        self.universe
+    }
+
+    pub fn var(self) -> ty::BoundVar {
+        self.bound.var()
+    }
+
+    pub fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        Self { universe: ui, bound: self.bound, _tcx: PhantomData }
+    }
+
+    pub fn new(ui: UniverseIndex, bound: BoundRegion<I>) -> Self {
+        Self { universe: ui, bound, _tcx: PhantomData }
+    }
+
+    pub fn new_anon(ui: UniverseIndex, var: ty::BoundVar) -> Self {
+        let bound = BoundRegion { var, kind: BoundRegionKind::Anon };
+        Self { universe: ui, bound, _tcx: PhantomData }
+    }
+}
+
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
+pub struct BoundTy<I: Interner> {
+    pub var: ty::BoundVar,
+    pub kind: BoundTyKind<I>,
+}
+
+impl<I: Interner, U: Interner> Lift<U> for BoundTy<I>
+where
+    BoundTyKind<I>: Lift<U, Lifted = BoundTyKind<U>>,
+{
+    type Lifted = BoundTy<U>;
+
+    fn lift_to_interner(self, cx: U) -> Option<Self::Lifted> {
+        Some(BoundTy { var: self.var, kind: self.kind.lift_to_interner(cx)? })
+    }
+}
+
+impl<I: Interner> fmt::Debug for ty::BoundTy<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.kind {
+            ty::BoundTyKind::Anon => write!(f, "{:?}", self.var),
+            ty::BoundTyKind::Param(def_id) => write!(f, "{def_id:?}"),
+        }
+    }
+}
+
+impl<I: Interner> BoundTy<I> {
+    pub fn var(self) -> ty::BoundVar {
+        self.var
+    }
+
+    pub fn assert_eq(self, var: BoundVariableKind<I>) {
+        assert_eq!(self.kind, var.expect_ty())
+    }
+}
+
+pub type PlaceholderType<I> = ty::Placeholder<I, BoundTy<I>>;
+
+impl<I: Interner> PlaceholderType<I> {
+    pub fn universe(self) -> UniverseIndex {
+        self.universe
+    }
+
+    pub fn var(self) -> ty::BoundVar {
+        self.bound.var
+    }
+
+    pub fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        Self { universe: ui, bound: self.bound, _tcx: PhantomData }
+    }
+
+    pub fn new(ui: UniverseIndex, bound: BoundTy<I>) -> Self {
+        Self { universe: ui, bound, _tcx: PhantomData }
+    }
+
+    pub fn new_anon(ui: UniverseIndex, var: ty::BoundVar) -> Self {
+        let bound = BoundTy { var, kind: BoundTyKind::Anon };
+        Self { universe: ui, bound, _tcx: PhantomData }
+    }
+}
+
+#[derive_where(Clone, Copy, PartialEq, Debug, Eq, Hash; I: Interner)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
+pub struct BoundConst<I: Interner> {
+    pub var: ty::BoundVar,
+    #[derive_where(skip(Debug))]
+    pub _tcx: PhantomData<fn() -> I>,
+}
+
+impl<I: Interner> BoundConst<I> {
+    pub fn var(self) -> ty::BoundVar {
+        self.var
+    }
+
+    pub fn assert_eq(self, var: BoundVariableKind<I>) {
+        var.expect_const()
+    }
+
+    pub fn new(var: ty::BoundVar) -> Self {
+        Self { var, _tcx: PhantomData }
+    }
+}
+
+pub type PlaceholderConst<I> = ty::Placeholder<I, BoundConst<I>>;
+
+impl<I: Interner> PlaceholderConst<I> {
+    pub fn universe(self) -> UniverseIndex {
+        self.universe
+    }
+
+    pub fn var(self) -> ty::BoundVar {
+        self.bound.var
+    }
+
+    pub fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        Self { universe: ui, bound: self.bound, _tcx: PhantomData }
+    }
+
+    pub fn new(ui: UniverseIndex, bound: BoundConst<I>) -> Self {
+        Self { universe: ui, bound, _tcx: PhantomData }
+    }
+
+    pub fn new_anon(ui: UniverseIndex, var: ty::BoundVar) -> Self {
+        let bound = BoundConst::new(var);
+        Self { universe: ui, bound, _tcx: PhantomData }
+    }
+
+    pub fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty {
+        let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
+            // `ConstArgHasType` are never desugared to be higher ranked.
+            match clause.kind().skip_binder() {
+                ty::ClauseKind::ConstArgHasType(placeholder_ct, ty) => {
+                    assert!(!(placeholder_ct, ty).has_escaping_bound_vars());
+
+                    match placeholder_ct.kind() {
+                        ty::ConstKind::Placeholder(placeholder_ct) if placeholder_ct == self => {
+                            Some(ty)
+                        }
+                        _ => None,
+                    }
+                }
+                _ => None,
+            }
+        });
+
+        // N.B. it may be tempting to fix ICEs by making this function return
+        // `Option<Ty<'tcx>>` instead of `Ty<'tcx>`; however, this is generally
+        // considered to be a bandaid solution, since it hides more important
+        // underlying issues with how we construct generics and predicates of
+        // items. It's advised to fix the underlying issue rather than trying
+        // to modify this function.
+        let ty = candidates.next().unwrap_or_else(|| {
+            panic!("cannot find `{self:?}` in param-env: {env:#?}");
+        });
+        assert!(
+            candidates.next().is_none(),
+            "did not expect duplicate `ConstParamHasTy` for `{self:?}` in param-env: {env:#?}"
+        );
+        ty
     }
 }
