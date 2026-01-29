@@ -1468,6 +1468,9 @@ impl<'a> Parser<'a> {
             } else if this.check(exp!(OpenParen)) {
                 this.parse_expr_tuple_parens(restrictions)
             } else if this.check(exp!(OpenBrace)) {
+                if let Some(expr) = this.maybe_recover_bad_struct_literal_path(false)? {
+                    return Ok(expr);
+                }
                 this.parse_expr_block(None, lo, BlockCheckMode::Default)
             } else if this.check(exp!(Or)) || this.check(exp!(OrOr)) {
                 this.parse_expr_closure().map_err(|mut err| {
@@ -1542,6 +1545,9 @@ impl<'a> Parser<'a> {
             } else if this.check_keyword(exp!(Let)) {
                 this.parse_expr_let(restrictions)
             } else if this.eat_keyword(exp!(Underscore)) {
+                if let Some(expr) = this.maybe_recover_bad_struct_literal_path(true)? {
+                    return Ok(expr);
+                }
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
             } else if this.token_uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
@@ -2754,9 +2760,13 @@ impl<'a> Parser<'a> {
         let (mut cond, _) =
             self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL | Restrictions::ALLOW_LET, attrs)?;
 
-        CondChecker::new(self, let_chains_policy).visit_expr(&mut cond);
-
-        Ok(cond)
+        let mut checker = CondChecker::new(self, let_chains_policy);
+        checker.visit_expr(&mut cond);
+        Ok(if let Some(guar) = checker.found_incorrect_let_chain {
+            self.mk_expr_err(cond.span, guar)
+        } else {
+            cond
+        })
     }
 
     /// Parses a `let $pat = $expr` pseudo-expression.
@@ -3478,13 +3488,19 @@ impl<'a> Parser<'a> {
         let if_span = self.prev_token.span;
         let mut cond = self.parse_match_guard_condition()?;
 
-        CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
+        let mut checker = CondChecker::new(self, LetChainsPolicy::AlwaysAllowed);
+        checker.visit_expr(&mut cond);
 
         if has_let_expr(&cond) {
             let span = if_span.to(cond.span);
             self.psess.gated_spans.gate(sym::if_let_guard, span);
         }
-        Ok(Some(cond))
+
+        Ok(Some(if let Some(guar) = checker.found_incorrect_let_chain {
+            self.mk_expr_err(cond.span, guar)
+        } else {
+            cond
+        }))
     }
 
     fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (Pat, Option<Box<Expr>>)> {
@@ -3505,13 +3521,23 @@ impl<'a> Parser<'a> {
                 let ast::PatKind::Paren(subpat) = pat.kind else { unreachable!() };
                 let ast::PatKind::Guard(_, mut cond) = subpat.kind else { unreachable!() };
                 self.psess.gated_spans.ungate_last(sym::guard_patterns, cond.span);
-                CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
+                let mut checker = CondChecker::new(self, LetChainsPolicy::AlwaysAllowed);
+                checker.visit_expr(&mut cond);
+
                 let right = self.prev_token.span;
                 self.dcx().emit_err(errors::ParenthesesInMatchPat {
                     span: vec![left, right],
                     sugg: errors::ParenthesesInMatchPatSugg { left, right },
                 });
-                Ok((self.mk_pat(span, ast::PatKind::Wild), Some(cond)))
+
+                Ok((
+                    self.mk_pat(span, ast::PatKind::Wild),
+                    (if let Some(guar) = checker.found_incorrect_let_chain {
+                        Some(self.mk_expr_err(cond.span, guar))
+                    } else {
+                        Some(cond)
+                    }),
+                ))
             } else {
                 Ok((pat, self.parse_match_arm_guard()?))
             }
@@ -3695,6 +3721,45 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
+        }
+    }
+
+    fn maybe_recover_bad_struct_literal_path(
+        &mut self,
+        is_underscore_entry_point: bool,
+    ) -> PResult<'a, Option<Box<Expr>>> {
+        if self.may_recover()
+            && self.check_noexpect(&token::OpenBrace)
+            && (!self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
+                && self.is_likely_struct_lit())
+        {
+            let span = if is_underscore_entry_point {
+                self.prev_token.span
+            } else {
+                self.token.span.shrink_to_lo()
+            };
+
+            self.bump(); // {
+            let expr = self.parse_expr_struct(
+                None,
+                Path::from_ident(Ident::new(kw::Underscore, span)),
+                false,
+            )?;
+
+            let guar = if is_underscore_entry_point {
+                self.dcx().create_err(errors::StructLiteralPlaceholderPath { span }).emit()
+            } else {
+                self.dcx()
+                    .create_err(errors::StructLiteralWithoutPathLate {
+                        span: expr.span,
+                        suggestion_span: expr.span.shrink_to_lo(),
+                    })
+                    .emit()
+            };
+
+            Ok(Some(self.mk_expr_err(expr.span, guar)))
+        } else {
+            Ok(None)
         }
     }
 
@@ -4163,6 +4228,7 @@ struct CondChecker<'a> {
     forbid_let_reason: Option<ForbiddenLetReason>,
     missing_let: Option<errors::MaybeMissingLet>,
     comparison: Option<errors::MaybeComparison>,
+    found_incorrect_let_chain: Option<ErrorGuaranteed>,
 }
 
 impl<'a> CondChecker<'a> {
@@ -4173,6 +4239,7 @@ impl<'a> CondChecker<'a> {
             missing_let: None,
             comparison: None,
             let_chains_policy,
+            found_incorrect_let_chain: None,
             depth: 0,
         }
     }
@@ -4191,12 +4258,19 @@ impl MutVisitor for CondChecker<'_> {
                         NotSupportedOr(or_span) => {
                             self.parser.dcx().emit_err(errors::OrInLetChain { span: or_span })
                         }
-                        _ => self.parser.dcx().emit_err(errors::ExpectedExpressionFoundLet {
-                            span,
-                            reason,
-                            missing_let: self.missing_let,
-                            comparison: self.comparison,
-                        }),
+                        _ => {
+                            let guar =
+                                self.parser.dcx().emit_err(errors::ExpectedExpressionFoundLet {
+                                    span,
+                                    reason,
+                                    missing_let: self.missing_let,
+                                    comparison: self.comparison,
+                                });
+                            if let Some(_) = self.missing_let {
+                                self.found_incorrect_let_chain = Some(guar);
+                            }
+                            guar
+                        }
                     };
                     *recovered = Recovered::Yes(error);
                 } else if self.depth > 1 {

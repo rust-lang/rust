@@ -601,7 +601,7 @@ pub(crate) struct ProcMacroDeriveResolutionFallback {
     #[label]
     pub span: Span,
     pub ns_descr: &'static str,
-    pub ident: Ident,
+    pub ident: Symbol,
 }
 
 #[derive(LintDiagnostic)]
@@ -1151,7 +1151,7 @@ pub(crate) struct CannotUseThroughAnImport {
 pub(crate) struct NameReservedInAttributeNamespace {
     #[primary_span]
     pub(crate) span: Span,
-    pub(crate) ident: Ident,
+    pub(crate) ident: Symbol,
 }
 
 #[derive(Diagnostic)]

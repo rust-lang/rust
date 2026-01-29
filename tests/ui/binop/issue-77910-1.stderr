@@ -6,8 +6,6 @@ LL |     assert_eq!(foo, y);
    |     |
    |     for<'a> fn(&'a i32) -> &'a i32 {foo}
    |     _
-   |
-   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `for<'a> fn(&'a i32) -> &'a i32 {foo}` doesn't implement `Debug`
   --> $DIR/issue-77910-1.rs:8:5
@@ -19,7 +17,6 @@ LL |     assert_eq!(foo, y);
    |     ^^^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for fn item `for<'a> fn(&'a i32) -> &'a i32 {foo}`
    |
    = help: use parentheses to call this function: `foo(/* &i32 */)`
-   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0381]: used binding `xs` isn't initialized
   --> $DIR/issue-77910-1.rs:3:5

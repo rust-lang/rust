@@ -4,8 +4,10 @@ error[E0432]: unresolved import `Trait`
 LL |     use Trait;
    |         ^^^^^ no `Trait` in the root
    |
-help: consider importing this trait instead
+help: consider importing one of these items instead
    |
+LL |     use std::mem::type_info::Trait;
+   |         +++++++++++++++++++++
 LL |     use a::Trait;
    |         +++
 

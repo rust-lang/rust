@@ -63,8 +63,7 @@ pub use span_encoding::{DUMMY_SP, Span};
 
 pub mod symbol;
 pub use symbol::{
-    ByteSymbol, Ident, MacroRulesNormalizedIdent, Macros20NormalizedIdent, STDLIB_STABLE_CRATES,
-    Symbol, kw, sym,
+    ByteSymbol, Ident, MacroRulesNormalizedIdent, STDLIB_STABLE_CRATES, Symbol, kw, sym,
 };
 
 mod analyze_source_file;
@@ -1307,30 +1306,6 @@ impl Span {
         let mut mark = None;
         *self = self.map_ctxt(|mut ctxt| {
             mark = ctxt.normalize_to_macros_2_0_and_adjust(expn_id);
-            ctxt
-        });
-        mark
-    }
-
-    #[inline]
-    pub fn glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span) -> Option<Option<ExpnId>> {
-        let mut mark = None;
-        *self = self.map_ctxt(|mut ctxt| {
-            mark = ctxt.glob_adjust(expn_id, glob_span);
-            ctxt
-        });
-        mark
-    }
-
-    #[inline]
-    pub fn reverse_glob_adjust(
-        &mut self,
-        expn_id: ExpnId,
-        glob_span: Span,
-    ) -> Option<Option<ExpnId>> {
-        let mut mark = None;
-        *self = self.map_ctxt(|mut ctxt| {
-            mark = ctxt.reverse_glob_adjust(expn_id, glob_span);
             ctxt
         });
         mark

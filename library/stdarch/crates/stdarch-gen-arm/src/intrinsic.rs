@@ -840,7 +840,7 @@ impl fmt::Display for UnsafetyComment {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Custom(s) => s.fmt(f),
-            Self::Neon => write!(f, "Neon instrinsic unsafe"),
+            Self::Neon => write!(f, "Neon intrinsic unsafe"),
             Self::Uninitialized => write!(
                 f,
                 "This creates an uninitialized value, and may be unsound (like \
@@ -1736,7 +1736,7 @@ fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut Tok
         );
     }
 
-    tokens.append_all(quote! { #[inline] });
+    tokens.append_all(quote! { #[inline(always)] });
 
     match endianness {
         Endianness::Little => tokens.append_all(quote! { #[cfg(target_endian = "little")] }),

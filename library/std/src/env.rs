@@ -728,7 +728,7 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// You expected to safely execute the current executable, but you're
 /// instead executing something completely different. The code you
-/// just executed run with your privileges.
+/// just executed runs with your privileges.
 ///
 /// This sort of behavior has been known to [lead to privilege escalation] when
 /// used incorrectly.

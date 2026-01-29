@@ -14,11 +14,14 @@ use crate::dep_graph;
 use crate::dep_graph::DepKind;
 use crate::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
 use crate::query::{
-    DynamicQueries, ExternProviders, Providers, QueryArenas, QueryCaches, QueryEngine, QueryStates,
+    ExternProviders, PerQueryVTables, Providers, QueryArenas, QueryCaches, QueryEngine, QueryStates,
 };
 use crate::ty::TyCtxt;
 
-pub struct DynamicQuery<'tcx, C: QueryCache> {
+/// Stores function pointers and other metadata for a particular query.
+///
+/// Used indirectly by query plumbing in `rustc_query_system`, via a trait.
+pub struct QueryVTable<'tcx, C: QueryCache> {
     pub name: &'static str,
     pub eval_always: bool,
     pub dep_kind: DepKind,
@@ -62,7 +65,7 @@ pub struct QuerySystem<'tcx> {
     pub states: QueryStates<'tcx>,
     pub arenas: WorkerLocal<QueryArenas<'tcx>>,
     pub caches: QueryCaches<'tcx>,
-    pub dynamic_queries: DynamicQueries<'tcx>,
+    pub query_vtables: PerQueryVTables<'tcx>,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by
@@ -418,16 +421,19 @@ macro_rules! define_callbacks {
             })*
         }
 
-        pub struct DynamicQueries<'tcx> {
+        /// Holds a `QueryVTable` for each query.
+        ///
+        /// ("Per" just makes this pluralized name more visually distinct.)
+        pub struct PerQueryVTables<'tcx> {
             $(
-                pub $name: DynamicQuery<'tcx, queries::$name::Storage<'tcx>>,
+                pub $name: ::rustc_middle::query::plumbing::QueryVTable<'tcx, queries::$name::Storage<'tcx>>,
             )*
         }
 
         #[derive(Default)]
         pub struct QueryStates<'tcx> {
             $(
-                pub $name: QueryState<$($K)*>,
+                pub $name: QueryState<$($K)*, QueryStackDeferred<'tcx>>,
             )*
         }
 

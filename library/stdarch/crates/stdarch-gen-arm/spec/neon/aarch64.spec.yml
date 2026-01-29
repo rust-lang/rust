@@ -63,8 +63,16 @@ neon-unstable-f16: &neon-unstable-f16
 neon-unstable-feat-lut: &neon-unstable-feat-lut
   FnCall: [unstable, ['feature = "stdarch_neon_feat_lut"', 'issue = "138050"']]
 
-aarch64-unstable-jscvt: &aarch64-unstable-jscvt
-  FnCall: [unstable, ['feature = "stdarch_aarch64_jscvt"', 'issue = "147555"']]
+aarch64-stable-jscvt: &aarch64-stable-jscvt
+  FnCall: [stable, ['feature = "stdarch_aarch64_jscvt"', 'since = "CURRENT_RUSTC_VERSION"']]
+
+# #[unstable(feature = "stdarch_neon_feat_lrcpc3", issue = "none")]
+neon-unstable-feat-lrcpc3: &neon-unstable-feat-lrcpc3
+  FnCall: [unstable, ['feature = "stdarch_neon_feat_lrcpc3"', 'issue = "none"']]
+
+# #[unstable(feature = "stdarch_neon_fp8", issue = "none")]
+neon-unstable-fp8: &neon-unstable-fp8
+  FnCall: [unstable, ['feature = "stdarch_neon_fp8"', 'issue = "none"']]
 
 # #[cfg(target_endian = "little")]
 little-endian: &little-endian
@@ -4398,6 +4406,116 @@ intrinsics:
                 - - FnCall: [transmute, [a]]
                   - FnCall: [transmute, [b]]
 
+  - name: "vldap1{neon_type[1].lane_nox}"
+    doc: "Load-acquire RCpc one single-element structure to one lane of one register"
+    arguments: ["ptr: {type[0]}", "src: {type[1]}"]
+    static_defs: ["const LANE: i32"]
+    return_type: "{type[1]}"
+    safety:
+      unsafe: [neon]
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,rcpc3"']]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env= "msvc"']]}]]}, {FnCall: [assert_instr, [ldap1, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - *neon-unstable-feat-lrcpc3
+    types:
+      - ['*const i64', int64x1_t, 'static_assert!', 'LANE == 0']
+      - ['*const i64', int64x2_t,'static_assert_uimm_bits!', 'LANE, 1']
+    compose:
+      - FnCall: ['{type[2]}', ['{type[3]}']]
+      - Let:
+          - "atomic_src"
+          - FnCall: ["crate::sync::atomic::AtomicI64::from_ptr", ['ptr as *mut i64']]
+      - Identifier: [';', Symbol]
+      - FnCall:
+        - simd_insert!
+        - - src
+          - "LANE as u32"
+          - MethodCall:
+             - "atomic_src"
+             - load
+             - ["crate::sync::atomic::Ordering::Acquire"]
+
+  - name: "vldap1{neon_type[1].lane_nox}"
+    doc: "Load-acquire RCpc one single-element structure to one lane of one register"
+    arguments: ["ptr: {type[0]}","src: {type[1]}"]
+    static_defs: ["const LANE: i32"]
+    return_type: "{type[1]}"
+    safety:
+      unsafe: [neon]
+    attr:
+      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [target_feature, ['enable = "neon,rcpc3"']]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env= "msvc"']]}]]}, {FnCall: [assert_instr, [ldap1, 'LANE = 0']]}]]
+      - *neon-unstable-feat-lrcpc3
+    types:
+      - ['*const u64', uint64x1_t,'static_assert!', 'LANE == 0','']
+      #- ['*const f64', float64x1_t,'static_assert!', 'LANE == 0',''] # Fails due to bad IR gen from rust
+      - ['*const p64', poly64x1_t,'static_assert!', 'LANE == 0','']
+      - ['*const u64', uint64x2_t,'static_assert_uimm_bits!', 'LANE, 1','q']
+      - ['*const f64', float64x2_t,'static_assert_uimm_bits!', 'LANE, 1','q']
+      - ['*const p64', poly64x2_t,'static_assert_uimm_bits!', 'LANE, 1','q']
+    compose:
+      - FnCall: ['{type[2]}', ['{type[3]}']]
+      - FnCall:
+        - transmute
+        - - FnCall:
+            - 'vldap1{type[4]}_lane_s64::<LANE>'
+            - - "ptr as *mut i64"
+              - FnCall: [transmute,[src]]
+
+  - name: "vstl1{neon_type[1].lane_nox}"
+    doc: "Store-Release a single-element structure from one lane of one register."
+    arguments: ["ptr: {type[0]}", "val: {neon_type[1]}"]
+    static_defs: ["const LANE: i32"]
+    safety: safe
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,rcpc3"']]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env= "msvc"']]}]]}, {FnCall: [assert_instr, [stl1, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - *neon-unstable-feat-lrcpc3
+    types:
+      - ['*mut i64', int64x1_t,'static_assert!', 'LANE == 0']
+      - ['*mut i64', int64x2_t,'static_assert_uimm_bits!', 'LANE, 1']
+    compose:
+      - FnCall: ['{type[2]}', ['{type[3]}']]
+      - Let:
+          - "atomic_dst"
+          - "ptr as *mut crate::sync::atomic::AtomicI64"
+      - Identifier: [';', Symbol]
+      - Let:
+        - "lane"
+        - i64
+        - FnCall: [simd_extract!, [val, 'LANE as u32']]
+      - MethodCall:
+        - "(*atomic_dst)"
+        - store
+        - [FnCall: [transmute, [lane]],"crate::sync::atomic::Ordering::Release"]
+
+  - name: "vstl1{neon_type[1].lane_nox}"
+    doc: "Store-Release a single-element structure from one lane of one register."
+    arguments: ["ptr: {type[0]}", "val: {neon_type[1]}"]
+    static_defs: ["const LANE: i32"]
+    safety: safe
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,rcpc3"']]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env= "msvc"']]}]]}, {FnCall: [assert_instr, [stl1, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - *neon-unstable-feat-lrcpc3
+    types:
+      - ['*mut u64', uint64x1_t, 'static_assert!', 'LANE == 0','']
+      - ['*mut f64', float64x1_t,'static_assert!', 'LANE == 0','']
+      - ['*mut p64', poly64x1_t, 'static_assert!', 'LANE == 0','']
+      - ['*mut u64', uint64x2_t ,'static_assert_uimm_bits!', 'LANE, 1','q']
+      - ['*mut f64', float64x2_t,'static_assert_uimm_bits!', 'LANE, 1','q']
+      - ['*mut p64', poly64x2_t ,'static_assert_uimm_bits!', 'LANE, 1','q']
+    compose:
+      - FnCall: ['{type[2]}', ['{type[3]}']]
+      - FnCall:
+        - "vstl1{type[4]}_lane_s64::<LANE>"
+        - - "ptr as *mut i64"
+          - FnCall: [transmute, [val]]
+
   - name: "vst1{neon_type[1].lane_nox}"
     doc: "Store multiple single-element structures from one, two, three, or four registers"
     arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
@@ -5080,56 +5198,6 @@ intrinsics:
             - link: 'llvm.aarch64.neon.st4lane.v{neon_type[1].lane}{type[0]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vst4{neon_type[1].lane_nox}', ['b.0', 'b.1', 'b.2', 'b.3', 'LANE as i64', 'a as _']]
-
-  - name: "vusdot{neon_type[0].laneq_nox}"
-    doc: "Dot product index form with unsigned and signed integers"
-    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
-    return_type: "{neon_type[0]}"
-    attr:
-      - *neon-i8mm
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [usdot, 'LANE = 3']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [unstable, ['feature = "stdarch_neon_i8mm"', 'issue = "117223"']]
-    static_defs: ["const LANE: i32"]
-    safety: safe
-    types:
-      - [int32x2_t, uint8x8_t, int8x16_t, '[LANE as u32, LANE as u32]','']
-      - [int32x4_t, uint8x16_t, int8x16_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]','q']
-    compose:
-      - FnCall: [static_assert_uimm_bits!, [LANE, '2']]
-      - Let: [c, int32x4_t, {FnCall: ['vreinterpretq_s32_s8', [c]]}]
-      - Let: [c, "{neon_type[0]}", {FnCall: [simd_shuffle!, [c, c, "{type[3]}"]]}]
-      - FnCall: ["vusdot{neon_type[0].no}", [a, b, {FnCall: ['vreinterpret{type[4]}_s8_s32', [c]]}]]
-
-  - name: "vsudot{neon_type[0].laneq_nox}"
-    doc: "Dot product index form with signed and unsigned integers"
-    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
-    return_type: "{neon_type[0]}"
-    attr:
-      - *neon-i8mm
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sudot, 'LANE = 3']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [unstable, ['feature = "stdarch_neon_i8mm"', 'issue = "117223"']]
-    static_defs: ["const LANE: i32"]
-    safety: safe
-    types:
-      - [int32x2_t, int8x8_t, uint8x16_t, '[LANE as u32, LANE as u32]', uint32x2_t]
-      - [int32x4_t, int8x16_t, uint8x16_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]', uint32x4_t]
-    compose:
-      - FnCall: [static_assert_uimm_bits!, [LANE, 2]]
-      - Let:
-          - c
-          - uint32x4_t
-          - FnCall: [transmute, [c]]
-      - Let:
-          - c
-          - "{type[4]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[3]}"]]
-      - FnCall: 
-          - "vusdot{neon_type[0].no}"
-          - - a
-            - FnCall: [transmute, [c]]
-            - b
 
   - name: "vmul{neon_type.no}"
     doc: Multiply
@@ -6552,7 +6620,6 @@ intrinsics:
       - Let: [c, "{neon_type[0]}", {FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]}]
       - FnCall: ["vcmla{neon_type[0].rot270}", [a, b, c]]
 
-
   - name: "vcmla{neon_type[0].rot270_lane}"
     doc: Floating-point complex multiply accumulate
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
@@ -6573,66 +6640,6 @@ intrinsics:
       - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
       - Let: [c, "{neon_type[0]}", {FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]}]
       - FnCall: ["vcmla{neon_type[0].rot270}", [a, b, c]]
-
-  - name: "vdot{neon_type[0].laneq_nox}"
-    doc: Dot product arithmetic (indexed)
-    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
-    return_type: "{neon_type[0]}"
-    static_defs: ["const LANE: i32"]
-    attr:
-      - FnCall: [target_feature, ['enable = "neon,dotprod"']]
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sdot, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [unstable, ['feature = "stdarch_neon_dotprod"', 'issue = "117224"']]
-    safety: safe
-    types:
-      - [int32x2_t, int8x8_t, int8x16_t, int32x4_t, '[LANE as u32, LANE as u32]', '']
-      - [int32x4_t, int8x16_t, int8x16_t, int32x4_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]','q']
-    compose:
-      - FnCall: [static_assert_uimm_bits!, [LANE, '2']]
-      - Let:
-          - c
-          - "{neon_type[3]}"
-          - FnCall: ['vreinterpretq_{neon_type[0]}_{neon_type[1]}', [c]]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, '{type[4]}']]
-      - FnCall:
-          - "vdot{neon_type[0].no}"
-          - - a
-            - b
-            - FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
-
-  - name: "vdot{neon_type[0].laneq_nox}"
-    doc: Dot product arithmetic (indexed)
-    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
-    return_type: "{neon_type[0]}"
-    static_defs: ["const LANE: i32"]
-    attr:
-      - FnCall: [target_feature, ['enable = "neon,dotprod"']]
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [udot, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [unstable, ['feature = "stdarch_neon_dotprod"', 'issue = "117224"']]
-    safety: safe
-    types:
-      - [uint32x2_t, uint8x8_t, uint8x16_t, uint32x4_t, '[LANE as u32, LANE as u32]','']
-      - [uint32x4_t, uint8x16_t, uint8x16_t, uint32x4_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]','q']
-    compose:
-      - FnCall: [static_assert_uimm_bits!, [LANE, '2']]
-      - Let:
-          - c
-          - "{neon_type[3]}"
-          - FnCall: ['vreinterpretq_{neon_type[0]}_{neon_type[1]}', [c]]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, '{type[4]}']]
-      - FnCall:
-          - "vdot{neon_type[0].no}"
-          - - a
-            - b
-            - FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
 
   - name: "vmax{neon_type.no}"
     doc: Maximum (vector)
@@ -13966,10 +13973,12 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [target_feature, ['enable = "neon,faminmax"']]
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env= "msvc"']]}]]}, {FnCall: [assert_instr, [famax]]}]]
       - FnCall: [unstable, ['feature = "faminmax"', 'issue = "137933"']]
     safety: safe
     types:
+      - float16x4_t
+      - float16x8_t
       - float32x2_t
       - float32x4_t
       - float64x2_t
@@ -13986,10 +13995,12 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [target_feature, ['enable = "neon,faminmax"']]
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env= "msvc"']]}]]}, {FnCall: [assert_instr, [famin]]}]]
       - FnCall: [unstable, ['feature = "faminmax"', 'issue = "137933"']]
     safety: safe
     types:
+      - float16x4_t
+      - float16x8_t
       - float32x2_t
       - float32x4_t
       - float64x2_t
@@ -14030,35 +14041,100 @@ intrinsics:
               arch: aarch64,arm64ec
       - FnCall: ['_vluti2{neon_type[0].lane_nox}', [a, b, LANE]]
 
+  - name: "vluti2{neon_type[0].laneq_nox}"
+    doc: "Lookup table read with 2-bit indices"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - FnCall: [target_feature, ['enable = {type[4]}']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'INDEX = 1']]}]]
+      - *neon-unstable-feat-lut
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+    static_defs: ["const INDEX: i32"]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t,   uint8x16_t, int8x16_t, 'INDEX >= 0 && INDEX <= 3', '"neon,lut"']
+      - [int8x16_t,  uint8x16_t, int8x16_t, 'INDEX >= 0 && INDEX <= 3', '"neon,lut"']
+      - [int16x4_t,  uint8x16_t, int16x8_t, 'INDEX >= 0 && INDEX <= 7', '"neon,lut"']
+      - [int16x8_t,  uint8x16_t, int16x8_t, 'INDEX >= 0 && INDEX <= 7', '"neon,lut"']
+    compose:
+      - FnCall: ['static_assert!', ['{type[3]}']]
+      - LLVMLink:
+          name: "vluti2{neon_type[0].laneq_nox}"
+          arguments:
+            - 'a: {neon_type[0]}'
+            - 'b: {neon_type[1]}'
+            - 'n: i32'
+          links:
+            - link: "llvm.aarch64.neon.vluti2.laneq.{neon_type[2]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+      - FnCall: ['_vluti2{neon_type[0].laneq_nox}', [a, b, INDEX]]
+
   - name: "vluti2{neon_type[0].lane_nox}"
     doc: "Lookup table read with 2-bit indices"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
       - FnCall: [target_feature, ['enable = "neon,lut"']]
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'LANE = 1']]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'INDEX = 1']]}]]
       - *neon-unstable-feat-lut
       - FnCall: [rustc_legacy_const_generics, ['2']]
-    static_defs: ["const LANE: i32"]
+    static_defs: ["const INDEX: i32"]
     safety:
       unsafe: [neon]
     types:
-      - [uint8x8_t,  uint8x8_t, uint8x16_t, 'LANE >= 0 && LANE <= 1', 'int8x8_t']
-      - [uint8x16_t, uint8x8_t, uint8x16_t, 'LANE >= 0 && LANE <= 1', 'int8x16_t']
-      - [poly8x8_t,  uint8x8_t, poly8x16_t, 'LANE >= 0 && LANE <= 1', 'int8x8_t']
-      - [poly8x16_t, uint8x8_t, poly8x16_t, 'LANE >= 0 && LANE <= 1', 'int8x16_t']
-      - [uint16x4_t, uint8x8_t, uint16x8_t, 'LANE >= 0 && LANE <= 3', 'int16x4_t']
-      - [uint16x8_t, uint8x8_t, uint16x8_t, 'LANE >= 0 && LANE <= 3', 'int16x8_t']
-      - [poly16x4_t, uint8x8_t, poly16x8_t, 'LANE >= 0 && LANE <= 3', 'int16x4_t']
-      - [poly16x8_t, uint8x8_t, poly16x8_t, 'LANE >= 0 && LANE <= 3', 'int16x8_t']
+      - [uint8x8_t,  uint8x8_t, uint8x16_t, 'INDEX >= 0 && INDEX <= 1', 'int8x8_t']
+      - [uint8x16_t, uint8x8_t, uint8x16_t, 'INDEX >= 0 && INDEX <= 1', 'int8x16_t']
+      - [poly8x8_t,  uint8x8_t, poly8x16_t, 'INDEX >= 0 && INDEX <= 1', 'int8x8_t']
+      - [poly8x16_t, uint8x8_t, poly8x16_t, 'INDEX >= 0 && INDEX <= 1', 'int8x16_t']
+      - [uint16x4_t, uint8x8_t, uint16x8_t, 'INDEX >= 0 && INDEX <= 3', 'int16x4_t']
+      - [uint16x8_t, uint8x8_t, uint16x8_t, 'INDEX >= 0 && INDEX <= 3', 'int16x8_t']
+      - [poly16x4_t, uint8x8_t, poly16x8_t, 'INDEX >= 0 && INDEX <= 3', 'int16x4_t']
+      - [poly16x8_t, uint8x8_t, poly16x8_t, 'INDEX >= 0 && INDEX <= 3', 'int16x8_t']
+      - [float16x4_t, uint8x8_t, float16x8_t, 'INDEX >= 0 && INDEX <= 3', 'int16x4_t']
+      - [float16x8_t, uint8x8_t, float16x8_t, 'INDEX >= 0 && INDEX <= 3', 'int16x8_t']
     compose:
       - FnCall: ['static_assert!', ['{type[3]}']]
       - FnCall:
           - transmute
           - - FnCall:
-                - 'vluti2{neon_type[4].lane_nox}::<LANE>'
+                - 'vluti2{neon_type[4].lane_nox}::<INDEX>'
                 - - FnCall: [transmute, [a]]
                   - b
+
+  - name: "vluti2{neon_type[0].laneq_nox}"
+    doc: "Lookup table read with 2-bit indices"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,lut"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'INDEX = 1']]}]]
+      - *neon-unstable-feat-lut
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+    static_defs: ["const INDEX: i32"]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8_t,  uint8x16_t, uint8x16_t, 'INDEX >= 0 && INDEX <= 3', 'int8x8_t']
+      - [uint8x16_t, uint8x16_t, uint8x16_t, 'INDEX >= 0 && INDEX <= 3', 'int8x16_t']
+      - [poly8x8_t,  uint8x16_t, poly8x16_t, 'INDEX >= 0 && INDEX <= 3', 'int8x8_t']
+      - [poly8x16_t, uint8x16_t, poly8x16_t, 'INDEX >= 0 && INDEX <= 3', 'int8x16_t']
+      - [uint16x4_t, uint8x16_t, uint16x8_t, 'INDEX >= 0 && INDEX <= 7', 'int16x4_t']
+      - [uint16x8_t, uint8x16_t, uint16x8_t, 'INDEX >= 0 && INDEX <= 7', 'int16x8_t']
+      - [poly16x4_t, uint8x16_t, poly16x8_t, 'INDEX >= 0 && INDEX <= 7', 'int16x4_t']
+      - [poly16x8_t, uint8x16_t, poly16x8_t, 'INDEX >= 0 && INDEX <= 7', 'int16x8_t']
+      - [float16x4_t, uint8x16_t, float16x8_t, 'INDEX >= 0 && INDEX <= 7', 'int16x4_t']
+      - [float16x8_t, uint8x16_t, float16x8_t, 'INDEX >= 0 && INDEX <= 7', 'int16x8_t']
+    compose:
+      - FnCall: ['static_assert!', ['{type[3]}']]
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - 'vluti2{neon_type[4].laneq_nox}::<INDEX>'
+                - - FnCall: [transmute, [a]]
+                  - b
+
 
   - name: "vluti4{neon_type[0].lane_nox}"
     doc: "Lookup table read with 4-bit indices"
@@ -14268,6 +14344,28 @@ intrinsics:
                 - - FnCall: [transmute, [a]]
                   - b
 
+  - name: "vscale{neon_type[0].no}"
+    doc: "Multi-vector floating-point adjust exponent"
+    arguments: ["vn: {type[0]}", "vm: {type[1]}"]
+    return_type: "{type[0]}"
+    attr:
+      - *neon-unstable-fp8
+      - FnCall: [target_feature, ['enable = "neon,fp8"']]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env= "msvc"']]}]]}, {FnCall: [assert_instr, [fscale]]}]]
+    safety: safe
+    types:
+      - [float16x4_t, int16x4_t]
+      - [float16x8_t, int16x8_t]
+      - [float32x2_t, int32x2_t]
+      - [float32x4_t, int32x4_t]
+      - [float64x2_t, int64x2_t]
+    compose:
+      - LLVMLink:
+          name: "vscale{neon_type[0].no}"
+          links:
+            - link: "llvm.aarch64.neon.fp8.fscale.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
   - name: "__jcvt"
     doc: "Floating-point JavaScript convert to signed fixed-point, rounding toward zero"
     arguments: ["a: {type}"]
@@ -14275,7 +14373,7 @@ intrinsics:
     attr:
       - FnCall: [target_feature, ['enable = "jsconv"']]
       - FnCall: [cfg_attr, [test, { FnCall: [assert_instr, ["fjcvtzs"]] }]]
-      - *aarch64-unstable-jscvt
+      - *aarch64-stable-jscvt
     safety: safe
     types:
       - f64

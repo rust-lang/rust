@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `dep_2_reexport::Type: Trait` is not satisfied
+error[E0277]: the trait bound `dep_2_reexport::Type: dependency::Trait` is not satisfied
   --> replaced
    |
 LL |     do_something(Type);
-   |     ------------ ^^^^ the trait `Trait` is not implemented for `dep_2_reexport::Type`
+   |     ------------ ^^^^ the trait `dependency::Trait` is not implemented for `dep_2_reexport::Type`
    |     |
    |     required by a bound introduced by this call
    |
@@ -17,7 +17,7 @@ LL | pub trait Trait {
 LL | pub trait Trait {
    | --------------- this is the found trait
    = help: you can use `cargo tree` to explore your dependency tree
-help: the trait `Trait` is implemented for `dependency::Type`
+help: the trait `dependency::Trait` is implemented for `dependency::Type`
   --> replaced
    |
 LL | impl Trait for Type {
@@ -64,11 +64,11 @@ LL | pub trait Trait {
    | --------------- this is the trait that was imported
    = help: you can use `cargo tree` to explore your dependency tree
 
-error[E0277]: the trait bound `OtherType: Trait` is not satisfied
+error[E0277]: the trait bound `OtherType: dependency::Trait` is not satisfied
   --> replaced
    |
 LL |     do_something(OtherType);
-   |     ------------ ^^^^^^^^^ the trait `Trait` is not implemented for `OtherType`
+   |     ------------ ^^^^^^^^^ the trait `dependency::Trait` is not implemented for `OtherType`
    |     |
    |     required by a bound introduced by this call
    |
@@ -83,7 +83,7 @@ LL | pub trait Trait {
 LL | pub trait Trait {
    | --------------- this is the found trait
    = help: you can use `cargo tree` to explore your dependency tree
-help: the trait `Trait` is implemented for `dependency::Type`
+help: the trait `dependency::Trait` is implemented for `dependency::Type`
   --> replaced
    |
 LL | impl Trait for Type {

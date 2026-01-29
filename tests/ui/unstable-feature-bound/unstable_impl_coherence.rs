@@ -12,6 +12,6 @@ use aux::Trait;
 struct LocalTy;
 
 impl aux::Trait for LocalTy {}
-//~^ ERROR: conflicting implementations of trait `Trait` for type `LocalTy`
+//~^ ERROR: conflicting implementations of trait `aux::Trait` for type `LocalTy`
 
 fn main(){}

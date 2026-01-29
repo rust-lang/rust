@@ -113,7 +113,6 @@ ENV TARGETS=$TARGETS,wasm32-wasip1
 ENV TARGETS=$TARGETS,wasm32-wasip1-threads
 ENV TARGETS=$TARGETS,wasm32-wasip2
 ENV TARGETS=$TARGETS,wasm32v1-none
-ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnuasan
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
 ENV TARGETS=$TARGETS,x86_64-fortanix-unknown-sgx
 ENV TARGETS=$TARGETS,nvptx64-nvidia-cuda
@@ -125,6 +124,8 @@ ENV TARGETS=$TARGETS,aarch64-unknown-uefi
 ENV TARGETS=$TARGETS,i686-unknown-uefi
 ENV TARGETS=$TARGETS,x86_64-unknown-uefi
 ENV TARGETS=$TARGETS,riscv64gc-unknown-linux-musl
+
+ENV TARGETS_SANITIZERS=x86_64-unknown-linux-gnuasan
 
 # As per https://bugs.launchpad.net/ubuntu/+source/gcc-defaults/+bug/1300211
 # we need asm in the search path for gcc-9 (for gnux32) but not in the search path of the
@@ -139,4 +140,4 @@ ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --enable-llvm-bitcode-lin
   --musl-root-armv7=/musl-armv7 \
   --musl-root-riscv64gc=/musl-riscv64gc
 
-ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS
+ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS && python3 ../x.py dist --host='' --set build.sanitizers=true --target $TARGETS_SANITIZERS

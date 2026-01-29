@@ -431,40 +431,6 @@ macro_rules! t_b {
     };
 }
 
-macro_rules! impl_from {
-    ($s: ident) => {
-        #[unstable(feature = "stdarch_s390x", issue = "135681")]
-        impl From<$s> for s_t_l!($s) {
-            #[inline]
-            fn from (v: $s) -> Self {
-                unsafe {
-                    transmute(v)
-                }
-            }
-        }
-    };
-    ($($s: ident),*) => {
-        $(
-            impl_from! { $s }
-        )*
-    };
-}
-
-macro_rules! impl_neg {
-    ($s: ident : $zero: expr) => {
-        #[unstable(feature = "stdarch_s390x", issue = "135681")]
-        impl crate::ops::Neg for s_t_l!($s) {
-            type Output = s_t_l!($s);
-            #[inline]
-            fn neg(self) -> Self::Output {
-                unsafe { simd_neg(self) }
-            }
-        }
-    };
-}
-
-pub(crate) use impl_from;
-pub(crate) use impl_neg;
 pub(crate) use impl_vec_trait;
 pub(crate) use l_t_t;
 pub(crate) use s_t_l;

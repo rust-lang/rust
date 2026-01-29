@@ -136,9 +136,10 @@
 //! padding specified by fill/alignment will be used to take up the required
 //! space (see below).
 //!
-//! The value for the width can also be provided as a [`usize`] in the list of
-//! parameters by adding a postfix `$`, indicating that the second argument is
-//! a [`usize`] specifying the width.
+//! The width can also be provided dynamically by referencing another argument
+//! with a `$` suffix. Use `{:N$}` to reference the Nth positional argument
+//! (where N is an integer), or `{:name$}` to reference a named argument. The
+//! referenced argument must be of type [`usize`].
 //!
 //! Referring to an argument with the dollar syntax does not affect the "next
 //! argument" counter, so it's usually a good idea to refer to arguments by
@@ -236,7 +237,8 @@
 //!
 //! 2. An integer or name followed by dollar sign `.N$`:
 //!
-//!    use format *argument* `N` (which must be a `usize`) as the precision.
+//!    use the value of format *argument* `N` (which must be a `usize`) as the precision.
+//!    An integer refers to a positional argument, and a name refers to a named argument.
 //!
 //! 3. An asterisk `.*`:
 //!
@@ -363,7 +365,10 @@
 //! - `ws` is any character for which [`char::is_whitespace`] returns `true`, has no semantic
 //!   meaning and is completely optional,
 //! - `integer` is a decimal integer that may contain leading zeroes and must fit into an `usize` and
-//! - `identifier` is an `IDENTIFIER_OR_KEYWORD` (not an `IDENTIFIER`) as defined by the [Rust language reference](https://doc.rust-lang.org/reference/identifiers.html).
+//! - `identifier` is an `IDENTIFIER_OR_KEYWORD` (not an `IDENTIFIER`) as
+//!   defined by the [Rust language
+//!   reference](https://doc.rust-lang.org/reference/identifiers.html), except
+//!   for a bare `_`.
 //!
 //! # Formatting traits
 //!

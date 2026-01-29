@@ -2520,7 +2520,7 @@ impl<T> [T] {
     /// )));
     /// assert_eq!(s.split_once(|&x| x == 0), None);
     /// ```
-    #[unstable(feature = "slice_split_once", reason = "newly added", issue = "112811")]
+    #[unstable(feature = "slice_split_once", issue = "112811")]
     #[inline]
     pub fn split_once<F>(&self, pred: F) -> Option<(&[T], &[T])>
     where
@@ -2548,7 +2548,7 @@ impl<T> [T] {
     /// )));
     /// assert_eq!(s.rsplit_once(|&x| x == 0), None);
     /// ```
-    #[unstable(feature = "slice_split_once", reason = "newly added", issue = "112811")]
+    #[unstable(feature = "slice_split_once", issue = "112811")]
     #[inline]
     pub fn rsplit_once<F>(&self, pred: F) -> Option<(&[T], &[T])>
     where
@@ -4443,7 +4443,6 @@ impl<T> [T] {
     where
         Simd<T, LANES>: AsRef<[T; LANES]>,
         T: simd::SimdElement,
-        simd::LaneCount<LANES>: simd::SupportedLaneCount,
     {
         // These are expected to always match, as vector types are laid out like
         // arrays per <https://llvm.org/docs/LangRef.html#vector-type>, but we
@@ -4479,7 +4478,6 @@ impl<T> [T] {
     where
         Simd<T, LANES>: AsMut<[T; LANES]>,
         T: simd::SimdElement,
-        simd::LaneCount<LANES>: simd::SupportedLaneCount,
     {
         // These are expected to always match, as vector types are laid out like
         // arrays per <https://llvm.org/docs/LangRef.html#vector-type>, but we

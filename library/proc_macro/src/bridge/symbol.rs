@@ -94,25 +94,25 @@ impl fmt::Display for Symbol {
 }
 
 impl<S> Encode<S> for Symbol {
-    fn encode(self, w: &mut Writer, s: &mut S) {
+    fn encode(self, w: &mut Buffer, s: &mut S) {
         self.with(|sym| sym.encode(w, s))
     }
 }
 
-impl<S: server::Server> Decode<'_, '_, server::HandleStore<S>> for Marked<S::Symbol, Symbol> {
-    fn decode(r: &mut Reader<'_>, s: &mut server::HandleStore<S>) -> Self {
+impl<S: server::Server> Decode<'_, '_, server::HandleStore<S>> for server::MarkedSymbol<S> {
+    fn decode(r: &mut &[u8], s: &mut server::HandleStore<S>) -> Self {
         Mark::mark(S::intern_symbol(<&str>::decode(r, s)))
     }
 }
 
-impl<S: server::Server> Encode<server::HandleStore<S>> for Marked<S::Symbol, Symbol> {
-    fn encode(self, w: &mut Writer, s: &mut server::HandleStore<S>) {
+impl<S: server::Server> Encode<server::HandleStore<S>> for server::MarkedSymbol<S> {
+    fn encode(self, w: &mut Buffer, s: &mut server::HandleStore<S>) {
         S::with_symbol_string(&self.unmark(), |sym| sym.encode(w, s))
     }
 }
 
 impl<S> Decode<'_, '_, S> for Symbol {
-    fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
+    fn decode(r: &mut &[u8], s: &mut S) -> Self {
         Symbol::new(<&str>::decode(r, s))
     }
 }

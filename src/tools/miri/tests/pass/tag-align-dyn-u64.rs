@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
-// SPDX-FileCopyrightText: The Rust Project Developers (see https://thanks.rust-lang.org)
-
 use std::mem;
 
 enum Tag<A> {

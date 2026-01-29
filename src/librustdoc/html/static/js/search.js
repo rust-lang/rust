@@ -158,6 +158,7 @@ const REGEX_INVALID_TYPE_FILTER = /[^a-z]/ui;
 
 const MAX_RESULTS = 200;
 const NO_TYPE_FILTER = -1;
+const DEPRECATED_COUNT_SELECTOR = "deprecated-count";
 
 /**
  * The [edit distance] is a metric for measuring the difference between two strings.
@@ -4904,7 +4905,12 @@ async function addTab(results, query, display, finishedCallback, isTypeSearch) {
     let output = document.createElement("ul");
     output.className = "search-results " + extraClass;
 
+    const deprecatedCountElem = document.createElement("span");
+    deprecatedCountElem.className = DEPRECATED_COUNT_SELECTOR;
+    output.appendChild(deprecatedCountElem);
+
     let count = 0;
+    let deprecatedCount = 0;
 
     /** @type {Promise<string|null>[]} */
     const descList = [];
@@ -4922,6 +4928,10 @@ async function addTab(results, query, display, finishedCallback, isTypeSearch) {
         link.className = "result-" + type;
         if (obj.item.deprecated) {
             link.className += " deprecated";
+            deprecatedCount += 1;
+            const plural = deprecatedCount > 1 ? "s" : "";
+            deprecatedCountElem.innerText =
+                `${deprecatedCount} deprecated item${plural} hidden by setting`;
         }
         link.href = obj.href;
 
@@ -5411,7 +5421,7 @@ function registerSearchEvents() {
             const active = document.activeElement;
             if (active) {
                 const previous = active.previousElementSibling;
-                if (previous) {
+                if (previous && previous.className !== DEPRECATED_COUNT_SELECTOR) {
                     // @ts-expect-error
                     previous.focus();
                 } else {

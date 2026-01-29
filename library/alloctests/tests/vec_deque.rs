@@ -2336,3 +2336,14 @@ fn test_splice_forget() {
     std::mem::forget(v.splice(2..4, a));
     assert_eq!(v, &[1, 2]);
 }
+
+#[test]
+fn test_splice_wrapping() {
+    let mut vec = VecDeque::with_capacity(10);
+    vec.push_front(7u8);
+    vec.push_back(9);
+
+    vec.splice(1..1, [8]);
+
+    assert_eq!(Vec::from(vec), [7, 8, 9]);
+}

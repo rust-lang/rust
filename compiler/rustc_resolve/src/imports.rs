@@ -20,7 +20,7 @@ use rustc_session::lint::builtin::{
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
-use rustc_span::{Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 use tracing::debug;
 
 use crate::Namespace::{self, *};
@@ -33,8 +33,8 @@ use crate::errors::{
 use crate::ref_mut::CmCell;
 use crate::{
     AmbiguityError, BindingKey, CmResolver, Decl, DeclData, DeclKind, Determinacy, Finalize,
-    ImportSuggestion, Module, ModuleOrUniformRoot, ParentScope, PathResult, PerNS, ResolutionError,
-    Resolver, ScopeSet, Segment, Used, module_to_string, names_to_string,
+    IdentKey, ImportSuggestion, Module, ModuleOrUniformRoot, ParentScope, PathResult, PerNS,
+    ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string, names_to_string,
 };
 
 type Res = def::Res<NodeId>;
@@ -239,18 +239,23 @@ impl<'ra> ImportData<'ra> {
 }
 
 /// Records information about the resolution of a name in a namespace of a module.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct NameResolution<'ra> {
     /// Single imports that may define the name in the namespace.
     /// Imports are arena-allocated, so it's ok to use pointers as keys.
     pub single_imports: FxIndexSet<Import<'ra>>,
     /// The non-glob declaration for this name, if it is known to exist.
-    pub non_glob_decl: Option<Decl<'ra>>,
+    pub non_glob_decl: Option<Decl<'ra>> = None,
     /// The glob declaration for this name, if it is known to exist.
-    pub glob_decl: Option<Decl<'ra>>,
+    pub glob_decl: Option<Decl<'ra>> = None,
+    pub orig_ident_span: Span,
 }
 
 impl<'ra> NameResolution<'ra> {
+    pub(crate) fn new(orig_ident_span: Span) -> Self {
+        NameResolution { single_imports: FxIndexSet::default(), orig_ident_span, .. }
+    }
+
     /// Returns the binding for the name if it is known or None if it not known.
     pub(crate) fn binding(&self) -> Option<Decl<'ra>> {
         self.best_decl().and_then(|binding| {
@@ -417,14 +422,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// and return existing declaration if there is a collision.
     pub(crate) fn try_plant_decl_into_local_module(
         &mut self,
-        ident: Macros20NormalizedIdent,
+        ident: IdentKey,
+        orig_ident_span: Span,
         ns: Namespace,
         decl: Decl<'ra>,
         warn_ambiguity: bool,
     ) -> Result<(), Decl<'ra>> {
         let module = decl.parent_module.unwrap();
         let res = decl.res();
-        self.check_reserved_macro_name(ident.0, res);
+        self.check_reserved_macro_name(ident.name, orig_ident_span, res);
         // Even if underscore names cannot be looked up, we still need to add them to modules,
         // because they can be fetched by glob imports from those modules, and bring traits
         // into scope both directly and through glob imports.
@@ -432,46 +438,52 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             module.underscore_disambiguator.update_unchecked(|d| d + 1);
             module.underscore_disambiguator.get()
         });
-        self.update_local_resolution(module, key, warn_ambiguity, |this, resolution| {
-            if let Some(old_decl) = resolution.best_decl() {
-                assert_ne!(decl, old_decl);
-                assert!(!decl.warn_ambiguity.get());
-                if res == Res::Err && old_decl.res() != Res::Err {
-                    // Do not override real declarations with `Res::Err`s from error recovery.
-                    return Ok(());
-                }
-                match (old_decl.is_glob_import(), decl.is_glob_import()) {
-                    (true, true) => {
-                        resolution.glob_decl =
-                            Some(this.select_glob_decl(old_decl, decl, warn_ambiguity));
+        self.update_local_resolution(
+            module,
+            key,
+            orig_ident_span,
+            warn_ambiguity,
+            |this, resolution| {
+                if let Some(old_decl) = resolution.best_decl() {
+                    assert_ne!(decl, old_decl);
+                    assert!(!decl.warn_ambiguity.get());
+                    if res == Res::Err && old_decl.res() != Res::Err {
+                        // Do not override real declarations with `Res::Err`s from error recovery.
+                        return Ok(());
                     }
-                    (old_glob @ true, false) | (old_glob @ false, true) => {
-                        let (glob_decl, non_glob_decl) =
-                            if old_glob { (old_decl, decl) } else { (decl, old_decl) };
-                        resolution.non_glob_decl = Some(non_glob_decl);
-                        if let Some(old_glob_decl) = resolution.glob_decl
-                            && old_glob_decl != glob_decl
-                        {
+                    match (old_decl.is_glob_import(), decl.is_glob_import()) {
+                        (true, true) => {
                             resolution.glob_decl =
-                                Some(this.select_glob_decl(old_glob_decl, glob_decl, false));
-                        } else {
-                            resolution.glob_decl = Some(glob_decl);
+                                Some(this.select_glob_decl(old_decl, decl, warn_ambiguity));
+                        }
+                        (old_glob @ true, false) | (old_glob @ false, true) => {
+                            let (glob_decl, non_glob_decl) =
+                                if old_glob { (old_decl, decl) } else { (decl, old_decl) };
+                            resolution.non_glob_decl = Some(non_glob_decl);
+                            if let Some(old_glob_decl) = resolution.glob_decl
+                                && old_glob_decl != glob_decl
+                            {
+                                resolution.glob_decl =
+                                    Some(this.select_glob_decl(old_glob_decl, glob_decl, false));
+                            } else {
+                                resolution.glob_decl = Some(glob_decl);
+                            }
+                        }
+                        (false, false) => {
+                            return Err(old_decl);
                         }
                     }
-                    (false, false) => {
-                        return Err(old_decl);
+                } else {
+                    if decl.is_glob_import() {
+                        resolution.glob_decl = Some(decl);
+                    } else {
+                        resolution.non_glob_decl = Some(decl);
                     }
                 }
-            } else {
-                if decl.is_glob_import() {
-                    resolution.glob_decl = Some(decl);
-                } else {
-                    resolution.non_glob_decl = Some(decl);
-                }
-            }
 
-            Ok(())
-        })
+                Ok(())
+            },
+        )
     }
 
     // Use `f` to mutate the resolution of the name in the module.
@@ -480,6 +492,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         module: Module<'ra>,
         key: BindingKey,
+        orig_ident_span: Span,
         warn_ambiguity: bool,
         f: F,
     ) -> T
@@ -489,7 +502,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
         let (binding, t, warn_ambiguity) = {
-            let resolution = &mut *self.resolution_or_default(module, key).borrow_mut_unchecked();
+            let resolution = &mut *self
+                .resolution_or_default(module, key, orig_ident_span)
+                .borrow_mut_unchecked();
             let old_decl = resolution.binding();
 
             let t = f(self, resolution);
@@ -510,7 +525,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Define or update `binding` in `module`s glob importers.
         for import in glob_importers.iter() {
             let mut ident = key.ident;
-            let scope = match ident.0.span.reverse_glob_adjust(module.expansion, import.span) {
+            let scope = match ident
+                .ctxt
+                .update_unchecked(|ctxt| ctxt.reverse_glob_adjust(module.expansion, import.span))
+            {
                 Some(Some(def)) => self.expn_def_scope(def),
                 Some(None) => import.parent_scope.module,
                 None => continue,
@@ -519,6 +537,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let import_decl = self.new_import_decl(binding, *import);
                 let _ = self.try_plant_decl_into_local_module(
                     ident,
+                    orig_ident_span,
                     key.ns,
                     import_decl,
                     warn_ambiguity,
@@ -540,14 +559,26 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let dummy_decl = self.new_import_decl(dummy_decl, import);
             self.per_ns(|this, ns| {
                 let module = import.parent_scope.module;
-                let ident = Macros20NormalizedIdent::new(target);
-                let _ = this.try_plant_decl_into_local_module(ident, ns, dummy_decl, false);
+                let ident = IdentKey::new(target);
+                let _ = this.try_plant_decl_into_local_module(
+                    ident,
+                    target.span,
+                    ns,
+                    dummy_decl,
+                    false,
+                );
                 // Don't remove underscores from `single_imports`, they were never added.
                 if target.name != kw::Underscore {
                     let key = BindingKey::new(ident, ns);
-                    this.update_local_resolution(module, key, false, |_, resolution| {
-                        resolution.single_imports.swap_remove(&import);
-                    })
+                    this.update_local_resolution(
+                        module,
+                        key,
+                        target.span,
+                        false,
+                        |_, resolution| {
+                            resolution.single_imports.swap_remove(&import);
+                        },
+                    )
                 }
             });
             self.record_use(target, dummy_decl, Used::Other);
@@ -687,7 +718,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         import.root_id,
                         import.root_span,
                         BuiltinLintDiag::AmbiguousGlobReexports {
-                            name: key.ident.to_string(),
+                            name: key.ident.name.to_string(),
                             namespace: key.ns.descr().to_string(),
                             first_reexport_span: import.root_span,
                             duplicate_reexport_span: amb_binding.span,
@@ -893,7 +924,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         let mut indeterminate_count = 0;
-        self.per_ns_cm(|this, ns| {
+        self.per_ns_cm(|mut this, ns| {
             if !type_ns_only || ns == TypeNS {
                 if bindings[ns].get() != PendingDecl::Pending {
                     return;
@@ -922,7 +953,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // We need the `target`, `source` can be extracted.
                         let import_decl = this.new_import_decl(binding, import);
                         this.get_mut_unchecked().plant_decl_into_local_module(
-                            Macros20NormalizedIdent::new(target),
+                            IdentKey::new(target),
+                            target.span,
                             ns,
                             import_decl,
                         );
@@ -931,10 +963,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     Err(Determinacy::Determined) => {
                         // Don't remove underscores from `single_imports`, they were never added.
                         if target.name != kw::Underscore {
-                            let key = BindingKey::new(Macros20NormalizedIdent::new(target), ns);
+                            let key = BindingKey::new(IdentKey::new(target), ns);
                             this.get_mut_unchecked().update_local_resolution(
                                 parent,
                                 key,
+                                target.span,
                                 false,
                                 |_, resolution| {
                                     resolution.single_imports.swap_remove(&import);
@@ -1531,15 +1564,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .borrow()
             .iter()
             .filter_map(|(key, resolution)| {
-                resolution.borrow().binding().map(|binding| (*key, binding))
+                let resolution = resolution.borrow();
+                resolution.binding().map(|binding| (*key, binding, resolution.orig_ident_span))
             })
             .collect::<Vec<_>>();
-        for (mut key, binding) in bindings {
-            let scope = match key.ident.0.span.reverse_glob_adjust(module.expansion, import.span) {
-                Some(Some(def)) => self.expn_def_scope(def),
-                Some(None) => import.parent_scope.module,
-                None => continue,
-            };
+        for (mut key, binding, orig_ident_span) in bindings {
+            let scope =
+                match key.ident.ctxt.update_unchecked(|ctxt| {
+                    ctxt.reverse_glob_adjust(module.expansion, import.span)
+                }) {
+                    Some(Some(def)) => self.expn_def_scope(def),
+                    Some(None) => import.parent_scope.module,
+                    None => continue,
+                };
             if self.is_accessible_from(binding.vis(), scope) {
                 let import_decl = self.new_import_decl(binding, import);
                 let warn_ambiguity = self
@@ -1548,6 +1585,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
                 let _ = self.try_plant_decl_into_local_module(
                     key.ident,
+                    orig_ident_span,
                     key.ns,
                     import_decl,
                     warn_ambiguity,
@@ -1575,19 +1613,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut children = Vec::new();
         let mut ambig_children = Vec::new();
 
-        module.for_each_child(self, |this, ident, _, binding| {
+        module.for_each_child(self, |this, ident, orig_ident_span, _, binding| {
             let res = binding.res().expect_non_local();
             if res != def::Res::Err {
-                let child = |reexport_chain| ModChild {
-                    ident: ident.0,
-                    res,
-                    vis: binding.vis(),
-                    reexport_chain,
-                };
+                let ident = ident.orig(orig_ident_span);
+                let child =
+                    |reexport_chain| ModChild { ident, res, vis: binding.vis(), reexport_chain };
                 if let Some((ambig_binding1, ambig_binding2)) = binding.descent_to_ambiguity() {
                     let main = child(ambig_binding1.reexport_chain(this));
                     let second = ModChild {
-                        ident: ident.0,
+                        ident,
                         res: ambig_binding2.res().expect_non_local(),
                         vis: ambig_binding2.vis(),
                         reexport_chain: ambig_binding2.reexport_chain(this),
