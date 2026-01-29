@@ -2,6 +2,9 @@
 // Checks that the #[unsafe(naked)] attribute can be placed on function definitions only.
 //
 //@ needs-asm-support
+//@ revisions: edition2015 edition2018
+//@ [edition2015] edition: 2015
+//@ [edition2018] edition: 2018..
 #![unsafe(naked)] //~ ERROR attribute cannot be used on
 
 use std::arch::naked_asm;
@@ -56,7 +59,8 @@ fn main() {
 // Check that the path of an attribute without a name is printed correctly (issue #140082)
 #[::a]
 //~^ ERROR attribute incompatible with `#[unsafe(naked)]`
-//~| ERROR failed to resolve: use of unresolved module or unlinked crate `a`
+//[edition2015]~| ERROR failed to resolve: use of unresolved module or unlinked crate `a`
+//[edition2018]~| ERROR failed to resolve: could not find `a` in the list of imported crates
 #[unsafe(naked)]
 extern "C" fn issue_140082() {
     naked_asm!("")

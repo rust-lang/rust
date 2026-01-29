@@ -1,4 +1,6 @@
-//@ edition:2015..2021
+//@ revisions: edition2015 edition2021
+//@[edition2015]edition:2015..2021
+//@[edition2021]edition:2021..
 #![feature(associated_type_defaults)]
 
 // This used to cause an ICE because assoc. type defaults weren't properly
@@ -13,5 +15,5 @@ impl Foo<u64> for () {}
 
 fn main() {
     assert_eq!(<() as Foo<u32>>::Out::default().to_string(), "false");
-    //~^ ERROR no function or associated item named `default` found for trait object
+    //~^ ERROR no function or associated item named `default` found for trait
 }

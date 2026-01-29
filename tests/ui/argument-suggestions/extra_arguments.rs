@@ -1,4 +1,8 @@
-//@ edition:2015..2021
+//@ revisions: edition2015 edition2018 edition2021
+//@[edition2015]edition:2015
+//@[edition2018]edition:2018
+//@[edition2021]edition:2021..
+
 fn empty() {}
 fn one_arg<T>(_a: T) {}
 fn two_arg_same(_a: i32, _b: i32) {}

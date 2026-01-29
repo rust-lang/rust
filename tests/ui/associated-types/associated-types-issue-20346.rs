@@ -2,7 +2,6 @@
 // Test that we reliably check the value of the associated type.
 
 #![crate_type = "lib"]
-#![no_implicit_prelude]
 
 use std::option::Option::{self, None, Some};
 use std::vec::Vec;
