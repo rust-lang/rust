@@ -1,0 +1,7 @@
+error: inline assembly requires more registers than available
+Error:   --> $DIR/exhausted-registers-issue-90815.rs:39:10
+   |
+LL |         "mov {0}, r0",
+   |          ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
