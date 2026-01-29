@@ -221,14 +221,14 @@ call-function: (
 
 define-function: (
     "check-since-color",
-    [theme],
+    [theme, color],
     block {
         call-function: ("switch-theme", {"theme": |theme|})
-        assert-css: (".since", {"color": "#808080"}, ALL)
+        assert-css: (".since", {"color": |color|}, ALL)
     },
 )
 
 go-to: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
-call-function: ("check-since-color", {"theme": "ayu"})
-call-function: ("check-since-color", {"theme": "dark"})
-call-function: ("check-since-color", {"theme": "light"})
+call-function: ("check-since-color", {"theme": "ayu", "color": "#808080"})
+call-function: ("check-since-color", {"theme": "dark", "color": "#d0d0d0"})
+call-function: ("check-since-color", {"theme": "light", "color": "#808080"})
