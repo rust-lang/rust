@@ -381,18 +381,18 @@ impl PathSet {
         PathSet::Set(set)
     }
 
-    fn has(&self, needle: &Path, module: Kind) -> bool {
+    fn has(&self, needle: &Path, module: Kind, filter_start: bool) -> bool {
         match self {
-            PathSet::Set(set) => set.iter().any(|p| Self::check(p, needle, module)),
-            PathSet::Suite(suite) => Self::check(suite, needle, module),
+            PathSet::Set(set) => set.iter().any(|p| Self::check(p, needle, module, filter_start)),
+            PathSet::Suite(suite) => Self::check(suite, needle, module, filter_start),
         }
     }
 
     // internal use only
-    fn check(p: &TaskPath, needle: &Path, module: Kind) -> bool {
+    fn check(p: &TaskPath, needle: &Path, module: Kind, filter_start: bool) -> bool {
         let check_path = || {
             // This order is important for retro-compatibility, as `starts_with` was introduced later.
-            p.path.ends_with(needle) || p.path.starts_with(needle)
+            p.path.ends_with(needle) || (filter_start && p.path.starts_with(needle))
         };
         if let Some(p_kind) = &p.kind { check_path() && *p_kind == module } else { check_path() }
     }
@@ -407,7 +407,7 @@ impl PathSet {
         let mut check = |p| {
             let mut result = false;
             for n in needles.iter_mut() {
-                let matched = Self::check(p, &n.path, module);
+                let matched = Self::check(p, &n.path, module, false);
                 if matched {
                     n.will_be_executed = true;
                     result = true;
@@ -478,7 +478,7 @@ impl StepDescription {
     }
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
-        if builder.config.skip.iter().any(|e| pathset.has(e, builder.kind)) {
+        if builder.config.skip.iter().any(|e| pathset.has(e, builder.kind, true)) {
             if !matches!(builder.config.get_dry_run(), DryRun::SelfCheck) {
                 println!("Skipping {pathset:?} because it is excluded");
             }
@@ -1650,7 +1650,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
 
         for path in &self.paths {
-            if should_run.paths.iter().any(|s| s.has(path, desc.kind))
+            if should_run.paths.iter().any(|s| s.has(path, desc.kind, false))
                 && !desc.is_excluded(
                     self,
                     &PathSet::Suite(TaskPath { path: path.clone(), kind: Some(desc.kind) }),
