@@ -157,7 +157,7 @@ impl ModuleConfig {
             // `#![no_builtins]` is assumed to not participate in LTO and
             // instead goes on to generate object code.
             EmitObj::Bitcode
-        } else if need_bitcode_in_object(tcx) {
+        } else if need_bitcode_in_object(tcx) || sess.target.requires_lto {
             EmitObj::ObjectCode(BitcodeSection::Full)
         } else {
             EmitObj::ObjectCode(BitcodeSection::None)
