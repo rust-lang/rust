@@ -2507,3 +2507,41 @@ fn test_slice_from_raw_parts_in_const() {
     assert_eq!(EMPTY_SLICE.as_ptr().addr(), 123456);
     assert_eq!(EMPTY_SLICE.len(), 0);
 }
+
+#[test]
+fn test_shift_left() {
+    #[track_caller]
+    fn case<const M: usize, const N: usize>(
+        mut a: [i32; M],
+        i: [i32; N],
+        j: [i32; N],
+        b: [i32; M],
+    ) {
+        assert_eq!((a.shift_left(i), a), (j, b));
+    }
+    case([], [1, 2, 3, 4, 5], [1, 2, 3, 4, 5], []);
+    case([1], [2, 3, 4, 5], [1, 2, 3, 4], [5]);
+    case([1, 2], [3, 4, 5], [1, 2, 3], [4, 5]);
+    case([1, 2, 3], [4, 5], [1, 2], [3, 4, 5]);
+    case([1, 2, 3, 4], [5], [1], [2, 3, 4, 5]);
+    case([1, 2, 3, 4, 5], [], [], [1, 2, 3, 4, 5]);
+}
+
+#[test]
+fn test_shift_right() {
+    #[track_caller]
+    fn case<const M: usize, const N: usize>(
+        i: [i32; N],
+        mut a: [i32; M],
+        b: [i32; M],
+        j: [i32; N],
+    ) {
+        assert_eq!((a.shift_right(i), a), (j, b));
+    }
+    case([], [1, 2, 3, 4, 5], [1, 2, 3, 4, 5], []);
+    case([1], [2, 3, 4, 5], [1, 2, 3, 4], [5]);
+    case([1, 2], [3, 4, 5], [1, 2, 3], [4, 5]);
+    case([1, 2, 3], [4, 5], [1, 2], [3, 4, 5]);
+    case([1, 2, 3, 4], [5], [1], [2, 3, 4, 5]);
+    case([1, 2, 3, 4, 5], [], [], [1, 2, 3, 4, 5]);
+}
