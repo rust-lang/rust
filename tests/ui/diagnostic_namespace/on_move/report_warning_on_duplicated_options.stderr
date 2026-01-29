@@ -1,0 +1,50 @@
+warning: unused attribute
+  --> $DIR/report_warning_on_duplicated_options.rs:1:1
+   |
+LL | / #[diagnostic::on_move(
+LL | |
+LL | |     //|=
+LL | |     message = "first message",
+LL | |     label = "first label",
+LL | | )]
+   | |__^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/report_warning_on_duplicated_options.rs:7:1
+   |
+LL | / #[diagnostic::on_move(
+LL | |     message = "second message",
+LL | |     label = "second label",
+LL | | )]
+   | |__^
+   = note: requested on the command line with `-W unused-attributes`
+
+error[E0382]: first message
+  --> $DIR/report_warning_on_duplicated_options.rs:18:15
+   |
+LL |     let foo = Foo;
+   |         --- first label
+LL |     takes_foo(foo);
+   |               --- value moved here
+LL |     let bar = foo;
+   |               ^^^ value used here after move
+   |
+note: consider changing this parameter type in function `takes_foo` to borrow instead if owning the value isn't necessary
+  --> $DIR/report_warning_on_duplicated_options.rs:13:17
+   |
+LL | fn takes_foo(_: Foo) {}
+   |    ---------    ^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/report_warning_on_duplicated_options.rs:11:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     takes_foo(foo);
+   |               --- you could clone this value
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0382`.

@@ -826,6 +826,11 @@ pub enum AttributeLintKind {
         span: Span,
         suggested: Option<Symbol>,
     },
+    OnMoveMalformedAttr,
+    OnMoveMalformedFormatLiterals {
+        name: Symbol,
+    },
+    OnMoveMalformedAttrExpectedLiteralOrDelimiter,
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;

@@ -558,6 +558,15 @@ lint_macro_expr_fragment_specifier_2024_migration =
 
 lint_malformed_attribute = malformed lint attribute input
 
+lint_malformed_on_move_attr = unknown or malformed `on_move` attribute
+    .help = only `message` and `label` are allowed as options
+    .label = invalid option found here
+lint_malformed_on_move_attr_expected_literal_or_delimiter = expected a literal or missing delimiter
+    .help = only literals are allowed as values of `message` and `label`, separated by a comma
+
+lint_malformed_on_move_format_literals = unknown parameter `{$name}`
+    .help = expect {"`{Self}`"} as format argument
+
 lint_map_unit_fn = `Iterator::map` call that discard the iterator's values
     .note = `Iterator::map`, like many of the methods on `Iterator`, gets executed lazily, meaning that its effects won't be visible until it is iterated
     .function_label = this function returns `()`, which is likely not what you wanted
