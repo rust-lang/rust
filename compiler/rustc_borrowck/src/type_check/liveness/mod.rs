@@ -11,7 +11,7 @@ use tracing::debug;
 
 use super::TypeChecker;
 use crate::constraints::OutlivesConstraintSet;
-use crate::polonius::PoloniusLivenessContext;
+use crate::polonius::PoloniusContext;
 use crate::region_infer::values::LivenessValues;
 use crate::universal_regions::UniversalRegions;
 
@@ -48,7 +48,7 @@ pub(super) fn generate<'tcx>(
     if typeck.tcx().sess.opts.unstable_opts.polonius.is_next_enabled() {
         let (_, boring_locals) =
             compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
-        typeck.polonius_liveness.as_mut().unwrap().boring_nll_locals =
+        typeck.polonius_context.as_mut().unwrap().boring_nll_locals =
             boring_locals.into_iter().collect();
         free_regions = typeck.universal_regions.universal_regions_iter().collect();
     }
@@ -63,7 +63,7 @@ pub(super) fn generate<'tcx>(
         typeck.tcx(),
         &mut typeck.constraints.liveness_constraints,
         &typeck.universal_regions,
-        &mut typeck.polonius_liveness,
+        &mut typeck.polonius_context,
         typeck.body,
     );
 }
@@ -140,11 +140,11 @@ fn record_regular_live_regions<'tcx>(
     tcx: TyCtxt<'tcx>,
     liveness_constraints: &mut LivenessValues,
     universal_regions: &UniversalRegions<'tcx>,
-    polonius_liveness: &mut Option<PoloniusLivenessContext>,
+    polonius_context: &mut Option<PoloniusContext>,
     body: &Body<'tcx>,
 ) {
     let mut visitor =
-        LiveVariablesVisitor { tcx, liveness_constraints, universal_regions, polonius_liveness };
+        LiveVariablesVisitor { tcx, liveness_constraints, universal_regions, polonius_context };
     for (bb, data) in body.basic_blocks.iter_enumerated() {
         visitor.visit_basic_block_data(bb, data);
     }
@@ -155,7 +155,7 @@ struct LiveVariablesVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     liveness_constraints: &'a mut LivenessValues,
     universal_regions: &'a UniversalRegions<'tcx>,
-    polonius_liveness: &'a mut Option<PoloniusLivenessContext>,
+    polonius_context: &'a mut Option<PoloniusContext>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for LiveVariablesVisitor<'a, 'tcx> {
@@ -207,8 +207,8 @@ impl<'a, 'tcx> LiveVariablesVisitor<'a, 'tcx> {
         });
 
         // When using `-Zpolonius=next`, we record the variance of each live region.
-        if let Some(polonius_liveness) = self.polonius_liveness {
-            polonius_liveness.record_live_region_variance(self.tcx, self.universal_regions, value);
+        if let Some(polonius_context) = self.polonius_context {
+            polonius_context.record_live_region_variance(self.tcx, self.universal_regions, value);
         }
     }
 }

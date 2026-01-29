@@ -10,9 +10,7 @@ use rustc_session::config::MirIncludeSpans;
 
 use crate::borrow_set::BorrowSet;
 use crate::constraints::OutlivesConstraint;
-use crate::polonius::{
-    LocalizedOutlivesConstraint, LocalizedOutlivesConstraintSet, PoloniusDiagnosticsContext,
-};
+use crate::polonius::{LocalizedConstraintGraphVisitor, LocalizedNode, PoloniusContext};
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
 use crate::{BorrowckInferCtxt, ClosureRegionRequirements, RegionInferenceContext};
@@ -24,7 +22,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
-    polonius_diagnostics: Option<&PoloniusDiagnosticsContext>,
+    polonius_context: Option<&PoloniusContext>,
 ) {
     let tcx = infcx.tcx;
     if !tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
@@ -33,8 +31,22 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 
     let Some(dumper) = MirDumper::new(tcx, "polonius", body) else { return };
 
-    let polonius_diagnostics =
-        polonius_diagnostics.expect("missing diagnostics context with `-Zpolonius=next`");
+    let polonius_context =
+        polonius_context.expect("missing polonius context with `-Zpolonius=next`");
+
+    // If we have a polonius graph to dump along the rest of the MIR and NLL info, we extract its
+    // constraints here.
+    let mut collector = LocalizedOutlivesConstraintCollector { constraints: Vec::new() };
+    if let Some(graph) = &polonius_context.graph {
+        graph.traverse(
+            body,
+            regioncx.liveness_constraints(),
+            &polonius_context.live_region_variances,
+            regioncx.universal_regions(),
+            borrow_set,
+            &mut collector,
+        );
+    }
 
     let extra_data = &|pass_where, out: &mut dyn io::Write| {
         emit_polonius_mir(
@@ -42,7 +54,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
             regioncx,
             closure_region_requirements,
             borrow_set,
-            &polonius_diagnostics.localized_outlives_constraints,
+            &collector.constraints,
             pass_where,
             out,
         )
@@ -60,15 +72,32 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 
     let _: io::Result<()> = try {
         let mut file = dumper.create_dump_file("html", body)?;
-        emit_polonius_dump(
-            &dumper,
-            body,
-            regioncx,
-            borrow_set,
-            &polonius_diagnostics.localized_outlives_constraints,
-            &mut file,
-        )?;
+        emit_polonius_dump(&dumper, body, regioncx, borrow_set, &collector.constraints, &mut file)?;
     };
+}
+
+/// The constraints we'll dump as text or a mermaid graph.
+struct LocalizedOutlivesConstraint {
+    source: RegionVid,
+    from: PointIndex,
+    target: RegionVid,
+    to: PointIndex,
+}
+
+/// Visitor to record constraints encountered when traversing the localized constraint graph.
+struct LocalizedOutlivesConstraintCollector {
+    constraints: Vec<LocalizedOutlivesConstraint>,
+}
+
+impl LocalizedConstraintGraphVisitor for LocalizedOutlivesConstraintCollector {
+    fn on_successor_discovered(&mut self, current_node: LocalizedNode, successor: LocalizedNode) {
+        self.constraints.push(LocalizedOutlivesConstraint {
+            source: current_node.region,
+            from: current_node.point,
+            target: successor.region,
+            to: successor.point,
+        });
+    }
 }
 
 /// The polonius dump consists of:
@@ -82,7 +111,7 @@ fn emit_polonius_dump<'tcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-    localized_outlives_constraints: &LocalizedOutlivesConstraintSet,
+    localized_outlives_constraints: &[LocalizedOutlivesConstraint],
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
     // Prepare the HTML dump file prologue.
@@ -193,7 +222,7 @@ fn emit_polonius_mir<'tcx>(
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
-    localized_outlives_constraints: &LocalizedOutlivesConstraintSet,
+    localized_outlives_constraints: &[LocalizedOutlivesConstraint],
     pass_where: PassWhere,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
@@ -212,10 +241,10 @@ fn emit_polonius_mir<'tcx>(
     // Add localized outlives constraints
     match pass_where {
         PassWhere::BeforeCFG => {
-            if localized_outlives_constraints.outlives.len() > 0 {
+            if localized_outlives_constraints.len() > 0 {
                 writeln!(out, "| Localized constraints")?;
 
-                for constraint in &localized_outlives_constraints.outlives {
+                for constraint in localized_outlives_constraints {
                     let LocalizedOutlivesConstraint { source, from, target, to } = constraint;
                     let from = liveness.location_from_point(*from);
                     let to = liveness.location_from_point(*to);
@@ -399,7 +428,7 @@ fn emit_mermaid_nll_sccs<'tcx>(
 fn emit_mermaid_constraint_graph<'tcx>(
     borrow_set: &BorrowSet<'tcx>,
     liveness: &LivenessValues,
-    localized_outlives_constraints: &LocalizedOutlivesConstraintSet,
+    localized_outlives_constraints: &[LocalizedOutlivesConstraint],
     out: &mut dyn io::Write,
 ) -> io::Result<usize> {
     let location_name = |location: Location| {
@@ -438,7 +467,7 @@ fn emit_mermaid_constraint_graph<'tcx>(
     // The regions subgraphs containing the region/point nodes.
     let mut points_per_region: FxIndexMap<RegionVid, FxIndexSet<PointIndex>> =
         FxIndexMap::default();
-    for constraint in &localized_outlives_constraints.outlives {
+    for constraint in localized_outlives_constraints {
         points_per_region.entry(constraint.source).or_default().insert(constraint.from);
         points_per_region.entry(constraint.target).or_default().insert(constraint.to);
     }
@@ -451,7 +480,7 @@ fn emit_mermaid_constraint_graph<'tcx>(
     }
 
     // The constraint graph edges.
-    for constraint in &localized_outlives_constraints.outlives {
+    for constraint in localized_outlives_constraints {
         // FIXME: add killed loans and constraint kind as edge labels.
         writeln!(
             out,
@@ -463,6 +492,6 @@ fn emit_mermaid_constraint_graph<'tcx>(
 
     // Return the number of edges: this is the biggest graph in the dump and its edge count will be
     // mermaid's max edge count to support.
-    let edge_count = borrow_set.len() + localized_outlives_constraints.outlives.len();
+    let edge_count = borrow_set.len() + localized_outlives_constraints.len();
     Ok(edge_count)
 }
