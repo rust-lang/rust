@@ -291,6 +291,7 @@ where
             | ty::RawPtr(..)
             | ty::Ref(..)
             | ty::Pat(..)
+            | ty::FRT(..)
             | ty::FnPtr(..)
             | ty::UnsafeBinder(_)
             | ty::Param(..)

@@ -322,6 +322,10 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_ty_pat(pat);
             }
 
+            ty::FRT(ty, _field) => {
+                self.add_ty(ty);
+            }
+
             ty::Slice(tt) => self.add_ty(tt),
 
             ty::RawPtr(ty, _) => {

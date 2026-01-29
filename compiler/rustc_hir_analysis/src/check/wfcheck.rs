@@ -261,6 +261,17 @@ pub(super) fn check_item<'tcx>(
                         .with_span_label(sp, "auto trait")
                         .emit());
                 }
+                if is_auto && let rustc_hir::TyKind::FieldOf(..) = impl_.self_ty.kind {
+                    res = res.and(Err(tcx
+                        .dcx()
+                        .struct_span_err(
+                            item.span,
+                            "impls of auto traits for field representing types not supported",
+                        )
+                        .with_span_label(impl_.self_ty.span, "field representing type")
+                        .with_span_label(of_trait.trait_ref.path.span, "auto trait")
+                        .emit()));
+                }
                 match header.polarity {
                     ty::ImplPolarity::Positive => {
                         res = res.and(check_impl(tcx, item, impl_));

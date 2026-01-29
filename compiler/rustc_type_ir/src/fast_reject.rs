@@ -46,6 +46,9 @@ pub enum SimplifiedType<DefId> {
     Function(usize),
     UnsafeBinder,
     Placeholder,
+    /// Field representing type.
+    // FIXME(FRTs): should we have a `Option<DefId>` here that gets filled with the Adt's DefId?
+    FRT,
     Error,
 }
 
@@ -127,6 +130,7 @@ pub fn simplify_type<I: Interner>(
         ty::Array(..) => Some(SimplifiedType::Array),
         ty::Slice(..) => Some(SimplifiedType::Slice),
         ty::Pat(ty, ..) => simplify_type(cx, ty, treat_params),
+        ty::FRT(..) => Some(SimplifiedType::FRT),
         ty::RawPtr(_, mutbl) => Some(SimplifiedType::Ptr(mutbl)),
         ty::Dynamic(trait_info, ..) => match trait_info.principal_def_id() {
             Some(principal_def_id) if !cx.trait_is_auto(principal_def_id) => {
@@ -298,6 +302,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             | ty::RawPtr(..)
             | ty::Dynamic(..)
             | ty::Pat(..)
+            | ty::FRT(..)
             | ty::Ref(..)
             | ty::Never
             | ty::Tuple(..)
@@ -465,6 +470,10 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
                 // FIXME(pattern_types): take pattern into account
                 matches!(rhs.kind(), ty::Pat(rhs_ty, _) if self.types_may_unify_inner(lhs_ty, rhs_ty, depth))
             }
+
+            ty::FRT(lhs_ty, lhs_field) => matches!(rhs.kind(), ty::FRT(rhs_ty, rhs_field) if
+                lhs_field == rhs_field && self.types_may_unify_inner(lhs_ty, rhs_ty, depth)
+            ),
 
             ty::UnsafeBinder(lhs_ty) => match rhs.kind() {
                 ty::UnsafeBinder(rhs_ty) => {

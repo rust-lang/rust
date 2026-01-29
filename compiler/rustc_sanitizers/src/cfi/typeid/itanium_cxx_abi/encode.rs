@@ -434,6 +434,9 @@ pub(crate) fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
+        // FIXME(FRTs): add mangling support
+        ty::FRT(..) => todo!(),
+
         ty::Slice(ty0) => {
             // u5sliceI<element-type>E as vendor extended type
             let mut s = String::from("u5sliceI");

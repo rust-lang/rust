@@ -410,6 +410,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 TraitObject,
                 Infer,
                 Pat,
+                FieldOf,
                 Err
             ]
         );
@@ -680,6 +681,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Tup,
                 Path,
                 Pat,
+                FieldOf,
                 TraitObject,
                 ImplTrait,
                 Paren,

@@ -1,0 +1,31 @@
+error: unexpected end of macro invocation
+  --> $DIR/invalid.rs:23:28
+   |
+LL |     let _: field_of!(Struct);
+   |                            ^ missing tokens in macro arguments
+   |
+note: while trying to match `,`
+  --> $SRC_DIR/core/src/field.rs:LL:COL
+
+error: no rules expected `extra`
+  --> $DIR/invalid.rs:24:37
+   |
+LL |     let _: field_of!(Struct, field, extra);
+   |                                     ^^^^^ no rules expected this token in macro call
+   |
+   = note: while trying to match sequence end
+
+error: offset_of expects dot-separated field and variant names
+  --> $DIR/invalid.rs:26:28
+   |
+LL |     let _: field_of!(Enum, Variant..field);
+   |                            ^^^^^^^^^^^^^^
+
+error: offset_of expects dot-separated field and variant names
+  --> $DIR/invalid.rs:27:30
+   |
+LL |     let _: field_of!(Struct, [42]);
+   |                              ^^^^
+
+error: aborting due to 4 previous errors
+

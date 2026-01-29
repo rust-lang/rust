@@ -14,7 +14,7 @@ use rustc_hir::{
     GenericParam, GenericParamKind, GenericParamSource, Generics, HirId, HirIdMap, InlineAsmOperand, ItemId, ItemKind,
     LetExpr, Lifetime, LifetimeKind, LifetimeParamKind, Node, ParamName, Pat, PatExpr, PatExprKind, PatField, PatKind,
     Path, PathSegment, PreciseCapturingArgKind, PrimTy, QPath, Stmt, StmtKind, StructTailExpr, TraitBoundModifiers, Ty,
-    TyKind, TyPat, TyPatKind, UseKind, WherePredicate, WherePredicateKind,
+    TyFieldPath, TyKind, TyPat, TyPatKind, UseKind, WherePredicate, WherePredicateKind,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::LateContext;
@@ -1519,6 +1519,13 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             TyKind::Pat(ty, pat) => {
                 self.hash_ty(ty);
                 self.hash_ty_pat(pat);
+            },
+            TyKind::FieldOf(ty, TyFieldPath { variant, field }) => {
+                self.hash_ty(ty);
+                if let Some(variant) = variant {
+                    self.hash_name(variant.name);
+                }
+                self.hash_name(field.name);
             },
             TyKind::Ptr(mut_ty) => {
                 self.hash_ty(mut_ty.ty);

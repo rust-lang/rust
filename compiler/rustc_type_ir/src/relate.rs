@@ -511,6 +511,15 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             Ok(Ty::new_pat(cx, ty, pat))
         }
 
+        (ty::FRT(a_ty, a_field), ty::FRT(b_ty, b_field)) => {
+            let ty = relation.relate(a_ty, b_ty)?;
+            if a_field == b_field {
+                Ok(Ty::new_field_representing_type(cx, ty, a_field))
+            } else {
+                Err(TypeError::Mismatch)
+            }
+        }
+
         (ty::UnsafeBinder(a_binder), ty::UnsafeBinder(b_binder)) => {
             Ok(Ty::new_unsafe_binder(cx, relation.binders(*a_binder, *b_binder)?))
         }

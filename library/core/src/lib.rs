@@ -153,6 +153,7 @@
 #![feature(extern_types)]
 #![feature(f16)]
 #![feature(f128)]
+#![feature(field_projections)]
 #![feature(freeze_impls)]
 #![feature(fundamental)]
 #![feature(funnel_shifts)]
@@ -309,6 +310,8 @@ pub mod bstr;
 pub mod cell;
 pub mod char;
 pub mod ffi;
+#[unstable(feature = "field_projections", issue = "145383")]
+pub mod field;
 #[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
 pub mod io;
 pub mod iter;

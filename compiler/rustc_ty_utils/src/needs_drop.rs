@@ -289,6 +289,7 @@ where
                     | ty::RawPtr(..)
                     | ty::FnDef(..)
                     | ty::Pat(..)
+                    | ty::FRT(..)
                     | ty::FnPtr(..)
                     | ty::Tuple(_)
                     | ty::Bound(..)

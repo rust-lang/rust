@@ -855,6 +855,7 @@ impl TyCoercionStability {
                 | TyKind::Ptr(_)
                 | TyKind::FnPtr(_)
                 | TyKind::Pat(..)
+                | TyKind::FieldOf(..)
                 | TyKind::Never
                 | TyKind::Tup(_)
                 | TyKind::Path(_) => Self::Deref,
@@ -907,6 +908,7 @@ impl TyCoercionStability {
                 | ty::Uint(_)
                 | ty::Array(..)
                 | ty::Pat(..)
+                | ty::FRT(..)
                 | ty::Float(_)
                 | ty::RawPtr(..)
                 | ty::FnPtr(..)
