@@ -20,24 +20,24 @@ extend-exclude = [
 # right now. Entries should look like `mipsel = "mipsel"`.
 #
 # tidy-alphabetical-start
-arange = "arange"
+arange = "arange" # short for A-range
 childs = "childs"
 clonable = "clonable"
-filetimes = "filetimes"
+filetimes = "filetimes" # short for "file times", not a typo for "lifetimes"
 leafs = "leafs"
-makro = "makro"
+makro = "makro" # deliberate misspelling to avoid `macro` keyword
 misformed = "misformed"
 moreso = "moreso"
-numer = "numer"
-optin = "optin"
+numer = "numer" # short for numerator, not a typo for "number"
+optin = "optin" # short for opt-in
 publically = "publically"
-rplace = "rplace"
+rplace = "rplace" # short for R-place
 splitted = "splitted"
-taits = "taits"
+taits = "taits" # lowercase for TAITs (type alias impl trait)
 targetting = "targetting"
 unparseable = "unparseable"
 unstability = "unstability"
-unstalled = "unstalled"
+unstalled = "unstalled" # short for un-stalled
 # tidy-alphabetical-end
 
 # Denylist to forbid misspelled words that aren't detected by the built-in
@@ -65,14 +65,14 @@ ERROR_MCA_OCCURED = "ERROR_MCA_OCCURED"
 ERROR_REQ_NOT_ACCEP = "ERROR_REQ_NOT_ACCEP"
 EnzymeTypeTreeShiftIndiciesEq = "EnzymeTypeTreeShiftIndiciesEq"
 EnzymeTypeTreeShiftIndiciesEqFn = "EnzymeTypeTreeShiftIndiciesEqFn"
-Oppen = "Oppen"
+Oppen = "Oppen" # Derek C. Oppen, author of "Pretty Printing" (1979)
 # typos treats this as two different camelcase words (`SETTIN` and `Gs`)
 # Tracked in: https://github.com/crate-ci/typos/issues/745
 SETTINGs = "SETTINGs"
-debug_aranges = "debug_aranges"
+debug_aranges = "debug_aranges" # debug A-ranges
 key_smove = "key_smove" # shifted move key, used by terminfo
 shift_indicies_eq = "shift_indicies_eq"
-tolen = "tolen"
+tolen = "tolen" # length of "to" buffer, used by `sendto` in Windows sockets
 # tidy-alphabetical-end
 
 [default]
