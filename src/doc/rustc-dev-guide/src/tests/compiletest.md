@@ -788,7 +788,8 @@ only apply to the test as a whole, not to particular revisions.
 The only directives that are intended to really work when customized to a revision are
 error patterns and compiler flags.
 
-<!-- date-check jul 2023 --> The following test suites support revisions:
+<!-- date-check jul 2023 -->
+The following test suites support revisions:
 
 - ui
 - assembly
