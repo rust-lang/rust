@@ -1,3 +1,4 @@
+use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::Visitor;
@@ -7,7 +8,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{LookupResult, MovePathIndex};
 use rustc_span::def_id::DefId;
-use rustc_span::{BytePos, DUMMY_SP, ExpnKind, MacroKind, Span};
+use rustc_span::{BytePos, ExpnKind, MacroKind, Span};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
@@ -472,49 +473,30 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 if def_id.as_local() == Some(self.mir_def_id())
                     && let Some(upvar_field) = upvar_field =>
             {
-                let closure_kind_ty = closure_args.as_closure().kind_ty();
-                let closure_kind = match closure_kind_ty.to_opt_closure_kind() {
-                    Some(kind @ (ty::ClosureKind::Fn | ty::ClosureKind::FnMut)) => kind,
-                    Some(ty::ClosureKind::FnOnce) => {
-                        bug!("closure kind does not match first argument type")
-                    }
-                    None => bug!("closure kind not inferred by borrowck"),
-                };
-                let capture_description =
-                    format!("captured variable in an `{closure_kind}` closure");
-
-                let upvar = &self.upvars[upvar_field.index()];
-                let upvar_hir_id = upvar.get_root_variable();
-                let upvar_name = upvar.to_string(tcx);
-                let upvar_span = tcx.hir_span(upvar_hir_id);
-
-                let place_name = self.describe_any_place(move_place.as_ref());
-
-                let place_description =
-                    if self.is_upvar_field_projection(move_place.as_ref()).is_some() {
-                        format!("{place_name}, a {capture_description}")
-                    } else {
-                        format!("{place_name}, as `{upvar_name}` is a {capture_description}")
-                    };
-
-                debug!(
-                    "report: closure_kind_ty={:?} closure_kind={:?} place_description={:?}",
-                    closure_kind_ty, closure_kind, place_description,
-                );
-
-                let closure_span = tcx.def_span(def_id);
-
-                self.cannot_move_out_of(span, &place_description)
-                    .with_span_label(upvar_span, "captured outer variable")
-                    .with_span_label(
-                        closure_span,
-                        format!("captured by this `{closure_kind}` closure"),
-                    )
-                    .with_span_help(
-                        self.get_closure_bound_clause_span(*def_id),
-                        "`Fn` and `FnMut` closures require captured values to be able to be \
-                         consumed multiple times, but `FnOnce` closures may consume them only once",
-                    )
+                self.report_closure_move_error(
+                    span,
+                    move_place,
+                    *def_id,
+                    closure_args.as_closure().kind_ty(),
+                    upvar_field,
+                    ty::Asyncness::No,
+                )
+            }
+            ty::CoroutineClosure(def_id, closure_args)
+                if def_id.as_local() == Some(self.mir_def_id())
+                    && let Some(upvar_field) = upvar_field
+                    && self
+                        .get_closure_bound_clause_span(*def_id, ty::Asyncness::Yes)
+                        .is_some() =>
+            {
+                self.report_closure_move_error(
+                    span,
+                    move_place,
+                    *def_id,
+                    closure_args.as_coroutine_closure().kind_ty(),
+                    upvar_field,
+                    ty::Asyncness::Yes,
+                )
             }
             _ => {
                 let source = self.borrowed_content_source(deref_base);
@@ -563,45 +545,134 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         err
     }
 
-    fn get_closure_bound_clause_span(&self, def_id: DefId) -> Span {
+    fn report_closure_move_error(
+        &self,
+        span: Span,
+        move_place: Place<'tcx>,
+        def_id: DefId,
+        closure_kind_ty: Ty<'tcx>,
+        upvar_field: FieldIdx,
+        asyncness: ty::Asyncness,
+    ) -> Diag<'infcx> {
+        let tcx = self.infcx.tcx;
+
+        let closure_kind = match closure_kind_ty.to_opt_closure_kind() {
+            Some(kind @ (ty::ClosureKind::Fn | ty::ClosureKind::FnMut)) => kind,
+            Some(ty::ClosureKind::FnOnce) => {
+                bug!("closure kind does not match first argument type")
+            }
+            None => bug!("closure kind not inferred by borrowck"),
+        };
+
+        let async_prefix = if asyncness.is_async() { "Async" } else { "" };
+        let capture_description =
+            format!("captured variable in an `{async_prefix}{closure_kind}` closure");
+
+        let upvar = &self.upvars[upvar_field.index()];
+        let upvar_hir_id = upvar.get_root_variable();
+        let upvar_name = upvar.to_string(tcx);
+        let upvar_span = tcx.hir_span(upvar_hir_id);
+
+        let place_name = self.describe_any_place(move_place.as_ref());
+
+        let place_description = if self.is_upvar_field_projection(move_place.as_ref()).is_some() {
+            format!("{place_name}, a {capture_description}")
+        } else {
+            format!("{place_name}, as `{upvar_name}` is a {capture_description}")
+        };
+
+        debug!(?closure_kind_ty, ?closure_kind, ?place_description);
+
+        let closure_span = tcx.def_span(def_id);
+
+        let help_msg = format!(
+            "`{async_prefix}Fn` and `{async_prefix}FnMut` closures require captured values to \
+             be able to be consumed multiple times, but `{async_prefix}FnOnce` closures may \
+             consume them only once"
+        );
+
+        let mut err = self
+            .cannot_move_out_of(span, &place_description)
+            .with_span_label(upvar_span, "captured outer variable")
+            .with_span_label(
+                closure_span,
+                format!("captured by this `{async_prefix}{closure_kind}` closure"),
+            );
+
+        if let Some(bound_span) = self.get_closure_bound_clause_span(def_id, asyncness) {
+            err.span_help(bound_span, help_msg);
+        } else if !asyncness.is_async() {
+            // For sync closures, always emit the help message even without a span.
+            // For async closures, we only enter this branch if we found a valid span
+            // (due to the match guard), so no fallback is needed.
+            err.help(help_msg);
+        }
+
+        err
+    }
+
+    fn get_closure_bound_clause_span(
+        &self,
+        def_id: DefId,
+        asyncness: ty::Asyncness,
+    ) -> Option<Span> {
         let tcx = self.infcx.tcx;
         let typeck_result = tcx.typeck(self.mir_def_id());
         // Check whether the closure is an argument to a call, if so,
         // get the instantiated where-bounds of that call.
         let closure_hir_id = tcx.local_def_id_to_hir_id(def_id.expect_local());
-        let hir::Node::Expr(parent) = tcx.parent_hir_node(closure_hir_id) else { return DUMMY_SP };
+        let hir::Node::Expr(parent) = tcx.parent_hir_node(closure_hir_id) else { return None };
 
         let predicates = match parent.kind {
             hir::ExprKind::Call(callee, _) => {
-                let Some(ty) = typeck_result.node_type_opt(callee.hir_id) else { return DUMMY_SP };
-                let ty::FnDef(fn_def_id, args) = ty.kind() else { return DUMMY_SP };
+                let ty = typeck_result.node_type_opt(callee.hir_id)?;
+                let ty::FnDef(fn_def_id, args) = ty.kind() else { return None };
                 tcx.predicates_of(fn_def_id).instantiate(tcx, args)
             }
             hir::ExprKind::MethodCall(..) => {
-                let Some((_, method)) = typeck_result.type_dependent_def(parent.hir_id) else {
-                    return DUMMY_SP;
-                };
+                let (_, method) = typeck_result.type_dependent_def(parent.hir_id)?;
                 let args = typeck_result.node_args(parent.hir_id);
                 tcx.predicates_of(method).instantiate(tcx, args)
             }
-            _ => return DUMMY_SP,
+            _ => return None,
         };
 
-        // Check whether one of the where-bounds requires the closure to impl `Fn[Mut]`.
+        // Check whether one of the where-bounds requires the closure to impl `Fn[Mut]`
+        // or `AsyncFn[Mut]`.
         for (pred, span) in predicates.predicates.iter().zip(predicates.spans.iter()) {
-            if let Some(clause) = pred.as_trait_clause()
-                && let ty::Closure(clause_closure_def_id, _) = clause.self_ty().skip_binder().kind()
-                && *clause_closure_def_id == def_id
-                && (tcx.lang_items().fn_mut_trait() == Some(clause.def_id())
-                    || tcx.lang_items().fn_trait() == Some(clause.def_id()))
-            {
-                // Found `<TyOfCapturingClosure as FnMut>`
-                // We point at the `Fn()` or `FnMut()` bound that coerced the closure, which
-                // could be changed to `FnOnce()` to avoid the move error.
-                return *span;
+            let dominated_by_fn_trait = self
+                .closure_clause_kind(*pred, def_id, asyncness)
+                .is_some_and(|kind| matches!(kind, ty::ClosureKind::Fn | ty::ClosureKind::FnMut));
+            if dominated_by_fn_trait {
+                // Found `<TyOfCapturingClosure as FnMut>` or
+                // `<TyOfCapturingClosure as AsyncFnMut>`.
+                // We point at the bound that coerced the closure, which could be changed
+                // to `FnOnce()` or `AsyncFnOnce()` to avoid the move error.
+                return Some(*span);
             }
         }
-        DUMMY_SP
+        None
+    }
+
+    /// If `pred` is a trait clause binding the closure `def_id` to `Fn`/`FnMut`/`FnOnce`
+    /// (or their async equivalents based on `asyncness`), returns the corresponding
+    /// `ClosureKind`. Otherwise returns `None`.
+    fn closure_clause_kind(
+        &self,
+        pred: ty::Clause<'tcx>,
+        def_id: DefId,
+        asyncness: ty::Asyncness,
+    ) -> Option<ty::ClosureKind> {
+        let tcx = self.infcx.tcx;
+        let clause = pred.as_trait_clause()?;
+        let kind = match asyncness {
+            ty::Asyncness::Yes => tcx.async_fn_trait_kind_from_def_id(clause.def_id()),
+            ty::Asyncness::No => tcx.fn_trait_kind_from_def_id(clause.def_id()),
+        }?;
+        match clause.self_ty().skip_binder().kind() {
+            ty::Closure(id, _) | ty::CoroutineClosure(id, _) if *id == def_id => Some(kind),
+            _ => None,
+        }
     }
 
     fn add_move_hints(&self, error: GroupedMoveError<'tcx>, err: &mut Diag<'_>, span: Span) {

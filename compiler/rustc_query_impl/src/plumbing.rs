@@ -414,7 +414,7 @@ pub(crate) fn encode_query_results<'a, 'tcx, Q>(
 }
 
 pub(crate) fn query_key_hash_verify<'tcx>(
-    query: impl QueryDispatcher<QueryCtxt<'tcx>>,
+    query: impl QueryDispatcher<Qcx = QueryCtxt<'tcx>>,
     qcx: QueryCtxt<'tcx>,
 ) {
     let _timer = qcx.tcx.prof.generic_activity_with_arg("query_key_hash_verify_for", query.name());
@@ -442,7 +442,7 @@ pub(crate) fn query_key_hash_verify<'tcx>(
 
 fn try_load_from_on_disk_cache<'tcx, Q>(query: Q, tcx: TyCtxt<'tcx>, dep_node: DepNode)
 where
-    Q: QueryDispatcher<QueryCtxt<'tcx>>,
+    Q: QueryDispatcher<Qcx = QueryCtxt<'tcx>>,
 {
     debug_assert!(tcx.dep_graph.is_green(&dep_node));
 
@@ -488,7 +488,7 @@ where
 
 fn force_from_dep_node<'tcx, Q>(query: Q, tcx: TyCtxt<'tcx>, dep_node: DepNode) -> bool
 where
-    Q: QueryDispatcher<QueryCtxt<'tcx>>,
+    Q: QueryDispatcher<Qcx = QueryCtxt<'tcx>>,
 {
     // We must avoid ever having to call `force_from_dep_node()` for a
     // `DepNode::codegen_unit`:
@@ -523,8 +523,7 @@ pub(crate) fn make_dep_kind_vtable_for_query<'tcx, Q>(
 where
     Q: QueryDispatcherUnerased<'tcx>,
 {
-    let fingerprint_style =
-        <Q::Dispatcher as QueryDispatcher<QueryCtxt<'tcx>>>::Key::fingerprint_style();
+    let fingerprint_style = <Q::Dispatcher as QueryDispatcher>::Key::fingerprint_style();
 
     if is_anon || !fingerprint_style.reconstructible() {
         return DepKindVTable {
@@ -731,7 +730,7 @@ macro_rules! define_queries {
                 }
 
                 #[inline(always)]
-                fn restore_val(value: <Self::Dispatcher as QueryDispatcher<QueryCtxt<'tcx>>>::Value) -> Self::UnerasedValue {
+                fn restore_val(value: <Self::Dispatcher as QueryDispatcher>::Value) -> Self::UnerasedValue {
                     restore::<queries::$name::Value<'tcx>>(value)
                 }
             }
