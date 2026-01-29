@@ -849,7 +849,7 @@ impl<T: PointeeSized> Copy for PhantomData<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PointeeSized> Clone for PhantomData<T> {
     fn clone(&self) -> Self {
-        Self
+        *self
     }
 }
 
