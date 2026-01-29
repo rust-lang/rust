@@ -790,24 +790,29 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Eats `+` possibly breaking tokens like `+=` in process.
+    /// Eats `+` possibly breaking tokens like `+=` in the process.
     fn eat_plus(&mut self) -> bool {
         self.break_and_eat(exp!(Plus))
     }
 
-    /// Eats `&` possibly breaking tokens like `&&` in process.
+    /// Eats `!` possibly breaking tokens like `!=` in the process.
+    fn eat_bang(&mut self) -> bool {
+        self.break_and_eat(exp!(Bang))
+    }
+
+    /// Eats `&` possibly breaking tokens like `&&` in the process.
     /// Signals an error if `&` is not eaten.
     fn expect_and(&mut self) -> PResult<'a, ()> {
         if self.break_and_eat(exp!(And)) { Ok(()) } else { self.unexpected() }
     }
 
-    /// Eats `|` possibly breaking tokens like `||` in process.
+    /// Eats `|` possibly breaking tokens like `||` in the process.
     /// Signals an error if `|` was not eaten.
     fn expect_or(&mut self) -> PResult<'a, ()> {
         if self.break_and_eat(exp!(Or)) { Ok(()) } else { self.unexpected() }
     }
 
-    /// Eats `<` possibly breaking tokens like `<<` in process.
+    /// Eats `<` possibly breaking tokens like `<<` in the process.
     fn eat_lt(&mut self) -> bool {
         let ate = self.break_and_eat(exp!(Lt));
         if ate {
@@ -818,13 +823,13 @@ impl<'a> Parser<'a> {
         ate
     }
 
-    /// Eats `<` possibly breaking tokens like `<<` in process.
+    /// Eats `<` possibly breaking tokens like `<<` in the process.
     /// Signals an error if `<` was not eaten.
     fn expect_lt(&mut self) -> PResult<'a, ()> {
         if self.eat_lt() { Ok(()) } else { self.unexpected() }
     }
 
-    /// Eats `>` possibly breaking tokens like `>>` in process.
+    /// Eats `>` possibly breaking tokens like `>>` in the process.
     /// Signals an error if `>` was not eaten.
     fn expect_gt(&mut self) -> PResult<'a, ()> {
         if self.break_and_eat(exp!(Gt)) {
