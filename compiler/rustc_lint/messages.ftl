@@ -1063,7 +1063,5 @@ lint_useless_ptr_null_checks_fn_ret = returned pointer of `{$fn_name}` call is n
 lint_useless_ptr_null_checks_ref = references are not nullable, so checking them for null will always return false
     .label = expression has type `{$orig_ty}`
 
-lint_uses_power_alignment = repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-
 lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest
