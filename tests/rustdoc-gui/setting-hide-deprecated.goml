@@ -69,7 +69,7 @@ wait-for-css: ("details" + |deprecated_class|, {"display": "block"}, ALL)
 
 // And now we check with the search results.
 call-function: ("perform-search", {"query": "deprecated::depr"})
-// There should at least 7 results.
+// There should be at least 7 results.
 store-count: ("#results ul.search-results.active > a", nb_search_results)
 assert: |nb_search_results| >= 7
 // There should be at least 5 deprecated items.
@@ -77,6 +77,12 @@ store-count: ("#results ul.search-results.active > a" + |deprecated_class|, nb_d
 assert: |nb_search_results| >= 5
 // Deprecated items should all be displayed.
 assert-css: ("#results ul.search-results.active > a" + |deprecated_class|, {"display": "grid"}, ALL)
+// The "X deprecated items hidden by setting" element should not be displayed.
+assert-text: (
+    "#results ul.search-results.active .deprecated-count",
+    "5 deprecated items hidden by setting",
+)
+assert-css: ("#results ul.search-results.active .deprecated-count", {"display": "none"})
 // We enable the "hide deprecated items" setting.
 call-function: ("open-settings-menu", {})
 click: "#hide-deprecated-items"
@@ -86,11 +92,16 @@ wait-for-css: (
     {"display": "none"},
     ALL,
 )
+// The "X deprecated items hidden by setting" element should be displayed.
+assert-css: ("#results ul.search-results.active .deprecated-count", {"display": "block"})
 
 // Finally we check that the future deprecated item doesn't have the deprecated class in the search
-// and therefore isn't impact by the setting.
-call-function: ("perform-search", {"query": "deprecated::future_deprecated"})
+// and therefore isn't impacted by the setting.
+call-function: ("perform-search", {"query": '"future_deprecated_fn"'})
 assert-text: (
     "#results ul.search-results.active > a:not(" + |deprecated_class| + ") .path",
     " lib2::deprecated::NonDeprecatedStruct::future_deprecated_fn",
 )
+// The "X deprecated items hidden by setting" element should now be empty, and therefore not displayed.
+assert-text: ("#results ul.search-results.active .deprecated-count", "")
+assert-css: ("#results ul.search-results.active .deprecated-count", {"display": "none"})
