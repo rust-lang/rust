@@ -524,7 +524,8 @@ declare namespace rustdoc {
     }
 
     type TypeImpls = {
-        [cratename: string]: Array<Array<string|0>>
+        /* [text, traitName (0 if not a trait), ...types] */
+        [cratename: string]: Array<[string, string|0, ...string[]]>
     }
 
     /**
@@ -576,4 +577,16 @@ declare namespace rustdoc {
         "typeNameIdOfHof": number,
         "typeNameIdOfNever": number,
     };
+
+    type VarName = "name"
+        | "root-path"
+        | "static-root-path"
+        | "current-crate"
+        | "themes"
+        | "resource-suffix"
+        | "rustdoc-version"
+        | "channel"
+        | "search-js"
+        | "stringdex-js"
+        | "settings-js";
 }
