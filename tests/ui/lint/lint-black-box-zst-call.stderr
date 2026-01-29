@@ -1,0 +1,18 @@
+error: use of `black_box` on the zero-sized type `fn(u32, u32) -> u32 {add}` has no effect
+  --> $DIR/lint-black-box-zst-call.rs:10:18
+   |
+LL |     let add_bb = black_box(add);
+   |                  ^^^^^^^^^^---^
+   |                            |
+   |                            zero-sized value passed here
+   |
+   = note: zero-sized values have no runtime representation, so the compiler can ignore the call
+   = help: if this is a function, coerce it to a function pointer first
+note: the lint level is defined here
+  --> $DIR/lint-black-box-zst-call.rs:1:9
+   |
+LL | #![deny(black_box_zst_calls)]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
