@@ -115,16 +115,6 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     }
 
     #[inline]
-    fn fold<B, F>(mut self, init: B, mut f: F) -> B
-    where
-        F: FnMut(B, Self::Item) -> B,
-    {
-        match self.try_fold(init, |b, item| Ok::<B, !>(f(b, item))) {
-            Ok(b) => b,
-        }
-    }
-
-    #[inline]
     fn last(mut self) -> Option<Self::Item> {
         self.inner.pop_back()
     }
