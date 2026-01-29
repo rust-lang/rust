@@ -5,7 +5,5 @@
 mod common;
 #[path = "../unsupported/os.rs"]
 pub mod os;
-#[path = "../unsupported/time.rs"]
-pub mod time;
 
 pub use common::*;

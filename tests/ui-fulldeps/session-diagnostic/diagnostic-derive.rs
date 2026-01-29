@@ -29,6 +29,8 @@ use rustc_errors::{Applicability, DiagMessage, ErrCode, MultiSpan, SubdiagMessag
 
 extern crate rustc_session;
 
+extern crate core;
+
 rustc_fluent_macro::fluent_messages! { "./example.ftl" }
 
 // E0123 and E0456 are no longer used, so we define our own constants here just for this test.
@@ -56,7 +58,7 @@ enum DiagnosticOnEnum {
 #[derive(Diagnostic)]
 #[diag(no_crate_example, code = E0123)]
 #[diag = "E0123"]
-//~^ ERROR failed to resolve: you might be missing crate `core`
+//~^ ERROR expected parentheses: #[diag(...)]
 struct WrongStructAttrStyle {}
 
 #[derive(Diagnostic)]
@@ -78,20 +80,17 @@ struct InvalidNestedStructAttr {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense("foo"), code = E0123, slug = "foo")]
-//~^ ERROR diagnostic slug must be the first argument
-//~| ERROR diagnostic slug not specified
+//~^ ERROR derive(Diagnostic): diagnostic slug not specified
 struct InvalidNestedStructAttr1 {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense = "...", code = E0123, slug = "foo")]
-//~^ ERROR unknown argument
-//~| ERROR diagnostic slug not specified
+//~^ ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr2 {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense = 4, code = E0123, slug = "foo")]
-//~^ ERROR unknown argument
-//~| ERROR diagnostic slug not specified
+//~^ ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr3 {}
 
 #[derive(Diagnostic)]
@@ -111,7 +110,6 @@ struct WrongPlaceField {
 #[diag(no_crate_example, code = E0123)]
 #[diag(no_crate_example, code = E0456)]
 //~^ ERROR specified multiple times
-//~^^ ERROR specified multiple times
 struct DiagSpecifiedTwice {}
 
 #[derive(Diagnostic)]
@@ -541,7 +539,7 @@ struct LabelWithTrailingPath {
 #[diag(no_crate_example, code = E0123)]
 struct LabelWithTrailingNameValue {
     #[label(no_crate_label, foo = "...")]
-    //~^ ERROR only `no_span` is a valid nested attribute
+    //~^ ERROR no nested attribute expected here
     span: Span,
 }
 
@@ -549,7 +547,7 @@ struct LabelWithTrailingNameValue {
 #[diag(no_crate_example, code = E0123)]
 struct LabelWithTrailingList {
     #[label(no_crate_label, foo("..."))]
-    //~^ ERROR only `no_span` is a valid nested attribute
+    //~^ ERROR no nested attribute expected here
     span: Span,
 }
 
@@ -801,15 +799,15 @@ struct SuggestionsNoItem {
 struct SuggestionsInvalidItem {
     #[suggestion(code(foo))]
     //~^ ERROR `code(...)` must contain only string literals
-    //~| ERROR failed to resolve: you might be missing crate `core`
+    //~| ERROR unexpected token, expected `)`
     sub: Span,
 }
 
-#[derive(Diagnostic)] //~ ERROR cannot find value `__code_34` in this scope
+#[derive(Diagnostic)]
 #[diag(no_crate_example)]
 struct SuggestionsInvalidLiteral {
     #[suggestion(code = 3)]
-    //~^ ERROR failed to resolve: you might be missing crate `core`
+    //~^ ERROR expected string literal
     sub: Span,
 }
 

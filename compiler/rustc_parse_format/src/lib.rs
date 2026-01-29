@@ -758,7 +758,7 @@ impl<'input> Parser<'input> {
     }
 
     /// Parses a word starting at the current position. A word is the same as a
-    /// Rust identifier, except that it can't start with `_` character.
+    /// Rust identifier or keyword, except that it can't be a bare `_` character.
     fn word(&mut self) -> &'input str {
         let index = self.input_vec_index;
         match self.peek() {

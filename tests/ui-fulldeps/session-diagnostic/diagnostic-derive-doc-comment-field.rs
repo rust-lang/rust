@@ -18,6 +18,7 @@ extern crate rustc_fluent_macro;
 extern crate rustc_macros;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate core;
 
 use rustc_errors::{Applicability, DiagMessage, SubdiagMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};

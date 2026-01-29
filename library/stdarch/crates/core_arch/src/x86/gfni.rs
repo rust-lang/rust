@@ -898,25 +898,25 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx512f")]
-    unsafe fn test_mm512_gf2p8mul_epi8() {
+    fn test_mm512_gf2p8mul_epi8() {
         let (left, right, expected) = generate_byte_mul_test_data();
 
         for i in 0..NUM_TEST_WORDS_512 {
-            let left = load_m512i_word(&left, i);
-            let right = load_m512i_word(&right, i);
-            let expected = load_m512i_word(&expected, i);
+            let left = unsafe { load_m512i_word(&left, i) };
+            let right = unsafe { load_m512i_word(&right, i) };
+            let expected = unsafe { load_m512i_word(&expected, i) };
             let result = _mm512_gf2p8mul_epi8(left, right);
             assert_eq_m512i(result, expected);
         }
     }
 
     #[simd_test(enable = "gfni,avx512bw")]
-    unsafe fn test_mm512_maskz_gf2p8mul_epi8() {
+    fn test_mm512_maskz_gf2p8mul_epi8() {
         let (left, right, _expected) = generate_byte_mul_test_data();
 
         for i in 0..NUM_TEST_WORDS_512 {
-            let left = load_m512i_word(&left, i);
-            let right = load_m512i_word(&right, i);
+            let left = unsafe { load_m512i_word(&left, i) };
+            let right = unsafe { load_m512i_word(&right, i) };
             let result_zero = _mm512_maskz_gf2p8mul_epi8(0, left, right);
             assert_eq_m512i(result_zero, _mm512_setzero_si512());
             let mask_bytes: __mmask64 = 0x0F_0F_0F_0F_FF_FF_00_00;
@@ -930,12 +930,12 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx512bw")]
-    unsafe fn test_mm512_mask_gf2p8mul_epi8() {
+    fn test_mm512_mask_gf2p8mul_epi8() {
         let (left, right, _expected) = generate_byte_mul_test_data();
 
         for i in 0..NUM_TEST_WORDS_512 {
-            let left = load_m512i_word(&left, i);
-            let right = load_m512i_word(&right, i);
+            let left = unsafe { load_m512i_word(&left, i) };
+            let right = unsafe { load_m512i_word(&right, i) };
             let result_left = _mm512_mask_gf2p8mul_epi8(left, 0, left, right);
             assert_eq_m512i(result_left, left);
             let mask_bytes: __mmask64 = 0x0F_0F_0F_0F_FF_FF_00_00;
@@ -948,25 +948,25 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx")]
-    unsafe fn test_mm256_gf2p8mul_epi8() {
+    fn test_mm256_gf2p8mul_epi8() {
         let (left, right, expected) = generate_byte_mul_test_data();
 
         for i in 0..NUM_TEST_WORDS_256 {
-            let left = load_m256i_word(&left, i);
-            let right = load_m256i_word(&right, i);
-            let expected = load_m256i_word(&expected, i);
+            let left = unsafe { load_m256i_word(&left, i) };
+            let right = unsafe { load_m256i_word(&right, i) };
+            let expected = unsafe { load_m256i_word(&expected, i) };
             let result = _mm256_gf2p8mul_epi8(left, right);
             assert_eq_m256i(result, expected);
         }
     }
 
     #[simd_test(enable = "gfni,avx512bw,avx512vl")]
-    unsafe fn test_mm256_maskz_gf2p8mul_epi8() {
+    fn test_mm256_maskz_gf2p8mul_epi8() {
         let (left, right, _expected) = generate_byte_mul_test_data();
 
         for i in 0..NUM_TEST_WORDS_256 {
-            let left = load_m256i_word(&left, i);
-            let right = load_m256i_word(&right, i);
+            let left = unsafe { load_m256i_word(&left, i) };
+            let right = unsafe { load_m256i_word(&right, i) };
             let result_zero = _mm256_maskz_gf2p8mul_epi8(0, left, right);
             assert_eq_m256i(result_zero, _mm256_setzero_si256());
             let mask_bytes: __mmask32 = 0x0F_F0_FF_00;
@@ -980,12 +980,12 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx512bw,avx512vl")]
-    unsafe fn test_mm256_mask_gf2p8mul_epi8() {
+    fn test_mm256_mask_gf2p8mul_epi8() {
         let (left, right, _expected) = generate_byte_mul_test_data();
 
         for i in 0..NUM_TEST_WORDS_256 {
-            let left = load_m256i_word(&left, i);
-            let right = load_m256i_word(&right, i);
+            let left = unsafe { load_m256i_word(&left, i) };
+            let right = unsafe { load_m256i_word(&right, i) };
             let result_left = _mm256_mask_gf2p8mul_epi8(left, 0, left, right);
             assert_eq_m256i(result_left, left);
             let mask_bytes: __mmask32 = 0x0F_F0_FF_00;
@@ -998,25 +998,25 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni")]
-    unsafe fn test_mm_gf2p8mul_epi8() {
+    fn test_mm_gf2p8mul_epi8() {
         let (left, right, expected) = generate_byte_mul_test_data();
 
         for i in 0..NUM_TEST_WORDS_128 {
-            let left = load_m128i_word(&left, i);
-            let right = load_m128i_word(&right, i);
-            let expected = load_m128i_word(&expected, i);
+            let left = unsafe { load_m128i_word(&left, i) };
+            let right = unsafe { load_m128i_word(&right, i) };
+            let expected = unsafe { load_m128i_word(&expected, i) };
             let result = _mm_gf2p8mul_epi8(left, right);
             assert_eq_m128i(result, expected);
         }
     }
 
     #[simd_test(enable = "gfni,avx512bw,avx512vl")]
-    unsafe fn test_mm_maskz_gf2p8mul_epi8() {
+    fn test_mm_maskz_gf2p8mul_epi8() {
         let (left, right, _expected) = generate_byte_mul_test_data();
 
         for i in 0..NUM_TEST_WORDS_128 {
-            let left = load_m128i_word(&left, i);
-            let right = load_m128i_word(&right, i);
+            let left = unsafe { load_m128i_word(&left, i) };
+            let right = unsafe { load_m128i_word(&right, i) };
             let result_zero = _mm_maskz_gf2p8mul_epi8(0, left, right);
             assert_eq_m128i(result_zero, _mm_setzero_si128());
             let mask_bytes: __mmask16 = 0x0F_F0;
@@ -1030,12 +1030,12 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx512bw,avx512vl")]
-    unsafe fn test_mm_mask_gf2p8mul_epi8() {
+    fn test_mm_mask_gf2p8mul_epi8() {
         let (left, right, _expected) = generate_byte_mul_test_data();
 
         for i in 0..NUM_TEST_WORDS_128 {
-            let left = load_m128i_word(&left, i);
-            let right = load_m128i_word(&right, i);
+            let left = unsafe { load_m128i_word(&left, i) };
+            let right = unsafe { load_m128i_word(&right, i) };
             let result_left = _mm_mask_gf2p8mul_epi8(left, 0, left, right);
             assert_eq_m128i(result_left, left);
             let mask_bytes: __mmask16 = 0x0F_F0;
@@ -1048,7 +1048,7 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx512f")]
-    unsafe fn test_mm512_gf2p8affine_epi64_epi8() {
+    fn test_mm512_gf2p8affine_epi64_epi8() {
         let identity: i64 = 0x01_02_04_08_10_20_40_80;
         const IDENTITY_BYTE: i32 = 0;
         let constant: i64 = 0;
@@ -1061,20 +1061,20 @@ mod tests {
         let (matrices, vectors, references) = generate_affine_mul_test_data(IDENTITY_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_512 {
-            let data = load_m512i_word(&bytes, i);
+            let data = unsafe { load_m512i_word(&bytes, i) };
             let result = _mm512_gf2p8affine_epi64_epi8::<IDENTITY_BYTE>(data, identity);
             assert_eq_m512i(result, data);
             let result = _mm512_gf2p8affine_epi64_epi8::<CONSTANT_BYTE>(data, constant);
             assert_eq_m512i(result, constant_reference);
-            let data = load_m512i_word(&more_bytes, i);
+            let data = unsafe { load_m512i_word(&more_bytes, i) };
             let result = _mm512_gf2p8affine_epi64_epi8::<IDENTITY_BYTE>(data, identity);
             assert_eq_m512i(result, data);
             let result = _mm512_gf2p8affine_epi64_epi8::<CONSTANT_BYTE>(data, constant);
             assert_eq_m512i(result, constant_reference);
 
-            let matrix = load_m512i_word(&matrices, i);
-            let vector = load_m512i_word(&vectors, i);
-            let reference = load_m512i_word(&references, i);
+            let matrix = unsafe { load_m512i_word(&matrices, i) };
+            let vector = unsafe { load_m512i_word(&vectors, i) };
+            let reference = unsafe { load_m512i_word(&references, i) };
 
             let result = _mm512_gf2p8affine_epi64_epi8::<IDENTITY_BYTE>(vector, matrix);
             assert_eq_m512i(result, reference);
@@ -1082,13 +1082,13 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx512bw")]
-    unsafe fn test_mm512_maskz_gf2p8affine_epi64_epi8() {
+    fn test_mm512_maskz_gf2p8affine_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_512 {
-            let matrix = load_m512i_word(&matrices, i);
-            let vector = load_m512i_word(&vectors, i);
+            let matrix = unsafe { load_m512i_word(&matrices, i) };
+            let vector = unsafe { load_m512i_word(&vectors, i) };
             let result_zero =
                 _mm512_maskz_gf2p8affine_epi64_epi8::<CONSTANT_BYTE>(0, vector, matrix);
             assert_eq_m512i(result_zero, _mm512_setzero_si512());
@@ -1104,13 +1104,13 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx512bw")]
-    unsafe fn test_mm512_mask_gf2p8affine_epi64_epi8() {
+    fn test_mm512_mask_gf2p8affine_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_512 {
-            let left = load_m512i_word(&vectors, i);
-            let right = load_m512i_word(&matrices, i);
+            let left = unsafe { load_m512i_word(&vectors, i) };
+            let right = unsafe { load_m512i_word(&matrices, i) };
             let result_left =
                 _mm512_mask_gf2p8affine_epi64_epi8::<CONSTANT_BYTE>(left, 0, left, right);
             assert_eq_m512i(result_left, left);
@@ -1125,7 +1125,7 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx")]
-    unsafe fn test_mm256_gf2p8affine_epi64_epi8() {
+    fn test_mm256_gf2p8affine_epi64_epi8() {
         let identity: i64 = 0x01_02_04_08_10_20_40_80;
         const IDENTITY_BYTE: i32 = 0;
         let constant: i64 = 0;
@@ -1138,20 +1138,20 @@ mod tests {
         let (matrices, vectors, references) = generate_affine_mul_test_data(IDENTITY_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_256 {
-            let data = load_m256i_word(&bytes, i);
+            let data = unsafe { load_m256i_word(&bytes, i) };
             let result = _mm256_gf2p8affine_epi64_epi8::<IDENTITY_BYTE>(data, identity);
             assert_eq_m256i(result, data);
             let result = _mm256_gf2p8affine_epi64_epi8::<CONSTANT_BYTE>(data, constant);
             assert_eq_m256i(result, constant_reference);
-            let data = load_m256i_word(&more_bytes, i);
+            let data = unsafe { load_m256i_word(&more_bytes, i) };
             let result = _mm256_gf2p8affine_epi64_epi8::<IDENTITY_BYTE>(data, identity);
             assert_eq_m256i(result, data);
             let result = _mm256_gf2p8affine_epi64_epi8::<CONSTANT_BYTE>(data, constant);
             assert_eq_m256i(result, constant_reference);
 
-            let matrix = load_m256i_word(&matrices, i);
-            let vector = load_m256i_word(&vectors, i);
-            let reference = load_m256i_word(&references, i);
+            let matrix = unsafe { load_m256i_word(&matrices, i) };
+            let vector = unsafe { load_m256i_word(&vectors, i) };
+            let reference = unsafe { load_m256i_word(&references, i) };
 
             let result = _mm256_gf2p8affine_epi64_epi8::<IDENTITY_BYTE>(vector, matrix);
             assert_eq_m256i(result, reference);
@@ -1159,13 +1159,13 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx512bw,avx512vl")]
-    unsafe fn test_mm256_maskz_gf2p8affine_epi64_epi8() {
+    fn test_mm256_maskz_gf2p8affine_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_256 {
-            let matrix = load_m256i_word(&matrices, i);
-            let vector = load_m256i_word(&vectors, i);
+            let matrix = unsafe { load_m256i_word(&matrices, i) };
+            let vector = unsafe { load_m256i_word(&vectors, i) };
             let result_zero =
                 _mm256_maskz_gf2p8affine_epi64_epi8::<CONSTANT_BYTE>(0, vector, matrix);
             assert_eq_m256i(result_zero, _mm256_setzero_si256());
@@ -1181,13 +1181,13 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx512bw,avx512vl")]
-    unsafe fn test_mm256_mask_gf2p8affine_epi64_epi8() {
+    fn test_mm256_mask_gf2p8affine_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_256 {
-            let left = load_m256i_word(&vectors, i);
-            let right = load_m256i_word(&matrices, i);
+            let left = unsafe { load_m256i_word(&vectors, i) };
+            let right = unsafe { load_m256i_word(&matrices, i) };
             let result_left =
                 _mm256_mask_gf2p8affine_epi64_epi8::<CONSTANT_BYTE>(left, 0, left, right);
             assert_eq_m256i(result_left, left);
@@ -1202,7 +1202,7 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni")]
-    unsafe fn test_mm_gf2p8affine_epi64_epi8() {
+    fn test_mm_gf2p8affine_epi64_epi8() {
         let identity: i64 = 0x01_02_04_08_10_20_40_80;
         const IDENTITY_BYTE: i32 = 0;
         let constant: i64 = 0;
@@ -1215,20 +1215,20 @@ mod tests {
         let (matrices, vectors, references) = generate_affine_mul_test_data(IDENTITY_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_128 {
-            let data = load_m128i_word(&bytes, i);
+            let data = unsafe { load_m128i_word(&bytes, i) };
             let result = _mm_gf2p8affine_epi64_epi8::<IDENTITY_BYTE>(data, identity);
             assert_eq_m128i(result, data);
             let result = _mm_gf2p8affine_epi64_epi8::<CONSTANT_BYTE>(data, constant);
             assert_eq_m128i(result, constant_reference);
-            let data = load_m128i_word(&more_bytes, i);
+            let data = unsafe { load_m128i_word(&more_bytes, i) };
             let result = _mm_gf2p8affine_epi64_epi8::<IDENTITY_BYTE>(data, identity);
             assert_eq_m128i(result, data);
             let result = _mm_gf2p8affine_epi64_epi8::<CONSTANT_BYTE>(data, constant);
             assert_eq_m128i(result, constant_reference);
 
-            let matrix = load_m128i_word(&matrices, i);
-            let vector = load_m128i_word(&vectors, i);
-            let reference = load_m128i_word(&references, i);
+            let matrix = unsafe { load_m128i_word(&matrices, i) };
+            let vector = unsafe { load_m128i_word(&vectors, i) };
+            let reference = unsafe { load_m128i_word(&references, i) };
 
             let result = _mm_gf2p8affine_epi64_epi8::<IDENTITY_BYTE>(vector, matrix);
             assert_eq_m128i(result, reference);
@@ -1236,13 +1236,13 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx512bw,avx512vl")]
-    unsafe fn test_mm_maskz_gf2p8affine_epi64_epi8() {
+    fn test_mm_maskz_gf2p8affine_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_128 {
-            let matrix = load_m128i_word(&matrices, i);
-            let vector = load_m128i_word(&vectors, i);
+            let matrix = unsafe { load_m128i_word(&matrices, i) };
+            let vector = unsafe { load_m128i_word(&vectors, i) };
             let result_zero = _mm_maskz_gf2p8affine_epi64_epi8::<CONSTANT_BYTE>(0, vector, matrix);
             assert_eq_m128i(result_zero, _mm_setzero_si128());
             let mask_bytes: __mmask16 = 0x0F_F0;
@@ -1257,13 +1257,13 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx512bw,avx512vl")]
-    unsafe fn test_mm_mask_gf2p8affine_epi64_epi8() {
+    fn test_mm_mask_gf2p8affine_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_128 {
-            let left = load_m128i_word(&vectors, i);
-            let right = load_m128i_word(&matrices, i);
+            let left = unsafe { load_m128i_word(&vectors, i) };
+            let right = unsafe { load_m128i_word(&matrices, i) };
             let result_left =
                 _mm_mask_gf2p8affine_epi64_epi8::<CONSTANT_BYTE>(left, 0, left, right);
             assert_eq_m128i(result_left, left);
@@ -1278,7 +1278,7 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx512f")]
-    unsafe fn test_mm512_gf2p8affineinv_epi64_epi8() {
+    fn test_mm512_gf2p8affineinv_epi64_epi8() {
         let identity: i64 = 0x01_02_04_08_10_20_40_80;
         const IDENTITY_BYTE: i32 = 0;
         const CONSTANT_BYTE: i32 = 0x63;
@@ -1288,8 +1288,8 @@ mod tests {
         let (inputs, results) = generate_inv_tests_data();
 
         for i in 0..NUM_BYTES_WORDS_512 {
-            let input = load_m512i_word(&inputs, i);
-            let reference = load_m512i_word(&results, i);
+            let input = unsafe { load_m512i_word(&inputs, i) };
+            let reference = unsafe { load_m512i_word(&results, i) };
             let result = _mm512_gf2p8affineinv_epi64_epi8::<IDENTITY_BYTE>(input, identity);
             let remultiplied = _mm512_gf2p8mul_epi8(result, input);
             assert_eq_m512i(remultiplied, reference);
@@ -1300,8 +1300,8 @@ mod tests {
             generate_affine_mul_test_data(CONSTANT_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_512 {
-            let vector = load_m512i_word(&vectors, i);
-            let matrix = load_m512i_word(&matrices, i);
+            let vector = unsafe { load_m512i_word(&vectors, i) };
+            let matrix = unsafe { load_m512i_word(&matrices, i) };
 
             let inv_vec = _mm512_gf2p8affineinv_epi64_epi8::<IDENTITY_BYTE>(vector, identity);
             let reference = _mm512_gf2p8affine_epi64_epi8::<CONSTANT_BYTE>(inv_vec, matrix);
@@ -1314,21 +1314,21 @@ mod tests {
         let sbox_matrix = _mm512_set1_epi64(AES_S_BOX_MATRIX);
 
         for i in 0..NUM_BYTES_WORDS_512 {
-            let reference = load_m512i_word(&AES_S_BOX, i);
-            let input = load_m512i_word(&inputs, i);
+            let reference = unsafe { load_m512i_word(&AES_S_BOX, i) };
+            let input = unsafe { load_m512i_word(&inputs, i) };
             let result = _mm512_gf2p8affineinv_epi64_epi8::<CONSTANT_BYTE>(input, sbox_matrix);
             assert_eq_m512i(result, reference);
         }
     }
 
     #[simd_test(enable = "gfni,avx512bw")]
-    unsafe fn test_mm512_maskz_gf2p8affineinv_epi64_epi8() {
+    fn test_mm512_maskz_gf2p8affineinv_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_512 {
-            let matrix = load_m512i_word(&matrices, i);
-            let vector = load_m512i_word(&vectors, i);
+            let matrix = unsafe { load_m512i_word(&matrices, i) };
+            let vector = unsafe { load_m512i_word(&vectors, i) };
             let result_zero =
                 _mm512_maskz_gf2p8affineinv_epi64_epi8::<CONSTANT_BYTE>(0, vector, matrix);
             assert_eq_m512i(result_zero, _mm512_setzero_si512());
@@ -1344,13 +1344,13 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx512bw")]
-    unsafe fn test_mm512_mask_gf2p8affineinv_epi64_epi8() {
+    fn test_mm512_mask_gf2p8affineinv_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_512 {
-            let left = load_m512i_word(&vectors, i);
-            let right = load_m512i_word(&matrices, i);
+            let left = unsafe { load_m512i_word(&vectors, i) };
+            let right = unsafe { load_m512i_word(&matrices, i) };
             let result_left =
                 _mm512_mask_gf2p8affineinv_epi64_epi8::<CONSTANT_BYTE>(left, 0, left, right);
             assert_eq_m512i(result_left, left);
@@ -1366,7 +1366,7 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx")]
-    unsafe fn test_mm256_gf2p8affineinv_epi64_epi8() {
+    fn test_mm256_gf2p8affineinv_epi64_epi8() {
         let identity: i64 = 0x01_02_04_08_10_20_40_80;
         const IDENTITY_BYTE: i32 = 0;
         const CONSTANT_BYTE: i32 = 0x63;
@@ -1376,8 +1376,8 @@ mod tests {
         let (inputs, results) = generate_inv_tests_data();
 
         for i in 0..NUM_BYTES_WORDS_256 {
-            let input = load_m256i_word(&inputs, i);
-            let reference = load_m256i_word(&results, i);
+            let input = unsafe { load_m256i_word(&inputs, i) };
+            let reference = unsafe { load_m256i_word(&results, i) };
             let result = _mm256_gf2p8affineinv_epi64_epi8::<IDENTITY_BYTE>(input, identity);
             let remultiplied = _mm256_gf2p8mul_epi8(result, input);
             assert_eq_m256i(remultiplied, reference);
@@ -1388,8 +1388,8 @@ mod tests {
             generate_affine_mul_test_data(CONSTANT_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_256 {
-            let vector = load_m256i_word(&vectors, i);
-            let matrix = load_m256i_word(&matrices, i);
+            let vector = unsafe { load_m256i_word(&vectors, i) };
+            let matrix = unsafe { load_m256i_word(&matrices, i) };
 
             let inv_vec = _mm256_gf2p8affineinv_epi64_epi8::<IDENTITY_BYTE>(vector, identity);
             let reference = _mm256_gf2p8affine_epi64_epi8::<CONSTANT_BYTE>(inv_vec, matrix);
@@ -1402,21 +1402,21 @@ mod tests {
         let sbox_matrix = _mm256_set1_epi64x(AES_S_BOX_MATRIX);
 
         for i in 0..NUM_BYTES_WORDS_256 {
-            let reference = load_m256i_word(&AES_S_BOX, i);
-            let input = load_m256i_word(&inputs, i);
+            let reference = unsafe { load_m256i_word(&AES_S_BOX, i) };
+            let input = unsafe { load_m256i_word(&inputs, i) };
             let result = _mm256_gf2p8affineinv_epi64_epi8::<CONSTANT_BYTE>(input, sbox_matrix);
             assert_eq_m256i(result, reference);
         }
     }
 
     #[simd_test(enable = "gfni,avx512bw,avx512vl")]
-    unsafe fn test_mm256_maskz_gf2p8affineinv_epi64_epi8() {
+    fn test_mm256_maskz_gf2p8affineinv_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_256 {
-            let matrix = load_m256i_word(&matrices, i);
-            let vector = load_m256i_word(&vectors, i);
+            let matrix = unsafe { load_m256i_word(&matrices, i) };
+            let vector = unsafe { load_m256i_word(&vectors, i) };
             let result_zero =
                 _mm256_maskz_gf2p8affineinv_epi64_epi8::<CONSTANT_BYTE>(0, vector, matrix);
             assert_eq_m256i(result_zero, _mm256_setzero_si256());
@@ -1432,13 +1432,13 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx512bw,avx512vl")]
-    unsafe fn test_mm256_mask_gf2p8affineinv_epi64_epi8() {
+    fn test_mm256_mask_gf2p8affineinv_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_256 {
-            let left = load_m256i_word(&vectors, i);
-            let right = load_m256i_word(&matrices, i);
+            let left = unsafe { load_m256i_word(&vectors, i) };
+            let right = unsafe { load_m256i_word(&matrices, i) };
             let result_left =
                 _mm256_mask_gf2p8affineinv_epi64_epi8::<CONSTANT_BYTE>(left, 0, left, right);
             assert_eq_m256i(result_left, left);
@@ -1454,7 +1454,7 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni")]
-    unsafe fn test_mm_gf2p8affineinv_epi64_epi8() {
+    fn test_mm_gf2p8affineinv_epi64_epi8() {
         let identity: i64 = 0x01_02_04_08_10_20_40_80;
         const IDENTITY_BYTE: i32 = 0;
         const CONSTANT_BYTE: i32 = 0x63;
@@ -1464,8 +1464,8 @@ mod tests {
         let (inputs, results) = generate_inv_tests_data();
 
         for i in 0..NUM_BYTES_WORDS_128 {
-            let input = load_m128i_word(&inputs, i);
-            let reference = load_m128i_word(&results, i);
+            let input = unsafe { load_m128i_word(&inputs, i) };
+            let reference = unsafe { load_m128i_word(&results, i) };
             let result = _mm_gf2p8affineinv_epi64_epi8::<IDENTITY_BYTE>(input, identity);
             let remultiplied = _mm_gf2p8mul_epi8(result, input);
             assert_eq_m128i(remultiplied, reference);
@@ -1476,8 +1476,8 @@ mod tests {
             generate_affine_mul_test_data(CONSTANT_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_128 {
-            let vector = load_m128i_word(&vectors, i);
-            let matrix = load_m128i_word(&matrices, i);
+            let vector = unsafe { load_m128i_word(&vectors, i) };
+            let matrix = unsafe { load_m128i_word(&matrices, i) };
 
             let inv_vec = _mm_gf2p8affineinv_epi64_epi8::<IDENTITY_BYTE>(vector, identity);
             let reference = _mm_gf2p8affine_epi64_epi8::<CONSTANT_BYTE>(inv_vec, matrix);
@@ -1490,21 +1490,21 @@ mod tests {
         let sbox_matrix = _mm_set1_epi64x(AES_S_BOX_MATRIX);
 
         for i in 0..NUM_BYTES_WORDS_128 {
-            let reference = load_m128i_word(&AES_S_BOX, i);
-            let input = load_m128i_word(&inputs, i);
+            let reference = unsafe { load_m128i_word(&AES_S_BOX, i) };
+            let input = unsafe { load_m128i_word(&inputs, i) };
             let result = _mm_gf2p8affineinv_epi64_epi8::<CONSTANT_BYTE>(input, sbox_matrix);
             assert_eq_m128i(result, reference);
         }
     }
 
     #[simd_test(enable = "gfni,avx512bw,avx512vl")]
-    unsafe fn test_mm_maskz_gf2p8affineinv_epi64_epi8() {
+    fn test_mm_maskz_gf2p8affineinv_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_128 {
-            let matrix = load_m128i_word(&matrices, i);
-            let vector = load_m128i_word(&vectors, i);
+            let matrix = unsafe { load_m128i_word(&matrices, i) };
+            let vector = unsafe { load_m128i_word(&vectors, i) };
             let result_zero =
                 _mm_maskz_gf2p8affineinv_epi64_epi8::<CONSTANT_BYTE>(0, vector, matrix);
             assert_eq_m128i(result_zero, _mm_setzero_si128());
@@ -1520,13 +1520,13 @@ mod tests {
     }
 
     #[simd_test(enable = "gfni,avx512bw,avx512vl")]
-    unsafe fn test_mm_mask_gf2p8affineinv_epi64_epi8() {
+    fn test_mm_mask_gf2p8affineinv_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
 
         for i in 0..NUM_TEST_WORDS_128 {
-            let left = load_m128i_word(&vectors, i);
-            let right = load_m128i_word(&matrices, i);
+            let left = unsafe { load_m128i_word(&vectors, i) };
+            let right = unsafe { load_m128i_word(&matrices, i) };
             let result_left =
                 _mm_mask_gf2p8affineinv_epi64_epi8::<CONSTANT_BYTE>(left, 0, left, right);
             assert_eq_m128i(result_left, left);

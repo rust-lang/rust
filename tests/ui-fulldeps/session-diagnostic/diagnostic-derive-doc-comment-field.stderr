@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `NotIntoDiagArg: IntoDiagArg` is not satisfied
-  --> $DIR/diagnostic-derive-doc-comment-field.rs:36:10
+  --> $DIR/diagnostic-derive-doc-comment-field.rs:37:10
    |
 LL | #[derive(Diagnostic)]
    |          ---------- required by a bound introduced by this call
@@ -8,7 +8,7 @@ LL |     arg: NotIntoDiagArg,
    |          ^^^^^^^^^^^^^^ unsatisfied trait bound
    |
 help: the nightly-only, unstable trait `IntoDiagArg` is not implemented for `NotIntoDiagArg`
-  --> $DIR/diagnostic-derive-doc-comment-field.rs:28:1
+  --> $DIR/diagnostic-derive-doc-comment-field.rs:29:1
    |
 LL | struct NotIntoDiagArg;
    | ^^^^^^^^^^^^^^^^^^^^^
@@ -21,7 +21,7 @@ note: required by a bound in `Diag::<'a, G>::arg`
    = note: this error originates in the macro `with_fn` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `NotIntoDiagArg: IntoDiagArg` is not satisfied
-  --> $DIR/diagnostic-derive-doc-comment-field.rs:46:10
+  --> $DIR/diagnostic-derive-doc-comment-field.rs:47:10
    |
 LL | #[derive(Subdiagnostic)]
    |          ------------- required by a bound introduced by this call
@@ -30,7 +30,7 @@ LL |     arg: NotIntoDiagArg,
    |          ^^^^^^^^^^^^^^ unsatisfied trait bound
    |
 help: the nightly-only, unstable trait `IntoDiagArg` is not implemented for `NotIntoDiagArg`
-  --> $DIR/diagnostic-derive-doc-comment-field.rs:28:1
+  --> $DIR/diagnostic-derive-doc-comment-field.rs:29:1
    |
 LL | struct NotIntoDiagArg;
    | ^^^^^^^^^^^^^^^^^^^^^

@@ -123,16 +123,19 @@ pub(crate) fn type_check<'tcx>(
         known_type_outlives_obligations,
     } = free_region_relations::create(infcx, universal_regions, &mut constraints);
 
-    let pre_obligations = infcx.take_registered_region_obligations();
-    assert!(
-        pre_obligations.is_empty(),
-        "there should be no incoming region obligations = {pre_obligations:#?}",
-    );
-    let pre_assumptions = infcx.take_registered_region_assumptions();
-    assert!(
-        pre_assumptions.is_empty(),
-        "there should be no incoming region assumptions = {pre_assumptions:#?}",
-    );
+    {
+        // Scope these variables so it's clear they're not used later
+        let pre_obligations = infcx.take_registered_region_obligations();
+        assert!(
+            pre_obligations.is_empty(),
+            "there should be no incoming region obligations = {pre_obligations:#?}",
+        );
+        let pre_assumptions = infcx.take_registered_region_assumptions();
+        assert!(
+            pre_assumptions.is_empty(),
+            "there should be no incoming region assumptions = {pre_assumptions:#?}",
+        );
+    }
 
     debug!(?normalized_inputs_and_output);
 

@@ -2168,7 +2168,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(push_mut)]
     /// use std::collections::VecDeque;
     ///
     /// let mut d = VecDeque::from([1, 2, 3]);
@@ -2176,7 +2175,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// *x -= 1;
     /// assert_eq!(d.front(), Some(&7));
     /// ```
-    #[unstable(feature = "push_mut", issue = "135974")]
+    #[stable(feature = "push_mut", since = "CURRENT_RUSTC_VERSION")]
     #[must_use = "if you don't need a reference to the value, use `VecDeque::push_front` instead"]
     pub fn push_front_mut(&mut self, value: T) -> &mut T {
         if self.is_full() {
@@ -2212,7 +2211,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(push_mut)]
     /// use std::collections::VecDeque;
     ///
     /// let mut d = VecDeque::from([1, 2, 3]);
@@ -2220,7 +2218,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// *x += 1;
     /// assert_eq!(d.back(), Some(&10));
     /// ```
-    #[unstable(feature = "push_mut", issue = "135974")]
+    #[stable(feature = "push_mut", since = "CURRENT_RUSTC_VERSION")]
     #[must_use = "if you don't need a reference to the value, use `VecDeque::push_back` instead"]
     pub fn push_back_mut(&mut self, value: T) -> &mut T {
         if self.is_full() {
@@ -2419,7 +2417,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(push_mut)]
     /// use std::collections::VecDeque;
     ///
     /// let mut vec_deque = VecDeque::from([1, 2, 3]);
@@ -2428,7 +2425,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// *x += 7;
     /// assert_eq!(vec_deque, &[1, 12, 2, 3]);
     /// ```
-    #[unstable(feature = "push_mut", issue = "135974")]
+    #[stable(feature = "push_mut", since = "CURRENT_RUSTC_VERSION")]
     #[must_use = "if you don't need a reference to the value, use `VecDeque::insert` instead"]
     pub fn insert_mut(&mut self, index: usize, value: T) -> &mut T {
         assert!(index <= self.len(), "index out of bounds");

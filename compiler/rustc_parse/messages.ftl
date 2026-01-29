@@ -98,6 +98,8 @@ parse_bare_cr = {$double_quotes ->
     }
     .escape = escape the character
 
+parse_bare_cr_in_frontmatter = bare CR not allowed in frontmatter
+
 parse_bare_cr_in_raw_string = bare CR not allowed in raw string
 
 parse_binder_and_polarity = `for<...>` binder not allowed with `{$polarity}` trait polarity modifier
@@ -352,7 +354,6 @@ parse_frontmatter_length_mismatch = frontmatter close does not match the opening
 parse_frontmatter_too_many_dashes = too many `-` symbols: frontmatter openings may be delimited by up to 255 `-` symbols, but found {$len_opening}
 parse_frontmatter_unclosed = unclosed frontmatter
     .note = frontmatter opening here was not closed
-
 parse_function_body_equals_expr = function body cannot be `= expression;`
     .suggestion = surround the expression with `{"{"}` and `{"}"}` instead of `=` and `;`
 
@@ -822,8 +823,18 @@ parse_struct_literal_body_without_path =
     struct literal body without path
     .suggestion = you might have forgotten to add the struct literal inside the block
 
+parse_struct_literal_body_without_path_late =
+    struct literal body without path
+    .label = struct name missing for struct literal
+    .suggestion = add the correct type
+
 parse_struct_literal_not_allowed_here = struct literals are not allowed here
     .suggestion = surround the struct literal with parentheses
+
+parse_struct_literal_placeholder_path =
+    placeholder `_` is not allowed for the path in struct literals
+    .label = not allowed in struct literals
+    .suggestion = replace it with the correct type
 
 parse_suffixed_literal_in_attribute = suffixed literals are not allowed in attributes
     .help = instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)

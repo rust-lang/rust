@@ -343,8 +343,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return;
         }
 
-        // FIXME: Ideally MIR types are normalized, but this is not always true.
-        let mir_ty = self.normalize(mir_ty, Locations::All(span));
+        // This is a hack. `body.local_decls` are not necessarily normalized in the old
+        // solver due to not deeply normalizing in writeback. So we must re-normalize here.
+        //
+        // I am not sure of a test case where this actually matters. There is a similar
+        // hack in `equate_inputs_and_outputs` which does have associated test cases.
+        let mir_ty = match self.infcx.next_trait_solver() {
+            true => mir_ty,
+            false => self.normalize(mir_ty, Locations::All(span)),
+        };
 
         let cause = ObligationCause::dummy_with_span(span);
         let param_env = self.infcx.param_env;
@@ -353,6 +360,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             ConstraintCategory::Boring,
             type_op::custom::CustomTypeOp::new(
                 |ocx| {
+                    // The `AscribeUserType` query would normally emit a wf
+                    // obligation for the unnormalized user_ty here. This is
+                    // where the "incorrectly skips the WF checks we normally do"
+                    // happens
                     let user_ty = ocx.normalize(&cause, param_env, user_ty);
                     ocx.eq(&cause, param_env, user_ty, mir_ty)?;
                     Ok(())

@@ -26,7 +26,6 @@ use std::str::FromStr;
 use std::{fmt, fs};
 
 use indexmap::IndexMap;
-use regex::Regex;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
@@ -376,12 +375,15 @@ fn hack_get_external_crate_names(
     };
     // this is only run once so it's fine not to cache it
     // !dot_matches_new_line: all crates on same line. greedy: match last bracket
-    let regex = Regex::new(r"\[.*\]").unwrap();
-    let Some(content) = regex.find(&content) else {
-        return Err(Error::new("could not find crates list in crates.js", path));
-    };
-    let content: Vec<String> = try_err!(serde_json::from_str(content.as_str()), &path);
-    Ok(content)
+    if let Some(start) = content.find('[')
+        && let Some(end) = content[start..].find(']')
+    {
+        let content: Vec<String> =
+            try_err!(serde_json::from_str(&content[start..=start + end]), &path);
+        Ok(content)
+    } else {
+        Err(Error::new("could not find crates list in crates.js", path))
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -504,33 +506,35 @@ impl Hierarchy {
 
     fn add_path(self: &Rc<Self>, path: &Path) {
         let mut h = Rc::clone(self);
-        let mut elems = path
+        let mut components = path
             .components()
-            .filter_map(|s| match s {
-                Component::Normal(s) => Some(s.to_owned()),
-                Component::ParentDir => Some(OsString::from("..")),
-                _ => None,
-            })
+            .filter(|component| matches!(component, Component::Normal(_) | Component::ParentDir))
             .peekable();
-        loop {
-            let cur_elem = elems.next().expect("empty file path");
-            if cur_elem == ".." {
-                if let Some(parent) = h.parent.upgrade() {
+
+        assert!(components.peek().is_some(), "empty file path");
+        while let Some(component) = components.next() {
+            match component {
+                Component::Normal(s) => {
+                    if components.peek().is_none() {
+                        h.elems.borrow_mut().insert(s.to_owned());
+                        break;
+                    }
+                    h = {
+                        let mut children = h.children.borrow_mut();
+
+                        if let Some(existing) = children.get(s) {
+                            Rc::clone(existing)
+                        } else {
+                            let new_node = Rc::new(Self::with_parent(s.to_owned(), &h));
+                            children.insert(s.to_owned(), Rc::clone(&new_node));
+                            new_node
+                        }
+                    };
+                }
+                Component::ParentDir if let Some(parent) = h.parent.upgrade() => {
                     h = parent;
                 }
-                continue;
-            }
-            if elems.peek().is_none() {
-                h.elems.borrow_mut().insert(cur_elem);
-                break;
-            } else {
-                let entry = Rc::clone(
-                    h.children
-                        .borrow_mut()
-                        .entry(cur_elem.clone())
-                        .or_insert_with(|| Rc::new(Self::with_parent(cur_elem, &h))),
-                );
-                h = entry;
+                _ => {}
             }
         }
     }

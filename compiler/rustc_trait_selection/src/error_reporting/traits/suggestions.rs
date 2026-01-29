@@ -4390,6 +4390,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         path_segment: &hir::PathSegment<'_>,
         args: &[hir::Expr<'_>],
+        prev_ty: Ty<'_>,
         err: &mut Diag<'_, G>,
     ) {
         let tcx = self.tcx;
@@ -4403,6 +4404,47 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let TypeError::Sorts(expected_found) = diff else {
                     continue;
                 };
+                if tcx.is_diagnostic_item(sym::IntoIteratorItem, *def_id)
+                    && path_segment.ident.name == sym::iter
+                    && self.can_eq(
+                        param_env,
+                        Ty::new_ref(
+                            tcx,
+                            tcx.lifetimes.re_erased,
+                            expected_found.found,
+                            ty::Mutability::Not,
+                        ),
+                        *ty,
+                    )
+                    && let [] = args
+                {
+                    // Used `.iter()` when `.into_iter()` was likely meant.
+                    err.span_suggestion_verbose(
+                        path_segment.ident.span,
+                        format!("consider consuming the `{prev_ty}` to construct the `Iterator`"),
+                        "into_iter".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
+                if tcx.is_diagnostic_item(sym::IntoIteratorItem, *def_id)
+                    && path_segment.ident.name == sym::into_iter
+                    && self.can_eq(
+                        param_env,
+                        expected_found.found,
+                        Ty::new_ref(tcx, tcx.lifetimes.re_erased, *ty, ty::Mutability::Not),
+                    )
+                    && let [] = args
+                {
+                    // Used `.into_iter()` when `.iter()` was likely meant.
+                    err.span_suggestion_verbose(
+                        path_segment.ident.span,
+                        format!(
+                            "consider not consuming the `{prev_ty}` to construct the `Iterator`"
+                        ),
+                        "iter".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
                 if tcx.is_diagnostic_item(sym::IteratorItem, *def_id)
                     && path_segment.ident.name == sym::map
                     && self.can_eq(param_env, expected_found.found, *ty)
@@ -4515,6 +4557,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             expr = rcvr_expr;
             let assocs_in_this_method =
                 self.probe_assoc_types_at_expr(&type_diffs, span, prev_ty, expr.hir_id, param_env);
+            prev_ty = self.resolve_vars_if_possible(
+                typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(tcx)),
+            );
             self.look_for_iterator_item_mistakes(
                 &assocs_in_this_method,
                 typeck_results,
@@ -4522,12 +4567,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 param_env,
                 path_segment,
                 args,
+                prev_ty,
                 err,
             );
             assocs.push(assocs_in_this_method);
-            prev_ty = self.resolve_vars_if_possible(
-                typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(tcx)),
-            );
 
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
                 && let hir::Path { res: Res::Local(hir_id), .. } = path
