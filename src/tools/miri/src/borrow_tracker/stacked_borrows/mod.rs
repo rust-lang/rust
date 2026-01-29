@@ -651,7 +651,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                         dcx.log_protector();
                     }
                 },
-                AllocKind::Function | AllocKind::VTable | AllocKind::TypeId | AllocKind::Dead => {
+                AllocKind::Function | AllocKind::VTable | AllocKind::TypeId | AllocKind::Dead | AllocKind::VaList => {
                     // No stacked borrows on these allocations.
                 }
             }
@@ -1010,7 +1010,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 trace!("Stacked Borrows tag {tag:?} exposed in {alloc_id:?}");
                 alloc_extra.borrow_tracker_sb().borrow_mut().exposed_tags.insert(tag);
             }
-            AllocKind::Function | AllocKind::VTable | AllocKind::TypeId | AllocKind::Dead => {
+            AllocKind::Function
+            | AllocKind::VTable
+            | AllocKind::TypeId
+            | AllocKind::Dead
+            | AllocKind::VaList => {
                 // No stacked borrows on these allocations.
             }
         }

@@ -15,9 +15,9 @@ use tracing::field::Empty;
 use tracing::{info, instrument, trace};
 
 use super::{
-    CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
-    Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, StackPopInfo, interp_ok,
-    throw_ub, throw_ub_custom, throw_unsup_format,
+    CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, MemoryKind, OpTy,
+    PlaceTy, Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, StackPopInfo,
+    interp_ok, throw_ub, throw_ub_custom,
 };
 use crate::interpret::EnteredTraceSpan;
 use crate::{enter_trace_span, fluent_generated as fluent};
@@ -349,12 +349,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx> {
         let _trace = enter_trace_span!(M, step::init_stack_frame, %instance, tracing_separate_thread = Empty);
 
-        // Compute callee information.
-        // FIXME: for variadic support, do we have to somehow determine callee's extra_args?
-        let callee_fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
+        let (fixed_count, c_variadic_args) = if caller_fn_abi.c_variadic {
+            let sig = self.tcx.fn_sig(instance.def_id()).skip_binder();
+            let fixed_count = sig.inputs().skip_binder().len();
+            assert!(caller_fn_abi.args.len() >= fixed_count);
+            let extra_tys =
+                caller_fn_abi.args[fixed_count..].iter().map(|arg_abi| arg_abi.layout.ty);
 
-        if callee_fn_abi.c_variadic || caller_fn_abi.c_variadic {
-            throw_unsup_format!("calling a c-variadic function is not supported");
+            (fixed_count, self.tcx.mk_type_list_from_iter(extra_tys))
+        } else {
+            (caller_fn_abi.args.len(), ty::List::empty())
+        };
+
+        let callee_fn_abi = self.fn_abi_of_instance(instance, c_variadic_args)?;
+
+        if callee_fn_abi.c_variadic != caller_fn_abi.c_variadic {
+            unreachable!("caller and callee disagree on being c-variadic");
         }
 
         if caller_fn_abi.conv != callee_fn_abi.conv {
@@ -436,8 +446,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // this is a single iterator (that handles `spread_arg`), then
             // `pass_argument` would be the loop body. It takes care to
             // not advance `caller_iter` for ignored arguments.
-            let mut callee_args_abis = callee_fn_abi.args.iter().enumerate();
-            for local in body.args_iter() {
+            let mut callee_args_abis = if caller_fn_abi.c_variadic {
+                // Only the fixed arguments are passed normally.
+                callee_fn_abi.args[..fixed_count].iter().enumerate()
+            } else {
+                // NOTE: this handles the extra caller location argument
+                // when `#[track_caller]` is used.
+                callee_fn_abi.args.iter().enumerate()
+            };
+
+            let mut it = body.args_iter().peekable();
+            while let Some(local) = it.next() {
                 // Construct the destination place for this argument. At this point all
                 // locals are still dead, so we cannot construct a `PlaceTy`.
                 let dest = mir::Place::from(local);
@@ -445,7 +464,39 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // type, but the result gets cached so this avoids calling the instantiation
                 // query *again* the next time this local is accessed.
                 let ty = self.layout_of_local(self.frame(), local, None)?.ty;
-                if Some(local) == body.spread_arg {
+                if caller_fn_abi.c_variadic && it.peek().is_none() {
+                    // This is the last callee-side argument of a variadic function.
+                    // This argument is a VaList holding the remaining caller-side arguments.
+                    self.storage_live(local)?;
+
+                    let place = self.eval_place(dest)?;
+                    let mplace = self.force_allocation(&place)?;
+
+                    // Consume the remaining arguments and store them in fresh allocations.
+                    let mut varargs = Vec::new();
+                    for (fn_arg, abi) in &mut caller_args {
+                        // FIXME: do we have to worry about in-place argument passing?
+                        let op = self.copy_fn_arg(fn_arg);
+                        let mplace = self.allocate(abi.layout, MemoryKind::Stack)?;
+                        self.copy_op(&op, &mplace)?;
+
+                        varargs.push(mplace);
+                    }
+
+                    // When the frame is dropped, these variable arguments are deallocated.
+                    self.frame_mut().va_list = varargs.clone();
+
+                    // Zero the VaList, so it is fully initialized.
+                    self.write_bytes_ptr(
+                        mplace.ptr(),
+                        (0..mplace.layout.size.bytes()).map(|_| 0u8),
+                    )?;
+
+                    // Store the "key" pointer in the right field.
+                    let key_mplace = self.va_list_key_field(&mplace)?;
+                    let key = self.va_list_ptr(varargs);
+                    self.write_pointer(key, &key_mplace)?;
+                } else if Some(local) == body.spread_arg {
                     // Make the local live once, then fill in the value field by field.
                     self.storage_live(local)?;
                     // Must be a tuple

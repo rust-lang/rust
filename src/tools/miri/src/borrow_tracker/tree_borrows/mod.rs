@@ -576,7 +576,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let protected = protected_tags.contains_key(&tag);
                 alloc_extra.borrow_tracker_tb().borrow_mut().expose_tag(tag, protected);
             }
-            AllocKind::Function | AllocKind::VTable | AllocKind::TypeId | AllocKind::Dead => {
+            AllocKind::Function
+            | AllocKind::VTable
+            | AllocKind::TypeId
+            | AllocKind::Dead
+            | AllocKind::VaList => {
                 // No tree borrows on these allocations.
             }
         }

@@ -698,15 +698,6 @@ impl<'a> AstValidator<'a> {
             unreachable!("C variable argument list cannot be used in closures")
         };
 
-        // C-variadics are not yet implemented in const evaluation.
-        if let Const::Yes(const_span) = sig.header.constness {
-            self.dcx().emit_err(errors::ConstAndCVariadic {
-                spans: vec![const_span, variadic_param.span],
-                const_span,
-                variadic_span: variadic_param.span,
-            });
-        }
-
         if let Some(coroutine_kind) = sig.header.coroutine_kind {
             self.dcx().emit_err(errors::CoroutineAndCVariadic {
                 spans: vec![coroutine_kind.span(), variadic_param.span],
