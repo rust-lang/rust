@@ -1,0 +1,12 @@
+error[E0425]: cannot find type `CONS` in this scope
+  --> $DIR/const-argument-typo.rs:8:11
+   |
+LL | const CONST: usize = 0;
+   | ----------------------- similarly named constant `CONST` defined here
+...
+LL |     foo::<CONS>();
+   |           ^^^^ help: a constant with a similar name exists: `CONST`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.
