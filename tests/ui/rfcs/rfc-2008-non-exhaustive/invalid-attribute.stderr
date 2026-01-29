@@ -21,7 +21,7 @@ error: `#[non_exhaustive]` attribute cannot be used on unions
 LL | #[non_exhaustive]
    | ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[non_exhaustive]` can be applied to data types and enum variants
+   = help: `#[non_exhaustive]` can be applied to enum variants, enums, and structs
 
 error: aborting due to 3 previous errors
 

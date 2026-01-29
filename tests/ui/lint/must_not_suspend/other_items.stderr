@@ -4,7 +4,7 @@ error: `#[must_not_suspend]` attribute cannot be used on modules
 LL | #[must_not_suspend]
    | ^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[must_not_suspend]` can be applied to data types, traits, and unions
+   = help: `#[must_not_suspend]` can be applied to data types and traits
 
 error: aborting due to 1 previous error
 

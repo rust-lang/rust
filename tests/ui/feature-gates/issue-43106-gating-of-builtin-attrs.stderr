@@ -1055,7 +1055,7 @@ LL | #[must_use]
    | ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
+   = help: `#[must_use]` can be applied to data types, functions, and traits
 
 warning: `#[must_use]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:766:17
@@ -1064,7 +1064,7 @@ LL |     mod inner { #![must_use] }
    |                 ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
+   = help: `#[must_use]` can be applied to data types, functions, and traits
 
 warning: `#[must_use]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:775:5
@@ -1073,7 +1073,7 @@ LL |     #[must_use] type T = S;
    |     ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
+   = help: `#[must_use]` can be applied to data types, functions, and traits
 
 warning: `#[must_use]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:780:5
@@ -1082,7 +1082,7 @@ LL |     #[must_use] impl S { }
    |     ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
+   = help: `#[must_use]` can be applied to data types, functions, and traits
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![windows_subsystem]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:786:1
@@ -1635,7 +1635,7 @@ LL | #![must_use]
    | ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
+   = help: `#[must_use]` can be applied to data types, functions, and traits
 
 warning: 175 warnings emitted
 
