@@ -72,12 +72,17 @@ use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, sym};
 use tracing::{debug, instrument};
 
 use crate::error_reporting::TypeErrCtxt;
+use crate::error_reporting::traits::ambiguity::{
+    CandidateSource, compute_applicable_impls_for_diagnostics,
+};
 use crate::errors::{ObligationCauseFailureCode, TypeErrorAdditionalDiags};
 use crate::infer;
 use crate::infer::relate::{self, RelateResult, TypeRelation};
 use crate::infer::{InferCtxt, InferCtxtExt as _, TypeTrace, ValuePairs};
 use crate::solve::deeply_normalize_for_diagnostics;
-use crate::traits::{MatchExpressionArmCause, ObligationCause, ObligationCauseCode};
+use crate::traits::{
+    MatchExpressionArmCause, Obligation, ObligationCause, ObligationCauseCode, specialization_graph,
+};
 
 mod note_and_explain;
 mod suggest;
@@ -149,11 +154,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         actual: Ty<'tcx>,
         err: TypeError<'tcx>,
     ) -> Diag<'a> {
-        self.report_and_explain_type_error(
+        let mut diag = self.report_and_explain_type_error(
             TypeTrace::types(cause, expected, actual),
             param_env,
             err,
-        )
+        );
+
+        self.suggest_param_env_shadowing(&mut diag, expected, actual, param_env);
+
+        diag
     }
 
     pub fn report_mismatched_consts(
@@ -238,6 +247,61 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => (), // FIXME(#22750) handle traits and stuff
         }
         false
+    }
+
+    fn suggest_param_env_shadowing(
+        &self,
+        diag: &mut Diag<'_>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) {
+        let (alias, concrete) = match (expected.kind(), found.kind()) {
+            (ty::Alias(ty::Projection, proj), _) => (proj, found),
+            (_, ty::Alias(ty::Projection, proj)) => (proj, expected),
+            _ => return,
+        };
+
+        let tcx = self.tcx;
+
+        let trait_ref = alias.trait_ref(tcx);
+        let obligation =
+            Obligation::new(tcx, ObligationCause::dummy(), param_env, ty::Binder::dummy(trait_ref));
+
+        let applicable_impls = compute_applicable_impls_for_diagnostics(self.infcx, &obligation);
+
+        for candidate in applicable_impls {
+            let impl_def_id = match candidate {
+                CandidateSource::DefId(did) => did,
+                CandidateSource::ParamEnv(_) => continue,
+            };
+
+            let is_shadowed = self.infcx.probe(|_| {
+                let impl_substs = self.infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
+
+                let leaf_def = match specialization_graph::assoc_def(tcx, impl_def_id, alias.def_id)
+                {
+                    Ok(leaf) => leaf,
+                    Err(_) => return false,
+                };
+
+                let impl_item_def_id = leaf_def.item.def_id;
+                let impl_assoc_ty = tcx.type_of(impl_item_def_id).instantiate(tcx, impl_substs);
+
+                self.infcx.can_eq(param_env, impl_assoc_ty, concrete)
+            });
+
+            if is_shadowed {
+                diag.note(format!(
+                    "the associated type `{}` is defined as `{}` in the implementation, \
+                    but the generic bound `{}` hides this definition",
+                    self.ty_to_string(tcx.mk_ty_from_kind(ty::Alias(ty::Projection, *alias))),
+                    self.ty_to_string(concrete),
+                    self.ty_to_string(alias.self_ty())
+                ));
+                return;
+            }
+        }
     }
 
     fn note_error_origin(

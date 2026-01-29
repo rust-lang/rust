@@ -16,7 +16,7 @@ pub mod project;
 pub mod query;
 #[allow(hidden_glob_reexports)]
 mod select;
-mod specialize;
+pub mod specialize;
 mod structural_normalize;
 #[allow(hidden_glob_reexports)]
 mod util;

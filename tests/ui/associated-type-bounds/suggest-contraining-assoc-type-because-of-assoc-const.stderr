@@ -6,6 +6,7 @@ LL |     const N: C::M = 4u8;
    |
    = note: expected associated type `<C as O>::M`
                          found type `u8`
+   = note: the associated type `<C as O>::M` is defined as `u8` in the implementation, but the generic bound `C` hides this definition
 help: consider constraining the associated type `<C as O>::M` to `u8`
    |
 LL | impl<C: O<M = u8>> U<C> for u16 {
