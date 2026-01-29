@@ -616,6 +616,7 @@ impl SerializedSearchIndex {
                          parent,
                          trait_parent,
                          deprecated,
+                         unstable,
                          associated_item_disambiguator,
                      }| EntryData {
                         krate: *map.get(krate).unwrap(),
@@ -626,6 +627,7 @@ impl SerializedSearchIndex {
                         parent: parent.and_then(|path_id| map.get(&path_id).copied()),
                         trait_parent: trait_parent.and_then(|path_id| map.get(&path_id).copied()),
                         deprecated: *deprecated,
+                        unstable: *unstable,
                         associated_item_disambiguator: associated_item_disambiguator.clone(),
                     },
                 ),
@@ -896,6 +898,7 @@ struct EntryData {
     parent: Option<usize>,
     trait_parent: Option<usize>,
     deprecated: bool,
+    unstable: bool,
     associated_item_disambiguator: Option<String>,
 }
 
@@ -912,6 +915,7 @@ impl Serialize for EntryData {
         seq.serialize_element(&self.parent.map(|id| id + 1).unwrap_or(0))?;
         seq.serialize_element(&self.trait_parent.map(|id| id + 1).unwrap_or(0))?;
         seq.serialize_element(&if self.deprecated { 1 } else { 0 })?;
+        seq.serialize_element(&if self.unstable { 1 } else { 0 })?;
         if let Some(disambig) = &self.associated_item_disambiguator {
             seq.serialize_element(&disambig)?;
         }
@@ -946,6 +950,7 @@ impl<'de> Deserialize<'de> for EntryData {
                     v.next_element()?.ok_or_else(|| A::Error::missing_field("trait_parent"))?;
 
                 let deprecated: u32 = v.next_element()?.unwrap_or(0);
+                let unstable: u32 = v.next_element()?.unwrap_or(0);
                 let associated_item_disambiguator: Option<String> = v.next_element()?;
                 Ok(EntryData {
                     krate,
@@ -956,6 +961,7 @@ impl<'de> Deserialize<'de> for EntryData {
                     parent: Option::<i32>::from(parent).map(|path| path as usize),
                     trait_parent: Option::<i32>::from(trait_parent).map(|path| path as usize),
                     deprecated: deprecated != 0,
+                    unstable: unstable != 0,
                     associated_item_disambiguator,
                 })
             }
@@ -1283,6 +1289,7 @@ pub(crate) fn build_index(
                 ),
                 aliases: item.attrs.get_doc_aliases(),
                 is_deprecated: item.is_deprecated(tcx),
+                is_unstable: item.is_unstable(),
             });
         }
     }
@@ -1382,6 +1389,7 @@ pub(crate) fn build_index(
                         parent: None,
                         trait_parent: None,
                         deprecated: false,
+                        unstable: false,
                         associated_item_disambiguator: None,
                     }),
                     crate_doc,
@@ -1520,6 +1528,7 @@ pub(crate) fn build_index(
                 module_path,
                 exact_module_path,
                 deprecated: item.is_deprecated,
+                unstable: item.is_unstable,
                 associated_item_disambiguator: if let Some(impl_id) = item.impl_id
                     && let Some(parent_idx) = item.parent_idx
                     && associated_item_duplicates
