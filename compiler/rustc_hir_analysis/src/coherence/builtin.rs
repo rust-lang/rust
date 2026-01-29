@@ -16,13 +16,14 @@ use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeVisitableExt, TypingMode, suggest_constraining_type_params,
 };
+use rustc_session::parse::feature_err;
 use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::misc::{
     ConstParamTyImplementationError, CopyImplementationError, InfringingFieldsReason,
     type_allowed_to_implement_const_param_ty, type_allowed_to_implement_copy,
 };
-use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
+use rustc_trait_selection::traits::{self, NormalizeExt, ObligationCause, ObligationCtxt};
 use tracing::debug;
 
 use crate::errors;
@@ -48,6 +49,7 @@ pub(super) fn check_trait<'tcx>(
         lang_items.coerce_pointee_validated_trait(),
         visit_implementation_of_coerce_pointee_validity,
     )?;
+    checker.check(lang_items.receiver_trait(), visit_implementation_of_receiver)?;
     Ok(())
 }
 
@@ -754,4 +756,56 @@ fn visit_implementation_of_coerce_pointee_validity(
         return Err(tcx.dcx().emit_err(errors::CoercePointeeNoField { span }));
     }
     Ok(())
+}
+
+fn visit_implementation_of_receiver(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    if tcx.features().arbitrary_self_types_split_chains() {
+        return Ok(());
+    }
+    let impl_did = checker.impl_def_id;
+    let span = tcx.def_span(impl_did);
+    let deref_target_did = tcx.require_lang_item(LangItem::DerefTarget, span);
+    let receiver_target_did = tcx.require_lang_item(LangItem::ReceiverTarget, span);
+    let self_ty = tcx.impl_trait_ref(impl_did).instantiate_identity().self_ty();
+    let param_env = tcx.param_env(impl_did);
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+    let ocx = ObligationCtxt::new(&infcx);
+    let cause = ObligationCause::misc(span, impl_did);
+    ocx.register_obligation(Obligation::new(
+        tcx,
+        cause.clone(),
+        param_env,
+        ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Deref, span), [self_ty]),
+    ));
+    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+        // We cannot enforce Deref::Target == Receiver::Target because we cannot find `impl Deref`
+        return Ok(());
+    }
+    let infer::InferOk { value: deref_target_ty, .. } = infcx.at(&cause, param_env).normalize(
+        Ty::new_projection_from_args(tcx, deref_target_did, tcx.mk_args(&[self_ty.into()])),
+    );
+    let infer::InferOk { value: receiver_target_ty, .. } = infcx.at(&cause, param_env).normalize(
+        Ty::new_projection_from_args(tcx, receiver_target_did, tcx.mk_args(&[self_ty.into()])),
+    );
+    if let Err(_) = infcx.at(&cause, param_env).eq(
+        infer::DefineOpaqueTypes::No,
+        deref_target_ty,
+        receiver_target_ty,
+    ) {
+        feature_err(
+            tcx.sess,
+            sym::arbitrary_self_types_split_chains,
+            span,
+            crate::fluent_generated::hir_analysis_deref_receiver_target_diverge_feature,
+        )
+        .emit();
+        Err(tcx.dcx().emit_err(errors::DerefReceiverTargetDiverge {
+            span,
+            deref_ty: deref_target_ty,
+            recv_ty: receiver_target_ty,
+        }))
+    } else {
+        Ok(())
+    }
 }

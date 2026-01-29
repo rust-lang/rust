@@ -5,7 +5,8 @@ LL |     fn is_some(self: T);
    |                      ^
    |
    = note: type of `self` must be `Self` or a type that dereferences to it
-   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`);
+           alternatively, consider implement `Receiver` trait on the type of `self`, where applicable
 
 error[E0308]: mismatched types
   --> $DIR/issue-66312.rs:9:8
