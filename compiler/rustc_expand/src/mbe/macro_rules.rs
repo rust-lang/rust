@@ -819,7 +819,7 @@ pub fn compile_declarative_macro(
     }
     assert!(!kinds.is_empty());
 
-    let transparency = find_attr!(attrs, AttributeKind::MacroTransparency(x) => *x)
+    let transparency = find_attr!(attrs, AttributeKind::RustcMacroTransparency(x) => *x)
         .unwrap_or(Transparency::fallback(macro_rules));
 
     if let Some(guar) = guar {

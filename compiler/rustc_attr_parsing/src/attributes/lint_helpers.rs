@@ -11,7 +11,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for AsPtrParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::AsPtr;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcAsPtr;
 }
 
 pub(crate) struct PubTransparentParser;
@@ -23,7 +23,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for PubTransparentParser {
         Allow(Target::Enum),
         Allow(Target::Union),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::PubTransparent;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcPubTransparent;
 }
 
 pub(crate) struct PassByValueParser;
@@ -35,7 +35,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for PassByValueParser {
         Allow(Target::Enum),
         Allow(Target::TyAlias),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::PassByValue;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcPassByValue;
 }
 
 pub(crate) struct RustcShouldNotBeCalledOnConstItems;

@@ -91,7 +91,7 @@ impl<'tcx> InherentCollect<'tcx> {
             for &impl_item in items {
                 if !find_attr!(
                     self.tcx.get_all_attrs(impl_item),
-                    AttributeKind::AllowIncoherentImpl(_)
+                    AttributeKind::RustcAllowIncoherentImpl(_)
                 ) {
                     let impl_span = self.tcx.def_span(impl_def_id);
                     return Err(self.tcx.dcx().emit_err(errors::InherentTyOutsideRelevant {
@@ -125,7 +125,7 @@ impl<'tcx> InherentCollect<'tcx> {
                 for &impl_item in items {
                     if !find_attr!(
                         self.tcx.get_all_attrs(impl_item),
-                        AttributeKind::AllowIncoherentImpl(_)
+                        AttributeKind::RustcAllowIncoherentImpl(_)
                     ) {
                         let span = self.tcx.def_span(impl_def_id);
                         return Err(self.tcx.dcx().emit_err(errors::InherentTyOutsidePrimitive {

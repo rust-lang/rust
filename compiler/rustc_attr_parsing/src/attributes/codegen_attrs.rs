@@ -181,7 +181,7 @@ impl<S: Stage> SingleAttributeParser<S> for ObjcClassParser {
             cx.emit_err(NullOnObjcClass { span: nv.value_span });
             return None;
         }
-        Some(AttributeKind::ObjcClass { classname, span: cx.attr_span })
+        Some(AttributeKind::RustcObjcClass { classname, span: cx.attr_span })
     }
 }
 
@@ -213,7 +213,7 @@ impl<S: Stage> SingleAttributeParser<S> for ObjcSelectorParser {
             cx.emit_err(NullOnObjcSelector { span: nv.value_span });
             return None;
         }
-        Some(AttributeKind::ObjcSelector { methname, span: cx.attr_span })
+        Some(AttributeKind::RustcObjcSelector { methname, span: cx.attr_span })
     }
 }
 

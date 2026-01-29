@@ -44,7 +44,7 @@ fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<Stri
     if let TyKind::Path(QPath::Resolved(_, path)) = &ty.kind {
         match path.res {
             Res::Def(_, def_id)
-                if find_attr!(cx.tcx.get_all_attrs(def_id), AttributeKind::PassByValue(_)) =>
+                if find_attr!(cx.tcx.get_all_attrs(def_id), AttributeKind::RustcPassByValue(_)) =>
             {
                 let name = cx.tcx.item_ident(def_id);
                 let path_segment = path.segments.last().unwrap();
@@ -52,7 +52,10 @@ fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<Stri
             }
             Res::SelfTyAlias { alias_to: did, is_trait_impl: false, .. } => {
                 if let ty::Adt(adt, args) = cx.tcx.type_of(did).instantiate_identity().kind() {
-                    if find_attr!(cx.tcx.get_all_attrs(adt.did()), AttributeKind::PassByValue(_)) {
+                    if find_attr!(
+                        cx.tcx.get_all_attrs(adt.did()),
+                        AttributeKind::RustcPassByValue(_)
+                    ) {
                         return Some(cx.tcx.def_path_str_with_args(adt.did(), args));
                     }
                 }
