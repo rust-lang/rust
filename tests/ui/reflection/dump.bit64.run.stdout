@@ -20,6 +20,7 @@ Type {
     size: Some(
         2,
     ),
+    id: TypeId(0x5a16e6fbf8293c4c38740f6ab3f64621),
 }
 Type {
     kind: Array(
@@ -31,6 +32,7 @@ Type {
     size: Some(
         2,
     ),
+    id: TypeId(0xe09e770f1c1da76825e6290f984ddaf7),
 }
 Type {
     kind: Int(
@@ -42,6 +44,7 @@ Type {
     size: Some(
         1,
     ),
+    id: TypeId(0x12427c993eca190c841e0d92c5b7a45d),
 }
 Type {
     kind: Int(
@@ -53,6 +56,7 @@ Type {
     size: Some(
         4,
     ),
+    id: TypeId(0x56ced5e4a15bd89050bb9674fa2df013),
 }
 Type {
     kind: Int(
@@ -64,6 +68,7 @@ Type {
     size: Some(
         8,
     ),
+    id: TypeId(0xae6c4318bb07632e00428affbea41961),
 }
 Type {
     kind: Int(
@@ -75,6 +80,7 @@ Type {
     size: Some(
         16,
     ),
+    id: TypeId(0xc7164498f3902dde0d8194a7b9733e79),
 }
 Type {
     kind: Int(
@@ -86,6 +92,7 @@ Type {
     size: Some(
         8,
     ),
+    id: TypeId(0x1e5f92831c560aac8658b980a22e60b0),
 }
 Type {
     kind: Int(
@@ -97,6 +104,7 @@ Type {
     size: Some(
         1,
     ),
+    id: TypeId(0x0596b48cc04376e64d5c788c2aa46bdb),
 }
 Type {
     kind: Int(
@@ -108,6 +116,7 @@ Type {
     size: Some(
         4,
     ),
+    id: TypeId(0x1378bb1c0a0202683eb65e7c11f2e4d7),
 }
 Type {
     kind: Int(
@@ -119,6 +128,7 @@ Type {
     size: Some(
         8,
     ),
+    id: TypeId(0x9ed91be891e304132cb86891e578f4a5),
 }
 Type {
     kind: Int(
@@ -130,6 +140,7 @@ Type {
     size: Some(
         16,
     ),
+    id: TypeId(0x7bf7411d57d603e9fb393892a9c3f362),
 }
 Type {
     kind: Int(
@@ -141,18 +152,21 @@ Type {
     size: Some(
         8,
     ),
+    id: TypeId(0x763d199bccd319899208909ed1a860c6),
 }
 Type {
     kind: Other,
     size: Some(
         4,
     ),
+    id: TypeId(0x78c34ce87517aee8f0d54cc3ea348028),
 }
 Type {
     kind: Other,
     size: Some(
         24,
     ),
+    id: TypeId(0x8ed28b76f102b777afcc7a07749d45fe),
 }
 Type {
     kind: Reference(
@@ -164,6 +178,7 @@ Type {
     size: Some(
         16,
     ),
+    id: TypeId(0x4d13f2e9be6854d4529cc187d26d3e83),
 }
 Type {
     kind: Reference(
@@ -175,6 +190,7 @@ Type {
     size: Some(
         16,
     ),
+    id: TypeId(0xb98b1b7157a6417863eb502cd6cb5d6d),
 }
 Type {
     kind: Reference(
@@ -186,12 +202,14 @@ Type {
     size: Some(
         16,
     ),
+    id: TypeId(0x03f6aa200663725e076283e0711c66aa),
 }
 Type {
     kind: Str(
         Str,
     ),
     size: None,
+    id: TypeId(0x474ccf3b5db264ef53916706f7d7bb2c),
 }
 Type {
     kind: Slice(
@@ -200,6 +218,7 @@ Type {
         },
     ),
     size: None,
+    id: TypeId(0x641e3def269c37acc6dcb92bf8c5f196),
 }
 Type {
     kind: Reference(
@@ -211,6 +230,7 @@ Type {
     size: Some(
         8,
     ),
+    id: TypeId(0x8a8d25435c9aa1ed611bd54eddb095c4),
 }
 Type {
     kind: Reference(
@@ -222,4 +242,5 @@ Type {
     size: Some(
         8,
     ),
+    id: TypeId(0x57bb24072c78596db60e68f83b5de67b),
 }
