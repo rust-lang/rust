@@ -1182,11 +1182,11 @@ cc = ["@Muscraft"]
 
 [mentions."compiler/rustc_errors/src/translation.rs"]
 message = "`rustc_errors::translation` was changed"
-cc = ["@davidtwco", "@TaKO8Ki"]
+cc = ["@davidtwco", "@TaKO8Ki", "@JonathanBrouwer"]
 
 [mentions."compiler/rustc_macros/src/diagnostics"]
 message = "`rustc_macros::diagnostics` was changed"
-cc = ["@davidtwco", "@TaKO8Ki"]
+cc = ["@davidtwco", "@TaKO8Ki", "@JonathanBrouwer"]
 
 [mentions."compiler/rustc_public"]
 message = "This PR changes rustc_public"
