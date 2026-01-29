@@ -98,6 +98,8 @@ parse_bare_cr = {$double_quotes ->
     }
     .escape = escape the character
 
+parse_bare_cr_in_frontmatter = bare CR not allowed in frontmatter
+
 parse_bare_cr_in_raw_string = bare CR not allowed in raw string
 
 parse_binder_and_polarity = `for<...>` binder not allowed with `{$polarity}` trait polarity modifier
@@ -352,7 +354,6 @@ parse_frontmatter_length_mismatch = frontmatter close does not match the opening
 parse_frontmatter_too_many_dashes = too many `-` symbols: frontmatter openings may be delimited by up to 255 `-` symbols, but found {$len_opening}
 parse_frontmatter_unclosed = unclosed frontmatter
     .note = frontmatter opening here was not closed
-
 parse_function_body_equals_expr = function body cannot be `= expression;`
     .suggestion = surround the expression with `{"{"}` and `{"}"}` instead of `=` and `;`
 
