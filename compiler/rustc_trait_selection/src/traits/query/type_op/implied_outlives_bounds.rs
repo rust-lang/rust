@@ -6,11 +6,11 @@ use rustc_infer::traits::query::OutlivesBound;
 use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
 use rustc_middle::infer::canonical::CanonicalQueryResponse;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::outlives::{Component, push_outlives_components};
+use rustc_middle::ty::outlives::{Component, compute_outlives_components};
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeVisitable, TypeVisitor};
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{DUMMY_SP, Span, sym};
-use smallvec::{SmallVec, smallvec};
+use smallvec::SmallVec;
 
 use crate::traits::query::NoSolution;
 use crate::traits::{ObligationCtxt, wf};
@@ -138,8 +138,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                     ty_a,
                     r_b,
                 ))) => {
-                    let mut components = smallvec![];
-                    push_outlives_components(ocx.infcx.tcx, ty_a, &mut components);
+                    let components = compute_outlives_components(ocx.infcx.tcx, ty_a);
                     outlives_bounds.extend(implied_bounds_from_components(r_b, components))
                 }
             }
@@ -156,8 +155,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
         for TypeOutlivesConstraint { sup_type, sub_region, .. } in
             ocx.infcx.clone_registered_region_obligations()
         {
-            let mut components = smallvec![];
-            push_outlives_components(ocx.infcx.tcx, sup_type, &mut components);
+            let components = compute_outlives_components(ocx.infcx.tcx, sup_type);
             outlives_bounds.extend(implied_bounds_from_components(sub_region, components));
         }
     }

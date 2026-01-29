@@ -3,7 +3,7 @@
 //! RFC for reference.
 
 use derive_where::derive_where;
-use smallvec::{SmallVec, smallvec};
+use smallvec::SmallVec;
 
 use crate::data_structures::SsoHashSet;
 use crate::inherent::*;
@@ -51,23 +51,21 @@ pub enum Component<I: Interner> {
     EscapingAlias(Vec<Component<I>>),
 }
 
-/// Push onto `out` all the things that must outlive `'a` for the condition
-/// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
-pub fn push_outlives_components<I: Interner>(
-    cx: I,
-    ty: I::Ty,
-    out: &mut SmallVec<[Component<I>; 4]>,
-) {
-    ty.visit_with(&mut OutlivesCollector { cx, out, visited: Default::default() });
+/// Returns all the components that must outlive some lifetime `'a` for the
+/// condition `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
+pub fn compute_outlives_components<I: Interner>(cx: I, ty: I::Ty) -> SmallVec<[Component<I>; 4]> {
+    let mut collector = OutlivesCollector { cx, out: SmallVec::new(), visited: Default::default() };
+    ty.visit_with(&mut collector);
+    collector.out
 }
 
-struct OutlivesCollector<'a, I: Interner> {
+struct OutlivesCollector<I: Interner> {
     cx: I,
-    out: &'a mut SmallVec<[Component<I>; 4]>,
+    out: SmallVec<[Component<I>; 4]>,
     visited: SsoHashSet<I::Ty>,
 }
 
-impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
+impl<I: Interner> TypeVisitor<I> for OutlivesCollector<I> {
     #[cfg(not(feature = "nightly"))]
     type Result = ();
 
@@ -161,8 +159,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
                     // fallback case: hard code
                     // OutlivesProjectionComponents. Continue walking
                     // through and constrain Pi.
-                    let mut subcomponents = smallvec![];
-                    compute_alias_components_recursive(self.cx, kind, alias_ty, &mut subcomponents);
+                    let subcomponents = compute_alias_components_recursive(self.cx, kind, alias_ty);
                     self.out.push(Component::EscapingAlias(subcomponents.into_iter().collect()));
                 }
             }
@@ -220,16 +217,15 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
 /// Collect [Component]s for *all* the args of `alias_ty`.
 ///
 /// This should not be used to get the components of `alias_ty` itself.
-/// Use [push_outlives_components] instead.
+/// Use [compute_outlives_components] instead.
 pub fn compute_alias_components_recursive<I: Interner>(
     cx: I,
     kind: ty::AliasTyKind,
     alias_ty: ty::AliasTy<I>,
-    out: &mut SmallVec<[Component<I>; 4]>,
-) {
+) -> SmallVec<[Component<I>; 4]> {
     let opt_variances = cx.opt_alias_variances(kind, alias_ty.def_id);
 
-    let mut visitor = OutlivesCollector { cx, out, visited: Default::default() };
+    let mut visitor = OutlivesCollector { cx, out: SmallVec::new(), visited: Default::default() };
 
     for (index, child) in alias_ty.args.iter().enumerate() {
         if opt_variances.and_then(|variances| variances.get(index)) == Some(ty::Bivariant) {
@@ -237,4 +233,6 @@ pub fn compute_alias_components_recursive<I: Interner>(
         }
         child.visit_with(&mut visitor);
     }
+
+    visitor.out
 }

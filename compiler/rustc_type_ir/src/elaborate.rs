@@ -1,11 +1,9 @@
 use std::marker::PhantomData;
 
-use smallvec::smallvec;
-
 use crate::data_structures::HashSet;
 use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
-use crate::outlives::{Component, push_outlives_components};
+use crate::outlives::{Component, compute_outlives_components};
 use crate::{self as ty, Interner, Upcast as _};
 
 /// "Elaboration" is the process of identifying all the predicates that
@@ -210,8 +208,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                     return;
                 }
 
-                let mut components = smallvec![];
-                push_outlives_components(cx, ty_max, &mut components);
+                let components = compute_outlives_components(cx, ty_max);
                 self.extend_deduped(
                     components
                         .into_iter()
@@ -386,8 +383,7 @@ pub fn elaborate_outlives_assumptions<I: Interner>(
             // Elaborate the components of an type, since we may have substituted a
             // generic coroutine with a more specific type.
             ty::GenericArgKind::Type(ty1) => {
-                let mut components = smallvec![];
-                push_outlives_components(cx, ty1, &mut components);
+                let components = compute_outlives_components(cx, ty1);
                 for c in components {
                     match c {
                         Component::Region(r1) => {

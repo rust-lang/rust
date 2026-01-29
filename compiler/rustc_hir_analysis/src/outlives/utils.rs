@@ -1,9 +1,8 @@
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_middle::ty::outlives::{Component, push_outlives_components};
+use rustc_middle::ty::outlives::{Component, compute_outlives_components};
 use rustc_middle::ty::{self, GenericArg, GenericArgKind, Region, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
-use smallvec::smallvec;
 
 /// Tracks the `T: 'a` or `'a: 'a` predicates that we have inferred
 /// must be added to the struct header.
@@ -33,8 +32,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
             //
             // Or if within `struct Foo<U>` you had `T = Vec<U>`, then
             // we would want to add `U: 'outlived_region`
-            let mut components = smallvec![];
-            push_outlives_components(tcx, ty, &mut components);
+            let components = compute_outlives_components(tcx, ty);
             for component in components {
                 match component {
                     Component::Region(r) => {
