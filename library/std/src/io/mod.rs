@@ -2346,10 +2346,19 @@ fn skip_until<R: BufRead + ?Sized>(r: &mut R, delim: u8) -> Result<usize> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "IoBufRead")]
 pub trait BufRead: Read {
-    /// Returns the contents of the internal buffer, filling it with more data, via `Read` methods, if empty.
+    /// Returns the contents of the internal buffer, filling it with more data from the underlying reader if it is empty.
+    ///
+    /// This function will not read data into the buffer if some is already present.
+    /// When calling this method, none of the contents will be "read" in the sense that later
+    /// calling [`read`] may return the same contents. As such, [`consume`] must be called
+    /// with the number of bytes that are consumed from this buffer to ensure that the
+    /// bytes are never returned twice.
+    ///
+    /// [`read`]: Read::read
+    /// [`consume`]: BufRead::consume
     ///
     /// This is a lower-level method and is meant to be used together with [`consume`],
-    /// which can be used to mark bytes that should not be returned by subsequent calls to `read`.
+    /// which marks bytes as consumed so they will not be returned by subsequent calls to [`read`].
     ///
     /// [`consume`]: BufRead::consume
     ///
