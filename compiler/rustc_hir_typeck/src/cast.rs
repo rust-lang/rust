@@ -289,12 +289,32 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             CastError::NeedViaThinPtr | CastError::NeedViaPtr => {
                 let mut err =
                     make_invalid_casting_error(self.span, self.expr_ty, self.cast_ty, fcx);
+
                 if self.cast_ty.is_integral() {
-                    err.help(format!("cast through {} first", match e {
-                        CastError::NeedViaPtr => "a raw pointer",
-                        CastError::NeedViaThinPtr => "a thin pointer",
-                        e => unreachable!("control flow means we should never encounter a {e:?}"),
-                    }));
+                    if !matches!(self.expr.kind, ExprKind::AddrOf(..))
+                        && let ty::Ref(_, inner_ty, _) = *self.expr_ty.kind()
+                        && let ty::Adt(adt_def, _) = *inner_ty.kind()
+                        && adt_def.is_enum()
+                        && adt_def.is_payloadfree()
+                    {
+                        err.span_suggestion_verbose(
+                            self.expr_span.shrink_to_lo(),
+                            "dereference the expression",
+                            "*",
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        err.help(format!(
+                            "cast through {} first",
+                            match e {
+                                CastError::NeedViaPtr => "a raw pointer",
+                                CastError::NeedViaThinPtr => "a thin pointer",
+                                e => unreachable!(
+                                    "control flow means we should never encounter a {e:?}"
+                                ),
+                            }
+                        ));
+                    }
                 }
 
                 self.try_suggest_collection_to_bool(fcx, &mut err);
