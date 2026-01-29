@@ -45,7 +45,7 @@ mod to_tokens;
 
 use core::ops::BitOr;
 use std::ffi::CStr;
-use std::ops::{Range, RangeBounds};
+use std::ops::{Bound, Range, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::{error, fmt};
@@ -880,7 +880,47 @@ impl Group {
     /// tokens at the level of the `Group`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn set_span(&mut self, span: Span) {
-        self.0.span = bridge::DelimSpan::from_single(span.0);
+        let (open_chr, close_chr) = match self.0.delimiter {
+            Delimiter::Brace => (b'{', b'}'),
+            Delimiter::Bracket => (b'[', b']'),
+            Delimiter::Parenthesis => (b'(', b')'),
+            Delimiter::None => {
+                // None delimiters are the whole span for open and close
+                // same behavior as in the compiler.
+                self.0.span = bridge::DelimSpan::from_single(span.0);
+                return;
+            }
+        };
+
+        // No source text to check or source text is too small.
+        // just go back to default behavior.
+        let source = match span.0.source_text() {
+            Some(s) if s.len() >= 2 => s,
+            _ => {
+                self.0.span = bridge::DelimSpan::from_single(span.0);
+                return;
+            }
+        };
+        let src = source.as_bytes();
+
+        // Make sure that the last and first characters match up
+        if src[0] != open_chr || src[src.len() - 1] != close_chr {
+            self.0.span = bridge::DelimSpan::from_single(span.0);
+            return;
+        }
+
+        // Compute the spans.
+        let Some(open) = span.0.subspan(Bound::Included(0), Bound::Excluded(1)) else {
+            self.0.span = bridge::DelimSpan::from_single(span.0);
+            return;
+        };
+
+        let Some(close) = span.0.subspan(Bound::Included(src.len() - 1), Bound::Unbounded) else {
+            self.0.span = bridge::DelimSpan::from_single(span.0);
+            return;
+        };
+
+        self.0.span = bridge::DelimSpan { open, close, entire: span.0 };
     }
 }
 
