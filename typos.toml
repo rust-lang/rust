@@ -1,3 +1,6 @@
+# Config for the `typos` crate, used by `./x test tidy --extra-checks=spellcheck`.
+# See also: https://github.com/crate-ci/typos/blob/v1.28.2/docs/reference.md
+
 [files]
 extend-exclude = [
     # exclude git (sub)modules and generated content
@@ -13,9 +16,10 @@ extend-exclude = [
 ]
 
 [default.extend-words]
-# Add exclusions here, lines should be like `x = "x"`, where `x` is excluded word.
+# Allowlist for words that look like typos but are not, or aren't worth fixing
+# right now. Entries should look like `mipsel = "mipsel"`.
 #
-# Also see docs: https://github.com/crate-ci/typos/blob/v1.28.2/docs/reference.md
+# tidy-alphabetical-start
 arange = "arange"
 childs = "childs"
 clonable = "clonable"
@@ -24,6 +28,7 @@ leafs = "leafs"
 makro = "makro"
 misformed = "misformed"
 moreso = "moreso"
+numer = "numer"
 optin = "optin"
 publically = "publically"
 rplace = "rplace"
@@ -33,33 +38,42 @@ targetting = "targetting"
 unparseable = "unparseable"
 unstability = "unstability"
 unstalled = "unstalled"
-numer = "numer"
+# tidy-alphabetical-end
+
+# Denylist to forbid misspelled words that aren't detected by the built-in
+# dictionary. Entries should look like `mipsel = ""` or `mipsel = "misspell"`;
+# the non-empty form can be automatically fixed by `--bless`.
+#
+# tidy-alphabetical-start
+# tidy-alphabetical-end
 
 [default.extend-identifiers]
-# An entry goes here if the typo is part of some existing ident
-# where you want to keep it, but don't want to allow
-# such typos everywhere.
+# Allowlist for specific identifiers that should be permitted even though they
+# appear to contain typos that would be forbidden in other identifiers.
 #
-# I.e. you don't want (or can't) fix some constant name, like
-# `DNS_ERROR_INVAILD_VIRTUALIZATION_INSTANCE_NAME` but actually
-# want to see `INVAILD` typo fixed in other places.
-debug_aranges = "debug_aranges"
+# For example, you might want to allow a specific constant like
+# `DNS_ERROR_INVAILD_VIRTUALIZATION_INSTANCE_NAME`, but still want to forbid
+# the typo `INVAILD` in other places.
+#
+# tidy-alphabetical-start
 DNS_ERROR_INVAILD_VIRTUALIZATION_INSTANCE_NAME = "DNS_ERROR_INVAILD_VIRTUALIZATION_INSTANCE_NAME"
-EnzymeTypeTreeShiftIndiciesEq = "EnzymeTypeTreeShiftIndiciesEq"
-EnzymeTypeTreeShiftIndiciesEqFn = "EnzymeTypeTreeShiftIndiciesEqFn"
-shift_indicies_eq = "shift_indicies_eq"
 ERRNO_ACCES = "ERRNO_ACCES"
 ERROR_DS_FILTER_USES_CONTRUCTED_ATTRS = "ERROR_DS_FILTER_USES_CONTRUCTED_ATTRS"
 ERROR_DS_NOT_AUTHORITIVE_FOR_DST_NC = "ERROR_DS_NOT_AUTHORITIVE_FOR_DST_NC"
 ERROR_FILENAME_EXCED_RANGE = "ERROR_FILENAME_EXCED_RANGE"
 ERROR_MCA_OCCURED = "ERROR_MCA_OCCURED"
 ERROR_REQ_NOT_ACCEP = "ERROR_REQ_NOT_ACCEP"
+EnzymeTypeTreeShiftIndiciesEq = "EnzymeTypeTreeShiftIndiciesEq"
+EnzymeTypeTreeShiftIndiciesEqFn = "EnzymeTypeTreeShiftIndiciesEqFn"
 Oppen = "Oppen"
 # typos treats this as two different camelcase words (`SETTIN` and `Gs`)
 # Tracked in: https://github.com/crate-ci/typos/issues/745
 SETTINGs = "SETTINGs"
+debug_aranges = "debug_aranges"
 key_smove = "key_smove" # shifted move key, used by terminfo
+shift_indicies_eq = "shift_indicies_eq"
 tolen = "tolen"
+# tidy-alphabetical-end
 
 [default]
 extend-ignore-words-re = [
