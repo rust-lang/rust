@@ -309,12 +309,21 @@ fn run_passes_inner<'tcx>(
             if let Some(dumper) = dumper {
                 dumper.set_disambiguator(&"after").dump_mir(body);
             }
+            let (dialect, phase_num) = body.phase.index();
 
             if validate {
-                validate_body(tcx, body, format!("after pass {pass_name}"));
+                validate_body(
+                    tcx,
+                    body,
+                    format!("after pass {pass_name} {dialect}-{phase_num}-{:03}", body.pass_count),
+                );
             }
             if lint {
-                lint_body(tcx, body, format!("after pass {pass_name}"));
+                lint_body(
+                    tcx,
+                    body,
+                    format!("after pass {pass_name} {dialect}-{phase_num}-{:03}", body.pass_count),
+                );
             }
 
             body.pass_count += 1;

@@ -52,6 +52,14 @@ print-type-size     variant `Returned`: 1024 bytes
 print-type-size         upvar `.arg`: 1024 bytes
 print-type-size     variant `Panicked`: 1024 bytes
 print-type-size         upvar `.arg`: 1024 bytes
+print-type-size type: `std::mem::ManuallyDrop<[u8; 1024]>`: 1024 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 1024 bytes
+print-type-size type: `std::mem::MaybeDangling<[u8; 1024]>`: 1024 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 1024 bytes
+print-type-size type: `std::mem::MaybeUninit<[u8; 1024]>`: 1024 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 1024 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 1024 bytes
 print-type-size type: `std::task::Context<'_>`: 32 bytes, alignment: 8 bytes
 print-type-size     field `.waker`: 8 bytes
 print-type-size     field `.local_waker`: 8 bytes

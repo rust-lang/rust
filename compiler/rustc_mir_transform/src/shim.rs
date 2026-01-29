@@ -49,7 +49,7 @@ impl<'tcx> MutVisitor<'tcx> for FixProxyFutureDropVisitor<'tcx> {
         _context: PlaceContext,
         _location: Location,
     ) {
-        if place.local == Local::from_u32(1) {
+        if place.local == ty::CAPTURE_STRUCT_LOCAL {
             if place.projection.len() == 1 {
                 assert!(matches!(
                     place.projection.first(),
@@ -66,9 +66,8 @@ impl<'tcx> MutVisitor<'tcx> for FixProxyFutureDropVisitor<'tcx> {
     }
 }
 
+#[instrument(level = "debug", skip(tcx))]
 fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<'tcx> {
-    debug!("make_shim({:?})", instance);
-
     let mut result = match instance {
         ty::InstanceKind::Item(..) => bug!("item {:?} passed to make_shim", instance),
         ty::InstanceKind::VTableShim(def_id) => {
@@ -195,6 +194,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
                 tcx,
                 &mut body,
                 &[
+                    &crate::coroutine::RelocateUpvars, // We must always relocate to ensure valid MIR
                     &mentioned_items::MentionedItems,
                     &abort_unwinding_calls::AbortUnwindingCalls,
                     &add_call_guards::CriticalCallEdges,

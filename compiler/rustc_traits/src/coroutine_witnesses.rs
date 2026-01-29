@@ -2,24 +2,40 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::{Obligation, ObligationCause};
+use rustc_middle::mir::CoroutineLayout;
+use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions};
 use rustc_span::def_id::DefId;
 use rustc_trait_selection::traits::{ObligationCtxt, with_replaced_escaping_bound_vars};
+use tracing::instrument;
 
 /// Return the set of types that should be taken into account when checking
 /// trait bounds on a coroutine's internal state. This properly replaces
 /// `ReErased` with new existential bound lifetimes.
+#[instrument(level = "debug", skip(tcx), ret)]
 pub(crate) fn coroutine_hidden_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
 ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, ty::CoroutineWitnessTypes<TyCtxt<'tcx>>>> {
-    let coroutine_layout = tcx.mir_coroutine_witnesses(def_id);
+    let Some(coroutine_layout) = tcx.mir_coroutine_witnesses(def_id) else {
+        return ty::EarlyBinder::bind(ty::Binder::dummy(ty::CoroutineWitnessTypes {
+            types: ty::List::empty(),
+            assumptions: ty::List::empty(),
+        }));
+    };
+    let mut internal_fields: IndexSet<_> =
+        coroutine_layout.variant_fields.iter().skip(1).flat_map(|f| f.iter().copied()).collect();
+    for upvar in &coroutine_layout.variant_fields[CoroutineLayout::UNRESUMED] {
+        internal_fields.swap_remove(upvar);
+    }
     let mut vars = vec![];
     let bound_tys = tcx.mk_type_list_from_iter(
-        coroutine_layout
-            .as_ref()
-            .map_or_else(|| [].iter(), |l| l.field_tys.iter())
-            .filter(|decl| !decl.ignore_for_traits)
+        internal_fields
+            .into_iter()
+            .filter_map(|saved_local| {
+                let saved_ty = &coroutine_layout.field_tys[saved_local];
+                (!saved_ty.ignore_for_traits).then_some(saved_ty)
+            })
             .map(|decl| {
                 let ty = fold_regions(tcx, decl.ty, |re, debruijn| {
                     assert_eq!(re, tcx.lifetimes.re_erased);

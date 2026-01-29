@@ -93,10 +93,10 @@ LL |     pub async fn public_future(&self) {
    |                                      ^ future returned by `public_future` is not `Send`
    |
 note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
-  --> tests/ui/future_not_send.rs:49:32
+  --> tests/ui/future_not_send.rs:49:33
    |
 LL |     pub async fn public_future(&self) {
-   |                                ^^^^^ has type `&Dummy` which is not `Send`, because `Dummy` is not `Sync`
+   |                                 ^^^^ has type `&Dummy` which is not `Send`, because `Dummy` is not `Sync`
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Sync`
 
 error: future cannot be sent between threads safely

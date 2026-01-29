@@ -26,9 +26,20 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use tracing::{debug, trace};
 
 use crate::{
-    BackendRepr, FieldsShape, HasDataLayout, Integer, LayoutData, Primitive, ReprOptions, Scalar,
-    StructKind, TagEncoding, Variants, WrappingRange,
+    Align, BackendRepr, FieldsShape, HasDataLayout, Integer, LayoutData, Primitive, ReprOptions,
+    Scalar, StructKind, TagEncoding, Variants, WrappingRange,
 };
+
+/// This option controls how coroutine saved locals are packed
+/// into the coroutine state data
+#[derive(Debug, Clone, Copy)]
+pub enum PackCoroutineLayout {
+    /// The classic layout where captures are always promoted to coroutine state prefix
+    Classic,
+    /// Captures are first saved into the `UNRESUME` state and promoted
+    /// when they are used across more than one suspension
+    CapturesOnly,
+}
 
 /// Overlap eligibility and variant assignment for each CoroutineSavedLocal.
 #[derive(Clone, Debug, PartialEq)]
@@ -74,6 +85,7 @@ fn coroutine_saved_local_eligibility<VariantIdx: Idx, FieldIdx: Idx, LocalIdx: I
             }
         }
     }
+    debug!(?ineligible_locals, "after counting variants containing a saved local");
 
     // Next, check every pair of eligible locals to see if they
     // conflict.
@@ -103,6 +115,7 @@ fn coroutine_saved_local_eligibility<VariantIdx: Idx, FieldIdx: Idx, LocalIdx: I
             trace!("removing local {:?} due to conflict with {:?}", remove, other);
         }
     }
+    debug!(?ineligible_locals, "after checking conflicts");
 
     // Count the number of variants in use. If only one of them, then it is
     // impossible to overlap any locals in our layout. In this case it's
@@ -122,6 +135,7 @@ fn coroutine_saved_local_eligibility<VariantIdx: Idx, FieldIdx: Idx, LocalIdx: I
             }
             ineligible_locals.insert_all();
         }
+        debug!(?ineligible_locals, "after checking used variants");
     }
 
     // Write down the order of our locals that will be promoted to the prefix.
@@ -145,20 +159,24 @@ pub(super) fn layout<
 >(
     calc: &super::LayoutCalculator<impl HasDataLayout>,
     local_layouts: &IndexSlice<LocalIdx, F>,
-    mut prefix_layouts: IndexVec<FieldIdx, F>,
+    relocated_upvars: &IndexSlice<LocalIdx, Option<LocalIdx>>,
+    upvar_layouts: IndexVec<FieldIdx, F>,
     variant_fields: &IndexSlice<VariantIdx, IndexVec<FieldIdx, LocalIdx>>,
     storage_conflicts: &BitMatrix<LocalIdx, LocalIdx>,
+    pack: PackCoroutineLayout,
     tag_to_layout: impl Fn(Scalar) -> F,
 ) -> super::LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
     use SavedLocalEligibility::*;
 
     let (ineligible_locals, assignments) =
         coroutine_saved_local_eligibility(local_layouts.len(), variant_fields, storage_conflicts);
+    debug!(?ineligible_locals);
 
-    // Build a prefix layout, including "promoting" all ineligible
-    // locals as part of the prefix. We compute the layout of all of
-    // these fields at once to get optimal packing.
-    let tag_index = prefix_layouts.next_index();
+    // Build a prefix layout, consisting of only the state tag and, as per request, upvars
+    let tag_index = match pack {
+        PackCoroutineLayout::CapturesOnly => FieldIdx::new(0),
+        PackCoroutineLayout::Classic => upvar_layouts.next_index(),
+    };
 
     // `variant_fields` already accounts for the reserved variants, so no need to add them.
     let max_discr = (variant_fields.len() - 1) as u128;
@@ -168,19 +186,39 @@ pub(super) fn layout<
         valid_range: WrappingRange { start: 0, end: max_discr },
     };
 
-    let promoted_layouts = ineligible_locals.iter().map(|local| local_layouts[local]);
-    prefix_layouts.push(tag_to_layout(tag));
-    prefix_layouts.extend(promoted_layouts);
+    let upvars_in_unresumed: rustc_hash::FxHashSet<_> =
+        variant_fields[VariantIdx::new(0)].iter().copied().collect();
+    let promoted_layouts = ineligible_locals.iter().filter_map(|local| {
+        if matches!(pack, PackCoroutineLayout::Classic) && upvars_in_unresumed.contains(&local) {
+            // We do not need to promote upvars, they are already in the upvar region
+            None
+        } else {
+            Some(local_layouts[local])
+        }
+    });
+    // FIXME: when we introduce more pack scheme, we need to change the prefix layout here
+    let prefix_layouts: IndexVec<_, _> = match pack {
+        PackCoroutineLayout::Classic => {
+            // Classic scheme packs the states as follows
+            // [ <upvars>.. , <state tag>, <promoted ineligibles>] ++ <variant data>
+            // In addition, UNRESUME overlaps with the <upvars> part
+            upvar_layouts.into_iter().chain([tag_to_layout(tag)]).chain(promoted_layouts).collect()
+        }
+        PackCoroutineLayout::CapturesOnly => {
+            [tag_to_layout(tag)].into_iter().chain(promoted_layouts).collect()
+        }
+    };
+    debug!(?pack, "prefix_layouts={prefix_layouts:#?}");
     let prefix =
         calc.univariant(&prefix_layouts, &ReprOptions::default(), StructKind::AlwaysSized)?;
 
-    let (prefix_size, prefix_align) = (prefix.size, prefix.align);
+    let prefix_size = prefix.size;
 
-    // Split the prefix layout into the "outer" fields (upvars and
-    // discriminant) and the "promoted" fields. Promoted fields will
-    // get included in each variant that requested them in
-    // CoroutineLayout.
-    debug!("prefix = {:#?}", prefix);
+    // Split the prefix layout into the discriminant and
+    // the "promoted" fields.
+    // Promoted fields will get included in each variant
+    // that requested them in CoroutineLayout.
+    debug!("prefix={prefix:#?}");
     let (outer_fields, promoted_offsets, promoted_memory_index) = match prefix.fields {
         FieldsShape::Arbitrary { mut offsets, in_memory_order } => {
             // "a" (`0..b_start`) and "b" (`b_start..`) correspond to
@@ -209,26 +247,74 @@ pub(super) fn layout<
         _ => unreachable!(),
     };
 
+    // Here we start to compute layout of each state variant
     let mut size = prefix.size;
     let mut align = prefix.align;
     let variants = variant_fields
         .iter_enumerated()
         .map(|(index, variant_fields)| {
+            // Special case: UNRESUMED overlaps with the upvar region of the prefix,
+            // so that moving upvars may eventually become a no-op.
+            let is_unresumed = index.index() == 0;
+            if is_unresumed && matches!(pack, PackCoroutineLayout::Classic) {
+                let fields = FieldsShape::Arbitrary {
+                    offsets: (0..tag_index.index()).map(|i| outer_fields.offset(i)).collect(),
+                    in_memory_order: (0..tag_index.index()).map(FieldIdx::new).collect(),
+                };
+                let align = prefix.align;
+                let size = prefix.size;
+                return Ok(LayoutData {
+                    fields,
+                    variants: Variants::Single { index },
+                    backend_repr: BackendRepr::Memory { sized: true },
+                    largest_niche: None,
+                    uninhabited: false,
+                    align,
+                    size,
+                    max_repr_align: None,
+                    unadjusted_abi_align: align.abi,
+                    randomization_seed: Default::default(),
+                });
+            }
+            let mut is_ineligible = IndexVec::from_elem_n(None, variant_fields.len());
+            for (field, &local) in variant_fields.iter_enumerated() {
+                if is_unresumed {
+                    if let Some(inner_local) = relocated_upvars[local]
+                        && inner_local != local
+                        && let Ineligible(Some(promoted_field)) = assignments[inner_local]
+                    {
+                        is_ineligible.insert(field, promoted_field);
+                        continue;
+                    }
+                }
+                match assignments[local] {
+                    Assigned(v) if v == index => {}
+                    Ineligible(Some(promoted_field)) => {
+                        is_ineligible.insert(field, promoted_field);
+                    }
+                    Ineligible(None) => {
+                        panic!("an ineligible local should have been promoted into the prefix")
+                    }
+                    Assigned(_) => {
+                        panic!("an eligible local should have been assigned to exactly one variant")
+                    }
+                    Unassigned => {
+                        panic!("each saved local should have been inspected at least once")
+                    }
+                }
+            }
             // Only include overlap-eligible fields when we compute our variant layout.
-            let variant_only_tys = variant_fields
-                .iter()
-                .filter(|local| match assignments[**local] {
-                    Unassigned => unreachable!(),
-                    Assigned(v) if v == index => true,
-                    Assigned(_) => unreachable!("assignment does not match variant"),
-                    Ineligible(_) => false,
+            let fields: IndexVec<_, _> = variant_fields
+                .iter_enumerated()
+                .filter_map(|(field, &local)| {
+                    if is_ineligible.contains(field) { None } else { Some(local_layouts[local]) }
                 })
-                .map(|local| local_layouts[*local]);
+                .collect();
 
             let mut variant = calc.univariant(
-                &variant_only_tys.collect::<IndexVec<_, _>>(),
+                &fields,
                 &ReprOptions::default(),
-                StructKind::Prefixed(prefix_size, prefix_align.abi),
+                StructKind::Prefixed(prefix_size, Align::ONE),
             )?;
             variant.variants = Variants::Single { index };
 
@@ -251,19 +337,14 @@ pub(super) fn layout<
                 IndexVec::from_elem_n(FieldIdx::new(invalid_field_idx), invalid_field_idx);
 
             let mut offsets_and_memory_index = iter::zip(offsets, memory_index);
-            let combined_offsets = variant_fields
+            let combined_offsets = is_ineligible
                 .iter_enumerated()
-                .map(|(i, local)| {
-                    let (offset, memory_index) = match assignments[*local] {
-                        Unassigned => unreachable!(),
-                        Assigned(_) => {
-                            let (offset, memory_index) = offsets_and_memory_index.next().unwrap();
-                            (offset, promoted_memory_index.len() as u32 + memory_index)
-                        }
-                        Ineligible(field_idx) => {
-                            let field_idx = field_idx.unwrap();
-                            (promoted_offsets[field_idx], promoted_memory_index[field_idx])
-                        }
+                .map(|(i, &is_ineligible)| {
+                    let (offset, memory_index) = if let Some(field_idx) = is_ineligible {
+                        (promoted_offsets[field_idx], promoted_memory_index[field_idx])
+                    } else {
+                        let (offset, memory_index) = offsets_and_memory_index.next().unwrap();
+                        (offset, promoted_memory_index.len() as u32 + memory_index)
                     };
                     combined_in_memory_order[memory_index] = i;
                     offset

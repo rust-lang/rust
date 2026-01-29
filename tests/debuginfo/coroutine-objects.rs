@@ -4,7 +4,7 @@
 // with memory layout of discriminant for this particular enum
 // ensure that LLDB won't crash at least (like #57822).
 
-//@ compile-flags:-g
+//@ compile-flags: -g -Z pack-coroutine-layout=no
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
 
@@ -12,22 +12,22 @@
 
 //@ gdb-command:run
 //@ gdb-command:print b
-//@ gdb-check:$1 = coroutine_objects::main::{coroutine_env#0}::Unresumed{_ref__a: 0x[...]}
+//@ gdb-check:$1 = coroutine_objects::main::{coroutine_env#0}::Unresumed{a: 0x[...]}
 //@ gdb-command:continue
 //@ gdb-command:print b
-//@ gdb-check:$2 = coroutine_objects::main::{coroutine_env#0}::Suspend0{c: 6, d: 7, _ref__a: 0x[...]}
+//@ gdb-check:$2 = coroutine_objects::main::{coroutine_env#0}::Suspend0{c: 6, d: 7}
 //@ gdb-command:continue
 //@ gdb-command:print b
-//@ gdb-check:$3 = coroutine_objects::main::{coroutine_env#0}::Suspend1{c: 7, d: 8, _ref__a: 0x[...]}
+//@ gdb-check:$3 = coroutine_objects::main::{coroutine_env#0}::Suspend1{c: 7, d: 8}
 //@ gdb-command:continue
 //@ gdb-command:print b
-//@ gdb-check:$4 = coroutine_objects::main::{coroutine_env#0}::Returned{_ref__a: 0x[...]}
+//@ gdb-check:$4 = coroutine_objects::main::{coroutine_env#0}::Returned
 
 // === LLDB TESTS ==================================================================================
 
 //@ lldb-command:run
 //@ lldb-command:v b
-//@ lldb-check:(coroutine_objects::main::{coroutine_env#0}) b = 0{_ref__a:0x[...]} { _ref__a = 0x[...] }
+//@ lldb-check:(coroutine_objects::main::{coroutine_env#0}) b = 0{_ref__a:0x[...]} { a = 0x[...] }
 
 // === CDB TESTS ===================================================================================
 

@@ -1,5 +1,5 @@
 error: moving 10024 bytes
-  --> $DIR/large_future.rs:19:14
+  --> $DIR/large_future.rs:21:14
    |
 LL |     let z = (x, 42);
    |              ^ value moved from here
@@ -12,7 +12,7 @@ LL | #![deny(large_assignments)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: moving 10024 bytes
-  --> $DIR/large_future.rs:20:13
+  --> $DIR/large_future.rs:22:13
    |
 LL |     let a = z.0;
    |             ^^^ value moved from here

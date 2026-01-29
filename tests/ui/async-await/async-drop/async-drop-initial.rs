@@ -1,3 +1,6 @@
+//@ revisions: classic relocate
+//@ [classic] compile-flags: -Z pack-coroutine-layout=no
+//@ [relocate] compile-flags: -Z pack-coroutine-layout=captures-only
 //@ run-pass
 //@ check-run-results
 
@@ -11,26 +14,32 @@
 //@ edition: 2021
 
 // FIXME(zetanumbers): consider AsyncDestruct::async_drop cleanup tests
-use core::future::{async_drop_in_place, AsyncDrop, Future};
+use core::future::{AsyncDrop, Future, async_drop_in_place};
 use core::hint::black_box;
 use core::mem::{self, ManuallyDrop};
-use core::pin::{pin, Pin};
+use core::pin::{Pin, pin};
+use core::sync::atomic::{AtomicBool, Ordering};
 use core::task::{Context, Poll, Waker};
 
-async fn test_async_drop<T>(x: T, _size: usize) {
+static PASS: AtomicBool = AtomicBool::new(false);
+
+async fn test_async_drop<T>(x: T, #[allow(unused)] expect: usize) {
     let mut x = mem::MaybeUninit::new(x);
     let dtor = pin!(unsafe { async_drop_in_place(x.as_mut_ptr()) });
 
     // FIXME(zetanumbers): This check fully depends on the layout of
     // the coroutine state, since async destructor combinators are just
     // async functions.
+    #[allow(unused)]
+    let got = mem::size_of_val(&*dtor);
     #[cfg(target_pointer_width = "64")]
-    assert_eq!(
-        mem::size_of_val(&*dtor),
-        _size,
-        "sizes did not match for async destructor of type {}",
-        core::any::type_name::<T>(),
-    );
+    if expect != got {
+        println!(
+            "sizes did not match for async destructor of type {}, expect {expect}, got {got}",
+            core::any::type_name::<T>()
+        );
+        PASS.store(false, Ordering::Relaxed);
+    }
 
     test_idempotency(dtor).await;
 }
@@ -47,6 +56,7 @@ where
 }
 
 fn main() {
+    PASS.store(true, Ordering::Relaxed);
     let waker = Waker::noop();
     let mut cx = Context::from_waker(&waker);
 
@@ -54,16 +64,17 @@ fn main() {
     let fut = pin!(async {
         test_async_drop(Int(0), 16).await;
         test_async_drop(AsyncInt(0), 32).await;
-        test_async_drop([AsyncInt(1), AsyncInt(2)], 104).await;
-        test_async_drop((AsyncInt(3), AsyncInt(4)), 120).await;
+        test_async_drop([AsyncInt(1), AsyncInt(2)], [96, 104][cfg!(classic) as usize]).await;
+        test_async_drop((AsyncInt(3), AsyncInt(4)), [112, 120][cfg!(classic) as usize]).await;
         test_async_drop(5, 16).await;
         let j = 42;
         test_async_drop(&i, 16).await;
         test_async_drop(&j, 16).await;
         test_async_drop(
             AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 },
-            136,
-        ).await;
+            if cfg!(panic = "unwind") { [128, 136][cfg!(classic) as usize] } else { 136 },
+        )
+        .await;
         test_async_drop(ManuallyDrop::new(AsyncInt(9)), 16).await;
 
         let foo = AsyncInt(10);
@@ -81,13 +92,13 @@ fn main() {
         )
         .await;
 
-        test_async_drop(AsyncEnum::A(AsyncInt(12)), 104).await;
-        test_async_drop(AsyncEnum::B(SyncInt(13)), 104).await;
+        test_async_drop(AsyncEnum::A(AsyncInt(12)), [96, 104][cfg!(classic) as usize]).await;
+        test_async_drop(AsyncEnum::B(SyncInt(13)), [96, 104][cfg!(classic) as usize]).await;
 
         test_async_drop(SyncInt(14), 16).await;
         test_async_drop(
             SyncThenAsync { i: 15, a: AsyncInt(16), b: SyncInt(17), c: AsyncInt(18) },
-            120,
+            [112, 120][cfg!(classic) as usize],
         )
         .await;
 
@@ -109,9 +120,11 @@ fn main() {
         .await;
 
         test_async_drop(AsyncUnion { signed: 21 }, 32).await;
+        test_async_drop(AsyncUnion { signed: 21 }, 32).await;
     });
     let res = fut.poll(&mut cx);
     assert_eq!(res, Poll::Ready(()));
+    assert!(PASS.load(Ordering::Relaxed));
 }
 
 struct AsyncInt(i32);
@@ -228,19 +241,13 @@ union AsyncUnion {
 
 impl Drop for AsyncUnion {
     fn drop(&mut self) {
-        println!(
-            "AsyncUnion::drop: {}, {}",
-            unsafe { self.signed },
-            unsafe { self.unsigned },
-        );
+        println!("AsyncUnion::drop: {}, {}", unsafe { self.signed }, unsafe { self.unsigned },);
     }
 }
 impl AsyncDrop for AsyncUnion {
     async fn drop(self: Pin<&mut Self>) {
-        println!(
-            "AsyncUnion::Dropper::poll: {}, {}",
-            unsafe { self.signed },
-            unsafe { self.unsigned },
-        );
+        println!("AsyncUnion::Dropper::poll: {}, {}", unsafe { self.signed }, unsafe {
+            self.unsigned
+        },);
     }
 }

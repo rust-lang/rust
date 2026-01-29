@@ -24,6 +24,7 @@ use rustc_hir::{
 };
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_middle::middle::privacy::Level;
+use rustc_middle::mir::CoroutineLayout;
 use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::{
@@ -2556,18 +2557,26 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let Some(coroutine_info) = self.tcx.mir_coroutine_witnesses(coroutine_did)
         {
             debug!(?coroutine_info);
-            'find_source: for (variant, source_info) in
-                coroutine_info.variant_fields.iter().zip(&coroutine_info.variant_source_info)
+            'find_source: for ((variant_idx, variant), source_info) in coroutine_info
+                .variant_fields
+                .iter_enumerated()
+                .zip(&coroutine_info.variant_source_info)
+                .rev()
             {
                 debug!(?variant);
                 for &local in variant {
                     let decl = &coroutine_info.field_tys[local];
                     debug!(?decl);
                     if ty_matches(ty::Binder::dummy(decl.ty)) && !decl.ignore_for_traits {
-                        interior_or_upvar_span = Some(CoroutineInteriorOrUpvar::Interior(
-                            decl.source_info.span,
-                            Some((source_info.span, from_awaited_ty)),
-                        ));
+                        let span = decl.source_info.span;
+                        if variant_idx == CoroutineLayout::UNRESUMED {
+                            interior_or_upvar_span = Some(CoroutineInteriorOrUpvar::Upvar(span));
+                        } else {
+                            interior_or_upvar_span = Some(CoroutineInteriorOrUpvar::Interior(
+                                span,
+                                Some((source_info.span, from_awaited_ty)),
+                            ));
+                        }
                         break 'find_source;
                     }
                 }

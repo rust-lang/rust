@@ -154,7 +154,7 @@
       }
   
 +     bb3: {
-+         (((*_32) as variant#3).0: ActionPermit<'_, T>) = move ((*_32).0: ActionPermit<'_, T>);
++         (((*_32) as variant#3).0: ActionPermit<'_, T>) = move (((*_32) as variant#0).0: ActionPermit<'_, T>);
 +         StorageLive(_12);
 +         StorageLive(_13);
 +         StorageLive(_14);
