@@ -1,4 +1,4 @@
-error[E0618]: expected function, found `(&'static str, {integer})`
+error[E0618]: expected function, found `(&str, {integer})`
   --> $DIR/array-diagnostics.rs:4:9
    |
 LL |         ("C200B40A83", 4)
