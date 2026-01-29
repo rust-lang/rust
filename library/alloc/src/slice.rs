@@ -789,9 +789,10 @@ impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> Borrow<[T]> for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T, A: Allocator> const Borrow<[T]> for Vec<T, A> {
     fn borrow(&self) -> &[T] {
-        &self[..]
+        self.as_slice()
     }
 }
 
