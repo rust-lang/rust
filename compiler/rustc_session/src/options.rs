@@ -2726,6 +2726,8 @@ written to standard error output)"),
     treat_err_as_bug: Option<NonZero<usize>> = (None, parse_treat_err_as_bug, [TRACKED],
         "treat the `val`th error that occurs as bug (default if not specified: 0 - don't treat errors as bugs. \
         default if specified without a value: 1 - treat the first error as bug)"),
+    treat_pub_as_pub_crate: bool = (false, parse_bool, [UNTRACKED],
+        "treat `pub` items as `pub(crate)` items for binary crates (default: no)"),
     trim_diagnostic_paths: bool = (true, parse_bool, [UNTRACKED],
         "in diagnostics, use heuristics to shorten paths referring to items"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
