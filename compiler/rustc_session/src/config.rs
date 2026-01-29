@@ -7,7 +7,7 @@ use std::collections::btree_map::{
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::hash::Hash;
-use std::path::{Path, PathBuf};
+use std::path::{Path, PathBuf, absolute};
 use std::str::{self, FromStr};
 use std::sync::LazyLock;
 use std::{cmp, fs, iter};
@@ -2448,7 +2448,10 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let edition = parse_crate_edition(early_dcx, matches);
 
     let crate_name = matches.opt_str("crate-name");
-    let unstable_features = UnstableFeatures::from_environment(crate_name.as_deref());
+    let unstable_features = UnstableFeatures::from_environment_check_in_sysroot(
+        crate_name.as_deref(),
+        input_in_sysroot(matches),
+    );
     let JsonConfig {
         json_rendered,
         json_color,
@@ -2879,10 +2882,26 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
     Ok(crate_types)
 }
 
+pub fn input_in_sysroot(matches: &getopts::Matches) -> bool {
+    let sysroot = Sysroot::new(matches.opt_str("sysroot").map(PathBuf::from));
+    // Input parsing derived from the make_input function. If there are multiple files, or stdin input, then
+    // input_in_sysroot is either irrelevant, or false.
+    let Some((Ok(input), Ok(sysroot))) = matches
+        .free
+        .as_slice()
+        .first()
+        .map(|path| (absolute(Path::new(path)), absolute(sysroot.path())))
+    else {
+        return false;
+    };
+
+    input.starts_with(sysroot)
+}
+
 pub mod nightly_options {
     use rustc_feature::UnstableFeatures;
 
-    use super::{OptionStability, RustcOptGroup};
+    use super::{OptionStability, RustcOptGroup, input_in_sysroot};
     use crate::EarlyDiagCtxt;
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
@@ -2891,11 +2910,12 @@ pub mod nightly_options {
     }
 
     pub fn match_is_nightly_build(matches: &getopts::Matches) -> bool {
-        is_nightly_build(matches.opt_str("crate-name").as_deref())
+        is_nightly_build(matches.opt_str("crate-name").as_deref(), input_in_sysroot(matches))
     }
 
-    fn is_nightly_build(krate: Option<&str>) -> bool {
-        UnstableFeatures::from_environment(krate).is_nightly_build()
+    fn is_nightly_build(krate: Option<&str>, input_in_sysroot: bool) -> bool {
+        UnstableFeatures::from_environment_check_in_sysroot(krate, input_in_sysroot)
+            .is_nightly_build()
     }
 
     pub fn check_nightly_options(
