@@ -1003,9 +1003,6 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(push_mut)]
-    ///
-    ///
     /// let mut vec = vec![1, 2];
     /// let last = vec.push_mut(3);
     /// assert_eq!(*last, 3);
@@ -1023,7 +1020,7 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// vector's elements to a larger allocation. This expensive operation is
     /// offset by the *capacity* *O*(1) insertions it allows.
     #[inline]
-    #[unstable(feature = "push_mut", issue = "135974")]
+    #[stable(feature = "push_mut", since = "CURRENT_RUSTC_VERSION")]
     #[must_use = "if you don't need a reference to the value, use `Vec::push` instead"]
     pub fn push_mut(&mut self, value: T) -> &mut T {
         // Inform codegen that the length does not change across grow_one().
@@ -2196,7 +2193,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(push_mut)]
     /// let mut vec = vec![1, 3, 5, 9];
     /// let x = vec.insert_mut(3, 6);
     /// *x += 1;
@@ -2210,7 +2206,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// the insertion index is 0.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "push_mut", issue = "135974")]
+    #[stable(feature = "push_mut", since = "CURRENT_RUSTC_VERSION")]
     #[track_caller]
     #[must_use = "if you don't need a reference to the value, use `Vec::insert` instead"]
     pub fn insert_mut(&mut self, index: usize, element: T) -> &mut T {
@@ -2689,7 +2685,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Takes *O*(1) time.
     #[inline]
     #[unstable(feature = "vec_push_within_capacity", issue = "100486")]
-    // #[unstable(feature = "push_mut", issue = "135974")]
     pub fn push_within_capacity(&mut self, value: T) -> Result<&mut T, T> {
         if self.len == self.buf.capacity() {
             return Err(value);
