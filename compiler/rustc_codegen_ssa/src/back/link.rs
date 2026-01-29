@@ -1613,7 +1613,7 @@ fn exec_linker(
                 // Windows-style escaping for @-files is used by
                 // - all linkers targeting MSVC-like targets, including LLD
                 // - all LLD flavors running on Windows hosts
-                // С/С++ compilers use Posix-style escaping (except clang-cl, which we do not use).
+                // C/C++ compilers use Posix-style escaping (except clang-cl, which we do not use).
                 is_like_msvc: sess.target.is_like_msvc
                     || (cfg!(windows) && flavor.uses_lld() && !flavor.uses_cc()),
             }
@@ -1656,7 +1656,7 @@ fn exec_linker(
         //
         // File::sync_all() calls FlushFileBuffers() down the line, which solves the problem.
         //
-        // А full writeup of the original Chrome bug can be found at
+        // A full writeup of the original Chrome bug can be found at
         // randomascii.wordpress.com/2018/02/25/compiler-bug-linker-bug-windows-kernel-bug/amp
 
         if let &Ok(ref out) = command_output {
