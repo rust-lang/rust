@@ -25,7 +25,7 @@ pub(crate) fn target() -> Target {
             max_atomic_width: Some(16),
             atomic_cas: false,
             relocation_model: RelocModel::Static,
-            need_explicit_cpu: true,
+            requires_explicit_and_consistent_cpu: true,
             ..TargetOptions::default()
         },
     }

@@ -1,11 +1,9 @@
 //@ assembly-output: ptx-linker
-//@ compile-flags: --crate-type cdylib
-//@ only-nvptx64
-
-#![no_std]
-
-//@ aux-build: breakpoint-panic-handler.rs
-extern crate breakpoint_panic_handler;
+//@ compile-flags: --target nvptx64-nvidia-cuda --crate-type cdylib -Ctarget-cpu=sm_30
+//@ needs-llvm-components: nvptx
+//@ ignore-backends: gcc
+#![feature(no_core)]
+#![no_core]
 
 // Verify default target arch with ptx-linker.
 // CHECK: .target sm_30

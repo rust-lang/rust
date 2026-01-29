@@ -1,0 +1,3 @@
+CHECK-LABEL: target triple = "nvptx64-nvidia-cuda"
+CHECK-LABEL: define {{.*}} @foo() {{.*}} #0
+CHECK-LABEL: attributes #0 = {{.*}} "target-cpu"="sm_70" {{.*}}

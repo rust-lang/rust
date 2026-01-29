@@ -1,6 +1,6 @@
 //@ add-minicore
 //@ needs-llvm-components: nvptx
-//@ compile-flags: --target nvptx64-nvidia-cuda --emit link
+//@ compile-flags: --target nvptx64-nvidia-cuda -Ctarget-cpu=sm_30 --emit link
 //@ ignore-backends: gcc
 #![crate_type = "rlib"]
 #![feature(no_core)]

@@ -1,6 +1,7 @@
 //@ assembly-output: ptx-linker
-//@ compile-flags: --crate-type cdylib -C target-cpu=sm_86
-//@ only-nvptx64
+//@ compile-flags: --target=nvptx64-nvidia-cuda --crate-type cdylib -C target-cpu=sm_86
+//@ needs-llvm-components: nvptx
+//@ ignore-backends: gcc
 
 // The following ABI tests are made with nvcc 11.6 does.
 //

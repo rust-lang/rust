@@ -19,7 +19,7 @@
 //@ [amdgpu] needs-llvm-components: amdgpu
 //@ [amdgpu] compile-flags: --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx900 --crate-type=rlib
 //@ [nvptx] needs-llvm-components: nvptx
-//@ [nvptx] compile-flags: --target nvptx64-nvidia-cuda --crate-type=rlib
+//@ [nvptx] compile-flags: --target nvptx64-nvidia-cuda -Ctarget-cpu=sm_30 --crate-type=rlib
 //@ ignore-backends: gcc
 #![no_core]
 #![feature(
@@ -35,7 +35,7 @@ extern crate minicore;
 use minicore::*;
 
 // We ignore this error; implementing all of the async-related lang items is not worth it.
-async fn vanilla(){
+async fn vanilla() {
     //~^ ERROR requires `ResumeTy` lang_item
 }
 

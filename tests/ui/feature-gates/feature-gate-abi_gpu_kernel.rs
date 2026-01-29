@@ -3,7 +3,7 @@
 //@ compile-flags: --crate-type=rlib
 //@[AMDGPU] compile-flags: --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx1100
 //@[AMDGPU] needs-llvm-components: amdgpu
-//@[NVPTX]  compile-flags: --target nvptx64-nvidia-cuda
+//@[NVPTX]  compile-flags: --target nvptx64-nvidia-cuda -Ctarget-cpu=sm_30
 //@[NVPTX] needs-llvm-components: nvptx
 //@ ignore-backends: gcc
 

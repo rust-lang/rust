@@ -426,3 +426,10 @@ pub fn sysroot() -> PathBuf {
     let path = rustc().print("sysroot").run().stdout_utf8();
     PathBuf::from_str(path.trim()).unwrap()
 }
+
+// Get the inner Command
+impl AsRef<Command> for Rustc {
+    fn as_ref(&self) -> &Command {
+        &self.cmd
+    }
+}

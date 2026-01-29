@@ -117,7 +117,7 @@ impl Target {
         forward!(link_env_remove);
         forward!(asm_args);
         forward!(cpu);
-        forward!(need_explicit_cpu);
+        forward!(requires_explicit_and_consistent_cpu);
         forward!(features);
         forward!(dynamic_linking);
         forward_opt!(direct_access_external_data);
@@ -321,7 +321,7 @@ impl ToJson for Target {
         target_option_val!(link_env_remove);
         target_option_val!(asm_args);
         target_option_val!(cpu);
-        target_option_val!(need_explicit_cpu);
+        target_option_val!(requires_explicit_and_consistent_cpu);
         target_option_val!(features);
         target_option_val!(dynamic_linking);
         target_option_val!(direct_access_external_data);
@@ -544,7 +544,7 @@ struct TargetSpecJson {
     link_env_remove: Option<StaticCow<[StaticCow<str>]>>,
     asm_args: Option<StaticCow<[StaticCow<str>]>>,
     cpu: Option<StaticCow<str>>,
-    need_explicit_cpu: Option<bool>,
+    requires_explicit_and_consistent_cpu: Option<bool>,
     features: Option<StaticCow<str>>,
     dynamic_linking: Option<bool>,
     direct_access_external_data: Option<bool>,

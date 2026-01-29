@@ -683,7 +683,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     tcx: TyCtxt<'_>,
     target_cpu: String,
 ) -> OngoingCodegen<B> {
-    if tcx.sess.target.need_explicit_cpu && tcx.sess.opts.cg.target_cpu.is_none() {
+    if tcx.sess.target.requires_explicit_and_consistent_cpu && tcx.sess.opts.cg.target_cpu.is_none()
+    {
         // The target has no default cpu, but none is set explicitly
         tcx.dcx().emit_fatal(errors::CpuRequired);
     }
