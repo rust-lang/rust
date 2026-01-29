@@ -1,0 +1,64 @@
+//@ run-rustfix
+//@ aux-build:trait-impl-params.rs
+//@ edition:2018
+//! Tests cross-crate trait impl param mismatch suggestions (keep aliases when matching,
+//! append missing; replace otherwise).
+//! regression test for https://github.com/rust-lang/rust/issues/106999
+
+#![allow(unused)]
+extern crate trait_impl_params;
+
+use trait_impl_params::{Bar, Baz, Foo, NonIdentArguments};
+
+struct MyStruct1;
+impl Foo for MyStruct1 {
+    fn foo() {}
+    //~^ ERROR: method `foo` has 0 parameters but the declaration in trait `foo` has 2
+    //~| HELP: add the missing 2 parameters from the trait
+}
+
+struct MyStruct2;
+type AliasOfI32 = i32;
+impl Foo for MyStruct2 {
+    fn foo(a: AliasOfI32) {}
+    //~^ ERROR: method `foo` has 1 parameter but the declaration in trait `foo` has 2
+    //~| HELP: add the missing 1 parameter from the trait
+}
+
+struct MyStruct3;
+type AliasOfU32 = u32;
+impl Foo for MyStruct3 {
+    fn foo(a: AliasOfI32, b: AliasOfU32) {} // Ok
+}
+
+struct MyStruct4;
+impl Bar for MyStruct4 {
+    fn no_params(x: i32) {}
+    //~^ ERROR: method `no_params` has 1 parameter but the declaration in trait `no_params` has 0
+    //~| HELP: remove the extra 1 parameter to match the trait
+    fn has_self(&self, y: i32) {}
+    //~^ ERROR: method `has_self` has 2 parameters but the declaration in trait `has_self` has 1
+    //~| HELP: remove the extra 1 parameter to match the trait
+    fn has_two_self(self: &Self) {}
+    //~^ ERROR: method `has_two_self` has 1 parameter but the declaration in trait `has_two_self` has 2
+    //~| HELP: add the missing 1 parameter from the trait
+}
+
+struct MyStruct5;
+impl NonIdentArguments for MyStruct5 {
+    fn pattern_types_in_arguments() {}
+    //~^ ERROR: method `pattern_types_in_arguments` has 0 parameters but the declaration in trait
+    //~| HELP: add the missing 2 parameters from the trait
+}
+
+struct MyStruct6;
+impl Baz<()> for MyStruct6 {
+    fn generic_no_params<U: Baz<()>>(a: U) {}
+    //~^ ERROR: method `generic_no_params` has 1 parameter but the declaration in trait
+    //~| HELP: remove the extra 1 parameter to match the trait
+    fn generic_one_param<U: Baz<()>>() {}
+    //~^ ERROR: method `generic_one_param` has 0 parameters but the declaration in trait
+    //~| HELP: add the missing 1 parameter from the trait
+}
+
+fn main() {}
