@@ -850,14 +850,6 @@ impl TryFrom<CString> for String {
     }
 }
 
-#[stable(feature = "more_box_slice_clone", since = "1.29.0")]
-impl Clone for Box<CStr> {
-    #[inline]
-    fn clone(&self) -> Self {
-        (**self).into()
-    }
-}
-
 #[stable(feature = "box_from_c_string", since = "1.20.0")]
 impl From<CString> for Box<CStr> {
     /// Converts a [`CString`] into a <code>[Box]<[CStr]></code> without copying or allocating.

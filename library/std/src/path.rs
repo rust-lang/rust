@@ -1928,14 +1928,6 @@ impl From<PathBuf> for Box<Path> {
     }
 }
 
-#[stable(feature = "more_box_slice_clone", since = "1.29.0")]
-impl Clone for Box<Path> {
-    #[inline]
-    fn clone(&self) -> Self {
-        self.to_path_buf().into_boxed_path()
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + AsRef<OsStr>> From<&T> for PathBuf {
     /// Converts a borrowed [`OsStr`] to a [`PathBuf`].
@@ -3574,6 +3566,13 @@ unsafe impl CloneToUninit for Path {
     unsafe fn clone_to_uninit(&self, dst: *mut u8) {
         // SAFETY: Path is just a transparent wrapper around OsStr
         unsafe { self.inner.clone_to_uninit(dst) }
+    }
+
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_init(&self, dst: *mut u8) {
+        // SAFETY: Path is just a transparent wrapper around OsStr
+        unsafe { self.inner.clone_to_init(dst) }
     }
 }
 
