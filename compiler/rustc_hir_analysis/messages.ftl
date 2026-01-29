@@ -105,6 +105,10 @@ hir_analysis_coerce_pointee_not_transparent = `derive(CoercePointee)` is only ap
 
 hir_analysis_coerce_same_pat_kind = only pattern types with the same pattern can be coerced between each other
 
+hir_analysis_coerce_shared_multi = implementing `{$trait_name}` does not allow multiple lifetimes or fields to be coerced
+
+hir_analysis_coerce_shared_not_zero = implementing `{$trait_name}` requires that a single lifetime parameter is passed between source and target
+
 hir_analysis_coerce_unsized_field_validity = for `{$ty}` to have a valid implementation of `{$trait_name}`, it must be possible to coerce the field of type `{$field_ty}`
     .label = `{$field_ty}` must be a pointer, reference, or smart pointer that is allowed to be unsized
 

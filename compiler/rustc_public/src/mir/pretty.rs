@@ -391,6 +391,9 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
             write!(writer, "{:?}({})", un, pretty_operand(op))
         }
         Rvalue::Use(op) => write!(writer, "{}", pretty_operand(op)),
+        Rvalue::Reborrow(deref) => {
+            write!(writer, "Reborrow({deref:?})")
+        }
     }
 }
 

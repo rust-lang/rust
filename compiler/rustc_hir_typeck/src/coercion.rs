@@ -262,7 +262,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
 
         // Examine the target type and consider type-specific coercions, such
-        // as auto-borrowing, coercing pointer mutability, or pin-ergonomics.
+        // as auto-borrowing, coercing pointer mutability, pin-ergonomics, or
+        // generic reborrow.
         match *b.kind() {
             ty::RawPtr(_, b_mutbl) => {
                 return self.coerce_to_raw_ptr(a, b, b_mutbl);
@@ -277,6 +278,26 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let pin_coerce = self.commit_if_ok(|_| self.coerce_to_pin_ref(a, b));
                 if pin_coerce.is_ok() {
                     return pin_coerce;
+                }
+            }
+            ty::Adt(_, _)
+                if self.tcx.features().reborrow()
+                    && self
+                        .fcx
+                        .infcx
+                        .type_implements_trait(
+                            self.tcx
+                                .lang_items()
+                                .reborrow()
+                                .expect("Unexpectedly using core/std without reborrow"),
+                            [b],
+                            self.fcx.param_env,
+                        )
+                        .must_apply_modulo_regions() =>
+            {
+                let reborrow_coerce = self.commit_if_ok(|_| self.coerce_reborrow(a, b));
+                if reborrow_coerce.is_ok() {
+                    return reborrow_coerce;
                 }
             }
             _ => {}
@@ -301,6 +322,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // function pointers or unsafe function pointers.
                 // It cannot convert closures that require unsafe.
                 self.coerce_closure_to_fn(a, b)
+            }
+            ty::Adt(_, _) if self.tcx.features().reborrow() => {
+                let reborrow_coerce = self.commit_if_ok(|_| self.coerce_shared_reborrow(a, b));
+                if reborrow_coerce.is_ok() {
+                    reborrow_coerce
+                } else {
+                    self.unify(a, b, ForceLeakCheck::No)
+                }
             }
             _ => {
                 // Otherwise, just use unification rules.
@@ -844,6 +873,74 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // To complete the reborrow, we need to make sure we can unify the inner types, and if so we
         // add the adjustments.
         self.unify_and(a, b, [], Adjust::ReborrowPin(mut_b), ForceLeakCheck::No)
+    }
+
+    /// Applies generic exclusive reborrowing on type implementing `Reborrow`.
+    #[instrument(skip(self), level = "trace")]
+    fn coerce_reborrow(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        debug_assert!(self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
+
+        // We need to make sure the two types are compatible for reborrow.
+        let (ty::Adt(a_def, _), ty::Adt(b_def, _)) = (a.kind(), b.kind()) else {
+            return Err(TypeError::Mismatch);
+        };
+        if a_def.did() == b_def.did() {
+            // Reborrow is applicable here
+            self.unify_and(
+                a,
+                b,
+                [],
+                Adjust::GenericReborrow(ty::Mutability::Mut),
+                ForceLeakCheck::No,
+            )
+        } else {
+            // FIXME: CoerceShared check goes here, error for now
+            Err(TypeError::Mismatch)
+        }
+    }
+
+    /// Applies generic exclusive reborrowing on type implementing `Reborrow`.
+    #[instrument(skip(self), level = "trace")]
+    fn coerce_shared_reborrow(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        debug_assert!(self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
+
+        // We need to make sure the two types are compatible for reborrow.
+        let (ty::Adt(a_def, _), ty::Adt(b_def, _)) = (a.kind(), b.kind()) else {
+            return Err(TypeError::Mismatch);
+        };
+        if a_def.did() == b_def.did() {
+            // CoerceShared cannot be T -> T.
+            return Err(TypeError::Mismatch);
+        }
+        let Some(coerce_shared_trait_did) = self.tcx.lang_items().coerce_shared() else {
+            return Err(TypeError::Mismatch);
+        };
+        let coerce_shared_trait_ref = ty::TraitRef::new(self.tcx, coerce_shared_trait_did, [a, b]);
+        let obligation = traits::Obligation::new(
+            self.tcx,
+            ObligationCause::dummy(),
+            self.param_env,
+            ty::Binder::dummy(coerce_shared_trait_ref),
+        );
+        let ocx = ObligationCtxt::new(&self.infcx);
+        ocx.register_obligation(obligation);
+        let errs = ocx.evaluate_obligations_error_on_ambiguity();
+        if errs.is_empty() {
+            Ok(InferOk {
+                value: (
+                    vec![Adjustment {
+                        kind: Adjust::GenericReborrow(ty::Mutability::Not),
+                        target: b,
+                    }],
+                    b,
+                ),
+                obligations: ocx.into_pending_obligations(),
+            })
+        } else {
+            Err(TypeError::Mismatch)
+        }
     }
 
     fn coerce_from_fn_pointer(

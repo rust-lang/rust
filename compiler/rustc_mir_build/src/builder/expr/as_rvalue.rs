@@ -492,6 +492,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.and(Rvalue::Use(operand))
             }
+            ExprKind::Reborrow { source: _, mutability: _, ty: _ } => {
+                todo!();
+            }
         }
     }
 

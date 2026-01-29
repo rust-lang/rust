@@ -440,6 +440,7 @@ define_tables! {
     thir_abstract_const: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, ty::Const<'static>>>>,
     impl_parent: Table<DefIndex, RawDefId>,
     const_conditions: Table<DefIndex, LazyValue<ty::ConstConditions<'static>>>,
+    coerce_shared_info: Table<DefIndex, LazyValue<ty::adjustment::CoerceSharedInfo>>,
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
     coerce_unsized_info: Table<DefIndex, LazyValue<ty::adjustment::CoerceUnsizedInfo>>,
     mir_const_qualif: Table<DefIndex, LazyValue<mir::ConstQualifs>>,

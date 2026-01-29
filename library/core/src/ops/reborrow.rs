@@ -10,7 +10,6 @@ pub trait Reborrow {
 /// that disables the source for writes for the lifetime of the copy.
 #[lang = "coerce_shared"]
 #[unstable(feature = "reborrow", issue = "145612")]
-pub trait CoerceShared: Reborrow {
-    /// The type of this value when reborrowed as shared.
-    type Target: Copy;
+pub trait CoerceShared<Target: Copy>: Reborrow {
+    // Empty
 }

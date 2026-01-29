@@ -549,7 +549,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     ) {
         match &stmt.kind {
             mir::StatementKind::Assign(box (lhs, rhs)) => {
-                if let mir::Rvalue::Ref(_, _, place) = rhs {
+                if let mir::Rvalue::Ref(_, _, place) | mir::Rvalue::Reborrow(_, place) = rhs {
                     if place.ignore_borrow(
                         self.tcx,
                         self.body,

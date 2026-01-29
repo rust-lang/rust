@@ -244,6 +244,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 crate::mir::Rvalue::ShallowInitBox(op.stable(tables, cx), ty.stable(tables, cx))
             }
             CopyForDeref(place) => crate::mir::Rvalue::CopyForDeref(place.stable(tables, cx)),
+            Reborrow(_, place) => crate::mir::Rvalue::Reborrow(place.stable(tables, cx)),
             WrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
         }
     }

@@ -550,6 +550,11 @@ pub enum ExprKind<'tcx> {
     Yield {
         value: ExprId,
     },
+    Reborrow {
+        source: ExprId,
+        mutability: Mutability,
+        ty: Ty<'tcx>,
+    },
 }
 
 /// Represents the association of a field identifier and an expression.

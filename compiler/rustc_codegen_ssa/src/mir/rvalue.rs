@@ -709,6 +709,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let layout = bx.cx().layout_of(binder_ty);
                 OperandRef { val: operand.val, layout, move_annotation: None }
             }
+            // Note: Exclusive reborrowing is always equal to a memcpy, as the
+            // types do not change. Generic shared reborrowing is not
+            // (necessarily) a simple memcpy, but currently the coherence check
+            // places such restrictions on the CoerceShared trait as to
+            // guarantee that it is.
+            mir::Rvalue::Reborrow(_, place) => self.codegen_operand(bx, &mir::Operand::Copy(place)),
             mir::Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in codegen"),
             mir::Rvalue::ShallowInitBox(..) => bug!("`ShallowInitBox` in codegen"),
         }
