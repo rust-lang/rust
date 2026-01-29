@@ -535,7 +535,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(contracts_internals, "contract internal machinery is for internal use only");
     gate_all!(where_clause_attrs, "attributes in `where` clause are unstable");
     gate_all!(super_let, "`super let` is experimental");
-    gate_all!(frontmatter, "frontmatters are experimental");
     gate_all!(coroutines, "coroutine syntax is experimental");
     gate_all!(const_block_items, "const block items are experimental");
 

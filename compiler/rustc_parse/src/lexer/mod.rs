@@ -15,7 +15,7 @@ use rustc_session::lint::builtin::{
     TEXT_DIRECTION_CODEPOINT_IN_COMMENT, TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
 };
 use rustc_session::parse::ParseSess;
-use rustc_span::{BytePos, Pos, Span, Symbol, sym};
+use rustc_span::{BytePos, Pos, Span, Symbol};
 use tracing::debug;
 
 use crate::errors;
@@ -629,7 +629,6 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         let last_line_start_pos = frontmatter_opening_end_pos + BytePos(last_line_start as u32);
 
         let frontmatter_span = self.mk_sp(frontmatter_opening_pos, self.pos);
-        self.psess.gated_spans.gate(sym::frontmatter, frontmatter_span);
 
         if !last_line_trimmed.starts_with("---") {
             let label_span = self.mk_sp(frontmatter_opening_pos, frontmatter_opening_end_pos);
