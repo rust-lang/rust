@@ -367,6 +367,7 @@ impl i128 {
 }
 
 #[cfg(target_pointer_width = "16")]
+#[doc(auto_cfg(hide(target_pointer_width = "16")))]
 impl isize {
     int_impl! {
         Self = isize,
@@ -392,6 +393,7 @@ impl isize {
 }
 
 #[cfg(target_pointer_width = "32")]
+#[doc(auto_cfg(hide(target_pointer_width = "32")))]
 impl isize {
     int_impl! {
         Self = isize,
@@ -417,6 +419,7 @@ impl isize {
 }
 
 #[cfg(target_pointer_width = "64")]
+#[doc(auto_cfg(hide(target_pointer_width = "64")))]
 impl isize {
     int_impl! {
         Self = isize,
@@ -1212,6 +1215,7 @@ impl u128 {
 }
 
 #[cfg(target_pointer_width = "16")]
+#[doc(auto_cfg(hide(target_pointer_width = "16")))]
 impl usize {
     uint_impl! {
         Self = usize,
@@ -1239,6 +1243,7 @@ impl usize {
 }
 
 #[cfg(target_pointer_width = "32")]
+#[doc(auto_cfg(hide(target_pointer_width = "32")))]
 impl usize {
     uint_impl! {
         Self = usize,
@@ -1266,6 +1271,7 @@ impl usize {
 }
 
 #[cfg(target_pointer_width = "64")]
+#[doc(auto_cfg(hide(target_pointer_width = "64")))]
 impl usize {
     uint_impl! {
         Self = usize,
