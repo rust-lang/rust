@@ -133,7 +133,8 @@ impl<'tcx> NewPermission {
         retag_kind: RetagKind,
         cx: &crate::MiriInterpCx<'tcx>,
     ) -> Option<Self> {
-        let ty_is_unpin = pointee.is_unpin(*cx.tcx, cx.typing_env());
+        let ty_is_unpin = pointee.is_unpin(*cx.tcx, cx.typing_env())
+            && pointee.is_unsafe_unpin(*cx.tcx, cx.typing_env());
         let ty_is_freeze = pointee.is_freeze(*cx.tcx, cx.typing_env());
         let is_protected = retag_kind == RetagKind::FnEntry;
 

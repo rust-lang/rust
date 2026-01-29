@@ -76,6 +76,9 @@ pub trait BikeshedGuaranteedNoDrop {}
 #[lang = "freeze"]
 pub unsafe auto trait Freeze {}
 
+#[lang = "unsafe_unpin"]
+pub unsafe auto trait UnsafeUnpin {}
+
 #[lang = "unpin"]
 #[diagnostic::on_unimplemented(
     note = "consider using the `pin!` macro\nconsider using `Box::pin` if you need to access the pinned value outside of the current scope",

@@ -1041,9 +1041,11 @@ where
                     hir::Mutability::Not => {
                         PointerKind::SharedRef { frozen: optimize && ty.is_freeze(tcx, typing_env) }
                     }
-                    hir::Mutability::Mut => {
-                        PointerKind::MutableRef { unpin: optimize && ty.is_unpin(tcx, typing_env) }
-                    }
+                    hir::Mutability::Mut => PointerKind::MutableRef {
+                        unpin: optimize
+                            && ty.is_unpin(tcx, typing_env)
+                            && ty.is_unsafe_unpin(tcx, typing_env),
+                    },
                 };
 
                 tcx.layout_of(typing_env.as_query_input(ty)).ok().map(|layout| PointeeInfo {
@@ -1138,7 +1140,9 @@ where
                         debug_assert!(pointee.safe.is_none());
                         let optimize = tcx.sess.opts.optimize != OptLevel::No;
                         pointee.safe = Some(PointerKind::Box {
-                            unpin: optimize && boxed_ty.is_unpin(tcx, typing_env),
+                            unpin: optimize
+                                && boxed_ty.is_unpin(tcx, typing_env)
+                                && boxed_ty.is_unsafe_unpin(tcx, typing_env),
                             global: this.ty.is_box_global(tcx),
                         });
                     }

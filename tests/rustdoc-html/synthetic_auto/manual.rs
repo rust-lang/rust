@@ -6,7 +6,8 @@
 // 'impl<T> Send for Foo<T>'
 //
 //@ count - '//*[@id="trait-implementations-list"]//*[@class="impl"]' 1
-//@ count - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]' 5
+//@ count - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]' 6
+// The number here will need updating when new auto traits are added:     ^
 pub struct Foo<T> {
     field: T,
 }
