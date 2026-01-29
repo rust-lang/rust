@@ -216,7 +216,7 @@ pub trait PointeeSized {
 /// - Structs `Foo<..., T1, ..., Tn, ...>` implement `Unsize<Foo<..., U1, ..., Un, ...>>`
 ///   where any number of (type and const) parameters may be changed if all of these conditions
 ///   are met:
-///   - Only the last field of `Foo` has a type involving the parameters `T1`, ..., `Tn`.
+///   - Other than `PhantomData<_>` fields, only the last field of `Foo` has a type involving the parameters `T1`, ..., `Tn`.
 ///   - All other parameters of the struct are equal.
 ///   - `Field<T1, ..., Tn>: Unsize<Field<U1, ..., Un>>`, where `Field<...>` stands for the actual
 ///     type of the struct's last field.

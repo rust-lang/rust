@@ -6,13 +6,13 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, SizedTraitKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Upcast,
-    fold_regions,
+    self, SizedTraitKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, TypingEnv,
+    Upcast, fold_regions,
 };
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_trait_selection::traits;
-use tracing::instrument;
+use tracing::{debug, instrument};
 
 /// If `ty` implements the given `sizedness` trait, returns `None`. Otherwise, returns the type
 /// that must implement the given `sizedness` for `ty` to implement it.
@@ -298,6 +298,7 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Asyncness {
     })
 }
 
+#[instrument(level = "debug", skip(tcx))]
 fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> DenseBitSet<u32> {
     let def = tcx.adt_def(def_id);
     let num_params = tcx.generics_of(def_id).count();
@@ -332,7 +333,16 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> DenseBitSe
     // Ensure none of the other fields mention the parameters used
     // in unsizing.
     for field in prefix_fields {
-        for arg in tcx.type_of(field.did).instantiate_identity().walk() {
+        let field_ty = tcx.type_of(field.did).instantiate_identity();
+        let field_ty = tcx
+            .try_normalize_erasing_regions(TypingEnv::non_body_analysis(tcx, def_id), field_ty)
+            .inspect(|r| debug!(?r))
+            .unwrap_or(field_ty);
+        debug!(?field_ty);
+        if field_ty.is_phantom_data() {
+            continue;
+        }
+        for arg in field_ty.walk() {
             if let Some(i) = maybe_unsizing_param_idx(arg) {
                 unsizing_params.remove(i);
             }
