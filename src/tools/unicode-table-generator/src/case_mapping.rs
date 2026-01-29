@@ -6,7 +6,7 @@ use crate::{UnicodeData, fmt_list};
 
 const INDEX_MASK: u32 = 1 << 22;
 
-pub(crate) fn generate_case_mapping(data: &UnicodeData) -> (String, [usize; 2]) {
+pub(crate) fn generate_case_mapping(data: &UnicodeData) -> (String, [usize; 3]) {
     let mut file = String::new();
 
     write!(file, "const INDEX_MASK: u32 = 0x{INDEX_MASK:x};").unwrap();
@@ -18,7 +18,10 @@ pub(crate) fn generate_case_mapping(data: &UnicodeData) -> (String, [usize; 2]) 
     file.push_str("\n\n");
     let (upper_tables, upper_size) = generate_tables("UPPER", &data.to_upper);
     file.push_str(&upper_tables);
-    (file, [lower_size, upper_size])
+    file.push_str("\n\n");
+    let (title_tables, title_size) = generate_tables("TITLE", &data.to_title);
+    file.push_str(&title_tables);
+    (file, [lower_size, upper_size, title_size])
 }
 
 fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, usize) {
@@ -117,6 +120,23 @@ pub fn to_upper(c: char) -> [char; 3] {
                 })
             })
             .unwrap_or([c, '\0', '\0'])
+    }
+}
+
+pub fn to_title(c: char) -> [char; 3] {
+    if c.is_ascii() {
+        [(c as u8).to_ascii_uppercase() as char, '\0', '\0']
+    } else {
+        TITLECASE_TABLE
+            .binary_search_by(|&(key, _)| key.cmp(&c))
+            .map(|i| {
+                let u = TITLECASE_TABLE[i].1;
+                char::from_u32(u).map(|c| [c, '\0', '\0']).unwrap_or_else(|| {
+                    // SAFETY: Index comes from statically generated table
+                    unsafe { *TITLECASE_TABLE_MULTI.get_unchecked((u & (INDEX_MASK - 1)) as usize) }
+                })
+            })
+            .unwrap_or(to_upper(c))
     }
 }
 ";
