@@ -114,13 +114,17 @@ pub macro thread_local_inner {
 pub(crate) macro local_pointer {
     () => {},
     ($vis:vis static $name:ident; $($rest:tt)*) => {
+
+        #[doc(hidden)]
+        #[unstable(feature = "thread_local_internal_pointer", issue = "none")]
         #[thread_local]
         $vis static $name: $crate::sys::thread_local::LocalPointer = $crate::sys::thread_local::LocalPointer::__new();
         $crate::sys::thread_local::local_pointer! { $($rest)* }
     },
 }
 
-pub(crate) struct LocalPointer {
+#[allow(missing_debug_implementations)]
+pub struct LocalPointer {
     p: Cell<*mut ()>,
 }
 

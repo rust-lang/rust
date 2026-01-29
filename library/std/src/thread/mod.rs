@@ -161,7 +161,9 @@ use crate::any::Any;
 #[macro_use]
 mod local;
 mod builder;
-mod current;
+#[doc(hidden)]
+#[unstable(feature = "thread_current_internals", issue = "none")]
+pub(crate) mod current;
 mod functions;
 mod id;
 mod join_handle;
