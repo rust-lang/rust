@@ -103,7 +103,7 @@ impl ToInternal<token::LitKind> for LitKind {
     }
 }
 
-impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStream, Span, Symbol>> {
+impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<Span, Symbol>> {
     fn from_internal((stream, rustc): (TokenStream, &mut Rustc<'_, '_>)) -> Self {
         use rustc_ast::token::*;
 
@@ -150,7 +150,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
 
                     trees.push(TokenTree::Group(Group {
                         delimiter: rustc_proc_macro::Delimiter::from_internal(delim),
-                        stream: Some(stream),
+                        stream: Some(rustc.ts_rustc_to_pm(stream)),
                         span: DelimSpan {
                             open: span.open,
                             close: span.close,
@@ -277,7 +277,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                         TokenStream::token_alone(token::Lifetime(ident.name, is_raw), ident.span);
                     trees.push(TokenTree::Group(Group {
                         delimiter: rustc_proc_macro::Delimiter::None,
-                        stream: Some(stream),
+                        stream: Some(rustc.ts_rustc_to_pm(stream)),
                         span: DelimSpan::from_single(span),
                     }))
                 }
@@ -309,7 +309,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     }
                     trees.push(TokenTree::Group(Group {
                         delimiter: rustc_proc_macro::Delimiter::Bracket,
-                        stream: Some(stream),
+                        stream: Some(rustc.ts_rustc_to_pm(stream)),
                         span: DelimSpan::from_single(span),
                     }));
                 }
@@ -324,7 +324,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
 
 // We use a `SmallVec` because the output size is always one or two `TokenTree`s.
 impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
-    for (TokenTree<TokenStream, Span, Symbol>, &mut Rustc<'_, '_>)
+    for (TokenTree<Span, Symbol>, &mut Rustc<'_, '_>)
 {
     fn to_internal(self) -> SmallVec<[tokenstream::TokenTree; 2]> {
         use rustc_ast::token::*;
@@ -378,7 +378,7 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                     tokenstream::DelimSpan { open, close },
                     DelimSpacing::new(Spacing::Alone, Spacing::Alone),
                     delimiter.to_internal(),
-                    stream.unwrap_or_default(),
+                    rustc.ts_pm_to_rustc(stream.unwrap_or_default()),
                 )]
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
@@ -431,6 +431,8 @@ impl ToInternal<rustc_errors::Level> for Level {
     }
 }
 
+type BridgeTokenStream = rustc_proc_macro::bridge::TokenStream<Span, Symbol>;
+
 pub(crate) struct Rustc<'a, 'b> {
     ecx: &'a mut ExtCtxt<'b>,
     def_site: Span,
@@ -456,10 +458,27 @@ impl<'a, 'b> Rustc<'a, 'b> {
     fn psess(&self) -> &ParseSess {
         self.ecx.psess()
     }
+
+    pub(crate) fn ts_pm_to_rustc(&mut self, ts: BridgeTokenStream) -> tokenstream::TokenStream {
+        let mut t = tokenstream::TokenStream::new(vec![]);
+        for tree in ts.trees {
+            let internal: SmallVec<[tokenstream::TokenTree; 2]> =
+                ToInternal::to_internal((tree, &mut *self));
+            for tree in internal {
+                t.push_tree(tree);
+            }
+        }
+
+        t
+    }
+
+    pub(crate) fn ts_rustc_to_pm(&mut self, ts: tokenstream::TokenStream) -> BridgeTokenStream {
+        let trees: Vec<TokenTree<Span, Symbol>> = FromInternal::from_internal((ts, self));
+        BridgeTokenStream { trees }
+    }
 }
 
-impl server::Server for Rustc<'_, '_> {
-    type TokenStream = TokenStream;
+impl server::Server for &mut Rustc<'_, '_> {
     type Span = Span;
     type Symbol = Symbol;
 
@@ -564,35 +583,24 @@ impl server::Server for Rustc<'_, '_> {
         diag.emit();
     }
 
-    fn ts_drop(&mut self, stream: Self::TokenStream) {
-        drop(stream);
-    }
-
-    fn ts_clone(&mut self, stream: &Self::TokenStream) -> Self::TokenStream {
-        stream.clone()
-    }
-
-    fn ts_is_empty(&mut self, stream: &Self::TokenStream) -> bool {
-        stream.is_empty()
-    }
-
-    fn ts_from_str(&mut self, src: &str) -> Self::TokenStream {
-        unwrap_or_emit_fatal(source_str_to_stream(
+    fn ts_from_str(&mut self, src: &str) -> BridgeTokenStream {
+        self.ts_rustc_to_pm(unwrap_or_emit_fatal(source_str_to_stream(
             self.psess(),
             FileName::proc_macro_source_code(src),
             src.to_string(),
             Some(self.call_site),
-        ))
+        )))
     }
 
-    fn ts_to_string(&mut self, stream: &Self::TokenStream) -> String {
-        pprust::tts_to_string(stream)
+    fn ts_to_string(&mut self, stream: BridgeTokenStream) -> String {
+        pprust::tts_to_string(&self.ts_pm_to_rustc(stream))
     }
 
-    fn ts_expand_expr(&mut self, stream: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
+    fn ts_expand_expr(&mut self, stream: BridgeTokenStream) -> Result<BridgeTokenStream, ()> {
         // Parse the expression from our tokenstream.
         let expr: PResult<'_, _> = try {
-            let mut p = Parser::new(self.psess(), stream.clone(), Some("proc_macro expand expr"));
+            let stream = self.ts_pm_to_rustc(stream);
+            let mut p = Parser::new(self.psess(), stream, Some("proc_macro expand expr"));
             let expr = p.parse_expr()?;
             if p.token != token::Eof {
                 p.unexpected()?;
@@ -615,32 +623,34 @@ impl server::Server for Rustc<'_, '_> {
         // We don't use `TokenStream::from_ast` as the tokenstream currently cannot
         // be recovered in the general case.
         match &expr.kind {
-            ast::ExprKind::Lit(token_lit) if token_lit.kind == token::Bool => {
-                Ok(tokenstream::TokenStream::token_alone(
+            ast::ExprKind::Lit(token_lit) if token_lit.kind == token::Bool => Ok(self
+                .ts_rustc_to_pm(tokenstream::TokenStream::token_alone(
                     token::Ident(token_lit.symbol, IdentIsRaw::No),
                     expr.span,
-                ))
-            }
-            ast::ExprKind::Lit(token_lit) => {
-                Ok(tokenstream::TokenStream::token_alone(token::Literal(*token_lit), expr.span))
-            }
+                ))),
+            ast::ExprKind::Lit(token_lit) => Ok(self.ts_rustc_to_pm(
+                tokenstream::TokenStream::token_alone(token::Literal(*token_lit), expr.span),
+            )),
             ast::ExprKind::IncludedBytes(byte_sym) => {
                 let lit = token::Lit::new(
                     token::ByteStr,
                     escape_byte_str_symbol(byte_sym.as_byte_str()),
                     None,
                 );
-                Ok(tokenstream::TokenStream::token_alone(token::TokenKind::Literal(lit), expr.span))
+                Ok(self.ts_rustc_to_pm(tokenstream::TokenStream::token_alone(
+                    token::TokenKind::Literal(lit),
+                    expr.span,
+                )))
             }
             ast::ExprKind::Unary(ast::UnOp::Neg, e) => match &e.kind {
                 ast::ExprKind::Lit(token_lit) => match token_lit {
                     token::Lit { kind: token::Integer | token::Float, .. } => {
-                        Ok(Self::TokenStream::from_iter([
+                        Ok(self.ts_rustc_to_pm(tokenstream::TokenStream::from_iter([
                             // FIXME: The span of the `-` token is lost when
                             // parsing, so we cannot faithfully recover it here.
                             tokenstream::TokenTree::token_joint_hidden(token::Minus, e.span),
                             tokenstream::TokenTree::token_alone(token::Literal(*token_lit), e.span),
-                        ]))
+                        ])))
                     }
                     _ => Err(()),
                 },
@@ -648,46 +658,6 @@ impl server::Server for Rustc<'_, '_> {
             },
             _ => Err(()),
         }
-    }
-
-    fn ts_from_token_tree(
-        &mut self,
-        tree: TokenTree<Self::TokenStream, Self::Span, Self::Symbol>,
-    ) -> Self::TokenStream {
-        Self::TokenStream::new((tree, &mut *self).to_internal().into_iter().collect::<Vec<_>>())
-    }
-
-    fn ts_concat_trees(
-        &mut self,
-        base: Option<Self::TokenStream>,
-        trees: Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol>>,
-    ) -> Self::TokenStream {
-        let mut stream = base.unwrap_or_default();
-        for tree in trees {
-            for tt in (tree, &mut *self).to_internal() {
-                stream.push_tree(tt);
-            }
-        }
-        stream
-    }
-
-    fn ts_concat_streams(
-        &mut self,
-        base: Option<Self::TokenStream>,
-        streams: Vec<Self::TokenStream>,
-    ) -> Self::TokenStream {
-        let mut stream = base.unwrap_or_default();
-        for s in streams {
-            stream.push_stream(s);
-        }
-        stream
-    }
-
-    fn ts_into_trees(
-        &mut self,
-        stream: Self::TokenStream,
-    ) -> Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol>> {
-        FromInternal::from_internal((stream, self))
     }
 
     fn span_debug(&mut self, span: Self::Span) -> String {

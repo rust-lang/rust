@@ -34,10 +34,6 @@ impl<T> OwnedStore<T> {
         assert!(self.data.insert(handle, x).is_none());
         handle
     }
-
-    pub(super) fn take(&mut self, h: Handle) -> T {
-        self.data.remove(&h).expect("use-after-free in `proc_macro` handle")
-    }
 }
 
 impl<T> Index<Handle> for OwnedStore<T> {
