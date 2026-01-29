@@ -442,7 +442,6 @@ macro_rules! common_visitor_and_walkers {
             FormatArgumentKind,
             FormatArguments,
             FormatPlaceholder,
-            GenericParamKind,
             Impl,
             ImplPolarity,
             Inline,
@@ -485,7 +484,6 @@ macro_rules! common_visitor_and_walkers {
             UnsafeSource,
             UseTreeKind,
             VisibilityKind,
-            WhereBoundPredicate,
             WhereClause,
             WhereEqPredicate,
             WhereRegionPredicate,
@@ -577,6 +575,7 @@ macro_rules! common_visitor_and_walkers {
                 fn visit_generic_arg(GenericArg);
                 fn visit_generic_args(GenericArgs);
                 fn visit_generic_param(GenericParam);
+                fn visit_generic_param_kind(GenericParamKind);
                 fn visit_generics(Generics);
                 fn visit_inline_asm(InlineAsm);
                 fn visit_inline_asm_sym(InlineAsmSym);
@@ -604,6 +603,7 @@ macro_rules! common_visitor_and_walkers {
                 fn visit_vis(Visibility);
                 fn visit_where_predicate_kind(WherePredicateKind);
                 fn visit_where_predicate(WherePredicate);
+                fn visit_where_bound_predicate(WhereBoundPredicate);
             );
 
             // We want `Visitor` to take the `NodeId` by value.
@@ -1097,6 +1097,7 @@ macro_rules! common_visitor_and_walkers {
             pub fn walk_generic_arg(GenericArg);
             pub fn walk_generic_args(GenericArgs);
             pub fn walk_generic_param(GenericParam);
+            pub fn walk_generic_param_kind(GenericParamKind);
             pub fn walk_generics(Generics);
             pub fn walk_inline_asm(InlineAsm);
             pub fn walk_inline_asm_sym(InlineAsmSym);
@@ -1124,6 +1125,7 @@ macro_rules! common_visitor_and_walkers {
             pub fn walk_vis(Visibility);
             pub fn walk_where_predicate_kind(WherePredicateKind);
             pub fn walk_where_predicate(WherePredicate);
+            pub fn walk_where_bound_predicate(WhereBoundPredicate);
         );
     };
 }

@@ -1,0 +1,74 @@
+error[E0428]: the name `A` is defined multiple times
+  --> $DIR/bad-bounds.rs:12:5
+   |
+LL |     enum A {}
+   |     ------ previous definition of the type `A` here
+LL |     struct A<A>;
+   |     ^^^^^^^^^^^^ `A` redefined here
+   |
+   = note: `A` must be defined only once in the type namespace of this block
+
+error[E0404]: expected trait, found type parameter `A`
+  --> $DIR/bad-bounds.rs:6:24
+   |
+LL |   fn produce() -> for<A: A<{
+   |  _____________________-__^
+   | |                     |
+   | |                     found this type parameter
+...  |
+LL | |     struct A<A>;
+LL | | }>> Trait {}
+   | |__^ not a trait
+
+error[E0405]: cannot find trait `Trait` in this scope
+  --> $DIR/bad-bounds.rs:13:5
+   |
+LL | }>> Trait {}
+   |     ^^^^^ not found in this scope
+
+error: bounds cannot be used in this context
+  --> $DIR/bad-bounds.rs:6:24
+   |
+LL |   fn produce() -> for<A: A<{
+   |  ________________________^
+...  |
+LL | |     struct A<A>;
+LL | | }>> Trait {}
+   | |__^
+
+error: late-bound type parameter not allowed on trait object types
+  --> $DIR/bad-bounds.rs:6:21
+   |
+LL | fn produce() -> for<A: A<{
+   |                     ^
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/bad-bounds.rs:6:17
+   |
+LL |   fn produce() -> for<A: A<{
+   |  _________________^
+...  |
+LL | |     struct A<A>;
+LL | | }>> Trait {}
+   | |_________^
+
+error[E0107]: missing generics for struct `produce::{constant#0}::A`
+  --> $DIR/bad-bounds.rs:10:14
+   |
+LL |     #[derive(Hash)]
+   |              ^^^^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `A`
+  --> $DIR/bad-bounds.rs:12:12
+   |
+LL |     struct A<A>;
+   |            ^ -
+help: add missing generic argument
+   |
+LL |     #[derive(Hash<A>)]
+   |                  +++
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0107, E0404, E0405, E0428, E0782.
+For more information about an error, try `rustc --explain E0107`.
