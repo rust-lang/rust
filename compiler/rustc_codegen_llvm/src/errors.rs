@@ -192,3 +192,22 @@ pub(crate) struct FixedX18InvalidArch<'a> {
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_sanitizer_kcfi_arity_requires_llvm_21_0_0)]
 pub(crate) struct SanitizerKcfiArityRequiresLLVM2100;
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_intrinsic_signature_mismatch)]
+pub(crate) struct IntrinsicSignatureMismatch<'a> {
+    pub name: &'a str,
+    pub llvm_fn_ty: &'a str,
+    pub rust_fn_ty: &'a str,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_intrinsic_wrong_arch)]
+pub(crate) struct IntrinsicWrongArch<'a> {
+    pub name: &'a str,
+    pub target_arch: &'a str,
+    #[primary_span]
+    pub span: Span,
+}

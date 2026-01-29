@@ -14,6 +14,12 @@ codegen_llvm_from_llvm_diag = {$message}
 
 codegen_llvm_from_llvm_optimization_diag = {$filename}:{$line}:{$column} {$pass_name} ({$kind}): {$message}
 
+codegen_llvm_intrinsic_signature_mismatch =
+    intrinsic signature mismatch for `{$name}`: expected signature `{$llvm_fn_ty}`, found `{$rust_fn_ty}`
+
+codegen_llvm_intrinsic_wrong_arch =
+    intrinsic `{$name}` cannot be used with target arch `{$target_arch}`
+
 codegen_llvm_load_bitcode = failed to load bitcode of module "{$name}"
 codegen_llvm_load_bitcode_with_llvm_err = failed to load bitcode of module "{$name}": {$llvm_err}
 

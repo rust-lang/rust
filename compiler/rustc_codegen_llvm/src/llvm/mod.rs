@@ -319,6 +319,14 @@ impl Intrinsic {
         NonZero::new(id).map(|id| Self { id })
     }
 
+    pub(crate) fn is_overloaded(self) -> bool {
+        unsafe { LLVMIntrinsicIsOverloaded(self.id).is_true() }
+    }
+
+    pub(crate) fn is_target_specific(self) -> bool {
+        unsafe { LLVMRustIsTargetIntrinsic(self.id) }
+    }
+
     pub(crate) fn get_declaration<'ll>(
         self,
         llmod: &'ll Module,

@@ -9,6 +9,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/BinaryFormat/Magic.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/IR/AutoUpgrade.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DiagnosticHandler.h"
@@ -1795,6 +1796,19 @@ extern "C" void LLVMRustSetNoSanitizeHWAddress(LLVMValueRef Global) {
     MD = GV.getSanitizerMetadata();
   MD.NoHWAddress = true;
   GV.setSanitizerMetadata(MD);
+}
+
+extern "C" bool LLVMRustUpgradeIntrinsicFunction(LLVMValueRef Fn,
+                                                 LLVMValueRef *NewFn) {
+  Function *F = unwrap<Function>(Fn);
+  Function *NewF = nullptr;
+  bool CanUpgrade = UpgradeIntrinsicFunction(F, NewF, false);
+  *NewFn = wrap(NewF);
+  return CanUpgrade;
+}
+
+extern "C" bool LLVMRustIsTargetIntrinsic(unsigned ID) {
+  return Intrinsic::isTargetIntrinsic(ID);
 }
 
 // Statically assert that the fixed metadata kind IDs declared in

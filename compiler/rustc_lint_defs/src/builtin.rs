@@ -35,6 +35,7 @@ declare_lint_pass! {
         DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
         DEPRECATED,
         DEPRECATED_IN_FUTURE,
+        DEPRECATED_LLVM_INTRINSIC,
         DEPRECATED_SAFE_2024,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
         DUPLICATE_MACRO_ATTRIBUTES,
@@ -120,6 +121,7 @@ declare_lint_pass! {
         UNKNOWN_CRATE_TYPES,
         UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
         UNKNOWN_LINTS,
+        UNKNOWN_LLVM_INTRINSIC,
         UNNAMEABLE_TEST_ITEMS,
         UNNAMEABLE_TYPES,
         UNREACHABLE_CODE,
@@ -5406,4 +5408,80 @@ declare_lint! {
         reason: fcw!(FutureReleaseError #145544),
         report_in_deps: false,
     };
+}
+
+declare_lint! {
+    /// The `unknown_llvm_intrinsic` lint detects usage of unknown LLVM intrinsics.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(link_llvm_intrinsics, abi_unadjusted)]
+    ///
+    /// unsafe extern "unadjusted" {
+    ///     #[link_name = "llvm.abcde"]
+    ///     fn foo();
+    /// }
+    ///
+    /// #[inline(never)]
+    /// pub fn main() {
+    ///     unsafe { foo() }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Linking to an unknown LLVM intrinsic may cause linker errors (in general it's UB),
+    /// so this lint captures those undesirable scenarios.
+    pub UNKNOWN_LLVM_INTRINSIC,
+    Deny,
+    "detects uses of unknown LLVM intrinsics",
+    @feature_gate = link_llvm_intrinsics;
+}
+
+declare_lint! {
+    /// The `deprecated_llvm_intrinsic` lint detects usage of deprecated LLVM intrinsics.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (requires x86)
+    /// #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    /// #![feature(link_llvm_intrinsics, abi_unadjusted)]
+    /// #![deny(deprecated_llvm_intrinsic)]
+    ///
+    /// unsafe extern "unadjusted" {
+    ///     #[link_name = "llvm.x86.addcarryx.u32"]
+    ///     fn foo(a: u8, b: u32, c: u32, d: &mut u32) -> u8;
+    /// }
+    ///
+    /// #[inline(never)]
+    /// #[target_feature(enable = "adx")]
+    /// pub fn bar(a: u8, b: u32, c: u32, d: &mut u32) -> u8 {
+    ///     unsafe { foo(a, b, c, d) }
+    /// }
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// error: Using deprecated intrinsic `llvm.x86.addcarryx.u32`
+    ///  --> example.rs:7:5
+    ///   |
+    /// 7 |     fn foo(a: u8, b: u32, c: u32, d: &mut u32) -> u8;
+    ///   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///   |
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// LLVM periodically updates its list of intrinsics. Removed intrinsics are unlikely
+    /// to be removed, but they may optimize less well than their new versions, so it's
+    /// best to use the new version. Also, some deprecated intrinsics might have buggy
+    /// behavior
+    pub DEPRECATED_LLVM_INTRINSIC,
+    Allow,
+    "detects uses of deprecated LLVM intrinsics",
+    @feature_gate = link_llvm_intrinsics;
 }
