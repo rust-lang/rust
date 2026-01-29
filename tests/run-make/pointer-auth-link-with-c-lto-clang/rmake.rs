@@ -32,6 +32,7 @@ fn main() {
         .opt_level("2")
         .linker(&env_var("CLANG"))
         .link_arg("-fuse-ld=lld")
+        .arg("-Cunsafe-allow-abi-mismatch=branch-protection")
         .arg("-Zbranch-protection=bti,gcs,pac-ret,leaf")
         .input("test.rs")
         .output("test.bin")
