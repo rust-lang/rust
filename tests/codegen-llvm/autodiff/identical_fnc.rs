@@ -27,14 +27,14 @@ fn square2(x: &f64) -> f64 {
 
 // CHECK:; identical_fnc::main
 // CHECK-NEXT:; Function Attrs:
-// CHECK-NEXT:define internal void @_ZN13identical_fnc4main17h6009e4f751bf9407E()
+// CHECK-NEXT:define internal void @{{[^ (]+identical_fnc4main[^ (]*}}()
 // CHECK-NEXT:start:
 // CHECK-NOT:br
 // CHECK-NOT:ret
 // CHECK:; call identical_fnc::d_square
-// CHECK-NEXT:call fastcc void @_ZN13identical_fnc8d_square[[HASH:.+]](double %x.val, ptr noalias noundef align 8 dereferenceable(8) %dx1)
+// CHECK-NEXT:{{(tail )?}}call fastcc void @[[DSQUARE:[^ (]+identical_fnc8d_square[^ (]*]](double %x.val, ptr noalias noundef align 8 dereferenceable(8) %dx1)
 // CHECK:; call identical_fnc::d_square
-// CHECK-NEXT:call fastcc void @_ZN13identical_fnc8d_square[[HASH]](double %x.val, ptr noalias noundef align 8 dereferenceable(8) %dx2)
+// CHECK-NEXT:{{(tail )?}}call fastcc void @[[DSQUARE]](double %x.val, ptr noalias noundef align 8 dereferenceable(8) %dx2)
 
 fn main() {
     let x = std::hint::black_box(3.0);
