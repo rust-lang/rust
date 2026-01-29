@@ -70,6 +70,7 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         | SymbolKind::Attribute
         | SymbolKind::Derive
         | SymbolKind::DeriveHelper => lsp_types::SymbolKind::FUNCTION,
+        SymbolKind::CrateRoot => lsp_types::SymbolKind::PACKAGE,
         SymbolKind::Module | SymbolKind::ToolModule => lsp_types::SymbolKind::MODULE,
         SymbolKind::TypeAlias | SymbolKind::TypeParam | SymbolKind::SelfType => {
             lsp_types::SymbolKind::TYPE_PARAMETER
@@ -141,6 +142,7 @@ pub(crate) fn completion_item_kind(
             SymbolKind::Method => lsp_types::CompletionItemKind::METHOD,
             SymbolKind::Const => lsp_types::CompletionItemKind::CONSTANT,
             SymbolKind::ConstParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
+            SymbolKind::CrateRoot => lsp_types::CompletionItemKind::MODULE,
             SymbolKind::Derive => lsp_types::CompletionItemKind::FUNCTION,
             SymbolKind::DeriveHelper => lsp_types::CompletionItemKind::FUNCTION,
             SymbolKind::Enum => lsp_types::CompletionItemKind::ENUM,
@@ -803,11 +805,16 @@ fn semantic_token_type_and_modifiers(
 ) -> (lsp_types::SemanticTokenType, semantic_tokens::ModifierSet) {
     use semantic_tokens::{modifiers as mods, types};
 
+    let mut mods = semantic_tokens::ModifierSet::default();
     let ty = match highlight.tag {
         HlTag::Symbol(symbol) => match symbol {
             SymbolKind::Attribute => types::DECORATOR,
             SymbolKind::Derive => types::DERIVE,
             SymbolKind::DeriveHelper => types::DERIVE_HELPER,
+            SymbolKind::CrateRoot => {
+                mods |= mods::CRATE_ROOT;
+                types::NAMESPACE
+            }
             SymbolKind::Module => types::NAMESPACE,
             SymbolKind::Impl => types::TYPE_ALIAS,
             SymbolKind::Field => types::PROPERTY,
@@ -870,7 +877,6 @@ fn semantic_token_type_and_modifiers(
         },
     };
 
-    let mut mods = semantic_tokens::ModifierSet::default();
     for modifier in highlight.mods.iter() {
         let modifier = match modifier {
             HlMod::Associated => mods::ASSOCIATED,

@@ -1,3 +1,5 @@
+#![expect(unused, reason = "diagnostics is temporarily disabled due to too many false positives")]
+
 use hir::Name;
 use ide_db::text_edit::TextEdit;
 use ide_db::{
@@ -40,25 +42,26 @@ pub(crate) fn unused_variables(
         .and_then(syntax::ast::RecordPatField::cast)
         .is_some_and(|field| field.colon_token().is_none());
     let var_name = d.local.name(ctx.sema.db);
-    Some(
-        Diagnostic::new_with_syntax_node_ptr(
-            ctx,
-            DiagnosticCode::RustcLint("unused_variables"),
-            "unused variable",
-            ast,
-        )
-        .with_fixes(name_range.and_then(|it| {
-            fixes(
-                ctx.sema.db,
-                var_name,
-                it.range,
-                diagnostic_range,
-                ast.file_id.is_macro(),
-                is_shorthand_field,
-                ctx.edition,
-            )
-        })),
-    )
+    // Some(
+    //     Diagnostic::new_with_syntax_node_ptr(
+    //         ctx,
+    //         DiagnosticCode::RustcLint("unused_variables"),
+    //         "unused variable",
+    //         ast,
+    //     )
+    //     .with_fixes(name_range.and_then(|it| {
+    //         fixes(
+    //             ctx.sema.db,
+    //             var_name,
+    //             it.range,
+    //             diagnostic_range,
+    //             ast.file_id.is_macro(),
+    //             is_shorthand_field,
+    //             ctx.edition,
+    //         )
+    //     })),
+    // )
+    None
 }
 
 fn fixes(
@@ -91,6 +94,7 @@ fn fixes(
 }
 
 #[cfg(test)]
+#[cfg(false)] // Diagnostic temporarily disabled
 mod tests {
     use crate::tests::{check_diagnostics, check_fix};
 

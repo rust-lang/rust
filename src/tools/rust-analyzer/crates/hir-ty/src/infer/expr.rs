@@ -8,7 +8,7 @@ use hir_def::{
     expr_store::path::{GenericArgs as HirGenericArgs, Path},
     hir::{
         Array, AsmOperand, AsmOptions, BinaryOp, BindingAnnotation, Expr, ExprId, ExprOrPatId,
-        LabelId, Literal, Pat, PatId, Statement, UnaryOp,
+        InlineAsmKind, LabelId, Literal, Pat, PatId, RecordSpread, Statement, UnaryOp,
     },
     resolver::ValueNs,
 };
@@ -657,8 +657,8 @@ impl<'db> InferenceContext<'_, 'db> {
                         }
                     }
                 }
-                if let Some(expr) = spread {
-                    self.infer_expr(*expr, &Expectation::has_type(ty), ExprIsRead::Yes);
+                if let RecordSpread::Expr(expr) = *spread {
+                    self.infer_expr(expr, &Expectation::has_type(ty), ExprIsRead::Yes);
                 }
                 ty
             }
@@ -1037,7 +1037,11 @@ impl<'db> InferenceContext<'_, 'db> {
                     // FIXME: `sym` should report for things that are not functions or statics.
                     AsmOperand::Sym(_) => (),
                 });
-                if diverge { self.types.types.never } else { self.types.types.unit }
+                if diverge || asm.kind == InlineAsmKind::NakedAsm {
+                    self.types.types.never
+                } else {
+                    self.types.types.unit
+                }
             }
         };
         // use a new type variable if we got unknown here
@@ -1704,7 +1708,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 });
                 match resolved {
                     Ok((func, _is_visible)) => {
-                        self.check_method_call(tgt_expr, &[], func.sig, receiver_ty, expected)
+                        self.check_method_call(tgt_expr, &[], func.sig, expected)
                     }
                     Err(_) => self.err_ty(),
                 }
@@ -1844,7 +1848,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         item: func.def_id.into(),
                     })
                 }
-                self.check_method_call(tgt_expr, args, func.sig, receiver_ty, expected)
+                self.check_method_call(tgt_expr, args, func.sig, expected)
             }
             // Failed to resolve, report diagnostic and try to resolve as call to field access or
             // assoc function
@@ -1934,16 +1938,14 @@ impl<'db> InferenceContext<'_, 'db> {
         tgt_expr: ExprId,
         args: &[ExprId],
         sig: FnSig<'db>,
-        receiver_ty: Ty<'db>,
         expected: &Expectation<'db>,
     ) -> Ty<'db> {
-        let (formal_receiver_ty, param_tys) = if !sig.inputs_and_output.inputs().is_empty() {
-            (sig.inputs_and_output.as_slice()[0], &sig.inputs_and_output.inputs()[1..])
+        let param_tys = if !sig.inputs_and_output.inputs().is_empty() {
+            &sig.inputs_and_output.inputs()[1..]
         } else {
-            (self.types.types.error, &[] as _)
+            &[]
         };
         let ret_ty = sig.output();
-        self.table.unify(formal_receiver_ty, receiver_ty);
 
         self.check_call_arguments(tgt_expr, param_tys, ret_ty, expected, args, &[], sig.c_variadic);
         ret_ty

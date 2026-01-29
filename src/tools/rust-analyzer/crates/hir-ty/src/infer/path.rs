@@ -93,6 +93,7 @@ impl<'db> InferenceContext<'_, 'db> {
         if let GenericDefId::StaticId(_) = generic_def {
             // `Static` is the kind of item that can never be generic currently. We can just skip the binders to get its type.
             let ty = self.db.value_ty(value_def)?.skip_binder();
+            let ty = self.process_remote_user_written_ty(ty);
             return Some(ValuePathResolution::NonGeneric(ty));
         };
 

@@ -532,4 +532,5 @@ define_symbols! {
     CoerceUnsized,
     DispatchFromDyn,
     define_opaque,
+    marker,
 }

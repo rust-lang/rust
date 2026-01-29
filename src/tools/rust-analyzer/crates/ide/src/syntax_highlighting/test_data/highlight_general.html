@@ -72,7 +72,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="brace">}</span>
 <span class="brace">}</span>
 
-<span class="keyword">use</span> <span class="self_keyword crate_root public">self</span><span class="operator">::</span><span class="struct">FooCopy</span><span class="operator">::</span><span class="brace">{</span><span class="self_keyword">self</span> <span class="keyword">as</span> <span class="struct declaration">BarCopy</span><span class="brace">}</span><span class="semicolon">;</span>
+<span class="keyword">use</span> <span class="self_keyword public">self</span><span class="operator">::</span><span class="struct">FooCopy</span><span class="operator">::</span><span class="brace">{</span><span class="self_keyword">self</span> <span class="keyword">as</span> <span class="struct declaration">BarCopy</span><span class="brace">}</span><span class="semicolon">;</span>
 
 <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="attribute attribute default_library library">derive</span><span class="parenthesis attribute">(</span><span class="derive attribute default_library library macro">Copy</span><span class="parenthesis attribute">)</span><span class="attribute_bracket attribute">]</span>
 <span class="keyword">struct</span> <span class="struct declaration">FooCopy</span> <span class="brace">{</span>
@@ -110,7 +110,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="const_param const">FOO</span>
 <span class="brace">}</span>
 
-<span class="keyword">use</span> <span class="module crate_root default_library library">core</span><span class="operator">::</span><span class="module default_library library">ops</span><span class="operator">::</span><span class="trait default_library library">Fn</span><span class="semicolon">;</span>
+<span class="keyword">use</span> <span class="crate_root default_library library">core</span><span class="operator">::</span><span class="module default_library library">ops</span><span class="operator">::</span><span class="trait default_library library">Fn</span><span class="semicolon">;</span>
 <span class="keyword">fn</span> <span class="function declaration">baz</span><span class="angle">&lt;</span><span class="type_param declaration">F</span><span class="colon">:</span> <span class="trait default_library library">Fn</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="value_param callable declaration">f</span><span class="colon">:</span> <span class="type_param">F</span><span class="parenthesis">)</span> <span class="brace">{</span>
     <span class="value_param callable">f</span><span class="parenthesis">(</span><span class="parenthesis">)</span>
 <span class="brace">}</span>
@@ -184,15 +184,15 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 
 <span class="keyword">fn</span> <span class="function declaration">use_foo_items</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
-    <span class="keyword">let</span> <span class="variable declaration">bob</span> <span class="operator">=</span> <span class="module crate_root library">foo</span><span class="operator">::</span><span class="struct library">Person</span> <span class="brace">{</span>
+    <span class="keyword">let</span> <span class="variable declaration">bob</span> <span class="operator">=</span> <span class="crate_root library">foo</span><span class="operator">::</span><span class="struct library">Person</span> <span class="brace">{</span>
         <span class="field library">name</span><span class="colon">:</span> <span class="string_literal">"Bob"</span><span class="comma">,</span>
-        <span class="field library">age</span><span class="colon">:</span> <span class="module crate_root library">foo</span><span class="operator">::</span><span class="module library">consts</span><span class="operator">::</span><span class="constant const library">NUMBER</span><span class="comma">,</span>
+        <span class="field library">age</span><span class="colon">:</span> <span class="crate_root library">foo</span><span class="operator">::</span><span class="module library">consts</span><span class="operator">::</span><span class="constant const library">NUMBER</span><span class="comma">,</span>
     <span class="brace">}</span><span class="semicolon">;</span>
 
-    <span class="keyword">let</span> <span class="variable declaration">control_flow</span> <span class="operator">=</span> <span class="module crate_root library">foo</span><span class="operator">::</span><span class="function library">identity</span><span class="parenthesis">(</span><span class="module crate_root library">foo</span><span class="operator">::</span><span class="enum library">ControlFlow</span><span class="operator">::</span><span class="enum_variant library">Continue</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration">control_flow</span> <span class="operator">=</span> <span class="crate_root library">foo</span><span class="operator">::</span><span class="function library">identity</span><span class="parenthesis">(</span><span class="crate_root library">foo</span><span class="operator">::</span><span class="enum library">ControlFlow</span><span class="operator">::</span><span class="enum_variant library">Continue</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 
     <span class="keyword control">if</span> <span class="variable">control_flow</span><span class="operator">.</span><span class="method consuming library">should_die</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
-        <span class="module crate_root library">foo</span><span class="operator">::</span><span class="unresolved_reference">die</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+        <span class="crate_root library">foo</span><span class="operator">::</span><span class="unresolved_reference">die</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
 

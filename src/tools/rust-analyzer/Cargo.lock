@@ -178,9 +178,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "camino"
-version = "1.2.0"
+version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1de8bc0aa9e9385ceb3bf0c152e3a9b9544f6c4a912c8ae504e80c1f0368603"
+checksum = "e629a66d692cb9ff1a1c664e41771b3dcaf961985a9774c0eb0bd1b51cf60a48"
 dependencies = [
  "serde_core",
 ]
@@ -1864,6 +1864,7 @@ dependencies = [
  "intern",
  "libc",
  "libloading",
+ "line-index 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "memmap2",
  "object",
  "paths",
@@ -1878,9 +1879,15 @@ name = "proc-macro-srv-cli"
 version = "0.0.0"
 dependencies = [
  "clap",
+ "expect-test",
+ "intern",
+ "paths",
  "postcard",
  "proc-macro-api",
  "proc-macro-srv",
+ "proc-macro-test",
+ "span",
+ "tt",
 ]
 
 [[package]]
@@ -2628,7 +2635,7 @@ dependencies = [
 
 [[package]]
 name = "smol_str"
-version = "0.3.4"
+version = "0.3.5"
 dependencies = [
  "arbitrary",
  "borsh",

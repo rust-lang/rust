@@ -7,8 +7,8 @@ use intern::{Symbol, sym};
 use stdx::impl_from;
 
 use crate::{
-    AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId, ModuleDefId,
-    StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId, MacroId,
+    ModuleDefId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
     attrs::AttrFlags,
     db::DefDatabase,
     nameres::{DefMap, assoc::TraitItems, crate_def_map, crate_local_def_map},
@@ -99,7 +99,7 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
     }
 
     if matches!(krate.data(db).origin, base_db::CrateOrigin::Lang(base_db::LangCrateOrigin::Core)) {
-        lang_items.fill_non_lang_core_traits(db, crate_def_map);
+        lang_items.fill_non_lang_core_items(db, crate_def_map);
     }
 
     if lang_items.is_empty() { None } else { Some(Box::new(lang_items)) }
@@ -169,6 +169,27 @@ fn resolve_core_trait(
     Some(trait_)
 }
 
+fn resolve_core_macro(
+    db: &dyn DefDatabase,
+    core_def_map: &DefMap,
+    modules: &[Symbol],
+    name: Symbol,
+) -> Option<MacroId> {
+    let mut current = &core_def_map[core_def_map.root];
+    for module in modules {
+        let Some((ModuleDefId::ModuleId(cur), _)) =
+            current.scope.type_(&Name::new_symbol_root(module.clone()))
+        else {
+            return None;
+        };
+        if cur.krate(db) != core_def_map.krate() || cur.block(db) != core_def_map.block_id() {
+            return None;
+        }
+        current = &core_def_map[cur];
+    }
+    current.scope.makro(&Name::new_symbol_root(name))
+}
+
 #[salsa::tracked(returns(as_deref))]
 pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option<Box<[TraitId]>> {
     let mut traits = Vec::new();
@@ -195,7 +216,11 @@ macro_rules! language_item_table {
 
         @non_lang_core_traits:
 
-        $( core::$($non_lang_module:ident)::*, $non_lang_trait:ident; )*
+        $( core::$($non_lang_trait_module:ident)::*, $non_lang_trait:ident; )*
+
+        @non_lang_core_macros:
+
+        $( core::$($non_lang_macro_module:ident)::*, $non_lang_macro:ident, $non_lang_macro_field:ident; )*
     ) => {
         #[allow(non_snake_case)] // FIXME: Should we remove this?
         #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
@@ -206,6 +231,9 @@ macro_rules! language_item_table {
             )*
             $(
                 pub $non_lang_trait: Option<TraitId>,
+            )*
+            $(
+                pub $non_lang_macro_field: Option<MacroId>,
             )*
         }
 
@@ -218,6 +246,7 @@ macro_rules! language_item_table {
             fn merge_prefer_self(&mut self, other: &Self) {
                 $( self.$lang_item = self.$lang_item.or(other.$lang_item); )*
                 $( self.$non_lang_trait = self.$non_lang_trait.or(other.$non_lang_trait); )*
+                $( self.$non_lang_macro_field = self.$non_lang_macro_field.or(other.$non_lang_macro_field); )*
             }
 
             fn assign_lang_item(&mut self, name: Symbol, target: LangItemTarget) {
@@ -233,8 +262,9 @@ macro_rules! language_item_table {
                 }
             }
 
-            fn fill_non_lang_core_traits(&mut self, db: &dyn DefDatabase, core_def_map: &DefMap) {
-                $( self.$non_lang_trait = resolve_core_trait(db, core_def_map, &[ $(sym::$non_lang_module),* ], sym::$non_lang_trait); )*
+            fn fill_non_lang_core_items(&mut self, db: &dyn DefDatabase, core_def_map: &DefMap) {
+                $( self.$non_lang_trait = resolve_core_trait(db, core_def_map, &[ $(sym::$non_lang_trait_module),* ], sym::$non_lang_trait); )*
+                $( self.$non_lang_macro_field = resolve_core_macro(db, core_def_map, &[ $(sym::$non_lang_macro_module),* ], sym::$non_lang_macro); )*
             }
         }
 
@@ -479,4 +509,16 @@ language_item_table! { LangItems =>
     core::hash, Hash;
     core::cmp, Ord;
     core::cmp, Eq;
+
+    @non_lang_core_macros:
+    core::default, Default, DefaultDerive;
+    core::fmt, Debug, DebugDerive;
+    core::hash, Hash, HashDerive;
+    core::cmp, PartialOrd, PartialOrdDerive;
+    core::cmp, Ord, OrdDerive;
+    core::cmp, PartialEq, PartialEqDerive;
+    core::cmp, Eq, EqDerive;
+    core::marker, CoercePointee, CoercePointeeDerive;
+    core::marker, Copy, CopyDerive;
+    core::clone, Clone, CloneDerive;
 }

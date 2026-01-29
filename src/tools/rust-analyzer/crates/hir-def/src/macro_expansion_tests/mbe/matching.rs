@@ -237,3 +237,23 @@ fn test() {
 "#]],
     );
 }
+
+#[test]
+fn meta_fat_arrow() {
+    check(
+        r#"
+macro_rules! m {
+    ( $m:meta => ) => {};
+}
+
+m! { foo => }
+    "#,
+        expect![[r#"
+macro_rules! m {
+    ( $m:meta => ) => {};
+}
+
+
+    "#]],
+    );
+}

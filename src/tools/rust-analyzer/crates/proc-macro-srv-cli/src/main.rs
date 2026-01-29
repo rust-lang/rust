@@ -9,11 +9,11 @@ extern crate rustc_driver as _;
 
 mod version;
 
-#[cfg(feature = "sysroot-abi")]
-mod main_loop;
 use clap::{Command, ValueEnum};
+use proc_macro_api::ProtocolFormat;
+
 #[cfg(feature = "sysroot-abi")]
-use main_loop::run;
+use proc_macro_srv_cli::main_loop::run;
 
 fn main() -> std::io::Result<()> {
     let v = std::env::var("RUST_ANALYZER_INTERNALS_DO_NOT_USE");
@@ -32,7 +32,7 @@ fn main() -> std::io::Result<()> {
                 .long("format")
                 .action(clap::ArgAction::Set)
                 .default_value("json-legacy")
-                .value_parser(clap::builder::EnumValueParser::<ProtocolFormat>::new()),
+                .value_parser(clap::builder::EnumValueParser::<ProtocolFormatArg>::new()),
             clap::Arg::new("version")
                 .long("version")
                 .action(clap::ArgAction::SetTrue)
@@ -43,44 +43,48 @@ fn main() -> std::io::Result<()> {
         println!("rust-analyzer-proc-macro-srv {}", version::version());
         return Ok(());
     }
-    let &format =
-        matches.get_one::<ProtocolFormat>("format").expect("format value should always be present");
-    run(format)
+    let &format = matches
+        .get_one::<ProtocolFormatArg>("format")
+        .expect("format value should always be present");
+
+    let mut stdin = std::io::BufReader::new(std::io::stdin());
+    let mut stdout = std::io::stdout();
+
+    run(&mut stdin, &mut stdout, format.into())
 }
 
+/// Wrapper for CLI argument parsing that implements `ValueEnum`.
 #[derive(Copy, Clone)]
-enum ProtocolFormat {
-    JsonLegacy,
-    PostcardLegacy,
-    BidirectionalPostcardPrototype,
+struct ProtocolFormatArg(ProtocolFormat);
+
+impl From<ProtocolFormatArg> for ProtocolFormat {
+    fn from(arg: ProtocolFormatArg) -> Self {
+        arg.0
+    }
 }
 
-impl ValueEnum for ProtocolFormat {
+impl ValueEnum for ProtocolFormatArg {
     fn value_variants<'a>() -> &'a [Self] {
         &[
-            ProtocolFormat::JsonLegacy,
-            ProtocolFormat::PostcardLegacy,
-            ProtocolFormat::BidirectionalPostcardPrototype,
+            ProtocolFormatArg(ProtocolFormat::JsonLegacy),
+            ProtocolFormatArg(ProtocolFormat::BidirectionalPostcardPrototype),
         ]
     }
 
     fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
-        match self {
+        match self.0 {
             ProtocolFormat::JsonLegacy => Some(clap::builder::PossibleValue::new("json-legacy")),
-            ProtocolFormat::PostcardLegacy => {
-                Some(clap::builder::PossibleValue::new("postcard-legacy"))
-            }
             ProtocolFormat::BidirectionalPostcardPrototype => {
                 Some(clap::builder::PossibleValue::new("bidirectional-postcard-prototype"))
             }
         }
     }
+
     fn from_str(input: &str, _ignore_case: bool) -> Result<Self, String> {
         match input {
-            "json-legacy" => Ok(ProtocolFormat::JsonLegacy),
-            "postcard-legacy" => Ok(ProtocolFormat::PostcardLegacy),
+            "json-legacy" => Ok(ProtocolFormatArg(ProtocolFormat::JsonLegacy)),
             "bidirectional-postcard-prototype" => {
-                Ok(ProtocolFormat::BidirectionalPostcardPrototype)
+                Ok(ProtocolFormatArg(ProtocolFormat::BidirectionalPostcardPrototype))
             }
             _ => Err(format!("unknown protocol format: {input}")),
         }
@@ -88,7 +92,11 @@ impl ValueEnum for ProtocolFormat {
 }
 
 #[cfg(not(feature = "sysroot-abi"))]
-fn run(_: ProtocolFormat) -> std::io::Result<()> {
+fn run(
+    _: &mut std::io::BufReader<std::io::Stdin>,
+    _: &mut std::io::Stdout,
+    _: ProtocolFormat,
+) -> std::io::Result<()> {
     Err(std::io::Error::new(
         std::io::ErrorKind::Unsupported,
         "proc-macro-srv-cli needs to be compiled with the `sysroot-abi` feature to function"

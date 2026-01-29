@@ -309,10 +309,10 @@ impl GlobalState {
 
         let event_dbg_msg = format!("{event:?}");
         tracing::debug!(?loop_start, ?event, "handle_event");
-        if tracing::enabled!(tracing::Level::INFO) {
+        if tracing::enabled!(tracing::Level::TRACE) {
             let task_queue_len = self.task_pool.handle.len();
             if task_queue_len > 0 {
-                tracing::info!("task queue len: {}", task_queue_len);
+                tracing::trace!("task queue len: {}", task_queue_len);
             }
         }
 
@@ -825,33 +825,29 @@ impl GlobalState {
             }
             Task::DiscoverLinkedProjects(arg) => {
                 if let Some(cfg) = self.config.discover_workspace_config() {
-                    // the clone is unfortunately necessary to avoid a borrowck error when
-                    // `self.report_progress` is called later
-                    let title = &cfg.progress_label.clone();
                     let command = cfg.command.clone();
                     let discover = DiscoverCommand::new(self.discover_sender.clone(), command);
-
-                    if self.discover_jobs_active == 0 {
-                        self.report_progress(title, Progress::Begin, None, None, None);
-                    }
-                    self.discover_jobs_active += 1;
 
                     let arg = match arg {
                         DiscoverProjectParam::Buildfile(it) => DiscoverArgument::Buildfile(it),
                         DiscoverProjectParam::Path(it) => DiscoverArgument::Path(it),
                     };
 
-                    let handle = discover
-                        .spawn(
-                            arg,
-                            &std::env::current_dir()
-                                .expect("Failed to get cwd during project discovery"),
-                        )
-                        .unwrap_or_else(|e| {
-                            panic!("Failed to spawn project discovery command: {e}")
-                        });
-
-                    self.discover_handles.push(handle);
+                    match discover.spawn(arg, self.config.root_path().as_ref()) {
+                        Ok(handle) => {
+                            if self.discover_jobs_active == 0 {
+                                let title = &cfg.progress_label.clone();
+                                self.report_progress(title, Progress::Begin, None, None, None);
+                            }
+                            self.discover_jobs_active += 1;
+                            self.discover_handles.push(handle)
+                        }
+                        Err(e) => self.show_message(
+                            lsp_types::MessageType::ERROR,
+                            format!("Failed to spawn project discovery command: {e:#}"),
+                            false,
+                        ),
+                    }
                 }
             }
             Task::FetchBuildData(progress) => {
@@ -1179,8 +1175,24 @@ impl GlobalState {
                 kind: ClearDiagnosticsKind::OlderThan(generation, ClearScope::Package(package_id)),
             } => self.diagnostics.clear_check_older_than_for_package(id, package_id, generation),
             FlycheckMessage::Progress { id, progress } => {
+                let format_with_id = |user_facing_command: String| {
+                    if self.flycheck.len() == 1 {
+                        user_facing_command
+                    } else {
+                        format!("{user_facing_command} (#{})", id + 1)
+                    }
+                };
+
+                self.flycheck_formatted_commands
+                    .resize_with(self.flycheck.len().max(id + 1), || {
+                        format_with_id(self.config.flycheck(None).to_string())
+                    });
+
                 let (state, message) = match progress {
-                    flycheck::Progress::DidStart => (Progress::Begin, None),
+                    flycheck::Progress::DidStart { user_facing_command } => {
+                        self.flycheck_formatted_commands[id] = format_with_id(user_facing_command);
+                        (Progress::Begin, None)
+                    }
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
                     flycheck::Progress::DidCancel => {
                         self.last_flycheck_error = None;
@@ -1200,13 +1212,8 @@ impl GlobalState {
                     }
                 };
 
-                // When we're running multiple flychecks, we have to include a disambiguator in
-                // the title, or the editor complains. Note that this is a user-facing string.
-                let title = if self.flycheck.len() == 1 {
-                    format!("{}", self.config.flycheck(None))
-                } else {
-                    format!("{} (#{})", self.config.flycheck(None), id + 1)
-                };
+                // Clone because we &mut self for report_progress
+                let title = self.flycheck_formatted_commands[id].clone();
                 self.report_progress(
                     &title,
                     state,

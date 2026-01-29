@@ -32,7 +32,7 @@ use crate::{
     expr_store::path::Path,
     hir::{
         Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, Label, LabelId, Pat,
-        PatId, RecordFieldPat, Statement,
+        PatId, RecordFieldPat, RecordSpread, Statement,
     },
     nameres::{DefMap, block_def_map},
     type_ref::{LifetimeRef, LifetimeRefId, PathId, TypeRef, TypeRefId},
@@ -575,8 +575,8 @@ impl ExpressionStore {
                 for field in fields.iter() {
                     f(field.expr);
                 }
-                if let &Some(expr) = spread {
-                    f(expr);
+                if let RecordSpread::Expr(expr) = spread {
+                    f(*expr);
                 }
             }
             Expr::Closure { body, .. } => {
@@ -706,8 +706,8 @@ impl ExpressionStore {
                 for field in fields.iter() {
                     f(field.expr);
                 }
-                if let &Some(expr) = spread {
-                    f(expr);
+                if let RecordSpread::Expr(expr) = spread {
+                    f(*expr);
                 }
             }
             Expr::Closure { body, .. } => {

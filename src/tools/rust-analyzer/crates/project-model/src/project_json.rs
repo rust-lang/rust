@@ -78,6 +78,13 @@ pub struct ProjectJson {
     runnables: Vec<Runnable>,
 }
 
+impl std::ops::Index<CrateArrayIdx> for ProjectJson {
+    type Output = Crate;
+    fn index(&self, index: CrateArrayIdx) -> &Self::Output {
+        &self.crates[index.0]
+    }
+}
+
 impl ProjectJson {
     /// Create a new ProjectJson instance.
     ///
@@ -195,12 +202,11 @@ impl ProjectJson {
         &self.project_root
     }
 
-    pub fn crate_by_root(&self, root: &AbsPath) -> Option<Crate> {
+    pub fn crate_by_root(&self, root: &AbsPath) -> Option<&Crate> {
         self.crates
             .iter()
             .filter(|krate| krate.is_workspace_member)
             .find(|krate| krate.root_module == root)
-            .cloned()
     }
 
     /// Returns the path to the project's manifest, if it exists.
@@ -214,8 +220,17 @@ impl ProjectJson {
         self.crates
             .iter()
             .filter(|krate| krate.is_workspace_member)
-            .filter_map(|krate| krate.build.clone())
+            .filter_map(|krate| krate.build.as_ref())
             .find(|build| build.build_file.as_std_path() == path)
+            .cloned()
+    }
+
+    pub fn crate_by_label(&self, label: &str) -> Option<&Crate> {
+        // this is fast enough for now, but it's unfortunate that this is O(crates).
+        self.crates
+            .iter()
+            .filter(|krate| krate.is_workspace_member)
+            .find(|krate| krate.build.as_ref().is_some_and(|build| build.label == label))
     }
 
     /// Returns the path to the project's manifest or root folder, if no manifest exists.
@@ -230,6 +245,10 @@ impl ProjectJson {
 
     pub fn runnables(&self) -> &[Runnable] {
         &self.runnables
+    }
+
+    pub fn runnable_template(&self, kind: RunnableKind) -> Option<&Runnable> {
+        self.runnables().iter().find(|r| r.kind == kind)
     }
 }
 
@@ -256,6 +275,12 @@ pub struct Crate {
     pub(crate) proc_macro_cwd: Option<AbsPathBuf>,
     pub(crate) repository: Option<String>,
     pub build: Option<Build>,
+}
+
+impl Crate {
+    pub fn iter_deps(&self) -> impl ExactSizeIterator<Item = CrateArrayIdx> {
+        self.deps.iter().map(|dep| dep.krate)
+    }
 }
 
 /// Additional, build-specific data about a crate.
@@ -328,13 +353,21 @@ pub struct Runnable {
 /// The kind of runnable.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RunnableKind {
+    /// `cargo check`, basically, with human-readable output.
     Check,
 
     /// Can run a binary.
+    /// May include {label} which will get the label from the `build` section of a crate.
     Run,
 
     /// Run a single test.
+    /// May include {label} which will get the label from the `build` section of a crate.
+    /// May include {test_id} which will get the test clicked on by the user.
     TestOne,
+
+    /// Template for checking a target, emitting rustc JSON diagnostics.
+    /// May include {label} which will get the label from the `build` section of a crate.
+    Flycheck,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -441,6 +474,7 @@ pub struct RunnableData {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RunnableKindData {
+    Flycheck,
     Check,
     Run,
     TestOne,
@@ -511,6 +545,7 @@ impl From<RunnableKindData> for RunnableKind {
             RunnableKindData::Check => RunnableKind::Check,
             RunnableKindData::Run => RunnableKind::Run,
             RunnableKindData::TestOne => RunnableKind::TestOne,
+            RunnableKindData::Flycheck => RunnableKind::Flycheck,
         }
     }
 }
