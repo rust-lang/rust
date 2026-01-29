@@ -3353,6 +3353,15 @@ impl fmt::Write for String {
         self.push(c);
         Ok(())
     }
+
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> fmt::Result {
+        if let Some(s) = args.as_statically_known_str() {
+            self.write_str(s)
+        } else {
+            self.reserve(args.estimated_capacity());
+            fmt::write(self, args)
+        }
+    }
 }
 
 /// An iterator over the [`char`]s of a string.
