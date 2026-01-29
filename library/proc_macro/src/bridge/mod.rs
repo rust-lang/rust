@@ -41,14 +41,14 @@ macro_rules! with_api {
             fn injected_env_var(var: &str) -> Option<String>;
             fn track_env_var(var: &str, value: Option<&str>);
             fn track_path(path: &str);
-            fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, ()>;
+            fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, String>;
             fn emit_diagnostic(diagnostic: Diagnostic<$S::Span>);
 
             fn ts_drop(stream: $S::TokenStream);
             fn ts_clone(stream: &$S::TokenStream) -> $S::TokenStream;
             fn ts_is_empty(stream: &$S::TokenStream) -> bool;
             fn ts_expand_expr(stream: &$S::TokenStream) -> Result<$S::TokenStream, ()>;
-            fn ts_from_str(src: &str) -> $S::TokenStream;
+            fn ts_from_str(src: &str) -> Result<$S::TokenStream, String>;
             fn ts_to_string(stream: &$S::TokenStream) -> String;
             fn ts_from_token_tree(
                 tree: TokenTree<$S::TokenStream, $S::Span, $S::Symbol>,

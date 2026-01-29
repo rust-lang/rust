@@ -1378,6 +1378,13 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         drop(self);
     }
 
+    /// Cancels this diagnostic and returns its first message, if it exists.
+    pub fn cancel_into_message(self) -> Option<String> {
+        let s = self.diag.as_ref()?.messages.get(0)?.0.as_str().map(ToString::to_string);
+        self.cancel();
+        s
+    }
+
     /// See `DiagCtxt::stash_diagnostic` for details.
     pub fn stash(mut self, span: Span, key: StashKey) -> Option<ErrorGuaranteed> {
         let diag = self.take_diag();
