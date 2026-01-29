@@ -208,7 +208,7 @@ impl<T> TypedArena<T> {
         &self,
         iter: impl IntoIterator<Item = Result<T, E>>,
     ) -> Result<&mut [T], E> {
-        // Despite the similarlty with `DroplessArena`, we cannot reuse their fast case. The reason
+        // Despite the similarity with `DroplessArena`, we cannot reuse their fast case. The reason
         // is subtle: these arenas are reentrant. In other words, `iter` may very well be holding a
         // reference to `self` and adding elements to the arena during iteration.
         //
@@ -584,7 +584,7 @@ impl DroplessArena {
         &self,
         iter: impl IntoIterator<Item = Result<T, E>>,
     ) -> Result<&mut [T], E> {
-        // Despite the similarlty with `alloc_from_iter`, we cannot reuse their fast case, as we
+        // Despite the similarity with `alloc_from_iter`, we cannot reuse their fast case, as we
         // cannot know the minimum length of the iterator in this case.
         assert!(size_of::<T>() != 0);
 

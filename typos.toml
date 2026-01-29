@@ -46,6 +46,7 @@ unstalled = "unstalled" # short for un-stalled
 #
 # tidy-alphabetical-start
 definitinon = "definition"
+similarlty = "similarity"
 # tidy-alphabetical-end
 
 [default.extend-identifiers]
