@@ -740,7 +740,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let key = self.read_pointer(&key_mplace)?;
 
                 let varargs = self.get_ptr_va_list(key)?;
-                let copy_key = self.va_list_ptr(varargs.to_vec());
+                let copy_key = self.va_list_ptr(varargs.clone());
 
                 let copy_key_mplace = self.va_list_key_field(dest)?;
                 self.write_pointer(copy_key, &copy_key_mplace)?;
@@ -763,11 +763,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // new list (one element shorter) below.
                 let mut varargs = self.deallocate_va_list(key)?;
 
-                if varargs.is_empty() {
-                    throw_ub!(VaArgOutOfBounds)
-                }
-
-                let arg_mplace = varargs.remove(0);
+                let Some(arg_mplace) = varargs.pop_front() else {
+                    throw_ub!(VaArgOutOfBounds);
+                };
 
                 // NOTE: In C some type conversions are allowed (e.g. casting between signed and
                 // unsigned integers). For now we require c-variadic arguments to be read with the

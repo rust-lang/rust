@@ -129,7 +129,7 @@ pub struct Memory<'tcx, M: Machine<'tcx>> {
     extra_fn_ptr_map: FxIndexMap<AllocId, M::ExtraFnVal>,
 
     /// Map storing variable argument lists.
-    va_list_map: FxIndexMap<AllocId, Vec<MPlaceTy<'tcx, M::Provenance>>>,
+    va_list_map: FxIndexMap<AllocId, VecDeque<MPlaceTy<'tcx, M::Provenance>>>,
 
     /// To be able to compare pointers with null, and to check alignment for accesses
     /// to ZSTs (where pointers may dangle), we keep track of the size even for allocations
@@ -240,7 +240,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Insert a new variable argument list in the global map of variable argument lists.
     pub fn va_list_ptr(
         &mut self,
-        varargs: Vec<MPlaceTy<'tcx, M::Provenance>>,
+        varargs: VecDeque<MPlaceTy<'tcx, M::Provenance>>,
     ) -> Pointer<M::Provenance> {
         let id = self.tcx.reserve_alloc_id();
         let old = self.memory.va_list_map.insert(id, varargs);
@@ -1055,7 +1055,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn get_ptr_va_list(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
-    ) -> InterpResult<'tcx, &[MPlaceTy<'tcx, M::Provenance>]> {
+    ) -> InterpResult<'tcx, &VecDeque<MPlaceTy<'tcx, M::Provenance>>> {
         trace!("get_ptr_va_list({:?})", ptr);
         let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
         if offset.bytes() != 0 {
@@ -1066,7 +1066,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             throw_ub!(InvalidVaListPointer(Pointer::new(alloc_id, offset)))
         };
 
-        interp_ok(va_list.as_slice())
+        interp_ok(va_list)
     }
 
     /// Removes this VaList from the global map of variable argument lists. This does not deallocate
@@ -1074,7 +1074,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn deallocate_va_list(
         &mut self,
         ptr: Pointer<Option<M::Provenance>>,
-    ) -> InterpResult<'tcx, Vec<MPlaceTy<'tcx, M::Provenance>>> {
+    ) -> InterpResult<'tcx, VecDeque<MPlaceTy<'tcx, M::Provenance>>> {
         trace!("deallocate_va_list({:?})", ptr);
         let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
         if offset.bytes() != 0 {
