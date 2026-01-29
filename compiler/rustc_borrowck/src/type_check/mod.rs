@@ -2524,10 +2524,28 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 };
                 let dest_ty = dest_field.ty(tcx, dest_args);
                 let borrowed_ty = borrowed_field.ty(tcx, borrowed_args);
-                if borrowed_ty.ref_mutability() == Some(Mutability::Mut)
-                    && dest_ty.ref_mutability() == Some(Mutability::Not)
+                if let (
+                    ty::Ref(borrow_region, _, Mutability::Mut),
+                    ty::Ref(ref_region, _, Mutability::Not),
+                ) = (borrowed_ty.kind(), dest_ty.kind())
                 {
-                    // self.add_reborrow_constraint(location, borrow_region, borrowed_place);
+                    self.relate_types(
+                        borrowed_ty.peel_refs(),
+                        ty::Variance::Covariant,
+                        dest_ty.peel_refs(),
+                        location.to_locations(),
+                        category,
+                    )
+                    .unwrap();
+                    self.constraints.outlives_constraints.push(OutlivesConstraint {
+                        sup: ref_region.as_var(),
+                        sub: borrow_region.as_var(),
+                        locations: location.to_locations(),
+                        span: location.to_locations().span(self.body),
+                        category,
+                        variance_info: ty::VarianceDiagInfo::default(),
+                        from_closure: false,
+                    });
                 } else {
                     self.relate_types(
                         borrowed_ty,

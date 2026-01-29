@@ -774,6 +774,12 @@ impl<'tcx> Rvalue<'tcx> {
         }
     }
 
+    /// Returns true if rvalue is a generic Reborrow coercion (usage of Reborrow or CoerceShared
+    /// trait).
+    pub fn is_generic_reborrow(&self) -> bool {
+        matches!(self, Self::Reborrow(..))
+    }
+
     pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
     where
         D: ?Sized + HasLocalDecls<'tcx>,

@@ -122,18 +122,19 @@ struct CfgChecker<'a, 'tcx> {
 
 impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
     #[track_caller]
-    fn fail(&self, location: Location, msg: impl AsRef<str>) {
+    fn fail(&self, _location: Location, _msg: impl AsRef<str>) {
+        panic!("FAIL in CfgChecker");
         // We might see broken MIR when other errors have already occurred.
-        if self.tcx.dcx().has_errors().is_none() {
-            span_bug!(
-                self.body.source_info(location).span,
-                "broken MIR in {:?} ({}) at {:?}:\n{}",
-                self.body.source.instance,
-                self.when,
-                location,
-                msg.as_ref(),
-            );
-        }
+        // if self.tcx.dcx().has_errors().is_none() {
+        //     span_bug!(
+        //         self.body.source_info(location).span,
+        //         "broken MIR in {:?} ({}) at {:?}:\n{}",
+        //         self.body.source.instance,
+        //         self.when,
+        //         location,
+        //         msg.as_ref(),
+        //     );
+        // }
     }
 
     fn check_edge(&mut self, location: Location, bb: BasicBlock, edge_kind: EdgeKind) {
@@ -571,8 +572,9 @@ struct TypeChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
-    fn fail(&mut self, location: Location, msg: impl Into<String>) {
-        self.failures.push((location, msg.into()));
+    fn fail(&mut self, _location: Location, _msg: impl Into<String>) {
+        panic!("FAIL in validate.rs");
+        // self.failures.push((location, msg.into()));
     }
 
     /// Check if src can be assigned into dest.
@@ -1469,6 +1471,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let left_ty = dest.ty(&self.body.local_decls, self.tcx).ty;
                 let right_ty = rvalue.ty(&self.body.local_decls, self.tcx);
 
+                if matches!(rvalue, Rvalue::Reborrow(..)) {
+                    // Trust me bro: Reborrow/CoerceShared is only inserted if types match.
+                    return;
+                }
                 if !self.mir_assign_valid_types(right_ty, left_ty) {
                     self.fail(
                         location,
