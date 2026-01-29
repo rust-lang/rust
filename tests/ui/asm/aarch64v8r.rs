@@ -1,11 +1,15 @@
 // Codegen test of mandatory Armv8-R AArch64 extensions
 
+// The Cortex-R82 CPU is an implementation of the Arm v8-R AArch64 ISA so
+// it also implements the ISA-level mandatory extensions. We check that with a revision
 //@ add-minicore
-//@ revisions: hf sf
+//@ revisions: hf sf r82
 //@ [hf] compile-flags: --target aarch64v8r-unknown-none
 //@ [hf] needs-llvm-components: aarch64
 //@ [sf] compile-flags: --target aarch64v8r-unknown-none-softfloat
 //@ [sf] needs-llvm-components: aarch64
+//@ [r82] compile-flags: --target aarch64v8r-unknown-none -C target-cpu=cortex-r82
+//@ [r82] needs-llvm-components: aarch64
 //@ build-pass
 //@ ignore-backends: gcc
 
