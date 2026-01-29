@@ -6,16 +6,15 @@ The primary goal of our CI system is to ensure that the `main` branch of
 From a high-level point of view, when you open a pull request at
 `rust-lang/rust`, the following will happen:
 
-- A small [subset](#pull-request-builds) of tests and checks are run after each
-  push to the PR.
+- A small [subset](#pull-request-builds) of tests and checks are run after each push to the PR.
   This should help catch common errors.
 - When the PR is approved, the [bors] bot enqueues the PR into a [merge queue].
 - Once the PR gets to the front of the queue, bors will create a merge commit
   and run the [full test suite](#auto-builds) on it.
   The merge commit either contains only one specific PR or it can be a ["rollup"](#rollups) which
   combines multiple PRs together, to reduce CI costs and merge delays.
-- Once the whole test suite finishes, two things can happen. Either CI fails
-  with an error that needs to be addressed by the developer, or CI succeeds and
+- Once the whole test suite finishes, two things can happen.
+  Either CI fails with an error that needs to be addressed by the developer, or CI succeeds and
   the merge commit is then pushed to the `main` branch.
 
 If you want to modify what gets executed on CI, see [Modifying CI jobs](#modifying-ci-jobs).
@@ -303,8 +302,7 @@ This is worth it because these release artifacts:
 
 - Allow perf testing even at a later date.
 - Allow bisection when bugs are discovered later.
-- Ensure release quality since if we're always releasing, we can catch problems
-  early.
+- Ensure release quality since if we're always releasing, we can catch problems early.
 
 ### Rollups
 
@@ -449,8 +447,7 @@ If you want to determine which `bootstrap.toml` settings are used in CI for a
 particular job, it is probably easiest to just look at the build log.
 To do this:
 
-1. Go to
-   <https://github.com/rust-lang/rust/actions?query=branch%3Aauto+is%3Asuccess>
+1. Go to <https://github.com/rust-lang/rust/actions?query=branch%3Aauto+is%3Asuccess>
    to find the most recently successful build, and click on it.
 2. Choose the job you are interested in on the left-hand side.
 3. Click on the gear icon and choose "View raw logs"
