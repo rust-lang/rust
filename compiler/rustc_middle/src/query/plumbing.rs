@@ -18,6 +18,18 @@ use crate::query::{
 };
 use crate::ty::TyCtxt;
 
+pub type WillCacheOnDiskForKeyFn<'tcx, Key> = fn(tcx: TyCtxt<'tcx>, key: &Key) -> bool;
+
+pub type TryLoadFromDiskFn<'tcx, Key, Value> = fn(
+    tcx: TyCtxt<'tcx>,
+    key: &Key,
+    prev_index: SerializedDepNodeIndex,
+    index: DepNodeIndex,
+) -> Option<Value>;
+
+pub type IsLoadableFromDiskFn<'tcx, Key> =
+    fn(tcx: TyCtxt<'tcx>, key: &Key, index: SerializedDepNodeIndex) -> bool;
+
 /// Stores function pointers and other metadata for a particular query.
 ///
 /// Used indirectly by query plumbing in `rustc_query_system`, via a trait.
@@ -31,18 +43,11 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub query_state: usize,
     // Offset of this query's cache field in the QueryCaches struct
     pub query_cache: usize,
-    pub cache_on_disk: fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool,
+    pub will_cache_on_disk_for_key_fn: Option<WillCacheOnDiskForKeyFn<'tcx, C::Key>>,
     pub execute_query: fn(tcx: TyCtxt<'tcx>, k: C::Key) -> C::Value,
     pub compute: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
-    pub can_load_from_disk: bool,
-    pub try_load_from_disk: fn(
-        tcx: TyCtxt<'tcx>,
-        key: &C::Key,
-        prev_index: SerializedDepNodeIndex,
-        index: DepNodeIndex,
-    ) -> Option<C::Value>,
-    pub loadable_from_disk:
-        fn(tcx: TyCtxt<'tcx>, key: &C::Key, index: SerializedDepNodeIndex) -> bool,
+    pub try_load_from_disk_fn: Option<TryLoadFromDiskFn<'tcx, C::Key, C::Value>>,
+    pub is_loadable_from_disk_fn: Option<IsLoadableFromDiskFn<'tcx, C::Key>>,
     pub hash_result: HashResult<C::Value>,
     pub value_from_cycle_error:
         fn(tcx: TyCtxt<'tcx>, cycle_error: &CycleError, guar: ErrorGuaranteed) -> C::Value,

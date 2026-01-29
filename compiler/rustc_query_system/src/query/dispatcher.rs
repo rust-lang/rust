@@ -42,7 +42,7 @@ pub trait QueryDispatcher<Qcx: QueryContext>: Copy {
     where
         Qcx: 'a;
 
-    fn cache_on_disk(self, tcx: Qcx::DepContext, key: &Self::Key) -> bool;
+    fn will_cache_on_disk_for_key(self, tcx: Qcx::DepContext, key: &Self::Key) -> bool;
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn execute_query(self, tcx: Qcx::DepContext, k: Self::Key) -> Self::Value;
@@ -57,7 +57,7 @@ pub trait QueryDispatcher<Qcx: QueryContext>: Copy {
         index: DepNodeIndex,
     ) -> Option<Self::Value>;
 
-    fn loadable_from_disk(self, qcx: Qcx, key: &Self::Key, idx: SerializedDepNodeIndex) -> bool;
+    fn is_loadable_from_disk(self, qcx: Qcx, key: &Self::Key, idx: SerializedDepNodeIndex) -> bool;
 
     /// Synthesize an error value to let compilation continue after a cycle.
     fn value_from_cycle_error(
