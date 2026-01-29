@@ -204,9 +204,9 @@ The attribute takes the following arguments:
 
 * `cfg="<cond>"` — checks the cfg condition `<cond>`, and only runs the check if the config condition evaluates to true.
   This can be used to only run the `rustc_clean` attribute in a specific revision.
-* `except="<query1>,<query2>,..."` — asserts that the query results for the listed queries must be different, 
+* `except="<query1>,<query2>,..."` — asserts that the query results for the listed queries must be different,
   rather than the same.
-* `loaded_from_disk="<query1>,<query2>,..."` — asserts that the query results for the listed queries 
+* `loaded_from_disk="<query1>,<query2>,..."` — asserts that the query results for the listed queries
   were actually loaded from disk (not just marked green).
   This can be useful to ensure that a test is actually exercising the deserialization
   logic for a particular query result.
@@ -288,12 +288,12 @@ For example, `./x test tests/debuginfo -- --debugger gdb` will only test GDB com
 >
 > If you want to run lldb debuginfo tests locally, then currently on Windows it
 > is required that:
-> 
+>
 > - You have Python 3.10 installed.
 > - You have `python310.dll` available in your `PATH` env var. This is not
 >   provided by the standard Python installer you obtain from `python.org`; you
 >   need to add this to `PATH` manually.
-> 
+>
 > Otherwise the lldb debuginfo tests can produce crashes in mysterious ways.
 
 [`tests/debuginfo`]: https://github.com/rust-lang/rust/tree/HEAD/tests/debuginfo
@@ -613,9 +613,9 @@ Please [label][labeling] the relevant issues with `S-bug-has-test` once your PR 
 
 If you happen to fix one of the crashes, please move it to a fitting
 subdirectory in `tests/ui` and give it a meaningful name.
-Please add a doc comment at the top of the file explaining why this test exists, even better if
-you can briefly explain how the example causes rustc to crash previously and
-what was done to prevent rustc to ICE / panic / crash.
+Please add a doc comment at the top of the file explaining why this test exists.
+Even better will be if you can briefly explain how the example caused rustc to crash previously,
+and what was done to fix it.
 
 Adding
 
@@ -698,7 +698,7 @@ preset behavior compared to `aux-build` for the proc-macro test auxiliary:
    test file is using an edition that is 2018 or newer if you want to use the
    aux crate name in a `use` import.
 4. The `proc_macro` crate is made available as an extern prelude module.
-   Same edition 2015 vs newer edition distinction for `extern proc_macro;` applies.
+   The same edition 2015 vs newer edition distinction for `extern proc_macro;` applies.
 
 For example, you might have a test `tests/ui/cat/meow.rs` and proc-macro
 auxiliary `tests/ui/cat/auxiliary/whiskers.rs`:
