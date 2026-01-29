@@ -121,7 +121,7 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
                 p.bump();
                 p.expect(exp!(Eq))?;
                 let expr = p.parse_expr()?;
-                if let Some((_, prev)) = args.by_name(ident.name) {
+                if let Some((_, prev)) = args.by_explicit_name(ident.name) {
                     ecx.dcx().emit_err(errors::FormatDuplicateArg {
                         span: ident.span,
                         prev: prev.kind.ident().unwrap().span,
@@ -378,12 +378,11 @@ fn make_format_args(
             }
             Name(name, span) => {
                 let name = Symbol::intern(name);
-                if let Some((index, _)) = args.by_name(name) {
+                if let Some((index, _)) = args.by_explicit_name(name) {
                     // Name found in `args`, so we resolve it to its index.
-                    if index < args.explicit_args().len() {
-                        // Mark it as used, if it was an explicit argument.
-                        used[index] = true;
-                    }
+                    assert!(index < args.explicit_args().len());
+                    // Mark it as used, as this is an explicit argument.
+                    used[index] = true;
                     Ok(index)
                 } else {
                     // Name not found in `args`, so we add it as an implicitly captured argument.
@@ -398,7 +397,7 @@ fn make_format_args(
                         unnamed_arg_after_named_arg = true;
                         DummyResult::raw_expr(span, Some(guar))
                     };
-                    Ok(args.add(FormatArgument { kind: FormatArgumentKind::Captured(ident), expr }))
+                    Ok(args.add(FormatArgument { kind: FormatArgumentKind::Captured, expr }))
                 }
             }
         };
