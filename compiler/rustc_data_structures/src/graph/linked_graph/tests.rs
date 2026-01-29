@@ -1,7 +1,7 @@
 use rustc_index::Idx;
 use tracing::debug;
 
-use super::{Debug, LinkedGraph, FrozenLinkedGraph};
+use super::{Debug, FrozenLinkedGraph, LinkedGraph};
 
 type TestGraph = FrozenLinkedGraph<usize, &'static str, &'static str>;
 
@@ -18,12 +18,18 @@ fn create_graph() -> TestGraph {
     //          v     |
     //          D --> E
 
-    let a = 0; graph.add_node(a, "A");
-    let b = 1; graph.add_node(b, "B");
-    let c = 2; graph.add_node(c, "C");
-    let d = 3; graph.add_node(d, "D");
-    let e = 4; graph.add_node(e, "E");
-    let f = 5; graph.add_node(f, "F");
+    let a = 0;
+    graph.add_node(a, "A");
+    let b = 1;
+    graph.add_node(b, "B");
+    let c = 2;
+    graph.add_node(c, "C");
+    let d = 3;
+    graph.add_node(d, "D");
+    let e = 4;
+    graph.add_node(e, "E");
+    let f = 5;
+    graph.add_node(f, "F");
 
     graph.add_edge(a, b, "AB");
     graph.add_edge(b, c, "BC");
