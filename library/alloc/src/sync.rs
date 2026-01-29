@@ -2143,6 +2143,118 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
         ptr::addr_eq(this.ptr.as_ptr(), other.ptr.as_ptr())
     }
+
+    /// Converts an `Arc` into a `UniqueArc` if the `Arc` has exactly one strong
+    /// reference.
+    ///
+    /// Otherwise, returns `None`. If access to the `Arc` is still needed in
+    /// the failure case, use [`Arc::try_into_unique`] instead.
+    ///
+    /// This will succeed even if there are outstanding weak references.
+    /// However, attempting to upgrade those weak references will fail while
+    /// this `UniqueRc` exists.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    ///
+    /// use std::sync::{Arc, UniqueArc};
+    ///
+    /// let a = Arc::new(7);
+    /// let mut unique_a: UniqueArc<u8> = Arc::into_unique(a).unwrap();
+    /// // Since we have a `UniqueArc`, we can modify the innards.
+    /// *unique_a = 5;
+    /// assert_eq!(*unique_a, 5);
+    /// ```
+    #[inline]
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    pub fn into_unique(this: Self) -> Option<UniqueArc<T, A>> {
+        // Prevent `Weak` upgrades by setting the strong count to zero,
+        // returning early if the strong count was not exactly one.
+        //
+        // We use `Release` to ensure that, if we are not the final owner of the
+        // `Arc`, then the final owner sill observe our writes before dropping /
+        // unique-ifying.
+        if this.inner().strong.fetch_sub(1, Release) != 1 {
+            return None;
+        }
+        // This acquire ensures that we observe writes to the innards that were
+        // performed before the last refcount was decremented.
+        acquire!(this.inner().strong);
+
+        let this = ManuallyDrop::new(this);
+
+        // Move the allocator out.
+        // SAFETY: `this.alloc` will not be accessed again, nor dropped because it is in
+        // a `ManuallyDrop`.
+        let alloc: A = unsafe { ptr::read(&this.alloc) };
+
+        // SAFETY: `this.ptr` and `alloc` are valid, stolen from the
+        // `ManuallyDrop`-wrapped `this`.
+        Some(UniqueArc { ptr: this.ptr, _marker: PhantomData, _marker2: PhantomData, alloc })
+    }
+
+    /// Converts an `Arc` into a `UniqueArc` if the `Arc` has exactly one strong
+    /// reference.
+    ///
+    /// Otherwise, an `Err` is returned containing the original `Arc`.
+    ///
+    /// This will succeed even if there are outstanding weak references.
+    /// However, attempting to upgrade those weak references will fail while
+    /// this `UniqueRc` exists.
+    ///
+    /// It is strongly recommended to use [`Arc::into_unique`] instead if you
+    /// don't keep the `Arc` in the [`Err`] case.
+    /// Immediately dropping the [`Err`]-value, as the expression
+    /// `Arc::try_into_unique(this).ok()` does, can cause the strong count to
+    /// drop to zero and the inner value of the `Arc` to be dropped.
+    /// For instance, if two threads execute such an expression in parallel,
+    /// there is a race condition without the possibility of unsafety:
+    /// The threads could first both check whether they own the last instance
+    /// in `Arc::try_into_unique`, determine that they both do not, and then
+    /// both discard and drop their instance in the call to
+    ///  [`ok`][`Result::ok`]. In this scenario, the value inside the `Arc` is
+    /// safely destroyed by exactly one of the threads, but neither thread will
+    /// ever be able to use the value uniquely.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    ///
+    /// use std::sync::{Arc, UniqueArc};
+    ///
+    /// let a = Arc::new(7);
+    /// let modified: Arc<u8> = match Arc::try_into_unique(a) {
+    ///     Ok(mut unique_a) => {
+    ///         // Since we have a `UniqueArc`, we can modify the innards.
+    ///         *unique_a = 5;
+    ///         UniqueArc::into_arc(unique_a)
+    ///     },
+    ///     Err(a) => a,
+    /// };
+    /// assert_eq!(*modified, 5);
+    /// ```
+    #[inline]
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    pub fn try_into_unique(this: Self) -> Result<UniqueArc<T, A>, Self> {
+        // Prevent `Weak` upgrades by setting the strong count to zero,
+        // returning early if the strong count is not exactly one.
+        if this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
+            return Err(this);
+        }
+        let this = ManuallyDrop::new(this);
+
+        // Move the allocator out.
+        // SAFETY: `this.alloc` will not be accessed again, nor dropped because it is in
+        // a `ManuallyDrop`.
+        let alloc: A = unsafe { ptr::read(&this.alloc) };
+
+        // SAFETY: `this.ptr` and `alloc` are valid, stolen from the
+        // `ManuallyDrop`-wrapped `this`.
+        Ok(UniqueArc { ptr: this.ptr, _marker: PhantomData, _marker2: PhantomData, alloc })
+    }
 }
 
 impl<T: ?Sized> Arc<T> {
