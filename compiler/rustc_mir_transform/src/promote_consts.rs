@@ -777,10 +777,12 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         }
 
         let num_stmts = self.source[loc.block].statements.len();
-        let new_temp = self.promoted.local_decls.push(LocalDecl::new(
-            self.source.local_decls[temp].ty,
-            self.source.local_decls[temp].source_info.span,
-        ));
+        let new_local_decl = {
+            let temp = &self.source.local_decls[temp];
+            let local_decl = LocalDecl::new(temp.ty, temp.source_info.span);
+            if temp.mutability == Mutability::Not { local_decl.immutable() } else { local_decl }
+        };
+        let new_temp = self.promoted.local_decls.push(new_local_decl);
 
         debug!("promote({:?} @ {:?}/{:?}, {:?})", temp, loc, num_stmts, self.keep_original);
 
