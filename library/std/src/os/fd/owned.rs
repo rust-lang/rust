@@ -11,13 +11,6 @@ use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::fs;
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
-#[cfg(not(any(
-    target_arch = "wasm32",
-    target_env = "sgx",
-    target_os = "hermit",
-    target_os = "trusty",
-    target_os = "motor"
-)))]
 use crate::sys::cvt;
 #[cfg(not(target_os = "trusty"))]
 use crate::sys::{AsInner, FromInner, IntoInner};
@@ -97,6 +90,23 @@ impl OwnedFd {
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone(&self) -> io::Result<Self> {
         self.as_fd().try_clone_to_owned()
+    }
+
+    /// Drops the file descriptor, returning any errors encountered.
+    pub(crate) fn close(self) -> io::Result<()> {
+        let this = ManuallyDrop::new(self);
+        let result = unsafe {
+            #[cfg(not(target_os = "hermit"))]
+            {
+                #[cfg(unix)]
+                crate::sys::fs::debug_assert_fd_is_open(this.fd.as_inner());
+
+                libc::close(this.fd.as_inner())
+            }
+            #[cfg(target_os = "hermit")]
+            hermit_abi::close(this.fd.as_inner())
+        };
+        cvt(result).map(|_| ())
     }
 }
 

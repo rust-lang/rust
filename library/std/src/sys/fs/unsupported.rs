@@ -188,6 +188,10 @@ impl File {
         unsupported()
     }
 
+    pub fn close(self) -> io::Result<()> {
+        self.0
+    }
+
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         self.0
     }

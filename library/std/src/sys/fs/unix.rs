@@ -1359,6 +1359,10 @@ impl File {
         Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
     }
 
+    pub fn close(self) -> io::Result<()> {
+        self.0.close()
+    }
+
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         let fd = self.as_raw_fd();
 
@@ -2381,11 +2385,12 @@ pub(in crate::sys) use cfm::CachedFileMetadata;
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let (reader, reader_metadata) = open_from(from)?;
     let (writer, writer_metadata) = open_to_and_set_permissions(to, &reader_metadata)?;
+    let mut reader = cfm::CachedFileMetadata(reader, reader_metadata);
+    let mut writer = cfm::CachedFileMetadata(writer, writer_metadata);
 
-    io::copy(
-        &mut cfm::CachedFileMetadata(reader, reader_metadata),
-        &mut cfm::CachedFileMetadata(writer, writer_metadata),
-    )
+    let ret = io::copy(&mut reader, &mut writer)?;
+    writer.0.close()?;
+    Ok(ret)
 }
 
 #[cfg(target_vendor = "apple")]
