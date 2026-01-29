@@ -1464,10 +1464,8 @@ fn print_native_static_libs(
     all_native_libs: &[NativeLib],
     all_rust_dylibs: &[&Path],
 ) {
-    let mut lib_args: Vec<_> = all_native_libs
-        .iter()
-        .filter(|l| relevant_lib(sess, l))
-        .filter_map(|lib| {
+    let mut lib_args: Vec<_> = Itertools::dedup(
+        all_native_libs.iter().filter(|l| relevant_lib(sess, l)).filter_map(|lib| {
             let name = lib.name;
             match lib.kind {
                 NativeLibKind::Static { bundle: Some(false), .. }
@@ -1493,10 +1491,9 @@ fn print_native_static_libs(
                 | NativeLibKind::WasmImportModule
                 | NativeLibKind::RawDylib { .. } => None,
             }
-        })
-        // deduplication of consecutive repeated libraries, see rust-lang/rust#113209
-        .dedup()
-        .collect();
+        }), // deduplication of consecutive repeated libraries, see rust-lang/rust#113209
+    )
+    .collect();
     for path in all_rust_dylibs {
         // FIXME deduplicate with add_dynamic_crate
 
