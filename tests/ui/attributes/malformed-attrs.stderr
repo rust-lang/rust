@@ -732,23 +732,6 @@ help: use `#[rustc_align(...)]` instead
 LL | #[repr]
    | ^^^^^^^
 
-warning: missing options for `on_unimplemented` attribute
-  --> $DIR/malformed-attrs.rs:144:1
-   |
-LL | #[diagnostic::on_unimplemented]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: at least one of the `message`, `note` and `label` options are expected
-   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
-
-warning: malformed `on_unimplemented` attribute
-  --> $DIR/malformed-attrs.rs:146:1
-   |
-LL | #[diagnostic::on_unimplemented = 1]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid option found here
-   |
-   = help: only `message`, `note` and `label` are allowed as options
-
 error: valid forms for the attribute are `#[doc = "string"]`, `#[doc(alias)]`, `#[doc(attribute)]`, `#[doc(auto_cfg)]`, `#[doc(cfg)]`, `#[doc(fake_variadic)]`, `#[doc(hidden)]`, `#[doc(html_favicon_url)]`, `#[doc(html_logo_url)]`, `#[doc(html_no_source)]`, `#[doc(html_playground_url)]`, `#[doc(html_root_url)]`, `#[doc(include)]`, `#[doc(inline)]`, `#[doc(issue_tracker_base_url)]`, `#[doc(keyword)]`, `#[doc(masked)]`, `#[doc(no_default_passes)]`, `#[doc(no_inline)]`, `#[doc(notable_trait)]`, `#[doc(passes)]`, `#[doc(plugins)]`, `#[doc(rust_logo)]`, `#[doc(search_unbox)]`, `#[doc(spotlight)]`, and `#[doc(test)]`
   --> $DIR/malformed-attrs.rs:41:1
    |
@@ -818,6 +801,23 @@ LL | #[no_implicit_prelude = 23]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
+
+warning: missing options for `on_unimplemented` attribute
+  --> $DIR/malformed-attrs.rs:144:1
+   |
+LL | #[diagnostic::on_unimplemented]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: at least one of the `message`, `note` and `label` options are expected
+   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: malformed `on_unimplemented` attribute
+  --> $DIR/malformed-attrs.rs:146:1
+   |
+LL | #[diagnostic::on_unimplemented = 1]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid option found here
+   |
+   = help: only `message`, `note` and `label` are allowed as options
 
 warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
   --> $DIR/malformed-attrs.rs:155:1

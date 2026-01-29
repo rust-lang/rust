@@ -15,6 +15,7 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 pub use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
 
+use crate::attrs::diagnostic::*;
 use crate::attrs::pretty_printing::PrintAttribute;
 use crate::limit::Limit;
 use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
@@ -983,6 +984,13 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_objc_selector]`
     ObjcSelector { methname: Symbol, span: Span },
+
+    /// Represents `#[rustc_on_unimplemented]` and `#[diagnostic::on_unimplemented]`.
+    OnUnimplemented {
+        span: Span,
+        /// None if the directive was malformed in some way.
+        directive: Option<Box<OnUnimplementedDirective>>,
+    },
 
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),

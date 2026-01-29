@@ -35,6 +35,7 @@ use crate::attributes::crate_level::{
 };
 use crate::attributes::debugger::DebuggerViualizerParser;
 use crate::attributes::deprecation::DeprecationParser;
+use crate::attributes::diagnostic::on_unimplemented::OnUnimplementedParser;
 use crate::attributes::do_not_recommend::DoNotRecommendParser;
 use crate::attributes::doc::DocParser;
 use crate::attributes::dummy::DummyParser;
@@ -186,6 +187,7 @@ attribute_parsers!(
         DocParser,
         MacroUseParser,
         NakedParser,
+        OnUnimplementedParser,
         StabilityParser,
         UsedParser,
         // tidy-alphabetical-end

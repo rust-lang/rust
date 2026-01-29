@@ -27,7 +27,7 @@ use rustc_session::lint::builtin::UNINHABITED_STATIC;
 use rustc_span::source_map::Spanned;
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
-use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
+use rustc_trait_selection::error_reporting::traits::on_unimplemented::of_item_directive;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use tracing::{debug, instrument};
@@ -1126,7 +1126,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
 
 pub(super) fn check_diagnostic_attrs(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // an error would be reported if this fails.
-    let _ = OnUnimplementedDirective::of_item(tcx, def_id.to_def_id());
+    let _ = of_item_directive(tcx, def_id.to_def_id());
 }
 
 pub(super) fn check_specialization_validity<'tcx>(
