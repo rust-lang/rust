@@ -28,8 +28,7 @@ TargetOptions.cpu may raise this baseline.
 By default, code generated with the soft-float target should run on any Z System
 starting at [Z10][s390x-isa].
 
-`extern "C"` does not use a stable ABI and is subjected to change between compiler
-versions.
+`extern "C"` does not use a stable ABI and is subject to change between compiler versions.
 
 The target only generates object files in the ELF format. Any alternate formats
 or special considerations for binary layout will require linker options or linker
