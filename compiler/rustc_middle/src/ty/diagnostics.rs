@@ -526,12 +526,15 @@ pub fn suggest_constraining_type_params<'a>(
         //
         //   fn foo<T>(t: T) { ... }
         //          - help: consider restricting this type parameter with `T: Foo`
-        suggestions.push((
-            param.span.shrink_to_hi(),
-            post,
-            format!(": {constraint}"),
-            SuggestChangingConstraintsMessage::RestrictType { ty: param_name },
-        ));
+        let span = param.span.shrink_to_hi();
+        if span.can_be_used_for_suggestions() {
+            suggestions.push((
+                span,
+                post,
+                format!(": {constraint}"),
+                SuggestChangingConstraintsMessage::RestrictType { ty: param_name },
+            ));
+        }
     }
 
     // FIXME: remove the suggestions that are from derive, as the span is not correct

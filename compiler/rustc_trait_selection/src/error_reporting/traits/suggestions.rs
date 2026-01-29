@@ -3581,11 +3581,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         ..
                     })) => {
                         let mut spans = Vec::with_capacity(2);
-                        if let Some(of_trait) = of_trait {
+                        if let Some(of_trait) = of_trait
+                            && !of_trait.trait_ref.path.span.in_derive_expansion()
+                        {
                             spans.push(of_trait.trait_ref.path.span);
                         }
                         spans.push(self_ty.span);
                         let mut spans: MultiSpan = spans.into();
+                        let mut derived = false;
                         if matches!(
                             self_ty.span.ctxt().outer_expn_data().kind,
                             ExpnKind::Macro(MacroKind::Derive, _)
@@ -3593,9 +3596,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             of_trait.map(|t| t.trait_ref.path.span.ctxt().outer_expn_data().kind),
                             Some(ExpnKind::Macro(MacroKind::Derive, _))
                         ) {
+                            derived = true;
                             spans.push_span_label(
                                 data.span,
-                                "unsatisfied trait bound introduced in this `derive` macro",
+                                if data.span.in_derive_expansion() {
+                                    format!("type parameter would need to implement `{trait_name}`")
+                                } else {
+                                    format!("unsatisfied trait bound")
+                                },
                             );
                         } else if !data.span.is_dummy() && !data.span.overlaps(self_ty.span) {
                             // `Sized` may be an explicit or implicit trait bound. If it is
@@ -3621,6 +3629,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                         }
                         err.span_note(spans, msg);
+                        if derived {
+                            err.help(format!(
+                                "consider manually implementing `{trait_name}` to avoid undesired \
+                                 bounds",
+                            ));
+                        }
                         point_at_assoc_type_restriction(
                             tcx,
                             err,

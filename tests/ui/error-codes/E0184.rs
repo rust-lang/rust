@@ -1,5 +1,5 @@
-#[derive(Copy)] //~ ERROR E0184
-struct Foo;
+#[derive(Copy)]
+struct Foo; //~ ERROR E0184
 
 impl Drop for Foo {
     fn drop(&mut self) {

@@ -592,7 +592,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             if span.can_be_used_for_suggestions()
                 && poly_trait_ref.trait_ref.trait_def_id().is_some()
                 && !self.maybe_suggest_impl_trait(span, hir_id, hir_bounds, &mut diag)
-                && !self.maybe_suggest_dyn_trait(hir_id, sugg, &mut diag)
+                && !self.maybe_suggest_dyn_trait(hir_id, span, sugg, &mut diag)
             {
                 self.maybe_suggest_add_generic_impl_trait(span, hir_id, &mut diag);
             }
@@ -750,10 +750,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn maybe_suggest_dyn_trait(
         &self,
         hir_id: hir::HirId,
+        span: Span,
         sugg: Vec<(Span, String)>,
         diag: &mut Diag<'_>,
     ) -> bool {
         let tcx = self.tcx();
+        if span.in_derive_expansion() {
+            return false;
+        }
 
         // Look at the direct HIR parent, since we care about the relationship between
         // the type and the thing that directly encloses it.

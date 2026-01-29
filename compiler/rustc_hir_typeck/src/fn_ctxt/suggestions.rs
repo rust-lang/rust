@@ -1932,25 +1932,94 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None,
                 );
             } else {
+                let mut suggest_derive = true;
                 if let Some(errors) =
                     self.type_implements_trait_shallow(clone_trait_did, expected_ty, self.param_env)
                 {
+                    let manually_impl = "consider manually implementing `Clone` to avoid the \
+                        implicit type parameter bounds";
                     match &errors[..] {
                         [] => {}
                         [error] => {
-                            diag.help(format!(
-                                "`Clone` is not implemented because the trait bound `{}` is \
-                                 not satisfied",
-                                error.obligation.predicate,
-                            ));
+                            let msg = "`Clone` is not implemented because a trait bound is not \
+                                satisfied";
+                            if let traits::ObligationCauseCode::ImplDerived(data) =
+                                error.obligation.cause.code()
+                            {
+                                let mut span: MultiSpan = data.span.into();
+                                if self.tcx.is_automatically_derived(data.impl_or_alias_def_id) {
+                                    span.push_span_label(
+                                        data.span,
+                                        format!(
+                                            "derive introduces an implicit `{}` bound",
+                                            error.obligation.predicate
+                                        ),
+                                    );
+                                }
+                                diag.span_help(span, msg);
+                                if self.tcx.is_automatically_derived(data.impl_or_alias_def_id)
+                                    && data.impl_or_alias_def_id.is_local()
+                                {
+                                    diag.help(manually_impl);
+                                    suggest_derive = false;
+                                }
+                            } else {
+                                diag.help(msg);
+                            }
                         }
                         _ => {
-                            diag.help(format!(
-                                "`Clone` is not implemented because the following trait bounds \
-                                 could not be satisfied: {}",
-                                listify(&errors, |e| format!("`{}`", e.obligation.predicate))
-                                    .unwrap(),
-                            ));
+                            let unsatisfied_bounds: Vec<_> = errors
+                                .iter()
+                                .filter_map(|error| match error.obligation.cause.code() {
+                                    traits::ObligationCauseCode::ImplDerived(data) => {
+                                        let pre = if self
+                                            .tcx
+                                            .is_automatically_derived(data.impl_or_alias_def_id)
+                                        {
+                                            "derive introduces an implicit "
+                                        } else {
+                                            ""
+                                        };
+                                        Some((
+                                            data.span,
+                                            format!(
+                                                "{pre}unsatisfied trait bound `{}`",
+                                                error.obligation.predicate
+                                            ),
+                                        ))
+                                    }
+                                    _ => None,
+                                })
+                                .collect();
+                            let msg = "`Clone` is not implemented because the some trait bounds \
+                                could not be satisfied";
+                            if errors.len() == unsatisfied_bounds.len() {
+                                let mut unsatisfied_bounds_spans: MultiSpan = unsatisfied_bounds
+                                    .iter()
+                                    .map(|(span, _)| *span)
+                                    .collect::<Vec<Span>>()
+                                    .into();
+                                for (span, label) in unsatisfied_bounds {
+                                    unsatisfied_bounds_spans.push_span_label(span, label);
+                                }
+                                diag.span_help(unsatisfied_bounds_spans, msg);
+                                if errors.iter().all(|error| match error.obligation.cause.code() {
+                                    traits::ObligationCauseCode::ImplDerived(data) => {
+                                        self.tcx.is_automatically_derived(data.impl_or_alias_def_id)
+                                            && data.impl_or_alias_def_id.is_local()
+                                    }
+                                    _ => false,
+                                }) {
+                                    diag.help(manually_impl);
+                                    suggest_derive = false;
+                                }
+                            } else {
+                                diag.help(format!(
+                                    "{msg}: {}",
+                                    listify(&errors, |e| format!("`{}`", e.obligation.predicate))
+                                        .unwrap(),
+                                ));
+                            }
                         }
                     }
                     for error in errors {
@@ -1968,7 +2037,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                self.suggest_derive(diag, &vec![(trait_ref.upcast(self.tcx), None, None)]);
+                if suggest_derive {
+                    self.suggest_derive(diag, &vec![(trait_ref.upcast(self.tcx), None, None)]);
+                }
             }
         }
     }

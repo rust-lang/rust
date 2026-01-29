@@ -121,9 +121,10 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::CopyImplOnNonAdt { span }))
         }
-        Err(CopyImplementationError::HasDestructor) => {
+        Err(CopyImplementationError::HasDestructor(did)) => {
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
-            Err(tcx.dcx().emit_err(errors::CopyImplOnTypeWithDtor { span }))
+            let impl_ = tcx.def_span(did);
+            Err(tcx.dcx().emit_err(errors::CopyImplOnTypeWithDtor { span, impl_ }))
         }
         Err(CopyImplementationError::HasUnsafeFields) => {
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
