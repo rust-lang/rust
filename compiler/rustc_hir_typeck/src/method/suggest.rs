@@ -13,7 +13,9 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, MultiSpan, StashKey, pluralize, struct_span_code_err};
+use rustc_errors::{
+    Applicability, Diag, MultiSpan, StashKey, listify, pluralize, struct_span_code_err,
+};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -49,6 +51,51 @@ use super::{CandidateSource, MethodError, NoMatchData};
 use crate::errors::{self, CandidateTraitNote, NoAssociatedItem};
 use crate::method::probe::UnsatisfiedPredicates;
 use crate::{Expectation, FnCtxt};
+
+/// Tracks trait bounds and detects duplicates between ref and non-ref versions of self types.
+/// This is used to condense error messages when the same trait bound appears for both
+/// `T` and `&T` (or `&mut T`).
+struct TraitBoundDuplicateTracker {
+    trait_def_ids: FxIndexSet<DefId>,
+    seen_ref: FxIndexSet<DefId>,
+    seen_non_ref: FxIndexSet<DefId>,
+    has_ref_dupes: bool,
+}
+
+impl TraitBoundDuplicateTracker {
+    fn new() -> Self {
+        Self {
+            trait_def_ids: FxIndexSet::default(),
+            seen_ref: FxIndexSet::default(),
+            seen_non_ref: FxIndexSet::default(),
+            has_ref_dupes: false,
+        }
+    }
+
+    /// Track a trait bound. `is_ref` indicates whether the self type is a reference.
+    fn track(&mut self, def_id: DefId, is_ref: bool) {
+        self.trait_def_ids.insert(def_id);
+        if is_ref {
+            if self.seen_non_ref.contains(&def_id) {
+                self.has_ref_dupes = true;
+            }
+            self.seen_ref.insert(def_id);
+        } else {
+            if self.seen_ref.contains(&def_id) {
+                self.has_ref_dupes = true;
+            }
+            self.seen_non_ref.insert(def_id);
+        }
+    }
+
+    fn has_ref_dupes(&self) -> bool {
+        self.has_ref_dupes
+    }
+
+    fn into_trait_def_ids(self) -> FxIndexSet<DefId> {
+        self.trait_def_ids
+    }
+}
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_slice_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
@@ -1004,6 +1051,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_ident: Ident,
         item_kind: &str,
         bound_spans: SortedMap<Span, Vec<String>>,
+        unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
     ) {
         let mut ty_span = match rcvr_ty.kind() {
             ty::Param(param_type) => {
@@ -1012,13 +1060,61 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Adt(def, _) if def.did().is_local() => Some(self.tcx.def_span(def.did())),
             _ => None,
         };
+        let rcvr_ty_str = self.tcx.short_string(rcvr_ty, err.long_ty_path());
+        let mut tracker = TraitBoundDuplicateTracker::new();
+        for (predicate, _parent_pred, _cause) in unsatisfied_predicates {
+            if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =
+                predicate.kind().skip_binder()
+                && let self_ty = pred.trait_ref.self_ty()
+                && self_ty.peel_refs() == rcvr_ty
+            {
+                let is_ref = matches!(self_ty.kind(), ty::Ref(..));
+                tracker.track(pred.trait_ref.def_id, is_ref);
+            }
+        }
+        let has_ref_dupes = tracker.has_ref_dupes();
+        let mut missing_trait_names = tracker
+            .into_trait_def_ids()
+            .into_iter()
+            .map(|def_id| format!("`{}`", self.tcx.def_path_str(def_id)))
+            .collect::<Vec<_>>();
+        missing_trait_names.sort();
+        let should_condense =
+            has_ref_dupes && missing_trait_names.len() > 1 && matches!(rcvr_ty.kind(), ty::Adt(..));
+        let missing_trait_list = if should_condense {
+            Some(match missing_trait_names.as_slice() {
+                [only] => only.clone(),
+                [first, second] => format!("{first} or {second}"),
+                [rest @ .., last] => format!("{} or {last}", rest.join(", ")),
+                [] => String::new(),
+            })
+        } else {
+            None
+        };
         for (span, mut bounds) in bound_spans {
             if !self.tcx.sess.source_map().is_span_accessible(span) {
                 continue;
             }
             bounds.sort();
             bounds.dedup();
-            let pre = if Some(span) == ty_span {
+            let is_ty_span = Some(span) == ty_span;
+            if is_ty_span && should_condense {
+                ty_span.take();
+                let label = if let Some(missing_trait_list) = &missing_trait_list {
+                    format!(
+                        "{item_kind} `{item_ident}` not found for this {} because `{rcvr_ty_str}` doesn't implement {missing_trait_list}",
+                        rcvr_ty.prefix_string(self.tcx)
+                    )
+                } else {
+                    format!(
+                        "{item_kind} `{item_ident}` not found for this {}",
+                        rcvr_ty.prefix_string(self.tcx)
+                    )
+                };
+                err.span_label(span, label);
+                continue;
+            }
+            let pre = if is_ty_span {
                 ty_span.take();
                 format!(
                     "{item_kind} `{item_ident}` not found for this {} because it ",
@@ -1248,6 +1344,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             item_ident,
             item_kind,
             bound_spans,
+            unsatisfied_predicates,
         );
 
         self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_ident, expected);
@@ -1507,6 +1604,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         bound_spans: &mut SortedMap<Span, Vec<String>>,
     ) {
         let tcx = self.tcx;
+        let rcvr_ty_str = self.tcx.short_string(rcvr_ty, err.long_ty_path());
         let mut type_params = FxIndexMap::default();
 
         // Pick out the list of unimplemented traits on the receiver.
@@ -1798,6 +1896,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut spanned_predicates: Vec<_> = spanned_predicates.into_iter().collect();
         spanned_predicates.sort_by_key(|(span, _)| *span);
         for (_, (primary_spans, span_labels, predicates)) in spanned_predicates {
+            let mut tracker = TraitBoundDuplicateTracker::new();
+            let mut all_trait_bounds_for_rcvr = true;
+            for pred in &predicates {
+                match pred.kind().skip_binder() {
+                    ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
+                        let self_ty = pred.trait_ref.self_ty();
+                        if self_ty.peel_refs() != rcvr_ty {
+                            all_trait_bounds_for_rcvr = false;
+                            break;
+                        }
+                        let is_ref = matches!(self_ty.kind(), ty::Ref(..));
+                        tracker.track(pred.trait_ref.def_id, is_ref);
+                    }
+                    _ => {
+                        all_trait_bounds_for_rcvr = false;
+                        break;
+                    }
+                }
+            }
+            let has_ref_dupes = tracker.has_ref_dupes();
+            let trait_def_ids = tracker.into_trait_def_ids();
             let mut preds: Vec<_> = predicates
                 .iter()
                 .filter_map(|pred| format_pred(**pred))
@@ -1805,7 +1924,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .collect();
             preds.sort();
             preds.dedup();
-            let msg = if let [pred] = &preds[..] {
+            let availability_note = if all_trait_bounds_for_rcvr
+                && has_ref_dupes
+                && trait_def_ids.len() > 1
+                && matches!(rcvr_ty.kind(), ty::Adt(..))
+            {
+                let mut trait_names = trait_def_ids
+                    .into_iter()
+                    .map(|def_id| format!("`{}`", tcx.def_path_str(def_id)))
+                    .collect::<Vec<_>>();
+                trait_names.sort();
+                listify(&trait_names, |name| name.to_string()).map(|traits| {
+                        format!(
+                            "for `{item_ident}` to be available, `{rcvr_ty_str}` must implement {traits}"
+                        )
+                    })
+            } else {
+                None
+            };
+            let msg = if let Some(availability_note) = availability_note {
+                availability_note
+            } else if let [pred] = &preds[..] {
                 format!("trait bound {pred} was not satisfied")
             } else {
                 format!("the following trait bounds were not satisfied:\n{}", preds.join("\n"),)

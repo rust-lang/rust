@@ -1,0 +1,33 @@
+error[E0599]: the function or associated item `bat` exists for struct `Foo`, but its trait bounds were not satisfied
+  --> $DIR/associated-item-unsatisfied-trait-bounds.rs:8:10
+   |
+LL | struct Foo;
+   | ---------- function or associated item `bat` not found for this struct because `Foo` doesn't implement `Bar` or `Baz`
+...
+LL |     Foo::bat(());
+   |          ^^^ function or associated item cannot be called on `Foo` due to unsatisfied trait bounds
+   |
+note: for `bat` to be available, `Foo` must implement `Bar` and `Baz`
+  --> $DIR/associated-item-unsatisfied-trait-bounds.rs:5:38
+   |
+LL | impl<T> Bat for T where T: 'static + Bar + Baz { fn bat(&self) { println!("generic bat"); } }
+   |         ---     -                    ^^^   ^^^ unsatisfied trait bound introduced here
+   |                                      |
+   |                                      unsatisfied trait bound introduced here
+note: the traits `Bar` and `Baz` must be implemented
+  --> $DIR/associated-item-unsatisfied-trait-bounds.rs:2:1
+   |
+LL | trait Bar {}
+   | ^^^^^^^^^
+LL | trait Baz {}
+   | ^^^^^^^^^
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Bat` defines an item `bat`, perhaps you need to implement it
+  --> $DIR/associated-item-unsatisfied-trait-bounds.rs:4:1
+   |
+LL | trait Bat { fn bat(&self); }
+   | ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.
