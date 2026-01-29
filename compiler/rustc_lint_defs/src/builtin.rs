@@ -108,6 +108,7 @@ declare_lint_pass! {
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
         TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
+        TODO_MACRO_USES, // ignore-tidy-todo
         TRIVIAL_CASTS,
         TRIVIAL_NUMERIC_CASTS,
         TYVAR_BEHIND_RAW_POINTER,
@@ -826,6 +827,27 @@ declare_lint! {
     Warn,
     "detects unreachable code paths",
     report_in_external_macro
+}
+
+declare_lint! {
+    /// The `todos` lint detects uses of the `todo!()` macro.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,no_run
+    /// todo!();
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This macro is ignored during checking for unreachable code, as it is
+    /// meant for a stand in for code yet to be produced. It is considered
+    /// bad form to leave it in production code.
+    /* ignore-tidy-todo */ pub TODO_MACRO_USES,
+    Warn,
+    "detects `todo!()` macro uses"
 }
 
 declare_lint! {
