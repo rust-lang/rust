@@ -18,8 +18,7 @@ Each crate's json output is checked by 2 programs: [jsondoclint](#jsondocck) and
 This makes sure there are no dangling [`Id`]s.
 
 <!-- TODO: It does some more things too?
-Also, talk about how it works
- -->
+Also, talk about how it works -->
 
 ## jsondocck
 
@@ -35,7 +34,7 @@ It uses [JSONPath] as a query language, which takes a path, and returns a *list*
 - `//@ has <path> <value>`: Check `<path>` exists, and at least 1 of the matches is equal to the given `<value>` 
 - `//@ !has <path> <value>`: Checks `<path>` exists, but none of the matches equal the given `<value>`.
 - `//@ is <path> <value>`: Check `<path>` matches exactly one value, and it's equal to the given `<value>`.
-- `//@ is <path> <value> <value>...`: Check that `<path>` matches to exactly every given `<value>`. 
+- `//@ is <path> <value> <value>...`: Check that `<path>` matches to exactly every given `<value>`.
    Ordering doesn't matter here.
 - `//@ !is <path> <value>`: Check `<path>` matches exactly one value, and that value is not equal to the given `<value>`.
 - `//@ count <path> <number>`: Check that `<path>` matches to `<number>` of values.
@@ -48,7 +47,8 @@ These are defined in [`directive.rs`].
 Values can be either JSON values, or variables.
 
 - JSON values are JSON literals, e.g. `true`, `"string"`, `{"key": "value"}`. 
-  These often need to be quoted using `'`, to be processed as 1 value. See [§Argument splitting](#argument-splitting)
+  These often need to be quoted using `'`, to be processed as 1 value.
+  See [§Argument splitting](#argument-splitting)
 - Variables can be used to store the value in one path, and use it in later queries.
   They are set with the `//@ set <name> = <path>` directive, and accessed with `$<name>`
 
