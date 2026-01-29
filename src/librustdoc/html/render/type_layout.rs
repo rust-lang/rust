@@ -55,7 +55,7 @@ pub(crate) fn document_type_layout(cx: &Context<'_>, ty_def_id: DefId) -> impl f
                         span_bug!(tcx.def_span(ty_def_id), "not an adt")
                     };
                     let name = adt.variant(variant_idx).name;
-                    let is_unsized = variant_layout.is_unsized();
+                    let is_unsized = variant_layout.backend_repr.is_unsized();
                     let is_uninhabited = variant_layout.is_uninhabited();
                     let size = variant_layout.size.bytes() - tag_size;
                     let type_layout_size = TypeLayoutSize { is_unsized, is_uninhabited, size };

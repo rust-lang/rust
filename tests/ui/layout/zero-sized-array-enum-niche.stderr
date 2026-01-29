@@ -36,64 +36,31 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(4 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(4 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: None,
+                       field_offsets: [
+                           Size(4 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(1 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(1 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                       ),
+                       field_offsets: [
+                           Size(1 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -144,89 +111,44 @@ error: layout_of(MultipleAlignments) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(2 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: None,
+                       field_offsets: [
+                           Size(2 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(4 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(4 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: None,
+                       field_offsets: [
+                           Size(4 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(1 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(1 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                       ),
+                       field_offsets: [
+                           Size(1 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 2,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -277,64 +199,31 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(4 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(4 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: None,
+                       field_offsets: [
+                           Size(4 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(3 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(1 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(1 bytes),
-                               value: Int(
-                                   I16,
-                                   false,
-                               ),
-                               valid_range: 1..=65535,
-                           },
-                       ),
+                       field_offsets: [
+                           Size(1 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -389,64 +278,31 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                },
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(0 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: None,
+                       field_offsets: [
+                           Size(0 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(0 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(0 bytes),
-                               value: Int(
-                                   I16,
-                                   false,
-                               ),
-                               valid_range: 0..=0,
-                           },
-                       ),
+                       field_offsets: [
+                           Size(0 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
