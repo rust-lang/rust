@@ -242,7 +242,10 @@ hir_analysis_inherent_ty_outside = cannot define inherent `impl` for a type outs
 
 hir_analysis_inherent_ty_outside_new = cannot define inherent `impl` for a type outside of the crate where the type is defined
     .label = impl for type defined outside of crate
-    .note = define and implement a trait or new type instead
+    .help = consider defining a trait and implementing it for the type or using a newtype wrapper like `struct MyType(ExternalType);` and implement it
+    .note = For more details about orphan rules, see <https://doc.rust-lang.org/reference/items/implementations.html?highlight=orphan#orphan-rules>
+
+hir_analysis_inherent_ty_outside_new_alias_note = `{$ty_name}` does not define a new type, just alias of `{$alias_ty_name}` defined here
 
 hir_analysis_inherent_ty_outside_primitive = cannot define inherent `impl` for primitive types outside of `core`
     .help = consider moving this inherent impl into `core` if possible
