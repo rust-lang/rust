@@ -5,6 +5,10 @@
 
 #![cfg_attr(feat, feature(cfg_unstable_target_modifier))]
 
+#[cfg(target_modifier_branch_protection="bti")]
+//[no_feat]~^ ERROR: `cfg(target_modifier_branch_protection)` is experimental and subject to change
+fn branch_protection() {}
+
 #[cfg(target_modifier_fixed_x18)]
 //[no_feat]~^ ERROR: `cfg(target_modifier_fixed_x18)` is experimental and subject to change
 fn fixed_x18() {}

@@ -18,6 +18,73 @@ struct PrintCfg {
 }
 
 fn main() {
+    // `-Zbranch-protection`
+    check(PrintCfg {
+        target: "aarch64-unknown-linux-gnu",
+        flag: "-Zbranch-protection=bti",
+        cfgs: &["target_modifier_branch_protection=\"bti\""],
+    });
+    check(PrintCfg {
+        target: "aarch64-unknown-linux-gnu",
+        flag: "-Zbranch-protection=gcs",
+        cfgs: &["target_modifier_branch_protection=\"gcs\""],
+    });
+    check(PrintCfg {
+        target: "aarch64-unknown-linux-gnu",
+        flag: "-Zbranch-protection=pac-ret",
+        cfgs: &["target_modifier_branch_protection=\"pac-ret\""],
+    });
+    check(PrintCfg {
+        target: "aarch64-unknown-linux-gnu",
+        flag: "-Zbranch-protection=pac-ret,leaf",
+        cfgs: &[
+            "target_modifier_branch_protection=\"pac-ret\"",
+            "target_modifier_branch_protection=\"leaf\"",
+        ],
+    });
+    check(PrintCfg {
+        target: "aarch64-unknown-linux-gnu",
+        flag: "-Zbranch-protection=pac-ret,b-key",
+        cfgs: &[
+            "target_modifier_branch_protection=\"pac-ret\"",
+            "target_modifier_branch_protection=\"b-key\"",
+        ],
+    });
+    check(PrintCfg {
+        target: "aarch64-unknown-linux-gnu",
+        flag: "-Zbranch-protection=pac-ret,pc",
+        cfgs: &[
+            "target_modifier_branch_protection=\"pac-ret\"",
+            "target_modifier_branch_protection=\"pc\"",
+        ],
+    });
+    check(PrintCfg {
+        target: "aarch64-unknown-linux-gnu",
+        flag: "-Zbranch-protection=pac-ret,pc,b-key",
+        cfgs: &[
+            "target_modifier_branch_protection=\"pac-ret\"",
+            "target_modifier_branch_protection=\"pc\"",
+            "target_modifier_branch_protection=\"b-key\"",
+        ],
+    });
+    check(PrintCfg {
+        target: "aarch64-unknown-linux-gnu",
+        flag: "-Zbranch-protection=pac-ret,pc,leaf",
+        cfgs: &[
+            "target_modifier_branch_protection=\"pac-ret\"",
+            "target_modifier_branch_protection=\"pc\"",
+            "target_modifier_branch_protection=\"leaf\"",
+        ],
+    });
+    check(PrintCfg {
+        target: "aarch64-unknown-linux-gnu",
+        flag: "-Zbranch-protection=bti,pac-ret,pc",
+        cfgs: &[
+            "target_modifier_branch_protection=\"bti\"",
+            "target_modifier_branch_protection=\"pac-ret\"",
+            "target_modifier_branch_protection=\"pc\"",
+        ],
+    });
     // `-Zfixed-x18`
     check(PrintCfg {
         target: "aarch64-unknown-linux-gnu",

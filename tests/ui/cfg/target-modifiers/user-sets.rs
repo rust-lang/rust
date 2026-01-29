@@ -1,7 +1,8 @@
 //@ check-fail
 //@ compile-flags: --crate-type=lib
-//@ revisions: fixed_x18 indirect_branch_cs_prefix regparm
+//@ revisions: branch_protection fixed_x18 indirect_branch_cs_prefix regparm
 //@ revisions: reg_struct_return retpoline retpoline_external_thunk
+//@[branch_protection] compile-flags: --cfg target_modifier_branch_protection="bti"
 //@[fixed_x18] compile-flags: --cfg target_modifier_fixed_x18
 //@[indirect_branch_cs_prefix] compile-flags: --cfg target_modifier_indirect_branch_cs_prefix
 //@[regparm] compile-flags: --cfg target_modifier_regparm="0"
