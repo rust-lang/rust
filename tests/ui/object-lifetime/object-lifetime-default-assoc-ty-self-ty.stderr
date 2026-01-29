@@ -1,0 +1,9 @@
+error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
+  --> $DIR/object-lifetime-default-assoc-ty-self-ty.rs:10:14
+   |
+LL | fn g<'r>(x: <dyn Inner as Outer<'r>>::Ty) {}
+   |              ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0228`.

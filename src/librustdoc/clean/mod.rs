@@ -1989,6 +1989,9 @@ impl<'tcx> ContainerTy<'_, 'tcx> {
         match self {
             Self::Ref(region) => ObjectLifetimeDefault::Arg(region),
             Self::Regular { ty: container, args, arg: index } => {
+                // FIXME(fmease): rustc now also computes ambient object lifetime defaults for
+                //                `AssocTy`s. Re-elide these, too!
+
                 let (DefKind::Struct
                 | DefKind::Union
                 | DefKind::Enum
