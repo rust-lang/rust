@@ -518,7 +518,7 @@ impl<'a> Parser<'a> {
         match self.parse_delim_args() {
             // `( .. )` or `[ .. ]` (followed by `;`), or `{ .. }`.
             Ok(args) => {
-                self.eat_semi_for_macro_if_needed(&args);
+                self.eat_semi_for_macro_if_needed(Some(&path), &args);
                 self.complain_if_pub_macro(vis, false);
                 Ok(MacCall { path, args })
             }
@@ -2370,7 +2370,7 @@ impl<'a> Parser<'a> {
         }
 
         let body = self.parse_delim_args()?;
-        self.eat_semi_for_macro_if_needed(&body);
+        self.eat_semi_for_macro_if_needed(None, &body);
         self.complain_if_pub_macro(vis, true);
 
         Ok(ItemKind::MacroDef(
@@ -2395,13 +2395,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn eat_semi_for_macro_if_needed(&mut self, args: &DelimArgs) {
+    fn eat_semi_for_macro_if_needed(&mut self, path: Option<&ast::Path>, args: &DelimArgs) {
         if args.need_semicolon() && !self.eat(exp!(Semi)) {
-            self.report_invalid_macro_expansion_item(args);
+            self.report_invalid_macro_expansion_item(path, args);
         }
     }
 
-    fn report_invalid_macro_expansion_item(&self, args: &DelimArgs) {
+    fn report_invalid_macro_expansion_item(&self, path: Option<&ast::Path>, args: &DelimArgs) {
         let span = args.dspan.entire();
         let mut err = self.dcx().struct_span_err(
             span,
@@ -2411,17 +2411,35 @@ impl<'a> Parser<'a> {
         // macros within the same crate (that we can fix), which is sad.
         if !span.from_expansion() {
             let DelimSpan { open, close } = args.dspan;
-            err.multipart_suggestion(
-                "change the delimiters to curly braces",
-                vec![(open, "{".to_string()), (close, '}'.to_string())],
-                Applicability::MaybeIncorrect,
-            );
-            err.span_suggestion(
-                span.with_neighbor(self.token.span).shrink_to_hi(),
-                "add a semicolon",
-                ';',
-                Applicability::MaybeIncorrect,
-            );
+
+            // Special-case a common mistake when trying to define a macro:
+            // `macro_rules! name { .. }` is a macro definition, but users sometimes write
+            // `macro_rules!(name) { .. }`, which is parsed as a macro *invocation* followed by a block.
+            let is_macro_rules = path
+                .and_then(|p| p.segments.first())
+                .map(|seg| seg.ident.name == sym::macro_rules)
+                .unwrap_or(false);
+            let is_parens = args.delim == Delimiter::Parenthesis;
+            let followed_by_block = self.token == token::OpenBrace;
+            if is_macro_rules && is_parens && followed_by_block {
+                err.multipart_suggestion(
+                    "to define a macro, remove the parentheses around the macro name",
+                    vec![(open, " ".to_string()), (close, String::new())],
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                err.multipart_suggestion(
+                    "change the delimiters to curly braces",
+                    vec![(open, "{".to_string()), (close, '}'.to_string())],
+                    Applicability::MaybeIncorrect,
+                );
+                err.span_suggestion(
+                    span.with_neighbor(self.token.span).shrink_to_hi(),
+                    "add a semicolon",
+                    ';',
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
         err.emit();
     }
