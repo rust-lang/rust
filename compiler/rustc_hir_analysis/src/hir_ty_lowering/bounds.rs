@@ -854,8 +854,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // params (and trait ref's late bound params). This logic is very similar to
         // `rustc_middle::ty::predicate::Clause::instantiate_supertrait`
         // and it's no coincidence why.
-        let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
-        Ok(ty::EarlyBinder::bind(shifted_output).instantiate(tcx, args))
+        Ok(tcx.shift_indices_and_early_bind(num_bound_vars, output, args))
     }
 }
 

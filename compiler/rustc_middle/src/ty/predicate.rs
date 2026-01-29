@@ -449,10 +449,12 @@ impl<'tcx> Clause<'tcx> {
         let pred_bound_vars = bound_pred.bound_vars();
         let trait_bound_vars = trait_ref.bound_vars();
         // 1) Self: Bar1<'a, '^0.0> -> Self: Bar1<'a, '^0.1>
-        let shifted_pred =
-            tcx.shift_bound_var_indices(trait_bound_vars.len(), bound_pred.skip_binder());
         // 2) Self: Bar1<'a, '^0.1> -> T: Bar1<'^0.0, '^0.1>
-        let new = EarlyBinder::bind(shifted_pred).instantiate(tcx, trait_ref.skip_binder().args);
+        let new = tcx.shift_indices_and_early_bind(
+            trait_bound_vars.len(),
+            bound_pred.skip_binder(),
+            trait_ref.skip_binder().args,
+        );
         // 3) ['x] + ['b] -> ['x, 'b]
         let bound_vars =
             tcx.mk_bound_variable_kinds_from_iter(trait_bound_vars.iter().chain(pred_bound_vars));
@@ -463,6 +465,39 @@ impl<'tcx> Clause<'tcx> {
             ty::Binder::bind_with_vars(PredicateKind::Clause(new), bound_vars),
         )
         .expect_clause()
+    }
+}
+
+impl TyCtxt<'_> {
+    /// Shifts a trait ref's predicate bound variables by the length of trait ref's bound variables.
+    /// Partially instantiates an alias type with binding arguments.
+    ///
+    /// Working through an example:
+    /// trait_ref: for<'x> T: Foo1<'^0.0>; args: [T, '^0.0]
+    /// predicate: for<'b> Self: Bar1<'a, '^0.0>; args: [Self, 'a, '^0.0]
+    /// We want to end up with:
+    ///     for<'x, 'b> T: Bar1<'^0.0, '^0.1>
+    /// To do this:
+    /// 1) We must shift all bound vars in predicate by the length
+    ///    of trait ref's bound vars. So, we would end up with predicate like
+    ///    Self: Bar1<'a, '^0.1>
+    /// 2) We can then apply the trait args to this, ending up with
+    ///    T: Bar1<'^0.0, '^0.1>
+    #[inline]
+    pub fn shift_indices_and_early_bind<V, A>(
+        self,
+        vars_len: usize,
+        bound_vars: V,
+        bind_args: A,
+    ) -> V
+    where
+        A: ty::inherent::SliceLike<Item = <Self as ty::Interner>::GenericArg>,
+        V: rustc_type_ir::TypeFoldable<Self>,
+    {
+        // 1) Self: Bar1<'a, '^0.0> -> Self: Bar1<'a, '^0.1>
+        let shifted_pred = self.shift_bound_var_indices(vars_len, bound_vars);
+        // 2) Self: Bar1<'a, '^0.1> -> T: Bar1<'^0.0, '^0.1>
+        EarlyBinder::bind(shifted_pred).instantiate(self, bind_args)
     }
 }
 
