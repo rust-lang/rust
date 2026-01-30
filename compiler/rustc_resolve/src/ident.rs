@@ -905,7 +905,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn resolve_ident_in_module<'r>(
         self: CmResolver<'r, 'ra, 'tcx>,
         module: ModuleOrUniformRoot<'ra>,
-        mut ident: Ident,
+        ident: Ident,
         ns: Namespace,
         parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
@@ -914,15 +914,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Result<Decl<'ra>, Determinacy> {
         match module {
             ModuleOrUniformRoot::Module(module) => {
-                let tmp_parent_scope;
-                let mut adjusted_parent_scope = parent_scope;
-                if let Some(def) = ident.span.normalize_to_macros_2_0_and_adjust(module.expansion) {
-                    tmp_parent_scope =
-                        ParentScope { module: self.expn_def_scope(def), ..*parent_scope };
-                    adjusted_parent_scope = &tmp_parent_scope;
-                }
-                self.resolve_ident_in_scope_set(
-                    ident,
+                let (ident_key, def) = IdentKey::new_adjusted(ident, module.expansion);
+                let adjusted_parent_scope = match def {
+                    Some(def) => ParentScope { module: self.expn_def_scope(def), ..*parent_scope },
+                    None => *parent_scope,
+                };
+                self.resolve_ident_in_scope_set_inner(
+                    ident_key,
+                    ident.span,
                     ScopeSet::Module(ns, module),
                     &adjusted_parent_scope,
                     finalize,
@@ -942,9 +941,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 if ns != TypeNS {
                     Err(Determined)
                 } else {
-                    ident.span.normalize_to_macros_2_0_and_adjust(ExpnId::root());
-                    self.resolve_ident_in_scope_set(
-                        ident,
+                    self.resolve_ident_in_scope_set_inner(
+                        IdentKey::new_adjusted(ident, ExpnId::root()).0,
+                        ident.span,
                         ScopeSet::ExternPrelude,
                         parent_scope,
                         finalize,

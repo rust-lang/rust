@@ -576,6 +576,12 @@ impl IdentKey {
     }
 
     #[inline]
+    fn new_adjusted(ident: Ident, expn_id: ExpnId) -> (IdentKey, Option<ExpnId>) {
+        let (ctxt, def) = Macros20NormalizedSyntaxContext::new_adjusted(ident.span.ctxt(), expn_id);
+        (IdentKey { name: ident.name, ctxt }, def)
+    }
+
+    #[inline]
     fn with_root_ctxt(name: Symbol) -> Self {
         let ctxt = Macros20NormalizedSyntaxContext::new_unchecked(SyntaxContext::root());
         IdentKey { name, ctxt }
@@ -2724,7 +2730,7 @@ mod ref_mut {
 }
 
 mod hygiene {
-    use rustc_span::SyntaxContext;
+    use rustc_span::{ExpnId, SyntaxContext};
 
     /// A newtype around `SyntaxContext` that can only keep contexts produced by
     /// [SyntaxContext::normalize_to_macros_2_0].
@@ -2735,6 +2741,15 @@ mod hygiene {
         #[inline]
         pub(crate) fn new(ctxt: SyntaxContext) -> Macros20NormalizedSyntaxContext {
             Macros20NormalizedSyntaxContext(ctxt.normalize_to_macros_2_0())
+        }
+
+        #[inline]
+        pub(crate) fn new_adjusted(
+            mut ctxt: SyntaxContext,
+            expn_id: ExpnId,
+        ) -> (Macros20NormalizedSyntaxContext, Option<ExpnId>) {
+            let def = ctxt.normalize_to_macros_2_0_and_adjust(expn_id);
+            (Macros20NormalizedSyntaxContext(ctxt), def)
         }
 
         #[inline]

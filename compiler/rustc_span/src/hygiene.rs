@@ -804,7 +804,7 @@ impl SyntaxContext {
 
     /// Like `SyntaxContext::adjust`, but also normalizes `self` to macros 2.0.
     #[inline]
-    pub(crate) fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
+    pub fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         HygieneData::with(|data| {
             *self = data.normalize_to_macros_2_0(*self);
             data.adjust(self, expn_id)
