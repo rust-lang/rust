@@ -690,6 +690,21 @@ impl IntoDiagArg for CrateType {
     }
 }
 
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute, PartialEq, Eq)]
+pub enum RustcMirKind {
+    PeekMaybeInit,
+    PeekMaybeUninit,
+    PeekLiveness,
+    StopAfterDataflow,
+    BorrowckGraphvizPostflow { path: PathBuf },
+    BorrowckGraphvizFormat { format: BorrowckGraphvizFormatKind },
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute, PartialEq, Eq)]
+pub enum BorrowckGraphvizFormatKind {
+    TwoPhase,
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -1074,6 +1089,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_main]`.
     RustcMain,
+
+    /// Represents `#[rustc_mir]`.
+    RustcMir(ThinVec<RustcMirKind>),
 
     /// Represents `#[rustc_must_implement_one_of]`
     RustcMustImplementOneOf { attr_span: Span, fn_names: ThinVec<Ident> },

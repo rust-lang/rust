@@ -307,6 +307,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcLintUntrackedQueryInformation
                     | AttributeKind::RustcMacroTransparency(_)
                     | AttributeKind::RustcMain
+                    | AttributeKind::RustcMir(_)
                     | AttributeKind::RustcNeverReturnsNullPointer
                     | AttributeKind::RustcNoImplicitAutorefs
                     | AttributeKind::RustcNounwind

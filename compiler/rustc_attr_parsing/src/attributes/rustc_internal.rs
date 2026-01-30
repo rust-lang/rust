@@ -1,4 +1,7 @@
+use std::path::PathBuf;
+
 use rustc_ast::{LitIntType, LitKind, MetaItemLit};
+use rustc_hir::attrs::{BorrowckGraphvizFormatKind, RustcMirKind};
 use rustc_session::errors;
 
 use super::prelude::*;
@@ -328,4 +331,93 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcOffloadKernelParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcOffloadKernel;
+}
+
+pub(crate) struct RustcMirParser;
+
+impl<S: Stage> CombineAttributeParser<S> for RustcMirParser {
+    const PATH: &[rustc_span::Symbol] = &[sym::rustc_mir];
+
+    type Item = RustcMirKind;
+
+    const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::RustcMir(items);
+
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+    ]);
+
+    const TEMPLATE: AttributeTemplate = template!(List: &["arg1, arg2, ..."]);
+
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
+        let Some(list) = args.list() else {
+            cx.expected_list(cx.attr_span, args);
+            return ThinVec::new();
+        };
+
+        list.mixed()
+            .filter_map(|arg| arg.meta_item())
+            .filter_map(|mi| {
+                if let Some(ident) = mi.ident() {
+                    match ident.name {
+                        sym::rustc_peek_maybe_init => Some(RustcMirKind::PeekMaybeInit),
+                        sym::rustc_peek_maybe_uninit => Some(RustcMirKind::PeekMaybeUninit),
+                        sym::rustc_peek_liveness => Some(RustcMirKind::PeekLiveness),
+                        sym::stop_after_dataflow => Some(RustcMirKind::StopAfterDataflow),
+                        sym::borrowck_graphviz_postflow => {
+                            let Some(nv) = mi.args().name_value() else {
+                                cx.expected_name_value(
+                                    mi.span(),
+                                    Some(sym::borrowck_graphviz_postflow),
+                                );
+                                return None;
+                            };
+                            let Some(path) = nv.value_as_str() else {
+                                cx.expected_string_literal(nv.value_span, None);
+                                return None;
+                            };
+                            let path = PathBuf::from(path.to_string());
+                            if path.file_name().is_some() {
+                                Some(RustcMirKind::BorrowckGraphvizPostflow { path })
+                            } else {
+                                cx.expected_filename_literal(nv.value_span);
+                                None
+                            }
+                        }
+                        sym::borrowck_graphviz_format => {
+                            let Some(nv) = mi.args().name_value() else {
+                                cx.expected_name_value(
+                                    mi.span(),
+                                    Some(sym::borrowck_graphviz_format),
+                                );
+                                return None;
+                            };
+                            let Some(format) = nv.value_as_ident() else {
+                                cx.expected_identifier(nv.value_span);
+                                return None;
+                            };
+                            match format.name {
+                                sym::two_phase => Some(RustcMirKind::BorrowckGraphvizFormat {
+                                    format: BorrowckGraphvizFormatKind::TwoPhase,
+                                }),
+                                _ => {
+                                    cx.expected_specific_argument(format.span, &[sym::two_phase]);
+                                    None
+                                }
+                            }
+                        }
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 }
