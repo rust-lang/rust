@@ -3113,10 +3113,11 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
 
 declare_lint! {
     /// The `black_box_zst_calls` lint detects calls to `core::hint::black_box`
-    /// where the argument is a zero-sized callable (e.g. a function item or
-    /// a capture-less closure). These values have no runtime representation,
-    /// so the black boxing does not make subsequent calls opaque to the
-    /// optimizer.
+    /// with a zero-sized type (ZST).
+    ///
+    /// Zero-sized types (like `()`, unit structs, or function items) have no
+    /// runtime representation, so `black_box` cannot block the optimizer because
+    /// there is no value to hide.
     ///
     /// ### Example
     ///
@@ -3124,13 +3125,9 @@ declare_lint! {
     /// #![deny(black_box_zst_calls)]
     /// use std::hint::black_box;
     ///
-    /// fn add(a: u32, b: u32) -> u32 {
-    ///     a + b
-    /// }
-    ///
     /// fn main() {
-    ///     let add_bb = black_box(add);
-    ///     let _ = add_bb(1, 2);
+    ///     // This does nothing because `()` has no size.
+    ///     black_box(());
     /// }
     /// ```
     ///
@@ -3138,13 +3135,12 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Function items and capture-less closures are zero-sized. Passing them
-    /// to `black_box` does not force the optimizer to treat the subsequent
-    /// call as opaque. Coerce the callable to a function pointer and black_box
-    /// that pointer instead.
+    /// `black_box` is intended to treat a value as "unknown" to the optimizer.
+    /// However, if the value has size 0, the optimizer knows exactly what it is
+    /// (it's nothing!) and can optimize around it anyway.
     pub BLACK_BOX_ZST_CALLS,
     Warn,
-    "calling `black_box` on zero-sized callables has no effect on opacity"
+    "usage of `black_box` with zero-sized types"
 }
 
 declare_lint_pass!(BlackBoxZstCalls => [BLACK_BOX_ZST_CALLS]);
@@ -3166,7 +3162,7 @@ impl<'tcx> LateLintPass<'tcx> for BlackBoxZstCalls {
         let arg = &args[0];
         let arg_ty = cx.typeck_results().expr_ty_adjusted(arg);
 
-        if !is_callable_zst(cx, arg_ty) {
+        if !is_zst(cx, arg_ty) {
             return;
         }
 
@@ -3179,9 +3175,8 @@ impl<'tcx> LateLintPass<'tcx> for BlackBoxZstCalls {
     }
 }
 
-fn is_callable_zst<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    matches!(ty.kind(), ty::FnDef(..) | ty::Closure(..))
-        && cx.tcx.layout_of(cx.typing_env().as_query_input(ty)).is_ok_and(|layout| layout.is_zst())
+fn is_zst<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    cx.tcx.layout_of(cx.typing_env().as_query_input(ty)).is_ok_and(|layout| layout.is_zst())
 }
 
 declare_lint! {
