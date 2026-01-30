@@ -2109,7 +2109,7 @@ rustc_queries! {
         desc { |tcx| "getting the native library for `{}`", tcx.def_path_str(def_id) }
     }
 
-    query inherit_sig_for_delegation_item(def_id: LocalDefId) -> &'tcx [Ty<'tcx>] {
+    query inherit_sig_for_delegation_item(key: (LocalDefId, &'tcx [GenericArg<'tcx>], &'tcx [GenericArg<'tcx>])) -> &'tcx [Ty<'tcx>] {
         desc { "inheriting delegation signature" }
     }
 

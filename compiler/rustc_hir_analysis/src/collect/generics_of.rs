@@ -11,7 +11,6 @@ use rustc_session::lint;
 use rustc_span::{Span, Symbol, kw};
 use tracing::{debug, instrument};
 
-use crate::delegation::inherit_generics_for_delegation_item;
 use crate::middle::resolve_bound_vars as rbv;
 
 #[instrument(level = "debug", skip(tcx), ret)]
@@ -56,13 +55,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     }
 
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
-
     let node = tcx.hir_node(hir_id);
-    if let Some(sig) = node.fn_sig()
-        && let Some(sig_id) = sig.decl.opt_delegation_sig_id()
-    {
-        return inherit_generics_for_delegation_item(tcx, def_id, sig_id);
-    }
 
     let parent_def_id = match node {
         Node::ImplItem(_)
