@@ -1086,11 +1086,6 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
 
             let Some((name, decl_span)) = self.checked_places.names[index] else { continue };
 
-            // By convention, underscore-prefixed bindings are explicitly allowed to be unused.
-            if name.as_str().starts_with('_') {
-                continue;
-            }
-
             let is_maybe_drop_guard = maybe_drop_guard(
                 tcx,
                 self.typing_env,
@@ -1117,6 +1112,11 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                 let Some(hir_id) = source_info.scope.lint_root(&self.body.source_scopes) else {
                     continue;
                 };
+
+                // By convention, underscore-prefixed bindings are allowed to be unused explicitly
+                if name.as_str().starts_with('_') {
+                    break;
+                }
 
                 match kind {
                     AccessKind::Assign => {
