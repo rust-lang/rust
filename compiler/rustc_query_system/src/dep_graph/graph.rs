@@ -887,6 +887,7 @@ impl<D: Deps> DepGraphData<D> {
     }
 
     #[instrument(skip(self, qcx, parent_dep_node_index, frame), level = "debug")]
+    #[inline(always)]
     fn try_mark_parent_green<'tcx, Qcx: QueryContext<'tcx, Deps = D>>(
         &self,
         qcx: Qcx,
@@ -977,6 +978,7 @@ impl<D: Deps> DepGraphData<D> {
 
     /// Try to mark a dep-node which existed in the previous compilation session as green.
     #[instrument(skip(self, qcx, prev_dep_node_index, frame), level = "debug")]
+    #[inline(never)]
     fn try_mark_previous_green<'tcx, Qcx: QueryContext<'tcx, Deps = D>>(
         &self,
         qcx: Qcx,
@@ -1395,7 +1397,7 @@ impl DepNodeColorMap {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub(super) fn get(&self, index: SerializedDepNodeIndex) -> DepNodeColor {
         let value = self.values[index].load(Ordering::Acquire);
         // Green is by far the most common case. Check for that first so we can succeed with a
