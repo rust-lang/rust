@@ -47,10 +47,17 @@ fn main() {
     let bluby: i32;
     //~^ similar_names
 
-    let cake: i32;
+    let orange: i32;
+    let ornange: i32;
+    //~^ similar_names
+
     let cakes: i32;
+    let cake: i32;
     let coke: i32;
     //~^ similar_names
+
+    let wagon: i32;
+    let twagon: i32;
 
     match 5 {
         cheese @ 1 => {},
@@ -93,6 +100,9 @@ fn main() {
     // 3 letter names are allowed to be similar
     let kta: i32;
     let ktv: i32;
+
+    let checked_exp: i32;
+    let checked_expr: i32;
 }
 
 fn foo() {

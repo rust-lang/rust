@@ -52,7 +52,11 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for names that are very similar and thus confusing.
+    /// Checks for names that are very similar and thus confusing. In particular,
+    /// the lint checks for names with a single character change.
+    /// 
+    /// It does not warn about names that have a single additional character at 
+    /// the beginning nor the end; only insertions in the middle are considered.
     ///
     /// Note: this lint looks for similar names throughout each
     /// scope. To allow it, you need to allow it on the scope
@@ -65,7 +69,13 @@ declare_clippy_lint! {
     /// ### Example
     /// ```ignore
     /// let checked_exp = something;
-    /// let checked_expr = something_else;
+    /// let checked_eap = something_else;
+    /// ```
+    /// 
+    /// ### Example 2
+    /// ```ignore
+    /// let orange = val;
+    /// let ornange = val2;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub SIMILAR_NAMES,
