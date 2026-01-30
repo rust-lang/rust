@@ -54,7 +54,7 @@ In fact, the universal regions can be further subdivided based on
 where they were brought into scope (see the [`RegionClassification`]
 type). These subdivisions are not important for the topics discussed
 here, but become important when we consider [closure constraint
-propagation](./closure_constraints.html), so we discuss them there.
+propagation](./closure-constraints.md), so we discuss them there.
 
 [`RegionClassification`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/universal_regions/enum.RegionClassification.html#variant.Local
 

@@ -19,7 +19,7 @@ The result of a perf run is a comparison between two versions of the compiler
 (by their commit hashes).
 
 You can also use `rustc-perf` to manually benchmark and profile the compiler
-[locally](../profiling/with_rustc_perf.md).
+[locally](../profiling/with-rustc-perf.md).
 
 ### Automatic perf runs
 

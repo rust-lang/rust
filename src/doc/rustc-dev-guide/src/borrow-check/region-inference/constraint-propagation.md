@@ -11,7 +11,7 @@ on one at a time (each of them is fairly independent from the others):
 - [member constraints][m_c] (`member R_m of [R_c...]`), which arise from impl Trait.
 
 [`propagate_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/region_infer/struct.RegionInferenceContext.html#method.propagate_constraints
-[m_c]: ./member_constraints.md
+[m_c]: ./member-constraints.md
 
 In this chapter, we'll explain the "heart" of constraint propagation,
 covering both liveness and outlives constraints.
@@ -29,7 +29,7 @@ given some set of constraints `{C}` and it computes a set of values
   - For each constraint C:
     - Update `Values` as needed to satisfy the constraint
 
-[riv]: ../region_inference.md#region-variables
+[riv]: ../region-inference.md#region-variables
 
 As a simple example, if we have a liveness constraint `R live at E`,
 then we can apply `Values(R) = Values(R) union {E}` to make the
@@ -211,7 +211,7 @@ have already processed a given SCC or not. For each successor `S2`, once
 we have computed `S2`'s value, we can union those elements into the
 value for `S1`. (Although we have to be careful in this process to
 properly handle [higher-ranked
-placeholders](./placeholders_and_universes.html). Note that the value
+placeholders](./placeholders-and-universes.md). Note that the value
 for `S1` already contains the liveness constraints, since they were
 added in [`RegionInferenceContext::new`].
 
