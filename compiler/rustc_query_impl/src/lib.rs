@@ -21,7 +21,7 @@ use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
     CycleError, CycleErrorHandling, HashResult, QueryCache, QueryDispatcher, QueryMap, QueryMode,
-    QueryStackDeferred, QueryState, get_query_incr, get_query_non_incr,
+    QueryState, get_query_incr, get_query_non_incr,
 };
 use rustc_span::{ErrorGuaranteed, Span};
 
@@ -66,7 +66,7 @@ impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDA
 
 // This is `impl QueryDispatcher for SemiDynamicQueryDispatcher`.
 impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool>
-    QueryDispatcher for SemiDynamicQueryDispatcher<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+    QueryDispatcher<'tcx> for SemiDynamicQueryDispatcher<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
 where
     for<'a> C::Key: HashStable<StableHashingContext<'a>>,
 {
@@ -86,10 +86,7 @@ where
     }
 
     #[inline(always)]
-    fn query_state<'a>(
-        self,
-        qcx: QueryCtxt<'tcx>,
-    ) -> &'a QueryState<Self::Key, QueryStackDeferred<'tcx>>
+    fn query_state<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a QueryState<'tcx, Self::Key>
     where
         QueryCtxt<'tcx>: 'a,
     {
@@ -98,7 +95,7 @@ where
         unsafe {
             &*(&qcx.tcx.query_system.states as *const QueryStates<'tcx>)
                 .byte_add(self.vtable.query_state)
-                .cast::<QueryState<Self::Key, QueryStackDeferred<'tcx>>>()
+                .cast::<QueryState<'tcx, Self::Key>>()
         }
     }
 
@@ -211,13 +208,15 @@ where
 /// on the type `rustc_query_impl::query_impl::$name::QueryType`.
 trait QueryDispatcherUnerased<'tcx> {
     type UnerasedValue;
-    type Dispatcher: QueryDispatcher<Qcx = QueryCtxt<'tcx>>;
+    type Dispatcher: QueryDispatcher<'tcx, Qcx = QueryCtxt<'tcx>>;
 
     const NAME: &'static &'static str;
 
     fn query_dispatcher(tcx: TyCtxt<'tcx>) -> Self::Dispatcher;
 
-    fn restore_val(value: <Self::Dispatcher as QueryDispatcher>::Value) -> Self::UnerasedValue;
+    fn restore_val(
+        value: <Self::Dispatcher as QueryDispatcher<'tcx>>::Value,
+    ) -> Self::UnerasedValue;
 }
 
 pub fn query_system<'a>(

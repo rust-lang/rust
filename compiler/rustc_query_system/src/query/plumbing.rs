@@ -18,7 +18,7 @@ use rustc_errors::{Diag, FatalError, StashKey};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::instrument;
 
-use super::{QueryDispatcher, QueryStackFrameExtra};
+use super::{QueryDispatcher, QueryStackDeferred, QueryStackFrameExtra};
 use crate::dep_graph::{
     DepContext, DepGraphData, DepNode, DepNodeIndex, DepNodeParams, HasDepContext,
 };
@@ -34,23 +34,23 @@ fn equivalent_key<K: Eq, V>(k: &K) -> impl Fn(&(K, V)) -> bool + '_ {
     move |x| x.0 == *k
 }
 
-pub struct QueryState<K, I> {
-    active: Sharded<hashbrown::HashTable<(K, QueryResult<I>)>>,
+pub struct QueryState<'tcx, K> {
+    active: Sharded<hashbrown::HashTable<(K, QueryResult<'tcx>)>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.
-enum QueryResult<I> {
+enum QueryResult<'tcx> {
     /// An already executing query. The query job can be used to await for its completion.
-    Started(QueryJob<I>),
+    Started(QueryJob<'tcx>),
 
     /// The query panicked. Queries trying to wait on this will raise a fatal error which will
     /// silently panic.
     Poisoned,
 }
 
-impl<I> QueryResult<I> {
+impl<'tcx> QueryResult<'tcx> {
     /// Unwraps the query job expecting that it has started.
-    fn expect_job(self) -> QueryJob<I> {
+    fn expect_job(self) -> QueryJob<'tcx> {
         match self {
             Self::Started(job) => job,
             Self::Poisoned => {
@@ -60,7 +60,7 @@ impl<I> QueryResult<I> {
     }
 }
 
-impl<K, I> QueryState<K, I>
+impl<'tcx, K> QueryState<'tcx, K>
 where
     K: Eq + Hash + Copy + Debug,
 {
@@ -71,13 +71,13 @@ where
     pub fn collect_active_jobs<Qcx: Copy>(
         &self,
         qcx: Qcx,
-        make_query: fn(Qcx, K) -> QueryStackFrame<I>,
-        jobs: &mut QueryMap<I>,
+        make_query: fn(Qcx, K) -> QueryStackFrame<QueryStackDeferred<'tcx>>,
+        jobs: &mut QueryMap<'tcx>,
         require_complete: bool,
     ) -> Option<()> {
         let mut active = Vec::new();
 
-        let mut collect = |iter: LockGuard<'_, HashTable<(K, QueryResult<I>)>>| {
+        let mut collect = |iter: LockGuard<'_, HashTable<(K, QueryResult<'tcx>)>>| {
             for (k, v) in iter.iter() {
                 if let QueryResult::Started(ref job) = *v {
                     active.push((*k, job.clone()));
@@ -108,40 +108,40 @@ where
     }
 }
 
-impl<K, I> Default for QueryState<K, I> {
-    fn default() -> QueryState<K, I> {
+impl<'tcx, K> Default for QueryState<'tcx, K> {
+    fn default() -> QueryState<'tcx, K> {
         QueryState { active: Default::default() }
     }
 }
 
 /// A type representing the responsibility to execute the job in the `job` field.
 /// This will poison the relevant query if dropped.
-struct JobOwner<'tcx, K, I>
+struct JobOwner<'a, 'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
-    state: &'tcx QueryState<K, I>,
+    state: &'a QueryState<'tcx, K>,
     key: K,
 }
 
 #[cold]
 #[inline(never)]
-fn mk_cycle<Q>(query: Q, qcx: Q::Qcx, cycle_error: CycleError) -> Q::Value
+fn mk_cycle<'tcx, Q>(query: Q, qcx: Q::Qcx, cycle_error: CycleError) -> Q::Value
 where
-    Q: QueryDispatcher,
+    Q: QueryDispatcher<'tcx>,
 {
     let error = report_cycle(qcx.dep_context().sess(), &cycle_error);
     handle_cycle_error(query, qcx, &cycle_error, error)
 }
 
-fn handle_cycle_error<Q>(
+fn handle_cycle_error<'tcx, Q>(
     query: Q,
     qcx: Q::Qcx,
     cycle_error: &CycleError,
     error: Diag<'_>,
 ) -> Q::Value
 where
-    Q: QueryDispatcher,
+    Q: QueryDispatcher<'tcx>,
 {
     match query.cycle_error_handling() {
         CycleErrorHandling::Error => {
@@ -170,7 +170,7 @@ where
     }
 }
 
-impl<'tcx, K, I> JobOwner<'tcx, K, I>
+impl<'a, 'tcx, K> JobOwner<'a, 'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
@@ -207,7 +207,7 @@ where
     }
 }
 
-impl<'tcx, K, I> Drop for JobOwner<'tcx, K, I>
+impl<'a, 'tcx, K> Drop for JobOwner<'a, 'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
@@ -241,8 +241,8 @@ pub struct CycleError<I = QueryStackFrameExtra> {
     pub cycle: Vec<QueryInfo<I>>,
 }
 
-impl<I> CycleError<I> {
-    fn lift<Qcx: QueryContext<QueryInfo = I>>(&self, qcx: Qcx) -> CycleError<QueryStackFrameExtra> {
+impl<'tcx> CycleError<QueryStackDeferred<'tcx>> {
+    fn lift<Qcx: QueryContext<'tcx>>(&self, qcx: Qcx) -> CycleError<QueryStackFrameExtra> {
         CycleError {
             usage: self.usage.as_ref().map(|(span, frame)| (*span, frame.lift(qcx))),
             cycle: self.cycle.iter().map(|info| info.lift(qcx)).collect(),
@@ -272,14 +272,14 @@ where
 
 #[cold]
 #[inline(never)]
-fn cycle_error<Q>(
+fn cycle_error<'tcx, Q>(
     query: Q,
     qcx: Q::Qcx,
     try_execute: QueryJobId,
     span: Span,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
-    Q: QueryDispatcher,
+    Q: QueryDispatcher<'tcx>,
 {
     // Ensure there was no errors collecting all active jobs.
     // We need the complete map to ensure we find a cycle to break.
@@ -290,16 +290,16 @@ where
 }
 
 #[inline(always)]
-fn wait_for_query<Q>(
+fn wait_for_query<'tcx, Q>(
     query: Q,
     qcx: Q::Qcx,
     span: Span,
     key: Q::Key,
-    latch: QueryLatch<<Q::Qcx as QueryContext>::QueryInfo>,
+    latch: QueryLatch<'tcx>,
     current: Option<QueryJobId>,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
-    Q: QueryDispatcher,
+    Q: QueryDispatcher<'tcx>,
 {
     // For parallel queries, we'll block and wait until the query running
     // in another thread has completed. Record how long we wait in the
@@ -339,7 +339,7 @@ where
 }
 
 #[inline(never)]
-fn try_execute_query<Q, const INCR: bool>(
+fn try_execute_query<'tcx, Q, const INCR: bool>(
     query: Q,
     qcx: Q::Qcx,
     span: Span,
@@ -347,7 +347,7 @@ fn try_execute_query<Q, const INCR: bool>(
     dep_node: Option<DepNode>,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
-    Q: QueryDispatcher,
+    Q: QueryDispatcher<'tcx>,
 {
     let state = query.query_state(qcx);
     let key_hash = sharded::make_hash(&key);
@@ -408,17 +408,17 @@ where
 }
 
 #[inline(always)]
-fn execute_job<Q, const INCR: bool>(
+fn execute_job<'tcx, Q, const INCR: bool>(
     query: Q,
     qcx: Q::Qcx,
-    state: &QueryState<Q::Key, <Q::Qcx as QueryContext>::QueryInfo>,
+    state: &QueryState<'tcx, Q::Key>,
     key: Q::Key,
     key_hash: u64,
     id: QueryJobId,
     dep_node: Option<DepNode>,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
-    Q: QueryDispatcher,
+    Q: QueryDispatcher<'tcx>,
 {
     // Use `JobOwner` so the query will be poisoned if executing it panics.
     let job_owner = JobOwner { state, key };
@@ -480,14 +480,14 @@ where
 
 // Fast path for when incr. comp. is off.
 #[inline(always)]
-fn execute_job_non_incr<Q>(
+fn execute_job_non_incr<'tcx, Q>(
     query: Q,
     qcx: Q::Qcx,
     key: Q::Key,
     job_id: QueryJobId,
 ) -> (Q::Value, DepNodeIndex)
 where
-    Q: QueryDispatcher,
+    Q: QueryDispatcher<'tcx>,
 {
     debug_assert!(!qcx.dep_context().dep_graph().is_fully_enabled());
 
@@ -516,7 +516,7 @@ where
 }
 
 #[inline(always)]
-fn execute_job_incr<Q>(
+fn execute_job_incr<'tcx, Q>(
     query: Q,
     qcx: Q::Qcx,
     dep_graph_data: &DepGraphData<<Q::Qcx as HasDepContext>::Deps>,
@@ -525,7 +525,7 @@ fn execute_job_incr<Q>(
     job_id: QueryJobId,
 ) -> (Q::Value, DepNodeIndex)
 where
-    Q: QueryDispatcher,
+    Q: QueryDispatcher<'tcx>,
 {
     if !query.anon() && !query.eval_always() {
         // `to_dep_node` is expensive for some `DepKind`s.
@@ -571,7 +571,7 @@ where
 }
 
 #[inline(always)]
-fn try_load_from_disk_and_cache_in_memory<Q>(
+fn try_load_from_disk_and_cache_in_memory<'tcx, Q>(
     query: Q,
     dep_graph_data: &DepGraphData<<Q::Qcx as HasDepContext>::Deps>,
     qcx: Q::Qcx,
@@ -579,7 +579,7 @@ fn try_load_from_disk_and_cache_in_memory<Q>(
     dep_node: &DepNode,
 ) -> Option<(Q::Value, DepNodeIndex)>
 where
-    Q: QueryDispatcher,
+    Q: QueryDispatcher<'tcx>,
 {
     // Note this function can be called concurrently from the same query
     // We must ensure that this is handled correctly.
@@ -757,14 +757,14 @@ fn incremental_verify_ich_failed<Tcx>(
 ///
 /// Note: The optimization is only available during incr. comp.
 #[inline(never)]
-fn ensure_must_run<Q>(
+fn ensure_must_run<'tcx, Q>(
     query: Q,
     qcx: Q::Qcx,
     key: &Q::Key,
     check_cache: bool,
 ) -> (bool, Option<DepNode>)
 where
-    Q: QueryDispatcher,
+    Q: QueryDispatcher<'tcx>,
 {
     if query.eval_always() {
         return (true, None);
@@ -809,9 +809,9 @@ pub enum QueryMode {
 }
 
 #[inline(always)]
-pub fn get_query_non_incr<Q>(query: Q, qcx: Q::Qcx, span: Span, key: Q::Key) -> Q::Value
+pub fn get_query_non_incr<'tcx, Q>(query: Q, qcx: Q::Qcx, span: Span, key: Q::Key) -> Q::Value
 where
-    Q: QueryDispatcher,
+    Q: QueryDispatcher<'tcx>,
 {
     debug_assert!(!qcx.dep_context().dep_graph().is_fully_enabled());
 
@@ -819,7 +819,7 @@ where
 }
 
 #[inline(always)]
-pub fn get_query_incr<Q>(
+pub fn get_query_incr<'tcx, Q>(
     query: Q,
     qcx: Q::Qcx,
     span: Span,
@@ -827,7 +827,7 @@ pub fn get_query_incr<Q>(
     mode: QueryMode,
 ) -> Option<Q::Value>
 where
-    Q: QueryDispatcher,
+    Q: QueryDispatcher<'tcx>,
 {
     debug_assert!(qcx.dep_context().dep_graph().is_fully_enabled());
 
@@ -849,9 +849,9 @@ where
     Some(result)
 }
 
-pub fn force_query<Q>(query: Q, qcx: Q::Qcx, key: Q::Key, dep_node: DepNode)
+pub fn force_query<'tcx, Q>(query: Q, qcx: Q::Qcx, key: Q::Key, dep_node: DepNode)
 where
-    Q: QueryDispatcher,
+    Q: QueryDispatcher<'tcx>,
 {
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
