@@ -53,11 +53,12 @@ use tracing::{debug, instrument};
 
 use crate::borrow_set::{BorrowData, BorrowSet};
 use crate::consumers::{BodyWithBorrowckFacts, RustcFacts};
-use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows};
+use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows, PinIndex, Pins};
 use crate::diagnostics::{
     AccessKind, BorrowckDiagnosticsBuffer, IllegalMoveOriginKind, MoveError, RegionName,
 };
 use crate::path_utils::*;
+use crate::pin_set::PinSet;
 use crate::place_ext::PlaceExt;
 use crate::places_conflict::{PlaceConflictBias, places_conflict};
 use crate::polonius::PoloniusContext;
@@ -81,6 +82,7 @@ mod diagnostics;
 mod handle_placeholders;
 mod nll;
 mod path_utils;
+mod pin_set;
 mod place_ext;
 mod places_conflict;
 mod polonius;
@@ -292,6 +294,7 @@ struct CollectRegionConstraintsResult<'tcx> {
     promoted: IndexVec<Promoted, Body<'tcx>>,
     move_data: MoveData<'tcx>,
     borrow_set: BorrowSet<'tcx>,
+    pin_set: PinSet<'tcx>,
     location_table: PoloniusLocationTable,
     location_map: Rc<DenseLocationMap>,
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
@@ -336,6 +339,7 @@ fn borrowck_collect_region_constraints<'tcx>(
 
     let locals_are_invalidated_at_exit = tcx.hir_body_owner_kind(def).is_fn_or_closure();
     let borrow_set = BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &move_data);
+    let pin_set_data = PinSet::build(tcx, body);
 
     let location_map = Rc::new(DenseLocationMap::new(body));
 
@@ -371,6 +375,7 @@ fn borrowck_collect_region_constraints<'tcx>(
         promoted,
         move_data,
         borrow_set,
+        pin_set: pin_set_data,
         location_table,
         location_map,
         universal_region_relations,
@@ -395,6 +400,7 @@ fn borrowck_check_region_constraints<'tcx>(
         promoted,
         move_data,
         borrow_set,
+        pin_set,
         location_table,
         location_map,
         universal_region_relations,
@@ -536,7 +542,7 @@ fn borrowck_check_region_constraints<'tcx>(
         mbcx.report_region_errors(nll_errors);
     }
 
-    let flow_results = get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
+    let flow_results = get_flow_results(tcx, body, &move_data, &borrow_set, &pin_set, &regioncx);
     visit_results(
         body,
         traversal::reverse_postorder(body).map(|(bb, _)| bb),
@@ -600,11 +606,17 @@ fn get_flow_results<'a, 'tcx>(
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
     borrow_set: &'a BorrowSet<'tcx>,
+    pin_set: &'a PinSet<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
 ) -> Results<'tcx, Borrowck<'a, 'tcx>> {
-    // We compute these three analyses individually, but them combine them into
+    // We compute these four analyses individually, but them combine them into
     // a single results so that `mbcx` can visit them all together.
     let borrows = Borrows::new(tcx, body, regioncx, borrow_set).iterate_to_fixpoint(
+        tcx,
+        body,
+        Some("borrowck"),
+    );
+    let pins = Pins::new(tcx, body, pin_set).iterate_to_fixpoint(
         tcx,
         body,
         Some("borrowck"),
@@ -622,15 +634,17 @@ fn get_flow_results<'a, 'tcx>(
 
     let analysis = Borrowck {
         borrows: borrows.analysis,
+        pins: pins.analysis,
         uninits: uninits.analysis,
         ever_inits: ever_inits.analysis,
     };
 
+    assert_eq!(borrows.entry_states.len(), pins.entry_states.len());
     assert_eq!(borrows.entry_states.len(), uninits.entry_states.len());
     assert_eq!(borrows.entry_states.len(), ever_inits.entry_states.len());
     let entry_states: EntryStates<_> =
-        itertools::izip!(borrows.entry_states, uninits.entry_states, ever_inits.entry_states)
-            .map(|(borrows, uninits, ever_inits)| BorrowckDomain { borrows, uninits, ever_inits })
+        itertools::izip!(borrows.entry_states, pins.entry_states, uninits.entry_states, ever_inits.entry_states)
+            .map(|(borrows, pins, uninits, ever_inits)| BorrowckDomain { borrows, pins, uninits, ever_inits })
             .collect();
 
     Results { analysis, entry_states }
