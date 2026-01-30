@@ -27,6 +27,7 @@
 #![feature(const_drop_in_place)]
 #![feature(const_eval_select)]
 #![feature(const_index)]
+#![feature(const_iter)]
 #![feature(const_ops)]
 #![feature(const_option_ops)]
 #![feature(const_ref_cell)]

@@ -2086,8 +2086,16 @@ impl<'tcx> TyCtxt<'tcx> {
                     DefKind::Impl { of_trait: false } => {
                         self.constness(def_id) == hir::Constness::Const
                     }
-                    DefKind::Impl { of_trait: true } | DefKind::Trait => {
-                        self.is_conditionally_const(parent_def_id)
+                    DefKind::Impl { of_trait: true } => {
+                        let Some(trait_method_did) = self.trait_item_of(def_id) else {
+                            return false;
+                        };
+                        self.constness(trait_method_did) == hir::Constness::Const
+                            && self.is_conditionally_const(parent_def_id)
+                    }
+                    DefKind::Trait => {
+                        self.constness(def_id) == hir::Constness::Const
+                            && self.is_conditionally_const(parent_def_id)
                     }
                     _ => bug!("unexpected parent item of associated fn: {parent_def_id:?}"),
                 }

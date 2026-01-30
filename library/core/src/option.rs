@@ -2257,7 +2257,8 @@ impl<T> const Default for Option<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> IntoIterator for Option<T> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl<T> const IntoIterator for Option<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
@@ -2429,7 +2430,8 @@ struct Item<A> {
     opt: Option<A>,
 }
 
-impl<A> Iterator for Item<A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl<A> const Iterator for Item<A> {
     type Item = A;
 
     #[inline]
@@ -2439,7 +2441,7 @@ impl<A> Iterator for Item<A> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.len();
+        let len = self.opt.len();
         (len, Some(len))
     }
 }
@@ -2563,7 +2565,8 @@ pub struct IntoIter<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A> Iterator for IntoIter<A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl<A> const Iterator for IntoIter<A> {
     type Item = A;
 
     #[inline]

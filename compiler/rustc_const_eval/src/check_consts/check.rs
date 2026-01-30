@@ -774,16 +774,16 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // Attempting to call a trait method?
                 if let Some(trait_did) = tcx.trait_of_assoc(callee) {
-                    // We can't determine the actual callee here, so we have to do different checks
-                    // than usual.
+                    // We can't determine the actual callee (the underlying impl of the trait) here, so we have
+                    // to do different checks than usual.
 
                     trace!("attempting to call a trait method");
-                    let trait_is_const = tcx.is_const_trait(trait_did);
+                    let is_const = tcx.constness(callee) == hir::Constness::Const;
 
                     // Only consider a trait to be const if the const conditions hold.
                     // Otherwise, it's really misleading to call something "conditionally"
                     // const when it's very obviously not conditionally const.
-                    if trait_is_const && has_const_conditions == Some(ConstConditionsHold::Yes) {
+                    if is_const && has_const_conditions == Some(ConstConditionsHold::Yes) {
                         // Trait calls are always conditionally-const.
                         self.check_op(ops::ConditionallyConstCall {
                             callee,
