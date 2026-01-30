@@ -5343,9 +5343,8 @@ impl [f64] {
 const unsafe fn copy_from_slice_impl<T: Clone>(dest: &mut [T], src: &[T]) {
     // The panic code path was put into a cold function to not bloat the
     // call site.
-    #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
-    #[cfg_attr(panic = "immediate-abort", inline)]
     #[track_caller]
+    #[rustc_panic_entrypoint]
     const fn len_mismatch_fail(dst_len: usize, src_len: usize) -> ! {
         const_panic!(
             "copy_from_slice: source slice length does not match destination slice length",

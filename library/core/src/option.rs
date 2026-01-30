@@ -2185,19 +2185,15 @@ impl<T, E> Option<Result<T, E>> {
     }
 }
 
-#[cfg_attr(not(panic = "immediate-abort"), inline(never))]
-#[cfg_attr(panic = "immediate-abort", inline)]
-#[cold]
 #[track_caller]
+#[rustc_panic_entrypoint]
 const fn unwrap_failed() -> ! {
     panic("called `Option::unwrap()` on a `None` value")
 }
 
 // This is a separate function to reduce the code size of .expect() itself.
-#[cfg_attr(not(panic = "immediate-abort"), inline(never))]
-#[cfg_attr(panic = "immediate-abort", inline)]
-#[cold]
 #[track_caller]
+#[rustc_panic_entrypoint]
 const fn expect_failed(msg: &str) -> ! {
     panic_display(&msg)
 }

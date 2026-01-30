@@ -401,6 +401,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_partition_reused
                             | sym::rustc_partition_codegened
                             | sym::rustc_expected_cgu_reuse
+                            | sym::rustc_panic_entrypoint
                             // crate-level attrs, are checked below
                             | sym::feature
                             | sym::register_tool

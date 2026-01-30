@@ -1388,10 +1388,8 @@ pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) 
     radix <= 16 && digits.len() <= size_of::<T>() * 2 - is_signed_ty as usize
 }
 
-#[cfg_attr(not(panic = "immediate-abort"), inline(never))]
-#[cfg_attr(panic = "immediate-abort", inline)]
-#[cold]
 #[track_caller]
+#[rustc_panic_entrypoint]
 const fn from_ascii_radix_panic(radix: u32) -> ! {
     const_panic!(
         "from_ascii_radix: radix must lie in the range `[2, 36]`",

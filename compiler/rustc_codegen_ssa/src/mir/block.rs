@@ -15,6 +15,7 @@ use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, PassMode};
+use rustc_target::spec::PanicStrategy;
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -736,6 +737,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // After this point, bx is the block for the call to panic.
         bx.switch_to_block(panic_block);
         self.set_debug_loc(bx, terminator.source_info);
+
+        if bx.tcx().sess.panic_strategy() == PanicStrategy::ImmediateAbort {
+            bx.abort();
+            bx.unreachable();
+            return MergingSucc::False;
+        }
 
         // Get the location information.
         let location = self.get_caller_location(bx, terminator.source_info).immediate();

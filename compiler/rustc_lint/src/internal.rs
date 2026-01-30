@@ -1,12 +1,14 @@
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttributeKind, InlineAttr};
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, ExprKind, HirId, find_attr};
+use rustc_hir::intravisit::FnKind;
+use rustc_hir::{AttrPath, Body, Expr, ExprKind, FnDecl, HirId, find_attr};
 use rustc_middle::ty::{self, GenericArgsRef, PredicatePolarity};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::{Span, sym};
 use {rustc_ast as ast, rustc_hir as hir};
@@ -622,6 +624,87 @@ impl EarlyLintPass for ImplicitSysrootCrateImport {
                     IMPLICIT_SYSROOT_CRATE_IMPORT,
                     item.span,
                     ImplicitSysrootCrateImportDiag { name },
+                );
+            }
+        }
+    }
+}
+
+declare_tool_lint! {
+    /// The `missing_panic_entrypoint` lint detects forgotten use of #[rustc_panic_entrypoint].
+    ///
+    /// This lint is intended to ensure that panic=immediate-abort can function as designed,
+    /// because it uses #[rustc_panic_entrypoint] to locate functions that should be outlined
+    /// for other panic modes, and be deleted entirely when immediate-abort is enabled.
+    pub rustc::MISSING_PANIC_ENTRYPOINT,
+    Allow,
+    "detects missing #[rustc_panic_entrypoint]",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(MissingPanicEntrypoint => [MISSING_PANIC_ENTRYPOINT]);
+
+fn has_panic_entrypoint(attrs: &[hir::Attribute]) -> bool {
+    attrs.iter().any(|attr| {
+        if let hir::Attribute::Unparsed(box hir::AttrItem {
+            path: AttrPath { segments, .. }, ..
+        }) = attr
+        {
+            if segments[0] == sym::rustc_panic_entrypoint {
+                return true;
+            }
+        }
+        false
+    })
+}
+
+fn has_inline_encouragement(attrs: &[hir::Attribute]) -> bool {
+    attrs.iter().any(|attr| {
+        matches!(
+            attr,
+            hir::Attribute::Parsed(hir::attrs::AttributeKind::Inline(
+                InlineAttr::Hint | InlineAttr::Always | InlineAttr::Force { .. },
+                _
+            ))
+        )
+    })
+}
+
+fn has_rustc_intrinsic(attrs: &[hir::Attribute]) -> bool {
+    attrs.iter().any(|attr| {
+        if let hir::Attribute::Unparsed(box hir::AttrItem {
+            path: AttrPath { segments, .. }, ..
+        }) = attr
+        {
+            if segments[0] == sym::rustc_intrinsic {
+                return true;
+            }
+        }
+        false
+    })
+}
+
+impl<'tcx> LateLintPass<'tcx> for MissingPanicEntrypoint {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        _: FnKind<'tcx>,
+        fn_decl: &'tcx FnDecl<'tcx>,
+        _: &'tcx Body<'tcx>,
+        span: Span,
+        def_id: LocalDefId,
+    ) {
+        if matches!(fn_decl.output, hir::FnRetTy::Return(hir::Ty { kind: hir::TyKind::Never, .. }))
+        {
+            let attrs = cx.tcx.hir_attrs(cx.tcx.local_def_id_to_hir_id(def_id));
+            if has_rustc_intrinsic(attrs) {
+                return;
+            }
+            if !has_inline_encouragement(attrs) && !has_panic_entrypoint(attrs) {
+                cx.emit_span_lint(
+                    MISSING_PANIC_ENTRYPOINT,
+                    span,
+                    crate::lints::MissingPanicEntrypoint,
                 );
             }
         }

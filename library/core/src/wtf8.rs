@@ -485,7 +485,8 @@ unsafe fn slice_unchecked(s: &Wtf8, begin: usize, end: usize) -> &Wtf8 {
 }
 
 /// Copied from core::str::raw::slice_error_fail
-#[inline(never)]
+#[track_caller]
+#[rustc_panic_entrypoint]
 fn slice_error_fail(s: &Wtf8, begin: usize, end: usize) -> ! {
     assert!(begin <= end);
     panic!("index {begin} and/or {end} in `{s:?}` do not lie on character boundary");

@@ -404,8 +404,7 @@ impl<T: fmt::Debug, F> fmt::Debug for LazyLock<T, F> {
     }
 }
 
-#[cold]
-#[inline(never)]
+#[rustc_panic_entrypoint]
 fn panic_poisoned() -> ! {
     panic!("LazyLock instance has previously been poisoned")
 }
