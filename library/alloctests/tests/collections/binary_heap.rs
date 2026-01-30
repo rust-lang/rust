@@ -145,7 +145,7 @@ fn test_pop_if() {
     while let Some(popped) = heap.pop_if(|x| *x > 2) {
         assert_eq!(popped, sorted.pop().unwrap());
     }
-    assert_eq!(heap.into_sorted_vec(), vec![1, 2]);
+    assert_eq!(heap.into_sorted_vec(), vec![0, 1, 2]);
 }
 
 #[test]

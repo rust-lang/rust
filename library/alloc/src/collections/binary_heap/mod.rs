@@ -656,14 +656,15 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(binary_heap_pop_if)]
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::from([1, 2]);
     /// let pred = |x: &i32| *x % 2 == 0;
     ///
     /// assert_eq!(heap.pop_if(pred), Some(2));
-    /// assert_eq!(heap, BinaryHeap::from([1]));
+    /// assert_eq!(heap.as_slice(), [1]);
     /// assert_eq!(heap.pop_if(pred), None);
-    /// assert_eq!(heap, BinaryHeap::from([1]));
+    /// assert_eq!(heap.as_slice(), [1]);
     /// ```
     ///
     /// # Time complexity
@@ -671,7 +672,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// The worst case cost of `pop_if` on a heap containing *n* elements is *O*(log(*n*)).
     #[unstable(feature = "binary_heap_pop_if", issue = "151828")]
     pub fn pop_if(&mut self, predicate: impl FnOnce(&T) -> bool) -> Option<T> {
-        let first = self.data.first()?;
+        let first = self.peek()?;
         if predicate(first) { self.pop() } else { None }
     }
 
