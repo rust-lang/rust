@@ -10,7 +10,6 @@ use rustc_query_system::query::{QueryCache, QueryMode, try_get_cached};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use crate::dep_graph;
-use crate::query::IntoQueryParam;
 use crate::query::erase::{self, Erasable, Erased};
 use crate::ty::TyCtxt;
 
@@ -27,7 +26,6 @@ pub(crate) fn query_get_at<'tcx, Cache>(
 where
     Cache: QueryCache,
 {
-    let key = key.into_query_param();
     match try_get_cached(tcx, query_cache, &key) {
         Some(value) => value,
         None => execute_query(tcx, span, key, QueryMode::Get).unwrap(),
@@ -46,7 +44,6 @@ pub(crate) fn query_ensure<'tcx, Cache>(
 ) where
     Cache: QueryCache,
 {
-    let key = key.into_query_param();
     if try_get_cached(tcx, query_cache, &key).is_none() {
         execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache });
     }
@@ -66,7 +63,6 @@ where
     Cache: QueryCache<Value = Erased<Result<T, ErrorGuaranteed>>>,
     Result<T, ErrorGuaranteed>: Erasable,
 {
-    let key = key.into_query_param();
     if let Some(res) = try_get_cached(tcx, query_cache, &key) {
         erase::restore_val(res).map(drop)
     } else {
