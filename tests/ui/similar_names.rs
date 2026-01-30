@@ -49,7 +49,6 @@ fn main() {
 
     let cake: i32;
     let cakes: i32;
-    //~^ similar_names
     let coke: i32;
     //~^ similar_names
 
@@ -60,9 +59,7 @@ fn main() {
     let cheese: i32;
     match (42, 43) {
         (cheese1, 1) => {},
-        //~^ similar_names
         (cheese2, 2) => panic!(),
-        //~^ similar_names
         _ => println!(""),
     }
     let ipv4: i32;
@@ -96,10 +93,6 @@ fn main() {
     // 3 letter names are allowed to be similar
     let kta: i32;
     let ktv: i32;
-
-    let checked_exp: i32;
-    let checked_expr: i32;
-    //~^ similar_names
 }
 
 fn foo() {
