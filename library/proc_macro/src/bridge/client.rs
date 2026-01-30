@@ -2,6 +2,7 @@
 
 use std::cell::RefCell;
 use std::marker::PhantomData;
+use std::rc::Rc;
 use std::sync::atomic::AtomicU32;
 
 use super::*;
@@ -256,7 +257,9 @@ impl Client<crate::TokenStream, crate::TokenStream> {
         Client {
             handle_counters: &COUNTERS,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
-                run_client(bridge, |input| f(crate::TokenStream(input)).0)
+                run_client(bridge, |input| {
+                    Rc::unwrap_or_clone(f(crate::TokenStream(Rc::new(input))).0)
+                })
             }),
             _marker: PhantomData,
         }
@@ -271,7 +274,10 @@ impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
             handle_counters: &COUNTERS,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |(input, input2)| {
-                    f(crate::TokenStream(input), crate::TokenStream(input2)).0
+                    Rc::unwrap_or_clone(
+                        f(crate::TokenStream(Rc::new(input)), crate::TokenStream(Rc::new(input2)))
+                            .0,
+                    )
                 })
             }),
             _marker: PhantomData,
