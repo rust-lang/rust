@@ -1379,11 +1379,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .elements_contained_in(longer_fr_scc)
             .find(|e| *e != RegionElement::PlaceholderRegion(placeholder))
         {
+            let illegally_outlived_r = self.region_from_element(longer_fr, &error_element);
             // Stop after the first error, it gets too noisy otherwise, and does not provide more information.
-            errors_buffer.push(RegionErrorKind::BoundUniversalRegionError {
+            errors_buffer.push(RegionErrorKind::PlaceholderOutlivesIllegalRegion {
                 longer_fr,
-                error_element,
-                placeholder,
+                illegally_outlived_r,
             });
         } else {
             debug!("check_bound_universal_region: all bounds satisfied");
@@ -1572,7 +1572,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Get the region outlived by `longer_fr` and live at `element`.
-    pub(crate) fn region_from_element(
+    fn region_from_element(
         &self,
         longer_fr: RegionVid,
         element: &RegionElement<'tcx>,
