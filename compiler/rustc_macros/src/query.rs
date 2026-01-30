@@ -280,31 +280,21 @@ fn add_query_desc_cached_impl(
         let crate::query::Providers { #name: _, .. };
     };
 
-    // Find out if we should cache the query on disk
-    let cache = if let Some((args, expr)) = modifiers.cache.as_ref() {
+    // Generate a function to check whether we should cache the query to disk, for some key.
+    if let Some((args, expr)) = modifiers.cache.as_ref() {
         let tcx = args.as_ref().map(|t| quote! { #t }).unwrap_or_else(|| quote! { _ });
         // expr is a `Block`, meaning that `{ #expr }` gets expanded
         // to `{ { stmts... } }`, which triggers the `unused_braces` lint.
         // we're taking `key` by reference, but some rustc types usually prefer being passed by value
-        quote! {
+        cached.extend(quote! {
             #[allow(unused_variables, unused_braces, rustc::pass_by_value)]
             #[inline]
             pub fn #name<'tcx>(#tcx: TyCtxt<'tcx>, #key: &crate::query::queries::#name::Key<'tcx>) -> bool {
                 #ra_hint
                 #expr
             }
-        }
-    } else {
-        quote! {
-            // we're taking `key` by reference, but some rustc types usually prefer being passed by value
-            #[allow(rustc::pass_by_value)]
-            #[inline]
-            pub fn #name<'tcx>(_: TyCtxt<'tcx>, _: &crate::query::queries::#name::Key<'tcx>) -> bool {
-                #ra_hint
-                false
-            }
-        }
-    };
+        });
+    }
 
     let (tcx, desc) = &modifiers.desc;
     let tcx = tcx.as_ref().map_or_else(|| quote! { _ }, |t| quote! { #t });
@@ -321,10 +311,6 @@ fn add_query_desc_cached_impl(
 
     descs.extend(quote! {
         #desc
-    });
-
-    cached.extend(quote! {
-        #cache
     });
 }
 

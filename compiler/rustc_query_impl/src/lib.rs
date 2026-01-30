@@ -81,8 +81,8 @@ where
     }
 
     #[inline(always)]
-    fn cache_on_disk(self, tcx: TyCtxt<'tcx>, key: &Self::Key) -> bool {
-        (self.vtable.cache_on_disk)(tcx, key)
+    fn will_cache_on_disk_for_key(self, tcx: TyCtxt<'tcx>, key: &Self::Key) -> bool {
+        self.vtable.will_cache_on_disk_for_key_fn.map_or(false, |f| f(tcx, key))
     }
 
     #[inline(always)]
@@ -128,21 +128,18 @@ where
         prev_index: SerializedDepNodeIndex,
         index: DepNodeIndex,
     ) -> Option<Self::Value> {
-        if self.vtable.can_load_from_disk {
-            (self.vtable.try_load_from_disk)(qcx.tcx, key, prev_index, index)
-        } else {
-            None
-        }
+        // `?` will return None immediately for queries that never cache to disk.
+        self.vtable.try_load_from_disk_fn?(qcx.tcx, key, prev_index, index)
     }
 
     #[inline]
-    fn loadable_from_disk(
+    fn is_loadable_from_disk(
         self,
         qcx: QueryCtxt<'tcx>,
         key: &Self::Key,
         index: SerializedDepNodeIndex,
     ) -> bool {
-        (self.vtable.loadable_from_disk)(qcx.tcx, key, index)
+        self.vtable.is_loadable_from_disk_fn.map_or(false, |f| f(qcx.tcx, key, index))
     }
 
     fn value_from_cycle_error(

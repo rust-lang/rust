@@ -623,7 +623,7 @@ where
     // We always expect to find a cached result for things that
     // can be forced from `DepNode`.
     debug_assert!(
-        !query.cache_on_disk(*qcx.dep_context(), key)
+        !query.will_cache_on_disk_for_key(*qcx.dep_context(), key)
             || !qcx.dep_context().fingerprint_style(dep_node.kind).reconstructible(),
         "missing on-disk cache entry for {dep_node:?}"
     );
@@ -631,7 +631,7 @@ where
     // Sanity check for the logic in `ensure`: if the node is green and the result loadable,
     // we should actually be able to load it.
     debug_assert!(
-        !query.loadable_from_disk(qcx, key, prev_dep_node_index),
+        !query.is_loadable_from_disk(qcx, key, prev_dep_node_index),
         "missing on-disk cache entry for loadable {dep_node:?}"
     );
 
@@ -798,7 +798,7 @@ where
         return (false, None);
     }
 
-    let loadable = query.loadable_from_disk(qcx, key, serialized_dep_node_index);
+    let loadable = query.is_loadable_from_disk(qcx, key, serialized_dep_node_index);
     (!loadable, Some(dep_node))
 }
 

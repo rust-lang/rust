@@ -396,7 +396,7 @@ pub(crate) fn encode_query_results<'a, 'tcx, Q>(
     assert!(query.query_state(qcx).all_inactive());
     let cache = query.query_cache(qcx);
     cache.iter(&mut |key, value, dep_node| {
-        if query.cache_on_disk(qcx.tcx, key) {
+        if query.will_cache_on_disk_for_key(qcx.tcx, key) {
             let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
             // Record position of the cache entry.
@@ -445,7 +445,7 @@ where
     let key = Q::Key::recover(tcx, &dep_node).unwrap_or_else(|| {
         panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash)
     });
-    if query.cache_on_disk(tcx, &key) {
+    if query.will_cache_on_disk_for_key(tcx, &key) {
         let _ = query.execute_query(tcx, key);
     }
 }
@@ -648,7 +648,11 @@ macro_rules! define_queries {
                     cycle_error_handling: cycle_error_handling!([$($modifiers)*]),
                     query_state: std::mem::offset_of!(QueryStates<'tcx>, $name),
                     query_cache: std::mem::offset_of!(QueryCaches<'tcx>, $name),
-                    cache_on_disk: |tcx, key| ::rustc_middle::query::cached::$name(tcx, key),
+                    will_cache_on_disk_for_key_fn: should_ever_cache_on_disk!([$($modifiers)*] {
+                        Some(::rustc_middle::query::cached::$name)
+                    } {
+                        None
+                    }),
                     execute_query: |tcx, key| erase::erase_val(tcx.$name(key)),
                     compute: |tcx, key| {
                         #[cfg(debug_assertions)]
@@ -666,36 +670,33 @@ macro_rules! define_queries {
                             )
                         )
                     },
-                    can_load_from_disk: should_ever_cache_on_disk!([$($modifiers)*] true false),
-                    try_load_from_disk: should_ever_cache_on_disk!([$($modifiers)*] {
-                        |tcx, key, prev_index, index| {
-                            if ::rustc_middle::query::cached::$name(tcx, key) {
-                                let value = $crate::plumbing::try_load_from_disk::<
-                                    queries::$name::ProvidedValue<'tcx>
-                                >(
-                                    tcx,
-                                    prev_index,
-                                    index,
-                                );
-                                value.map(|value| queries::$name::provided_to_erased(tcx, value))
-                            } else {
-                                None
+                    try_load_from_disk_fn: should_ever_cache_on_disk!([$($modifiers)*] {
+                        Some(|tcx, key, prev_index, index| {
+                            // Check the `cache_on_disk_if` condition for this key.
+                            if !::rustc_middle::query::cached::$name(tcx, key) {
+                                return None;
                             }
-                        }
+
+                            let value: queries::$name::ProvidedValue<'tcx> =
+                                $crate::plumbing::try_load_from_disk(tcx, prev_index, index)?;
+
+                            // Arena-alloc the value if appropriate, and erase it.
+                            Some(queries::$name::provided_to_erased(tcx, value))
+                        })
                     } {
-                        |_tcx, _key, _prev_index, _index| None
+                        None
+                    }),
+                    is_loadable_from_disk_fn: should_ever_cache_on_disk!([$($modifiers)*] {
+                        Some(|tcx, key, index| -> bool {
+                            ::rustc_middle::query::cached::$name(tcx, key) &&
+                                $crate::plumbing::loadable_from_disk(tcx, index)
+                        })
+                    } {
+                        None
                     }),
                     value_from_cycle_error: |tcx, cycle, guar| {
                         let result: queries::$name::Value<'tcx> = Value::from_cycle_error(tcx, cycle, guar);
                         erase::erase_val(result)
-                    },
-                    loadable_from_disk: |_tcx, _key, _index| {
-                        should_ever_cache_on_disk!([$($modifiers)*] {
-                            ::rustc_middle::query::cached::$name(_tcx, _key) &&
-                                $crate::plumbing::loadable_from_disk(_tcx, _index)
-                        } {
-                            false
-                        })
                     },
                     hash_result: hash_result!([$($modifiers)*][queries::$name::Value<'tcx>]),
                     format_value: |value| format!("{:?}", erase::restore_val::<queries::$name::Value<'tcx>>(*value)),
