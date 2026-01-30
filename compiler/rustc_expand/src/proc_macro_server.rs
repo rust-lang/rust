@@ -18,7 +18,6 @@ use rustc_proc_macro::{Delimiter, Level};
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
 use rustc_span::{BytePos, FileName, Pos, Span, Symbol, sym};
-use smallvec::{SmallVec, smallvec};
 
 use crate::base::ExtCtxt;
 
@@ -322,103 +321,6 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<Span, Sym
     }
 }
 
-// We use a `SmallVec` because the output size is always one or two `TokenTree`s.
-impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
-    for (TokenTree<Span, Symbol>, &mut Rustc<'_, '_>)
-{
-    fn to_internal(self) -> SmallVec<[tokenstream::TokenTree; 2]> {
-        use rustc_ast::token::*;
-
-        // The code below is conservative, using `token_alone`/`Spacing::Alone`
-        // in most places. It's hard in general to do better when working at
-        // the token level. When the resulting code is pretty-printed by
-        // `print_tts` the `space_between` function helps avoid a lot of
-        // unnecessary whitespace, so the results aren't too bad.
-        let (tree, rustc) = self;
-        match tree {
-            TokenTree::Punct(Punct { ch, joint, span }) => {
-                let kind = match ch {
-                    b'=' => Eq,
-                    b'<' => Lt,
-                    b'>' => Gt,
-                    b'!' => Bang,
-                    b'~' => Tilde,
-                    b'+' => Plus,
-                    b'-' => Minus,
-                    b'*' => Star,
-                    b'/' => Slash,
-                    b'%' => Percent,
-                    b'^' => Caret,
-                    b'&' => And,
-                    b'|' => Or,
-                    b'@' => At,
-                    b'.' => Dot,
-                    b',' => Comma,
-                    b';' => Semi,
-                    b':' => Colon,
-                    b'#' => Pound,
-                    b'$' => Dollar,
-                    b'?' => Question,
-                    b'\'' => SingleQuote,
-                    _ => unreachable!(),
-                };
-                // We never produce `token::Spacing::JointHidden` here, which
-                // means the pretty-printing of code produced by proc macros is
-                // ugly, with lots of whitespace between tokens. This is
-                // unavoidable because `proc_macro::Spacing` only applies to
-                // `Punct` token trees.
-                smallvec![if joint {
-                    tokenstream::TokenTree::token_joint(kind, span)
-                } else {
-                    tokenstream::TokenTree::token_alone(kind, span)
-                }]
-            }
-            TokenTree::Group(Group { delimiter, stream, span: DelimSpan { open, close, .. } }) => {
-                smallvec![tokenstream::TokenTree::Delimited(
-                    tokenstream::DelimSpan { open, close },
-                    DelimSpacing::new(Spacing::Alone, Spacing::Alone),
-                    delimiter.to_internal(),
-                    rustc.ts_pm_to_rustc(stream.unwrap_or_default()),
-                )]
-            }
-            TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
-                rustc.psess().symbol_gallery.insert(sym, span);
-                smallvec![tokenstream::TokenTree::token_alone(Ident(sym, is_raw.into()), span)]
-            }
-            TokenTree::Literal(self::Literal {
-                kind: self::LitKind::Integer,
-                symbol,
-                suffix,
-                span,
-            }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
-                let symbol = Symbol::intern(symbol);
-                let integer = TokenKind::lit(token::Integer, symbol, suffix);
-                let a = tokenstream::TokenTree::token_joint_hidden(Minus, span);
-                let b = tokenstream::TokenTree::token_alone(integer, span);
-                smallvec![a, b]
-            }
-            TokenTree::Literal(self::Literal {
-                kind: self::LitKind::Float,
-                symbol,
-                suffix,
-                span,
-            }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
-                let symbol = Symbol::intern(symbol);
-                let float = TokenKind::lit(token::Float, symbol, suffix);
-                let a = tokenstream::TokenTree::token_joint_hidden(Minus, span);
-                let b = tokenstream::TokenTree::token_alone(float, span);
-                smallvec![a, b]
-            }
-            TokenTree::Literal(self::Literal { kind, symbol, suffix, span }) => {
-                smallvec![tokenstream::TokenTree::token_alone(
-                    TokenKind::lit(kind.to_internal(), symbol, suffix),
-                    span,
-                )]
-            }
-        }
-    }
-}
-
 impl ToInternal<rustc_errors::Level> for Level {
     fn to_internal(self) -> rustc_errors::Level {
         match self {
@@ -462,10 +364,100 @@ impl<'a, 'b> Rustc<'a, 'b> {
     pub(crate) fn ts_pm_to_rustc(&mut self, ts: BridgeTokenStream) -> tokenstream::TokenStream {
         let mut t = tokenstream::TokenStream::new(vec![]);
         for tree in ts.trees {
-            let internal: SmallVec<[tokenstream::TokenTree; 2]> =
-                ToInternal::to_internal((tree, &mut *self));
-            for tree in internal {
-                t.push_tree(tree);
+            use rustc_ast::token::*;
+
+            // The code below is conservative, using `token_alone`/`Spacing::Alone`
+            // in most places. It's hard in general to do better when working at
+            // the token level. When the resulting code is pretty-printed by
+            // `print_tts` the `space_between` function helps avoid a lot of
+            // unnecessary whitespace, so the results aren't too bad.
+            match tree {
+                TokenTree::Punct(Punct { ch, joint, span }) => {
+                    let kind = match ch {
+                        b'=' => Eq,
+                        b'<' => Lt,
+                        b'>' => Gt,
+                        b'!' => Bang,
+                        b'~' => Tilde,
+                        b'+' => Plus,
+                        b'-' => Minus,
+                        b'*' => Star,
+                        b'/' => Slash,
+                        b'%' => Percent,
+                        b'^' => Caret,
+                        b'&' => And,
+                        b'|' => Or,
+                        b'@' => At,
+                        b'.' => Dot,
+                        b',' => Comma,
+                        b';' => Semi,
+                        b':' => Colon,
+                        b'#' => Pound,
+                        b'$' => Dollar,
+                        b'?' => Question,
+                        b'\'' => SingleQuote,
+                        _ => unreachable!(),
+                    };
+                    // We never produce `token::Spacing::JointHidden` here, which
+                    // means the pretty-printing of code produced by proc macros is
+                    // ugly, with lots of whitespace between tokens. This is
+                    // unavoidable because `proc_macro::Spacing` only applies to
+                    // `Punct` token trees.
+                    t.push_tree(if joint {
+                        tokenstream::TokenTree::token_joint(kind, span)
+                    } else {
+                        tokenstream::TokenTree::token_alone(kind, span)
+                    })
+                }
+                TokenTree::Group(Group {
+                    delimiter,
+                    stream,
+                    span: DelimSpan { open, close, .. },
+                }) => t.push_tree(tokenstream::TokenTree::Delimited(
+                    tokenstream::DelimSpan { open, close },
+                    DelimSpacing::new(Spacing::Alone, Spacing::Alone),
+                    delimiter.to_internal(),
+                    self.ts_pm_to_rustc(stream.unwrap_or_default()),
+                )),
+                TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
+                    self.psess().symbol_gallery.insert(sym, span);
+                    t.push_tree(tokenstream::TokenTree::token_alone(
+                        Ident(sym, is_raw.into()),
+                        span,
+                    ))
+                }
+                TokenTree::Literal(self::Literal {
+                    kind: self::LitKind::Integer,
+                    symbol,
+                    suffix,
+                    span,
+                }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
+                    let symbol = Symbol::intern(symbol);
+                    let integer = TokenKind::lit(token::Integer, symbol, suffix);
+                    let a = tokenstream::TokenTree::token_joint_hidden(Minus, span);
+                    let b = tokenstream::TokenTree::token_alone(integer, span);
+                    t.push_tree(a);
+                    t.push_tree(b);
+                }
+                TokenTree::Literal(self::Literal {
+                    kind: self::LitKind::Float,
+                    symbol,
+                    suffix,
+                    span,
+                }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
+                    let symbol = Symbol::intern(symbol);
+                    let float = TokenKind::lit(token::Float, symbol, suffix);
+                    let a = tokenstream::TokenTree::token_joint_hidden(Minus, span);
+                    let b = tokenstream::TokenTree::token_alone(float, span);
+                    t.push_tree(a);
+                    t.push_tree(b);
+                }
+                TokenTree::Literal(self::Literal { kind, symbol, suffix, span }) => {
+                    t.push_tree(tokenstream::TokenTree::token_alone(
+                        TokenKind::lit(kind.to_internal(), symbol, suffix),
+                        span,
+                    ))
+                }
             }
         }
 
