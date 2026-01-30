@@ -87,7 +87,6 @@ use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, Trait
 use rustc_index::IndexVec;
 use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
-use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{QueryMode, QueryState};
 use rustc_session::Limits;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};

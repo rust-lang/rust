@@ -492,18 +492,6 @@ macro_rules! define_callbacks {
     };
 }
 
-macro_rules! hash_result {
-    ([]) => {{
-        Some(dep_graph::hash_result)
-    }};
-    ([(no_hash) $($rest:tt)*]) => {{
-        None
-    }};
-    ([$other:tt $($modifiers:tt)*]) => {
-        hash_result!([$($modifiers)*])
-    };
-}
-
 macro_rules! define_feedable {
     ($($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
         $(impl<'tcx, K: IntoQueryParam<$($K)*> + Copy> TyCtxtFeed<'tcx, K> {
@@ -513,19 +501,17 @@ macro_rules! define_feedable {
                 let key = self.key().into_query_param();
 
                 let tcx = self.tcx;
-                let erased = queries::$name::provided_to_erased(tcx, value);
-                let cache = &tcx.query_system.caches.$name;
+                let erased_value = queries::$name::provided_to_erased(tcx, value);
 
                 let dep_kind: dep_graph::DepKind = dep_graph::dep_kinds::$name;
-                let hasher: Option<fn(&mut StableHashingContext<'_>, &_) -> _> = hash_result!([$($modifiers)*]);
 
                 $crate::query::inner::query_feed(
                     tcx,
                     dep_kind,
-                    hasher,
-                    cache,
+                    &tcx.query_system.query_vtables.$name,
+                    &tcx.query_system.caches.$name,
                     key,
-                    erased,
+                    erased_value,
                 );
             }
         })*
