@@ -23,7 +23,7 @@ impl !Send for Span {}
 impl !Sync for Span {}
 
 impl<S> Encode<S> for Span {
-    fn encode(self, w: &mut Buffer, s: &mut S) {
+    fn encode(&self, w: &mut Buffer, s: &mut S) {
         self.handle.encode(w, s);
     }
 }

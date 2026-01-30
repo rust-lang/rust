@@ -7,7 +7,7 @@ use std::num::NonZero;
 use super::buffer::Buffer;
 
 pub(super) trait Encode<S>: Sized {
-    fn encode(self, w: &mut Buffer, s: &mut S);
+    fn encode(&self, w: &mut Buffer, s: &mut S);
 }
 
 pub(super) trait Decode<'a, 's, S>: Sized {
@@ -17,7 +17,7 @@ pub(super) trait Decode<'a, 's, S>: Sized {
 macro_rules! rpc_encode_decode {
     (le $ty:ty) => {
         impl<S> Encode<S> for $ty {
-            fn encode(self, w: &mut Buffer, _: &mut S) {
+            fn encode(&self, w: &mut Buffer, _: &mut S) {
                 w.extend_from_array(&self.to_le_bytes());
             }
         }
@@ -36,7 +36,7 @@ macro_rules! rpc_encode_decode {
     };
     (struct $name:ident $(<$($T:ident),+>)? { $($field:ident),* $(,)? }) => {
         impl<S, $($($T: Encode<S>),+)?> Encode<S> for $name $(<$($T),+>)? {
-            fn encode(self, w: &mut Buffer, s: &mut S) {
+            fn encode(&self, w: &mut Buffer, s: &mut S) {
                 $(self.$field.encode(w, s);)*
             }
         }
@@ -53,7 +53,7 @@ macro_rules! rpc_encode_decode {
     };
     (enum $name:ident $(<$($T:ident),+>)? { $($variant:ident $(($field:ident))*),* $(,)? }) => {
         impl<S, $($($T: Encode<S>),+)?> Encode<S> for $name $(<$($T),+>)? {
-            fn encode(self, w: &mut Buffer, s: &mut S) {
+            fn encode(&self, w: &mut Buffer, s: &mut S) {
                 // HACK(eddyb): `Tag` enum duplicated between the
                 // two impls as there's no other place to stash it.
                 #[allow(non_camel_case_types)]
@@ -95,7 +95,7 @@ macro_rules! rpc_encode_decode {
 }
 
 impl<S> Encode<S> for () {
-    fn encode(self, _: &mut Buffer, _: &mut S) {}
+    fn encode(&self, _: &mut Buffer, _: &mut S) {}
 }
 
 impl<S> Decode<'_, '_, S> for () {
@@ -103,8 +103,8 @@ impl<S> Decode<'_, '_, S> for () {
 }
 
 impl<S> Encode<S> for u8 {
-    fn encode(self, w: &mut Buffer, _: &mut S) {
-        w.push(self);
+    fn encode(&self, w: &mut Buffer, _: &mut S) {
+        w.push(*self);
     }
 }
 
@@ -120,8 +120,8 @@ rpc_encode_decode!(le u32);
 rpc_encode_decode!(le usize);
 
 impl<S> Encode<S> for bool {
-    fn encode(self, w: &mut Buffer, s: &mut S) {
-        (self as u8).encode(w, s);
+    fn encode(&self, w: &mut Buffer, s: &mut S) {
+        (*self as u8).encode(w, s);
     }
 }
 
@@ -136,7 +136,7 @@ impl<S> Decode<'_, '_, S> for bool {
 }
 
 impl<S> Encode<S> for NonZero<u32> {
-    fn encode(self, w: &mut Buffer, s: &mut S) {
+    fn encode(&self, w: &mut Buffer, s: &mut S) {
         self.get().encode(w, s);
     }
 }
@@ -148,7 +148,7 @@ impl<S> Decode<'_, '_, S> for NonZero<u32> {
 }
 
 impl<S, A: Encode<S>, B: Encode<S>> Encode<S> for (A, B) {
-    fn encode(self, w: &mut Buffer, s: &mut S) {
+    fn encode(&self, w: &mut Buffer, s: &mut S) {
         self.0.encode(w, s);
         self.1.encode(w, s);
     }
@@ -163,7 +163,7 @@ impl<'a, S, A: for<'s> Decode<'a, 's, S>, B: for<'s> Decode<'a, 's, S>> Decode<'
 }
 
 impl<S> Encode<S> for &str {
-    fn encode(self, w: &mut Buffer, s: &mut S) {
+    fn encode(&self, w: &mut Buffer, s: &mut S) {
         let bytes = self.as_bytes();
         bytes.len().encode(w, s);
         w.write_all(bytes).unwrap();
@@ -180,8 +180,8 @@ impl<'a, S> Decode<'a, '_, S> for &'a str {
 }
 
 impl<S> Encode<S> for String {
-    fn encode(self, w: &mut Buffer, s: &mut S) {
-        self[..].encode(w, s);
+    fn encode(&self, w: &mut Buffer, s: &mut S) {
+        (&self[..]).encode(w, s);
     }
 }
 
@@ -192,7 +192,7 @@ impl<S> Decode<'_, '_, S> for String {
 }
 
 impl<S, T: Encode<S>> Encode<S> for Vec<T> {
-    fn encode(self, w: &mut Buffer, s: &mut S) {
+    fn encode(&self, w: &mut Buffer, s: &mut S) {
         self.len().encode(w, s);
         for x in self {
             x.encode(w, s);
@@ -255,7 +255,7 @@ impl PanicMessage {
 }
 
 impl<S> Encode<S> for PanicMessage {
-    fn encode(self, w: &mut Buffer, s: &mut S) {
+    fn encode(&self, w: &mut Buffer, s: &mut S) {
         self.as_str().encode(w, s);
     }
 }

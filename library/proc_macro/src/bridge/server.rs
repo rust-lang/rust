@@ -22,8 +22,8 @@ pub(super) type MarkedSpan<S> = Marked<<S as Server>::Span, client::Span>;
 pub(super) type MarkedSymbol<S> = Marked<<S as Server>::Symbol, client::Symbol>;
 
 impl<S: Server> Encode<HandleStore<S>> for MarkedSpan<S> {
-    fn encode(self, w: &mut Buffer, s: &mut HandleStore<S>) {
-        s.span.alloc(self).encode(w, s);
+    fn encode(&self, w: &mut Buffer, s: &mut HandleStore<S>) {
+        s.span.alloc(*self).encode(w, s);
     }
 }
 
