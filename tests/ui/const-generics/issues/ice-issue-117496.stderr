@@ -1,0 +1,60 @@
+error[E0433]: failed to resolve: you might be missing crate `core`
+  --> $DIR/ice-issue-117496.rs:7:5
+   |
+LL | use core::marker::ConstParamTy;
+   |     ^^^^
+   |     |
+   |     you might be missing crate `core`
+   |     help: try using `std` instead of `core`: `std`
+
+error[E0741]: `Foo` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/ice-issue-117496.rs:18:25
+   |
+LL | pub struct Bar<const F: Foo, const SIZE: usize = { F.size() }>([u64; SIZE])
+   |                         ^^^
+   |
+help: add `#[derive(ConstParamTy)]` to the enum
+   |
+LL + #[derive(ConstParamTy)]
+LL | pub enum Foo {}
+   |
+
+error[E0741]: `Foo` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/ice-issue-117496.rs:22:26
+   |
+LL | pub struct Quux<const F: Foo> {}
+   |                          ^^^
+   |
+help: add `#[derive(ConstParamTy)]` to the enum
+   |
+LL + #[derive(ConstParamTy)]
+LL | pub enum Foo {}
+   |
+
+error[E0741]: `Foo` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/ice-issue-117496.rs:24:15
+   |
+LL | impl<const F: Foo> Quux<{ F }> {
+   |               ^^^
+   |
+help: add `#[derive(ConstParamTy)]` to the enum
+   |
+LL + #[derive(ConstParamTy)]
+LL | pub enum Foo {}
+   |
+
+error: unconstrained generic constant
+  --> $DIR/ice-issue-117496.rs:26:39
+   |
+LL |     pub unsafe fn nothing(&self, bar: &mut Bar<{ F }>) {}
+   |                                       ^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL |     pub unsafe fn nothing(&self, bar: &mut Bar<{ F }>) where [(); { F.size() }]: {}
+   |                                                        +++++++++++++++++++++++++
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0433, E0741.
+For more information about an error, try `rustc --explain E0433`.

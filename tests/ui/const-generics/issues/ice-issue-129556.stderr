@@ -1,0 +1,51 @@
+error[E0433]: failed to resolve: you might be missing crate `core`
+  --> $DIR/ice-issue-129556.rs:7:5
+   |
+LL | use core::marker::ConstParamTy;
+   |     ^^^^
+   |     |
+   |     you might be missing crate `core`
+   |     help: try using `std` instead of `core`: `std`
+
+error[E0741]: `StructOrEnum` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/ice-issue-129556.rs:15:31
+   |
+LL | trait TraitParent<const SMTH: StructOrEnum = { StructOrEnum::A }> {}
+   |                               ^^^^^^^^^^^^
+   |
+help: add `#[derive(ConstParamTy)]` to the enum
+   |
+LL + #[derive(ConstParamTy)]
+LL | enum StructOrEnum {
+   |
+
+error[E0741]: `StructOrEnum` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/ice-issue-129556.rs:18:30
+   |
+LL | trait TraitChild<const SMTH: StructOrEnum = { StructOrEnum::A }>: TraitParent<SMTH> {}
+   |                              ^^^^^^^^^^^^
+   |
+help: add `#[derive(ConstParamTy)]` to the enum
+   |
+LL + #[derive(ConstParamTy)]
+LL | enum StructOrEnum {
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ice-issue-129556.rs:23:6
+   |
+LL | impl TraitChild for StructOrEnum {}
+   |      ^^^^^^^^^^ expected `SMTH`, found `StructOrEnum::A`
+   |
+   = note: expected constant `SMTH`
+              found constant `StructOrEnum::A`
+note: required by a bound in `TraitChild::{constant#0}`
+  --> $DIR/ice-issue-129556.rs:18:67
+   |
+LL | trait TraitChild<const SMTH: StructOrEnum = { StructOrEnum::A }>: TraitParent<SMTH> {}
+   |                                                                   ^^^^^^^^^^^^^^^^^ required by this bound in `TraitChild::{constant#0}`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0308, E0433, E0741.
+For more information about an error, try `rustc --explain E0308`.

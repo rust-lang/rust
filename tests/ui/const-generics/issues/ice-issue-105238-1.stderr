@@ -1,0 +1,65 @@
+error[E0277]: the trait bound `CellIdx: Ret` is not satisfied
+  --> $DIR/ice-issue-105238-1.rs:29:30
+   |
+LL |     println!("{}", size_of::<RobinHashTable<1024>>());
+   |                              ^^^^^^^^^^^^^^^^^^^^ the trait `Ret` is not implemented for `CellIdx`
+   |
+note: required by a bound in `RobinHashTable`
+  --> $DIR/ice-issue-105238-1.rs:22:14
+   |
+LL | struct RobinHashTable<const MAX_LENGTH: usize, CellIdx = Cond<{ MAX_LENGTH < 65535 }, u16, u32>>
+   |        -------------- required by a bound in this struct
+LL | where
+LL |     CellIdx: Ret,
+   |              ^^^ required by this bound in `RobinHashTable`
+
+error[E0277]: the size for values of type `CellIdx` cannot be known at compilation time
+  --> $DIR/ice-issue-105238-1.rs:29:30
+   |
+LL |     println!("{}", size_of::<RobinHashTable<1024>>());
+   |                              ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `RobinHashTable`
+  --> $DIR/ice-issue-105238-1.rs:20:48
+   |
+LL | struct RobinHashTable<const MAX_LENGTH: usize, CellIdx = Cond<{ MAX_LENGTH < 65535 }, u16, u32>>
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by the implicit `Sized` requirement on this type parameter in `RobinHashTable`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     CellIdx: Ret + ?Sized,
+   |                  ++++++++
+
+error[E0277]: the trait bound `CellIdx: Ret` is not satisfied
+  --> $DIR/ice-issue-105238-1.rs:32:30
+   |
+LL |     println!("{}", size_of::<RobinHashTable<65536>>());
+   |                              ^^^^^^^^^^^^^^^^^^^^^ the trait `Ret` is not implemented for `CellIdx`
+   |
+note: required by a bound in `RobinHashTable`
+  --> $DIR/ice-issue-105238-1.rs:22:14
+   |
+LL | struct RobinHashTable<const MAX_LENGTH: usize, CellIdx = Cond<{ MAX_LENGTH < 65535 }, u16, u32>>
+   |        -------------- required by a bound in this struct
+LL | where
+LL |     CellIdx: Ret,
+   |              ^^^ required by this bound in `RobinHashTable`
+
+error[E0277]: the size for values of type `CellIdx` cannot be known at compilation time
+  --> $DIR/ice-issue-105238-1.rs:32:30
+   |
+LL |     println!("{}", size_of::<RobinHashTable<65536>>());
+   |                              ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `RobinHashTable`
+  --> $DIR/ice-issue-105238-1.rs:20:48
+   |
+LL | struct RobinHashTable<const MAX_LENGTH: usize, CellIdx = Cond<{ MAX_LENGTH < 65535 }, u16, u32>>
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by the implicit `Sized` requirement on this type parameter in `RobinHashTable`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     CellIdx: Ret + ?Sized,
+   |                  ++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

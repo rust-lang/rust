@@ -1,4 +1,4 @@
-//@ known-bug: #105238
+// Regression test for #105238: default type param with Cond used to ICE in ArgFolder.
 
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
@@ -27,5 +27,9 @@ where
 fn main() {
     use std::mem::size_of;
     println!("{}", size_of::<RobinHashTable<1024>>());
+    //~^ ERROR the trait bound `CellIdx: Ret` is not satisfied
+    //~| ERROR the size for values of type `CellIdx` cannot be known at compilation time
     println!("{}", size_of::<RobinHashTable<65536>>());
+    //~^ ERROR the trait bound `CellIdx: Ret` is not satisfied
+    //~| ERROR the size for values of type `CellIdx` cannot be known at compilation time
 }

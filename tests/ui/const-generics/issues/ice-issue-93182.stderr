@@ -1,0 +1,17 @@
+error[E0308]: mismatched types
+  --> $DIR/ice-issue-93182.rs:24:14
+   |
+LL |     type Tr: Tr;
+   |              ^^ expected `S`, found `64`
+   |
+   = note: expected constant `S`
+              found constant `64`
+note: required by a bound in `Tr::{constant#0}`
+  --> $DIR/ice-issue-93182.rs:7:39
+   |
+LL | pub trait Tr<const S: usize = CONST>: Foo<A<S>> {}
+   |                                       ^^^^^^^^^ required by this bound in `Tr::{constant#0}`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.
