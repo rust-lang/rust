@@ -25,7 +25,7 @@ note: ...which requires comparing an impl and trait method signature, inferring 
 LL |         reuse ToReuse::opaque_ret;
    |                        ^^^^^^^^^^
    = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:32:5: 32:25>::opaque_ret::{anon_assoc#0}`, completing the cycle
-   = note: cycle used when computing implied outlives bounds for `<u16 as opaque::ToReuse>::opaque_ret::{anon_assoc#0}` (hack disabled = false)
+   = note: cycle used when checking effective visibilities
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error[E0283]: type annotations needed
