@@ -630,6 +630,7 @@ impl<'tcx> Ty<'tcx> {
                 | DefKind::LifetimeParam
                 | DefKind::GlobalAsm
                 | DefKind::Impl { .. }
+                | DefKind::AutoImpl
                 | DefKind::Closure
                 | DefKind::SyntheticCoroutineBody => {
                     bug!("not an adt: {def:?} ({:?})", tcx.def_kind(def.did()))

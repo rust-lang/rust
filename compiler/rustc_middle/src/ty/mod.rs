@@ -2060,7 +2060,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_conditionally_const(self, def_id: impl Into<DefId>) -> bool {
         let def_id: DefId = def_id.into();
         match self.def_kind(def_id) {
-            DefKind::Impl { of_trait: true } => {
+            DefKind::Impl { of_trait: true } | DefKind::AutoImpl => {
                 let header = self.impl_trait_header(def_id);
                 header.constness == hir::Constness::Const
                     && self.is_const_trait(header.trait_ref.skip_binder().def_id)

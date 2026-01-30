@@ -286,6 +286,7 @@ fn trait_item_search_pat(item: &TraitItem<'_>) -> (Pat, Pat) {
         TraitItemKind::Const(..) => (Pat::Str("const"), Pat::Str(";")),
         TraitItemKind::Type(..) => (Pat::Str("type"), Pat::Str(";")),
         TraitItemKind::Fn(sig, ..) => (fn_header_search_pat(sig.header), Pat::Str("")),
+        TraitItemKind::AutoImpl(_poly_trait_ref, _impl_items) => todo!(),
     }
 }
 
@@ -294,6 +295,7 @@ fn impl_item_search_pat(item: &ImplItem<'_>) -> (Pat, Pat) {
         ImplItemKind::Const(..) => (Pat::Str("const"), Pat::Str(";")),
         ImplItemKind::Type(..) => (Pat::Str("type"), Pat::Str(";")),
         ImplItemKind::Fn(sig, ..) => (fn_header_search_pat(sig.header), Pat::Str("")),
+        ImplItemKind::AutoImpl(_poly_trait_ref, _impl_items) => todo!(),
     };
     if let ImplItemImplKind::Inherent { vis_span, .. } = item.impl_kind
         && !vis_span.is_empty()

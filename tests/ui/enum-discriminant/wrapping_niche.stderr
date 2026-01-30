@@ -61,7 +61,7 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 9885373149222004003,
+                       randomization_seed: 7121270564429706562,
                    },
                    Layout {
                        size: Size(2 bytes),
@@ -82,7 +82,7 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 9885373149222004003,
+                       randomization_seed: 7121270564429706562,
                    },
                    Layout {
                        size: Size(2 bytes),
@@ -103,13 +103,13 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 9885373149222004003,
+                       randomization_seed: 7121270564429706562,
                    },
                ],
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
-           randomization_seed: 2648004449468912780,
+           randomization_seed: 10038338184009274632,
        }
   --> $DIR/wrapping_niche.rs:8:1
    |
@@ -179,7 +179,7 @@ error: layout_of(SignedAroundZero) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 2684536712112553499,
+                       randomization_seed: 6066804703076516501,
                    },
                    Layout {
                        size: Size(2 bytes),
@@ -200,7 +200,7 @@ error: layout_of(SignedAroundZero) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 2684536712112553499,
+                       randomization_seed: 6066804703076516501,
                    },
                    Layout {
                        size: Size(2 bytes),
@@ -221,13 +221,13 @@ error: layout_of(SignedAroundZero) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 2684536712112553499,
+                       randomization_seed: 6066804703076516501,
                    },
                ],
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
-           randomization_seed: 10738146848450213996,
+           randomization_seed: 5820474738596514388,
        }
   --> $DIR/wrapping_niche.rs:17:1
    |

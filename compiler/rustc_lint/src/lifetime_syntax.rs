@@ -94,6 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for LifetimeSyntax {
             hir::TraitItemKind::Const(..) => {}
             hir::TraitItemKind::Fn(fn_sig, _trait_fn) => check_fn_like(cx, fn_sig.decl),
             hir::TraitItemKind::Type(..) => {}
+            hir::TraitItemKind::AutoImpl(..) => todo!(),
         }
     }
 

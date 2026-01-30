@@ -115,6 +115,7 @@ pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::Impl { .. }
+        | DefKind::AutoImpl
         | DefKind::GlobalAsm => {
             unreachable!("Not a valid item kind: {kind:?}");
         }

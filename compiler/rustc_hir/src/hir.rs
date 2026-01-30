@@ -3223,6 +3223,8 @@ pub enum TraitItemKind<'hir> {
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type.
     Type(GenericBounds<'hir>, Option<&'hir Ty<'hir>>),
+    /// An `auto impl` directive
+    AutoImpl(&'hir PolyTraitRef<'hir>, &'hir [ImplItem<'hir>]),
 }
 
 // The bodies for items are stored "out of line", in a separate
@@ -3302,6 +3304,8 @@ pub enum ImplItemKind<'hir> {
     Fn(FnSig<'hir>, BodyId),
     /// An associated type.
     Type(&'hir Ty<'hir>),
+    /// An `auto impl` implementation
+    AutoImpl(&'hir PolyTraitRef<'hir>, &'hir [ImplItem<'hir>]),
 }
 
 /// A constraint on an associated item.

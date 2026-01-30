@@ -215,7 +215,9 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
         // If it's a mod, also make the visitor walk all of its items
         match item.kind {
             // Resolved in rustc_privacy when types are available
-            ast::ItemKind::Impl(..) => return,
+            ast::ItemKind::Impl(..)
+            | ast::ItemKind::AutoImpl(..)
+            | ast::ItemKind::ExternImpl(..) => return,
 
             // Should be unreachable at this stage
             ast::ItemKind::MacCall(..) | ast::ItemKind::DelegationMac(..) => panic!(

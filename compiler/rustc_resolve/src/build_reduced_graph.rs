@@ -9,11 +9,12 @@ use std::sync::Arc;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
-    self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, Fn, ForeignItem,
+    self as ast, AssocItem, AssocItemKind, AutoImpl, Block, ConstItem, Delegation, Fn, ForeignItem,
     ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem, StmtKind, TraitAlias, TyAlias,
 };
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::AttributeParser;
+use rustc_errors::FatalError;
 use rustc_expand::base::ResolverExpand;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::Attribute;
@@ -25,6 +26,7 @@ use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::metadata::{ModChild, Reexport};
 use rustc_middle::ty::{Feed, Visibility};
 use rustc_middle::{bug, span_bug};
+use rustc_session::parse::feature_err;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
 use rustc_span::{Ident, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
@@ -350,6 +352,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 | DefKind::GlobalAsm
                 | DefKind::Closure
                 | DefKind::SyntheticCoroutineBody
+                | DefKind::AutoImpl
                 | DefKind::Impl { .. },
                 _,
             )
@@ -974,7 +977,9 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
 
             // These items do not add names to modules.
-            ItemKind::Impl { .. }
+            ItemKind::Impl(..)
+            | ItemKind::AutoImpl(..)
+            | ItemKind::ExternImpl(..)
             | ItemKind::ForeignMod(..)
             | ItemKind::GlobalAsm(..)
             | ItemKind::ConstBlock(..) => {}
@@ -1465,6 +1470,15 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             | AssocItemKind::Fn(box Fn { ident, .. })
             | AssocItemKind::Delegation(box Delegation { ident, .. }) => (ident, ValueNS),
 
+            AssocItemKind::AutoImpl(box AutoImpl { .. }) => {
+                // This should be dummy id
+                (Ident::new(kw::Underscore, rustc_span::DUMMY_SP), TypeNS)
+            }
+            AssocItemKind::ExternImpl(..) => {
+                // We do not want to assign a DefId to this item.
+                return;
+            }
+
             AssocItemKind::Type(box TyAlias { ident, .. }) => (ident, TypeNS),
 
             AssocItemKind::MacCall(_) => {
@@ -1503,7 +1517,37 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             self.r.feed_visibility(feed, vis);
         }
 
-        if ctxt == AssocCtxt::Trait {
+        if let AssocItemKind::AutoImpl(_) = item.kind {
+            if !self.r.tcx.features().supertrait_auto_impl() {
+                feature_err(
+                    self.r.tcx.sess,
+                    sym::supertrait_auto_impl,
+                    item.span,
+                    "feature is under construction",
+                )
+                .emit();
+                FatalError.raise()
+            }
+            // Any item inside an `auto impl` block are associated items as an instantiation of
+            // the target supertrait items.
+            //     trait Super { type Type; }
+            //     trait Sub: Super {
+            //         auto impl Super { //~ We do need a DefId for this item, it is just so that
+            //             type Type = (); //~ ... this is not a real definition!
+            //         }
+            //     }
+            // Therefore, we are not interested in the names here.
+            // They should be resolved against the Super trait.
+            // However, we reach here because we still want to assign an DefId because we need to
+            // make sure that Sub impls acknowledge the automatic impl:
+            //     impl Sub for A {
+            //         auto impl Super; //~ We need to check that this matches
+            //     }
+            //     impl Sub for B {
+            //         //~ We also need to error here because `auto/extern impl Super` is missing.
+            //     }
+            return;
+        } else if let AssocCtxt::Trait = ctxt {
             let parent = self.parent_scope.module;
             let expansion = self.parent_scope.expansion;
             self.r.define_local(parent, ident, ns, self.res(def_id), vis, item.span, expansion);

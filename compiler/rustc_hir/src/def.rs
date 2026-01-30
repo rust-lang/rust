@@ -117,6 +117,8 @@ pub enum DefKind {
     AssocTy,
     /// Type parameter: the `T` in `struct Vec<T> { ... }`
     TyParam,
+    /// Automatic supertrait implementation, an `auto impl` block
+    AutoImpl,
 
     // Value namespace
     Fn,
@@ -238,6 +240,7 @@ impl DefKind {
             DefKind::ExternCrate => "extern crate",
             DefKind::GlobalAsm => "global assembly block",
             DefKind::SyntheticCoroutineBody => "synthetic mir body",
+            DefKind::AutoImpl => "auto impl",
         }
     }
 
@@ -297,6 +300,7 @@ impl DefKind {
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
+            | DefKind::AutoImpl
             | DefKind::OpaqueTy
             | DefKind::SyntheticCoroutineBody => None,
         }
@@ -339,6 +343,7 @@ impl DefKind {
             DefKind::OpaqueTy => DefPathData::OpaqueTy,
             DefKind::GlobalAsm => DefPathData::GlobalAsm,
             DefKind::Impl { .. } => DefPathData::Impl,
+            DefKind::AutoImpl => DefPathData::AutoImpl,
             DefKind::Closure => DefPathData::Closure,
             DefKind::SyntheticCoroutineBody => DefPathData::SyntheticCoroutineBody,
         }
@@ -382,6 +387,7 @@ impl DefKind {
             | DefKind::Fn
             | DefKind::ForeignTy
             | DefKind::Impl { .. }
+            | DefKind::AutoImpl
             | DefKind::InlineConst
             | DefKind::OpaqueTy
             | DefKind::Static { .. }
@@ -430,6 +436,7 @@ impl DefKind {
             | DefKind::ForeignMod
             | DefKind::OpaqueTy
             | DefKind::Impl { .. }
+            | DefKind::AutoImpl
             | DefKind::Field
             | DefKind::TyParam
             | DefKind::ConstParam
@@ -474,6 +481,7 @@ impl DefKind {
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm
+            | DefKind::AutoImpl
             | DefKind::Impl { .. } => false,
         }
     }

@@ -118,7 +118,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
                 for &tit in trait_items {
                     let tit_ = cx.tcx.hir_trait_item(tit);
                     match tit_.kind {
-                        hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => {},
+                        hir::TraitItemKind::Const(..)
+                        | hir::TraitItemKind::Type(..)
+                        | hir::TraitItemKind::AutoImpl(..) => {},
                         hir::TraitItemKind::Fn(..) => {
                             if cx.tcx.defaultness(tit.owner_id).has_value() {
                                 // trait method with default body needs inline in case
@@ -167,7 +169,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
 
         let desc = match impl_item.kind {
             hir::ImplItemKind::Fn(..) => "a method",
-            hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(_) => return,
+            hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(_) | hir::ImplItemKind::AutoImpl(..) => return,
         };
 
         let assoc_item = cx.tcx.associated_item(impl_item.owner_id);

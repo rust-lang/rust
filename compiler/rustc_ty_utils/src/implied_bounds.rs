@@ -7,7 +7,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt, fold_regions};
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
+use rustc_span::{DUMMY_SP, Span};
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -54,6 +54,11 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
 
             let mut impl_spans = impl_spans(tcx, def_id);
             tcx.arena.alloc_from_iter(tys.into_iter().map(|ty| (ty, impl_spans.next().unwrap())))
+        }
+        DefKind::AutoImpl => {
+            let trait_ref = tcx.impl_trait_ref(def_id);
+            let impl_spans = impl_spans(tcx, def_id).chain(iter::repeat(DUMMY_SP));
+            tcx.arena.alloc_from_iter(trait_ref.skip_binder().args.types().zip(impl_spans))
         }
         DefKind::AssocTy if let Some(data) = tcx.opt_rpitit_info(def_id.to_def_id()) => {
             match data {

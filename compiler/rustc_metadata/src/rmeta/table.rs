@@ -190,6 +190,7 @@ fixed_size_enum! {
         ( GlobalAsm                                )
         ( Impl { of_trait: false }                 )
         ( Impl { of_trait: true }                  )
+        ( AutoImpl                                 )
         ( Closure                                  )
         ( Static { safety: hir::Safety::Unsafe, mutability: ast::Mutability::Not, nested: false } )
         ( Static { safety: hir::Safety::Safe, mutability: ast::Mutability::Not, nested: false } )

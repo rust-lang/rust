@@ -2244,6 +2244,7 @@ symbols! {
         sub_with_overflow,
         suggestion,
         super_let,
+        supertrait_auto_impl,
         supertrait_item_shadowing,
         sym,
         sync,

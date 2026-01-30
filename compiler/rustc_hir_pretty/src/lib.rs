@@ -799,18 +799,25 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_poly_trait_ref(&mut self, t: &hir::PolyTraitRef<'_>) {
-        let hir::TraitBoundModifiers { constness, polarity } = t.modifiers;
+    fn print_constness_modifier(&mut self, constness: &hir::BoundConstness) {
         match constness {
             hir::BoundConstness::Never => {}
             hir::BoundConstness::Always(_) => self.word("const"),
             hir::BoundConstness::Maybe(_) => self.word("[const]"),
         }
+    }
+    fn print_polarity_modifier(&mut self, polarity: &hir::BoundPolarity) {
         match polarity {
             hir::BoundPolarity::Positive => {}
             hir::BoundPolarity::Negative(_) => self.word("!"),
             hir::BoundPolarity::Maybe(_) => self.word("?"),
         }
+    }
+
+    fn print_poly_trait_ref(&mut self, t: &hir::PolyTraitRef<'_>) {
+        let hir::TraitBoundModifiers { constness, polarity } = t.modifiers;
+        self.print_constness_modifier(&constness);
+        self.print_polarity_modifier(&polarity);
         self.print_formal_generic_params(t.bound_generic_params);
         self.print_trait_ref(&t.trait_ref);
     }
@@ -952,11 +959,43 @@ impl<'a> State<'a> {
                 self.end(cb);
                 self.ann.nested(self, Nested::Body(body));
             }
+            hir::TraitItemKind::AutoImpl(poly_trait_ref, impl_items) => {
+                self.print_auto_impl_item(poly_trait_ref, impl_items);
+            }
             hir::TraitItemKind::Type(bounds, default) => {
                 self.print_associated_type(ti.ident, ti.generics, Some(bounds), default);
             }
         }
         self.ann.post(self, AnnNode::SubItem(ti.hir_id()))
+    }
+
+    fn print_auto_impl_item(
+        &mut self,
+        poly_trait_ref: &hir::PolyTraitRef<'_>,
+        impl_items: &[hir::ImplItem<'_>],
+    ) {
+        let (cb, ib) = self.head("");
+        self.word_nbsp("auto");
+        self.word("impl");
+        if !poly_trait_ref.bound_generic_params.is_empty() {
+            self.print_generic_params(poly_trait_ref.bound_generic_params);
+        }
+        self.nbsp();
+        self.print_constness_modifier(&poly_trait_ref.modifiers.constness);
+        self.print_polarity_modifier(&poly_trait_ref.modifiers.polarity);
+        self.print_trait_ref(&poly_trait_ref.trait_ref);
+        if impl_items.is_empty() {
+            self.word(";");
+        } else {
+            self.nbsp();
+            self.word("{");
+            for ii in impl_items {
+                self.print_impl_item(ii);
+            }
+            self.word("}");
+        }
+        self.end(ib);
+        self.end(cb);
     }
 
     fn print_impl_item(&mut self, ii: &hir::ImplItem<'_>) {
@@ -979,6 +1018,9 @@ impl<'a> State<'a> {
             }
             hir::ImplItemKind::Type(ty) => {
                 self.print_associated_type(ii.ident, ii.generics, None, Some(ty));
+            }
+            hir::ImplItemKind::AutoImpl(poly_trait_ref, impl_items) => {
+                self.print_auto_impl_item(poly_trait_ref, impl_items);
             }
         }
         self.ann.post(self, AnnNode::SubItem(ii.hir_id()))

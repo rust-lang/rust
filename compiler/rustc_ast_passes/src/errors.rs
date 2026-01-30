@@ -492,6 +492,13 @@ pub(crate) struct NestedImplTrait {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_auto_impl_outside_trait_or_impl_trait)]
+pub(crate) struct AutoImplOutsideTraitOrImplTrait {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_at_least_one_trait)]
 pub(crate) struct AtLeastOneTrait {
     #[primary_span]

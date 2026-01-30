@@ -632,6 +632,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::Field
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
+            | DefKind::AutoImpl
             | DefKind::Closure
             | DefKind::SyntheticCoroutineBody => (),
         }
@@ -694,47 +695,10 @@ impl<'tcx> EmbargoVisitor<'tcx> {
                 }
             }
             DefKind::Impl { of_trait } => {
-                // Type inference is very smart sometimes. It can make an impl reachable even some
-                // components of its type or trait are unreachable. E.g. methods of
-                // `impl ReachableTrait<UnreachableTy> for ReachableTy<UnreachableTy> { ... }`
-                // can be usable from other crates (#57264). So we skip args when calculating
-                // reachability and consider an impl reachable if its "shallow" type and trait are
-                // reachable.
-                //
-                // The assumption we make here is that type-inference won't let you use an impl
-                // without knowing both "shallow" version of its self type and "shallow" version of
-                // its trait if it exists (which require reaching the `DefId`s in them).
-                let item_ev = EffectiveVisibility::of_impl::<true>(
-                    owner_id.def_id,
-                    of_trait,
-                    self.tcx,
-                    &self.effective_visibilities,
-                );
-
-                self.update_eff_vis(owner_id.def_id, item_ev, None, Level::Direct);
-
-                {
-                    let mut reach = self.reach(owner_id.def_id, item_ev);
-                    reach.generics().predicates().ty();
-                    if of_trait {
-                        reach.trait_ref();
-                    }
-                }
-
-                for assoc_item in self.tcx.associated_items(owner_id).in_definition_order() {
-                    if assoc_item.is_impl_trait_in_trait() {
-                        continue;
-                    }
-
-                    let def_id = assoc_item.def_id.expect_local();
-                    let max_vis =
-                        if of_trait { None } else { Some(self.tcx.local_visibility(def_id)) };
-                    self.update_eff_vis(def_id, item_ev, max_vis, Level::Direct);
-
-                    if let Some(impl_item_ev) = self.get(def_id) {
-                        self.reach(def_id, impl_item_ev).generics().predicates().ty();
-                    }
-                }
+                self.check_impl(owner_id, of_trait);
+            }
+            DefKind::AutoImpl => {
+                self.check_impl(owner_id, true);
             }
             DefKind::Enum => {
                 if let Some(item_ev) = item_ev {
@@ -805,6 +769,49 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::LifetimeParam
             | DefKind::Ctor(..) => {
                 bug!("should be checked while checking parent")
+            }
+        }
+    }
+
+    fn check_impl(&mut self, owner_id: OwnerId, of_trait: bool) {
+        // Type inference is very smart sometimes. It can make an impl reachable even some
+        // components of its type or trait are unreachable. E.g. methods of
+        // `impl ReachableTrait<UnreachableTy> for ReachableTy<UnreachableTy> { ... }`
+        // can be usable from other crates (#57264). So we skip args when calculating
+        // reachability and consider an impl reachable if its "shallow" type and trait are
+        // reachable.
+        //
+        // The assumption we make here is that type-inference won't let you use an impl
+        // without knowing both "shallow" version of its self type and "shallow" version of
+        // its trait if it exists (which require reaching the `DefId`s in them).
+        let item_ev = EffectiveVisibility::of_impl::<true>(
+            owner_id.def_id,
+            of_trait,
+            self.tcx,
+            &self.effective_visibilities,
+        );
+
+        self.update_eff_vis(owner_id.def_id, item_ev, None, Level::Direct);
+
+        {
+            let mut reach = self.reach(owner_id.def_id, item_ev);
+            reach.generics().predicates().ty();
+            if of_trait {
+                reach.trait_ref();
+            }
+        }
+
+        for assoc_item in self.tcx.associated_items(owner_id).in_definition_order() {
+            if assoc_item.is_impl_trait_in_trait() {
+                continue;
+            }
+
+            let def_id = assoc_item.def_id.expect_local();
+            let max_vis = if of_trait { None } else { Some(self.tcx.local_visibility(def_id)) };
+            self.update_eff_vis(def_id, item_ev, max_vis, Level::Direct);
+
+            if let Some(impl_item_ev) = self.get(def_id) {
+                self.reach(def_id, impl_item_ev).generics().predicates().ty();
             }
         }
     }
