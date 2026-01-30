@@ -1,35 +1,5 @@
 use rustc_macros::Diagnostic;
-use rustc_span::{Span, Symbol};
-
-#[derive(Diagnostic)]
-#[diag(mir_dataflow_path_must_end_in_filename)]
-pub(crate) struct PathMustEndInFilename {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(mir_dataflow_unknown_formatter)]
-pub(crate) struct UnknownFormatter {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(mir_dataflow_duplicate_values_for)]
-pub(crate) struct DuplicateValuesFor {
-    #[primary_span]
-    pub span: Span,
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(mir_dataflow_requires_an_argument)]
-pub(crate) struct RequiresAnArgument {
-    #[primary_span]
-    pub span: Span,
-    pub name: Symbol,
-}
+use rustc_span::Span;
 
 #[derive(Diagnostic)]
 #[diag(mir_dataflow_stop_after_dataflow_ended_compilation)]
