@@ -75,7 +75,7 @@ use crate::attributes::rustc_dump::{
     RustcDumpVtable,
 };
 use crate::attributes::rustc_internal::{
-    RustcHasIncoherentInherentImplsParser, RustcLayoutScalarValidRangeEndParser,
+    RustcHasIncoherentInherentImplsParser, RustcLayoutParser, RustcLayoutScalarValidRangeEndParser,
     RustcLayoutScalarValidRangeStartParser, RustcLegacyConstGenericsParser,
     RustcLintOptDenyFieldAccessParser, RustcLintOptTyParser, RustcLintQueryInstabilityParser,
     RustcLintUntrackedQueryInformationParser, RustcMainParser, RustcMustImplementOneOfParser,
@@ -198,6 +198,7 @@ attribute_parsers!(
         Combine<ForceTargetFeatureParser>,
         Combine<LinkParser>,
         Combine<ReprParser>,
+        Combine<RustcLayoutParser>,
         Combine<TargetFeatureParser>,
         Combine<UnstableFeatureBoundParser>,
         // tidy-alphabetical-end

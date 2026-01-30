@@ -1,20 +1,18 @@
 use rustc_abi::{HasDataLayout, TargetDataLayout};
-use rustc_hir::Attribute;
+use rustc_hir::attrs::{AttributeKind, RustcLayoutType};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::find_attr;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers};
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt;
 use rustc_trait_selection::traits;
 
-use crate::errors::{
-    LayoutAbi, LayoutAlign, LayoutHomogeneousAggregate, LayoutInvalidAttribute, LayoutOf,
-    LayoutSize, UnrecognizedArgument,
-};
+use crate::errors::{LayoutAbi, LayoutAlign, LayoutHomogeneousAggregate, LayoutOf, LayoutSize};
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
     if !tcx.features().rustc_attrs() {
@@ -22,14 +20,14 @@ pub fn test_layout(tcx: TyCtxt<'_>) {
         return;
     }
     for id in tcx.hir_crate_items(()).definitions() {
-        for attr in tcx.get_attrs(id, sym::rustc_layout) {
-            match tcx.def_kind(id) {
-                DefKind::TyAlias | DefKind::Enum | DefKind::Struct | DefKind::Union => {
-                    dump_layout_of(tcx, id, attr);
-                }
-                _ => {
-                    tcx.dcx().emit_err(LayoutInvalidAttribute { span: tcx.def_span(id) });
-                }
+        let attrs = tcx.get_all_attrs(id);
+        if let Some(attrs) = find_attr!(attrs, AttributeKind::RustcLayout(attrs) => attrs) {
+            // Attribute parsing handles error reporting
+            if matches!(
+                tcx.def_kind(id),
+                DefKind::TyAlias | DefKind::Enum | DefKind::Struct | DefKind::Union
+            ) {
+                dump_layout_of(tcx, id, attrs);
             }
         }
     }
@@ -66,7 +64,7 @@ pub fn ensure_wf<'tcx>(
     }
 }
 
-fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
+fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attrs: &[RustcLayoutType]) {
     let typing_env = ty::TypingEnv::post_analysis(tcx, item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity();
     let span = tcx.def_span(item_def_id.to_def_id());
@@ -75,32 +73,29 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
     }
     match tcx.layout_of(typing_env.as_query_input(ty)) {
         Ok(ty_layout) => {
-            // Check out the `#[rustc_layout(..)]` attribute to tell what to dump.
-            // The `..` are the names of fields to dump.
-            let meta_items = attr.meta_item_list().unwrap_or_default();
-            for meta_item in meta_items {
-                match meta_item.name() {
+            for attr in attrs {
+                match attr {
                     // FIXME: this never was about ABI and now this dump arg is confusing
-                    Some(sym::abi) => {
+                    RustcLayoutType::Abi => {
                         tcx.dcx().emit_err(LayoutAbi {
                             span,
                             abi: format!("{:?}", ty_layout.backend_repr),
                         });
                     }
 
-                    Some(sym::align) => {
+                    RustcLayoutType::Align => {
                         tcx.dcx().emit_err(LayoutAlign {
                             span,
                             align: format!("{:?}", ty_layout.align),
                         });
                     }
 
-                    Some(sym::size) => {
+                    RustcLayoutType::Size => {
                         tcx.dcx()
                             .emit_err(LayoutSize { span, size: format!("{:?}", ty_layout.size) });
                     }
 
-                    Some(sym::homogeneous_aggregate) => {
+                    RustcLayoutType::HomogenousAggregate => {
                         tcx.dcx().emit_err(LayoutHomogeneousAggregate {
                             span,
                             homogeneous_aggregate: format!(
@@ -111,15 +106,11 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
                         });
                     }
 
-                    Some(sym::debug) => {
+                    RustcLayoutType::Debug => {
                         let normalized_ty = tcx.normalize_erasing_regions(typing_env, ty);
                         // FIXME: using the `Debug` impl here isn't ideal.
                         let ty_layout = format!("{:#?}", *ty_layout);
                         tcx.dcx().emit_err(LayoutOf { span, normalized_ty, ty_layout });
-                    }
-
-                    _ => {
-                        tcx.dcx().emit_err(UnrecognizedArgument { span: meta_item.span() });
                     }
                 }
             }
