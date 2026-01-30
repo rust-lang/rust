@@ -245,6 +245,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn const_of_item(self, def_id: DefId) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
         self.const_of_item(def_id)
     }
+    fn anon_const_kind(self, def_id: DefId) -> ty::AnonConstKind {
+        self.anon_const_kind(def_id)
+    }
 
     type AdtDef = ty::AdtDef<'tcx>;
     fn adt_def(self, adt_def_id: DefId) -> Self::AdtDef {

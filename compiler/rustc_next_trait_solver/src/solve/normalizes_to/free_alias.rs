@@ -4,7 +4,8 @@
 //! Since a free alias is never ambiguous, this just computes the `type_of` of
 //! the alias and registers the where-clauses of the type alias.
 
-use rustc_type_ir::{self as ty, Interner};
+use rustc_type_ir::inherent::*;
+use rustc_type_ir::{self as ty,TypingMode, Interner};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource, QueryResult};
@@ -32,7 +33,19 @@ where
         let actual = if free_alias.kind(cx).is_type() {
             cx.type_of(free_alias.def_id).instantiate(cx, free_alias.args).into()
         } else {
-            cx.const_of_item(free_alias.def_id).instantiate(cx, free_alias.args).into()
+            let ct = cx.const_of_item(free_alias.def_id).instantiate(cx, free_alias.args);
+            if self.typing_mode() == TypingMode::Coherence
+                && let ty::ConstKind::Unevaluated(uv) = ct.kind()
+                && self.cx().anon_const_kind(uv.def.into()) == ty::AnonConstKind::OGCA
+            {
+                // During coherence, OGCA consts should be normalized ambiguously
+                // because they are opaque but eventually resolved to a real value.
+                // We don't want two OGCAs that have the same value to be treated
+                // as distinct for coherence purposes.
+                // (Just like opaque types.)
+                return self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+            }
+            ct.into()
         };
 
         self.instantiate_normalizes_to_term(goal, actual);
