@@ -341,6 +341,61 @@ pub(crate) struct MoveBorrow<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "cannot move out of {$place ->
+    [value] value
+    *[other] {$place}
+} because it is pinned"
+)]
+pub(crate) struct MovePin<'a> {
+    pub place: &'a str,
+    pub pin_place: &'a str,
+    pub value_place: &'a str,
+    #[primary_span]
+    #[label(
+        "move out of {$value_place ->
+            [value] value
+            *[other] {$value_place}
+        } occurs here"
+    )]
+    pub span: Span,
+    #[label(
+        "pin of {$pin_place ->
+            [value] value
+            *[other] {$pin_place}
+        } occurs here"
+    )]
+    pub pin_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "cannot borrow {$place ->
+    [value] value
+    *[other] {$place}
+} as mutable because it is pinned"
+)]
+pub(crate) struct MutablyBorrowPin<'a> {
+    pub place: &'a str,
+    #[primary_span]
+    #[label(
+        "borrow of {$place ->
+        [value] value
+        *[other] {$place}
+    } as mutable occurs here"
+    )]
+    pub span: Span,
+    pub pin_place: &'a str,
+    #[label(
+        "pin of {$pin_place ->
+            [value] value
+            *[other] {$pin_place}
+        } occurs here"
+    )]
+    pub pin_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("opaque type used twice with different lifetimes")]
 pub(crate) struct LifetimeMismatchOpaqueParam<'tcx> {
     pub arg: GenericArg<'tcx>,

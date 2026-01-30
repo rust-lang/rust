@@ -484,6 +484,38 @@ impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     pub(crate) fn temporary_value_borrowed_for_too_long(&self, span: Span) -> Diag<'infcx> {
         struct_span_code_err!(self.dcx(), span, E0716, "temporary value dropped while borrowed")
     }
+
+    pub(crate) fn cannot_move_out_while_pinned(
+        &self,
+        span: Span,
+        pin_span: Span,
+        place: &str,
+        pin_place: &str,
+        value_place: &str,
+    ) -> Diag<'infcx> {
+        self.dcx().create_err(crate::session_diagnostics::MovePin {
+            place,
+            pin_place,
+            value_place,
+            span,
+            pin_span,
+        })
+    }
+
+    pub(crate) fn cannot_mutably_borrow_pinned(
+        &self,
+        span: Span,
+        pin_span: Span,
+        place: &str,
+        pin_place: &str,
+    ) -> Diag<'infcx> {
+        self.dcx().create_err(crate::session_diagnostics::MutablyBorrowPin {
+            place,
+            span,
+            pin_place,
+            pin_span,
+        })
+    }
 }
 
 pub(crate) fn borrowed_data_escapes_closure<'tcx>(
