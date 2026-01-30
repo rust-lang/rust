@@ -350,7 +350,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ScopeSet::Module(ns, module),
                     parent_scope,
                     finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
-                    finalize.is_some(),
                     ignore_decl,
                     None,
                 )
@@ -368,7 +367,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         ScopeSet::All(ns),
                         parent_scope,
                         finalize,
-                        finalize.is_some(),
                         ignore_decl,
                         None,
                     )
@@ -396,12 +394,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         scope_set: ScopeSet<'ra>,
         parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
-        force: bool,
         ignore_decl: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
     ) -> Result<Decl<'ra>, Determinacy> {
-        assert!(force || finalize.is_none()); // `finalize` implies `force`
-
         // Make sure `self`, `super` etc produce an error when passed to here.
         if !matches!(scope_set, ScopeSet::Module(..)) && orig_ident.is_path_segment_keyword() {
             return Err(Determinacy::Determined);
@@ -451,7 +446,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     parent_scope,
                     // Shadowed decls don't need to be marked as used or non-speculatively loaded.
                     if innermost_results.is_empty() { finalize } else { None },
-                    force,
                     ignore_decl,
                     ignore_import,
                 ) {
@@ -509,7 +503,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Scope visiting walked all the scopes and maybe found something in one of them.
         match innermost_results.first() {
             Some(&(decl, ..)) => Ok(decl),
-            None => Err(Determinacy::determined(determinacy == Determinacy::Determined || force)),
+            None => Err(determinacy),
         }
     }
 
@@ -523,7 +517,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         scope_set: ScopeSet<'ra>,
         parent_scope: &ParentScope<'ra>,
         finalize: Option<Finalize>,
-        force: bool,
         ignore_decl: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
     ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
@@ -546,7 +539,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     match self.reborrow().resolve_derive_macro_path(
                         derive,
                         parent_scope,
-                        force,
+                        false,
                         ignore_import,
                     ) {
                         Ok((Some(ext), _)) => {
@@ -617,11 +610,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         Ok(decl)
                     }
                     Err(ControlFlow::Continue(determinacy)) => Err(determinacy),
-                    Err(ControlFlow::Break(determinacy)) => {
-                        return Err(ControlFlow::Break(Determinacy::determined(
-                            determinacy == Determinacy::Determined || force,
-                        )));
-                    }
+                    Err(ControlFlow::Break(..)) => return decl,
                 }
             }
             Scope::ModuleGlobs(module, derive_fallback_lint_id) => {
@@ -668,11 +657,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         Ok(binding)
                     }
                     Err(ControlFlow::Continue(determinacy)) => Err(determinacy),
-                    Err(ControlFlow::Break(determinacy)) => {
-                        return Err(ControlFlow::Break(Determinacy::determined(
-                            determinacy == Determinacy::Determined || force,
-                        )));
-                    }
+                    Err(ControlFlow::Break(..)) => return binding,
                 }
             }
             Scope::MacroUsePrelude => match self.macro_use_prelude.get(&ident.name).cloned() {
@@ -715,7 +700,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         ScopeSet::Module(ns, prelude),
                         parent_scope,
                         None,
-                        false,
                         ignore_decl,
                         ignore_import,
                     )
@@ -951,7 +935,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ScopeSet::Module(ns, module),
                 parent_scope,
                 finalize,
-                finalize.is_some(),
                 ignore_decl,
                 ignore_import,
             ),
@@ -960,7 +943,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ScopeSet::ModuleAndExternPrelude(ns, module),
                 parent_scope,
                 finalize,
-                finalize.is_some(),
                 ignore_decl,
                 ignore_import,
             ),
@@ -973,7 +955,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         ScopeSet::ExternPrelude,
                         parent_scope,
                         finalize,
-                        finalize.is_some(),
                         ignore_decl,
                         ignore_import,
                     )
@@ -996,7 +977,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ScopeSet::All(ns),
                     parent_scope,
                     finalize,
-                    finalize.is_some(),
                     ignore_decl,
                     ignore_import,
                 )
@@ -1180,7 +1160,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ScopeSet::Module(ns, module),
                 adjusted_parent_scope,
                 None,
-                false,
                 ignore_decl,
                 ignore_import,
             );
@@ -1881,7 +1860,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ScopeSet::All(ns),
                     parent_scope,
                     finalize,
-                    finalize.is_some(),
                     ignore_decl,
                     ignore_import,
                 )
@@ -1957,8 +1935,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         );
                     }
                 }
-                Err(Undetermined) => return PathResult::Indeterminate,
-                Err(Determined) => {
+                Err(Undetermined) if finalize.is_none() => return PathResult::Indeterminate,
+                Err(Determined | Undetermined) => {
                     if let Some(ModuleOrUniformRoot::Module(module)) = module
                         && opt_ns.is_some()
                         && !module.is_normal()
