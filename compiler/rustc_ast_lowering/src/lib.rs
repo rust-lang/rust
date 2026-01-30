@@ -33,6 +33,7 @@
 // tidy-alphabetical-start
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
+#![recursion_limit = "256"]
 // tidy-alphabetical-end
 
 use std::mem;
