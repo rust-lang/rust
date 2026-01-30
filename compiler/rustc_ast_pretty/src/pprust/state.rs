@@ -1961,7 +1961,8 @@ impl<'a> State<'a> {
     }
 
     fn print_lifetime(&mut self, lifetime: ast::Lifetime) {
-        self.print_name(lifetime.ident.name)
+        self.word(lifetime.ident.name.to_string());
+        self.ann_post(lifetime.ident)
     }
 
     fn print_lifetime_bounds(&mut self, bounds: &ast::GenericBounds) {
