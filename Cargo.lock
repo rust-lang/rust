@@ -4229,6 +4229,8 @@ dependencies = [
 name = "rustc_macros"
 version = "0.0.0"
 dependencies = [
+ "fluent-bundle",
+ "fluent-syntax",
  "proc-macro2",
  "quote",
  "syn 2.0.110",

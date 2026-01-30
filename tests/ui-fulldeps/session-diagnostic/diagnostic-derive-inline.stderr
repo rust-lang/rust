@@ -508,6 +508,14 @@ LL |     #[suggestion("with a suggestion", code = "")]
    = help: to show a suggestion consisting of multiple parts, use a `Subdiagnostic` annotated with `#[multipart_suggestion(...)]`
    = help: to show a variable set of suggestions, use a `Vec` of `Subdiagnostic`s annotated with `#[suggestion(...)]`
 
+error: derive(Diagnostic): Variable `nosub` not found in diagnostic 
+  --> $DIR/diagnostic-derive-inline.rs:773:8
+   |
+LL | #[diag("does not exist: {$nosub}")]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: Available fields: "sub"
+
 error: cannot find attribute `nonsense` in this scope
   --> $DIR/diagnostic-derive-inline.rs:61:3
    |
@@ -622,6 +630,6 @@ note: required by a bound in `Diag::<'a, G>::arg`
    = note: in this macro invocation
    = note: this error originates in the macro `with_fn` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 79 previous errors
+error: aborting due to 80 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

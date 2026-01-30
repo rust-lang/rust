@@ -702,7 +702,7 @@ impl SubdiagnosticVariant {
                     let message = input.parse::<LitStr>()?;
                     if !input.is_empty() { input.parse::<Token![,]>()?; }
                     if is_first {
-                        slug = Some(Message::Inline(message.value()));
+                        slug = Some(Message::Inline(message.span(), message.value()));
                         is_first = false;
                     } else {
                         span_err(message.span().unwrap(), "a diagnostic message must be the first argument to the attribute").emit();

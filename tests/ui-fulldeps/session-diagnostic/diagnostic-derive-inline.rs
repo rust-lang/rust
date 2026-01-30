@@ -762,3 +762,16 @@ struct SuggestionOnVec {
     //~^ ERROR `#[suggestion(...)]` is not a valid attribute
     sub: Vec<Span>,
 }
+
+#[derive(Diagnostic)]
+#[diag("exists: {$sub}")]
+struct VariableExists {
+    sub: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("does not exist: {$nosub}")]
+//~^ ERROR Variable `nosub` not found in diagnostic
+struct VariableDoesNotExist {
+    sub: String,
+}

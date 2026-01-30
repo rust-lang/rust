@@ -75,7 +75,7 @@ impl SubdiagnosticDerive {
                     has_subdiagnostic: false,
                     is_enum,
                 };
-                builder.into_tokens().unwrap_or_else(|v| v.to_compile_error())
+                builder.into_tokens(variant).unwrap_or_else(|v| v.to_compile_error())
             });
 
             quote! {
@@ -497,7 +497,10 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         }
     }
 
-    pub(crate) fn into_tokens(&mut self) -> Result<TokenStream, DiagnosticDeriveError> {
+    pub(crate) fn into_tokens(
+        &mut self,
+        variant: &VariantInfo<'_>,
+    ) -> Result<TokenStream, DiagnosticDeriveError> {
         let kind_slugs = self.identify_kind()?;
 
         let kind_stats: KindsStatistics = kind_slugs.iter().map(|(kind, _slug)| kind).collect();
@@ -535,7 +538,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let mut calls = TokenStream::new();
         for (kind, slug) in kind_slugs {
             let message = format_ident!("__message");
-            let message_stream = slug.diag_message();
+            let message_stream = slug.diag_message(variant);
             calls.extend(quote! { let #message = #diag.eagerly_translate(#message_stream); });
 
             let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);
