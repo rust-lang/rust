@@ -21,7 +21,7 @@ Unlike `EarlyBinder` we typically do not instantiate `Binder` with some concrete
 
 ## Instantiating with inference variables
 
-We instantiate binders with inference variables when we are trying to infer a possible instantiation of the binder, e.g. calling higher ranked function pointers or attempting to use a higher ranked where-clause to prove some bound. For example, given the `higher_ranked_fn_ptr` from the example above, if we were to call it with `&10_u32` we would: 
+We instantiate binders with inference variables when we are trying to infer a possible instantiation of the binder, e.g. calling higher ranked function pointers or attempting to use a higher ranked where-clause to prove some bound. For example, given the `higher_ranked_fn_ptr` from the example above, if we were to call it with `&10_u32` we would:
 - Instantiate the binder with infer vars yielding a signature of `fn(&'?0 u32) -> &'?0 u32)`
 - Equate the type of the provided argument `&10_u32` (&'static u32) with the type in the signature, `&'?0 u32`, inferring `'?0 = 'static`
 - The provided arguments were correct as we were successfully able to unify the types of the provided arguments with the types of the arguments in fn ptr signature
@@ -35,7 +35,7 @@ Instantiating binders with inference variables can be accomplished by using the 
 
 ## Instantiating with placeholders
 
-Placeholders are very similar to `Ty/ConstKind::Param`/`ReEarlyParam`, they represent some unknown type that is only equal to itself. `Ty`/`Const` and `Region` all have a [`Placeholder`] variant that is comprised of a [`Universe`] and a [`BoundVar`]. 
+Placeholders are very similar to `Ty/ConstKind::Param`/`ReEarlyParam`, they represent some unknown type that is only equal to itself. `Ty`/`Const` and `Region` all have a [`Placeholder`] variant that is comprised of a [`Universe`] and a [`BoundVar`].
 
 The `Universe` tracks which binder the placeholder originated from, and the `BoundVar` tracks which parameter on said binder that this placeholder corresponds to. Equality of placeholders is determined solely by whether the universes are equal and the `BoundVar`s are equal. See the [chapter on Placeholders and Universes][ch_placeholders_universes] for more information.
 
@@ -49,7 +49,7 @@ Note: in the original example of this chapter it was mentioned that we should no
 
 ### Why have both `RePlaceholder` and `ReBound`?
 
-You may be wondering why we have both of these variants, afterall the data stored in `Placeholder` is effectively equivalent to that of `ReBound`: something to track which binder, and an index to track which parameter the `Binder` introduced. 
+You may be wondering why we have both of these variants, afterall the data stored in `Placeholder` is effectively equivalent to that of `ReBound`: something to track which binder, and an index to track which parameter the `Binder` introduced.
 
 The main reason for this is that `Bound` is a more syntactic representation of bound variables whereas `Placeholder` is a more semantic representation. As a concrete example:
 ```rust
@@ -77,7 +77,7 @@ Given these trait implementations `u32: Bar` should _not_ hold. `&'a u32` only i
 This end result is incorrect as we had two separate binders introducing their own generic parameters, the trait bound should have ended up as something like `for<'a1, 'a2> &'^1 u32: Other<'^0>` which is _not_ satisfied by the `impl<'a> Other<'a> for &'a u32`.
 
 While in theory we could make this work it would be quite involved and more complex than the current setup, we would have to:
-- "rewrite" bound variables to have a higher `DebruijnIndex` whenever instantiating a `Binder`/`EarlyBinder` with a `Bound` ty/const/region 
+- "rewrite" bound variables to have a higher `DebruijnIndex` whenever instantiating a `Binder`/`EarlyBinder` with a `Bound` ty/const/region
 - When inferring an inference variable to a bound var, if that bound var is from a binder entered after creating the infer var, we would have to lower the `DebruijnIndex` of the var.
 - Separately track what binder an inference variable was created inside of, also what the innermost binder it can name parameters from (currently we only have to track the latter)
 - When resolving inference variables rewrite any bound variables according to the current binder depth of the infcx
@@ -90,18 +90,18 @@ where
     for<'a> T: Trait<'a, for<'b> fn(&'b T, &'a u32)>
 { ... }
 ```
-That where clause would be written as:  
-`for<'a> T: Trait<'^0, for<'b> fn(&'^0 T, &'^1_0 u32)>`  
+That where clause would be written as:
+`for<'a> T: Trait<'^0, for<'b> fn(&'^0 T, &'^1_0 u32)>`
 Despite there being two references to the `'a` parameter they are both represented differently: `^0` and `^1_0`, due to the fact that the latter usage is nested under a second `Binder` for the inner function pointer type.
 
 This is in contrast to `Placeholder` ty/const/regions which do not have this limitation due to the fact that `Universe`s are specific to the current `InferCtxt` not the usage site of the parameter.
 
-It is trivially possible to instantiate `EarlyBinder`s and unify inference variables with existing `Placeholder`s as no matter what context the `Placeholder` is in, it will have the same representation. As an example if we were to instantiate the binder on the higher ranked where clause from above, it would be represented like so:  
-`T: Trait<'!1_0, for<'b> fn(&'^0 T, &'!1_0 u32)>`  
+It is trivially possible to instantiate `EarlyBinder`s and unify inference variables with existing `Placeholder`s as no matter what context the `Placeholder` is in, it will have the same representation. As an example if we were to instantiate the binder on the higher ranked where clause from above, it would be represented like so:
+`T: Trait<'!1_0, for<'b> fn(&'^0 T, &'!1_0 u32)>`
 the `RePlaceholder` representation for both usages of `'a` are the same despite one being underneath another `Binder`.
 
-If we were to then instantiate the binder on the function pointer we would get a type such as:  
-`fn(&'!2_0 T, ^'!1_0 u32)`  
+If we were to then instantiate the binder on the function pointer we would get a type such as:
+`fn(&'!2_0 T, ^'!1_0 u32)`
 the `RePlaceholder` for the `'b` parameter is in a higher universe to track the fact that its binder was instantiated after the binder for `'a`.
 
 ## Instantiating with `ReLateParam`
@@ -119,8 +119,8 @@ impl Trait for Whatever {
         b
     }
 }
-``` 
-the lifetime `'a` in the type `&'a u32` in the function body would be represented as: 
+```
+the lifetime `'a` in the type `&'a u32` in the function body would be represented as:
 ```
 ReLateParam(
     {impl#0}::foo,
@@ -135,10 +135,10 @@ Generally whenever we have a `Binder` for late bound parameters on a function/cl
 As a concrete example, accessing the signature of a function we are type checking will be represented as `EarlyBinder<Binder<FnSig>>`. As we are already "inside" of these binders, we would call `instantiate_identity` followed by `liberate_late_bound_regions`.
 
 [`liberate_late_bound_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.liberate_late_bound_regions
-[representing-types]: param_ty_const_regions.md
+[representing-types]: param-ty-const-regions.md
 [`BoundRegionKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.BoundRegionKind.html
 [`enter_forall`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/struct.InferCtxt.html#method.enter_forall
-[ch_placeholders_universes]: ../borrow_check/region_inference/placeholders_and_universes.md
+[ch_placeholders_universes]: ../borrow-check/region-inference/placeholders-and-universes.md
 [`instantiate_binder_with_fresh_vars`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/struct.InferCtxt.html#method.instantiate_binder_with_fresh_vars
 [`InferCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/struct.InferCtxt.html
 [`EarlyBinder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.EarlyBinder.html

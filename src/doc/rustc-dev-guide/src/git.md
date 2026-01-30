@@ -1,20 +1,22 @@
 # Using Git
 
-The Rust project uses [Git] to manage its source code. In order to
-contribute, you'll need some familiarity with its features so that your changes
+The Rust project uses [Git] to manage its source code.
+In order to contribute, you'll need some familiarity with its features so that your changes
 can be incorporated into the compiler.
 
 [Git]: https://git-scm.com
 
 The goal of this page is to cover some of the more common questions and
-problems new contributors face. Although some Git basics will be covered here,
+problems new contributors face.
+Although some Git basics will be covered here,
 if you find that this is still a little too fast for you, it might make sense
 to first read some introductions to Git, such as the Beginner and Getting
-started sections of [this tutorial from Atlassian][atlassian-git]. GitHub also
-provides [documentation] and [guides] for beginners, or you can consult the
+started sections of [this tutorial from Atlassian][atlassian-git].
+GitHub also provides [documentation] and [guides] for beginners, or you can consult the
 more in depth [book from Git].
 
-This guide is incomplete. If you run into trouble with git that this page doesn't help with,
+This guide is incomplete.
+If you run into trouble with git that this page doesn't help with,
 please [open an issue] so we can document how to fix it.
 
 [open an issue]: https://github.com/rust-lang/rustc-dev-guide/issues/new
@@ -26,15 +28,15 @@ please [open an issue] so we can document how to fix it.
 ## Prerequisites
 
 We'll assume that you've installed Git, forked [rust-lang/rust], and cloned the
-forked repo to your PC. We'll use the command line interface to interact
+forked repo to your PC.
+We'll use the command line interface to interact
 with Git; there are also a number of GUIs and IDE integrations that can
 generally do the same things.
 
 [rust-lang/rust]: https://github.com/rust-lang/rust
 
-If you've cloned your fork, then you will be able to reference it with `origin`
-in your local repo. It may be helpful to also set up a remote for the official
-rust-lang/rust repo via
+If you've cloned your fork, then you will be able to reference it with `origin` in your local repo.
+It may be helpful to also set up a remote for the official rust-lang/rust repo via
 
 ```console
 git remote add upstream https://github.com/rust-lang/rust.git
@@ -54,21 +56,19 @@ useful when contributing to other repositories in the Rust project.
 
 ## Standard Process
 
-Below is the normal procedure that you're likely to use for most minor changes
-and PRs:
+Below is the normal procedure that you're likely to use for most minor changes and PRs:
 
- 1. Ensure that you're making your changes on top of `main`:
- `git checkout main`.
+ 1. Ensure that you're making your changes on top of `main`: `git checkout main`.
  2. Get the latest changes from the Rust repo: `git pull upstream main --ff-only`.
  (see [No-Merge Policy][no-merge-policy] for more info about this).
  3. Make a new branch for your change: `git checkout -b issue-12345-fix`.
  4. Make some changes to the repo and test them.
  5. Stage your changes via `git add src/changed/file.rs src/another/change.rs`
- and then commit them with `git commit`. Of course, making intermediate commits
- may be a good idea as well. Avoid `git add .`, as it makes it too easy to
- unintentionally commit changes that should not be committed, such as submodule
- updates. You can use `git status` to check if there are any files you forgot
- to stage.
+ and then commit them with `git commit`.
+ Of course, making intermediate commits may be a good idea as well.
+ Avoid `git add .`, as it makes it too easy to
+ unintentionally commit changes that should not be committed, such as submodule updates.
+ You can use `git status` to check if there are any files you forgot to stage.
  6. Push your changes to your fork: `git push --set-upstream origin issue-12345-fix`
  (After adding commits, you can use `git push` and after rebasing or
 pulling-and-rebasing, you can use `git push --force-with-lease`).
@@ -100,14 +100,15 @@ Here are some common issues you might run into:
 ### I made a merge commit by accident.
 
 Git has two ways to update your branch with the newest changes: merging and rebasing.
-Rust [uses rebasing][no-merge-policy]. If you make a merge commit, it's not too hard to fix:
-`git rebase -i upstream/main`.
+Rust [uses rebasing][no-merge-policy].
+If you make a merge commit, it's not too hard to fix: `git rebase -i upstream/main`.
 
 See [Rebasing](#rebasing) for more about rebasing.
 
 ### I deleted my fork on GitHub!
 
-This is not a problem from git's perspective. If you run `git remote -v`,
+This is not a problem from git's perspective.
+If you run `git remote -v`,
 it will say something like this:
 
 ```console
@@ -137,19 +138,21 @@ You might also notice conflicts in the web UI:
 ![conflict in src/tools/cargo](./img/submodule-conflicts.png)
 
 The most common cause is that you rebased after a change and ran `git add .` without first running
-`x` to update the submodules.  Alternatively, you might have run `cargo fmt` instead of `x fmt`
+`x` to update the submodules.
+ Alternatively, you might have run `cargo fmt` instead of `x fmt`
 and modified files in a submodule, then committed the changes.
 
 To fix it, do the following things (if you changed a submodule other than cargo,
 replace `src/tools/cargo` with the path to that submodule):
 
 1. See which commit has the accidental changes: `git log --stat -n1 src/tools/cargo`
-2. Revert the changes to that commit: `git checkout <my-commit>~ src/tools/cargo`. Type `~`
-   literally but replace `<my-commit>` with the output from step 1.
+2. Revert the changes to that commit: `git checkout <my-commit>~ src/tools/cargo`.
+   Type `~` literally but replace `<my-commit>` with the output from step 1.
 3. Tell git to commit the changes: `git commit --fixup <my-commit>`
 4. Repeat steps 1-3 for all the submodules you modified.
     - If you modified the submodule in several different commits, you will need to repeat steps 1-3
-    for each commit you modified. You'll know when to stop when the `git log` command shows a commit
+    for each commit you modified.
+    You'll know when to stop when the `git log` command shows a commit
     that's not authored by you.
 5. Squash your changes into the existing commits: `git rebase --autosquash -i upstream/main`
 6. [Push your changes](#standard-process).
@@ -168,9 +171,11 @@ error: Please commit or stash them.
 
 (See <https://git-scm.com/book/en/v2/Getting-Started-What-is-Git%3F#_the_three_states> for the difference between the two.)
 
-This means you have made changes since the last time you made a commit. To be able to rebase, either
+This means you have made changes since the last time you made a commit.
+To be able to rebase, either
 commit your changes, or make a temporary commit called a "stash" to have them still not be committed
-when you finish rebasing. You may want to configure git to make this "stash" automatically, which
+when you finish rebasing.
+You may want to configure git to make this "stash" automatically, which
 will prevent the "cannot rebase" error in nearly all cases:
 
 ```console
@@ -191,8 +196,9 @@ rm -r src/stdarch
 
 ### I see `<<< HEAD`?
 
-You were probably in the middle of a rebase or merge conflict. See
-[Conflicts](#rebasing-and-conflicts) for how to fix the conflict. If you don't care about the changes
+You were probably in the middle of a rebase or merge conflict.
+See [Conflicts](#rebasing-and-conflicts) for how to fix the conflict.
+If you don't care about the changes
 and just want to get a clean copy of the repository back, you can use `git reset`:
 
 ```console
@@ -213,17 +219,19 @@ hint: 'git pull ...') before pushing again.
 hint: See the 'Note about fast-forwards' in 'git push --help' for details.
 ```
 
-The advice this gives is incorrect! Because of Rust's
-["no-merge" policy](#no-merge-policy) the merge commit created by `git pull`
-will not be allowed in the final PR, in addition to defeating the point of the
-rebase! Use `git push --force-with-lease` instead.
+The advice this gives is incorrect!
+Because of Rust's ["no-merge" policy](#no-merge-policy), the merge commit created by `git pull`
+will not be allowed in the final PR, in addition to defeating the point of the rebase!
+Use `git push --force-with-lease` instead.
 
 ### Git is trying to rebase commits I didn't write?
 
 If you see many commits in your rebase list, or merge commits, or commits by other people that you
-didn't write, it likely means you're trying to rebase over the wrong branch. For example, you may
+didn't write, it likely means you're trying to rebase over the wrong branch.
+For example, you may
 have a `rust-lang/rust` remote `upstream`, but ran `git rebase origin/main` instead of `git rebase
-upstream/main`. The fix is to abort the rebase and use the correct branch instead:
+upstream/main`.
+The fix is to abort the rebase and use the correct branch instead:
 
 ```console
 git rebase --abort
@@ -239,7 +247,8 @@ git rebase --interactive upstream/main
 ### Quick note about submodules
 
 When updating your local repository with `git pull`, you may notice that sometimes
-Git says you have modified some files that you have never edited. For example,
+Git says you have modified some files that you have never edited.
+For example,
 running `git status` gives you something like (note the `new commits` mention):
 
 ```console
@@ -263,17 +272,18 @@ git submodule update
 ```
 
 Some submodules are not actually needed; for example, `src/llvm-project` doesn't need to be checked
-out if you're using `download-ci-llvm`.  To avoid having to keep fetching its history, you can use
+out if you're using `download-ci-llvm`.
+ To avoid having to keep fetching its history, you can use
 `git submodule deinit -f src/llvm-project`, which will also avoid it showing as modified again.
 
 ## Rebasing and Conflicts
 
 When you edit your code locally, you are making changes to the version of
-rust-lang/rust that existed when you created your feature branch. As such, when
-you submit your PR it is possible that some of the changes that have been made
+rust-lang/rust that existed when you created your feature branch.
+As such, when you submit your PR, it is possible that some of the changes that have been made
 to rust-lang/rust since then are in conflict with the changes you've made.
-When this happens, you need to resolve the conflicts before your changes can be
-merged. To do that, you need to rebase your work on top of rust-lang/rust.
+When this happens, you need to resolve the conflicts before your changes can be merged.
+To do that, you need to rebase your work on top of rust-lang/rust.
 
 ### Rebasing
 
@@ -294,13 +304,14 @@ git pull --rebase https://github.com/rust-lang/rust.git main
 > have rebased and fixed all conflicts.
 
 When you rebase a branch on main, all the changes on your branch are
-reapplied to the most recent version of `main`. In other words, Git tries to
+reapplied to the most recent version of `main`.
+In other words, Git tries to
 pretend that the changes you made to the old version of `main` were instead
-made to the new version of `main`. During this process, you should expect to
-encounter at least one "rebase conflict." This happens when Git's attempt to
-reapply the changes fails because your changes conflicted with other changes
-that have been made. You can tell that this happened because you'll see
-lines in the output that look like
+made to the new version of `main`.
+During this process, you should expect to
+encounter at least one "rebase conflict". This happens when Git's attempt to
+reapply the changes fails because your changes conflicted with other changes that have been made.
+You can tell that this happened because you'll see lines in the output that look like
 
 ```console
 CONFLICT (content): Merge conflict in file.rs
@@ -316,21 +327,23 @@ Your code
 >>>>>>> 8fbf656... Commit fixes 12345
 ```
 
-This represents the lines in the file that Git could not figure out how to
-rebase. The section between `<<<<<<< HEAD` and `=======` has the code from
-`main`, while the other side has your version of the code. You'll need to
-decide how to deal with the conflict. You may want to keep your changes,
+This represents the lines in the file that Git could not figure out how to rebase.
+The section between `<<<<<<< HEAD` and `=======` has the code from
+`main`, while the other side has your version of the code.
+You'll need to decide how to deal with the conflict.
+You may want to keep your changes,
 keep the changes on `main`, or combine the two.
 
-Generally, resolving the conflict consists of two steps: First, fix the
-particular conflict. Edit the file to make the changes you want and remove the
-`<<<<<<<`, `=======` and `>>>>>>>` lines in the process. Second, check the
-surrounding code. If there was a conflict, its likely there are some logical
-errors lying around too! It's a good idea to run `x check` here to make sure
-there are no glaring errors.
+Generally, resolving the conflict consists of two steps: First, fix the particular conflict.
+Edit the file to make the changes you want and remove the
+`<<<<<<<`, `=======` and `>>>>>>>` lines in the process.
+Second, check the surrounding code.
+If there was a conflict, its likely there are some logical errors lying around too!
+It's a good idea to run `x check` here to make sure there are no glaring errors.
 
 Once you're all done fixing the conflicts, you need to stage the files that had
-conflicts in them via `git add`. Afterwards, run `git rebase --continue` to let
+conflicts in them via `git add`.
+Afterwards, run `git rebase --continue` to let
 Git know that you've resolved the conflicts and it should finish the rebase.
 
 Once the rebase has succeeded, you'll want to update the associated branch on
@@ -340,13 +353,11 @@ your fork with `git push --force-with-lease`.
 
 The [above section](#rebasing) is a specific
 guide on rebasing work and dealing with merge conflicts.
-Here is some general advice about how to keep your local repo
-up-to-date with upstream changes:
+Here is some general advice about how to keep your local repo up-to-date with upstream changes:
 
-Using `git pull upstream main` while on your local `main` branch regularly
-will keep it up-to-date. You will also want to keep your feature branches
-up-to-date as well. After pulling, you can checkout the feature branches
-and rebase them:
+Using `git pull upstream main` while on your local `main` branch regularly will keep it up-to-date.
+You will also want to keep your feature branches up-to-date as well.
+After pulling, you can checkout the feature branches and rebase them:
 
 ```console
 git checkout main
@@ -367,21 +378,21 @@ feature branches are in sync with their state on the Github side.
 
 ### Squash your commits
 
-"Squashing" commits into each other causes them to be merged into a single
-commit. Both the upside and downside of this is that it simplifies the history.
+"Squashing" commits into each other causes them to be merged into a single commit.
+Both the upside and downside of this is that it simplifies the history.
 On the one hand, you lose track of the steps in which changes were made, but
 the history becomes easier to work with.
 
 If there are no conflicts and you are just squashing to clean up the history,
-use `git rebase --interactive --keep-base main`. This keeps the fork point
-of your PR the same, making it easier to review the diff of what happened
+use `git rebase --interactive --keep-base main`.
+This keeps the fork point of your PR the same, making it easier to review the diff of what happened
 across your rebases.
 
 Squashing can also be useful as part of conflict resolution.
 If your branch contains multiple consecutive rewrites of the same code, or if
 the rebase conflicts are extremely severe, you can use
-`git rebase --interactive main` to gain more control over the process. This
-allows you to choose to skip commits, edit the commits that you do not skip,
+`git rebase --interactive main` to gain more control over the process.
+This allows you to choose to skip commits, edit the commits that you do not skip,
 change the order in which they are applied, or "squash" them into each other.
 
 Alternatively, you can sacrifice the commit history like this:
@@ -395,34 +406,35 @@ git rebase --continue
 ```
 
 You also may want to squash just the last few commits together, possibly
-because they only represent "fixups" and not real changes. For example,
+because they only represent "fixups" and not real changes.
+For example,
 `git rebase --interactive HEAD~2` will allow you to edit the two commits only.
 
 ### `git range-diff`
 
 After completing a rebase, and before pushing up your changes, you may want to
-review the changes between your old branch and your new one. You can do that
-with `git range-diff main @{upstream} HEAD`.
+review the changes between your old branch and your new one.
+You can do that with `git range-diff main @{upstream} HEAD`.
 
 The first argument to `range-diff`, `main` in this case, is the base revision
-that you're comparing your old and new branch against. The second argument is
+that you're comparing your old and new branch against.
+The second argument is
 the old version of your branch; in this case, `@upstream` means the version that
-you've pushed to GitHub, which is the same as what people will see in your pull
-request. Finally, the third argument to `range-diff` is the *new* version of
+you've pushed to GitHub, which is the same as what people will see in your pull request.
+Finally, the third argument to `range-diff` is the *new* version of
 your branch; in this case, it is `HEAD`, which is the commit that is currently
 checked-out in your local repo.
 
-Note that you can also use the equivalent, abbreviated form `git range-diff
-main @{u} HEAD`.
+Note that you can also use the equivalent, abbreviated form `git range-diff main @{u} HEAD`.
 
 Unlike in regular Git diffs, you'll see a `-` or `+` next to another `-` or `+`
-in the range-diff output. The marker on the left indicates a change between the
-old branch and the new branch, and the marker on the right indicates a change
-you've committed. So, you can think of a range-diff as a "diff of diffs" since
+in the range-diff output.
+The marker on the left indicates a change between the
+old branch and the new branch, and the marker on the right indicates a change you've committed.
+So, you can think of a range-diff as a "diff of diffs" since
 it shows you the differences between your old diff and your new diff.
 
-Here's an example of `git range-diff` output (taken from [Git's
-docs][range-diff-example-docs]):
+Here's an example of `git range-diff` output (taken from [Git's docs][range-diff-example-docs]):
 
 ```console
 -:  ------- > 1:  0ddba11 Prepare for the inevitable!
@@ -447,31 +459,33 @@ docs][range-diff-example-docs]):
 (Note that `git range-diff` output in your terminal will probably be easier to
 read than in this example because it will have colors.)
 
-Another feature of `git range-diff` is that, unlike `git diff`, it will also
-diff commit messages. This feature can be useful when amending several commit
+Another feature of `git range-diff` is that, unlike `git diff`, it will also diff commit messages.
+This feature can be useful when amending several commit
 messages so you can make sure you changed the right parts.
 
 `git range-diff` is a very useful command, but note that it can take some time
-to get used to its output format. You may also find Git's documentation on the
+to get used to its output format.
+You may also find Git's documentation on the
 command useful, especially their ["Examples" section][range-diff-example-docs].
 
 [range-diff-example-docs]: https://git-scm.com/docs/git-range-diff#_examples
 
 ## No-Merge Policy
 
-The rust-lang/rust repo uses what is known as a "rebase workflow." This means
-that merge commits in PRs are not accepted. As a result, if you are running
-`git merge` locally, chances are good that you should be rebasing instead. Of
-course, this is not always true; if your merge will just be a fast-forward,
+The rust-lang/rust repo uses what is known as a "rebase workflow". This means
+that merge commits in PRs are not accepted.
+As a result, if you are running
+`git merge` locally, chances are good that you should be rebasing instead.
+Of course, this is not always true; if your merge will just be a fast-forward,
 like the merges that `git pull` usually performs, then no merge commit is
-created and you have nothing to worry about. Running `git config merge.ff only`
-(this will apply the config to the local repo)
+created and you have nothing to worry about.
+Running `git config merge.ff only` (this will apply the config to the local repo)
 once will ensure that all the merges you perform are of this type, so that you
 cannot make a mistake.
 
-There are a number of reasons for this decision and like all others, it is a
-tradeoff. The main advantage is the generally linear commit history. This
-greatly simplifies bisecting and makes the history and commit log much easier
+There are a number of reasons for this decision, and like all others, it is a tradeoff.
+The main advantage is the generally linear commit history.
+This greatly simplifies bisecting and makes the history and commit log much easier
 to follow and understand.
 
 ## Tips for reviewing
@@ -490,15 +504,17 @@ You can also use `git diff -w origin/main` to view changes locally.
 To checkout PRs locally, you can use `git fetch upstream pull/NNNNN/head && git checkout
 FETCH_HEAD`.
 
-You can also use github's cli tool. Github shows a button on PRs where you can copy-paste the
-command to check it out locally. See <https://cli.github.com/> for more info.
+You can also use github's cli tool.
+Github shows a button on PRs where you can copy-paste the command to check it out locally.
+See <https://cli.github.com/> for more info.
 
 ![`gh` suggestion](./img/github-cli.png)
 
 ### Using GitHub dev
 
 As an alternative to the GitHub web UI, GitHub Dev provides a web-based editor for browsing
-repository and PRs. It can be opened by replacing `github.com` with `github.dev` in the URL
+repository and PRs.
+It can be opened by replacing `github.com` with `github.dev` in the URL
 or by pressing `.` on a GitHub page.
 See [the docs for github.dev editor](https://docs.github.com/en/codespaces/the-githubdev-web-based-editor)
 for more details.
@@ -506,8 +522,8 @@ for more details.
 ### Moving large sections of code
 
 Git and Github's default diff view for large moves *within* a file is quite poor; it will show each
-line as deleted and each line as added, forcing you to compare each line yourself. Git has an option
-to show moved lines in a different color:
+line as deleted and each line as added, forcing you to compare each line yourself.
+Git has an option to show moved lines in a different color:
 
 ```console
 git log -p --color-moved=dimmed-zebra --color-moved-ws=allow-indentation-change
@@ -517,12 +533,14 @@ See [the docs for `--color-moved`](https://git-scm.com/docs/git-diff#Documentati
 
 ### range-diff
 
-See [the relevant section for PR authors](#git-range-diff). This can be useful for comparing code
+See [the relevant section for PR authors](#git-range-diff).
+This can be useful for comparing code
 that was force-pushed to make sure there are no unexpected changes.
 
 ### Ignoring changes to specific files
 
-Many large files in the repo are autogenerated. To view a diff that ignores changes to those files,
+Many large files in the repo are autogenerated.
+To view a diff that ignores changes to those files,
 you can use the following syntax (e.g. Cargo.lock):
 
 ```console
@@ -535,25 +553,28 @@ Arbitrary patterns are supported (e.g. `:!compiler/*`). Patterns use the same sy
 ## Git submodules
 
 **NOTE**: submodules are a nice thing to know about, but it *isn't* an absolute
-prerequisite to contribute to `rustc`. If you are using Git for the first time,
+prerequisite to contribute to `rustc`.
+If you are using Git for the first time,
 you might want to get used to the main concepts of Git before reading this section.
 
 The `rust-lang/rust` repository uses [Git submodules] as a way to use other
-Rust projects from within the `rust` repo. Examples include Rust's fork of
-`llvm-project`, `cargo`  and libraries like `stdarch` and `backtrace`.
+Rust projects from within the `rust` repo.
+Examples include Rust's fork of
+`llvm-project`, `cargo`, and libraries like `stdarch` and `backtrace`.
 
 Those projects are developed and maintained in an separate Git (and GitHub)
 repository, and they have their own Git history/commits, issue tracker and PRs.
 Submodules allow us to create some sort of embedded sub-repository inside the
 `rust` repository and use them like they were directories in the `rust` repository.
 
-Take `llvm-project` for example. `llvm-project` is maintained in the [`rust-lang/llvm-project`]
-repository, but it is used in `rust-lang/rust` by the compiler for code generation and
-optimization. We bring it in `rust` as a submodule, in the `src/llvm-project` folder.
+Take `llvm-project` for example.
+`llvm-project` is maintained in the [`rust-lang/llvm-project`]
+repository, but it is used in `rust-lang/rust` by the compiler for code generation and optimization.
+We bring it in `rust` as a submodule, in the `src/llvm-project` folder.
 
 The contents of submodules are ignored by Git: submodules are in some sense isolated
-from the rest of the repository. However, if you try to `cd src/llvm-project` and then
-run `git status`:
+from the rest of the repository.
+However, if you try to `cd src/llvm-project` and then run `git status`:
 
 ```console
 HEAD detached at 9567f08afc943
@@ -566,7 +587,8 @@ particular commit.
 
 This is because, like any dependency, we want to be able to control which version to use.
 Submodules allow us to do just that: every submodule is "pinned" to a certain
-commit, which doesn't change unless modified manually. If you use `git checkout <commit>`
+commit, which doesn't change unless modified manually.
+If you use `git checkout <commit>`
 in the `llvm-project` directory and go back to the `rust` directory, you can stage this
 change like any other, e.g. by running `git add src/llvm-project`. (Note that if
 you *don't* stage the change to commit, then you run the risk that running
@@ -576,10 +598,10 @@ it automatically "updates" the submodules.)
 This version selection is usually done by the maintainers of the project, and
 looks like [this][llvm-update].
 
-Git submodules take some time to get used to, so don't worry if it isn't perfectly
-clear yet. You will rarely have to use them directly and, again, you don't need
-to know everything about submodules to contribute to Rust. Just know that they
-exist and that they correspond to some sort of embedded subrepository dependency
+Git submodules take some time to get used to, so don't worry if it isn't perfectly clear yet.
+You will rarely have to use them directly and, again, you don't need
+to know everything about submodules to contribute to Rust.
+Just know that they exist and that they correspond to some sort of embedded subrepository dependency
 that Git can nicely and fairly conveniently handle for us.
 
 ### Hard-resetting submodules
@@ -639,13 +661,12 @@ src/gcc` in this example, you need to:
 2. `rm -rf .git/modules/<submodule_path>/config`
 3. `rm -rf .gitconfig.lock` if somehow the `.gitconfig` lock is orphaned.
 
-Then do something like `./x fmt` to have bootstrap manage the submodule
-checkouts for you.
+Then do something like `./x fmt` to have bootstrap manage the submodule checkouts for you.
 
 ## Ignoring commits during `git blame`
 
-Some commits contain large reformatting changes that don't otherwise change functionality. They can
-be instructed to be ignored by `git blame` through
+Some commits contain large reformatting changes that don't otherwise change functionality.
+They can be instructed to be ignored by `git blame` through
 [`.git-blame-ignore-revs`](https://github.com/rust-lang/rust/blob/HEAD/.git-blame-ignore-revs):
 
 1. Configure `git blame` to use `.git-blame-ignore-revs` as the list of commits to ignore: `git

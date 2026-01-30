@@ -49,9 +49,9 @@ impl<X, Y> Foo<X, Y> {
 }
 ```
 
-Concretely given the `ty::Generics` for the item the parameter is defined on, if the index is `2` then starting from the root `parent`, it will be the third parameter to be introduced. For example in the above example, `Z` has index `2` and is the third generic parameter to be introduced, starting from the `impl` block. 
+Concretely given the `ty::Generics` for the item the parameter is defined on, if the index is `2` then starting from the root `parent`, it will be the third parameter to be introduced. For example in the above example, `Z` has index `2` and is the third generic parameter to be introduced, starting from the `impl` block.
 
-The index fully defines the `Ty` and is the only part of `TyKind::Param` that matters for reasoning about the code we are compiling. 
+The index fully defines the `Ty` and is the only part of `TyKind::Param` that matters for reasoning about the code we are compiling.
 
 Generally we do not care what the name is and only use the index. The name is included for diagnostics and debug logs as otherwise it would be
 incredibly difficult to understand the output, i.e. `Vec<Param(0)>: Sized` vs `Vec<T>: Sized`. In debug output, parameter types are
@@ -59,7 +59,7 @@ often printed out as `{name}/#{index}`, for example in the function `foo` if we 
 
 An alternative representation would be to only have the name, however using an index is more efficient as it means we can index into `GenericArgs` when instantiating generic parameters with some arguments. We would otherwise have to store `GenericArgs` as a `HashMap<Symbol, GenericArg>` and do a hashmap lookup everytime we used a generic item.
 
-In theory an index would also allow for having multiple distinct parameters that use the same name, e.g. 
+In theory an index would also allow for having multiple distinct parameters that use the same name, e.g.
 `impl<A> Foo<A> { fn bar<A>() { .. } }`.
 The rules against shadowing make this difficult but those language rules could change in the future.
 
@@ -85,9 +85,9 @@ fn foo<'a, 'b, T: 'a>(one: T, two: &'a &'b u32) -> &'b u32 {
 
 `RegionKind::LateParam` is discussed more in the chapter on [instantiating binders][ch_instantiating_binders].
 
-[ch_early_late_bound]: ../early_late_parameters.md
+[ch_early_late_bound]: ../early-late-parameters.md
 [ch_binders]: ./binders.md
-[ch_instantiating_binders]: ./instantiating_binders.md
+[ch_instantiating_binders]: ./instantiating-binders.md
 [`BoundRegionKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.BoundRegionKind.html
 [`RegionKind::EarlyParam`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.RegionKind.html#variant.ReEarlyParam
 [`RegionKind::LateParam`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.RegionKind.html#variant.ReLateParam

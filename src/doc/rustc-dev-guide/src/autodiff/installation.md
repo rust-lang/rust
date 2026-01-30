@@ -28,6 +28,7 @@ You can then run our test cases:
 ./x test --stage 1 tests/codegen-llvm/autodiff
 ./x test --stage 1 tests/pretty/autodiff
 ./x test --stage 1 tests/ui/autodiff
+./x test --stage 1 tests/run-make/autodiff
 ./x test --stage 1 tests/ui/feature-gates/feature-gate-autodiff.rs
 ```
 

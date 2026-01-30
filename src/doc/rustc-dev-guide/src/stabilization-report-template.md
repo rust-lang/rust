@@ -2,7 +2,7 @@
 
 ## What is this?
 
-This is a template for [stabilization reports](./stabilization_guide.md) of **language features**. The questions aim to solicit the details most often needed. These details help reviewers to identify potential problems upfront. Not all parts of the template will apply to every stabilization. If a question doesn't apply, explain briefly why.
+This is a template for [stabilization reports](./stabilization-guide.md) of **language features**. The questions aim to solicit the details most often needed. These details help reviewers to identify potential problems upfront. Not all parts of the template will apply to every stabilization. If a question doesn't apply, explain briefly why.
 
 Copy everything after the separator and edit it as Markdown. Replace each *TODO* with your answer.
 
