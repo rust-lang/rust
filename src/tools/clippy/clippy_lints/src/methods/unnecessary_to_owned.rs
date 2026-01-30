@@ -14,7 +14,7 @@ use rustc_hir::{BorrowKind, Expr, ExprKind, ItemKind, LangItem, Node};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind, OverloadedDeref};
 use rustc_middle::ty::{
     self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionPredicate, TraitPredicate, Ty,
 };
@@ -78,7 +78,7 @@ fn check_addr_of_expr(
             // For matching uses of `Cow::from`
             [
                 Adjustment {
-                    kind: Adjust::Deref(None),
+                    kind: Adjust::Deref(DerefAdjustKind::Builtin),
                     target: referent_ty,
                 },
                 Adjustment {
@@ -89,7 +89,7 @@ fn check_addr_of_expr(
             // For matching uses of arrays
             | [
                 Adjustment {
-                    kind: Adjust::Deref(None),
+                    kind: Adjust::Deref(DerefAdjustKind::Builtin),
                     target: referent_ty,
                 },
                 Adjustment {
@@ -104,11 +104,11 @@ fn check_addr_of_expr(
             // For matching everything else
             | [
                 Adjustment {
-                    kind: Adjust::Deref(None),
+                    kind: Adjust::Deref(DerefAdjustKind::Builtin),
                     target: referent_ty,
                 },
                 Adjustment {
-                    kind: Adjust::Deref(Some(OverloadedDeref { .. })),
+                    kind: Adjust::Deref(DerefAdjustKind::Overloaded(OverloadedDeref { .. })),
                     ..
                 },
                 Adjustment {

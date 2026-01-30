@@ -10,7 +10,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, GenericArgs, Param, PatKind, QPath, Safety, TyKind, find_attr};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::adjustment::Adjust;
+use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_middle::ty::{
     self, Binder, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, Ty, TypeVisitableExt, TypeckResults,
 };
@@ -236,7 +236,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                                     .iter()
                                     .rev()
                                     .fold(0, |acc, adjustment| match adjustment.kind {
-                                        Adjust::Deref(Some(_)) => acc + 1,
+                                        Adjust::Deref(DerefAdjustKind::Overloaded(_)) => acc + 1,
                                         Adjust::Deref(_) if acc > 0 => acc + 1,
                                         _ => acc,
                                     })

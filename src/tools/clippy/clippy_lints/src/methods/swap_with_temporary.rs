@@ -4,7 +4,7 @@ use rustc_ast::BorrowKind;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::{Expr, ExprKind, Node, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::ty::adjustment::Adjust;
+use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_span::sym;
 
 use super::SWAP_WITH_TEMPORARY;
@@ -47,7 +47,7 @@ impl<'tcx> ArgKind<'tcx> {
             && let adjustments = cx.typeck_results().expr_adjustments(arg)
             && adjustments
                 .first()
-                .is_some_and(|adj| matches!(adj.kind, Adjust::Deref(None)))
+                .is_some_and(|adj| matches!(adj.kind, Adjust::Deref(DerefAdjustKind::Builtin)))
             && adjustments
                 .last()
                 .is_some_and(|adj| matches!(adj.kind, Adjust::Borrow(_)))

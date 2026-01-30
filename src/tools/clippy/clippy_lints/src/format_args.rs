@@ -24,7 +24,7 @@ use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{Expr, ExprKind, LangItem, RustcVersion, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Upcast};
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition::Edition2021;
@@ -704,12 +704,12 @@ where
     let mut n_needed = 0;
     loop {
         if let Some(Adjustment {
-            kind: Adjust::Deref(overloaded_deref),
+            kind: Adjust::Deref(deref),
             target,
         }) = iter.next()
         {
             n_total += 1;
-            if overloaded_deref.is_some() {
+            if let DerefAdjustKind::Overloaded(..) = deref {
                 n_needed = n_total;
             }
             ty = *target;
