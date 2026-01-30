@@ -912,55 +912,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_decl: Option<Decl<'ra>>,
         ignore_import: Option<Import<'ra>>,
     ) -> Result<Decl<'ra>, Determinacy> {
-        let tmp_parent_scope;
-        let mut adjusted_parent_scope = parent_scope;
         match module {
-            ModuleOrUniformRoot::Module(m) => {
-                if let Some(def) = ident.span.normalize_to_macros_2_0_and_adjust(m.expansion) {
+            ModuleOrUniformRoot::Module(module) => {
+                let tmp_parent_scope;
+                let mut adjusted_parent_scope = parent_scope;
+                if let Some(def) = ident.span.normalize_to_macros_2_0_and_adjust(module.expansion) {
                     tmp_parent_scope =
                         ParentScope { module: self.expn_def_scope(def), ..*parent_scope };
                     adjusted_parent_scope = &tmp_parent_scope;
                 }
+                self.resolve_ident_in_scope_set(
+                    ident,
+                    ScopeSet::Module(ns, module),
+                    &adjusted_parent_scope,
+                    finalize,
+                    ignore_decl,
+                    ignore_import,
+                )
             }
-            ModuleOrUniformRoot::ExternPrelude => {
-                ident.span.normalize_to_macros_2_0_and_adjust(ExpnId::root());
-            }
-            ModuleOrUniformRoot::ModuleAndExternPrelude(..) | ModuleOrUniformRoot::CurrentScope => {
-                // No adjustments
-            }
-        }
-        self.resolve_ident_in_virt_module_unadjusted(
-            module,
-            ident,
-            ns,
-            adjusted_parent_scope,
-            finalize,
-            ignore_decl,
-            ignore_import,
-        )
-    }
-
-    /// Attempts to resolve `ident` in namespace `ns` of `module`.
-    #[instrument(level = "debug", skip(self))]
-    fn resolve_ident_in_virt_module_unadjusted<'r>(
-        self: CmResolver<'r, 'ra, 'tcx>,
-        module: ModuleOrUniformRoot<'ra>,
-        ident: Ident,
-        ns: Namespace,
-        parent_scope: &ParentScope<'ra>,
-        finalize: Option<Finalize>,
-        ignore_decl: Option<Decl<'ra>>,
-        ignore_import: Option<Import<'ra>>,
-    ) -> Result<Decl<'ra>, Determinacy> {
-        match module {
-            ModuleOrUniformRoot::Module(module) => self.resolve_ident_in_scope_set(
-                ident,
-                ScopeSet::Module(ns, module),
-                parent_scope,
-                finalize,
-                ignore_decl,
-                ignore_import,
-            ),
             ModuleOrUniformRoot::ModuleAndExternPrelude(module) => self.resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::ModuleAndExternPrelude(ns, module),
@@ -973,6 +942,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 if ns != TypeNS {
                     Err(Determined)
                 } else {
+                    ident.span.normalize_to_macros_2_0_and_adjust(ExpnId::root());
                     self.resolve_ident_in_scope_set(
                         ident,
                         ScopeSet::ExternPrelude,
