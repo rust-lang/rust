@@ -1,6 +1,7 @@
 use std::fmt;
 use std::ops::Index;
 
+use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
@@ -69,6 +70,13 @@ pub enum TwoPhaseActivation {
     ActivatedAt(Location),
 }
 
+/// Location where a place is pinned, if a borrowed place is pinned.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub(crate) enum Pinnedness<'tcx> {
+    Not,
+    Pinned { to: mir::Place<'tcx>, at: Location },
+}
+
 #[derive(Debug, Clone)]
 pub struct BorrowData<'tcx> {
     /// Location where the borrow reservation starts.
@@ -84,6 +92,8 @@ pub struct BorrowData<'tcx> {
     pub(crate) borrowed_place: mir::Place<'tcx>,
     /// Place to which the borrow was stored
     pub(crate) assigned_place: mir::Place<'tcx>,
+    /// Place and location to the pinning statement, if the borrowed place is pinned.
+    pub(crate) pinnedness: Pinnedness<'tcx>,
 }
 
 // These methods are public to support borrowck consumers.
@@ -260,6 +270,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                 activation_location,
                 borrowed_place,
                 assigned_place: *assigned_place,
+                pinnedness: Pinnedness::Not,
             };
 
             let idx = if !kind.is_two_phase_borrow() {
@@ -300,7 +311,38 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                 idx
             };
 
+            if let Some((pinned_place, successor)) =
+                succeeded_by_pin(self.tcx, self.body, location, *assigned_place)
+            {
+                self.location_map[&location].pinnedness =
+                    Pinnedness::Pinned { to: pinned_place, at: successor };
+            }
+
             self.local_map.entry(borrowed_place.local).or_default().insert(idx);
+        }
+
+        // Whether the current statement is followed by a
+        // `pinned_place = Pin::<&[mut] T> { pointer: move assigned_place }` statement.
+        fn succeeded_by_pin<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            body: &mir::Body<'tcx>,
+            location: mir::Location,
+            assigned_place: mir::Place<'tcx>,
+        ) -> Option<(mir::Place<'tcx>, mir::Location)> {
+            let successor = location.successor_within_block();
+            let stmt =
+                body.basic_blocks[successor.block].statements.get(successor.statement_index)?;
+            if let mir::StatementKind::Assign(box (pinned_place, ref rvalue)) = stmt.kind
+                && let mir::Rvalue::Aggregate(box agg_kind, operands) = rvalue
+                && let mir::AggregateKind::Adt(adt_did, _, args, _, _) = agg_kind
+                && tcx.adt_def(adt_did).is_pin()
+                && args.type_at(0).is_ref()
+                && let mir::Operand::Move(place) = operands[FieldIdx::ZERO]
+                && place == assigned_place
+            {
+                return Some((pinned_place, successor));
+            }
+            None
         }
 
         self.super_assign(assigned_place, rvalue, location)
