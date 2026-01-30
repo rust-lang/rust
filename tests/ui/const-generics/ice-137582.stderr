@@ -1,0 +1,44 @@
+error[E0277]: the size for values of type `[&'static u32]` cannot be known at compilation time
+  --> $DIR/ice-137582.rs:6:25
+   |
+LL |     const EMPTY_MATRIX: Matrix = [[0; 4]; 4];
+   |                         ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[&'static u32]`
+   = note: statics and constants must have a statically known size
+
+error[E0658]: use of unstable library feature `unsized_const_params`
+  --> $DIR/ice-137582.rs:11:43
+   |
+LL |     pub struct Walk<const CURRENT: usize, const REMAINING: Matrix> {
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unsized_const_params)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: required for `[&'static u32]` to implement `ConstParamTy_`
+
+error[E0277]: the size for values of type `[&'static u32]` cannot be known at compilation time
+  --> $DIR/ice-137582.rs:16:46
+   |
+LL |     impl<const CURRENT: usize> Walk<CURRENT, EMPTY_MATRIX> {}
+   |                                              ^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[&'static u32]`
+   = note: statics and constants must have a statically known size
+
+error[E0308]: mismatched types
+  --> $DIR/ice-137582.rs:6:35
+   |
+LL |     const EMPTY_MATRIX: Matrix = [[0; 4]; 4];
+   |                                   ^^^^^^ expected `&u32`, found `[{integer}; 4]`
+
+error[E0308]: mismatched types
+  --> $DIR/ice-137582.rs:6:34
+   |
+LL |     const EMPTY_MATRIX: Matrix = [[0; 4]; 4];
+   |                                  ^^^^^^^^^^^ expected `[&u32]`, found `[&u32; 4]`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0658.
+For more information about an error, try `rustc --explain E0277`.

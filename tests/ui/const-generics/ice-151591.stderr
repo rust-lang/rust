@@ -1,0 +1,66 @@
+error: free constant item without body
+  --> $DIR/ice-151591.rs:8:1
+   |
+LL | const A: [u8];
+   | ^^^^^^^^^^^^^-
+   |              |
+   |              help: provide a definition for the constant: `= <expr>;`
+
+warning: the feature `unsized_const_params` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/ice-151591.rs:2:12
+   |
+LL | #![feature(unsized_const_params)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #95174 <https://github.com/rust-lang/rust/issues/95174> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/ice-151591.rs:8:10
+   |
+LL | const A: [u8];
+   |          ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: statics and constants must have a statically known size
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/ice-151591.rs:12:31
+   |
+LL | impl<const N: i32> Copy for S<A> {}
+   |                               ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: statics and constants must have a statically known size
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/ice-151591.rs:15:33
+   |
+LL | impl<const M: usize> Copy for S<A> {}
+   |                                 ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: statics and constants must have a statically known size
+
+error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/ice-151591.rs:12:6
+   |
+LL | impl<const N: i32> Copy for S<A> {}
+   |      ^^^^^^^^^^^^ unconstrained const parameter
+   |
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error[E0207]: the const parameter `M` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/ice-151591.rs:15:6
+   |
+LL | impl<const M: usize> Copy for S<A> {}
+   |      ^^^^^^^^^^^^^^ unconstrained const parameter
+   |
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error: aborting due to 6 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0207, E0277.
+For more information about an error, try `rustc --explain E0207`.
