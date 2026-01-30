@@ -133,8 +133,8 @@ impl SerializedDepGraph {
     }
 
     #[inline]
-    pub fn index_to_node(&self, dep_node_index: SerializedDepNodeIndex) -> DepNode {
-        self.nodes[dep_node_index]
+    pub fn index_to_node(&self, dep_node_index: SerializedDepNodeIndex) -> &DepNode {
+        &self.nodes[dep_node_index]
     }
 
     #[inline]
@@ -346,7 +346,7 @@ impl<D: Deps> SerializedNodeHeader<D> {
 
     #[inline]
     fn new(
-        node: DepNode,
+        node: &DepNode,
         index: DepNodeIndex,
         fingerprint: Fingerprint,
         edge_max_index: u32,
@@ -379,7 +379,7 @@ impl<D: Deps> SerializedNodeHeader<D> {
         {
             let res = Self { bytes, _marker: PhantomData };
             assert_eq!(fingerprint, res.fingerprint());
-            assert_eq!(node, res.node());
+            assert_eq!(*node, res.node());
             if let Some(len) = res.len() {
                 assert_eq!(edge_count, len as usize);
             }
@@ -452,7 +452,7 @@ struct NodeInfo {
 
 impl NodeInfo {
     fn encode<D: Deps>(&self, e: &mut MemEncoder, index: DepNodeIndex) {
-        let NodeInfo { node, fingerprint, ref edges } = *self;
+        let NodeInfo { ref node, fingerprint, ref edges } = *self;
         let header = SerializedNodeHeader::<D>::new(
             node,
             index,
@@ -482,7 +482,7 @@ impl NodeInfo {
     #[inline]
     fn encode_promoted<D: Deps>(
         e: &mut MemEncoder,
-        node: DepNode,
+        node: &DepNode,
         index: DepNodeIndex,
         fingerprint: Fingerprint,
         prev_index: SerializedDepNodeIndex,
@@ -604,7 +604,7 @@ impl<D: Deps> EncoderState<D> {
     #[inline]
     fn record(
         &self,
-        node: DepNode,
+        node: &DepNode,
         index: DepNodeIndex,
         edge_count: usize,
         edges: impl FnOnce(&Self) -> Vec<DepNodeIndex>,
@@ -622,7 +622,7 @@ impl<D: Deps> EncoderState<D> {
             outline(move || {
                 // Do not ICE when a query is called from within `with_query`.
                 if let Some(record_graph) = &mut record_graph.try_lock() {
-                    record_graph.push(index, node, &edges);
+                    record_graph.push(index, *node, &edges);
                 }
             });
         }
@@ -661,7 +661,7 @@ impl<D: Deps> EncoderState<D> {
         node.encode::<D>(&mut local.encoder, index);
         self.flush_mem_encoder(&mut *local);
         self.record(
-            node.node,
+            &node.node,
             index,
             node.edges.len(),
             |_| node.edges[..].to_vec(),
