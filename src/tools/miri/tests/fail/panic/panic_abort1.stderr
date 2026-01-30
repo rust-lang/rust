@@ -20,11 +20,15 @@ LL |     crate::process::abort();
                at RUSTLIB/std/src/panicking.rs:LL:CC
            4: std::panicking::panic_handler::{closure#0}
                at RUSTLIB/std/src/panicking.rs:LL:CC
-           5: std::sys::backtrace::__rust_end_short_backtrace
+           5: std::backtrace::__rust_end_short_backtrace::{closure#0}
                at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
-           6: std::panicking::panic_handler
+           6: std::sys::backtrace::call_with_short_backtrace_marker
+               at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
+           7: std::backtrace::__rust_end_short_backtrace
+               at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
+           8: std::panicking::panic_handler
                at RUSTLIB/std/src/panicking.rs:LL:CC
-           7: main
+           9: main
                at RUSTLIB/core/src/panic.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
