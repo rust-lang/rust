@@ -520,13 +520,6 @@ pub(crate) struct LayoutOf<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_layout_invalid_attribute)]
-pub(crate) struct LayoutInvalidAttribute {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_abi_of)]
 pub(crate) struct AbiOf {
     #[primary_span]

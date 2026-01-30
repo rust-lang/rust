@@ -4,6 +4,22 @@ error: unions cannot have zero fields
 LL | union EmptyUnion {}
    | ^^^^^^^^^^^^^^^^^^^
 
+error: `#[rustc_layout]` attribute cannot be used on constants
+  --> $DIR/debug.rs:71:1
+   |
+LL | #[rustc_layout(debug)]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_layout]` can be applied to data types and type aliases
+
+error: `#[rustc_layout]` attribute cannot be used on associated consts
+  --> $DIR/debug.rs:75:5
+   |
+LL |     #[rustc_layout(debug)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_layout]` can be applied to data types and type aliases
+
 error: layout_of(E) = Layout {
            size: Size(12 bytes),
            align: AbiAlign {
@@ -577,12 +593,6 @@ error: layout_of(MaybeUninit<u8>) = Layout {
 LL | type X = std::mem::MaybeUninit<u8>;
    | ^^^^^^
 
-error: `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarations and type aliases
-  --> $DIR/debug.rs:72:1
-   |
-LL | const C: () = ();
-   | ^^^^^^^^^^^
-
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/debug.rs:80:19
    |
@@ -603,12 +613,6 @@ error: the type `T` does not have a fixed layout
    |
 LL | type TooGeneric<T> = T;
    | ^^^^^^^^^^^^^^^^^^
-
-error: `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarations and type aliases
-  --> $DIR/debug.rs:76:5
-   |
-LL |     const C: () = ();
-   |     ^^^^^^^^^^^
 
 error: aborting due to 20 previous errors
 
