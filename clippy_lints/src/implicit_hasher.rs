@@ -168,8 +168,8 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                             let range =
                                 (item.span.lo()..body.params[0].pat.span.lo()).map_range(cx, |_, src, range| {
                                     let (pre, post) = src.get(range.clone())?.split_once("fn")?;
-                                    let position = post.find('(')? + pre.len() + 2;
-                                    Some(position..position)
+                                    let pos = post.find('(')? + pre.len() + 2;
+                                    Some(pos..pos)
                                 });
                             if let Some(range) = range {
                                 range.with_ctxt(item.span.ctxt())

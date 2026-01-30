@@ -131,7 +131,7 @@ fn is_arms_disjointed(cx: &LateContext<'_>, arm1: &Arm<'_>, arm2: &Arm<'_>) -> b
 
 /// Returns `true` if the given pattern is a variant of an enum.
 pub fn is_enum_variant(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
-    let path_res = match pat.kind {
+    let path = match pat.kind {
         PatKind::Struct(ref qpath, fields, _)
             if fields
                 .iter()
@@ -149,7 +149,7 @@ pub fn is_enum_variant(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         PatKind::Expr(e) if let Some((qpath, id)) = e.opt_qpath() => (qpath, id),
         _ => return false,
     };
-    let res = path_res.res(cx);
+    let res = path.res(cx);
     matches!(
         res,
         Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(CtorOf::Variant, _), _)
@@ -282,7 +282,7 @@ fn replace_in_pattern(
                 }
                 return or_pat;
             },
-            PatKind::Struct(path_struct, fields, dot_dot) => {
+            PatKind::Struct(path, fields, dot_dot) => {
                 let fields = fields
                     .iter()
                     .map(|fld| {

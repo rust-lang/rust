@@ -260,7 +260,7 @@ fn is_self_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, mut expr: &Expr<'_>, hir_
                 _,
             )
             | ExprKind::Unary(UnOp::Deref, e) => e,
-            ExprKind::Path(QPath::Resolved(None, q_path)) => break q_path.res == Res::Local(hir_id),
+            ExprKind::Path(QPath::Resolved(None, path)) => break path.res == Res::Local(hir_id),
             _ => break false,
         }
     }

@@ -601,11 +601,11 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
     // Todo: Handle partially consumed values.
     fn helper<'tcx, B>(
         typeck: &'tcx TypeckResults<'tcx>,
-        is_consume: bool,
+        consume: bool,
         e: &'tcx Expr<'tcx>,
         f: &mut impl FnMut(Ty<'tcx>) -> ControlFlow<B>,
     ) -> ControlFlow<B> {
-        if !is_consume
+        if !consume
             || matches!(
                 typeck.expr_adjustments(e),
                 [adjust, ..] if matches!(adjust.kind, Adjust::Borrow(_) | Adjust::Deref(_))
@@ -682,7 +682,7 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
                 }
             },
             ExprKind::Type(e, _) | ExprKind::UnsafeBinderCast(_, e, _) => {
-                helper(typeck, is_consume, e, f)?;
+                helper(typeck, consume, e, f)?;
             },
 
             // Either drops temporaries, jumps out of the current expression, or has no sub expression.

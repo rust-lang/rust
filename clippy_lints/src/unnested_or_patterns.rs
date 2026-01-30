@@ -347,7 +347,7 @@ fn extend_with_struct_pat(
                 }))
             },
             // Extract `p2_k`.
-            |k| always_pat!(k, Struct(_, _, mut fps_arg, _) => *fps_arg.swap_remove(pos_in_2.take().unwrap()).pat),
+            |k| always_pat!(k, Struct(_, _, mut fps, _) => *fps.swap_remove(pos_in_2.take().unwrap()).pat),
         );
         extend_with_tail_or(&mut fps1[idx].pat, tail_or)
     })

@@ -47,8 +47,9 @@ fn main() {
     let bluby: i32;
     //~^ similar_names
 
-    let cakes: i32;
     let cake: i32;
+    let cakes: i32;
+    //~^ similar_names
     let coke: i32;
     //~^ similar_names
 

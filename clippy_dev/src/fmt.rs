@@ -86,7 +86,7 @@ fn fmt_conf(check: bool) -> Result<(), Error> {
     let (conf, post) = conf.split_once("\n}\n").expect("can't find config definition");
     let conf_offset = pre.len() + 15;
 
-    let mut position = 0u32;
+    let mut pos = 0u32;
     let mut attrs_start = 0;
     let mut attrs_end = 0;
     let mut field_start = 0;
@@ -97,8 +97,8 @@ fn fmt_conf(check: bool) -> Result<(), Error> {
 
     for (i, t) in tokenize(conf, FrontmatterAllowed::No)
         .map(|x| {
-            let start = position;
-            position += x.len;
+            let start = pos;
+            pos += x.len;
             (start as usize, x)
         })
         .filter(|(_, t)| !matches!(t.kind, TokenKind::Whitespace))

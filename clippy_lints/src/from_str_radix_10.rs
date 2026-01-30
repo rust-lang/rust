@@ -64,15 +64,15 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
             // NB: keep this check until a new `const_trait_impl` is available and stabilized.
             && !is_in_const_context(cx)
         {
-            let expression = if let ExprKind::AddrOf(_, _, p_expr) = &src.kind {
-                let ty = cx.typeck_results().expr_ty(p_expr);
-                if is_ty_stringish(cx, ty) { p_expr } else { &src }
+            let expr = if let ExprKind::AddrOf(_, _, expr) = &src.kind {
+                let ty = cx.typeck_results().expr_ty(expr);
+                if is_ty_stringish(cx, ty) { expr } else { &src }
             } else {
                 &src
             };
 
             let sugg =
-                Sugg::hir_with_applicability(cx, expression, "<string>", &mut Applicability::MachineApplicable).maybe_paren();
+                Sugg::hir_with_applicability(cx, expr, "<string>", &mut Applicability::MachineApplicable).maybe_paren();
 
             span_lint_and_sugg(
                 cx,

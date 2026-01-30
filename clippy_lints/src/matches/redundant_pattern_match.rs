@@ -127,8 +127,8 @@ fn find_method_and_type<'tcx>(
             let is_rest = matches!((args, rest.as_opt_usize()), ([], Some(_)));
 
             if is_wildcard || is_rest {
-                let resource = cx.typeck_results().qpath_res(qpath, check_pat.hir_id);
-                let id = resource.opt_def_id().map(|ctor_id| cx.tcx.parent(ctor_id))?;
+                let res = cx.typeck_results().qpath_res(qpath, check_pat.hir_id);
+                let id = res.opt_def_id().map(|ctor_id| cx.tcx.parent(ctor_id))?;
                 let lang_items = cx.tcx.lang_items();
                 if Some(id) == lang_items.result_ok_variant() {
                     Some(("is_ok()", try_get_generic_ty(op_ty, 0).unwrap_or(op_ty)))
@@ -442,8 +442,8 @@ enum Item {
     Diag(Symbol, Symbol),
 }
 
-fn is_pat_variant(cx: &LateContext<'_>, pat: &Pat<'_>, q_path: &QPath<'_>, expected_item: Item) -> bool {
-    let Some(id) = cx.typeck_results().qpath_res(q_path, pat.hir_id).opt_def_id() else {
+fn is_pat_variant(cx: &LateContext<'_>, pat: &Pat<'_>, path: &QPath<'_>, expected_item: Item) -> bool {
+    let Some(id) = cx.typeck_results().qpath_res(path, pat.hir_id).opt_def_id() else {
         return false;
     };
 
@@ -460,7 +460,7 @@ fn is_pat_variant(cx: &LateContext<'_>, pat: &Pat<'_>, q_path: &QPath<'_>, expec
                 let variant = ty
                     .ty_adt_def()
                     .expect("struct pattern type is not an ADT")
-                    .variant_of_res(cx.qpath_res(q_path, pat.hir_id));
+                    .variant_of_res(cx.qpath_res(path, pat.hir_id));
 
                 return variant.name == expected_variant;
             }
