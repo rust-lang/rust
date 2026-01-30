@@ -1,4 +1,5 @@
 # Coercions
+<!-- date-check: Dec 2025 -->
  
 Coercions are implicit operations which transform a value into a different type. A coercion *site* is a position where a coercion is able to be implicitly performed. There are two kinds of coercion sites: 
 - one-to-one

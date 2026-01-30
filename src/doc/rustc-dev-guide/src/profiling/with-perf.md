@@ -62,7 +62,7 @@ cargo install addr2line --features="bin"
 
 Often we want to analyze a specific test from `perf.rust-lang.org`.
 The easiest way to do that is to use the [rustc-perf][rustc-perf]
-benchmarking suite, this approach is described [here](with_rustc_perf.md).
+benchmarking suite, this approach is described [here](with-rustc-perf.md).
 
 Instead of using the benchmark suite CLI, you can also profile the benchmarks manually. First,
 you need to clone the [rustc-perf][rustc-perf] repository:

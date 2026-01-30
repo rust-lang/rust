@@ -60,7 +60,7 @@ See [The Rust Book] for more details on Rust’s train release model.
   This is the only channel where unstable features are intended to be used,
   which happens via opt-in feature gates.
 
-See [this chapter on implementing new features](./implementing_new_features.md) for more
+See [this chapter on implementing new features](./implementing-new-features.md) for more
 information.
 
 [The Rust Book]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html

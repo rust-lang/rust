@@ -42,10 +42,10 @@ the [`mir_borrowck`] query.
 - Next, we perform a number of
   [dataflow analyses](./appendix/background.md#dataflow) that
   compute what data is moved and when.
-- We then do a [second type check](borrow_check/type_check.md) across the MIR:
+- We then do a [second type check](borrow-check/type-check.md) across the MIR:
   the purpose of this type check is to determine all of the constraints between
   different regions.
-- Next, we do [region inference](borrow_check/region_inference.md), which computes
+- Next, we do [region inference](borrow-check/region-inference.md), which computes
   the values of each region — basically, the points in the control-flow graph where
   each lifetime must be valid according to the constraints we collected.
 - At this point, we can compute the "borrows in scope" at each point.
