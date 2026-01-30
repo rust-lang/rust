@@ -27,15 +27,17 @@ impl<'a> DiagnosticDerive<'a> {
             let preamble = builder.preamble(variant);
             let body = builder.body(variant);
 
-            let Some(slug) = builder.primary_message() else {
+            let Some(message) = builder.primary_message() else {
                 return DiagnosticDeriveError::ErrorHandled.to_compile_error();
             };
-            slugs.borrow_mut().push(slug.clone());
+            slugs.borrow_mut().extend(message.slug().cloned());
+            let message = message.diag_message();
+
             let init = quote! {
                 let mut diag = rustc_errors::Diag::new(
                     dcx,
                     level,
-                    crate::fluent_generated::#slug
+                    #message
                 );
             };
 
@@ -91,12 +93,13 @@ impl<'a> LintDiagnosticDerive<'a> {
             let preamble = builder.preamble(variant);
             let body = builder.body(variant);
 
-            let Some(slug) = builder.primary_message() else {
+            let Some(message) = builder.primary_message() else {
                 return DiagnosticDeriveError::ErrorHandled.to_compile_error();
             };
-            slugs.borrow_mut().push(slug.clone());
+            slugs.borrow_mut().extend(message.slug().cloned());
+            let message = message.diag_message();
             let primary_message = quote! {
-                diag.primary_message(crate::fluent_generated::#slug);
+                diag.primary_message(#message);
             };
 
             let formatting_init = &builder.formatting_init;
