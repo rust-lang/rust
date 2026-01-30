@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/17651>
 // Test that moves of unsized values within closures are caught
 // and rejected.
 

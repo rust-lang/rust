@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/3038>
 enum F { G(isize, isize) }
 
 enum H { I(J, K) }

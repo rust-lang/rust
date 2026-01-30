@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/2849>
 enum Foo { Alpha, Beta(isize) }
 
 fn main() {
