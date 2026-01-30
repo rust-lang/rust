@@ -1498,7 +1498,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ScopeSet::All(ns),
                     &import.parent_scope,
                     None,
-                    false,
                     decls[ns].get().decl(),
                     None,
                 ) {
