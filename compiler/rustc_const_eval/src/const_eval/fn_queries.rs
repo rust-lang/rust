@@ -1,7 +1,8 @@
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{
     Constness, ExprKind, ForeignItemKind, ImplItem, ImplItemImplKind, ImplItemKind, Item, ItemKind,
-    Node, TraitItem, TraitItemKind, VariantData,
+    Node, TraitItem, TraitItemKind, VariantData, find_attr,
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -36,7 +37,13 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Constness {
                 Constness::NotConst => tcx.constness(tcx.local_parent(def_id)),
             }
         }
-        Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(..), .. }) => tcx.trait_def(tcx.local_parent(def_id)).constness,
+        Node::TraitItem(ti @ TraitItem { kind: TraitItemKind::Fn(..), .. }) => {
+            if find_attr!(tcx.hir_attrs(ti.hir_id()), AttributeKind::RustcNonConstTraitMethod) {
+                Constness::NotConst
+            } else {
+                tcx.trait_def(tcx.local_parent(def_id)).constness
+            }
+        }
         _ => {
             tcx.dcx().span_bug(
                 tcx.def_span(def_id),

@@ -199,7 +199,7 @@
     - [Inference details](./opaque-types-impl-trait-inference.md)
     - [Return Position Impl Trait In Trait](./return-position-impl-trait-in-trait.md)
     - [Region inference restrictions](./borrow-check/opaque-types-region-inference-restrictions.md)
-- [Const condition checking](./effects.md)
+- [Const traits and const condition checking](./effects.md)
 - [Pattern and exhaustiveness checking](./pat-exhaustive-checking.md)
 - [Unsafety checking](./unsafety-checking.md)
 - [MIR dataflow](./mir/dataflow.md)
