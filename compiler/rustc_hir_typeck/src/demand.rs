@@ -605,6 +605,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         parent_id = self.tcx.parent_hir_id(*hir_id);
                         parent
                     }
+                    hir::Node::Stmt(hir::Stmt { hir_id, kind: hir::StmtKind::Let(_), .. }) => {
+                        parent_id = self.tcx.parent_hir_id(*hir_id);
+                        parent
+                    }
+                    hir::Node::LetStmt(hir::LetStmt { hir_id, .. }) => {
+                        parent_id = self.tcx.parent_hir_id(*hir_id);
+                        parent
+                    }
                     hir::Node::Block(_) => {
                         parent_id = self.tcx.parent_hir_id(parent_id);
                         parent
