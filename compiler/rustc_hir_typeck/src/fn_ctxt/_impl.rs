@@ -279,6 +279,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Adjust::Deref(DerefAdjustKind::Builtin) => {
                     // FIXME(const_trait_impl): We *could* enforce `&T: [const] Deref` here.
                 }
+                Adjust::Deref(DerefAdjustKind::Pin) => {
+                    // FIXME(const_trait_impl): We *could* enforce `Pin<&T>: [const] Deref` here.
+                }
                 Adjust::Pointer(_pointer_coercion) => {
                     // FIXME(const_trait_impl): We should probably enforce these.
                 }

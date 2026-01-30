@@ -6,6 +6,7 @@ use itertools::Itertools;
 use rustc_hir_analysis::autoderef::{Autoderef, AutoderefKind};
 use rustc_infer::infer::InferOk;
 use rustc_infer::traits::PredicateObligations;
+use rustc_middle::bug;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind, OverloadedDeref};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
@@ -61,6 +62,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         })
                         .unwrap_or(DerefAdjustKind::Builtin)
+                }
+                AutoderefKind::Pin => {
+                    bug!("Pin autoderef kind should not be present in the steps")
                 }
                 AutoderefKind::Builtin => DerefAdjustKind::Builtin,
             })
