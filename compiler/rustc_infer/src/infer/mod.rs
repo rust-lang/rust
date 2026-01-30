@@ -1109,7 +1109,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
                 ty::IntVar(v) => {
                     let (root, value) =
-                        self.inner.borrow_mut().int_unification_table().inlined_probe_key_value(v);
+                        self.inner.borrow_mut().int_unification_table().probe_key_value(v);
                     match value {
                         ty::IntVarValue::IntType(ty) => Ty::new_int(self.tcx, ty),
                         ty::IntVarValue::UintType(ty) => Ty::new_uint(self.tcx, ty),
@@ -1118,11 +1118,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
 
                 ty::FloatVar(v) => {
-                    let (root, value) = self
-                        .inner
-                        .borrow_mut()
-                        .float_unification_table()
-                        .inlined_probe_key_value(v);
+                    let (root, value) =
+                        self.inner.borrow_mut().float_unification_table().probe_key_value(v);
                     match value {
                         ty::FloatVarValue::Known(ty) => Ty::new_float(self.tcx, ty),
                         ty::FloatVarValue::Unknown => Ty::new_float_var(self.tcx, root),
@@ -1144,7 +1141,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         .inner
                         .borrow_mut()
                         .const_unification_table()
-                        .inlined_probe_key_value(vid);
+                        .probe_key_value(vid);
                     value.known().unwrap_or_else(|| ty::Const::new_var(self.tcx, root.vid))
                 }
                 InferConst::Fresh(_) => ct,

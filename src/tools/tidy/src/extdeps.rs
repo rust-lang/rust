@@ -12,7 +12,7 @@ const ALLOWED_SOURCES: &[&str] = &[
     // This is `rust_team_data` used by `site` in src/tools/rustc-perf,
     r#""git+https://github.com/rust-lang/team#a5260e76d3aa894c64c56e6ddc8545b9a98043ec""#,
     // FIXME: Remove after the experiment
-    r#""git+https://github.com/ShoyuVanilla/ena.git?rev=6adb30a6b8aa0d1863439983173be5ef2e14aecb#6adb30a6b8aa0d1863439983173be5ef2e14aecb""#,
+    r#""git+https://github.com/ShoyuVanilla/ena.git?rev=4153bd310d8470b166e14136b508eef1488399e2#4153bd310d8470b166e14136b508eef1488399e2""#,
 ];
 
 /// Checks for external package sources. `root` is the path to the directory that contains the
