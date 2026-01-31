@@ -9,6 +9,7 @@
 #![feature(freeze)]
 #![allow(ambiguous_wide_pointer_comparisons)]
 #![allow(unconditional_panic)]
+#![allow(unnecessary_transmutes)]
 #![allow(unused)]
 
 use std::intrinsics::mir::*;
@@ -985,7 +986,14 @@ unsafe fn aggregate_struct_then_transmute(id: u16, thin: *const u8) {
     opaque(std::intrinsics::transmute::<_, *const u8>(j));
 }
 
-unsafe fn transmute_then_transmute_again(a: u32, c: char) {
+#[repr(u8)]
+enum ZeroOneTwo {
+    Zero,
+    One,
+    Two,
+}
+
+unsafe fn transmute_then_transmute_again(a: u32, c: char, b: bool, d: u8) {
     // CHECK: [[TEMP1:_[0-9]+]] = copy _1 as char (Transmute);
     // CHECK: [[TEMP2:_[0-9]+]] = copy [[TEMP1]] as i32 (Transmute);
     // CHECK: opaque::<i32>(move [[TEMP2]])
@@ -996,6 +1004,16 @@ unsafe fn transmute_then_transmute_again(a: u32, c: char) {
     // CHECK: opaque::<i32>(move [[TEMP]])
     let x = std::intrinsics::transmute::<char, u32>(c);
     opaque(std::intrinsics::transmute::<u32, i32>(x));
+
+    // CHECK: [[TEMP:_[0-9]+]] = copy _3 as u8 (Transmute);
+    // CHECK: opaque::<u8>(move [[TEMP]])
+    let x = std::intrinsics::transmute::<bool, ZeroOneTwo>(b);
+    opaque(std::intrinsics::transmute::<ZeroOneTwo, u8>(x));
+
+    // CHECK: [[TEMP:_[0-9]+]] = copy _4 as bool (Transmute);
+    // CHECK: opaque::<bool>(move [[TEMP]])
+    let x = std::intrinsics::transmute::<u8, ZeroOneTwo>(d);
+    opaque(std::intrinsics::transmute::<ZeroOneTwo, bool>(x));
 }
 
 // Transmuting can skip a pointer cast so long as it wasn't a fat-to-thin cast.
