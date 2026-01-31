@@ -4877,6 +4877,124 @@ impl<T> [T] {
         Some(last)
     }
 
+    /// Removes the first chunk of the slice and returns a reference
+    /// to it.
+    ///
+    /// Returns `None` if the slice has fewer than `N` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_split_off_chunk)]
+    /// let mut slice: &[_] = &['a', 'b', 'c', 'd'];
+    /// let head = slice.split_off_first_chunk::<2>().unwrap();
+    ///
+    /// assert_eq!(slice, &['c', 'd']);
+    /// assert_eq!(head, &['a', 'b']);
+    /// ```
+    #[unstable(feature = "slice_split_off_chunk", issue = "none")]
+    #[rustc_const_unstable(feature = "const_slice_split_off_chunk", issue = "none")]
+    pub const fn split_off_first_chunk<'a, const N: usize>(
+        self: &mut &'a Self,
+    ) -> Option<&'a [T; N]> {
+        // FIXME(const-hack): Use `?` when available in const instead of `let-else`.
+        let Some((head, rem)) = self.split_first_chunk::<N>() else { return None };
+        *self = rem;
+        Some(head)
+    }
+
+    /// Removes the first chunk of the slice and returns a mutable
+    /// reference to it.
+    ///
+    /// Returns `None` if the slice has fewer than `N` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_split_off_chunk)]
+    /// let mut slice: &mut [_] = &mut ['a', 'b', 'c', 'd'];
+    /// let head = slice.split_off_first_chunk_mut::<2>().unwrap();
+    ///
+    /// assert_eq!(slice, &mut ['c', 'd']);
+    /// assert_eq!(head, &mut ['a', 'b']);
+    /// ```
+    #[unstable(feature = "slice_split_off_chunk", issue = "none")]
+    #[rustc_const_unstable(feature = "const_slice_split_off_chunk", issue = "none")]
+    pub const fn split_off_first_chunk_mut<'a, const N: usize>(
+        self: &mut &'a mut Self,
+    ) -> Option<&'a mut [T; N]> {
+        if self.len() < N {
+            // Avoid failing in the next spot, which moves out of `self`.
+            return None;
+        }
+        // FIXME(const-hack): Use `mem::take` and `?` when available in const.
+        // Original: `mem::take(self).split_first_chunk_mut::<N>()?`
+        let Some((head, rem)) = mem::replace(self, &mut []).split_first_chunk_mut::<N>() else {
+            return None;
+        };
+        *self = rem;
+        Some(head)
+    }
+
+    /// Removes the last chunk of the slice and returns a reference
+    /// to it.
+    ///
+    /// Returns `None` if the slice has fewer than `N` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_split_off_chunk)]
+    /// let mut slice: &[_] = &['a', 'b', 'c', 'd'];
+    /// let tail = slice.split_off_last_chunk::<2>().unwrap();
+    ///
+    /// assert_eq!(slice, &['a', 'b']);
+    /// assert_eq!(tail, &['c', 'd']);
+    /// ```
+    #[unstable(feature = "slice_split_off_chunk", issue = "none")]
+    #[rustc_const_unstable(feature = "const_slice_split_off_chunk", issue = "none")]
+    pub const fn split_off_last_chunk<'a, const N: usize>(
+        self: &mut &'a Self,
+    ) -> Option<&'a [T; N]> {
+        // FIXME(const-hack): Use `?` when available in const instead of `let-else`.
+        let Some((rem, tail)) = self.split_last_chunk::<N>() else { return None };
+        *self = rem;
+        Some(tail)
+    }
+
+    /// Removes the last chunk of the slice and returns a mutable
+    /// reference to it.
+    ///
+    /// Returns `None` if the slice has fewer than `N` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_split_off_chunk)]
+    /// let mut slice: &mut [_] = &mut ['a', 'b', 'c', 'd'];
+    /// let tail = slice.split_off_last_chunk_mut::<2>().unwrap();
+    ///
+    /// assert_eq!(slice, &mut ['a', 'b']);
+    /// assert_eq!(tail, &mut ['c', 'd']);
+    /// ```
+    #[unstable(feature = "slice_split_off_chunk", issue = "none")]
+    #[rustc_const_unstable(feature = "const_slice_split_off_chunk", issue = "none")]
+    pub const fn split_off_last_chunk_mut<'a, const N: usize>(
+        self: &mut &'a mut Self,
+    ) -> Option<&'a mut [T; N]> {
+        if self.len() < N {
+            // Avoid failing in the next spot, which moves out of `self`.
+            return None;
+        }
+        // FIXME(const-hack): Use `mem::take` and `?` when available in const.
+        // Original: `mem::take(self).split_last_chunk_mut::<N>()?`
+        let Some((rem, tail)) = mem::replace(self, &mut []).split_last_chunk_mut::<N>() else {
+            return None;
+        };
+        *self = rem;
+        Some(tail)
+    }
+
     /// Returns mutable references to many indices at once, without doing any checks.
     ///
     /// An index can be either a `usize`, a [`Range`] or a [`RangeInclusive`]. Note

@@ -2334,6 +2334,87 @@ split_off_tests! {
 }
 
 #[test]
+fn test_split_off_chunk() {
+    let base_slice: &mut [u32] = &mut [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let base_addr = core::ptr::from_ref(base_slice).addr();
+    {
+        let mut slice = &base_slice[..];
+        let empty_head = slice.split_off_first_chunk::<0>().unwrap();
+        assert_eq!(empty_head, &[]);
+        assert_eq!(slice, &mut [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        // Check that the address of the empty slice is correct.
+        assert_eq!(core::ptr::from_ref(empty_head).addr(), base_addr);
+
+        let head = slice.split_off_first_chunk::<2>().unwrap();
+        assert_eq!(head, &[1, 2]);
+        assert_eq!(slice, &[3, 4, 5, 6, 7, 8, 9, 10]);
+
+        let empty_tail = slice.split_off_last_chunk::<0>().unwrap();
+        assert_eq!(empty_tail, &[]);
+        assert_eq!(slice, &[3, 4, 5, 6, 7, 8, 9, 10]);
+        // Check that the address of the empty slice is correct.
+        assert_eq!(
+            core::ptr::from_ref(empty_tail).addr(),
+            base_addr + 10 * core::mem::size_of::<u32>()
+        );
+
+        let tail = slice.split_off_last_chunk::<2>().unwrap();
+        assert_eq!(tail, &[9, 10]);
+        assert_eq!(slice, &[3, 4, 5, 6, 7, 8]);
+
+        // Extract the whole slice and ensure the remainder is in the right spot.
+        let full_head = slice.split_off_first_chunk::<6>().unwrap();
+        assert_eq!(full_head, &[3, 4, 5, 6, 7, 8]);
+        assert_eq!(slice, &[]);
+        assert_eq!(core::ptr::from_ref(slice).addr(), base_addr + 8 * core::mem::size_of::<u32>());
+    }
+    {
+        // The same checks as above, but with mutable slices.
+        let mut slice = &mut base_slice[..];
+        let empty_head = slice.split_off_first_chunk_mut::<0>().unwrap();
+        assert_eq!(empty_head, &[]);
+        assert_eq!(slice, &mut [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        // Check that the address of the empty slice is correct.
+        assert_eq!(core::ptr::from_ref(empty_head).addr(), base_addr);
+
+        let head = slice.split_off_first_chunk_mut::<2>().unwrap();
+        assert_eq!(head, &mut [1, 2]);
+        assert_eq!(slice, &mut [3, 4, 5, 6, 7, 8, 9, 10]);
+
+        let empty_tail = slice.split_off_last_chunk_mut::<0>().unwrap();
+        assert_eq!(empty_tail, &mut []);
+        assert_eq!(slice, &mut [3, 4, 5, 6, 7, 8, 9, 10]);
+        // Check that the address of the empty slice is correct.
+        assert_eq!(
+            core::ptr::from_ref(empty_tail).addr(),
+            base_addr + 10 * core::mem::size_of::<u32>()
+        );
+
+        let tail = slice.split_off_last_chunk_mut::<2>().unwrap();
+        assert_eq!(tail, &mut [9, 10]);
+        assert_eq!(slice, &mut [3, 4, 5, 6, 7, 8]);
+
+        // Extract the whole slice and ensure the remainder is in the right spot.
+        let full_head = slice.split_off_first_chunk_mut::<6>().unwrap();
+        assert_eq!(full_head, &mut [3, 4, 5, 6, 7, 8]);
+        assert_eq!(slice, &mut []);
+        assert_eq!(core::ptr::from_ref(slice).addr(), base_addr + 8 * core::mem::size_of::<u32>());
+    }
+    {
+        // Check that oversized chunks return `None` and don't modify the original slice.
+        let mut slice = &base_slice[..];
+        assert!(slice.split_off_first_chunk::<12>().is_none());
+        assert!(slice.split_off_last_chunk::<12>().is_none());
+        assert_eq!(slice, &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+        let mut slice = &mut base_slice[..];
+        assert!(slice.split_off_first_chunk_mut::<12>().is_none());
+        assert!(slice.split_off_last_chunk_mut::<12>().is_none());
+        assert_eq!(slice, &mut [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    }
+}
+
+#[test]
 fn test_slice_from_ptr_range() {
     let arr = ["foo".to_owned(), "bar".to_owned()];
     let range = arr.as_ptr_range();
