@@ -84,6 +84,11 @@ pub struct QuerySystem<'tcx> {
 }
 
 #[derive(Copy, Clone)]
+pub struct ExplicitQuery<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
+}
+
+#[derive(Copy, Clone)]
 pub struct TyCtxtAt<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub span: Span,
@@ -167,6 +172,12 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     pub fn at(self, span: Span) -> TyCtxtAt<'tcx> {
         TyCtxtAt { tcx: self, span }
+    }
+
+    /// Explicitly call a query.
+    #[inline(always)]
+    pub fn query(self) -> ExplicitQuery<'tcx> {
+        ExplicitQuery { tcx: self }
     }
 
     pub fn try_mark_green(self, dep_node: &dep_graph::DepNode) -> bool {
@@ -406,11 +417,27 @@ macro_rules! define_callbacks {
             })*
         }
 
-        impl<'tcx> TyCtxt<'tcx> {
+        /// Extension trait allowing calling queries directly on `TyCtxt`.
+        pub trait Queries<'tcx> {
+            $(
+                #[must_use]
+                fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V;
+            )*
+        }
+
+        impl<'tcx> Queries<'tcx> for ExplicitQuery<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            #[must_use]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
+            fn $name(self, key: query_helper_param_ty!($($K)*) ) -> $V
+            {
+                self.tcx.at(DUMMY_SP).$name(key)
+            })*
+        }
+
+        impl<'tcx> Queries<'tcx> for TyCtxt<'tcx> {
+            $($(#[$attr])*
+            #[inline(always)]
+            fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
                 self.at(DUMMY_SP).$name(key)
             })*
