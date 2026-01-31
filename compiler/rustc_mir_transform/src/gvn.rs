@@ -88,7 +88,6 @@ use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 
 use either::Either;
-use hashbrown::hash_table::{Entry, HashTable};
 use itertools::Itertools as _;
 use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, VariantIdx};
 use rustc_arena::DroplessArena;
@@ -99,6 +98,7 @@ use rustc_const_eval::interpret::{
 };
 use rustc_data_structures::fx::FxHasher;
 use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexVec, newtype_index};

@@ -7,9 +7,8 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 
-use hashbrown::HashTable;
-use hashbrown::hash_table::Entry;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::hash_table::{self, Entry, HashTable};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::LockGuard;
@@ -35,7 +34,7 @@ fn equivalent_key<K: Eq, V>(k: &K) -> impl Fn(&(K, V)) -> bool + '_ {
 }
 
 pub struct QueryState<'tcx, K> {
-    active: Sharded<hashbrown::HashTable<(K, QueryResult<'tcx>)>>,
+    active: Sharded<hash_table::HashTable<(K, QueryResult<'tcx>)>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.
