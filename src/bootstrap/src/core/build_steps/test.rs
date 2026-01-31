@@ -2867,7 +2867,7 @@ impl Step for CrateLibrustc {
         let builder = run.builder;
         let host = run.build_triple();
         let build_compiler = builder.compiler(builder.top_stage - 1, host);
-        let crates = run.make_run_crates(Alias::Compiler);
+        let crates = run.expand_alias(Alias::Compiler);
 
         builder.ensure(CrateLibrustc { build_compiler, target: run.target, crates });
     }

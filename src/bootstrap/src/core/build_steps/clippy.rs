@@ -266,7 +266,7 @@ impl Step for Rustc {
 
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
-        let crates = run.make_run_crates(Alias::Compiler);
+        let crates = run.expand_alias(Alias::Compiler);
         let config = LintConfig::new(run.builder);
         run.builder.ensure(Rustc::new(builder, run.target, config, crates));
     }

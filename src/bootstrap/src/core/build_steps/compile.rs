@@ -472,7 +472,7 @@ fn copy_self_contained_objects(
 /// Resolves standard library crates for `Std::run_make` for any build kind (like check, doc,
 /// build, clippy, etc.).
 pub fn std_crates_for_run_make(run: &RunConfig<'_>) -> Vec<String> {
-    let mut crates = run.make_run_crates(builder::Alias::Library);
+    let mut crates = run.expand_alias(builder::Alias::Library);
 
     // For no_std targets, we only want to check core and alloc
     // Regardless of core/alloc being selected explicitly or via the "library" default alias,
