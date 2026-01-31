@@ -203,6 +203,11 @@ struct MiriGenmcShim : private GenMCDriver {
     auto get_estimation_results() const -> EstimationResult;
 
   private:
+    /** Returns the current event for a given thread. */
+    inline auto curr_pos(ThreadId tid) -> Event {
+        ERROR_ON(tid >= threads_action_.size(), "ThreadId out of bounds");
+        return threads_action_[tid].event;
+    }
     /** Increment the event index in the given thread by `count`. */
     inline void inc_pos(ThreadId tid, unsigned int count) {
         ERROR_ON(tid >= threads_action_.size(), "ThreadId out of bounds");
