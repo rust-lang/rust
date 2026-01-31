@@ -2797,6 +2797,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Literals are eagerly converted to a constant, everything else becomes `Unevaluated`.
+    #[instrument(skip(self), level = "debug")]
     fn lower_const_arg_anon(&self, anon: &AnonConst) -> Const<'tcx> {
         let tcx = self.tcx();
 
@@ -2827,6 +2828,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         tcx.at(span).lit_to_const(input)
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn try_lower_anon_const_lit(
         &self,
         ty: Ty<'tcx>,
@@ -2949,6 +2951,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Lower a type from the HIR to our internal notion of a type.
+    #[instrument(level = "debug", skip(self), ret)]
     pub fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
         let tcx = self.tcx();
 
