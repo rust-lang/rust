@@ -360,31 +360,31 @@ pub enum PathSet {
     /// For example, `src/librustdoc` and `src/tools/rustdoc` should be in the same set,
     /// but `library/core` and `library/std` generally should not, unless there's no way (for that Step)
     /// to build them separately.
-    Set(BTreeSet<TaskPath>),
+    Alias(BTreeSet<TaskPath>),
     /// A "suite" of paths.
     ///
     /// These can match as a path suffix (like `Set`), or as a prefix. For
     /// example, a command-line value of `tests/ui/abi/variadic-ffi.rs`
     /// will match `tests/ui`. A command-line value of `ui` would also
     /// match `tests/ui`.
-    Suite(TaskPath),
+    TestSuite(TaskPath),
 }
 
 impl PathSet {
     fn empty() -> PathSet {
-        PathSet::Set(BTreeSet::new())
+        PathSet::Alias(BTreeSet::new())
     }
 
     fn one<P: Into<PathBuf>>(path: P, kind: Kind) -> PathSet {
         let mut set = BTreeSet::new();
         set.insert(TaskPath { path: path.into(), kind: Some(kind) });
-        PathSet::Set(set)
+        PathSet::Alias(set)
     }
 
     fn has(&self, needle: &Path, module: Kind) -> bool {
         match self {
-            PathSet::Set(set) => set.iter().any(|p| Self::check(p, needle, module)),
-            PathSet::Suite(suite) => Self::check(suite, needle, module),
+            PathSet::Alias(set) => set.iter().any(|p| Self::check(p, needle, module)),
+            PathSet::TestSuite(suite) => Self::check(suite, needle, module),
         }
     }
 
@@ -416,8 +416,8 @@ impl PathSet {
             result
         };
         match self {
-            PathSet::Set(set) => PathSet::Set(set.iter().filter(|&p| check(p)).cloned().collect()),
-            PathSet::Suite(suite) => {
+            PathSet::Alias(set) => PathSet::Alias(set.iter().filter(|&p| check(p)).cloned().collect()),
+            PathSet::TestSuite(suite) => {
                 if check(suite) {
                     self.clone()
                 } else {
@@ -433,11 +433,11 @@ impl PathSet {
     #[track_caller]
     pub fn assert_single_path(&self) -> &TaskPath {
         match self {
-            PathSet::Set(set) => {
+            PathSet::Alias(set) => {
                 assert_eq!(set.len(), 1, "called assert_single_path on multiple paths");
                 set.iter().next().unwrap()
             }
-            PathSet::Suite(_) => unreachable!("called assert_single_path on a Suite path"),
+            PathSet::TestSuite(_) => unreachable!("called assert_single_path on a Suite path"),
         }
     }
 }
@@ -549,7 +549,7 @@ impl<'a> ShouldRun<'a> {
             self.kind == Kind::Setup || !self.builder.src.join(alias).exists(),
             "use `builder.path()` for real paths: {alias}"
         );
-        self.paths.insert(PathSet::Set(
+        self.paths.insert(PathSet::Alias(
             std::iter::once(TaskPath { path: alias.into(), kind: Some(self.kind) }).collect(),
         ));
         self
@@ -570,20 +570,20 @@ impl<'a> ShouldRun<'a> {
         }
 
         let task = TaskPath { path: path.into(), kind: Some(self.kind) };
-        self.paths.insert(PathSet::Set(BTreeSet::from_iter([task])));
+        self.paths.insert(PathSet::Alias(BTreeSet::from_iter([task])));
         self
     }
 
     /// Handles individual files (not directories) within a test suite.
     fn is_suite_path(&self, requested_path: &Path) -> Option<&PathSet> {
         self.paths.iter().find(|pathset| match pathset {
-            PathSet::Suite(suite) => requested_path.starts_with(&suite.path),
-            PathSet::Set(_) => false,
+            PathSet::TestSuite(suite) => requested_path.starts_with(&suite.path),
+            PathSet::Alias(_) => false,
         })
     }
 
     pub fn suite_path(mut self, suite: &str) -> Self {
-        self.paths.insert(PathSet::Suite(TaskPath { path: suite.into(), kind: Some(self.kind) }));
+        self.paths.insert(PathSet::TestSuite(TaskPath { path: suite.into(), kind: Some(self.kind) }));
         self
     }
 
@@ -1043,12 +1043,12 @@ impl<'a> Builder<'a> {
         };
         for pathset in should_run.paths {
             match pathset {
-                PathSet::Set(set) => {
+                PathSet::Alias(set) => {
                     for path in set {
                         add_path(&path.path);
                     }
                 }
-                PathSet::Suite(path) => {
+                PathSet::TestSuite(path) => {
                     add_path(&path.path.join("..."));
                 }
             }
@@ -1634,7 +1634,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
             if should_run.paths.iter().any(|s| s.has(path, desc.kind))
                 && !desc.is_excluded(
                     self,
-                    &PathSet::Suite(TaskPath { path: path.clone(), kind: Some(desc.kind) }),
+                    &PathSet::TestSuite(TaskPath { path: path.clone(), kind: Some(desc.kind) }),
                 )
             {
                 return true;

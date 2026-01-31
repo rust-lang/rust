@@ -1697,7 +1697,7 @@ impl Step for Coverage {
         // determine which modes to run in.
         for path in &run.paths {
             match path {
-                PathSet::Set(_) => {
+                PathSet::Alias(_) => {
                     for &mode in Self::ALL_MODES {
                         if path.assert_single_path().path == Path::new(mode.as_str()) {
                             modes.push(mode);
@@ -1705,7 +1705,7 @@ impl Step for Coverage {
                         }
                     }
                 }
-                PathSet::Suite(_) => {
+                PathSet::TestSuite(_) => {
                     modes.extend_from_slice(Self::ALL_MODES);
                     break;
                 }
