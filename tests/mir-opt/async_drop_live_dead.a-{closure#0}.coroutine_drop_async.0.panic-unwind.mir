@@ -45,7 +45,6 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
 
     bb3 (cleanup): {
         nop;
-        nop;
         goto -> bb5;
     }
 

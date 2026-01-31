@@ -6,6 +6,8 @@
 //!   - [`FakeRead`]
 //!   - [`Assign`] statements with a [`Fake`] borrow
 //!   - [`Coverage`] statements of kind [`BlockMarker`] or [`SpanMarker`]
+//!   - [`StorageDead`] statements (these are only needed for borrow-checking and are removed
+//!     after borrowck completes to ensure they don't affect later optimization passes or codegen)
 //!
 //! [`AscribeUserType`]: rustc_middle::mir::StatementKind::AscribeUserType
 //! [`Assign`]: rustc_middle::mir::StatementKind::Assign
@@ -15,6 +17,7 @@
 //! [`Coverage`]: rustc_middle::mir::StatementKind::Coverage
 //! [`BlockMarker`]: rustc_middle::mir::coverage::CoverageKind::BlockMarker
 //! [`SpanMarker`]: rustc_middle::mir::coverage::CoverageKind::SpanMarker
+//! [`StorageDead`]: rustc_middle::mir::StatementKind::StorageDead
 
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::*;
@@ -28,6 +31,10 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
         // Manually invalidate CFG caches if we actually change a terminator's edges.
         let mut invalidate_cfg = false;
         for basic_block in body.basic_blocks.as_mut_preserves_cfg().iter_mut() {
+            // Only remove StorageDead from cleanup blocks (unwind paths).
+            // StorageDead on normal paths is still needed for MIR validation
+            // and will be removed later by RemoveStorageMarkers during optimization.
+            let is_cleanup = basic_block.is_cleanup;
             for statement in basic_block.statements.iter_mut() {
                 match statement.kind {
                     StatementKind::AscribeUserType(..)
@@ -41,6 +48,7 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
                     | StatementKind::BackwardIncompatibleDropHint { .. } => {
                         statement.make_nop(true)
                     }
+                    StatementKind::StorageDead(..) if is_cleanup => statement.make_nop(true),
                     StatementKind::Assign(box (
                         _,
                         Rvalue::Cast(

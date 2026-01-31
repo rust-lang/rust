@@ -37,7 +37,6 @@ fn main::{closure#0}(_1: *mut {coroutine@$DIR/coroutine_drop_cleanup.rs:12:5: 12
     }
 
     bb5 (cleanup): {
-        nop;
         goto -> bb4;
     }
 
