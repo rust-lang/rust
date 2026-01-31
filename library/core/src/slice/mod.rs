@@ -3939,6 +3939,219 @@ impl<T> [T] {
         }
     }
 
+    /// Moves the elements of this slice `N` places to the left, returning the ones
+    /// that "fall off" the front, and putting `inserted` at the end.
+    ///
+    /// Equivalently, you can think of concatenating `self` and `inserted` into one
+    /// long sequence, then returning the left-most `N` items and the rest into `self`:
+    ///
+    /// ```text
+    ///           self (before)    inserted
+    ///           vvvvvvvvvvvvvvv  vvv
+    ///           [1, 2, 3, 4, 5]  [9]
+    ///        ↙   ↙  ↙  ↙  ↙   ↙
+    ///      [1]  [2, 3, 4, 5, 9]
+    ///      ^^^  ^^^^^^^^^^^^^^^
+    /// returned  self (after)
+    /// ```
+    ///
+    /// See also [`Self::shift_right`] and compare [`Self::rotate_left`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_shift)]
+    ///
+    /// // Same as the diagram above
+    /// let mut a = [1, 2, 3, 4, 5];
+    /// let inserted = [9];
+    /// let returned = a.shift_left(inserted);
+    /// assert_eq!(returned, [1]);
+    /// assert_eq!(a, [2, 3, 4, 5, 9]);
+    ///
+    /// // You can shift multiple items at a time
+    /// let mut a = *b"Hello world";
+    /// assert_eq!(a.shift_left(*b" peace"), *b"Hello ");
+    /// assert_eq!(a, *b"world peace");
+    ///
+    /// // The name comes from this operation's similarity to bitshifts
+    /// let mut a: u8 = 0b10010110;
+    /// a <<= 3;
+    /// assert_eq!(a, 0b10110000_u8);
+    /// let mut a: [_; 8] = [1, 0, 0, 1, 0, 1, 1, 0];
+    /// a.shift_left([0; 3]);
+    /// assert_eq!(a, [1, 0, 1, 1, 0, 0, 0, 0]);
+    ///
+    /// // Remember you can sub-slice to affect less that the whole slice.
+    /// // For example, this is similar to `.remove(1)` + `.insert(4, 'Z')`
+    /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
+    /// assert_eq!(a[1..=4].shift_left(['Z']), ['b']);
+    /// assert_eq!(a, ['a', 'c', 'd', 'e', 'Z', 'f']);
+    ///
+    /// // If the size matches it's equivalent to `mem::replace`
+    /// let mut a = [1, 2, 3];
+    /// assert_eq!(a.shift_left([7, 8, 9]), [1, 2, 3]);
+    /// assert_eq!(a, [7, 8, 9]);
+    ///
+    /// // Some of the "inserted" elements end up returned if the slice is too short
+    /// let mut a = [];
+    /// assert_eq!(a.shift_left([1, 2, 3]), [1, 2, 3]);
+    /// let mut a = [9];
+    /// assert_eq!(a.shift_left([1, 2, 3]), [9, 1, 2]);
+    /// assert_eq!(a, [3]);
+    /// ```
+    #[unstable(feature = "slice_shift", issue = "151772")]
+    pub const fn shift_left<const N: usize>(&mut self, inserted: [T; N]) -> [T; N] {
+        if let Some(shift) = self.len().checked_sub(N) {
+            // SAFETY: Having just checked that the inserted/returned arrays are
+            // shorter than (or the same length as) the slice:
+            // 1. The read for the items to return is in-bounds
+            // 2. We can `memmove` the slice over to cover the items we're returning
+            //    to ensure those aren't double-dropped
+            // 3. Then we write (in-bounds for the same reason as the read) the
+            //    inserted items atop the items of the slice that we just duplicated
+            //
+            // And none of this can panic, so there's no risk of intermediate unwinds.
+            unsafe {
+                let ptr = self.as_mut_ptr();
+                let returned = ptr.cast_array::<N>().read();
+                ptr.copy_from(ptr.add(N), shift);
+                ptr.add(shift).cast_array::<N>().write(inserted);
+                returned
+            }
+        } else {
+            // SAFETY: Having checked that the slice is strictly shorter than the
+            // inserted/returned arrays, it means we'll be copying the whole slice
+            // into the returned array, but that's not enough on its own.  We also
+            // need to copy some of the inserted array into the returned array,
+            // with the rest going into the slice.  Because `&mut` is exclusive
+            // and we own both `inserted` and `returned`, they're all disjoint
+            // allocations from each other as we can use `nonoverlapping` copies.
+            //
+            // We avoid double-frees by `ManuallyDrop`ing the inserted items,
+            // since we always copy them to other locations that will drop them
+            // instead.  Plus nothing in here can panic -- it's just memcpy three
+            // times -- so there's no intermediate unwinds to worry about.
+            unsafe {
+                let len = self.len();
+                let slice = self.as_mut_ptr();
+                let inserted = mem::ManuallyDrop::new(inserted);
+                let inserted = (&raw const inserted).cast::<T>();
+
+                let mut returned = MaybeUninit::<[T; N]>::uninit();
+                let ptr = returned.as_mut_ptr().cast::<T>();
+                ptr.copy_from_nonoverlapping(slice, len);
+                ptr.add(len).copy_from_nonoverlapping(inserted, N - len);
+                slice.copy_from_nonoverlapping(inserted.add(N - len), len);
+                returned.assume_init()
+            }
+        }
+    }
+
+    /// Moves the elements of this slice `N` places to the right, returning the ones
+    /// that "fall off" the back, and putting `inserted` at the beginning.
+    ///
+    /// Equivalently, you can think of concatenating `inserted` and `self` into one
+    /// long sequence, then returning the right-most `N` items and the rest into `self`:
+    ///
+    /// ```text
+    /// inserted  self (before)
+    ///      vvv  vvvvvvvvvvvvvvv
+    ///      [0]  [5, 6, 7, 8, 9]
+    ///        ↘   ↘  ↘  ↘  ↘   ↘
+    ///           [0, 5, 6, 7, 8]  [9]
+    ///           ^^^^^^^^^^^^^^^  ^^^
+    ///           self (after)     returned
+    /// ```
+    ///
+    /// See also [`Self::shift_left`] and compare [`Self::rotate_right`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_shift)]
+    ///
+    /// // Same as the diagram above
+    /// let mut a = [5, 6, 7, 8, 9];
+    /// let inserted = [0];
+    /// let returned = a.shift_right(inserted);
+    /// assert_eq!(returned, [9]);
+    /// assert_eq!(a, [0, 5, 6, 7, 8]);
+    ///
+    /// // The name comes from this operation's similarity to bitshifts
+    /// let mut a: u8 = 0b10010110;
+    /// a >>= 3;
+    /// assert_eq!(a, 0b00010010_u8);
+    /// let mut a: [_; 8] = [1, 0, 0, 1, 0, 1, 1, 0];
+    /// a.shift_right([0; 3]);
+    /// assert_eq!(a, [0, 0, 0, 1, 0, 0, 1, 0]);
+    ///
+    /// // Remember you can sub-slice to affect less that the whole slice.
+    /// // For example, this is similar to `.remove(4)` + `.insert(1, 'Z')`
+    /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
+    /// assert_eq!(a[1..=4].shift_right(['Z']), ['e']);
+    /// assert_eq!(a, ['a', 'Z', 'b', 'c', 'd', 'f']);
+    ///
+    /// // If the size matches it's equivalent to `mem::replace`
+    /// let mut a = [1, 2, 3];
+    /// assert_eq!(a.shift_right([7, 8, 9]), [1, 2, 3]);
+    /// assert_eq!(a, [7, 8, 9]);
+    ///
+    /// // Some of the "inserted" elements end up returned if the slice is too short
+    /// let mut a = [];
+    /// assert_eq!(a.shift_right([1, 2, 3]), [1, 2, 3]);
+    /// let mut a = [9];
+    /// assert_eq!(a.shift_right([1, 2, 3]), [2, 3, 9]);
+    /// assert_eq!(a, [1]);
+    /// ```
+    #[unstable(feature = "slice_shift", issue = "151772")]
+    pub const fn shift_right<const N: usize>(&mut self, inserted: [T; N]) -> [T; N] {
+        if let Some(shift) = self.len().checked_sub(N) {
+            // SAFETY: Having just checked that the inserted/returned arrays are
+            // shorter than (or the same length as) the slice:
+            // 1. The read for the items to return is in-bounds
+            // 2. We can `memmove` the slice over to cover the items we're returning
+            //    to ensure those aren't double-dropped
+            // 3. Then we write (in-bounds for the same reason as the read) the
+            //    inserted items atop the items of the slice that we just duplicated
+            //
+            // And none of this can panic, so there's no risk of intermediate unwinds.
+            unsafe {
+                let ptr = self.as_mut_ptr();
+                let returned = ptr.add(shift).cast_array::<N>().read();
+                ptr.add(N).copy_from(ptr, shift);
+                ptr.cast_array::<N>().write(inserted);
+                returned
+            }
+        } else {
+            // SAFETY: Having checked that the slice is strictly shorter than the
+            // inserted/returned arrays, it means we'll be copying the whole slice
+            // into the returned array, but that's not enough on its own.  We also
+            // need to copy some of the inserted array into the returned array,
+            // with the rest going into the slice.  Because `&mut` is exclusive
+            // and we own both `inserted` and `returned`, they're all disjoint
+            // allocations from each other as we can use `nonoverlapping` copies.
+            //
+            // We avoid double-frees by `ManuallyDrop`ing the inserted items,
+            // since we always copy them to other locations that will drop them
+            // instead.  Plus nothing in here can panic -- it's just memcpy three
+            // times -- so there's no intermediate unwinds to worry about.
+            unsafe {
+                let len = self.len();
+                let slice = self.as_mut_ptr();
+                let inserted = mem::ManuallyDrop::new(inserted);
+                let inserted = (&raw const inserted).cast::<T>();
+
+                let mut returned = MaybeUninit::<[T; N]>::uninit();
+                let ptr = returned.as_mut_ptr().cast::<T>();
+                ptr.add(N - len).copy_from_nonoverlapping(slice, len);
+                ptr.copy_from_nonoverlapping(inserted.add(len), N - len);
+                slice.copy_from_nonoverlapping(inserted, len);
+                returned.assume_init()
+            }
+        }
+    }
+
     /// Fills `self` with elements by cloning `value`.
     ///
     /// # Examples
