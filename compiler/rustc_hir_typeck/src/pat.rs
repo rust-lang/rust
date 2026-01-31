@@ -2841,7 +2841,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // the bad interactions of the given hack detailed in (note_1).
                 debug!("check_pat_ref: expected={:?}", expected);
                 match expected.maybe_pinned_ref() {
-                    Some((r_ty, r_pinned, r_mutbl))
+                    Some((r_ty, r_pinned, r_mutbl, _))
                         if ((ref_pat_matches_mut_ref && r_mutbl >= pat_mutbl)
                             || r_mutbl == pat_mutbl)
                             && pat_pinned == r_pinned =>
