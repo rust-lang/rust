@@ -50,7 +50,8 @@ use rustc_infer::traits::{
 };
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
+    PointerCoercion,
 };
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
@@ -595,7 +596,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let mutbl = AutoBorrowMutability::new(mutbl_b, AllowTwoPhase::No);
 
                 Some((
-                    Adjustment { kind: Adjust::Deref(None), target: ty_a },
+                    Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), target: ty_a },
                     Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
                         target: Ty::new_ref(self.tcx, r_borrow, ty_a, mutbl_b),
@@ -606,7 +607,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 coerce_mutbls(mt_a, mt_b)?;
 
                 Some((
-                    Adjustment { kind: Adjust::Deref(None), target: ty_a },
+                    Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), target: ty_a },
                     Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::RawPtr(mt_b)),
                         target: Ty::new_ptr(self.tcx, ty_a, mt_b),
@@ -936,7 +937,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             self.unify_and(
                 a_raw,
                 b,
-                [Adjustment { kind: Adjust::Deref(None), target: mt_a.ty }],
+                [Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), target: mt_a.ty }],
                 Adjust::Borrow(AutoBorrow::RawPtr(mutbl_b)),
                 ForceLeakCheck::No,
             )

@@ -17,7 +17,7 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::traits::EvaluationResult;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg,
@@ -1345,6 +1345,7 @@ pub fn get_field_idx_by_name(ty: Ty<'_>, name: Symbol) -> Option<usize> {
 pub fn adjust_derefs_manually_drop<'tcx>(adjustments: &'tcx [Adjustment<'tcx>], mut ty: Ty<'tcx>) -> bool {
     adjustments.iter().any(|a| {
         let ty = mem::replace(&mut ty, a.target);
-        matches!(a.kind, Adjust::Deref(Some(op)) if op.mutbl == Mutability::Mut) && is_manually_drop(ty)
+        matches!(a.kind, Adjust::Deref(DerefAdjustKind::Overloaded(op)) if op.mutbl == Mutability::Mut)
+            && is_manually_drop(ty)
     })
 }
