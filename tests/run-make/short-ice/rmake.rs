@@ -12,40 +12,53 @@
 // - FIXME(#143198): On `x86_64-pc-windows-msvc`: full backtrace sometimes do not contain matching
 //   count of short backtrace markers (e.g. 5x end marker, but 3x start marker).
 
-use run_make_support::rustc;
+use run_make_support::CompletedProcess;
 
 fn main() {
-    let rust_test_1 =
-        rustc().set_backtrace_level("1").input("src/lib.rs").arg("-Ztreat-err-as-bug=1").run_fail();
-    let rust_test_2 = rustc()
-        .set_backtrace_level("full")
-        .input("src/lib.rs")
-        .arg("-Ztreat-err-as-bug=1")
-        .run_fail();
+    // Run the same command twice with `RUST_BACKTRACE=1` and `RUST_BACKTRACE=full`.
+    let configure_rustc = || {
+        let mut rustc = run_make_support::rustc();
+        rustc.input("src/lib.rs").arg("-Ztreat-err-as-bug=1");
+        rustc
+    };
+    let rustc_bt_short = configure_rustc().set_backtrace_level("1").run_fail();
+    let rustc_bt_full = configure_rustc().set_backtrace_level("full").run_fail();
 
-    let mut rust_test_log_1 = rust_test_1.stderr_utf8();
-    rust_test_log_1.push_str(&rust_test_1.stdout_utf8());
-    let rust_test_log_1 = rust_test_log_1.as_str();
+    // Combine stderr and stdout for subsequent checks.
+    let concat_stderr_stdout =
+        |proc: &CompletedProcess| format!("{}\n{}", proc.stderr_utf8(), proc.stdout_utf8());
+    let output_bt_short = &concat_stderr_stdout(&rustc_bt_short);
+    let output_bt_full = &concat_stderr_stdout(&rustc_bt_full);
 
-    let mut rust_test_log_2 = rust_test_2.stderr_utf8();
-    rust_test_log_2.push_str(&rust_test_2.stdout_utf8());
-    let rust_test_log_2 = rust_test_log_2.as_str();
+    // Count how many lines of output mention symbols or paths in
+    // `rustc_query_system` or `rustc_query_impl`, which are the kinds of
+    // stack frames we want to be omitting in short backtraces.
+    let rustc_query_count_short = count_lines_with(output_bt_short, "rustc_query_");
+    let rustc_query_count_full = count_lines_with(output_bt_full, "rustc_query_");
 
-    let rustc_query_count_full = count_lines_with(rust_test_log_2, "rustc_query_");
+    // Dump both outputs in full to make debugging easier, especially on CI.
+    // Use `--no-capture --force-rerun` to view output even when the test is passing.
+    println!("=== BEGIN SHORT BACKTRACE ===\n{output_bt_short}\n=== END SHORT BACKTRACE === ");
+    println!("=== BEGIN FULL BACKTRACE ===\n{output_bt_full}\n=== END FULL BACKTRACE === ");
 
     assert!(
-        rust_test_log_1.lines().count() < rust_test_log_2.lines().count(),
-        "Short backtrace should be shorter than full backtrace.\nShort backtrace:\n\
-        {rust_test_log_1}\nFull backtrace:\n{rust_test_log_2}"
+        output_bt_short.lines().count() < output_bt_full.lines().count(),
+        "Short backtrace should be shorter than full backtrace"
     );
+
+    let n_begin = count_lines_with(output_bt_full, "__rust_begin_short_backtrace");
+    let n_end = count_lines_with(output_bt_full, "__rust_end_short_backtrace");
+    assert!(n_begin + n_end > 0, "Full backtrace should contain short-backtrace markers");
     assert_eq!(
-        count_lines_with(rust_test_log_2, "__rust_begin_short_backtrace"),
-        count_lines_with(rust_test_log_2, "__rust_end_short_backtrace"),
-        "Full backtrace should contain the short backtrace markers.\nFull backtrace:\n\
-        {rust_test_log_2}"
+        n_begin, n_end,
+        "Full backtrace should contain equal numbers of begin and end markers"
     );
-    assert!(count_lines_with(rust_test_log_1, "rustc_query_") + 5 < rustc_query_count_full);
-    assert!(rustc_query_count_full > 5);
+
+    assert!(
+        rustc_query_count_short + 5 < rustc_query_count_full,
+        "Short backtrace should have omitted more query plumbing lines \
+        (actual: {rustc_query_count_short} vs {rustc_query_count_full})"
+    );
 }
 
 fn count_lines_with(s: &str, search: &str) -> usize {
