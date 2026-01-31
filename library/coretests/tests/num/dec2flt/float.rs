@@ -1,4 +1,5 @@
-use core::num::imp::dec2flt::float::{Float, FloatExt, Lemire};
+use core::num::imp::dec2flt::Lemire;
+use core::num::imp::{Float, FloatExt};
 
 use crate::num::{ldexp_f32, ldexp_f64};
 

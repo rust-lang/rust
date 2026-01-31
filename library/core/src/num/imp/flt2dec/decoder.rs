@@ -1,7 +1,7 @@
 //! Decodes a floating-point value into individual parts and error ranges.
 
 use crate::num::FpCategory;
-use crate::num::imp::dec2flt::float::FloatExt;
+use crate::num::imp::FloatExt;
 
 /// Decoded unsigned finite value, such that:
 ///
