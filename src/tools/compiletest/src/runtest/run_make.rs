@@ -222,6 +222,10 @@ impl TestCx<'_> {
             cmd.env("LLVM_BIN_DIR", llvm_bin_dir);
         }
 
+        if let Some(ref llvm_version) = self.config.llvm_version {
+            cmd.env("LLVM_VERSION", llvm_version.to_string());
+        }
+
         if let Some(ref remote_test_client) = self.config.remote_test_client {
             cmd.env("REMOTE_TEST_CLIENT", remote_test_client);
         }

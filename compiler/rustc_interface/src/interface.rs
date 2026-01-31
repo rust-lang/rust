@@ -482,6 +482,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 util::rustc_version_str().unwrap_or("unknown"),
                 config.ice_file,
                 config.using_internal_features,
+                codegen_backend.can_mangle_eh_personality(),
             );
 
             codegen_backend.init(&sess);

@@ -86,6 +86,12 @@ pub trait CodegenBackend {
         false
     }
 
+    /// Whether the `rust_eh_personality` symbol can be mangled (this is false if the codegen
+    /// backend hardcodes the name for certain checks).
+    fn can_mangle_eh_personality(&self) -> bool {
+        true
+    }
+
     /// The metadata loader used to load rlib and dylib metadata.
     ///
     /// Alternative codegen backends may want to use different rlib or dylib formats than the
