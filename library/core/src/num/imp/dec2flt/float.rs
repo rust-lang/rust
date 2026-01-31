@@ -48,12 +48,8 @@ macro_rules! int {
 int!(u16, u32, u64);
 
 /// A helper trait to avoid duplicating basically all the conversion code for IEEE floats.
-///
-/// See the parent module's doc comment for why this is necessary.
-///
-/// Should **never ever** be implemented for other types or be used outside the `dec2flt` module.
 #[doc(hidden)]
-pub trait RawFloat:
+pub trait Float:
     Sized
     + Div<Output = Self>
     + Neg<Output = Self>
@@ -128,8 +124,6 @@ pub trait RawFloat:
     const MIN_EXPONENT_ROUND_TO_EVEN: i32;
     const MAX_EXPONENT_ROUND_TO_EVEN: i32;
 
-    /* limits related to Fast pathing */
-
     /// Largest decimal exponent for a non-infinite value.
     ///
     /// This is the max exponent in binary converted to the max exponent in decimal. Allows fast
@@ -151,41 +145,19 @@ pub trait RawFloat:
     /// compile time since intermediates exceed the range of an `f64`.
     const SMALLEST_POWER_OF_TEN: i32;
 
-    /// Maximum exponent for a fast path case, or `⌊(SIG_BITS+1)/log2(5)⌋`
-    // assuming FLT_EVAL_METHOD = 0
-    const MAX_EXPONENT_FAST_PATH: i64 = {
-        let log2_5 = f64::consts::LOG2_10 - 1.0;
-        (Self::SIG_TOTAL_BITS as f64 / log2_5) as i64
-    };
-
-    /// Minimum exponent for a fast path case, or `-⌊(SIG_BITS+1)/log2(5)⌋`
-    const MIN_EXPONENT_FAST_PATH: i64 = -Self::MAX_EXPONENT_FAST_PATH;
-
-    /// Maximum exponent that can be represented for a disguised-fast path case.
-    /// This is `MAX_EXPONENT_FAST_PATH + ⌊(SIG_BITS+1)/log2(10)⌋`
-    const MAX_EXPONENT_DISGUISED_FAST_PATH: i64 =
-        Self::MAX_EXPONENT_FAST_PATH + (Self::SIG_TOTAL_BITS as f64 / f64::consts::LOG2_10) as i64;
-
-    /// Maximum mantissa for the fast-path (`1 << 53` for f64).
-    const MAX_MANTISSA_FAST_PATH: u64 = 1 << Self::SIG_TOTAL_BITS;
-
-    /// Converts integer into float through an as cast.
-    /// This is only called in the fast-path algorithm, and therefore
-    /// will not lose precision, since the value will always have
-    /// only if the value is <= Self::MAX_MANTISSA_FAST_PATH.
-    fn from_u64(v: u64) -> Self;
-
-    /// Performs a raw transmutation from an integer.
-    fn from_u64_bits(v: u64) -> Self;
-
-    /// Gets a small power-of-ten for fast-path multiplication.
-    fn pow10_fast_path(exponent: usize) -> Self;
-
     /// Returns the category that this number falls into.
     fn classify(self) -> FpCategory;
 
     /// Transmute to the integer representation
     fn to_bits(self) -> Self::Int;
+}
+
+/// Items that ideally would be on `Float`, but don't apply to all float types because they
+/// rely on the mantissa fitting into a `u64` (which isn't true for `f128`).
+#[doc(hidden)]
+pub trait FloatExt: Float {
+    /// Performs a raw transmutation from an integer.
+    fn from_u64_bits(v: u64) -> Self;
 
     /// Returns the mantissa, exponent and sign as integers.
     ///
@@ -212,6 +184,41 @@ pub trait RawFloat:
     }
 }
 
+/// Extension to `Float` that are necessary for parsing using the Lemire method.
+///
+/// See the parent module's doc comment for why this is necessary.
+///
+/// Not intended for use outside of the `dec2flt` module.
+#[doc(hidden)]
+pub trait Lemire: FloatExt {
+    /// Maximum exponent for a fast path case, or `⌊(SIG_BITS+1)/log2(5)⌋`
+    // assuming FLT_EVAL_METHOD = 0
+    const MAX_EXPONENT_FAST_PATH: i64 = {
+        let log2_5 = f64::consts::LOG2_10 - 1.0;
+        (Self::SIG_TOTAL_BITS as f64 / log2_5) as i64
+    };
+
+    /// Minimum exponent for a fast path case, or `-⌊(SIG_BITS+1)/log2(5)⌋`
+    const MIN_EXPONENT_FAST_PATH: i64 = -Self::MAX_EXPONENT_FAST_PATH;
+
+    /// Maximum exponent that can be represented for a disguised-fast path case.
+    /// This is `MAX_EXPONENT_FAST_PATH + ⌊(SIG_BITS+1)/log2(10)⌋`
+    const MAX_EXPONENT_DISGUISED_FAST_PATH: i64 =
+        Self::MAX_EXPONENT_FAST_PATH + (Self::SIG_TOTAL_BITS as f64 / f64::consts::LOG2_10) as i64;
+
+    /// Maximum mantissa for the fast-path (`1 << 53` for f64).
+    const MAX_MANTISSA_FAST_PATH: u64 = 1 << Self::SIG_TOTAL_BITS;
+
+    /// Gets a small power-of-ten for fast-path multiplication.
+    fn pow10_fast_path(exponent: usize) -> Self;
+
+    /// Converts integer into float through an as cast.
+    /// This is only called in the fast-path algorithm, and therefore
+    /// will not lose precision, since the value will always have
+    /// only if the value is <= Self::MAX_MANTISSA_FAST_PATH.
+    fn from_u64(v: u64) -> Self;
+}
+
 /// Solve for `b` in `10^b = 2^a`
 const fn pow2_to_pow10(a: i64) -> i64 {
     let res = (a as f64) / f64::consts::LOG2_10;
@@ -219,7 +226,7 @@ const fn pow2_to_pow10(a: i64) -> i64 {
 }
 
 #[cfg(target_has_reliable_f16)]
-impl RawFloat for f16 {
+impl Float for f16 {
     type Int = u16;
 
     const INFINITY: Self = Self::INFINITY;
@@ -236,23 +243,6 @@ impl RawFloat for f16 {
     const MAX_EXPONENT_ROUND_TO_EVEN: i32 = 5;
     const SMALLEST_POWER_OF_TEN: i32 = -27;
 
-    #[inline]
-    fn from_u64(v: u64) -> Self {
-        debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
-        v as _
-    }
-
-    #[inline]
-    fn from_u64_bits(v: u64) -> Self {
-        Self::from_bits((v & 0xFFFF) as u16)
-    }
-
-    fn pow10_fast_path(exponent: usize) -> Self {
-        #[allow(clippy::use_self)]
-        const TABLE: [f16; 8] = [1e0, 1e1, 1e2, 1e3, 1e4, 0.0, 0.0, 0.];
-        TABLE[exponent & 7]
-    }
-
     fn to_bits(self) -> Self::Int {
         self.to_bits()
     }
@@ -262,7 +252,30 @@ impl RawFloat for f16 {
     }
 }
 
-impl RawFloat for f32 {
+#[cfg(target_has_reliable_f16)]
+impl FloatExt for f16 {
+    #[inline]
+    fn from_u64_bits(v: u64) -> Self {
+        Self::from_bits((v & 0xFFFF) as u16)
+    }
+}
+
+#[cfg(target_has_reliable_f16)]
+impl Lemire for f16 {
+    fn pow10_fast_path(exponent: usize) -> Self {
+        #[allow(clippy::use_self)]
+        const TABLE: [f16; 8] = [1e0, 1e1, 1e2, 1e3, 1e4, 0.0, 0.0, 0.];
+        TABLE[exponent & 7]
+    }
+
+    #[inline]
+    fn from_u64(v: u64) -> Self {
+        debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
+        v as _
+    }
+}
+
+impl Float for f32 {
     type Int = u32;
 
     const INFINITY: Self = f32::INFINITY;
@@ -279,24 +292,6 @@ impl RawFloat for f32 {
     const MAX_EXPONENT_ROUND_TO_EVEN: i32 = 10;
     const SMALLEST_POWER_OF_TEN: i32 = -65;
 
-    #[inline]
-    fn from_u64(v: u64) -> Self {
-        debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
-        v as _
-    }
-
-    #[inline]
-    fn from_u64_bits(v: u64) -> Self {
-        f32::from_bits((v & 0xFFFFFFFF) as u32)
-    }
-
-    fn pow10_fast_path(exponent: usize) -> Self {
-        #[allow(clippy::use_self)]
-        const TABLE: [f32; 16] =
-            [1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 0., 0., 0., 0., 0.];
-        TABLE[exponent & 15]
-    }
-
     fn to_bits(self) -> Self::Int {
         self.to_bits()
     }
@@ -306,7 +301,29 @@ impl RawFloat for f32 {
     }
 }
 
-impl RawFloat for f64 {
+impl FloatExt for f32 {
+    #[inline]
+    fn from_u64_bits(v: u64) -> Self {
+        f32::from_bits((v & 0xFFFFFFFF) as u32)
+    }
+}
+
+impl Lemire for f32 {
+    fn pow10_fast_path(exponent: usize) -> Self {
+        #[allow(clippy::use_self)]
+        const TABLE: [f32; 16] =
+            [1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 0., 0., 0., 0., 0.];
+        TABLE[exponent & 15]
+    }
+
+    #[inline]
+    fn from_u64(v: u64) -> Self {
+        debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
+        v as _
+    }
+}
+
+impl Float for f64 {
     type Int = u64;
 
     const INFINITY: Self = Self::INFINITY;
@@ -323,17 +340,23 @@ impl RawFloat for f64 {
     const MAX_EXPONENT_ROUND_TO_EVEN: i32 = 23;
     const SMALLEST_POWER_OF_TEN: i32 = -342;
 
-    #[inline]
-    fn from_u64(v: u64) -> Self {
-        debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
-        v as _
+    fn to_bits(self) -> Self::Int {
+        self.to_bits()
     }
 
+    fn classify(self) -> FpCategory {
+        self.classify()
+    }
+}
+
+impl FloatExt for f64 {
     #[inline]
     fn from_u64_bits(v: u64) -> Self {
         f64::from_bits(v)
     }
+}
 
+impl Lemire for f64 {
     fn pow10_fast_path(exponent: usize) -> Self {
         const TABLE: [f64; 32] = [
             1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15,
@@ -342,11 +365,9 @@ impl RawFloat for f64 {
         TABLE[exponent & 31]
     }
 
-    fn to_bits(self) -> Self::Int {
-        self.to_bits()
-    }
-
-    fn classify(self) -> FpCategory {
-        self.classify()
+    #[inline]
+    fn from_u64(v: u64) -> Self {
+        debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
+        v as _
     }
 }
