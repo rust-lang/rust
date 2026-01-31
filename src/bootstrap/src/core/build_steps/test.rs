@@ -1299,19 +1299,19 @@ impl Step for Tidy {
     /// for the `dev` or `nightly` channels.
     fn run(self, builder: &Builder<'_>) {
         let mut cmd = builder.tool_cmd(Tool::Tidy);
-        cmd.arg(&builder.src);
-        cmd.arg(&builder.initial_cargo);
-        cmd.arg(&builder.out);
+        cmd.arg(format!("--root-path={}", &builder.src.display()));
+        cmd.arg(format!("--cargo-path={}", &builder.initial_cargo.display()));
+        cmd.arg(format!("--output-dir={}", &builder.out.display()));
         // Tidy is heavily IO constrained. Still respect `-j`, but use a higher limit if `jobs` hasn't been configured.
         let jobs = builder.config.jobs.unwrap_or_else(|| {
             8 * std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32
         });
-        cmd.arg(jobs.to_string());
+        cmd.arg(format!("--concurrency={jobs}"));
         // pass the path to the yarn command used for installing js deps.
         if let Some(yarn) = &builder.config.yarn {
-            cmd.arg(yarn);
+            cmd.arg(format!("--npm-path={}", yarn.display()));
         } else {
-            cmd.arg("yarn");
+            cmd.arg("--npm-path=yarn");
         }
         if builder.is_verbose() {
             cmd.arg("--verbose");

@@ -14,16 +14,8 @@ pub struct TidyFlags {
 }
 
 impl TidyFlags {
-    pub fn new(cfg_args: &[String]) -> Self {
-        let mut flags = Self::default();
-
-        for arg in cfg_args {
-            match arg.as_str() {
-                "--bless" => flags.bless = true,
-                _ => continue,
-            }
-        }
-        flags
+    pub fn new(bless: bool) -> Self {
+        Self { bless }
     }
 }
 
