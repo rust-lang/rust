@@ -24,7 +24,7 @@ use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
     GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, RangeSet, Scalar,
     compile_time_machine, err_inval, interp_ok, throw_exhaust, throw_inval, throw_ub,
-    throw_ub_custom, throw_unsup, throw_unsup_format,
+    throw_ub_custom, throw_unsup, throw_unsup_format, type_implements_dyn_trait,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -584,6 +584,16 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     // Skip the `return_to_block` at the end (we panicked, we do not return).
                     return interp_ok(None);
                 }
+            }
+
+            sym::type_id_implements_trait => {
+                let type_from_type_id = ecx.read_type_id(&args[0])?;
+                let trait_from_type_id = ecx.read_type_id(&args[1])?;
+
+                let (implements, _) =
+                    type_implements_dyn_trait(ecx, type_from_type_id, trait_from_type_id)?;
+
+                ecx.write_scalar(Scalar::from_bool(implements), dest)?;
             }
 
             sym::type_of => {
