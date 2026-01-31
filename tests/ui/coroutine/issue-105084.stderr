@@ -22,23 +22,23 @@ help: consider cloning the value if the performance cost is acceptable
 LL |     let mut h = copy(g.clone());
    |                       ++++++++
 
-error[E0277]: the trait bound `Box<(i32, ())>: Copy` is not satisfied in `{coroutine@$DIR/issue-105084.rs:16:5: 16:7}`
+error[E0277]: the trait bound `Box<MaybeUninit<[(i32, ()); 1]>>: Copy` is not satisfied in `{coroutine@$DIR/issue-105084.rs:16:5: 16:7}`
   --> $DIR/issue-105084.rs:32:17
    |
 LL |     || {
    |     -- within this `{coroutine@$DIR/issue-105084.rs:16:5: 16:7}`
 ...
 LL |     let mut h = copy(g);
-   |                 ^^^^^^^ within `{coroutine@$DIR/issue-105084.rs:16:5: 16:7}`, the trait `Copy` is not implemented for `Box<(i32, ())>`
+   |                 ^^^^^^^ within `{coroutine@$DIR/issue-105084.rs:16:5: 16:7}`, the trait `Copy` is not implemented for `Box<MaybeUninit<[(i32, ()); 1]>>`
    |
 note: coroutine does not implement `Copy` as this value is used across a yield
-  --> $DIR/issue-105084.rs:22:41
+  --> $DIR/issue-105084.rs:22:26
    |
-LL |         let t = std::boxed::box_new((5, yield));
-   |                 ------------------------^^^^^--
-   |                 |                       |
-   |                 |                       yield occurs here, with `std::boxed::box_new((5, yield))` maybe used later
-   |                 has type `Box<(i32, ())>` which does not implement `Copy`
+LL |         let t = vec![(5, yield)];
+   |                 ---------^^^^^--
+   |                 |        |
+   |                 |        yield occurs here, with the value maybe used later
+   |                 has type `Box<MaybeUninit<[(i32, ()); 1]>>` which does not implement `Copy`
 note: required by a bound in `copy`
   --> $DIR/issue-105084.rs:10:12
    |

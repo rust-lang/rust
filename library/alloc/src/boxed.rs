@@ -236,14 +236,35 @@ pub struct Box<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 >(Unique<T>, A);
 
-/// Constructs a `Box<T>` by calling the `exchange_malloc` lang item and moving the argument into
-/// the newly allocated memory. This is an intrinsic to avoid unnecessary copies.
+/// Monomorphic function for allocating an uninit `Box`.
 ///
-/// This is the surface syntax for `box <expr>` expressions.
+/// # Safety
+///
+/// size and align need to be safe for `Layout::from_size_align_unchecked`.
+#[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[cfg(not(no_global_oom_handling))]
+unsafe fn box_new_uninit(size: usize, align: usize) -> *mut u8 {
+    let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
+    match Global.allocate(layout) {
+        Ok(ptr) => ptr.as_mut_ptr(),
+        Err(_) => handle_alloc_error(layout),
+    }
+}
+
+/// Helper for `vec!`.
+///
+/// This is unsafe, but has to be marked as safe or else we couldn't use it in `vec!`.
 #[doc(hidden)]
-#[rustc_intrinsic]
 #[unstable(feature = "liballoc_internals", issue = "none")]
-pub fn box_new<T>(x: T) -> Box<T>;
+#[inline(always)]
+#[cfg(not(no_global_oom_handling))]
+#[rustc_diagnostic_item = "box_assume_init_into_vec_unsafe"]
+pub fn box_assume_init_into_vec_unsafe<T, const N: usize>(
+    b: Box<MaybeUninit<[T; N]>>,
+) -> crate::vec::Vec<T> {
+    unsafe { (b.assume_init() as Box<[T]>).into_vec() }
+}
 
 impl<T> Box<T> {
     /// Allocates memory on the heap and then places `x` into it.
@@ -262,7 +283,16 @@ impl<T> Box<T> {
     #[rustc_diagnostic_item = "box_new"]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn new(x: T) -> Self {
-        return box_new(x);
+        // This is `Box::new_uninit` but inlined to avoid build time regressions.
+        // SAFETY: The size and align of a valid type `T` are always valid for `Layout`.
+        let ptr = unsafe {
+            box_new_uninit(<T as SizedTypeProperties>::SIZE, <T as SizedTypeProperties>::ALIGN)
+        } as *mut T;
+        // Nothing below can panic so we do not have to worry about deallocating `ptr`.
+        // SAFETY: we just allocated the box to store `x`.
+        unsafe { core::intrinsics::write_via_move(ptr, x) };
+        // SAFETY: we just initialized `b`.
+        unsafe { mem::transmute(ptr) }
     }
 
     /// Constructs a new box with uninitialized contents.
@@ -280,9 +310,21 @@ impl<T> Box<T> {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
-        Self::new_uninit_in(Global)
+        // This is the same as `Self::new_uninit_in(Global)`, but manually inlined (just like
+        // `Box::new`).
+
+        // SAFETY:
+        // - The size and align of a valid type `T` are always valid for `Layout`.
+        // - If `allocate` succeeds, the returned pointer exactly matches what `Box` needs.
+        unsafe {
+            mem::transmute(box_new_uninit(
+                <T as SizedTypeProperties>::SIZE,
+                <T as SizedTypeProperties>::ALIGN,
+            ))
+        }
     }
 
     /// Constructs a new `Box` with uninitialized contents, with the memory
@@ -1142,10 +1184,12 @@ impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
     /// assert_eq!(*five, 5)
     /// ```
     #[stable(feature = "new_uninit", since = "1.82.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn assume_init(self) -> Box<T, A> {
-        let (raw, alloc) = Box::into_raw_with_allocator(self);
-        unsafe { Box::from_raw_in(raw as *mut T, alloc) }
+        // This is used in the `vec!` macro, so we optimize for minimal IR generation
+        // even in debug builds.
+        // SAFETY: `Box<T>` and `Box<MaybeUninit<T>>` have the same layout.
+        unsafe { core::intrinsics::transmute_unchecked(self) }
     }
 
     /// Writes the value and converts to `Box<T, A>`.

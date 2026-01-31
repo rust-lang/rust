@@ -297,12 +297,12 @@ impl<'a> VecArgs<'a> {
                     // `vec![elem; size]` case
                     Some(VecArgs::Repeat(elem, size))
                 },
-                (sym::slice_into_vec, [slice])
-                    if let ExprKind::Call(_, [arg]) = slice.kind
-                        && let ExprKind::Array(args) = arg.kind =>
+                (sym::box_assume_init_into_vec_unsafe, [write_box_via_move])
+                    if let ExprKind::Call(_, [_box, elems]) = write_box_via_move.kind
+                        && let ExprKind::Array(elems) = elems.kind =>
                 {
                     // `vec![a, b, c]` case
-                    Some(VecArgs::Vec(args))
+                    Some(VecArgs::Vec(elems))
                 },
                 (sym::vec_new, []) => Some(VecArgs::Vec(&[])),
                 _ => None,

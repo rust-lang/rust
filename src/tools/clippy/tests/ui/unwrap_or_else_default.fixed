@@ -43,8 +43,7 @@ fn unwrap_or_else_default() {
     with_enum.unwrap_or_else(Enum::A);
 
     let with_new = Some(vec![1]);
-    with_new.unwrap_or_default();
-    //~^ unwrap_or_default
+    with_new.unwrap_or_else(Vec::new);
 
     let with_err: Result<_, ()> = Ok(vec![1]);
     with_err.unwrap_or_else(make);

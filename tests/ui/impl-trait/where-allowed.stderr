@@ -390,14 +390,6 @@ LL | fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { pani
            - impl<F, Args> Fn<Args> for Exclusive<F>
              where F: Sync, F: Fn<Args>, Args: std::marker::Tuple;
 
-error[E0118]: no nominal type found for inherent implementation
-  --> $DIR/where-allowed.rs:241:1
-   |
-LL | impl<T = impl Debug> T {}
-   | ^^^^^^^^^^^^^^^^^^^^^^ impl requires a nominal type
-   |
-   = note: either implement a trait on it or create a newtype to wrap it instead
-
 error: unconstrained opaque type
   --> $DIR/where-allowed.rs:122:16
    |
@@ -413,6 +405,14 @@ LL | type InTypeAlias<R> = impl Debug;
    |                       ^^^^^^^^^^
    |
    = note: `InTypeAlias` must be used in combination with a concrete type within the same crate
+
+error[E0118]: no nominal type found for inherent implementation
+  --> $DIR/where-allowed.rs:241:1
+   |
+LL | impl<T = impl Debug> T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^ impl requires a nominal type
+   |
+   = note: either implement a trait on it or create a newtype to wrap it instead
 
 error: aborting due to 48 previous errors
 

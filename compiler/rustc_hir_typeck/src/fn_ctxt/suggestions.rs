@@ -3039,6 +3039,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         let deref_kind = if checked_ty.is_box() {
                             // detect Box::new(..)
+                            // FIXME: use `box_new` diagnostic item instead?
                             if let ExprKind::Call(box_new, [_]) = expr.kind
                                 && let ExprKind::Path(qpath) = &box_new.kind
                                 && let Res::Def(DefKind::AssocFn, fn_id) =

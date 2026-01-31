@@ -223,11 +223,6 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*value, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
-            Box { value } => {
-                print_indented!(self, "Box {", depth_lvl);
-                self.print_expr(*value, depth_lvl + 1);
-                print_indented!(self, "}", depth_lvl);
-            }
             If { if_then_scope, cond, then, else_opt } => {
                 print_indented!(self, "If {", depth_lvl);
                 print_indented!(self, format!("if_then_scope: {:?}", if_then_scope), depth_lvl + 1);

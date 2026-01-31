@@ -183,6 +183,7 @@ fn main() {
 
     // #6811
     match Some(0) {
+        //~^ manual_map
         Some(x) => Some(vec![x]),
         None => None,
     };

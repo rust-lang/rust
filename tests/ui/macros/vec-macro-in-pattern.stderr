@@ -6,17 +6,15 @@ LL |         Some(vec![43]) => {}
    |
    = note: function calls are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
-error[E0658]: usage of qualified paths in this context is experimental
+error[E0532]: expected a pattern, found a function call
   --> $DIR/vec-macro-in-pattern.rs:7:14
    |
 LL |         Some(vec![43]) => {}
-   |              ^^^^^^^^
+   |              ^^^^^^^^ not a tuple struct or tuple variant
    |
-   = note: see issue #86935 <https://github.com/rust-lang/rust/issues/86935> for more information
-   = help: add `#![feature(more_qualified_paths)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: function calls are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
-error[E0164]: expected tuple struct or tuple variant, found associated function `<[_]>::into_vec`
+error[E0164]: expected tuple struct or tuple variant, found associated function `::alloc::boxed::Box::new_uninit`
   --> $DIR/vec-macro-in-pattern.rs:7:14
    |
 LL |         Some(vec![43]) => {}
@@ -26,5 +24,5 @@ LL |         Some(vec![43]) => {}
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0164, E0532, E0658.
+Some errors have detailed explanations: E0164, E0532.
 For more information about an error, try `rustc --explain E0164`.
