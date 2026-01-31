@@ -649,6 +649,33 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
         })
     }
 
+    /// Removes and returns the greatest item from the binary heap if the predicate
+    /// returns `true`, or [`None`] if the predicate returns false or the heap
+    /// is empty (the predicate will not be called in that case).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(binary_heap_pop_if)]
+    /// use std::collections::BinaryHeap;
+    /// let mut heap = BinaryHeap::from([1, 2]);
+    /// let pred = |x: &i32| *x % 2 == 0;
+    ///
+    /// assert_eq!(heap.pop_if(pred), Some(2));
+    /// assert_eq!(heap.as_slice(), [1]);
+    /// assert_eq!(heap.pop_if(pred), None);
+    /// assert_eq!(heap.as_slice(), [1]);
+    /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// The worst case cost of `pop_if` on a heap containing *n* elements is *O*(log(*n*)).
+    #[unstable(feature = "binary_heap_pop_if", issue = "151828")]
+    pub fn pop_if(&mut self, predicate: impl FnOnce(&T) -> bool) -> Option<T> {
+        let first = self.peek()?;
+        if predicate(first) { self.pop() } else { None }
+    }
+
     /// Pushes an item onto the binary heap.
     ///
     /// # Examples
