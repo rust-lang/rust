@@ -24,7 +24,7 @@ fn f() -> () {
 
     bb0: {
         StorageLive(_2);
-        _2 = String::new() -> [return: bb1, unwind: bb17];
+        _2 = String::new() -> [return: bb1, unwind: bb18];
     }
 
     bb1: {
@@ -63,6 +63,7 @@ fn f() -> () {
 
     bb6: {
         StorageDead(_4);
+        StorageDead(_3);
         drop(_2) -> [return: bb7, unwind: bb17];
     }
 
@@ -100,18 +101,28 @@ fn f() -> () {
     }
 
     bb14 (cleanup): {
+        StorageDead(_7);
+        StorageDead(_6);
         drop(_5) -> [return: bb15, unwind terminate(cleanup)];
     }
 
     bb15 (cleanup): {
+        StorageDead(_5);
         drop(_4) -> [return: bb16, unwind terminate(cleanup)];
     }
 
     bb16 (cleanup): {
+        StorageDead(_4);
+        StorageDead(_3);
         drop(_2) -> [return: bb17, unwind terminate(cleanup)];
     }
 
     bb17 (cleanup): {
+        StorageDead(_2);
+        goto -> bb18;
+    }
+
+    bb18 (cleanup): {
         resume;
     }
 }
