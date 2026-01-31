@@ -333,12 +333,12 @@ struct StepDescription {
 }
 
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq)]
-pub struct TaskPath {
+pub struct StepSelection {
     pub path: PathBuf,
     pub kind: Option<Kind>,
 }
 
-impl Debug for TaskPath {
+impl Debug for StepSelection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(kind) = &self.kind {
             write!(f, "{}::", kind.as_str())?;
@@ -360,14 +360,14 @@ pub enum PathSet {
     /// For example, `src/librustdoc` and `src/tools/rustdoc` should be in the same set,
     /// but `library/core` and `library/std` generally should not, unless there's no way (for that Step)
     /// to build them separately.
-    Alias(BTreeSet<TaskPath>),
+    Alias(BTreeSet<StepSelection>),
     /// A "suite" of paths.
     ///
     /// These can match as a path suffix (like `Set`), or as a prefix. For
     /// example, a command-line value of `tests/ui/abi/variadic-ffi.rs`
     /// will match `tests/ui`. A command-line value of `ui` would also
     /// match `tests/ui`.
-    TestSuite(TaskPath),
+    TestSuite(StepSelection),
 }
 
 impl PathSet {
@@ -377,7 +377,7 @@ impl PathSet {
 
     fn one<P: Into<PathBuf>>(path: P, kind: Kind) -> PathSet {
         let mut set = BTreeSet::new();
-        set.insert(TaskPath { path: path.into(), kind: Some(kind) });
+        set.insert(StepSelection { path: path.into(), kind: Some(kind) });
         PathSet::Alias(set)
     }
 
@@ -389,7 +389,7 @@ impl PathSet {
     }
 
     // internal use only
-    fn check(p: &TaskPath, needle: &Path, module: Kind) -> bool {
+    fn check(p: &StepSelection, needle: &Path, module: Kind) -> bool {
         let check_path = || {
             // This order is important for retro-compatibility, as `starts_with` was introduced later.
             p.path.ends_with(needle) || p.path.starts_with(needle)
@@ -431,7 +431,7 @@ impl PathSet {
     ///
     /// This can be used with [`ShouldRun::crate_or_deps`], [`ShouldRun::path`], or [`ShouldRun::alias`].
     #[track_caller]
-    pub fn assert_single_path(&self) -> &TaskPath {
+    pub fn assert_single_path(&self) -> &StepSelection {
         match self {
             PathSet::Alias(set) => {
                 assert_eq!(set.len(), 1, "called assert_single_path on multiple paths");
@@ -550,7 +550,7 @@ impl<'a> ShouldRun<'a> {
             "use `builder.path()` for real paths: {alias}"
         );
         self.paths.insert(PathSet::Alias(
-            std::iter::once(TaskPath { path: alias.into(), kind: Some(self.kind) }).collect(),
+            std::iter::once(StepSelection { path: alias.into(), kind: Some(self.kind) }).collect(),
         ));
         self
     }
@@ -569,7 +569,7 @@ impl<'a> ShouldRun<'a> {
             );
         }
 
-        let task = TaskPath { path: path.into(), kind: Some(self.kind) };
+        let task = StepSelection { path: path.into(), kind: Some(self.kind) };
         self.paths.insert(PathSet::Alias(BTreeSet::from_iter([task])));
         self
     }
@@ -583,7 +583,7 @@ impl<'a> ShouldRun<'a> {
     }
 
     pub fn suite_path(mut self, suite: &str) -> Self {
-        self.paths.insert(PathSet::TestSuite(TaskPath { path: suite.into(), kind: Some(self.kind) }));
+        self.paths.insert(PathSet::TestSuite(StepSelection { path: suite.into(), kind: Some(self.kind) }));
         self
     }
 
@@ -1634,7 +1634,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
             if should_run.paths.iter().any(|s| s.has(path, desc.kind))
                 && !desc.is_excluded(
                     self,
-                    &PathSet::TestSuite(TaskPath { path: path.clone(), kind: Some(desc.kind) }),
+                    &PathSet::TestSuite(StepSelection { path: path.clone(), kind: Some(desc.kind) }),
                 )
             {
                 return true;
