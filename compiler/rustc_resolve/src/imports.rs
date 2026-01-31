@@ -1189,7 +1189,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ident,
                     ns,
                     &import.parent_scope,
-                    Some(Finalize { report_private: false, ..finalize }),
+                    Some(Finalize {
+                        report_private: false,
+                        import_vis: Some(import.vis),
+                        ..finalize
+                    }),
                     bindings[ns].get().decl(),
                     Some(import),
                 );

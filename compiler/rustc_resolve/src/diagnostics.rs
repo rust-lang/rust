@@ -24,8 +24,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
-    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS, AMBIGUOUS_PANIC_IMPORTS,
-    MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
+    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS, AMBIGUOUS_IMPORT_VISIBILITIES,
+    AMBIGUOUS_PANIC_IMPORTS, MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
 use rustc_session::utils::was_invoked_from_cargo;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -144,6 +144,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 };
 
                 let lint = match ambiguity_warning {
+                    _ if ambiguity_error.ambig_vis.is_some() => AMBIGUOUS_IMPORT_VISIBILITIES,
                     AmbiguityWarning::GlobImport => AMBIGUOUS_GLOB_IMPORTS,
                     AmbiguityWarning::PanicImport => AMBIGUOUS_PANIC_IMPORTS,
                 };
@@ -1989,7 +1990,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn ambiguity_diagnostic(&self, ambiguity_error: &AmbiguityError<'ra>) -> errors::Ambiguity {
-        let AmbiguityError { kind, ident, b1, b2, scope1, scope2, .. } = *ambiguity_error;
+        let AmbiguityError { kind, ambig_vis, ident, b1, b2, scope1, scope2, .. } =
+            *ambiguity_error;
         let extern_prelude_ambiguity = || {
             // Note: b1 may come from a module scope, as an extern crate item in module.
             matches!(scope2, Scope::ExternPreludeFlags)
@@ -2068,9 +2070,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             None
         };
 
+        let ambig_vis = ambig_vis.map(|(vis1, vis2)| {
+            format!(
+                "{} or {}",
+                vis1.to_string(CRATE_DEF_ID, self.tcx),
+                vis2.to_string(CRATE_DEF_ID, self.tcx)
+            )
+        });
+
         errors::Ambiguity {
             ident,
             help,
+            ambig_vis,
             kind: kind.descr(),
             b1_note,
             b1_help_msgs,

@@ -1463,6 +1463,7 @@ pub(crate) struct UnknownDiagnosticAttributeTypoSugg {
 // FIXME: Make this properly translatable.
 pub(crate) struct Ambiguity {
     pub ident: Ident,
+    pub ambig_vis: Option<String>,
     pub kind: &'static str,
     pub help: Option<&'static [&'static str]>,
     pub b1_note: Spanned<String>,
@@ -1473,8 +1474,12 @@ pub(crate) struct Ambiguity {
 
 impl Ambiguity {
     fn decorate<'a>(self, diag: &mut Diag<'a, impl EmissionGuarantee>) {
-        diag.primary_message(format!("`{}` is ambiguous", self.ident));
-        diag.span_label(self.ident.span, "ambiguous name");
+        if let Some(ambig_vis) = self.ambig_vis {
+            diag.primary_message(format!("ambiguous import visibility: {ambig_vis}"));
+        } else {
+            diag.primary_message(format!("`{}` is ambiguous", self.ident));
+            diag.span_label(self.ident.span, "ambiguous name");
+        }
         diag.note(format!("ambiguous because of {}", self.kind));
         diag.span_note(self.b1_note.span, self.b1_note.node);
         if let Some(help) = self.help {
