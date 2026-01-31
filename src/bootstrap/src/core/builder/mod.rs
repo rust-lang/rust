@@ -20,7 +20,7 @@ use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
 };
-use crate::core::builder::cli_paths::CLIStepPath;
+use crate::core::builder::selectors::CLIStepPath;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{DryRun, TargetSelection};
 use crate::utils::build_stamp::BuildStamp;
@@ -30,7 +30,7 @@ use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linke
 use crate::{Build, Crate, trace};
 
 mod cargo;
-mod cli_paths;
+mod selectors;
 #[cfg(test)]
 mod tests;
 
@@ -1138,7 +1138,7 @@ impl<'a> Builder<'a> {
     }
 
     fn run_step_descriptions(&self, v: &[StepDescription], paths: &[PathBuf]) {
-        cli_paths::match_paths_to_steps_and_run(self, v, paths);
+        selectors::match_paths_to_steps_and_run(self, v, paths);
     }
 
     /// Returns if `std` should be statically linked into `rustc_driver`.

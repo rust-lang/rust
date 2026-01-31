@@ -1,5 +1,5 @@
 ---
-source: src/bootstrap/src/core/builder/cli_paths/tests.rs
+source: src/bootstrap/src/core/builder/selectors/tests.rs
 expression: test
 ---
 [Test] test::Tidy

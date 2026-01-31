@@ -3,8 +3,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use super::match_paths_to_steps_and_run;
 use crate::Build;
-use crate::core::builder::cli_paths::match_paths_to_steps_and_run;
 use crate::core::builder::{Builder, StepDescription};
 use crate::utils::tests::TestCtx;
 
@@ -77,7 +77,7 @@ fn no_unused_snapshots_inner(known_test_names: &[&str]) {
     let mut unexpected_file_names = BTreeSet::new();
 
     // FIXME(Zalathar): Is there a better way to locate the snapshots dir?
-    for entry in walkdir::WalkDir::new("src/core/builder/cli_paths/snapshots")
+    for entry in walkdir::WalkDir::new("src/core/builder/selectors/snapshots")
         .into_iter()
         .map(Result::unwrap)
     {
