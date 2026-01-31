@@ -627,7 +627,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             && !args.is_empty()
         {
             let ast_segment = delegation.path.segments.last().unwrap();
-            let mut segment = self.lower_path_segment(
+            let segment = self.lower_path_segment(
                 delegation.path.span,
                 ast_segment,
                 ParamMode::Optional,
@@ -636,21 +636,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 None,
             );
 
-            let function_args = generics
-                .child
-                .generics
-                .into_hir_generics(self, item_id, span)
-                .into_generic_args(self, false);
-
             // FIXME(fn_delegation): proper support for parent generics propagation
             // in method call scenario.
-            if let Some(function_args) = function_args {
-                segment.args = Some(function_args);
-            } else if generics.child.generics.is_user_specified() {
-                generics.child.args_segment_id = Some(segment.hir_id);
-            }
-
-            let segment = self.arena.alloc(segment);
+            let segment = self.arena.alloc(self.process_segment(
+                item_id,
+                span,
+                &segment,
+                &mut generics.child,
+                false,
+            ));
 
             self.arena.alloc(hir::Expr {
                 hir_id: self.next_id(),
@@ -693,8 +687,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 hir::QPath::TypeRelative(ty, segment) => hir::QPath::TypeRelative(
                     ty,
-                    self.arena.alloc(Self::process_segment(
-                        self,
+                    self.arena.alloc(self.process_segment(
                         item_id,
                         span,
                         segment,
