@@ -3155,7 +3155,7 @@ impl Step for CrateRustdoc {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["src/librustdoc", "src/tools/rustdoc"])
+        run.path("src/librustdoc").path("src/tools/rustdoc")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {

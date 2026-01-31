@@ -558,38 +558,19 @@ impl<'a> ShouldRun<'a> {
     /// single, non-aliased path
     ///
     /// Must be an on-disk path; use `alias` for names that do not correspond to on-disk paths.
-    pub fn path(self, path: &str) -> Self {
-        self.paths(&[path])
-    }
-
-    /// Multiple aliases for the same job.
-    ///
-    /// This differs from [`path`] in that multiple calls to path will end up calling `make_run`
-    /// multiple times, whereas a single call to `paths` will only ever generate a single call to
-    /// `make_run`.
-    ///
-    /// This is analogous to `all_krates`, although `all_krates` is gone now. Prefer [`path`] where possible.
-    ///
-    /// [`path`]: ShouldRun::path
-    pub fn paths(mut self, paths: &[&str]) -> Self {
+    pub fn path(mut self, path: &str) -> Self {
         let submodules_paths = self.builder.submodule_paths();
 
-        self.paths.insert(PathSet::Set(
-            paths
-                .iter()
-                .map(|p| {
-                    // assert only if `p` isn't submodule
-                    if !submodules_paths.iter().any(|sm_p| p.contains(sm_p)) {
-                        assert!(
-                            self.builder.src.join(p).exists(),
-                            "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {p}"
-                        );
-                    }
+        // assert only if `p` isn't submodule
+        if !submodules_paths.iter().any(|sm_p| path.contains(sm_p)) {
+            assert!(
+                self.builder.src.join(path).exists(),
+                "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {path}"
+            );
+        }
 
-                    TaskPath { path: p.into(), kind: Some(self.kind) }
-                })
-                .collect(),
-        ));
+        let task = TaskPath { path: path.into(), kind: Some(self.kind) };
+        self.paths.insert(PathSet::Set(BTreeSet::from_iter([task])));
         self
     }
 
