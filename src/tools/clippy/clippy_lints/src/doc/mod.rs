@@ -1123,7 +1123,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 containers.push(Container::Blockquote);
                 if let Some((next_event, next_range)) = events.peek() {
                     let next_start = match next_event {
-                        End(TagEnd::BlockQuote) => next_range.end,
+                        End(TagEnd::BlockQuote(_)) => next_range.end,
                         _ => next_range.start,
                     };
                     if let Some(refdefrange) = looks_like_refdef(doc, range.start..next_start) &&
@@ -1147,7 +1147,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     }
                 }
             },
-            End(TagEnd::BlockQuote) => {
+            End(TagEnd::BlockQuote(_)) => {
                 blockquote_level -= 1;
                 containers.pop();
             },
