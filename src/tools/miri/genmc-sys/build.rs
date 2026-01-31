@@ -172,7 +172,7 @@ fn compile_cpp_dependencies(genmc_path: &Path) {
     // Part 2:
     // Compile the cxx_bridge (the link between the Rust and C++ code).
 
-    let genmc_include_dir = genmc_install_dir.join("include").join("genmc");
+    let genmc_include_dir = genmc_install_dir.join("include");
 
     // These are all the C++ files we need to compile, which needs to be updated if more C++ files are added to Miri.
     // We use absolute paths since relative paths can confuse IDEs when attempting to go-to-source on a path in a compiler error.

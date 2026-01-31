@@ -182,7 +182,7 @@ mod ffi {
 
     #[must_use]
     #[derive(Debug, Clone, Copy)]
-    enum ExecutionState {
+    enum ExecutionStatus {
         Ok,
         Error,
         Blocked,
@@ -192,7 +192,7 @@ mod ffi {
     #[must_use]
     #[derive(Debug)]
     struct SchedulingResult {
-        exec_state: ExecutionState,
+        exec_status: ExecutionStatus,
         next_thread: i32,
     }
 

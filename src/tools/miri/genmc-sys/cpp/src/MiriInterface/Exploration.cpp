@@ -7,22 +7,22 @@
 #include "genmc-sys/src/lib.rs.h"
 
 // GenMC headers:
-#include "ADT/value_ptr.hpp"
-#include "ExecutionGraph/EventLabel.hpp"
-#include "ExecutionGraph/LoadAnnotation.hpp"
-#include "Runtime/InterpreterEnumAPI.hpp"
-#include "Static/ModuleID.hpp"
-#include "Support/ASize.hpp"
-#include "Support/Error.hpp"
-#include "Support/Logger.hpp"
-#include "Support/MemAccess.hpp"
-#include "Support/RMWOps.hpp"
-#include "Support/SAddr.hpp"
-#include "Support/SVal.hpp"
-#include "Support/ThreadInfo.hpp"
-#include "Support/Verbosity.hpp"
-#include "Verification/GenMCDriver.hpp"
-#include "Verification/MemoryModel.hpp"
+#include "genmc/ADT/value_ptr.hpp"
+#include "genmc/Execution/EventLabel.hpp"
+#include "genmc/Execution/LoadAnnotation.hpp"
+#include "genmc/Support/ActionEnums.hpp"
+#include "genmc/Support/ASize.hpp"
+#include "genmc/Support/Error.hpp"
+#include "genmc/Support/Logger.hpp"
+#include "genmc/Support/MemAccess.hpp"
+#include "genmc/Support/ModuleVarID.hpp"
+#include "genmc/Support/RMWOps.hpp"
+#include "genmc/Support/SAddr.hpp"
+#include "genmc/Support/SVal.hpp"
+#include "genmc/Support/ThreadInfo.hpp"
+#include "genmc/Support/Verbosity.hpp"
+#include "genmc/Verification/GenMCDriver.hpp"
+#include "genmc/Verification/MemoryModel.hpp"
 
 // C++ headers:
 #include <cmath>
@@ -47,13 +47,13 @@ auto MiriGenmcShim::schedule_next(
         [](auto&& arg) {
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, int>)
-                return SchedulingResult { ExecutionState::Ok, static_cast<int32_t>(arg) };
+                return SchedulingResult { ExecutionStatus::Ok, static_cast<int32_t>(arg) };
             else if constexpr (std::is_same_v<T, Blocked>)
-                return SchedulingResult { ExecutionState::Blocked, 0 };
+                return SchedulingResult { ExecutionStatus::Blocked, 0 };
             else if constexpr (std::is_same_v<T, Error>)
-                return SchedulingResult { ExecutionState::Error, 0 };
+                return SchedulingResult { ExecutionStatus::Error, 0 };
             else if constexpr (std::is_same_v<T, Finished>)
-                return SchedulingResult { ExecutionState::Finished, 0 };
+                return SchedulingResult { ExecutionStatus::Finished, 0 };
             else
                 static_assert(false, "non-exhaustive visitor!");
         },
@@ -325,12 +325,12 @@ auto MiriGenmcShim::handle_mutex_lock(ThreadId thread_id, uint64_t address, uint
     const auto annot = std::move(Annotation(
         AssumeType::Spinloop,
         Annotation::ExprVP(
-            NeExpr<ModuleID::ID>::create(
+            NeExpr<ModuleVarID>::create(
                 // `RegisterExpr` marks the value of the current expression, i.e., the loaded value.
                 // The `id` is ignored by GenMC; it is only used by the LLI frontend to substitute
                 // other variables from previous expressions that may be used here.
-                RegisterExpr<ModuleID::ID>::create(size_bits, /* id */ 0),
-                ConcreteExpr<ModuleID::ID>::create(size_bits, MutexState::LOCKED)
+                RegisterExpr<ModuleVarID>::create(size_bits, /* id */ 0),
+                ConcreteExpr<ModuleVarID>::create(size_bits, MutexState::LOCKED)
             )
                 .release()
         )

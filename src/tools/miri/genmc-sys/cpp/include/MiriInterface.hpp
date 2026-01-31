@@ -5,17 +5,17 @@
 #include "rust/cxx.h"
 
 // GenMC generated headers:
-#include "config.h"
+#include "genmc/config.h"
 
 // Miri `genmc-sys/src_cpp` headers:
 #include "ResultHandling.hpp"
 
 // GenMC headers:
-#include "ExecutionGraph/EventLabel.hpp"
-#include "Support/MemOrdering.hpp"
-#include "Support/RMWOps.hpp"
-#include "Verification/Config.hpp"
-#include "Verification/GenMCDriver.hpp"
+#include "genmc/Execution/EventLabel.hpp"
+#include "genmc/Support/MemOrdering.hpp"
+#include "genmc/Support/RMWOps.hpp"
+#include "genmc/Verification/Config.hpp"
+#include "genmc/Verification/GenMCDriver.hpp"
 
 // C++ headers:
 #include <cstdint>

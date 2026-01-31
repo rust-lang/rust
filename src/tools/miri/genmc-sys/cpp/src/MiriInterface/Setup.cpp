@@ -7,9 +7,9 @@
 #include "genmc-sys/src/lib.rs.h"
 
 // GenMC headers:
-#include "Support/Error.hpp"
-#include "Support/Verbosity.hpp"
-#include "Verification/InterpreterCallbacks.hpp"
+#include "genmc/Support/Error.hpp"
+#include "genmc/Support/Verbosity.hpp"
+#include "genmc/Verification/InterpreterCallbacks.hpp"
 
 // C++ headers:
 #include <cstdint>
