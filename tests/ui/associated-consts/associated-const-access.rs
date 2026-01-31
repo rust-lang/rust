@@ -1,5 +1,5 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/31267>
 //@ run-pass
-// Regression test for issue #31267
 
 
 struct Foo;
