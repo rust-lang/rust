@@ -76,7 +76,7 @@ auto MiriGenmcShim::handle_execution_end() -> std::unique_ptr<std::string> {
 
 void MiriGenmcShim::handle_assume_block(ThreadId thread_id, AssumeType assume_type) {
     BUG_ON(getExec().getGraph().isThreadBlocked(thread_id));
-    GenMCDriver::handleAssume(nullptr, inc_pos(thread_id), assume_type);
+    GenMCDriver::handleAssume(nullptr, inc_pos(thread_id, 1), assume_type);
 }
 
 /**** Memory access handling ****/
@@ -115,7 +115,7 @@ void MiriGenmcShim::handle_assume_block(ThreadId thread_id, AssumeType assume_ty
     GenmcScalar old_val,
     MemOrdering ord
 ) -> StoreResult {
-    const auto pos = inc_pos(thread_id);
+    const auto pos = inc_pos(thread_id, 1);
     const auto ret = GenMCDriver::handleStore<EventLabel::EventLabelKind::Write>(
         nullptr,
         pos,
@@ -138,7 +138,7 @@ void MiriGenmcShim::handle_assume_block(ThreadId thread_id, AssumeType assume_ty
 }
 
 void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
-    const auto pos = inc_pos(thread_id);
+    const auto pos = inc_pos(thread_id, 1);
     GenMCDriver::handleFence(nullptr, pos, ord, EventDeps());
 }
 
@@ -178,7 +178,7 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
     const auto new_value =
         executeRMWBinOp(read_old_val, GenmcScalarExt::to_sval(rhs_value), size, rmw_op);
 
-    const auto storePos = inc_pos(thread_id);
+    const auto storePos = inc_pos(thread_id, 1);
     const auto store_ret = GenMCDriver::handleStore<EventLabel::EventLabelKind::FaiWrite>(
         nullptr,
         storePos,
@@ -243,7 +243,7 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
 
     // FIXME(GenMC): Add support for modelling spurious failures.
 
-    const auto storePos = inc_pos(thread_id);
+    const auto storePos = inc_pos(thread_id, 1);
     const auto store_ret = GenMCDriver::handleStore<EventLabel::EventLabelKind::CasWrite>(
         nullptr,
         storePos,
@@ -266,7 +266,7 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
 
 auto MiriGenmcShim::handle_malloc(ThreadId thread_id, uint64_t size, uint64_t alignment)
     -> uint64_t {
-    const auto pos = inc_pos(thread_id);
+    const auto pos = inc_pos(thread_id, 1);
 
     // These are only used for printing and features Miri-GenMC doesn't support (yet).
     const auto storage_duration = StorageDuration::SD_Heap;
@@ -289,7 +289,7 @@ auto MiriGenmcShim::handle_malloc(ThreadId thread_id, uint64_t size, uint64_t al
 
 auto MiriGenmcShim::handle_free(ThreadId thread_id, uint64_t address)
     -> std::unique_ptr<std::string> {
-    auto pos = inc_pos(thread_id);
+    auto pos = inc_pos(thread_id, 1);
     auto ret = GenMCDriver::handleFree(nullptr, pos, SAddr(address), EventDeps());
     return ret.has_value() ? format_error(*ret) : nullptr;
 }
@@ -370,7 +370,7 @@ auto MiriGenmcShim::handle_mutex_lock(ThreadId thread_id, uint64_t address, uint
 
     const auto store_ret = GenMCDriver::handleStore<EventLabel::EventLabelKind::LockCasWrite>(
         nullptr,
-        inc_pos(thread_id),
+        inc_pos(thread_id, 1),
         old_val,
         address,
         size,
@@ -427,7 +427,7 @@ auto MiriGenmcShim::handle_mutex_try_lock(ThreadId thread_id, uint64_t address, 
 
 auto MiriGenmcShim::handle_mutex_unlock(ThreadId thread_id, uint64_t address, uint64_t size)
     -> StoreResult {
-    const auto pos = inc_pos(thread_id);
+    const auto pos = inc_pos(thread_id, 1);
     const auto ret = GenMCDriver::handleStore<EventLabel::EventLabelKind::UnlockWrite>(
         nullptr,
         pos,
@@ -453,7 +453,7 @@ auto MiriGenmcShim::handle_mutex_unlock(ThreadId thread_id, uint64_t address, ui
 
 void MiriGenmcShim::handle_thread_create(ThreadId thread_id, ThreadId parent_id) {
     // NOTE: The threadCreate event happens in the parent:
-    const auto pos = inc_pos(parent_id);
+    const auto pos = inc_pos(parent_id, 1);
     // FIXME(genmc): for supporting symmetry reduction, these will need to be properly set:
     const unsigned fun_id = 0;
     const SVal arg = SVal(0);
@@ -468,12 +468,12 @@ void MiriGenmcShim::handle_thread_create(ThreadId thread_id, ThreadId parent_id)
 
 void MiriGenmcShim::handle_thread_join(ThreadId thread_id, ThreadId child_id) {
     // The thread join event happens in the parent.
-    const auto pos = inc_pos(thread_id);
+    const auto pos = inc_pos(thread_id, 1);
 
     const auto ret = GenMCDriver::handleThreadJoin(nullptr, pos, child_id, EventDeps());
     // If the join failed, decrease the event index again:
     if (!std::holds_alternative<SVal>(ret)) {
-        dec_pos(thread_id);
+        dec_pos(thread_id, 1);
     }
     // FIXME(genmc): handle `HandleResult::{Invalid, Reset, VerificationError}` return values.
 
@@ -481,11 +481,11 @@ void MiriGenmcShim::handle_thread_join(ThreadId thread_id, ThreadId child_id) {
 }
 
 void MiriGenmcShim::handle_thread_finish(ThreadId thread_id, uint64_t ret_val) {
-    const auto pos = inc_pos(thread_id);
+    const auto pos = inc_pos(thread_id, 1);
     GenMCDriver::handleThreadFinish(nullptr, pos, SVal(ret_val));
 }
 
 void MiriGenmcShim::handle_thread_kill(ThreadId thread_id) {
-    const auto pos = inc_pos(thread_id);
+    const auto pos = inc_pos(thread_id, 1);
     GenMCDriver::handleThreadKill(nullptr, pos);
 }

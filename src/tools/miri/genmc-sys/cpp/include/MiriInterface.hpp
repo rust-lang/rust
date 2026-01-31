@@ -203,15 +203,15 @@ struct MiriGenmcShim : private GenMCDriver {
     auto get_estimation_results() const -> EstimationResult;
 
   private:
-    /** Increment the event index in the given thread by 1 and return the new event. */
-    [[nodiscard]] inline auto inc_pos(ThreadId tid) -> Event {
+    /** Increment the event index in the given thread by `count`. */
+    inline void inc_pos(ThreadId tid, unsigned int count) {
         ERROR_ON(tid >= threads_action_.size(), "ThreadId out of bounds");
-        return ++threads_action_[tid].event;
+        threads_action_[tid].event.index += count;
     }
-    /** Decrement the event index in the given thread by 1 and return the new event. */
-    inline auto dec_pos(ThreadId tid) -> Event {
+    /** Decrement the event index in the given thread by `count`. */
+    inline void dec_pos(ThreadId tid, unsigned int count) {
         ERROR_ON(tid >= threads_action_.size(), "ThreadId out of bounds");
-        return --threads_action_[tid].event;
+        threads_action_[tid].event.index -= count;
     }
 
     /**
@@ -222,12 +222,12 @@ struct MiriGenmcShim : private GenMCDriver {
     template <EventLabel::EventLabelKind k, typename... Ts>
     auto handle_load_reset_if_none(ThreadId tid, std::optional<SVal> old_val, Ts&&... params)
         -> HandleResult<SVal> {
-        const auto pos = inc_pos(tid);
+        const auto pos = inc_pos(tid, 1);
         const auto ret =
             GenMCDriver::handleLoad<k>(nullptr, pos, old_val, std::forward<Ts>(params)...);
         // If we didn't get a value, we have to reset the index of the current thread.
         if (!std::holds_alternative<SVal>(ret)) {
-            dec_pos(tid);
+            dec_pos(tid, 1);
         }
         return ret;
     }
