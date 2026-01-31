@@ -1075,7 +1075,7 @@ gets adapted for the changes, if necessary.
 """
 cc = ["@rust-lang/miri", "@RalfJung", "@oli-obk", "@lcnr"]
 
-[mentions."library/core/src/num/{dec2flt,flt2dec}"]
+[mentions."library/core/src/num/imp/{dec2flt,flt2dec}"]
 message = "Some changes occurred in float parsing"
 cc = ["@tgross35"]
 

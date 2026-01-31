@@ -6,7 +6,7 @@ use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
 use crate::char::EscapeDebugExtArgs;
 use crate::hint::assert_unchecked;
 use crate::marker::{PhantomData, PointeeSized};
-use crate::num::fmt as numfmt;
+use crate::num::imp::fmt as numfmt;
 use crate::ops::Deref;
 use crate::ptr::NonNull;
 use crate::{iter, mem, result, str};

@@ -14,7 +14,7 @@
 use crate::convert::FloatToInt;
 use crate::num::FpCategory;
 #[cfg(not(test))]
-use crate::num::libm;
+use crate::num::imp::libm;
 use crate::panic::const_assert;
 use crate::{intrinsics, mem};
 
