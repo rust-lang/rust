@@ -1,10 +1,14 @@
-//! Helper trait for generic float types.
+//! Numeric traits used for internal implementations.
 
-use core::f64;
+#![doc(hidden)]
+#![unstable(
+    feature = "num_internals",
+    reason = "internal routines only exposed for testing",
+    issue = "none"
+)]
 
-use crate::fmt::{Debug, LowerExp};
 use crate::num::FpCategory;
-use crate::ops::{self, Add, Div, Mul, Neg};
+use crate::{f64, fmt, ops};
 
 /// Lossy `as` casting between two types.
 pub trait CastInto<T: Copy>: Copy {
@@ -16,7 +20,7 @@ pub trait Int:
     Sized
     + Clone
     + Copy
-    + Debug
+    + fmt::Debug
     + ops::Shr<u32, Output = Self>
     + ops::Shl<u32, Output = Self>
     + ops::BitAnd<Output = Self>
@@ -51,17 +55,17 @@ int!(u16, u32, u64);
 #[doc(hidden)]
 pub trait Float:
     Sized
-    + Div<Output = Self>
-    + Neg<Output = Self>
-    + Mul<Output = Self>
-    + Add<Output = Self>
-    + LowerExp
+    + ops::Div<Output = Self>
+    + ops::Neg<Output = Self>
+    + ops::Mul<Output = Self>
+    + ops::Add<Output = Self>
+    + fmt::Debug
+    + fmt::LowerExp
     + PartialEq
     + PartialOrd
     + Default
     + Clone
     + Copy
-    + Debug
 {
     /// The unsigned integer with the same size as the float
     type Int: Int + Into<u64>;
@@ -184,41 +188,6 @@ pub trait FloatExt: Float {
     }
 }
 
-/// Extension to `Float` that are necessary for parsing using the Lemire method.
-///
-/// See the parent module's doc comment for why this is necessary.
-///
-/// Not intended for use outside of the `dec2flt` module.
-#[doc(hidden)]
-pub trait Lemire: FloatExt {
-    /// Maximum exponent for a fast path case, or `⌊(SIG_BITS+1)/log2(5)⌋`
-    // assuming FLT_EVAL_METHOD = 0
-    const MAX_EXPONENT_FAST_PATH: i64 = {
-        let log2_5 = f64::consts::LOG2_10 - 1.0;
-        (Self::SIG_TOTAL_BITS as f64 / log2_5) as i64
-    };
-
-    /// Minimum exponent for a fast path case, or `-⌊(SIG_BITS+1)/log2(5)⌋`
-    const MIN_EXPONENT_FAST_PATH: i64 = -Self::MAX_EXPONENT_FAST_PATH;
-
-    /// Maximum exponent that can be represented for a disguised-fast path case.
-    /// This is `MAX_EXPONENT_FAST_PATH + ⌊(SIG_BITS+1)/log2(10)⌋`
-    const MAX_EXPONENT_DISGUISED_FAST_PATH: i64 =
-        Self::MAX_EXPONENT_FAST_PATH + (Self::SIG_TOTAL_BITS as f64 / f64::consts::LOG2_10) as i64;
-
-    /// Maximum mantissa for the fast-path (`1 << 53` for f64).
-    const MAX_MANTISSA_FAST_PATH: u64 = 1 << Self::SIG_TOTAL_BITS;
-
-    /// Gets a small power-of-ten for fast-path multiplication.
-    fn pow10_fast_path(exponent: usize) -> Self;
-
-    /// Converts integer into float through an as cast.
-    /// This is only called in the fast-path algorithm, and therefore
-    /// will not lose precision, since the value will always have
-    /// only if the value is <= Self::MAX_MANTISSA_FAST_PATH.
-    fn from_u64(v: u64) -> Self;
-}
-
 /// Solve for `b` in `10^b = 2^a`
 const fn pow2_to_pow10(a: i64) -> i64 {
     let res = (a as f64) / f64::consts::LOG2_10;
@@ -260,21 +229,6 @@ impl FloatExt for f16 {
     }
 }
 
-#[cfg(target_has_reliable_f16)]
-impl Lemire for f16 {
-    fn pow10_fast_path(exponent: usize) -> Self {
-        #[allow(clippy::use_self)]
-        const TABLE: [f16; 8] = [1e0, 1e1, 1e2, 1e3, 1e4, 0.0, 0.0, 0.];
-        TABLE[exponent & 7]
-    }
-
-    #[inline]
-    fn from_u64(v: u64) -> Self {
-        debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
-        v as _
-    }
-}
-
 impl Float for f32 {
     type Int = u32;
 
@@ -308,21 +262,6 @@ impl FloatExt for f32 {
     }
 }
 
-impl Lemire for f32 {
-    fn pow10_fast_path(exponent: usize) -> Self {
-        #[allow(clippy::use_self)]
-        const TABLE: [f32; 16] =
-            [1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 0., 0., 0., 0., 0.];
-        TABLE[exponent & 15]
-    }
-
-    #[inline]
-    fn from_u64(v: u64) -> Self {
-        debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
-        v as _
-    }
-}
-
 impl Float for f64 {
     type Int = u64;
 
@@ -353,21 +292,5 @@ impl FloatExt for f64 {
     #[inline]
     fn from_u64_bits(v: u64) -> Self {
         f64::from_bits(v)
-    }
-}
-
-impl Lemire for f64 {
-    fn pow10_fast_path(exponent: usize) -> Self {
-        const TABLE: [f64; 32] = [
-            1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15,
-            1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22, 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-        ];
-        TABLE[exponent & 31]
-    }
-
-    #[inline]
-    fn from_u64(v: u64) -> Self {
-        debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
-        v as _
     }
 }

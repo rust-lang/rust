@@ -2,9 +2,8 @@
 
 use dec2flt::common::BiasedFp;
 use dec2flt::decimal_seq::{DecimalSeq, parse_decimal_seq};
-use dec2flt::float::Float;
 
-use crate::num::imp::dec2flt;
+use crate::num::imp::{Float, dec2flt};
 
 /// Parse the significant digits and biased, binary exponent of a float.
 ///

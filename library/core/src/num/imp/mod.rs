@@ -16,3 +16,6 @@ pub(crate) mod int_log10;
 pub(crate) mod int_sqrt;
 pub(crate) mod libm;
 pub(crate) mod overflow_panic;
+mod traits;
+
+pub use traits::{Float, FloatExt, Int};

@@ -1,10 +1,9 @@
 //! Implementation of the Eisel-Lemire algorithm.
 
 use dec2flt::common::BiasedFp;
-use dec2flt::float::Float;
 use dec2flt::table::{LARGEST_POWER_OF_FIVE, POWER_OF_FIVE_128, SMALLEST_POWER_OF_FIVE};
 
-use crate::num::imp::dec2flt;
+use crate::num::imp::{Float, dec2flt};
 
 /// Compute w * 10^q using an extended-precision float representation.
 ///
