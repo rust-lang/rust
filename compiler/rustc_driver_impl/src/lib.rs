@@ -491,10 +491,18 @@ fn handle_explain(early_dcx: &EarlyDiagCtxt, registry: Registry, code: &str, col
             }
             text.push('\n');
         }
+
+        // If output is a terminal, use a pager to display the content.
         if io::stdout().is_terminal() {
             show_md_content_with_pager(&text, color);
         } else {
-            safe_print!("{text}");
+            // Otherwise, if the user has requested colored output
+            // print the content in color, else print the md content.
+            if color == ColorConfig::Always {
+                show_colored_md_content(&text);
+            } else {
+                safe_print!("{text}");
+            }
         }
     } else {
         early_dcx.early_fatal(format!("{code} is not a valid error code"));
@@ -554,6 +562,33 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
     }
 
     // The pager failed. Try to print pretty output to stdout.
+    if let Some((bufwtr, mdbuf)) = &mut pretty_data
+        && bufwtr.write_all(&mdbuf).is_ok()
+    {
+        return;
+    }
+
+    // Everything failed. Print the raw markdown text.
+    safe_print!("{content}");
+}
+
+/// Prints the markdown content with colored output.
+///
+/// This function is used when the output is not a terminal,
+/// but the user has requested colored output with `--color=always`.
+fn show_colored_md_content(content: &str) {
+    // Try to prettify the raw markdown text.
+    let mut pretty_data = {
+        let mdstream = markdown::MdStream::parse_str(content);
+        let bufwtr = markdown::create_stdout_bufwtr();
+        let mut mdbuf = Vec::new();
+        if mdstream.write_anstream_buf(&mut mdbuf, Some(&highlighter::highlight)).is_ok() {
+            Some((bufwtr, mdbuf))
+        } else {
+            None
+        }
+    };
+
     if let Some((bufwtr, mdbuf)) = &mut pretty_data
         && bufwtr.write_all(&mdbuf).is_ok()
     {
