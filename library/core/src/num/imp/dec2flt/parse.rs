@@ -2,9 +2,8 @@
 
 use dec2flt::common::{ByteSlice, is_8digits};
 use dec2flt::decimal::Decimal;
-use dec2flt::float::Float;
 
-use crate::num::imp::dec2flt;
+use crate::num::imp::{Float, dec2flt};
 
 const MIN_19DIGIT_INT: u64 = 100_0000_0000_0000_0000;
 
