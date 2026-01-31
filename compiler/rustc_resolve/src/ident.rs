@@ -917,6 +917,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         )
     }
 
+    fn resolve_super_in_module(
+        &self,
+        ident: Ident,
+        module: Option<Module<'ra>>,
+        parent_scope: &ParentScope<'ra>,
+    ) -> Option<Module<'ra>> {
+        let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
+        module
+            .unwrap_or_else(|| self.resolve_self(&mut ctxt, parent_scope.module))
+            .parent
+            .map(|parent| self.resolve_self(&mut ctxt, parent))
+    }
+
+    pub(crate) fn path_root_is_crate_root(&self, ident: Ident) -> bool {
+        ident.name == kw::PathRoot && ident.span.is_rust_2015() && self.tcx.sess.is_rust_2015()
+    }
+
     /// Attempts to resolve `ident` in namespace `ns` of `module`.
     #[instrument(level = "debug", skip(self))]
     fn resolve_ident_in_virt_module_unadjusted<'r>(
@@ -930,14 +947,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_import: Option<Import<'ra>>,
     ) -> Result<Decl<'ra>, Determinacy> {
         match module {
-            ModuleOrUniformRoot::Module(module) => self.resolve_ident_in_scope_set(
-                ident,
-                ScopeSet::Module(ns, module),
-                parent_scope,
-                finalize,
-                ignore_decl,
-                ignore_import,
-            ),
+            ModuleOrUniformRoot::Module(module) => {
+                if ns == TypeNS
+                    && ident.name == kw::Super
+                    && let Some(module) =
+                        self.resolve_super_in_module(ident, Some(module), parent_scope)
+                {
+                    return Ok(module.self_decl.unwrap());
+                }
+
+                self.resolve_ident_in_scope_set(
+                    ident,
+                    ScopeSet::Module(ns, module),
+                    parent_scope,
+                    finalize,
+                    ignore_decl,
+                    ignore_import,
+                )
+            }
             ModuleOrUniformRoot::ModuleAndExternPrelude(module) => self.resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::ModuleAndExternPrelude(ns, module),
@@ -962,7 +989,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
             ModuleOrUniformRoot::CurrentScope => {
                 if ns == TypeNS {
-                    if ident.name == kw::Crate || ident.name == kw::DollarCrate {
+                    if ident.name == kw::SelfLower {
+                        let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
+                        let module = self.resolve_self(&mut ctxt, parent_scope.module);
+                        return Ok(module.self_decl.unwrap());
+                    }
+                    if ident.name == kw::Super
+                        && let Some(module) =
+                            self.resolve_super_in_module(ident, None, parent_scope)
+                    {
+                        return Ok(module.self_decl.unwrap());
+                    }
+                    if ident.name == kw::Crate
+                        || ident.name == kw::DollarCrate
+                        || self.path_root_is_crate_root(ident)
+                    {
                         let module = self.resolve_crate_root(ident);
                         return Ok(module.self_decl.unwrap());
                     } else if ident.name == kw::Super || ident.name == kw::SelfLower {
@@ -1736,19 +1777,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             if ns == TypeNS {
                 if allow_super && name == kw::Super {
-                    let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
-                    let self_module = match segment_idx {
-                        0 => Some(self.resolve_self(&mut ctxt, parent_scope.module)),
-                        _ => match module {
-                            Some(ModuleOrUniformRoot::Module(module)) => Some(module),
-                            _ => None,
-                        },
+                    let parent = if segment_idx == 0 {
+                        self.resolve_super_in_module(ident, None, parent_scope)
+                    } else if let Some(ModuleOrUniformRoot::Module(module)) = module {
+                        self.resolve_super_in_module(ident, Some(module), parent_scope)
+                    } else {
+                        None
                     };
-                    if let Some(self_module) = self_module
-                        && let Some(parent) = self_module.parent
-                    {
-                        module =
-                            Some(ModuleOrUniformRoot::Module(self.resolve_self(&mut ctxt, parent)));
+                    if let Some(parent) = parent {
+                        module = Some(ModuleOrUniformRoot::Module(parent));
                         continue;
                     }
                     return PathResult::failed(

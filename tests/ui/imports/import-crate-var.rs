@@ -4,5 +4,5 @@
 
 fn main() {
     m!();
-    //~^ ERROR `$crate` may not be imported
+    //~^ ERROR imports need to be explicitly named
 }
