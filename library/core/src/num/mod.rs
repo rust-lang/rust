@@ -42,6 +42,8 @@ mod int_macros; // import int_impl!
 mod uint_macros; // import uint_impl!
 
 mod error;
+#[cfg(not(no_fp_fmt_parse))]
+mod float_parse;
 mod nonzero;
 mod saturating;
 mod wrapping;
@@ -58,7 +60,7 @@ pub use error::ParseIntError;
 pub use error::TryFromIntError;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(no_fp_fmt_parse))]
-pub use imp::dec2flt::ParseFloatError;
+pub use float_parse::ParseFloatError;
 #[stable(feature = "generic_nonzero", since = "1.79.0")]
 pub use nonzero::NonZero;
 #[unstable(
