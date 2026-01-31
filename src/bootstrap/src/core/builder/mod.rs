@@ -274,7 +274,7 @@ impl RunConfig<'_> {
     /// Normally, people will pass *just* `library` if they pass it.
     /// But it's possible (although strange) to pass something like `library std core`.
     /// Build all crates anyway, as if they hadn't passed the other args.
-    pub fn make_run_crates(&self, alias: Alias) -> Vec<String> {
+    pub fn expand_alias(&self, alias: Alias) -> Vec<String> {
         let has_alias =
             self.paths.iter().any(|set| set.assert_single_path().path.ends_with(alias.as_str()));
         if !has_alias {

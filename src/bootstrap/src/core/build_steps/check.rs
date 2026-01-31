@@ -330,7 +330,7 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = run.make_run_crates(Alias::Compiler);
+        let crates = run.expand_alias(Alias::Compiler);
         run.builder.ensure(Rustc::new(run.builder, run.target, crates));
     }
 
