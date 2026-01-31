@@ -4,6 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BlockCheckMode, Body, ExprKind, FnDecl, ImplicitSelfKind, UnsafeSource};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty;
 use rustc_span::Span;
 

@@ -6,6 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, RustcVersion, StabilityLevel, StableSince, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::{CrateNum, DefId};

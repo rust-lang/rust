@@ -12,6 +12,7 @@ use rustc_session::lint::{FutureIncompatibilityReason, Level, Lint, LintExpectat
 use rustc_span::{DUMMY_SP, Span, Symbol, kw};
 use tracing::instrument;
 
+use crate::queries::Queries;
 use crate::ty::TyCtxt;
 
 /// How a lint level was set.

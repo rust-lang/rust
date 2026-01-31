@@ -7,6 +7,7 @@ use rustc_ast::ImplPolarity;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{FieldDef, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;

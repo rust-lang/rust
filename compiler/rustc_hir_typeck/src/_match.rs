@@ -4,6 +4,7 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, ExprKind, HirId, PatKind};
 use rustc_hir_pretty::ty_to_string;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, sym};
 use rustc_trait_selection::traits::{

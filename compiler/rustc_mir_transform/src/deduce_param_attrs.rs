@@ -14,6 +14,7 @@ use rustc_index::IndexVec;
 use rustc_middle::middle::deduced_param_attrs::{DeducedParamAttrs, UsageSummary};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 

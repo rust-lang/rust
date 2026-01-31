@@ -5,6 +5,7 @@ use rustc_data_structures::fx::IndexEntry;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, RegionVid, Ty};
 use rustc_middle::{bug, span_bug};

@@ -39,6 +39,7 @@ use std::sync::{Arc, Weak};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Diag, DiagMessage};
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 pub(crate) use rustc_resolve::rustdoc::main_body_opts;
 use rustc_resolve::rustdoc::may_be_doc_link;

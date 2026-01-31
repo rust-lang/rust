@@ -8,6 +8,7 @@ use rustc_infer::traits::{
     Selection, SelectionError, SelectionResult, TraitObligation,
 };
 use rustc_macros::extension;
+use rustc_middle::queries::Queries;
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use thin_vec::thin_vec;

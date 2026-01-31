@@ -5,6 +5,7 @@ use std::fmt::Write;
 use cranelift_codegen::isa::CallConv;
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::LangItem;
+use rustc_middle::queries::Queries;
 use rustc_span::sym;
 use rustc_target::asm::*;
 use rustc_target::spec::Arch;

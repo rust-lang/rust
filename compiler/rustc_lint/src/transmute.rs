@@ -4,6 +4,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir};
 use rustc_macros::LintDiagnostic;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::sym;

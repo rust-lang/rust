@@ -1,3 +1,4 @@
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::query::{DropckOutlivesResult, NoSolution};
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_span::Span;

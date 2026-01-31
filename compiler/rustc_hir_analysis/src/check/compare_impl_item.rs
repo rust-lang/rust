@@ -12,6 +12,7 @@ use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, find_attr, intravisit};
 use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty, TyCtxt, TypeFoldable,

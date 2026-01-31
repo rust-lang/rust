@@ -3,6 +3,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{find_attr, intravisit};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 

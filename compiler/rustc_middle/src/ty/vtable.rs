@@ -7,6 +7,7 @@ use rustc_type_ir::elaborate;
 use crate::mir::interpret::{
     AllocId, AllocInit, Allocation, CTFE_ALLOC_SALT, Pointer, Scalar, alloc_range,
 };
+use crate::queries::Queries;
 use crate::ty::{self, Instance, TraitRef, Ty, TyCtxt};
 
 #[derive(Clone, Copy, PartialEq, HashStable)]

@@ -5,6 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, ClauseKind, GenericParamDefKind, ParamEnv, TraitPredicate, Ty, TyCtxt, Upcast};
 use rustc_span::{Span, sym};
 

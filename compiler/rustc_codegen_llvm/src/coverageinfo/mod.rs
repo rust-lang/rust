@@ -6,6 +6,7 @@ use rustc_codegen_ssa::traits::{
 };
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::coverage::CoverageKind;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::Instance;
 use tracing::{debug, instrument};
 

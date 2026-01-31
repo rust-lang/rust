@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{Attribute, HirIdSet};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::AssocKind;
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;

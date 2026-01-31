@@ -7,6 +7,7 @@ use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn, walk_item};
 use rustc_hir::{self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, HirId, Item, UnsafeSource};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, sym};
 

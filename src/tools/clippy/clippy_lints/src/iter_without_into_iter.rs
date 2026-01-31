@@ -6,6 +6,7 @@ use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir::{FnRetTy, ImplItemKind, ImplicitSelfKind, ItemKind, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
 

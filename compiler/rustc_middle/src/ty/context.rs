@@ -67,6 +67,7 @@ use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
+use crate::queries::Queries;
 use crate::query::plumbing::QuerySystem;
 use crate::query::{IntoQueryParam, LocalCrate, Providers, TyCtxtAt};
 use crate::thir::Thir;
@@ -212,13 +213,13 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type GenericsOf = &'tcx ty::Generics;
 
     fn generics_of(self, def_id: DefId) -> &'tcx ty::Generics {
-        self.generics_of(def_id)
+        self.query().generics_of(def_id)
     }
 
     type VariancesOf = &'tcx [ty::Variance];
 
     fn variances_of(self, def_id: DefId) -> Self::VariancesOf {
-        self.variances_of(def_id)
+        self.query().variances_of(def_id)
     }
 
     fn opt_alias_variances(
@@ -230,18 +231,18 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn type_of(self, def_id: DefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
-        self.type_of(def_id)
+        self.query().type_of(def_id)
     }
     fn type_of_opaque_hir_typeck(self, def_id: LocalDefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
-        self.type_of_opaque_hir_typeck(def_id)
+        self.query().type_of_opaque_hir_typeck(def_id)
     }
     fn const_of_item(self, def_id: DefId) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
-        self.const_of_item(def_id)
+        self.query().const_of_item(def_id)
     }
 
     type AdtDef = ty::AdtDef<'tcx>;
     fn adt_def(self, adt_def_id: DefId) -> Self::AdtDef {
-        self.adt_def(adt_def_id)
+        self.query().adt_def(adt_def_id)
     }
 
     fn alias_ty_kind(self, alias: ty::AliasTy<'tcx>) -> ty::AliasTyKind {
@@ -366,11 +367,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, ty::CoroutineWitnessTypes<TyCtxt<'tcx>>>> {
-        self.coroutine_hidden_types(def_id)
+        self.query().coroutine_hidden_types(def_id)
     }
 
     fn fn_sig(self, def_id: DefId) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
-        self.fn_sig(def_id)
+        self.query().fn_sig(def_id)
     }
 
     fn coroutine_movability(self, def_id: DefId) -> rustc_ast::Movability {
@@ -378,32 +379,32 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn coroutine_for_closure(self, def_id: DefId) -> DefId {
-        self.coroutine_for_closure(def_id)
+        self.query().coroutine_for_closure(def_id)
     }
 
     fn generics_require_sized_self(self, def_id: DefId) -> bool {
-        self.generics_require_sized_self(def_id)
+        self.query().generics_require_sized_self(def_id)
     }
 
     fn item_bounds(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
-        self.item_bounds(def_id).map_bound(IntoIterator::into_iter)
+        self.query().item_bounds(def_id).map_bound(IntoIterator::into_iter)
     }
 
     fn item_self_bounds(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
-        self.item_self_bounds(def_id).map_bound(IntoIterator::into_iter)
+        self.query().item_self_bounds(def_id).map_bound(IntoIterator::into_iter)
     }
 
     fn item_non_self_bounds(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
-        self.item_non_self_bounds(def_id).map_bound(IntoIterator::into_iter)
+        self.query().item_non_self_bounds(def_id).map_bound(IntoIterator::into_iter)
     }
 
     fn predicates_of(
@@ -411,7 +412,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
         ty::EarlyBinder::bind(
-            self.predicates_of(def_id).instantiate_identity(self).predicates.into_iter(),
+            self.query().predicates_of(def_id).instantiate_identity(self).predicates.into_iter(),
         )
     }
 
@@ -420,7 +421,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
         ty::EarlyBinder::bind(
-            self.predicates_of(def_id).instantiate_own_identity().map(|(clause, _)| clause),
+            self.query().predicates_of(def_id).instantiate_own_identity().map(|(clause, _)| clause),
         )
     }
 
@@ -428,21 +429,25 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
-        self.explicit_super_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
+        self.query()
+            .explicit_super_predicates_of(def_id)
+            .map_bound(|preds| preds.into_iter().copied())
     }
 
     fn explicit_implied_predicates_of(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
-        self.explicit_implied_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
+        self.query()
+            .explicit_implied_predicates_of(def_id)
+            .map_bound(|preds| preds.into_iter().copied())
     }
 
     fn impl_super_outlives(
         self,
         impl_def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
-        self.impl_super_outlives(impl_def_id)
+        self.query().impl_super_outlives(impl_def_id)
     }
 
     fn impl_is_const(self, def_id: DefId) -> bool {
@@ -468,7 +473,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Binder<'tcx, ty::TraitRef<'tcx>>>> {
         ty::EarlyBinder::bind(
-            self.const_conditions(def_id).instantiate_identity(self).into_iter().map(|(c, _)| c),
+            self.query()
+                .const_conditions(def_id)
+                .instantiate_identity(self)
+                .into_iter()
+                .map(|(c, _)| c),
         )
     }
 
@@ -477,12 +486,15 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Binder<'tcx, ty::TraitRef<'tcx>>>> {
         ty::EarlyBinder::bind(
-            self.explicit_implied_const_bounds(def_id).iter_identity_copied().map(|(c, _)| c),
+            self.query()
+                .explicit_implied_const_bounds(def_id)
+                .iter_identity_copied()
+                .map(|(c, _)| c),
         )
     }
 
     fn impl_self_is_guaranteed_unsized(self, impl_def_id: DefId) -> bool {
-        self.impl_self_is_guaranteed_unsized(impl_def_id)
+        self.query().impl_self_is_guaranteed_unsized(impl_def_id)
     }
 
     fn has_target_features(self, def_id: DefId) -> bool {
@@ -732,7 +744,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type UnsizingParams = &'tcx rustc_index::bit_set::DenseBitSet<u32>;
     fn unsizing_params_for_adt(self, adt_def_id: DefId) -> Self::UnsizingParams {
-        self.unsizing_params_for_adt(adt_def_id)
+        self.query().unsizing_params_for_adt(adt_def_id)
     }
 
     fn anonymize_bound_vars<T: TypeFoldable<TyCtxt<'tcx>>>(
@@ -743,7 +755,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn opaque_types_defined_by(self, defining_anchor: LocalDefId) -> Self::LocalDefIds {
-        self.opaque_types_defined_by(defining_anchor)
+        self.query().opaque_types_defined_by(defining_anchor)
     }
 
     fn opaque_types_and_coroutines_defined_by(
@@ -755,7 +767,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             .iter()
             .filter(|def_id| self.is_coroutine(def_id.to_def_id()));
         self.mk_local_def_ids_from_iter(
-            self.opaque_types_defined_by(defining_anchor).iter().chain(coroutines_defined_by),
+            self.query()
+                .opaque_types_defined_by(defining_anchor)
+                .iter()
+                .chain(coroutines_defined_by),
         )
     }
 
@@ -767,7 +782,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         canonical_goal: CanonicalInput<'tcx>,
     ) -> (QueryResult<'tcx>, &'tcx inspect::Probe<TyCtxt<'tcx>>) {
-        self.evaluate_root_goal_for_proof_tree_raw(canonical_goal)
+        self.query().evaluate_root_goal_for_proof_tree_raw(canonical_goal)
     }
 
     fn item_name(self, id: DefId) -> Symbol {
@@ -1859,7 +1874,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[track_caller]
     pub fn ty_ordering_enum(self, span: Span) -> Ty<'tcx> {
         let ordering_enum = self.require_lang_item(hir::LangItem::OrderingEnum, span);
-        self.type_of(ordering_enum).no_bound_vars().unwrap()
+        self.query().type_of(ordering_enum).no_bound_vars().unwrap()
     }
 
     /// Obtain the given diagnostic item's `DefId`. Use `is_diagnostic_item` if you just want to
@@ -2390,7 +2405,8 @@ impl<'tcx> TyCtxt<'tcx> {
         Ty::new_imm_ref(
             self,
             self.lifetimes.re_static,
-            self.type_of(self.require_lang_item(LangItem::PanicLocation, DUMMY_SP))
+            self.query()
+                .type_of(self.require_lang_item(LangItem::PanicLocation, DUMMY_SP))
                 .instantiate(self, self.mk_args(&[self.lifetimes.re_static.into()])),
         )
     }
@@ -2913,7 +2929,7 @@ impl<'tcx> TyCtxt<'tcx> {
         args: &'tcx [ty::GenericArg<'tcx>],
         nested: bool,
     ) -> bool {
-        let generics = self.generics_of(def_id);
+        let generics = self.query().generics_of(def_id);
 
         // IATs themselves have a weird arg setup (self + own args), but nested items *in* IATs
         // (namely: opaques, i.e. ATPITs) do not.
@@ -2972,7 +2988,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     // Make `[Self, GAT_ARGS...]` (this could be simplified)
                     self.mk_args_from_iter(
                         [self.types.self_param.into()].into_iter().chain(
-                            self.generics_of(def_id)
+                            self.query()
+                                .generics_of(def_id)
                                 .own_args(ty::GenericArgs::identity_for_item(self, def_id))
                                 .iter()
                                 .copied()
@@ -3412,7 +3429,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         continue;
                     }
 
-                    let generics = self.generics_of(new_parent);
+                    let generics = self.query().generics_of(new_parent);
                     return ty::Region::new_early_param(
                         self,
                         ty::EarlyParamRegion {
@@ -3522,7 +3539,8 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn needs_coroutine_by_move_body_def_id(self, def_id: DefId) -> bool {
         if let Some(hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure)) =
             self.coroutine_kind(def_id)
-            && let ty::Coroutine(_, args) = self.type_of(def_id).instantiate_identity().kind()
+            && let ty::Coroutine(_, args) =
+                self.query().type_of(def_id).instantiate_identity().kind()
             && args.as_coroutine().kind_ty().to_opt_closure_kind() != Some(ty::ClosureKind::FnOnce)
         {
             true

@@ -2,6 +2,7 @@ use rustc_abi::{BackendRepr, ExternAbi, Float, Integer, Primitive, Scalar};
 use rustc_errors::{DiagCtxtHandle, E0781, struct_span_code_err};
 use rustc_hir::{self as hir, HirId};
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;

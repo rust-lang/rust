@@ -9,6 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::hir_id::HirId;
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::Binder;
 use rustc_span::Symbol;
 

@@ -5,6 +5,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::sym;
 
 use crate::error::StrictCoherenceNeedsNegativeCoherence;
+use crate::queries::Queries;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::{self, TyCtxt, TypeVisitableExt};
 

@@ -24,6 +24,7 @@ use super::{
     AsyncDestructor, Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr,
 };
 use crate::mir::interpret::ErrorHandled;
+use crate::queries::Queries;
 use crate::ty;
 use crate::ty::util::{Discr, IntTypeExt};
 

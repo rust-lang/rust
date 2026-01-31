@@ -12,6 +12,7 @@ use rustc_hir::attrs::{AttributeKind, InlineAttr};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingMode, Body, FnDecl, Impl, ItemKind, MutTy, Mutability, Node, PatKind, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, BoundVarIndexKind, RegionKind, TyCtxt};

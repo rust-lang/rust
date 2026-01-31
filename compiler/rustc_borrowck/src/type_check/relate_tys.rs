@@ -8,6 +8,7 @@ use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_infer::traits::Obligation;
 use rustc_infer::traits::solve::Goal;
 use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::relate::combine::{combine_ty_args, super_combine_consts, super_combine_tys};

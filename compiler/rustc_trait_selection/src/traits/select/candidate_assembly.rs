@@ -13,6 +13,7 @@ use hir::def_id::DefId;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, SizedTraitKind, Ty, TypeVisitableExt, TypingMode, elaborate};
 use rustc_middle::{bug, span_bug};

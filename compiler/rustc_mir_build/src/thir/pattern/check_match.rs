@@ -10,6 +10,7 @@ use rustc_hir::{self as hir, BindingMode, ByRef, HirId, MatchSource};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::Level;
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;

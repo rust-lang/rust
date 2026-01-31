@@ -1,6 +1,7 @@
 use clippy_utils::res::MaybeResPath;
 use rustc_hir::{self as hir, HirId, HirIdSet, intravisit};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty;
 use rustc_span::def_id::LocalDefId;
 

@@ -23,6 +23,7 @@ use ty::util::IntTypeExt;
 
 use super::GenericParamDefKind;
 use crate::infer::canonical::Canonical;
+use crate::queries::Queries;
 use crate::traits::ObligationCause;
 use crate::ty::InferTy::*;
 use crate::ty::{

@@ -8,6 +8,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{PlaceContext, VisitPlacesWith, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{MaybeStorageDead, MaybeStorageLive, always_storage_live_locals};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};

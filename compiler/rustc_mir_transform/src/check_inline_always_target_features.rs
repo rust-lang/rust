@@ -1,6 +1,7 @@
 use rustc_hir::attrs::InlineAttr;
 use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
 use rustc_middle::mir::{Body, TerminatorKind};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt};
 
 use crate::pass_manager::MirLint;

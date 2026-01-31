@@ -12,6 +12,7 @@ use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
 use rustc_hir::intravisit::{Visitor, walk_body, walk_item};
 use rustc_hir::{Node, find_attr};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};

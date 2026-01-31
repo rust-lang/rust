@@ -3,6 +3,7 @@ use clippy_utils::sym;
 use rustc_errors::MultiSpan;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::AssocTag;
 use rustc_session::declare_lint_pass;
 

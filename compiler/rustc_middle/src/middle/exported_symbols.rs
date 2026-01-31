@@ -1,6 +1,7 @@
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_macros::{Decodable, Encodable, HashStable, TyDecodable, TyEncodable};
 
+use crate::queries::Queries;
 use crate::ty::{self, GenericArgsRef, Ty, TyCtxt};
 
 /// The SymbolExportLevel of a symbols specifies from which kinds of crates

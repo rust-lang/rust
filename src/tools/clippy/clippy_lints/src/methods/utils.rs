@@ -4,6 +4,7 @@ use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, Mutability, Pat, QPath, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_span::symbol::sym;

@@ -17,6 +17,7 @@ use rustc_hir::*;
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{ErrorGuaranteed, ExpnId, Span};
 
+use crate::queries::Queries;
 use crate::query::Providers;
 use crate::ty::TyCtxt;
 

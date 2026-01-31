@@ -6,6 +6,7 @@ use rustc_codegen_ssa::traits::{
 };
 use rustc_middle::mir::Mutability;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, PointerArithmetic, Scalar};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::LayoutOf;
 
 use crate::context::CodegenCx;

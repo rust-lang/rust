@@ -4,6 +4,7 @@ use clippy_utils::source::snippet_with_context;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 
 use super::STABLE_SORT_PRIMITIVE;
 

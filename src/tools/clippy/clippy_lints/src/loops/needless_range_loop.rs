@@ -12,6 +12,7 @@ use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, BorrowKind, Closure, Expr, ExprKind, HirId, Mutability, Pat, PatKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::middle::region;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{Symbol, sym};
 use std::{iter, mem};

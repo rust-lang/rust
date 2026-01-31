@@ -2,6 +2,7 @@ use std::fmt;
 use std::ops::Range;
 
 use errors::*;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::print::TraitRefPrintSugared;
 use rustc_middle::ty::{GenericParamDefKind, TyCtxt};
 use rustc_parse_format::{

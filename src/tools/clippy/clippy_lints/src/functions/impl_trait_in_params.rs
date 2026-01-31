@@ -5,6 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, GenericParam, Generics, HirId, ImplItem, ImplItemKind, TraitItem, TraitItemKind};
+use rustc_middle::queries::Queries;
 use rustc_lint::LateContext;
 
 use super::IMPL_TRAIT_IN_PARAMS;

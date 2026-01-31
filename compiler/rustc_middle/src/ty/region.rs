@@ -7,6 +7,7 @@ use rustc_type_ir::RegionKind as IrRegionKind;
 pub use rustc_type_ir::RegionVid;
 use tracing::debug;
 
+use crate::queries::Queries;
 use crate::ty::{self, BoundVar, TyCtxt, TypeFlags};
 
 pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;

@@ -10,6 +10,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, Constness, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 

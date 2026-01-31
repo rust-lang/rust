@@ -11,6 +11,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
 use rustc_index::{Idx as _, IndexVec};
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::layout::{

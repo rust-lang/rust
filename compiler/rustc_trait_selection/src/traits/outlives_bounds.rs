@@ -3,6 +3,7 @@ use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
 use rustc_macros::extension;
 use rustc_middle::infer::canonical::{OriginalQueryValues, QueryRegionConstraints};
+use rustc_middle::queries::Queries;
 pub use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, ParamEnv, Ty, TypeFolder, TypeVisitableExt};
 use rustc_span::def_id::LocalDefId;

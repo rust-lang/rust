@@ -6,6 +6,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{Expr, ExprKind, HirId, Node};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 

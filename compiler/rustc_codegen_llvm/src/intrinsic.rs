@@ -16,6 +16,7 @@ use rustc_data_structures::assert_matches;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir};
 use rustc_middle::mir::BinOp;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
 use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};

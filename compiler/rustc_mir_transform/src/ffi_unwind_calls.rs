@@ -2,6 +2,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::InlineAsmOptions;
 use rustc_hir::def_id::{LOCAL_CRATE, LocalDefId};
 use rustc_middle::mir::*;
+use rustc_middle::queries::Queries;
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::{self, TyCtxt, layout};
 use rustc_middle::{bug, span_bug};

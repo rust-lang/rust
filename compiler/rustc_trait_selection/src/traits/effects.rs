@@ -4,6 +4,7 @@ use rustc_infer::traits::{
     ImplDerivedHostCause, ImplSource, Obligation, ObligationCause, ObligationCauseCode,
     PredicateObligation,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::span_bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::elaborate::elaborate;

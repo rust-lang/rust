@@ -1,6 +1,7 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_infer::traits::util;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{
     self, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
     Upcast, shift_vars,

@@ -1,6 +1,7 @@
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Representability, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;

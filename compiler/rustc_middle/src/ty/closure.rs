@@ -12,6 +12,7 @@ use super::TyCtxt;
 use crate::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
 };
+use crate::queries::Queries;
 use crate::query::Providers;
 use crate::{mir, ty};
 

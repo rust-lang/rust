@@ -13,6 +13,7 @@ use rustc_middle::mir::coverage::{
     BasicCoverageBlock, CounterId, CovTerm, CoverageIdsInfo, Expression, ExpressionId,
     FunctionCoverageInfo, Mapping, MappingKind, Op,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_span::{SourceFile, Span};
 use rustc_target::spec::HasTargetSpec;

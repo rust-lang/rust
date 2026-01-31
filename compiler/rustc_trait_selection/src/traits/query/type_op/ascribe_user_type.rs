@@ -1,5 +1,6 @@
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::traits::Obligation;
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::query::NoSolution;
 pub use rustc_middle::traits::query::type_op::AscribeUserType;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};

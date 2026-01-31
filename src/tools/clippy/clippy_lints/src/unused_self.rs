@@ -4,6 +4,7 @@ use clippy_utils::usage::is_todo_unimplemented_stub;
 use clippy_utils::visitors::is_local_used;
 use rustc_hir::{Impl, ImplItem, ImplItemKind, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {

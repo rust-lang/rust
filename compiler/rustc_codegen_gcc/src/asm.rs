@@ -11,6 +11,7 @@ use rustc_codegen_ssa::traits::{
     GlobalAsmOperandRef, InlineAsmOperandRef,
 };
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::Instance;
 use rustc_span::Span;
 use rustc_target::asm::*;

@@ -91,6 +91,7 @@ use rustc_hir::{
     find_attr, {self as hir},
 };
 use rustc_middle::mir::interpret::GlobalId;
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{Const, Ty, TyCtxt};
 use rustc_middle::{middle, ty};

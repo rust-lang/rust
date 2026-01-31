@@ -25,6 +25,7 @@ use tracing::{debug, instrument};
 use super::TypingEnv;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
+use crate::queries::Queries;
 use crate::query::Providers;
 use crate::traits::ObligationCause;
 use crate::ty::layout::{FloatExt, IntegerExt};

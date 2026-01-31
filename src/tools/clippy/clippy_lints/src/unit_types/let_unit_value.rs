@@ -9,6 +9,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_body, walk_expr};
 use rustc_hir::{Expr, ExprKind, HirId, HirIdSet, LetStmt, MatchSource, Node, PatKind, QPath, TyKind};
 use rustc_lint::{LateContext, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty;
 use rustc_span::Span;
 

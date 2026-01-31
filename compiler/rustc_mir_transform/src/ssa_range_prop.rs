@@ -16,6 +16,7 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{BasicBlock, Body, Location, Operand, Place, TerminatorKind, *};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{TyCtxt, TypingEnv};
 use rustc_span::DUMMY_SP;
 

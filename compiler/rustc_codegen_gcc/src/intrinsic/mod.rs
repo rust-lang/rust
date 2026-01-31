@@ -23,6 +23,7 @@ use rustc_codegen_ssa::traits::{
     IntrinsicCallBuilderMethods, LayoutTypeCodegenMethods,
 };
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{Span, Symbol, sym};

@@ -14,6 +14,7 @@ use std::fmt;
 use rustc_arena::DroplessArena;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt};
 use tracing::debug;
 

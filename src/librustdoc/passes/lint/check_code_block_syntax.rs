@@ -8,6 +8,7 @@ use rustc_errors::emitter::Emitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::translation::{Translator, to_fluent_args};
 use rustc_errors::{Applicability, DiagCtxt, DiagInner};
+use rustc_middle::queries::Queries;
 use rustc_parse::{source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 use rustc_session::parse::ParseSess;

@@ -4,6 +4,7 @@ use rustc_errors::{
     MultiSpan, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty};
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::rustc::RustcPatCtxt;

@@ -8,6 +8,7 @@ use super::{
     ErrorHandled, EvalToAllocationRawResult, EvalToConstValueResult, GlobalId, ReportedErrorInfo,
 };
 use crate::mir::interpret::ValTreeCreationError;
+use crate::queries::Queries;
 use crate::ty::{self, ConstToValTreeResult, GenericArgs, TyCtxt, TypeVisitableExt};
 use crate::{error, mir};
 

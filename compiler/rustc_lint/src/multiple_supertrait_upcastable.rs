@@ -1,4 +1,5 @@
 use rustc_hir as hir;
+use rustc_middle::queries::Queries;
 use rustc_session::{declare_lint, declare_lint_pass};
 
 use crate::{LateContext, LateLintPass, LintContext};

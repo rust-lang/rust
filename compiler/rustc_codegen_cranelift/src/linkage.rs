@@ -1,5 +1,6 @@
 use rustc_hir::attrs::Linkage as RLinkage;
 use rustc_middle::mir::mono::{MonoItem, Visibility};
+use rustc_middle::queries::Queries;
 
 use crate::prelude::*;
 

@@ -6,6 +6,7 @@ use rustc_ast::Recovered;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic, SuggestionStyle};
 use rustc_hir::{self as hir, HirIdSet};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::significant_drop_order::{
     extract_component_with_significant_dtor, ty_dtor_span,

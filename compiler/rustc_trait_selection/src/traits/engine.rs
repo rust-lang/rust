@@ -12,6 +12,7 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk, RegionResolution
 use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::Relate;

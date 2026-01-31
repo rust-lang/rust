@@ -6,6 +6,7 @@ use clippy_utils::{paths, sym};
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;

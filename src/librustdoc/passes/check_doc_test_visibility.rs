@@ -7,6 +7,7 @@
 
 use rustc_hir as hir;
 use rustc_middle::lint::{LevelAndSource, LintLevelSource};
+use rustc_middle::queries::Queries;
 use rustc_session::lint;
 use tracing::debug;
 

@@ -7,6 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::middle::region::{self, TempLifetime};
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
+use rustc_middle::queries::Queries;
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::{CastTy, mir_cast_kind};

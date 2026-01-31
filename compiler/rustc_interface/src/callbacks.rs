@@ -13,6 +13,7 @@ use std::fmt;
 
 use rustc_errors::{DiagInner, TRACK_DIAGNOSTIC};
 use rustc_middle::dep_graph::{DepNodeExt, TaskDepsRef};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::tls;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::dep_graph::dep_node::default_dep_kind_debug;

@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::attrs::{AttributeKind, ReprAttr};
 use rustc_hir::{HirId, Item, ItemKind, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, FieldDef};
 use rustc_session::declare_lint_pass;

@@ -5,6 +5,7 @@
 //! closure.
 
 use rustc_codegen_ssa::common;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_target::spec::{Arch, Env};

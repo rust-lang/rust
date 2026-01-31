@@ -8,6 +8,7 @@ use rustc_infer::traits::{
     FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine,
 };
 use rustc_macros::extension;
+use rustc_middle::queries::Queries;
 use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{

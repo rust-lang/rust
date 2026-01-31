@@ -16,6 +16,7 @@ use rustc_middle::dep_graph::{
     self, DepContext, DepKind, DepKindVTable, DepNode, DepNodeIndex, SerializedDepNodeIndex,
     dep_kinds,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Key;
 use rustc_middle::query::on_disk_cache::{
     AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,

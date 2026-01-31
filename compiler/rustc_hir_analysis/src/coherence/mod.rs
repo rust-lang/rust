@@ -9,6 +9,7 @@ use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, elaborate};
 use rustc_session::parse::feature_err;

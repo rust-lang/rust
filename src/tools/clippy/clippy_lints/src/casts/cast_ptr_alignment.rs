@@ -3,6 +3,7 @@ use clippy_utils::ty::is_c_void;
 use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, sym};
 use rustc_hir::{Expr, ExprKind, GenericArg};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty};
 

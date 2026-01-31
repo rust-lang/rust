@@ -17,6 +17,7 @@ use rustc_hir::{
 };
 use rustc_hir_analysis::autoderef::report_autoderef_recursion_limit_error;
 use rustc_infer::infer::RegionVariableOrigin;
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::{self, Pinnedness, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};

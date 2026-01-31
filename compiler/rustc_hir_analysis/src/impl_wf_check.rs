@@ -15,6 +15,7 @@ use rustc_errors::Applicability;
 use rustc_errors::codes::*;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, kw};
 

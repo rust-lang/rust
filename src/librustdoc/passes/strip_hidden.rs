@@ -5,6 +5,7 @@ use std::mem;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::find_attr;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 

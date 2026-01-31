@@ -2,6 +2,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TypingMode, Upcast};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;

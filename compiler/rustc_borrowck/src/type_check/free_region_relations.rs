@@ -7,6 +7,7 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::traits::query::type_op::DeeplyNormalize;
 use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, RegionVid, Ty, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, Span};

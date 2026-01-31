@@ -24,6 +24,7 @@ use rustc_hir::{
 };
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_middle::middle::privacy::Level;
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::{

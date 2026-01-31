@@ -17,6 +17,7 @@ use rustc_middle::mir::{
     Terminator, TerminatorKind,
 };
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ObligationCause};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, GenericArgKind, Instance, TraitRef, Ty, TyCtxt};
 use rustc_span::Span;

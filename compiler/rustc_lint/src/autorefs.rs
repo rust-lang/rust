@@ -1,6 +1,7 @@
 use rustc_ast::{BorrowKind, UnOp};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{Expr, ExprKind, Mutability, find_attr};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, DerefAdjustKind, OverloadedDeref,
 };

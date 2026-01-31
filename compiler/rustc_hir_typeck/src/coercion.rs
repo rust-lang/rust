@@ -48,6 +48,7 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferOk, InferResult, RegionVariable
 use rustc_infer::traits::{
     MatchExpressionArmCause, Obligation, PredicateObligation, PredicateObligations, SelectionError,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,

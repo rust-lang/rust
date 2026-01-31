@@ -11,6 +11,7 @@ use rustc_hir::{
     TraitItem, Ty,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::{ExpnId, MacroKind, Span};

@@ -18,6 +18,7 @@ use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 
 pub use self::StabilityLevel::*;
+use crate::queries::Queries;
 use crate::ty::TyCtxt;
 use crate::ty::print::with_no_trimmed_paths;
 

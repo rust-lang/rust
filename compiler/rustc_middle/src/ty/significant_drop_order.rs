@@ -5,6 +5,7 @@ use rustc_span::Span;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
+use crate::queries::Queries;
 use crate::ty::{self, Ty, TyCtxt};
 
 /// An additional filter to exclude well-known types from the ecosystem

@@ -120,7 +120,7 @@ use crate::mir::mono::{
     CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions, NormalizationErrorInMono,
 };
 use crate::query::plumbing::{
-    CyclePlaceholder, IntoQueryParam, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk,
+    CyclePlaceholder, ExplicitQuery, IntoQueryParam, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk,
 };
 use crate::query::{AsLocalKey, describe_as_module};
 use crate::traits::query::{

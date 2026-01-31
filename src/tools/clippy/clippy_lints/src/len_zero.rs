@@ -11,6 +11,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PatExprKind, PatKind, RustcVersion, StabilityLevel, StableSince};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;

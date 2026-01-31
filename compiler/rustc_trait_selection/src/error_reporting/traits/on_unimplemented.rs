@@ -10,6 +10,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{AttrArgs, Attribute};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, GenericArgsRef, GenericParamDef, GenericParamDefKind, TyCtxt};
 use rustc_session::lint::builtin::{

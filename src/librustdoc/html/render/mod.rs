@@ -57,6 +57,7 @@ use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{ConstStability, Mutability, RustcVersion, StabilityLevel, StableSince};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{Symbol, sym};

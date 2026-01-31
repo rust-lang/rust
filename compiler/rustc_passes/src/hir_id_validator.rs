@@ -4,6 +4,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{HirId, ItemLocalId, intravisit};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 
 pub fn check_crate(tcx: TyCtxt<'_>) {

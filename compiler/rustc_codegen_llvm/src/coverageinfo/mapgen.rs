@@ -6,6 +6,7 @@ use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::IndexVec;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{FileName, RemapPathScopeComponents, SourceFile, StableSourceFileId};
 use tracing::debug;

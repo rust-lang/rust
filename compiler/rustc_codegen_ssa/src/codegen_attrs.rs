@@ -13,6 +13,7 @@ use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
 };
 use rustc_middle::mir::mono::Visibility;
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self as ty, TyCtxt};

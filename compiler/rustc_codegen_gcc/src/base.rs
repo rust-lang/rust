@@ -12,6 +12,7 @@ use rustc_hir::attrs::Linkage;
 use rustc_middle::dep_graph;
 #[cfg(feature = "master")]
 use rustc_middle::mir::mono::Visibility;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;

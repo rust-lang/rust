@@ -4,6 +4,7 @@ use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, span_bug};

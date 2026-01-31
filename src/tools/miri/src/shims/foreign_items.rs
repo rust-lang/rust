@@ -10,6 +10,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::AllocInit;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;

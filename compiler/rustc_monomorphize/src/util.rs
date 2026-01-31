@@ -1,6 +1,7 @@
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, ClosureSizeProfileData, Instance, TyCtxt};
 
 /// For a given closure, writes out the data for the profiling the impact of RFC 2229 on

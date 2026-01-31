@@ -9,6 +9,7 @@ use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };

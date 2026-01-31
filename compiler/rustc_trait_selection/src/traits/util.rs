@@ -7,6 +7,7 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::PolyTraitObligation;
 pub use rustc_infer::traits::util::*;
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
     self, PolyTraitPredicate, PredicatePolarity, SizedTraitKind, TraitPredicate, TraitRef, Ty,

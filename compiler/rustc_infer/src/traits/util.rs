@@ -1,4 +1,5 @@
 use rustc_data_structures::fx::FxHashSet;
+use rustc_middle::queries::Queries;
 pub use rustc_middle::ty::elaborate::*;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{Ident, Span};

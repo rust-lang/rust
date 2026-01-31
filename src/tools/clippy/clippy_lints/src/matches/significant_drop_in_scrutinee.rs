@@ -12,6 +12,7 @@ use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{GenericArgKind, RegionKind, Ty, TypeVisitableExt};
 use rustc_span::Span;
 

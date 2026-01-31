@@ -3,6 +3,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, Expr, ImplItem, Item, Node, TraitItem, def, intravisit};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, DefiningScopeKind, EarlyBinder, Ty, TyCtxt, TypeVisitableExt};
 use rustc_trait_selection::opaque_types::report_item_does_not_constrain_error;
 use tracing::{debug, instrument, trace};

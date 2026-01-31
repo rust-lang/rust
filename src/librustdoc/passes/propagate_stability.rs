@@ -8,6 +8,7 @@
 
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_hir::{Stability, StabilityLevel};
+use rustc_middle::queries::Queries;
 
 use crate::clean::{Crate, Item, ItemId, ItemKind};
 use crate::core::DocContext;

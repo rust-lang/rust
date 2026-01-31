@@ -12,6 +12,7 @@
 use rustc_hir::def::DefKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable, TypeVisitableExt, TypeVisitor};

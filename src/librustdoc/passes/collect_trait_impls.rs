@@ -6,6 +6,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty;
 use tracing::debug;
 

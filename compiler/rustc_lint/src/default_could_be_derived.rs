@@ -1,6 +1,7 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::{declare_lint, declare_lint_pass};

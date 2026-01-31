@@ -5,6 +5,7 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, lang_items};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{AssocContainer, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv};
 use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, sym};
 use tracing::debug;

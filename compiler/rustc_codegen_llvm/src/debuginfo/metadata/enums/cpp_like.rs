@@ -7,6 +7,7 @@ use rustc_codegen_ssa::debuginfo::{tag_base_type, wants_c_like_enum_debuginfo};
 use rustc_codegen_ssa::traits::{ConstCodegenMethods, MiscCodegenMethods};
 use rustc_index::IndexVec;
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, CoroutineArgs, CoroutineArgsExt, Ty};
 use smallvec::smallvec;

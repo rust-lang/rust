@@ -13,6 +13,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::{GenericRequirement, extract};
 use rustc_hir::{LangItem, LanguageItems, MethodKind, Target};
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::cstore::ExternCrate;

@@ -12,6 +12,7 @@ use rustc_middle::hir::place::{
 };
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, AssignOp, BinOp, BorrowKind, UnOp};
+use rustc_middle::queries::Queries;
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind, PointerCoercion,

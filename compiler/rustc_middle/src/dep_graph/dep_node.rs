@@ -9,6 +9,7 @@ pub(crate) use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
 use rustc_span::Symbol;
 
 use crate::mir::mono::MonoItem;
+use crate::queries::Queries;
 use crate::ty::TyCtxt;
 
 macro_rules! define_dep_nodes {

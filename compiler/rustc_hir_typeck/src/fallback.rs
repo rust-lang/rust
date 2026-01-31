@@ -10,6 +10,7 @@ use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{InferKind, Visitor};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;

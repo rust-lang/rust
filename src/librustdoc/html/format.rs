@@ -21,6 +21,7 @@ use rustc_hir::def::{DefKind, MacroKinds};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{ConstStability, StabilityLevel, StableSince};
 use rustc_metadata::creader::CStore;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
 use rustc_span::{Symbol, sym};

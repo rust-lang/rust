@@ -20,6 +20,7 @@ mod simd;
 use cranelift_codegen::ir::{
     AtomicRmwOp, BlockArg, ExceptionTableData, ExceptionTableItem, ExceptionTag,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::ty;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::layout::ValidityRequirement;

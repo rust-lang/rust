@@ -12,6 +12,7 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HeaderSafety, Safety};
 use rustc_metadata::rendered_const;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, ty};
 use rustc_span::{Pos, Symbol, kw, sym};

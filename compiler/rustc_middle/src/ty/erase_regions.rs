@@ -1,5 +1,6 @@
 use tracing::debug;
 
+use crate::queries::Queries;
 use crate::query::Providers;
 use crate::ty::{
     self, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,

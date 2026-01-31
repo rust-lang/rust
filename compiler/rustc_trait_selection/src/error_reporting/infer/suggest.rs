@@ -8,6 +8,7 @@ use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::{MatchSource, Node};
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::{MatchExpressionArmCause, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::with_no_trimmed_paths;

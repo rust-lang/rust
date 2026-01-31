@@ -7,6 +7,7 @@ use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_data_structures::assert_matches;
 use rustc_hir::def::Namespace;
 use rustc_middle::mir::interpret::ScalarSizeMismatch;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};

@@ -13,6 +13,7 @@ use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, Pl
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::{FakeReadCause, Mutability};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty;
 use rustc_span::{BytePos, CharPos, Pos, Span, SyntaxContext};
 use std::borrow::Cow;

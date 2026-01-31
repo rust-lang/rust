@@ -10,6 +10,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, HirId, find_attr};
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, TyCtxt};
 

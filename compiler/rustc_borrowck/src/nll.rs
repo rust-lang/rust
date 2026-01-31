@@ -10,6 +10,7 @@ use rustc_data_structures::frozen::Frozen;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::pretty::PrettyPrintMirOptions;
 use rustc_middle::mir::{Body, MirDumper, PassWhere, Promoted};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_dataflow::move_paths::MoveData;

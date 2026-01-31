@@ -9,6 +9,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir};
 use rustc_macros::{Decodable, Encodable};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Encodable};

@@ -2,6 +2,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::attrs::{AttributeKind, EiiDecl, EiiImpl, EiiImplResolution};
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
+use rustc_middle::queries::Queries;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::TyCtxt;
 

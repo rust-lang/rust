@@ -9,6 +9,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
     AllocId, GlobalAlloc, PointerArithmetic, Scalar, read_target_uint,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{ExistentialTraitRef, ScalarInt};
 
 use crate::prelude::*;

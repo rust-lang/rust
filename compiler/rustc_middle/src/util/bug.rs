@@ -6,6 +6,7 @@ use std::panic::{Location, panic_any};
 use rustc_errors::MultiSpan;
 use rustc_span::Span;
 
+use crate::queries::Queries;
 use crate::ty::{TyCtxt, tls};
 
 // This wrapper makes for more compact code at callsites than calling `opt_span_buf_fmt` directly.

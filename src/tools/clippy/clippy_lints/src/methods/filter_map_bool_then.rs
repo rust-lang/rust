@@ -9,6 +9,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId, Param, Pat};
 use rustc_lint::{LateContext, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::Binder;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::{Span, sym};

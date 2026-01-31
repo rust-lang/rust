@@ -10,6 +10,7 @@
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use tracing::{debug, instrument};
 
+use crate::queries::Queries;
 use crate::traits::query::NoSolution;
 use crate::ty::{
     self, EarlyBinder, FallibleTypeFolder, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeFolder,

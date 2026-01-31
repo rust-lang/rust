@@ -15,6 +15,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::DefId;
+use rustc_middle::queries::Queries;
 
 use crate::clean;
 use crate::clean::{GenericArgs as PP, WherePredicate as WP};

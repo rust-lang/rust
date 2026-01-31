@@ -3,6 +3,7 @@ use std::iter;
 use rustc_abi::Integer;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::*;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use tracing::instrument;

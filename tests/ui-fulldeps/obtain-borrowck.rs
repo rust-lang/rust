@@ -37,6 +37,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_interface::Config;
 use rustc_interface::interface::Compiler;
+use rustc_middle::queries::Queries;
 use rustc_middle::queries::query_info::mir_borrowck::ProvidedValue;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;

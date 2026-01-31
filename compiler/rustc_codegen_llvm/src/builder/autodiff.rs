@@ -4,6 +4,7 @@ use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::expand::typetree::FncTree;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{Instance, PseudoCanonicalInput, TyCtxt, TypingEnv};
 use rustc_middle::{bug, ty};
 use rustc_target::callconv::PassMode;

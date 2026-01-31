@@ -11,6 +11,7 @@ use rustc_hir::limit::Limit;
 use rustc_macros::extension;
 pub use rustc_type_ir::error::ExpectedFound;
 
+use crate::queries::Queries;
 use crate::ty::print::{FmtPrinter, Print, with_forced_trimmed_paths};
 use crate::ty::{self, Lift, Ty, TyCtxt};
 

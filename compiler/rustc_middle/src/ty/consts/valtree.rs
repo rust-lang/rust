@@ -10,6 +10,7 @@ use rustc_macros::{
 
 use super::ScalarInt;
 use crate::mir::interpret::{ErrorHandled, Scalar};
+use crate::queries::Queries;
 use crate::ty::print::{FmtPrinter, PrettyPrinter};
 use crate::ty::{self, Ty, TyCtxt, ValTreeKind};
 

@@ -3,6 +3,7 @@ use rustc_hir::OpaqueTyOrigin;
 use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{
     self, DefiningScopeKind, GenericArgKind, GenericArgs, OpaqueTypeKey, Ty, TyCtxt,
     TypeVisitableExt, TypingMode, fold_regions,

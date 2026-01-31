@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Closure, Expr, ExprKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty;
 use rustc_middle::ty::{ClauseKind, GenericPredicates, ProjectionPredicate, TraitPredicate};
 use rustc_session::declare_lint_pass;

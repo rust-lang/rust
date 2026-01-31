@@ -45,6 +45,7 @@ use rustc_middle::dep_graph::{
     DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, EdgeFilter, dep_kinds,
 };
 use rustc_middle::hir::nested_filter;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};

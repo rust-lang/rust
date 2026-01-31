@@ -9,6 +9,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Destination, Node, find_attr};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::queries::Queries;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::DesugaringKind;

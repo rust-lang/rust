@@ -9,6 +9,7 @@ use rustc_hir::{
     StructTailExpr,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, FloatTy, IntTy, PolyFnSig, Ty};
 use rustc_session::declare_lint_pass;
 use std::iter;

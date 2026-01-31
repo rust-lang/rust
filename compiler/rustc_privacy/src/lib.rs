@@ -27,6 +27,7 @@ use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, InferKind, Visitor};
 use rustc_hir::{AmbigArg, ForeignItemId, ItemId, OwnerId, PatKind, find_attr};
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{

@@ -9,6 +9,7 @@ use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use tracing::debug;
 

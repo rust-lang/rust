@@ -10,6 +10,7 @@ use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_hir::def_id::{DefId, LocalDefIdMap};
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
+use rustc_middle::queries::Queries;
 use rustc_middle::span_bug;
 use rustc_middle::ty::Visibility;
 use rustc_session::lint::BuiltinLintDiag;

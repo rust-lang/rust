@@ -6,6 +6,7 @@
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::visit::MutVisitor;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt};
 
 /// Builds a monomorphic body for a given instance.

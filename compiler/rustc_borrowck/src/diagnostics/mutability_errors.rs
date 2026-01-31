@@ -14,6 +14,7 @@ use rustc_middle::mir::{
     Mutability, Operand, Place, PlaceRef, ProjectionElem, RawPtrKind, Rvalue, Statement,
     StatementKind, TerminatorKind,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Upcast};
 use rustc_span::{BytePos, DesugaringKind, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;

@@ -3,6 +3,7 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeVisitable};
 
+use crate::queries::Queries;
 use crate::ty::{
     self, Const, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,

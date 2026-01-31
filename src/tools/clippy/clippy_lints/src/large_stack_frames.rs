@@ -10,6 +10,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl};
 use rustc_lexer::is_ident;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, SyntaxContext};
 

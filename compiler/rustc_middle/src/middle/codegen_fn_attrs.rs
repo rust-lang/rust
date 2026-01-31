@@ -8,6 +8,7 @@ use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
 use crate::mir::mono::Visibility;
+use crate::queries::Queries;
 use crate::ty::{InstanceKind, TyCtxt};
 
 impl<'tcx> TyCtxt<'tcx> {

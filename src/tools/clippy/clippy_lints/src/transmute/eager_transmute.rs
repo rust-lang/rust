@@ -4,6 +4,7 @@ use rustc_abi::WrappingRange;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::Ty;
 
 use super::EAGER_TRANSMUTE;

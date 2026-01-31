@@ -3,6 +3,7 @@ use clippy_utils::fulfill_or_allowed;
 use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_hir::{self as hir, HirId, Item};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 
 use super::EXPL_IMPL_CLONE_ON_COPY;

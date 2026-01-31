@@ -7,6 +7,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def::DefKind;
 use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
+use rustc_middle::queries::Queries;
 pub use rustc_middle::traits::query::NormalizationResult;
 use rustc_middle::ty::{
     self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,

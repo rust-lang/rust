@@ -11,7 +11,7 @@ use rustc_middle::bug;
 use rustc_middle::metadata::{AmbigModChild, ModChild};
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
-use rustc_middle::queries::ExternProviders;
+use rustc_middle::queries::{ExternProviders, Queries};
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};

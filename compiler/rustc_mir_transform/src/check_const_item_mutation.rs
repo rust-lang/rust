@@ -1,6 +1,7 @@
 use rustc_hir::HirId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::CONST_ITEM_MUTATION;
 use rustc_span::Span;

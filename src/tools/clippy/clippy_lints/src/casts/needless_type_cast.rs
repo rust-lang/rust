@@ -8,6 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BlockCheckMode, Body, Expr, ExprKind, HirId, LetStmt, PatKind, StmtKind, UnsafeSource};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{Ty, TypeVisitableExt};
 use rustc_span::Span;
 

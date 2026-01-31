@@ -5,6 +5,7 @@ use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::ErrorGuaranteed;
 use smallvec::SmallVec;

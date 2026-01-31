@@ -5,6 +5,7 @@ use clippy_utils::ty::peel_and_count_ty_refs;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_span::{Span, sym};
 
 use super::MUT_MUTEX_LOCK;

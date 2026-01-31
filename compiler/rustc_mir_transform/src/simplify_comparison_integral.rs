@@ -6,6 +6,7 @@ use rustc_middle::mir::{
     BasicBlock, BinOp, Body, Operand, Place, Rvalue, Statement, StatementKind, SwitchTargets,
     TerminatorKind,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{Ty, TyCtxt};
 use tracing::trace;
 

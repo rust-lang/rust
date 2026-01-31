@@ -6,6 +6,7 @@ use rustc_abi::Size;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {

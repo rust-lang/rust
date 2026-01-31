@@ -7,6 +7,7 @@ use rustc_errors::{Diag, Subdiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{self, ConstraintCategory, Location};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };

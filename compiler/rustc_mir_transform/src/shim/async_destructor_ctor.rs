@@ -6,6 +6,7 @@ use rustc_middle::mir::{
     BasicBlock, BasicBlockData, Body, Local, LocalDecl, MirSource, Operand, Place, Rvalue,
     SourceInfo, Statement, StatementKind, Terminator, TerminatorKind,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt, TypeVisitableExt};
 
 use super::*;

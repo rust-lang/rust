@@ -1,4 +1,5 @@
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::Ty;
 
 // check if the component types of the transmuted collection and the result have different ABI,

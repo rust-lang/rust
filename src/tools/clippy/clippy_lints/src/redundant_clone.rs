@@ -9,6 +9,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, LangItem, def_id};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;

@@ -16,6 +16,7 @@ use rustc_infer::infer::{self, InferCtxt, SubregionOrigin, TyCtxtInferExt};
 use rustc_lint_defs::builtin::SHADOWING_SUPERTRAIT_ITEMS;
 use rustc_macros::LintDiagnostic;
 use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::solve::NoSolution;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{

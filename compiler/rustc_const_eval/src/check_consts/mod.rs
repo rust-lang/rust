@@ -8,6 +8,7 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, find_attr};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, PolyFnSig, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::Symbol;

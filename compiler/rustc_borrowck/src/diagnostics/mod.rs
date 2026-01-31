@@ -17,6 +17,7 @@ use rustc_middle::mir::{
     LocalKind, Location, Operand, Place, PlaceRef, PlaceTy, ProjectionElem, Rvalue, Statement,
     StatementKind, Terminator, TerminatorKind, VarDebugInfoContents, find_self_call,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};

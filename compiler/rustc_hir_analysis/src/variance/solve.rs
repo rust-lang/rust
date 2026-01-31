@@ -6,6 +6,7 @@
 //! inferred is then written into the `variance_map` in the tcx.
 
 use rustc_hir::def_id::DefIdMap;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty;
 use tracing::debug;
 

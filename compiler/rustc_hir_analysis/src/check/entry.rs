@@ -5,6 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{Node, find_attr};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::queries::Queries;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt, TypingMode};
 use rustc_session::config::EntryFnType;

@@ -6,6 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::{Arm, Expr, PatExpr, PatExprKind, PatKind, PathSegment, QPath, Ty, TyKind};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, VariantDef};
 use rustc_span::sym;
 

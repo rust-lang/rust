@@ -1,3 +1,4 @@
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;

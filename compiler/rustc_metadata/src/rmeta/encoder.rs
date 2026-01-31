@@ -20,6 +20,7 @@ use rustc_hir_pretty::id_to_string;
 use rustc_middle::dep_graph::WorkProductId;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::AssocContainer;

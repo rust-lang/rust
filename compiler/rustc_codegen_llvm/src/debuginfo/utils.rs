@@ -1,6 +1,7 @@
 // Utility Functions.
 
 use rustc_hir::def_id::DefId;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty};
 use tracing::trace;

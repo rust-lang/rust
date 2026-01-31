@@ -2,6 +2,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee, LintDiagnostic, Subdiagnostic};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Key;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{self, Lint};

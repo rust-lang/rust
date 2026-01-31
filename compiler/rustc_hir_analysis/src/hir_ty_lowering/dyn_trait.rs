@@ -8,6 +8,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_lint_defs::builtin::{BARE_TRAIT_OBJECTS, UNUSED_ASSOCIATED_TYPE_BOUNDS};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
 use rustc_middle::ty::{
     self, BottomUpFolder, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,

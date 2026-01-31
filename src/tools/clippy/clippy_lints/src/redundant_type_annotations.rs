@@ -4,6 +4,7 @@ use rustc_ast::LitKind;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;
 

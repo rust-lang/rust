@@ -5,6 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{BinOpKind, Expr, ExprKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {

@@ -13,6 +13,7 @@ use rustc_hir::{self as hir, AmbigArg, LangItem, PredicateOrigin, WherePredicate
 use rustc_span::{BytePos, Span};
 use rustc_type_ir::TyKind::*;
 
+use crate::queries::Queries;
 use crate::ty::{
     self, AliasTy, Const, ConstKind, FallibleTypeFolder, InferConst, InferTy, Instance, Opaque,
     PolyTraitPredicate, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,

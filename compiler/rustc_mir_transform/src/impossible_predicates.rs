@@ -27,6 +27,7 @@
 //!    it's usually never invoked in this way.
 
 use rustc_middle::mir::{Body, START_BLOCK, TerminatorKind};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{TyCtxt, TypeFlags, TypeVisitableExt};
 use rustc_span::def_id::DefId;
 use rustc_trait_selection::traits;

@@ -5,6 +5,7 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, HirId, HirIdMap};
 use rustc_infer::infer::{InferCtxt, InferOk, OpaqueTypeStorageEntries, TyCtxtInferExt};
+use rustc_middle::queries::Queries;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::Span;

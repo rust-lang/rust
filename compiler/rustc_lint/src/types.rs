@@ -3,6 +3,7 @@ use std::iter;
 use rustc_abi::{BackendRepr, TagEncoding, Variants, WrappingRange};
 use rustc_hir::{Expr, ExprKind, HirId, LangItem};
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};

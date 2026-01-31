@@ -10,6 +10,7 @@ use rustc_middle::mir::{
     Body, CallSource, CastKind, ConstraintCategory, FakeReadCause, Local, LocalInfo, Location,
     Operand, Place, Rvalue, Statement, StatementKind, TerminatorKind,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_span::{DesugaringKind, Span, kw, sym};

@@ -23,6 +23,7 @@ use smallvec::SmallVec;
 // `pretty` is a separate module only for organization.
 use super::*;
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
+use crate::queries::Queries;
 use crate::query::{IntoQueryParam, Providers};
 use crate::ty::{
     ConstInt, Expr, GenericArgKind, ParamConst, ScalarInt, Term, TermKind, TraitPredicate,

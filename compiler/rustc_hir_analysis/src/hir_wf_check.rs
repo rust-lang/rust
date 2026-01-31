@@ -4,6 +4,7 @@ use rustc_hir::{self as hir, AmbigArg, ForeignItem, ForeignItemKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode, WellFormedLoc};
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode, fold_regions};
 use rustc_span::def_id::LocalDefId;
 use rustc_trait_selection::traits::{self, ObligationCtxt};

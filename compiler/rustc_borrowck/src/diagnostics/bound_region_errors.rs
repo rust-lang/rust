@@ -12,6 +12,7 @@ use rustc_infer::traits::query::{
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpDeeplyNormalizeGoal,
     CanonicalTypeOpNormalizeGoal, CanonicalTypeOpProvePredicateGoal,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self, RePlaceholder, Region, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex,

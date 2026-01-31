@@ -4,6 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty};
 
 use super::AS_PTR_CAST_MUT;

@@ -11,6 +11,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;

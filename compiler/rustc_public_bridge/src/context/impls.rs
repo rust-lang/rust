@@ -9,6 +9,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::{Attribute, LangItem};
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::{BinOp, Body, Const as MirConst, ConstValue, UnOp};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::print::{
     with_forced_trimmed_paths, with_no_trimmed_paths, with_resolve_crate_name,

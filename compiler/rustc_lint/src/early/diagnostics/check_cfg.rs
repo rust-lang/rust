@@ -1,5 +1,6 @@
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;

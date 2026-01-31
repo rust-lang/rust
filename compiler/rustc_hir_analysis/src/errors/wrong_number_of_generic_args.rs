@@ -4,6 +4,7 @@ use GenericArgsInfo::*;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, Diagnostic, EmissionGuarantee, MultiSpan, pluralize};
 use rustc_hir as hir;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self as ty, AssocItems, TyCtxt};
 use rustc_span::def_id::DefId;
 use tracing::debug;

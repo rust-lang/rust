@@ -6,6 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{self as hir, AmbigArg, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::edition::Edition;

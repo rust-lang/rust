@@ -20,6 +20,7 @@ use rustc_middle::mir::{
     Operand, Place, PlaceRef, PlaceTy, ProjectionElem, Rvalue, Statement, StatementKind,
     Terminator, TerminatorKind, VarBindingForm, VarDebugInfoContents,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
     self, PredicateKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,

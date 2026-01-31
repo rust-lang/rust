@@ -7,6 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{self as hir, FnDecl, HirId};
 use rustc_lint::{LateContext, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Mutability, Ty};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;

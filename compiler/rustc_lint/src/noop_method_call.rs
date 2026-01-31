@@ -1,5 +1,6 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::{Expr, ExprKind};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_session::{declare_lint, declare_lint_pass};

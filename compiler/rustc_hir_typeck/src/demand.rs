@@ -4,6 +4,7 @@ use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_no_trimmed_paths;

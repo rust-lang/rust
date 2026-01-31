@@ -11,6 +11,7 @@ use rustc_hir::find_attr;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{EffectiveVisibility, Level};
+use rustc_middle::queries::Queries;
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Visibility,
