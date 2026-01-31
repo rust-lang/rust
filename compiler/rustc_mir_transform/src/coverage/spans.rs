@@ -54,13 +54,13 @@ pub(super) fn extract_refined_covspans<'tcx>(
                 return false;
             }
 
-            // Each pushed covspan should have the same context as the body span.
-            // If it somehow doesn't, discard the covspan, or panic in debug builds.
-            if !body_span.eq_ctxt(covspan_span) {
-                debug_assert!(
-                    false,
-                    "span context mismatch: body_span={body_span:?}, covspan.span={covspan_span:?}"
-                );
+            // Each covspan should have the same context as the body span.
+            // For nested macro expansions, contexts might differ. In that case,
+            // we check if the covspan resulted from a macro expansion that happened
+            // inside the function body.
+            if !body_span.eq_ctxt(covspan_span)
+                && covspan_span.find_ancestor_inside(body_span).is_none()
+            {
                 return false;
             }
 
