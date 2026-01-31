@@ -33,13 +33,24 @@ fn equivalent_key<K: Eq, V>(k: &K) -> impl Fn(&(K, V)) -> bool + '_ {
     move |x| x.0 == *k
 }
 
+/// For a particular query, keeps track of "active" keys, i.e. keys whose
+/// evaluation has started but has not yet finished successfully.
+///
+/// (Successful query evaluation for a key is represented by an entry in the
+/// query's in-memory cache.)
 pub struct QueryState<'tcx, K> {
-    active: Sharded<hash_table::HashTable<(K, QueryResult<'tcx>)>>,
+    active: Sharded<hash_table::HashTable<(K, ActiveKeyStatus<'tcx>)>>,
 }
 
-/// Indicates the state of a query for a given key in a query map.
-enum QueryResult<'tcx> {
-    /// An already executing query. The query job can be used to await for its completion.
+/// For a particular query and key, tracks the status of a query evaluation
+/// that has started, but has not yet finished successfully.
+///
+/// (Successful query evaluation for a key is represented by an entry in the
+/// query's in-memory cache.)
+enum ActiveKeyStatus<'tcx> {
+    /// Some thread is already evaluating the query for this key.
+    ///
+    /// The enclosed [`QueryJob`] can be used to wait for it to finish.
     Started(QueryJob<'tcx>),
 
     /// The query panicked. Queries trying to wait on this will raise a fatal error which will
@@ -47,8 +58,9 @@ enum QueryResult<'tcx> {
     Poisoned,
 }
 
-impl<'tcx> QueryResult<'tcx> {
-    /// Unwraps the query job expecting that it has started.
+impl<'tcx> ActiveKeyStatus<'tcx> {
+    /// Obtains the enclosed [`QueryJob`], or panics if this query evaluation
+    /// was poisoned by a panic.
     fn expect_job(self) -> QueryJob<'tcx> {
         match self {
             Self::Started(job) => job,
@@ -76,9 +88,9 @@ where
     ) -> Option<()> {
         let mut active = Vec::new();
 
-        let mut collect = |iter: LockGuard<'_, HashTable<(K, QueryResult<'tcx>)>>| {
+        let mut collect = |iter: LockGuard<'_, HashTable<(K, ActiveKeyStatus<'tcx>)>>| {
             for (k, v) in iter.iter() {
-                if let QueryResult::Started(ref job) = *v {
+                if let ActiveKeyStatus::Started(ref job) = *v {
                     active.push((*k, job.clone()));
                 }
             }
@@ -222,7 +234,7 @@ where
                 Err(_) => panic!(),
                 Ok(occupied) => {
                     let ((key, value), vacant) = occupied.remove();
-                    vacant.insert((key, QueryResult::Poisoned));
+                    vacant.insert((key, ActiveKeyStatus::Poisoned));
                     value.expect_job()
                 }
             }
@@ -319,7 +331,7 @@ where
                     let shard = query.query_state(qcx).active.lock_shard_by_hash(key_hash);
                     match shard.find(key_hash, equivalent_key(&key)) {
                         // The query we waited on panicked. Continue unwinding here.
-                        Some((_, QueryResult::Poisoned)) => FatalError.raise(),
+                        Some((_, ActiveKeyStatus::Poisoned)) => FatalError.raise(),
                         _ => panic!(
                             "query '{}' result must be in the cache or the query must be poisoned after a wait",
                             query.name()
@@ -373,7 +385,7 @@ where
             // state map.
             let id = qcx.next_job_id();
             let job = QueryJob::new(id, span, current_job_id);
-            entry.insert((key, QueryResult::Started(job)));
+            entry.insert((key, ActiveKeyStatus::Started(job)));
 
             // Drop the lock before we start executing the query
             drop(state_lock);
@@ -382,7 +394,7 @@ where
         }
         Entry::Occupied(mut entry) => {
             match &mut entry.get_mut().1 {
-                QueryResult::Started(job) => {
+                ActiveKeyStatus::Started(job) => {
                     if sync::is_dyn_thread_safe() {
                         // Get the latch out
                         let latch = job.latch();
@@ -400,7 +412,7 @@ where
                     // so we just return the error.
                     cycle_error(query, qcx, id, span)
                 }
-                QueryResult::Poisoned => FatalError.raise(),
+                ActiveKeyStatus::Poisoned => FatalError.raise(),
             }
         }
     }
