@@ -1624,14 +1624,14 @@ impl f32 {
     ///
     /// # Precision
     ///
-    /// Unlike [`mul_add`](f32::mul_add), this operation does not guarantee which
+    /// Unlike [`mul_add`](Self::mul_add), this operation does not guarantee which
     /// rounding behavior will occur. It may perform either:
     /// - A fused multiply-add with one rounding (more accurate)
     /// - Separate multiply and add operations with two roundings (less accurate)
     ///
     /// Use this method when you need performance optimization but can tolerate
     /// non-deterministic precision. If you require guaranteed precision, use
-    /// [`mul_add`](f32::mul_add) (guaranteed one rounding) or the separate
+    /// [`mul_add`](Self::mul_add) (guaranteed one rounding) or the separate
     /// multiply and add operations (guaranteed two roundings).
     ///
     /// If you want even more optimization opportunities and aren't concerned about
@@ -1654,6 +1654,11 @@ impl f32 {
     ///
     /// // For simple values, both approaches give the same result
     /// assert_eq!(result, 100.0);
+    ///
+    /// // Here's an example where the two approaches produce different results.
+    /// // The exact result depends on whether fusion occurs:
+    /// let r = 0.1_f32.mul_add_relaxed(0.1_f32, -0.01_f32);
+    /// assert!(r == 9.313226e-10 || r == 5.2154064e-10);
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_mul_add_relaxed", issue = "151770")]
