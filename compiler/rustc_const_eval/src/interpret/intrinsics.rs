@@ -1275,13 +1275,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let va_list_inner = self.project_field(va_list, FieldIdx::ZERO)?;
 
         // Find the first pointer field in this struct. The exact index is target-specific.
-        let ty::Adt(adt, _substs) = va_list_inner.layout().ty.kind() else {
+        let ty::Adt(adt, substs) = va_list_inner.layout().ty.kind() else {
             bug!("invalid VaListImpl layout");
         };
 
         for (i, field) in adt.non_enum_variant().fields.iter().enumerate() {
-            let field_ty = self.tcx.type_of(field.did);
-            if field_ty.skip_binder().is_raw_ptr() {
+            if field.ty(*self.tcx, substs).is_raw_ptr() {
                 return self.project_field(&va_list_inner, FieldIdx::from_usize(i));
             }
         }

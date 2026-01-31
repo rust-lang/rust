@@ -1,7 +1,6 @@
 //! Manages the low-level pushing and popping of stack frames and the (de)allocation of local variables.
 //! For handling of argument passing and return values, see the `call` module.
 use std::cell::Cell;
-use std::collections::VecDeque;
 use std::{fmt, mem};
 
 use either::{Either, Left, Right};
@@ -640,7 +639,7 @@ impl<'a, 'tcx: 'a, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(crate) fn allocate_varargs<I>(
         &mut self,
         caller_args: &mut I,
-    ) -> InterpResult<'tcx, VecDeque<MPlaceTy<'tcx, M::Provenance>>>
+    ) -> InterpResult<'tcx, Vec<MPlaceTy<'tcx, M::Provenance>>>
     where
         I: Iterator<Item = (&'a FnArg<'tcx, M::Provenance>, &'a ArgAbi<'tcx, Ty<'tcx>>)>,
     {
@@ -655,10 +654,7 @@ impl<'a, 'tcx: 'a, M: Machine<'tcx>> InterpCx<'tcx, M> {
             varargs.push(mplace);
         }
 
-        // When the frame is dropped, these variable arguments are deallocated.
-        self.frame_mut().va_list = varargs.clone();
-
-        interp_ok(varargs.into())
+        interp_ok(varargs)
     }
 
     fn deallocate_varargs(

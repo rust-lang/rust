@@ -367,7 +367,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 (fixed_count, self.tcx.mk_type_list_from_iter(extra_tys))
             } else {
-                (caller_fn_abi.args.len(), ty::List::empty())
+                (caller_fn_abi.fixed_count.try_into().unwrap(), ty::List::empty())
             };
 
         let callee_fn_abi = self.fn_abi_of_instance(instance, callee_c_variadic_args)?;
@@ -387,7 +387,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             });
         }
 
-        if caller_fn_abi.fixed_count != callee_fn_abi.fixed_count {
+        if caller_fn_abi.c_variadic && caller_fn_abi.fixed_count != callee_fn_abi.fixed_count {
             throw_ub!(CVariadicFixedCountMismatch {
                 caller: caller_fn_abi.fixed_count,
                 callee: callee_fn_abi.fixed_count,
@@ -466,12 +466,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // `pass_argument` would be the loop body. It takes care to
             // not advance `caller_iter` for ignored arguments.
             let mut callee_args_abis = if caller_fn_abi.c_variadic {
-                // Only the fixed arguments are passed normally.
+                // Only the fixed arguments are passed normally. C-variadic functions cannot be
+                // `extern "Rust"` and `#[track_caller]` can only be applied to `extern "Rust"`, to
+                // the extra caller location argument is not relevant here.
+                assert!(!instance.def.requires_caller_location(*self.tcx));
                 callee_fn_abi.args[..fixed_count].iter().enumerate()
             } else {
-                // NOTE: this handles the extra caller location argument
-                // when `#[track_caller]` is used. This attribute is only allowed on `extern "Rust"`
-                // functions, so the c-variadic case does not need to handle the extra argument.
+                // NOTE: this handles the extra caller location argument that is passed when
+                // `#[track_caller]` is used. The `fixed_count` does not account for this argument.
+                // This attribute is only allowed on `extern "Rust"` functions, so the c-variadic
+                // case does not need to handle the extra argument.
                 callee_fn_abi.args.iter().enumerate()
             };
 
@@ -495,7 +499,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     // Consume the remaining arguments by putting them into the variable argument
                     // list.
                     let varargs = self.allocate_varargs(&mut caller_args)?;
-                    let key = self.va_list_ptr(varargs);
+                    // When the frame is dropped, these variable arguments are deallocated.
+                    self.frame_mut().va_list = varargs.clone();
+                    let key = self.va_list_ptr(varargs.into());
 
                     // Zero the VaList, so it is fully initialized.
                     self.write_bytes_ptr(
