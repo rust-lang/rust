@@ -101,8 +101,6 @@ use rustc_span::{DUMMY_SP, LocalExpnId, Span, Symbol};
 use rustc_target::spec::PanicStrategy;
 use {rustc_abi as abi, rustc_ast as ast, rustc_hir as hir};
 
-pub use self::keys::{AsLocalKey, Key, LocalCrate};
-pub use self::plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk};
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
@@ -121,7 +119,10 @@ use crate::mir::interpret::{
 use crate::mir::mono::{
     CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions, NormalizationErrorInMono,
 };
-use crate::query::plumbing::CyclePlaceholder;
+use crate::query::plumbing::{
+    CyclePlaceholder, IntoQueryParam, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk,
+};
+use crate::query::{AsLocalKey, describe_as_module};
 use crate::traits::query::{
     CanonicalAliasGoal, CanonicalDropckOutlivesGoal, CanonicalImpliedOutlivesBoundsGoal,
     CanonicalMethodAutoderefStepsGoal, CanonicalPredicateGoal, CanonicalTypeOpAscribeUserTypeGoal,
@@ -142,14 +143,6 @@ use crate::ty::{
     TyCtxt, TyCtxtFeed,
 };
 use crate::{dep_graph, mir, thir};
-
-mod arena_cached;
-pub mod erase;
-pub(crate) mod inner;
-mod keys;
-pub mod on_disk_cache;
-#[macro_use]
-pub mod plumbing;
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
@@ -2784,12 +2777,3 @@ rustc_queries! {
 
 rustc_with_all_queries! { define_callbacks! }
 rustc_feedable_queries! { define_feedable! }
-
-fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> String {
-    let def_id = def_id.into();
-    if def_id.is_top_level_module() {
-        "top-level module".to_string()
-    } else {
-        format!("module `{}`", tcx.def_path_str(def_id))
-    }
-}

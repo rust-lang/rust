@@ -86,6 +86,8 @@ mod values;
 #[macro_use]
 pub mod query;
 #[macro_use]
+pub mod queries;
+#[macro_use]
 pub mod dep_graph;
 
 // Allows macros to refer to this crate as `::rustc_middle`

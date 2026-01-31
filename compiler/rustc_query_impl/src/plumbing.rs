@@ -604,9 +604,9 @@ macro_rules! define_queries {
                 pub(crate) fn __rust_end_short_backtrace<'tcx>(
                     tcx: TyCtxt<'tcx>,
                     span: Span,
-                    key: queries::$name::Key<'tcx>,
+                    key: query_info::$name::Key<'tcx>,
                     mode: QueryMode,
-                ) -> Option<Erased<queries::$name::Value<'tcx>>> {
+                ) -> Option<Erased<query_info::$name::Value<'tcx>>> {
                     #[cfg(debug_assertions)]
                     let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
                     get_query_incr(
@@ -626,9 +626,9 @@ macro_rules! define_queries {
                 pub(crate) fn __rust_end_short_backtrace<'tcx>(
                     tcx: TyCtxt<'tcx>,
                     span: Span,
-                    key: queries::$name::Key<'tcx>,
+                    key: query_info::$name::Key<'tcx>,
                     __mode: QueryMode,
-                ) -> Option<Erased<queries::$name::Value<'tcx>>> {
+                ) -> Option<Erased<query_info::$name::Value<'tcx>>> {
                     Some(get_query_non_incr(
                         QueryType::query_dispatcher(tcx),
                         QueryCtxt::new(tcx),
@@ -639,7 +639,7 @@ macro_rules! define_queries {
             }
 
             pub(crate) fn make_query_vtable<'tcx>()
-                -> QueryVTable<'tcx, queries::$name::Storage<'tcx>>
+                -> QueryVTable<'tcx, query_info::$name::Storage<'tcx>>
             {
                 QueryVTable {
                     name: stringify!($name),
@@ -649,7 +649,7 @@ macro_rules! define_queries {
                     query_state: std::mem::offset_of!(QueryStates<'tcx>, $name),
                     query_cache: std::mem::offset_of!(QueryCaches<'tcx>, $name),
                     will_cache_on_disk_for_key_fn: should_ever_cache_on_disk!([$($modifiers)*] {
-                        Some(::rustc_middle::query::cached::$name)
+                        Some(::rustc_middle::queries::cached::$name)
                     } {
                         None
                     }),
@@ -658,7 +658,7 @@ macro_rules! define_queries {
                         #[cfg(debug_assertions)]
                         let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
                         __rust_begin_short_backtrace(||
-                            queries::$name::provided_to_erased(
+                            query_info::$name::provided_to_erased(
                                 tcx,
                                 {
                                     let ret = call_provider!([$($modifiers)*][tcx, $name, key]);
@@ -673,33 +673,33 @@ macro_rules! define_queries {
                     try_load_from_disk_fn: should_ever_cache_on_disk!([$($modifiers)*] {
                         Some(|tcx, key, prev_index, index| {
                             // Check the `cache_on_disk_if` condition for this key.
-                            if !::rustc_middle::query::cached::$name(tcx, key) {
+                            if !::rustc_middle::queries::cached::$name(tcx, key) {
                                 return None;
                             }
 
-                            let value: queries::$name::ProvidedValue<'tcx> =
+                            let value: query_info::$name::ProvidedValue<'tcx> =
                                 $crate::plumbing::try_load_from_disk(tcx, prev_index, index)?;
 
                             // Arena-alloc the value if appropriate, and erase it.
-                            Some(queries::$name::provided_to_erased(tcx, value))
+                            Some(query_info::$name::provided_to_erased(tcx, value))
                         })
                     } {
                         None
                     }),
                     is_loadable_from_disk_fn: should_ever_cache_on_disk!([$($modifiers)*] {
                         Some(|tcx, key, index| -> bool {
-                            ::rustc_middle::query::cached::$name(tcx, key) &&
+                            ::rustc_middle::queries::cached::$name(tcx, key) &&
                                 $crate::plumbing::loadable_from_disk(tcx, index)
                         })
                     } {
                         None
                     }),
                     value_from_cycle_error: |tcx, cycle, guar| {
-                        let result: queries::$name::Value<'tcx> = Value::from_cycle_error(tcx, cycle, guar);
+                        let result: query_info::$name::Value<'tcx> = Value::from_cycle_error(tcx, cycle, guar);
                         erase::erase_val(result)
                     },
-                    hash_result: hash_result!([$($modifiers)*][queries::$name::Value<'tcx>]),
-                    format_value: |value| format!("{:?}", erase::restore_val::<queries::$name::Value<'tcx>>(*value)),
+                    hash_result: hash_result!([$($modifiers)*][query_info::$name::Value<'tcx>]),
+                    format_value: |value| format!("{:?}", erase::restore_val::<query_info::$name::Value<'tcx>>(*value)),
                 }
             }
 
@@ -709,10 +709,10 @@ macro_rules! define_queries {
             }
 
             impl<'tcx> QueryDispatcherUnerased<'tcx> for QueryType<'tcx> {
-                type UnerasedValue = queries::$name::Value<'tcx>;
+                type UnerasedValue = query_info::$name::Value<'tcx>;
                 type Dispatcher = SemiDynamicQueryDispatcher<
                     'tcx,
-                    queries::$name::Storage<'tcx>,
+                    query_info::$name::Storage<'tcx>,
                     { is_anon!([$($modifiers)*]) },
                     { depth_limit!([$($modifiers)*]) },
                     { feedable!([$($modifiers)*]) },
@@ -729,7 +729,7 @@ macro_rules! define_queries {
 
                 #[inline(always)]
                 fn restore_val(value: <Self::Dispatcher as QueryDispatcher<'tcx>>::Value) -> Self::UnerasedValue {
-                    erase::restore_val::<queries::$name::Value<'tcx>>(value)
+                    erase::restore_val::<query_info::$name::Value<'tcx>>(value)
                 }
             }
 
@@ -741,7 +741,7 @@ macro_rules! define_queries {
                 let make_query = |tcx, key| {
                     let kind = rustc_middle::dep_graph::dep_kinds::$name;
                     let name = stringify!($name);
-                    $crate::plumbing::create_query_frame(tcx, rustc_middle::query::descs::$name, key, kind, name)
+                    $crate::plumbing::create_query_frame(tcx, rustc_middle::queries::descs::$name, key, kind, name)
                 };
                 let res = tcx.query_system.states.$name.collect_active_jobs(
                     tcx,
@@ -808,8 +808,8 @@ macro_rules! define_queries {
             }
         }
 
-        pub fn make_query_vtables<'tcx>() -> ::rustc_middle::query::PerQueryVTables<'tcx> {
-            ::rustc_middle::query::PerQueryVTables {
+        pub fn make_query_vtables<'tcx>() -> ::rustc_middle::queries::PerQueryVTables<'tcx> {
+            ::rustc_middle::queries::PerQueryVTables {
                 $(
                     $name: query_impl::$name::make_query_vtable(),
                 )*
