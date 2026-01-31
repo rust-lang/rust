@@ -345,15 +345,6 @@ impl<Idx: Step> RangeInclusive<Idx> {
     }
 }
 
-impl RangeInclusive<usize> {
-    /// Converts to an exclusive `Range` for `SliceIndex` implementations.
-    /// The caller is responsible for dealing with `last == usize::MAX`.
-    #[inline]
-    pub(crate) const fn into_slice_range(self) -> Range<usize> {
-        Range { start: self.start, end: self.last + 1 }
-    }
-}
-
 #[unstable(feature = "new_range_api", issue = "125687")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const RangeBounds<T> for RangeInclusive<T> {

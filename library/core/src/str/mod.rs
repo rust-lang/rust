@@ -87,7 +87,7 @@ fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
     let ellipsis = if trunc_len < s.len() { "[...]" } else { "" };
 
     // 1. out of bounds
-    if begin > s.len() || end > s.len() {
+    if begin > s.len() || end > s.len() || (end == s.len() && s.is_char_boundary(begin)) {
         let oob_index = if begin > s.len() { begin } else { end };
         panic!("byte index {oob_index} is out of bounds of `{s_trunc}`{ellipsis}");
     }
