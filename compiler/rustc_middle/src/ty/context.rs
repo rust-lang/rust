@@ -1613,6 +1613,10 @@ pub struct GlobalCtxt<'tcx> {
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: interpret::AllocMap<'tcx>,
 
+    /// Set to `true` when `resolve` has encountered any `mod` with parse errors. Used to signal
+    /// inference not to emit knock-down diagnostics.
+    pub encountered_mod_parse_error: Arc<RwLock<bool>>,
+
     current_gcx: CurrentGcx,
 
     /// A jobserver reference used to release then acquire a token while waiting on a query.
@@ -1842,6 +1846,7 @@ impl<'tcx> TyCtxt<'tcx> {
             clauses_cache: Default::default(),
             data_layout,
             alloc_map: interpret::AllocMap::new(),
+            encountered_mod_parse_error: Default::default(),
             current_gcx,
             jobserver_proxy,
         });
