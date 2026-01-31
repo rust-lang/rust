@@ -64,7 +64,7 @@ LL | const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
                00 00 00 00 00 00 00 00                         │ ........
            }
 
-error[E0080]: constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
+error[E0080]: constructing invalid value at .0.0: encountered 0, but expected something greater or equal to 1
   --> $DIR/raw-bytes.rs:61:1
    |
 LL | const NULL_U8: NonZero<u8> = unsafe { mem::transmute(0u8) };
@@ -75,7 +75,7 @@ LL | const NULL_U8: NonZero<u8> = unsafe { mem::transmute(0u8) };
                00                                              │ .
            }
 
-error[E0080]: constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
+error[E0080]: constructing invalid value at .0.0: encountered 0, but expected something greater or equal to 1
   --> $DIR/raw-bytes.rs:63:1
    |
 LL | const NULL_USIZE: NonZero<usize> = unsafe { mem::transmute(0usize) };
