@@ -367,7 +367,7 @@ pub enum PathSet {
     /// example, a command-line value of `tests/ui/abi/variadic-ffi.rs`
     /// will match `tests/ui`. A command-line value of `ui` would also
     /// match `tests/ui`.
-    Suite(TaskPath),
+    TestSuite(TaskPath),
 }
 
 impl PathSet {
@@ -384,7 +384,7 @@ impl PathSet {
     fn has(&self, needle: &Path, module: Kind) -> bool {
         match self {
             PathSet::Set(set) => set.iter().any(|p| Self::check(p, needle, module)),
-            PathSet::Suite(suite) => Self::check(suite, needle, module),
+            PathSet::TestSuite(suite) => Self::check(suite, needle, module),
         }
     }
 
@@ -417,7 +417,7 @@ impl PathSet {
         };
         match self {
             PathSet::Set(set) => PathSet::Set(set.iter().filter(|&p| check(p)).cloned().collect()),
-            PathSet::Suite(suite) => {
+            PathSet::TestSuite(suite) => {
                 if check(suite) {
                     self.clone()
                 } else {
@@ -437,7 +437,7 @@ impl PathSet {
                 assert_eq!(set.len(), 1, "called assert_single_path on multiple paths");
                 set.iter().next().unwrap()
             }
-            PathSet::Suite(_) => unreachable!("called assert_single_path on a Suite path"),
+            PathSet::TestSuite(_) => unreachable!("called assert_single_path on a Suite path"),
         }
     }
 }
@@ -596,13 +596,13 @@ impl<'a> ShouldRun<'a> {
     /// Handles individual files (not directories) within a test suite.
     fn is_suite_path(&self, requested_path: &Path) -> Option<&PathSet> {
         self.paths.iter().find(|pathset| match pathset {
-            PathSet::Suite(suite) => requested_path.starts_with(&suite.path),
+            PathSet::TestSuite(suite) => requested_path.starts_with(&suite.path),
             PathSet::Set(_) => false,
         })
     }
 
     pub fn suite_path(mut self, suite: &str) -> Self {
-        self.paths.insert(PathSet::Suite(TaskPath { path: suite.into(), kind: Some(self.kind) }));
+        self.paths.insert(PathSet::TestSuite(TaskPath { path: suite.into(), kind: Some(self.kind) }));
         self
     }
 
@@ -1067,7 +1067,7 @@ impl<'a> Builder<'a> {
                         add_path(&path.path);
                     }
                 }
-                PathSet::Suite(path) => {
+                PathSet::TestSuite(path) => {
                     add_path(&path.path.join("..."));
                 }
             }
@@ -1653,7 +1653,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
             if should_run.paths.iter().any(|s| s.has(path, desc.kind))
                 && !desc.is_excluded(
                     self,
-                    &PathSet::Suite(TaskPath { path: path.clone(), kind: Some(desc.kind) }),
+                    &PathSet::TestSuite(TaskPath { path: path.clone(), kind: Some(desc.kind) }),
                 )
             {
                 return true;

@@ -1705,7 +1705,7 @@ impl Step for Coverage {
                         }
                     }
                 }
-                PathSet::Suite(_) => {
+                PathSet::TestSuite(_) => {
                     modes.extend_from_slice(Self::ALL_MODES);
                     break;
                 }
