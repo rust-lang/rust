@@ -83,7 +83,7 @@ fn test_invalid() {
 #[test]
 fn test_intersection() {
     let set = |paths: &[&str]| {
-        PathSet::Alias(paths.into_iter().map(|p| TaskPath { path: p.into(), kind: None }).collect())
+        StepSelectors::Alias(paths.into_iter().map(|p| StepSelection { selector: p.into(), kind: None }).collect())
     };
     let library_set = set(&["library/core", "library/alloc", "library/std"]);
     let mut command_paths = vec![
@@ -106,7 +106,7 @@ fn test_intersection() {
 #[test]
 fn test_resolve_parent_and_subpaths() {
     let set = |paths: &[&str]| {
-        PathSet::Alias(paths.into_iter().map(|p| TaskPath { path: p.into(), kind: None }).collect())
+        StepSelectors::Alias(paths.into_iter().map(|p| StepSelection { selector: p.into(), kind: None }).collect())
     };
 
     let mut command_paths = vec![

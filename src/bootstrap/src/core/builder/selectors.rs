@@ -5,7 +5,7 @@
 use std::fmt::{self, Debug};
 use std::path::PathBuf;
 
-use crate::core::builder::{Builder, Kind, PathSet, ShouldRun, StepDescription};
+use crate::core::builder::{Builder, Kind, StepSelectors, ShouldRun, StepDescription};
 
 #[cfg(test)]
 mod tests;
@@ -99,7 +99,7 @@ struct StepExtra<'a> {
 struct StepToRun<'a> {
     sort_index: usize,
     desc: &'a StepDescription,
-    pathsets: Vec<PathSet>,
+    pathsets: Vec<StepSelectors>,
 }
 
 pub(crate) fn match_paths_to_steps_and_run(

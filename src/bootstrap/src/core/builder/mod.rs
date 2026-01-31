@@ -71,7 +71,8 @@ pub struct Builder<'a> {
     /// executed to be logged instead. Used by snapshot tests of command-line
     /// paths-to-steps handling.
     #[expect(clippy::type_complexity)]
-    log_cli_step_for_tests: Option<Box<dyn Fn(&StepDescription, &[PathSet], &[TargetSelection])>>,
+    log_cli_step_for_tests:
+        Option<Box<dyn Fn(&StepDescription, &[StepSelectors], &[TargetSelection])>>,
 }
 
 impl Deref for Builder<'_> {
@@ -242,7 +243,7 @@ impl StepMetadata {
 pub struct RunConfig<'a> {
     pub builder: &'a Builder<'a>,
     pub target: TargetSelection,
-    pub paths: Vec<PathSet>,
+    pub paths: Vec<StepSelectors>,
 }
 
 impl RunConfig<'_> {
@@ -349,7 +350,7 @@ impl Debug for StepSelection {
 
 /// Collection of paths used to match a task rule.
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
-pub enum PathSet {
+pub enum StepSelectors {
     /// A collection of individual paths or aliases.
     ///
     /// These are generally matched as a path suffix. For example, a
@@ -370,21 +371,21 @@ pub enum PathSet {
     TestSuite(StepSelection),
 }
 
-impl PathSet {
-    fn empty() -> PathSet {
-        PathSet::Alias(BTreeSet::new())
+impl StepSelectors {
+    fn empty() -> StepSelectors {
+        StepSelectors::Alias(BTreeSet::new())
     }
 
-    fn one<P: Into<PathBuf>>(path: P, kind: Kind) -> PathSet {
+    fn one<P: Into<PathBuf>>(path: P, kind: Kind) -> StepSelectors {
         let mut set = BTreeSet::new();
         set.insert(StepSelection { path: path.into(), kind: Some(kind) });
-        PathSet::Alias(set)
+        StepSelectors::Alias(set)
     }
 
     fn has(&self, needle: &Path, module: Kind) -> bool {
         match self {
-            PathSet::Alias(set) => set.iter().any(|p| Self::check(p, needle, module)),
-            PathSet::TestSuite(suite) => Self::check(suite, needle, module),
+            StepSelectors::Alias(set) => set.iter().any(|p| Self::check(p, needle, module)),
+            StepSelectors::TestSuite(suite) => Self::check(suite, needle, module),
         }
     }
 
@@ -403,7 +404,7 @@ impl PathSet {
     /// This is used for `StepDescription::krate`, which passes all matching crates at once to
     /// `Step::make_run`, rather than calling it many times with a single crate.
     /// See `tests.rs` for examples.
-    fn intersection_removing_matches(&self, needles: &mut [CLIStepPath], module: Kind) -> PathSet {
+    fn intersection_removing_matches(&self, needles: &mut [CLIStepPath], module: Kind) -> StepSelectors {
         let mut check = |p| {
             let mut result = false;
             for n in needles.iter_mut() {
@@ -416,12 +417,12 @@ impl PathSet {
             result
         };
         match self {
-            PathSet::Alias(set) => PathSet::Alias(set.iter().filter(|&p| check(p)).cloned().collect()),
-            PathSet::TestSuite(suite) => {
+            StepSelectors::Alias(set) => StepSelectors::Alias(set.iter().filter(|&p| check(p)).cloned().collect()),
+            StepSelectors::TestSuite(suite) => {
                 if check(suite) {
                     self.clone()
                 } else {
-                    PathSet::empty()
+                    StepSelectors::empty()
                 }
             }
         }
@@ -433,11 +434,11 @@ impl PathSet {
     #[track_caller]
     pub fn assert_single_path(&self) -> &StepSelection {
         match self {
-            PathSet::Alias(set) => {
+            StepSelectors::Alias(set) => {
                 assert_eq!(set.len(), 1, "called assert_single_path on multiple paths");
                 set.iter().next().unwrap()
             }
-            PathSet::TestSuite(_) => unreachable!("called assert_single_path on a Suite path"),
+            StepSelectors::TestSuite(_) => unreachable!("called assert_single_path on a Suite path"),
         }
     }
 }
@@ -454,7 +455,7 @@ impl StepDescription {
         }
     }
 
-    fn maybe_run(&self, builder: &Builder<'_>, mut pathsets: Vec<PathSet>) {
+    fn maybe_run(&self, builder: &Builder<'_>, mut pathsets: Vec<StepSelectors>) {
         pathsets.retain(|set| !self.is_excluded(builder, set));
 
         if pathsets.is_empty() {
@@ -477,7 +478,7 @@ impl StepDescription {
         }
     }
 
-    fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
+    fn is_excluded(&self, builder: &Builder<'_>, pathset: &StepSelectors) -> bool {
         if builder.config.skip.iter().any(|e| pathset.has(e, builder.kind)) {
             if !matches!(builder.config.get_dry_run(), DryRun::SelfCheck) {
                 println!("Skipping {pathset:?} because it is excluded");
@@ -510,7 +511,7 @@ pub struct ShouldRun<'a> {
     kind: Kind,
 
     // use a BTreeSet to maintain sort order
-    paths: BTreeSet<PathSet>,
+    paths: BTreeSet<StepSelectors>,
 }
 
 impl<'a> ShouldRun<'a> {
@@ -535,7 +536,7 @@ impl<'a> ShouldRun<'a> {
     pub(crate) fn crates(mut self, crates: Vec<&Crate>) -> Self {
         for krate in crates {
             let path = krate.local_path(self.builder);
-            self.paths.insert(PathSet::one(path, self.kind));
+            self.paths.insert(StepSelectors::one(path, self.kind));
         }
         self
     }
@@ -549,7 +550,7 @@ impl<'a> ShouldRun<'a> {
             self.kind == Kind::Setup || !self.builder.src.join(alias).exists(),
             "use `builder.path()` for real paths: {alias}"
         );
-        self.paths.insert(PathSet::Alias(
+        self.paths.insert(StepSelectors::Alias(
             std::iter::once(StepSelection { path: alias.into(), kind: Some(self.kind) }).collect(),
         ));
         self
@@ -570,26 +571,26 @@ impl<'a> ShouldRun<'a> {
         }
 
         let task = StepSelection { path: path.into(), kind: Some(self.kind) };
-        self.paths.insert(PathSet::Alias(BTreeSet::from_iter([task])));
+        self.paths.insert(StepSelectors::Alias(BTreeSet::from_iter([task])));
         self
     }
 
     /// Handles individual files (not directories) within a test suite.
-    fn is_suite_path(&self, requested_path: &Path) -> Option<&PathSet> {
+    fn is_suite_path(&self, requested_path: &Path) -> Option<&StepSelectors> {
         self.paths.iter().find(|pathset| match pathset {
-            PathSet::TestSuite(suite) => requested_path.starts_with(&suite.path),
-            PathSet::Alias(_) => false,
+            StepSelectors::TestSuite(suite) => requested_path.starts_with(&suite.path),
+            StepSelectors::Alias(_) => false,
         })
     }
 
     pub fn suite_path(mut self, suite: &str) -> Self {
-        self.paths.insert(PathSet::TestSuite(StepSelection { path: suite.into(), kind: Some(self.kind) }));
+        self.paths.insert(StepSelectors::TestSuite(StepSelection { path: suite.into(), kind: Some(self.kind) }));
         self
     }
 
     // allows being more explicit about why should_run in Step returns the value passed to it
     pub fn never(mut self) -> ShouldRun<'a> {
-        self.paths.insert(PathSet::empty());
+        self.paths.insert(StepSelectors::empty());
         self
     }
 
@@ -606,11 +607,11 @@ impl<'a> ShouldRun<'a> {
         &self,
         paths: &mut [CLIStepPath],
         kind: Kind,
-    ) -> Vec<PathSet> {
+    ) -> Vec<StepSelectors> {
         let mut sets = vec![];
         for pathset in &self.paths {
             let subset = pathset.intersection_removing_matches(paths, kind);
-            if subset != PathSet::empty() {
+            if subset != StepSelectors::empty() {
                 sets.push(subset);
             }
         }
@@ -1043,12 +1044,12 @@ impl<'a> Builder<'a> {
         };
         for pathset in should_run.paths {
             match pathset {
-                PathSet::Alias(set) => {
+                StepSelectors::Alias(set) => {
                     for path in set {
                         add_path(&path.path);
                     }
                 }
-                PathSet::TestSuite(path) => {
+                StepSelectors::TestSuite(path) => {
                     add_path(&path.path.join("..."));
                 }
             }
@@ -1634,7 +1635,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
             if should_run.paths.iter().any(|s| s.has(path, desc.kind))
                 && !desc.is_excluded(
                     self,
-                    &PathSet::TestSuite(StepSelection { path: path.clone(), kind: Some(desc.kind) }),
+                    &StepSelectors::TestSuite(StepSelection { path: path.clone(), kind: Some(desc.kind) }),
                 )
             {
                 return true;

@@ -41,7 +41,7 @@ use crate::utils::helpers::{
     linker_args, linker_flags, t, target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, CodegenBackendKind, DocTests, GitRepo, Mode, PathSet, envify};
+use crate::{CLang, CodegenBackendKind, DocTests, GitRepo, Mode, StepSelectors, envify};
 
 mod compiletest;
 
@@ -1697,7 +1697,7 @@ impl Step for Coverage {
         // determine which modes to run in.
         for path in &run.paths {
             match path {
-                PathSet::Alias(_) => {
+                StepSelectors::Alias(_) => {
                     for &mode in Self::ALL_MODES {
                         if path.assert_single_path().path == Path::new(mode.as_str()) {
                             modes.push(mode);
@@ -1705,7 +1705,7 @@ impl Step for Coverage {
                         }
                     }
                 }
-                PathSet::TestSuite(_) => {
+                StepSelectors::TestSuite(_) => {
                     modes.extend_from_slice(Self::ALL_MODES);
                     break;
                 }
