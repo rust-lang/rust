@@ -1,0 +1,8 @@
+error: cannot coerce between `fn()` and unsafe function pointers
+  --> $DIR/unsafe-fn-to-fn-match-150128.rs:11:22
+   |
+LL |         _ if true => || (),
+   |                      ^^^^^
+
+error: aborting due to 1 previous error
+

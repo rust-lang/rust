@@ -8,7 +8,9 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{self as hir, AmbigArg, ExprKind, GenericArg, HirId, Node, QPath, intravisit};
+use rustc_hir::{
+    self as hir, AmbigArg, ExprKind, GenericArg, HirId, Node, QPath, Safety, intravisit,
+};
 use rustc_hir_analysis::hir_ty_lowering::errors::GenericsArgsErrExtend;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_call, lower_generic_args,
@@ -20,7 +22,9 @@ use rustc_hir_analysis::hir_ty_lowering::{
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
 use rustc_lint::builtin::SELF_CONSTRUCTOR_FROM_OUTER_ITEM;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCoercion,
+};
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, GenericArgsRef, GenericParamDefKind, IsIdentity,
     SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, UserArgs,
@@ -336,10 +340,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // A reborrow has no effect before a dereference, so we can safely replace adjustments.
                         *entry.get_mut() = adj;
                     }
+                    (
+                        &mut [
+                            Adjustment {
+                                kind:
+                                    Adjust::Pointer(PointerCoercion::ClosureFnPointer(Safety::Safe)),
+                                target: intermediate_target,
+                                ..
+                            },
+                        ],
+                        &[
+                            Adjustment {
+                                kind: Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
+                                ..
+                            },
+                        ],
+                    ) => {
+                        // dont allow coerce `unsafe fn()` to `fn()`
+                        self.dcx()
+                            .struct_span_err(
+                                expr.span,
+                                format!(
+                                    "cannot coerce between `{}` and unsafe function pointers",
+                                    intermediate_target
+                                ),
+                            )
+                            .emit();
+                    }
 
                     _ => {
                         // FIXME: currently we never try to compose autoderefs
-                        // and ReifyFnPointer/UnsafeFnPointer, but we could.
+                        // and ReifyFnPointer, but we could.
                         self.dcx().span_delayed_bug(
                             expr.span,
                             format!(
