@@ -1227,8 +1227,9 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// assert_eq!(format!("{:?}", wrapped), "'a'");
 /// ```
 #[stable(feature = "fmt_from_fn", since = "1.93.0")]
+#[rustc_const_stable(feature = "const_fmt_from_fn", since = "CURRENT_RUSTC_VERSION")]
 #[must_use = "returns a type implementing Debug and Display, which do not have any effects unless they are used"]
-pub fn from_fn<F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result>(f: F) -> FromFn<F> {
+pub const fn from_fn<F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result>(f: F) -> FromFn<F> {
     FromFn(f)
 }
 

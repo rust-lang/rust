@@ -23,8 +23,3 @@ rustc_thread_pool = { path = "../rustc_thread_pool" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tracing = "0.1"
 # tidy-alphabetical-end
-
-[dependencies.hashbrown]
-version = "0.16.1"
-default-features = false
-features = ["nightly"] # for may_dangle

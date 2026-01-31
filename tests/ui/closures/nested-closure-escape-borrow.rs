@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/49824>
 fn main() {
     let mut x = 0;
     || {

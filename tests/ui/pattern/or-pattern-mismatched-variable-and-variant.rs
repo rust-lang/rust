@@ -1,3 +1,4 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/2848>
 #[allow(non_camel_case_types)]
 
 mod bar {

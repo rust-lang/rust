@@ -1,7 +1,8 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/29740>
 //@ check-pass
 #![allow(dead_code)]
-// Regression test for #29740. Inefficient MIR matching algorithms
-// generated way too much code for this sort of case, leading to OOM.
+// Inefficient MIR matching algorithms generated way
+// too much code for this sort of case, leading to OOM.
 #![allow(non_snake_case)]
 
 pub mod KeyboardEventConstants {
