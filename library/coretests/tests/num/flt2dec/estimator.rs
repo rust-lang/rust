@@ -1,4 +1,4 @@
-use core::num::flt2dec::estimator::*;
+use core::num::imp::flt2dec::estimator::*;
 
 use crate::num::ldexp_f64;
 

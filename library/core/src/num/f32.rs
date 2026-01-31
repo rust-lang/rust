@@ -1633,7 +1633,7 @@ impl f32 {
 #[unstable(feature = "core_float_math", issue = "137578")]
 pub mod math {
     use crate::intrinsics;
-    use crate::num::libm;
+    use crate::num::imp::libm;
 
     /// Experimental version of `floor` in `core`. See [`f32::floor`] for details.
     ///
