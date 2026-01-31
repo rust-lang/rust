@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use build_helper::ci::CiEnv;
 
-use super::{Builder, Kind};
+use super::{Builder, CargoSubcommand};
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
 use crate::core::config::SplitDebuginfo;
@@ -121,13 +121,16 @@ impl Cargo {
         mode: Mode,
         source_type: SourceType,
         target: TargetSelection,
-        cmd_kind: Kind,
+        cmd_kind: CargoSubcommand,
     ) -> Cargo {
         let mut cargo = builder.cargo(compiler, mode, source_type, target, cmd_kind);
 
         match cmd_kind {
             // No need to configure the target linker for these command types.
-            Kind::Clean | Kind::Check | Kind::Format | Kind::Setup => {}
+            CargoSubcommand::Clean
+            | CargoSubcommand::Check
+            | CargoSubcommand::Format
+            | CargoSubcommand::Setup => {}
             _ => {
                 cargo.configure_linker(builder);
             }
@@ -165,7 +168,7 @@ impl Cargo {
         mode: Mode,
         source_type: SourceType,
         target: TargetSelection,
-        cmd_kind: Kind,
+        cmd_kind: CargoSubcommand,
     ) -> Cargo {
         builder.cargo(compiler, mode, source_type, target, cmd_kind)
     }
@@ -475,20 +478,20 @@ impl Builder<'_> {
         compiler: Compiler,
         mode: Mode,
         target: TargetSelection,
-        cmd_kind: Kind,
+        cmd_kind: CargoSubcommand,
     ) -> BootstrapCommand {
         let mut cargo = match cmd_kind {
-            Kind::Clippy => {
+            CargoSubcommand::Clippy => {
                 let mut cargo = self.cargo_clippy_cmd(compiler);
                 cargo.arg(cmd_kind.as_str());
                 cargo
             }
-            Kind::MiriSetup => {
+            CargoSubcommand::MiriSetup => {
                 let mut cargo = self.cargo_miri_cmd(compiler);
                 cargo.arg("miri").arg("setup");
                 cargo
             }
-            Kind::MiriTest => {
+            CargoSubcommand::MiriTest => {
                 let mut cargo = self.cargo_miri_cmd(compiler);
                 cargo.arg("miri").arg("test");
                 cargo
@@ -541,7 +544,7 @@ impl Builder<'_> {
             Color::Auto => {} // nothing to do
         }
 
-        if cmd_kind != Kind::Install {
+        if cmd_kind != CargoSubcommand::Install {
             cargo.arg("--target").arg(target.rustc_target_arg());
         } else {
             assert_eq!(target, compiler.host);
@@ -566,7 +569,7 @@ impl Builder<'_> {
         mode: Mode,
         source_type: SourceType,
         target: TargetSelection,
-        cmd_kind: Kind,
+        cmd_kind: CargoSubcommand,
     ) -> Cargo {
         let mut cargo = self.bare_cargo(compiler, mode, target, cmd_kind);
         let out_dir = self.stage_out(compiler, mode);
@@ -583,7 +586,7 @@ impl Builder<'_> {
             cargo.arg("--timings");
         }
 
-        if cmd_kind == Kind::Doc {
+        if cmd_kind == CargoSubcommand::Doc {
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
                 Mode::Rustc | Mode::ToolRustcPrivate | Mode::ToolBootstrap | Mode::ToolTarget => {
@@ -613,7 +616,10 @@ impl Builder<'_> {
 
         // Set a flag for `check`/`clippy`/`fix`, so that certain build
         // scripts can do less work (i.e. not building/requiring LLVM).
-        if matches!(cmd_kind, Kind::Check | Kind::Clippy | Kind::Fix) {
+        if matches!(
+            cmd_kind,
+            CargoSubcommand::Check | CargoSubcommand::Clippy | CargoSubcommand::Fix
+        ) {
             // If we've not yet built LLVM, or it's stale, then bust
             // the rustc_llvm cache. That will always work, even though it
             // may mean that on the next non-check build we'll need to rebuild
@@ -655,7 +661,7 @@ impl Builder<'_> {
 
         let mut rustflags = Rustflags::new(target);
 
-        if cmd_kind == Kind::Clippy {
+        if cmd_kind == CargoSubcommand::Clippy {
             // clippy overwrites sysroot if we pass it to cargo.
             // Pass it directly to clippy instead.
             // NOTE: this can't be fixed in clippy because we explicitly don't set `RUSTC`,
@@ -764,7 +770,7 @@ impl Builder<'_> {
             Mode::Rustc | Mode::Codegen | Mode::ToolRustcPrivate => {
                 // Build proc macros both for the host and the target unless proc-macros are not
                 // supported by the target.
-                if target != compiler.host && cmd_kind != Kind::Check {
+                if target != compiler.host && cmd_kind != CargoSubcommand::Check {
                     let error = self
                         .rustc_cmd(compiler)
                         .arg("--target")
@@ -880,7 +886,7 @@ impl Builder<'_> {
 
         cargo.env("__CARGO_DEFAULT_LIB_METADATA", &metadata);
 
-        if cmd_kind == Kind::Clippy {
+        if cmd_kind == CargoSubcommand::Clippy {
             rustflags.arg("-Zforce-unstable-if-unmarked");
         }
 
@@ -894,12 +900,14 @@ impl Builder<'_> {
         //
         // Only clear out the directory if we're compiling std; otherwise, we
         // should let Cargo take care of things for us (via depdep info)
-        if !self.config.dry_run() && mode == Mode::Std && cmd_kind == Kind::Build {
+        if !self.config.dry_run() && mode == Mode::Std && cmd_kind == CargoSubcommand::Build {
             build_stamp::clear_if_dirty(self, &out_dir, &self.rustc(compiler));
         }
 
         let rustdoc_path = match cmd_kind {
-            Kind::Doc | Kind::Test | Kind::MiriTest => self.rustdoc_for_compiler(compiler),
+            CargoSubcommand::Doc | CargoSubcommand::Test | CargoSubcommand::MiriTest => {
+                self.rustdoc_for_compiler(compiler)
+            }
             _ => PathBuf::from("/path/to/nowhere/rustdoc/not/required"),
         };
 
@@ -939,7 +947,7 @@ impl Builder<'_> {
         }
 
         // If this is for `miri-test`, prepare the sysroots.
-        if cmd_kind == Kind::MiriTest {
+        if cmd_kind == CargoSubcommand::MiriTest {
             self.std(compiler, compiler.host);
             let host_sysroot = self.sysroot(compiler);
             let miri_sysroot = test::Miri::build_miri_sysroot(self, compiler, target);
@@ -1432,18 +1440,23 @@ impl Builder<'_> {
             .unwrap_or(&self.config.rust_rustflags)
             .clone();
 
-        let profile =
-            if matches!(cmd_kind, Kind::Bench | Kind::Miri | Kind::MiriSetup | Kind::MiriTest) {
-                // Use the default profile for bench/miri
-                None
-            } else {
-                match (mode, self.config.rust_optimize.is_release()) {
-                    // Some std configuration exists in its own profile
-                    (Mode::Std, _) => Some("dist"),
-                    (_, true) => Some("release"),
-                    (_, false) => Some("dev"),
-                }
-            };
+        let profile = if matches!(
+            cmd_kind,
+            CargoSubcommand::Bench
+                | CargoSubcommand::Miri
+                | CargoSubcommand::MiriSetup
+                | CargoSubcommand::MiriTest
+        ) {
+            // Use the default profile for bench/miri
+            None
+        } else {
+            match (mode, self.config.rust_optimize.is_release()) {
+                // Some std configuration exists in its own profile
+                (Mode::Std, _) => Some("dist"),
+                (_, true) => Some("release"),
+                (_, false) => Some("dev"),
+            }
+        };
 
         Cargo {
             command: cargo,

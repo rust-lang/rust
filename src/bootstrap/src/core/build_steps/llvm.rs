@@ -25,7 +25,7 @@ use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, t, unhashed_basename, up_to_date,
 };
-use crate::{CLang, GitRepo, Kind, trace};
+use crate::{CLang, CargoSubcommand, GitRepo, trace};
 
 #[derive(Clone)]
 pub struct LlvmResult {
@@ -310,7 +310,7 @@ impl Step for Llvm {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
 
-        let _guard = builder.msg_unstaged(Kind::Build, "LLVM", target);
+        let _guard = builder.msg_unstaged(CargoSubcommand::Build, "LLVM", target);
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
         t!(fs::create_dir_all(&out_dir));
@@ -1262,7 +1262,7 @@ impl Step for Lld {
             return out_dir;
         }
 
-        let _guard = builder.msg_unstaged(Kind::Build, "LLD", target);
+        let _guard = builder.msg_unstaged(CargoSubcommand::Build, "LLD", target);
         let _time = helpers::timeit(builder);
         t!(fs::create_dir_all(&out_dir));
 
@@ -1394,7 +1394,7 @@ impl Step for Sanitizers {
             return runtimes;
         }
 
-        let _guard = builder.msg_unstaged(Kind::Build, "sanitizers", self.target);
+        let _guard = builder.msg_unstaged(CargoSubcommand::Build, "sanitizers", self.target);
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
 
@@ -1572,7 +1572,8 @@ impl Step for CrtBeginEnd {
             return out_dir;
         }
 
-        let _guard = builder.msg_unstaged(Kind::Build, "crtbegin.o and crtend.o", self.target);
+        let _guard =
+            builder.msg_unstaged(CargoSubcommand::Build, "crtbegin.o and crtend.o", self.target);
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cc::Build::new();
@@ -1645,7 +1646,7 @@ impl Step for Libunwind {
             return out_dir;
         }
 
-        let _guard = builder.msg_unstaged(Kind::Build, "libunwind.a", self.target);
+        let _guard = builder.msg_unstaged(CargoSubcommand::Build, "libunwind.a", self.target);
         t!(fs::create_dir_all(&out_dir));
 
         let mut cc_cfg = cc::Build::new();

@@ -12,7 +12,7 @@ use tracing::instrument;
 
 use crate::core::build_steps::perf::PerfArgs;
 use crate::core::build_steps::setup::Profile;
-use crate::core::builder::{Builder, Kind};
+use crate::core::builder::{Builder, CargoSubcommand};
 use crate::core::config::Config;
 use crate::core::config::target_selection::{TargetSelectionList, target_selection_list};
 use crate::{Build, CodegenBackendKind, DocTests};
@@ -205,7 +205,7 @@ impl Flags {
             #[arg(global = true, short, long, action = clap::ArgAction::Count)]
             pub verbose: u8,
             #[arg(value_enum)]
-            cmd: Kind,
+            cmd: CargoSubcommand,
         }
         if let Ok(HelpVerboseOnly { help: true, verbose: 1.., cmd: subcommand }) =
             HelpVerboseOnly::try_parse_from(normalize_args(args))
@@ -513,24 +513,24 @@ impl Default for Subcommand {
 }
 
 impl Subcommand {
-    pub fn kind(&self) -> Kind {
+    pub fn kind(&self) -> CargoSubcommand {
         match self {
-            Subcommand::Bench { .. } => Kind::Bench,
-            Subcommand::Build { .. } => Kind::Build,
-            Subcommand::Check { .. } => Kind::Check,
-            Subcommand::Clippy { .. } => Kind::Clippy,
-            Subcommand::Doc { .. } => Kind::Doc,
-            Subcommand::Fix => Kind::Fix,
-            Subcommand::Format { .. } => Kind::Format,
-            Subcommand::Test { .. } => Kind::Test,
-            Subcommand::Miri { .. } => Kind::Miri,
-            Subcommand::Clean { .. } => Kind::Clean,
-            Subcommand::Dist => Kind::Dist,
-            Subcommand::Install => Kind::Install,
-            Subcommand::Run { .. } => Kind::Run,
-            Subcommand::Setup { .. } => Kind::Setup,
-            Subcommand::Vendor { .. } => Kind::Vendor,
-            Subcommand::Perf { .. } => Kind::Perf,
+            Subcommand::Bench { .. } => CargoSubcommand::Bench,
+            Subcommand::Build { .. } => CargoSubcommand::Build,
+            Subcommand::Check { .. } => CargoSubcommand::Check,
+            Subcommand::Clippy { .. } => CargoSubcommand::Clippy,
+            Subcommand::Doc { .. } => CargoSubcommand::Doc,
+            Subcommand::Fix => CargoSubcommand::Fix,
+            Subcommand::Format { .. } => CargoSubcommand::Format,
+            Subcommand::Test { .. } => CargoSubcommand::Test,
+            Subcommand::Miri { .. } => CargoSubcommand::Miri,
+            Subcommand::Clean { .. } => CargoSubcommand::Clean,
+            Subcommand::Dist => CargoSubcommand::Dist,
+            Subcommand::Install => CargoSubcommand::Install,
+            Subcommand::Run { .. } => CargoSubcommand::Run,
+            Subcommand::Setup { .. } => CargoSubcommand::Setup,
+            Subcommand::Vendor { .. } => CargoSubcommand::Vendor,
+            Subcommand::Perf { .. } => CargoSubcommand::Perf,
         }
     }
 

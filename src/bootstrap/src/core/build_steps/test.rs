@@ -28,7 +28,7 @@ use crate::core::build_steps::tool::{
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, dist, llvm};
 use crate::core::builder::{
-    self, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, StepMetadata,
+    self, Alias, Builder, CargoSubcommand, Compiler, RunConfig, ShouldRun, Step, StepMetadata,
     crate_description,
 };
 use crate::core::config::TargetSelection;
@@ -97,7 +97,7 @@ impl Step for CrateBootstrap {
             compiler,
             Mode::ToolBootstrap,
             bootstrap_host,
-            Kind::Test,
+            CargoSubcommand::Test,
             path,
             SourceType::InTree,
             &[],
@@ -167,7 +167,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
             compiler,
             Mode::ToolBootstrap,
             bootstrap_host,
-            Kind::Test,
+            CargoSubcommand::Test,
             "src/tools/linkchecker",
             SourceType::InTree,
             &[],
@@ -377,7 +377,7 @@ impl Step for Cargo {
             self.build_compiler,
             Mode::ToolTarget,
             self.host,
-            Kind::Test,
+            CargoSubcommand::Test,
             Self::CRATE_PATH,
             SourceType::Submodule,
             &[],
@@ -486,7 +486,7 @@ impl Step for RustAnalyzer {
             build_compiler,
             Mode::ToolRustcPrivate,
             target,
-            Kind::Test,
+            CargoSubcommand::Test,
             "src/tools/rust-analyzer",
             SourceType::InTree,
             &["in-rust-tree".to_owned()],
@@ -582,7 +582,7 @@ impl Step for Rustfmt {
             build_compiler,
             Mode::ToolRustcPrivate,
             target,
-            Kind::Test,
+            CargoSubcommand::Test,
             "src/tools/rustfmt",
             SourceType::InTree,
             &[],
@@ -624,7 +624,7 @@ impl Miri {
             Mode::Std,
             SourceType::Submodule,
             target,
-            Kind::MiriSetup,
+            CargoSubcommand::MiriSetup,
         );
 
         // Tell `cargo miri setup` where to find the sources.
@@ -633,8 +633,13 @@ impl Miri {
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
 
         let mut cargo = BootstrapCommand::from(cargo);
-        let _guard =
-            builder.msg(Kind::Build, "miri sysroot", Mode::ToolRustcPrivate, compiler, target);
+        let _guard = builder.msg(
+            CargoSubcommand::Build,
+            "miri sysroot",
+            Mode::ToolRustcPrivate,
+            compiler,
+            target,
+        );
         cargo.run(builder);
 
         // # Determine where Miri put its sysroot.
@@ -713,7 +718,7 @@ impl Step for Miri {
             miri.build_compiler,
             Mode::ToolRustcPrivate,
             host,
-            Kind::Test,
+            CargoSubcommand::Test,
             "src/tools/miri",
             SourceType::InTree,
             &[],
@@ -798,7 +803,7 @@ impl Step for CargoMiri {
             build_compiler,
             Mode::ToolStd, // it's unclear what to use here, we're not building anything just doing a smoke test!
             target,
-            Kind::MiriTest,
+            CargoSubcommand::MiriTest,
             "src/tools/miri/test-cargo-miri",
             SourceType::Submodule,
             &[],
@@ -868,7 +873,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             bootstrap_compiler,
             Mode::ToolBootstrap,
             host,
-            Kind::Test,
+            CargoSubcommand::Test,
             "src/tools/compiletest",
             SourceType::InTree,
             &[],
@@ -925,7 +930,7 @@ impl Step for Clippy {
             build_compiler,
             Mode::ToolRustcPrivate,
             target,
-            Kind::Test,
+            CargoSubcommand::Test,
             "src/tools/clippy",
             SourceType::InTree,
             &[],
@@ -1429,7 +1434,7 @@ impl Step for CrateRunMakeSupport {
             compiler,
             Mode::ToolBootstrap,
             host,
-            Kind::Test,
+            CargoSubcommand::Test,
             "src/tools/run-make-support",
             SourceType::InTree,
             &[],
@@ -1466,7 +1471,7 @@ impl Step for CrateBuildHelper {
             compiler,
             Mode::ToolBootstrap,
             host,
-            Kind::Test,
+            CargoSubcommand::Test,
             "src/build_helper",
             SourceType::InTree,
             &[],
@@ -2591,7 +2596,7 @@ impl BookTest {
                     test_compiler,
                     mode,
                     target,
-                    Kind::Build,
+                    CargoSubcommand::Build,
                     dep,
                     SourceType::Submodule,
                     &[],
@@ -2945,7 +2950,7 @@ fn prepare_cargo_test(
     // Pass in some standard flags then iterate over the graph we've discovered
     // in `cargo metadata` with the maps above and figure out what `-p`
     // arguments need to get passed.
-    if builder.kind == Kind::Test && !builder.fail_fast {
+    if builder.kind == CargoSubcommand::Test && !builder.fail_fast {
         cargo.arg("--no-fail-fast");
     }
 
@@ -2980,7 +2985,7 @@ fn prepare_cargo_test(
     //
     // We skip everything on Miri as then this overwrites the libdir set up
     // by `Cargo::new` and that actually makes things go wrong.
-    if builder.kind != Kind::Miri {
+    if builder.kind != CargoSubcommand::Miri {
         let mut dylib_paths = builder.rustc_lib_paths(compiler);
         dylib_paths.push(builder.sysroot_target_libdir(compiler, target));
         helpers::add_dylib_path(dylib_paths, &mut cargo);
@@ -3055,7 +3060,7 @@ impl Step for Crate {
         // See [field@compile::Std::force_recompile].
         builder.ensure(Std::new(build_compiler, build_compiler.host).force_recompile(true));
 
-        let mut cargo = if builder.kind == Kind::Miri {
+        let mut cargo = if builder.kind == CargoSubcommand::Miri {
             if builder.top_stage == 0 {
                 eprintln!("ERROR: `x.py miri` requires stage 1 or higher");
                 std::process::exit(1);
@@ -3069,7 +3074,7 @@ impl Step for Crate {
                 mode,
                 SourceType::InTree,
                 target,
-                Kind::MiriTest,
+                CargoSubcommand::MiriTest,
             );
             // This hack helps bootstrap run standard library tests in Miri. The issue is as
             // follows: when running `cargo miri test` on libcore, cargo builds a local copy of core
@@ -3108,7 +3113,7 @@ impl Step for Crate {
 
         match mode {
             Mode::Std => {
-                if builder.kind == Kind::Miri {
+                if builder.kind == CargoSubcommand::Miri {
                     // We can't use `std_cargo` as that uses `optimized-compiler-builtins` which
                     // needs host tools for the given target. This is similar to what `compile::Std`
                     // does when `is_for_mir_opt_tests` is true. There's probably a chance for
@@ -3551,7 +3556,7 @@ impl Step for Bootstrap {
             build_compiler,
             Mode::ToolBootstrap,
             host,
-            Kind::Test,
+            CargoSubcommand::Test,
             "src/bootstrap",
             SourceType::InTree,
             &[],
@@ -3617,7 +3622,7 @@ impl Step for TierCheck {
             tool_build_compiler,
             Mode::ToolBootstrap,
             tool_build_compiler.host,
-            Kind::Run,
+            CargoSubcommand::Run,
             "src/tools/tier-check",
             SourceType::InTree,
             &[],
@@ -3715,7 +3720,7 @@ impl Step for RustInstaller {
             build_compiler,
             Mode::ToolBootstrap,
             bootstrap_host,
-            Kind::Test,
+            CargoSubcommand::Test,
             "src/tools/rust-installer",
             SourceType::InTree,
             &[],
@@ -3780,7 +3785,7 @@ impl Step for TestHelpers {
             return;
         }
 
-        let _guard = builder.msg_unstaged(Kind::Build, "test helpers", target);
+        let _guard = builder.msg_unstaged(CargoSubcommand::Build, "test helpers", target);
         t!(fs::create_dir_all(&dst));
         let mut cfg = cc::Build::new();
 
@@ -3876,7 +3881,7 @@ impl Step for CodegenCranelift {
             Mode::Codegen, // Must be codegen to ensure dlopen on compiled dylibs works
             SourceType::InTree,
             target,
-            Kind::Run,
+            CargoSubcommand::Run,
         );
 
         cargo.current_dir(&builder.src.join("compiler/rustc_codegen_cranelift"));
@@ -4002,7 +4007,7 @@ impl Step for CodegenGCC {
             Mode::Codegen, // Must be codegen to ensure dlopen on compiled dylibs works
             SourceType::InTree,
             target,
-            Kind::Run,
+            CargoSubcommand::Run,
         );
 
         cargo.current_dir(&builder.src.join("compiler/rustc_codegen_gcc"));
@@ -4096,7 +4101,7 @@ impl Step for TestFloatParse {
             build_compiler,
             Mode::ToolStd,
             target,
-            Kind::Test,
+            CargoSubcommand::Test,
             "src/tools/test-float-parse",
             SourceType::InTree,
             &[],
@@ -4111,7 +4116,7 @@ impl Step for TestFloatParse {
             build_compiler,
             Mode::ToolStd,
             target,
-            Kind::Run,
+            CargoSubcommand::Run,
             "src/tools/test-float-parse",
             SourceType::InTree,
             &[],
@@ -4191,7 +4196,7 @@ impl Step for RemoteTestClientTests {
             compiler,
             Mode::ToolBootstrap,
             bootstrap_host,
-            Kind::Test,
+            CargoSubcommand::Test,
             "src/tools/remote-test-client",
             SourceType::InTree,
             &[],

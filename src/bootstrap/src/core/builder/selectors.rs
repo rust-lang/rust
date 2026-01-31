@@ -5,7 +5,7 @@
 use std::fmt::{self, Debug};
 use std::path::PathBuf;
 
-use crate::core::builder::{Builder, Kind, StepSelectors, ShouldRun, StepDescription};
+use crate::core::builder::{Builder, CargoSubcommand, StepSelectors, ShouldRun, StepDescription};
 
 #[cfg(test)]
 mod tests;
@@ -119,7 +119,7 @@ pub(crate) fn match_paths_to_steps_and_run(
 
     // FIXME(Zalathar): This particular check isn't related to path-to-step
     // matching, and should probably be hoisted to somewhere much earlier.
-    if builder.download_rustc() && (builder.kind == Kind::Dist || builder.kind == Kind::Install) {
+    if builder.download_rustc() && (builder.kind == CargoSubcommand::Dist || builder.kind == CargoSubcommand::Install) {
         eprintln!(
             "ERROR: '{}' subcommand is incompatible with `rust.download-rustc`.",
             builder.kind.as_str()

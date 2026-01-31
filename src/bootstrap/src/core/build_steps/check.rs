@@ -13,7 +13,8 @@ use crate::core::build_steps::tool::{
     prepare_tool_cargo,
 };
 use crate::core::builder::{
-    self, Alias, Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
+    self, Alias, Builder, Cargo, CargoSubcommand, RunConfig, ShouldRun, Step, StepMetadata,
+    crate_description,
 };
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
@@ -134,7 +135,7 @@ impl Step for Std {
             Mode::Std,
             SourceType::InTree,
             target,
-            Kind::Check,
+            CargoSubcommand::Check,
         );
 
         std_cargo(builder, target, &mut cargo, &self.crates);
@@ -142,7 +143,7 @@ impl Step for Std {
         let stamp =
             build_stamp::libstd_stamp(builder, build_compiler, target).with_prefix("check-test");
         let _guard = builder.msg(
-            Kind::Check,
+            CargoSubcommand::Check,
             "library test/bench/example targets",
             Mode::Std,
             build_compiler,
@@ -351,7 +352,7 @@ impl Step for Rustc {
             Mode::Rustc,
             SourceType::InTree,
             target,
-            Kind::Check,
+            CargoSubcommand::Check,
         );
 
         rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
@@ -365,7 +366,7 @@ impl Step for Rustc {
         }
 
         let _guard = builder.msg(
-            Kind::Check,
+            CargoSubcommand::Check,
             format_args!("compiler artifacts{}", crate_description(&self.crates)),
             Mode::Rustc,
             self.build_compiler.build_compiler(),
@@ -567,7 +568,7 @@ impl Step for CraneliftCodegenBackend {
         self.build_compiler.configure_cargo(&mut cargo);
 
         let _guard = builder.msg(
-            Kind::Check,
+            CargoSubcommand::Check,
             "rustc_codegen_cranelift",
             Mode::Codegen,
             build_compiler,
@@ -649,8 +650,13 @@ impl Step for GccCodegenBackend {
         rustc_cargo_env(builder, &mut cargo, target);
         self.build_compiler.configure_cargo(&mut cargo);
 
-        let _guard =
-            builder.msg(Kind::Check, "rustc_codegen_gcc", Mode::Codegen, build_compiler, target);
+        let _guard = builder.msg(
+            CargoSubcommand::Check,
+            "rustc_codegen_gcc",
+            Mode::Codegen,
+            build_compiler,
+            target,
+        );
 
         let stamp = build_stamp::codegen_backend_stamp(
             builder,

@@ -13,7 +13,7 @@ use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::{self, RustcPrivateCompilers, SourceType, Tool};
 use crate::core::build_steps::vendor::{Vendor, default_paths_to_vendor};
-use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
+use crate::core::builder::{Builder, CargoSubcommand, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{get_completion, top_level_help};
 use crate::utils::exec::command;
@@ -166,7 +166,7 @@ impl Step for Miri {
             compilers.build_compiler(),
             Mode::ToolRustcPrivate,
             host,
-            Kind::Run,
+            CargoSubcommand::Run,
             "src/tools/miri",
             SourceType::InTree,
             &[],
@@ -506,7 +506,7 @@ impl Step for Rustfmt {
             rustfmt_build.build_compiler,
             Mode::ToolRustcPrivate,
             host,
-            Kind::Run,
+            CargoSubcommand::Run,
             "src/tools/rustfmt",
             SourceType::InTree,
             &[],

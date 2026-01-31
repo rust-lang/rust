@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 use crate::FileType;
 use crate::core::build_steps::dist::distdir;
-use crate::core::builder::{Builder, Kind};
+use crate::core::builder::{Builder, CargoSubcommand};
 use crate::core::config::BUILDER_CONFIG_FILENAME;
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{move_file, t};
@@ -375,7 +375,7 @@ impl<'a> Tarball<'a> {
         }
 
         // For `x install` tarball files aren't needed, so we can speed up the process by not producing them.
-        let compression_profile = if self.builder.kind == Kind::Install {
+        let compression_profile = if self.builder.kind == CargoSubcommand::Install {
             self.builder.do_if_verbose(|| {
                 println!("Forcing dist.compression-profile = 'no-op' for `x install`.")
             });

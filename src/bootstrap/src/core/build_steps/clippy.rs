@@ -21,7 +21,9 @@ use crate::builder::{Builder, ShouldRun};
 use crate::core::build_steps::check::{CompilerForCheck, prepare_compiler_for_check};
 use crate::core::build_steps::compile::std_crates_for_run_make;
 use crate::core::builder;
-use crate::core::builder::{Alias, Kind, RunConfig, Step, StepMetadata, crate_description};
+use crate::core::builder::{
+    Alias, CargoSubcommand, RunConfig, Step, StepMetadata, crate_description,
+};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::{Compiler, Mode, Subcommand, TargetSelection};
 
@@ -195,13 +197,13 @@ impl Step for Std {
             Mode::Std,
             SourceType::InTree,
             target,
-            Kind::Clippy,
+            CargoSubcommand::Clippy,
         );
 
         std_cargo(builder, target, &mut cargo, &self.crates);
 
         let _guard = builder.msg(
-            Kind::Clippy,
+            CargoSubcommand::Clippy,
             format_args!("library{}", crate_description(&self.crates)),
             Mode::Std,
             build_compiler,
@@ -281,7 +283,7 @@ impl Step for Rustc {
             Mode::Rustc,
             SourceType::InTree,
             target,
-            Kind::Clippy,
+            CargoSubcommand::Clippy,
         );
 
         rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
@@ -295,7 +297,7 @@ impl Step for Rustc {
         }
 
         let _guard = builder.msg(
-            Kind::Clippy,
+            CargoSubcommand::Clippy,
             format_args!("compiler{}", crate_description(&self.crates)),
             Mode::Rustc,
             build_compiler,
@@ -359,7 +361,7 @@ impl Step for CodegenGcc {
             build_compiler,
             Mode::Codegen,
             target,
-            Kind::Clippy,
+            CargoSubcommand::Clippy,
             "compiler/rustc_codegen_gcc",
             SourceType::InTree,
             &[],
@@ -367,7 +369,7 @@ impl Step for CodegenGcc {
         self.build_compiler.configure_cargo(&mut cargo);
 
         let _guard = builder.msg(
-            Kind::Clippy,
+            CargoSubcommand::Clippy,
             "rustc_codegen_gcc",
             Mode::ToolRustcPrivate,
             build_compiler,
@@ -386,7 +388,7 @@ impl Step for CodegenGcc {
             build_compiler,
             Mode::Codegen,
             target,
-            Kind::Clippy,
+            CargoSubcommand::Clippy,
             "compiler/rustc_codegen_gcc",
             SourceType::InTree,
             &[],
@@ -451,7 +453,7 @@ macro_rules! lint_any {
                     build_compiler,
                     $mode,
                     target,
-                    Kind::Clippy,
+                    CargoSubcommand::Clippy,
                     $path,
                     SourceType::InTree,
                     &[],
@@ -459,7 +461,7 @@ macro_rules! lint_any {
                 self.build_compiler.configure_cargo(&mut cargo);
 
                 let _guard = builder.msg(
-                    Kind::Clippy,
+                    CargoSubcommand::Clippy,
                     $readable_name,
                     $mode,
                     build_compiler,

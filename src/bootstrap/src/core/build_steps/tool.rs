@@ -23,7 +23,7 @@ use crate::core::builder::{
 use crate::core::config::{DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{add_dylib_path, exe, t};
-use crate::{Compiler, FileType, Kind, Mode};
+use crate::{CargoSubcommand, Compiler, FileType, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -104,7 +104,7 @@ impl Step for ToolBuild {
             self.build_compiler,
             self.mode,
             target,
-            Kind::Build,
+            CargoSubcommand::Build,
             path,
             self.source_type,
             &self.extra_features,
@@ -143,8 +143,13 @@ impl Step for ToolBuild {
 
         cargo.args(self.cargo_args);
 
-        let _guard =
-            builder.msg(Kind::Build, self.tool, self.mode, self.build_compiler, self.target);
+        let _guard = builder.msg(
+            CargoSubcommand::Build,
+            self.tool,
+            self.mode,
+            self.build_compiler,
+            self.target,
+        );
 
         // we check this below
         let build_success = compile::stream_cargo(builder, cargo, vec![], &mut |_| {});
@@ -183,7 +188,7 @@ pub fn prepare_tool_cargo(
     compiler: Compiler,
     mode: Mode,
     target: TargetSelection,
-    cmd_kind: Kind,
+    cmd_kind: CargoSubcommand,
     path: &str,
     source_type: SourceType,
     extra_features: &[String],

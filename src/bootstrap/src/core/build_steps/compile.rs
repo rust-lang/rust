@@ -24,7 +24,7 @@ use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
 use crate::core::builder::{
-    Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
+    Builder, Cargo, CargoSubcommand, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
 };
 use crate::core::config::toml::target::DefaultLinuxLinkerOverride;
 use crate::core::config::{
@@ -254,7 +254,7 @@ impl Step for Std {
                 Mode::Std,
                 SourceType::InTree,
                 target,
-                Kind::Check,
+                CargoSubcommand::Check,
             );
             cargo.rustflag("-Zalways-encode-mir");
             cargo.arg("--manifest-path").arg(builder.src.join("library/sysroot/Cargo.toml"));
@@ -267,7 +267,7 @@ impl Step for Std {
                 Mode::Std,
                 SourceType::InTree,
                 target,
-                Kind::Build,
+                CargoSubcommand::Build,
             );
             std_cargo(builder, target, &mut cargo, &self.crates);
             cargo
@@ -282,7 +282,7 @@ impl Step for Std {
         }
 
         let _guard = builder.msg(
-            Kind::Build,
+            CargoSubcommand::Build,
             format_args!("library artifacts{}", crate_description(&self.crates)),
             Mode::Std,
             build_compiler,
@@ -1128,7 +1128,7 @@ impl Step for Rustc {
             Mode::Rustc,
             SourceType::InTree,
             target,
-            Kind::Build,
+            CargoSubcommand::Build,
         );
 
         rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
@@ -1146,7 +1146,7 @@ impl Step for Rustc {
         }
 
         let _guard = builder.msg(
-            Kind::Build,
+            CargoSubcommand::Build,
             format_args!("compiler artifacts{}", crate_description(&self.crates)),
             Mode::Rustc,
             build_compiler,
@@ -1398,7 +1398,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
             crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target, false)
                 .should_build();
 
-        let skip_llvm = (builder.kind == Kind::Check) && building_llvm_is_expensive;
+        let skip_llvm = (builder.kind == CargoSubcommand::Check) && building_llvm_is_expensive;
         if !skip_llvm {
             rustc_llvm_env(builder, cargo, target)
         }
@@ -1716,13 +1716,18 @@ impl Step for GccCodegenBackend {
             Mode::Codegen,
             SourceType::InTree,
             host,
-            Kind::Build,
+            CargoSubcommand::Build,
         );
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo, host);
 
-        let _guard =
-            builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, host);
+        let _guard = builder.msg(
+            CargoSubcommand::Build,
+            "codegen backend gcc",
+            Mode::Codegen,
+            build_compiler,
+            host,
+        );
         let files = run_cargo(builder, cargo, vec![], &stamp, vec![], ArtifactKeepMode::OnlyRlib);
 
         GccCodegenBackendOutput {
@@ -1785,7 +1790,7 @@ impl Step for CraneliftCodegenBackend {
             Mode::Codegen,
             SourceType::InTree,
             target,
-            Kind::Build,
+            CargoSubcommand::Build,
         );
         cargo
             .arg("--manifest-path")
@@ -1793,7 +1798,7 @@ impl Step for CraneliftCodegenBackend {
         rustc_cargo_env(builder, &mut cargo, target);
 
         let _guard = builder.msg(
-            Kind::Build,
+            CargoSubcommand::Build,
             "codegen backend cranelift",
             Mode::Codegen,
             build_compiler,
@@ -2393,7 +2398,7 @@ impl Step for Assemble {
                 // Note: this would be also an issue for other rustc-private tools, but that is "solved"
                 // by check::Std being last in the list of checked things (see
                 // `Builder::get_step_descriptions`).
-                if builder.kind == Kind::Check && builder.top_stage == 1 {
+                if builder.kind == CargoSubcommand::Check && builder.top_stage == 1 {
                     continue;
                 }
 

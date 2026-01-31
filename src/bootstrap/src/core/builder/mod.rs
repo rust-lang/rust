@@ -46,7 +46,7 @@ pub struct Builder<'a> {
     pub top_stage: u32,
 
     /// What to build or what action to perform.
-    pub kind: Kind,
+    pub kind: CargoSubcommand,
 
     /// A cache of outputs of [`Step`]s so we can avoid running steps we already
     /// ran.
@@ -167,7 +167,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StepMetadata {
     name: String,
-    kind: Kind,
+    kind: CargoSubcommand,
     target: TargetSelection,
     built_by: Option<Compiler>,
     stage: Option<u32>,
@@ -177,34 +177,34 @@ pub struct StepMetadata {
 
 impl StepMetadata {
     pub fn build(name: &str, target: TargetSelection) -> Self {
-        Self::new(name, target, Kind::Build)
+        Self::new(name, target, CargoSubcommand::Build)
     }
 
     pub fn check(name: &str, target: TargetSelection) -> Self {
-        Self::new(name, target, Kind::Check)
+        Self::new(name, target, CargoSubcommand::Check)
     }
 
     pub fn clippy(name: &str, target: TargetSelection) -> Self {
-        Self::new(name, target, Kind::Clippy)
+        Self::new(name, target, CargoSubcommand::Clippy)
     }
 
     pub fn doc(name: &str, target: TargetSelection) -> Self {
-        Self::new(name, target, Kind::Doc)
+        Self::new(name, target, CargoSubcommand::Doc)
     }
 
     pub fn dist(name: &str, target: TargetSelection) -> Self {
-        Self::new(name, target, Kind::Dist)
+        Self::new(name, target, CargoSubcommand::Dist)
     }
 
     pub fn test(name: &str, target: TargetSelection) -> Self {
-        Self::new(name, target, Kind::Test)
+        Self::new(name, target, CargoSubcommand::Test)
     }
 
     pub fn run(name: &str, target: TargetSelection) -> Self {
-        Self::new(name, target, Kind::Run)
+        Self::new(name, target, CargoSubcommand::Run)
     }
 
-    fn new(name: &str, target: TargetSelection, kind: Kind) -> Self {
+    fn new(name: &str, target: TargetSelection, kind: CargoSubcommand) -> Self {
         Self { name: name.to_string(), kind, target, built_by: None, stage: None, metadata: None }
     }
 
@@ -330,13 +330,13 @@ struct StepDescription {
     is_default_step_fn: fn(&Builder<'_>) -> bool,
     make_run: fn(RunConfig<'_>),
     name: &'static str,
-    kind: Kind,
+    kind: CargoSubcommand,
 }
 
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub struct StepSelection {
     pub path: PathBuf,
-    pub kind: Option<Kind>,
+    pub kind: Option<CargoSubcommand>,
 }
 
 impl Debug for StepSelection {
@@ -376,13 +376,13 @@ impl StepSelectors {
         StepSelectors::Alias(BTreeSet::new())
     }
 
-    fn one<P: Into<PathBuf>>(path: P, kind: Kind) -> StepSelectors {
+    fn one<P: Into<PathBuf>>(path: P, kind: CargoSubcommand) -> StepSelectors {
         let mut set = BTreeSet::new();
         set.insert(StepSelection { path: path.into(), kind: Some(kind) });
         StepSelectors::Alias(set)
     }
 
-    fn has(&self, needle: &Path, module: Kind) -> bool {
+    fn has(&self, needle: &Path, module: CargoSubcommand) -> bool {
         match self {
             StepSelectors::Alias(set) => set.iter().any(|p| Self::check(p, needle, module)),
             StepSelectors::TestSuite(suite) => Self::check(suite, needle, module),
@@ -390,7 +390,7 @@ impl StepSelectors {
     }
 
     // internal use only
-    fn check(p: &StepSelection, needle: &Path, module: Kind) -> bool {
+    fn check(p: &StepSelection, needle: &Path, module: CargoSubcommand) -> bool {
         let check_path = || {
             // This order is important for retro-compatibility, as `starts_with` was introduced later.
             p.path.ends_with(needle) || p.path.starts_with(needle)
@@ -404,7 +404,7 @@ impl StepSelectors {
     /// This is used for `StepDescription::krate`, which passes all matching crates at once to
     /// `Step::make_run`, rather than calling it many times with a single crate.
     /// See `tests.rs` for examples.
-    fn intersection_removing_matches(&self, needles: &mut [CLIStepPath], module: Kind) -> StepSelectors {
+    fn intersection_removing_matches(&self, needles: &mut [CLIStepPath], module: CargoSubcommand) -> StepSelectors {
         let mut check = |p| {
             let mut result = false;
             for n in needles.iter_mut() {
@@ -444,7 +444,7 @@ impl StepSelectors {
 }
 
 impl StepDescription {
-    fn from<S: Step>(kind: Kind) -> StepDescription {
+    fn from<S: Step>(kind: CargoSubcommand) -> StepDescription {
         StepDescription {
             is_host: S::IS_HOST,
             should_run: S::should_run,
@@ -508,14 +508,14 @@ impl StepDescription {
 /// correspond to.
 pub struct ShouldRun<'a> {
     pub builder: &'a Builder<'a>,
-    kind: Kind,
+    kind: CargoSubcommand,
 
     // use a BTreeSet to maintain sort order
     paths: BTreeSet<StepSelectors>,
 }
 
 impl<'a> ShouldRun<'a> {
-    fn new(builder: &'a Builder<'_>, kind: Kind) -> ShouldRun<'a> {
+    fn new(builder: &'a Builder<'_>, kind: CargoSubcommand) -> ShouldRun<'a> {
         ShouldRun { builder, kind, paths: BTreeSet::new() }
     }
 
@@ -547,7 +547,7 @@ impl<'a> ShouldRun<'a> {
         // and `compiler` options would otherwise naively match with
         // `compiler` and `library` folders respectively.
         assert!(
-            self.kind == Kind::Setup || !self.builder.src.join(alias).exists(),
+            self.kind == CargoSubcommand::Setup || !self.builder.src.join(alias).exists(),
             "use `builder.path()` for real paths: {alias}"
         );
         self.paths.insert(StepSelectors::Alias(
@@ -606,7 +606,7 @@ impl<'a> ShouldRun<'a> {
     fn pathset_for_paths_removing_matches(
         &self,
         paths: &mut [CLIStepPath],
-        kind: Kind,
+        kind: CargoSubcommand,
     ) -> Vec<StepSelectors> {
         let mut sets = vec![];
         for pathset in &self.paths {
@@ -620,7 +620,7 @@ impl<'a> ShouldRun<'a> {
 }
 
 #[derive(Debug, Copy, Clone, Eq, Hash, PartialEq, PartialOrd, Ord, ValueEnum)]
-pub enum Kind {
+pub enum CargoSubcommand {
     #[value(alias = "b")]
     Build,
     #[value(alias = "c")]
@@ -646,38 +646,38 @@ pub enum Kind {
     Perf,
 }
 
-impl Kind {
+impl CargoSubcommand {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Kind::Build => "build",
-            Kind::Check => "check",
-            Kind::Clippy => "clippy",
-            Kind::Fix => "fix",
-            Kind::Format => "fmt",
-            Kind::Test => "test",
-            Kind::Miri => "miri",
-            Kind::MiriSetup => panic!("`as_str` is not supported for `Kind::MiriSetup`."),
-            Kind::MiriTest => panic!("`as_str` is not supported for `Kind::MiriTest`."),
-            Kind::Bench => "bench",
-            Kind::Doc => "doc",
-            Kind::Clean => "clean",
-            Kind::Dist => "dist",
-            Kind::Install => "install",
-            Kind::Run => "run",
-            Kind::Setup => "setup",
-            Kind::Vendor => "vendor",
-            Kind::Perf => "perf",
+            CargoSubcommand::Build => "build",
+            CargoSubcommand::Check => "check",
+            CargoSubcommand::Clippy => "clippy",
+            CargoSubcommand::Fix => "fix",
+            CargoSubcommand::Format => "fmt",
+            CargoSubcommand::Test => "test",
+            CargoSubcommand::Miri => "miri",
+            CargoSubcommand::MiriSetup => panic!("`as_str` is not supported for `Kind::MiriSetup`."),
+            CargoSubcommand::MiriTest => panic!("`as_str` is not supported for `Kind::MiriTest`."),
+            CargoSubcommand::Bench => "bench",
+            CargoSubcommand::Doc => "doc",
+            CargoSubcommand::Clean => "clean",
+            CargoSubcommand::Dist => "dist",
+            CargoSubcommand::Install => "install",
+            CargoSubcommand::Run => "run",
+            CargoSubcommand::Setup => "setup",
+            CargoSubcommand::Vendor => "vendor",
+            CargoSubcommand::Perf => "perf",
         }
     }
 
     pub fn description(&self) -> String {
         match self {
-            Kind::Test => "Testing",
-            Kind::Bench => "Benchmarking",
-            Kind::Doc => "Documenting",
-            Kind::Run => "Running",
-            Kind::Clippy => "Linting",
-            Kind::Perf => "Profiling & benchmarking",
+            CargoSubcommand::Test => "Testing",
+            CargoSubcommand::Bench => "Benchmarking",
+            CargoSubcommand::Doc => "Documenting",
+            CargoSubcommand::Run => "Running",
+            CargoSubcommand::Clippy => "Linting",
+            CargoSubcommand::Perf => "Profiling & benchmarking",
             _ => {
                 let title_letter = self.as_str()[0..1].to_ascii_uppercase();
                 return format!("{title_letter}{}ing", &self.as_str()[1..]);
@@ -739,14 +739,14 @@ impl Step for Libdir {
 pub const STEP_SPAN_TARGET: &str = "STEP";
 
 impl<'a> Builder<'a> {
-    fn get_step_descriptions(kind: Kind) -> Vec<StepDescription> {
+    fn get_step_descriptions(kind: CargoSubcommand) -> Vec<StepDescription> {
         macro_rules! describe {
             ($($rule:ty),+ $(,)?) => {{
                 vec![$(StepDescription::from::<$rule>(kind)),+]
             }};
         }
         match kind {
-            Kind::Build => describe!(
+            CargoSubcommand::Build => describe!(
                 compile::Std,
                 compile::Rustc,
                 compile::Assemble,
@@ -789,7 +789,7 @@ impl<'a> Builder<'a> {
                 tool::WasmComponentLd,
                 tool::LldWrapper
             ),
-            Kind::Clippy => describe!(
+            CargoSubcommand::Clippy => describe!(
                 clippy::Std,
                 clippy::Rustc,
                 clippy::Bootstrap,
@@ -818,7 +818,7 @@ impl<'a> Builder<'a> {
                 clippy::Tidy,
                 clippy::CI,
             ),
-            Kind::Check | Kind::Fix => describe!(
+            CargoSubcommand::Check | CargoSubcommand::Fix => describe!(
                 check::Rustc,
                 check::Rustdoc,
                 check::CraneliftCodegenBackend,
@@ -847,7 +847,7 @@ impl<'a> Builder<'a> {
                 // quicker steps run before this.
                 check::Std,
             ),
-            Kind::Test => describe!(
+            CargoSubcommand::Test => describe!(
                 crate::core::build_steps::toolstate::ToolStateCheck,
                 test::Tidy,
                 test::BootstrapPy,
@@ -911,9 +911,11 @@ impl<'a> Builder<'a> {
                 test::RunMakeCargo,
                 test::BuildStd,
             ),
-            Kind::Miri => describe!(test::Crate),
-            Kind::Bench => describe!(test::Crate, test::CrateLibrustc, test::CrateRustdoc),
-            Kind::Doc => describe!(
+            CargoSubcommand::Miri => describe!(test::Crate),
+            CargoSubcommand::Bench => {
+                describe!(test::Crate, test::CrateLibrustc, test::CrateRustdoc)
+            }
+            CargoSubcommand::Doc => describe!(
                 doc::UnstableBook,
                 doc::UnstableBookGen,
                 doc::TheBook,
@@ -943,7 +945,7 @@ impl<'a> Builder<'a> {
                 doc::BuildHelper,
                 doc::Compiletest,
             ),
-            Kind::Dist => describe!(
+            CargoSubcommand::Dist => describe!(
                 dist::Docs,
                 dist::RustcDocs,
                 dist::JsonDocs,
@@ -977,7 +979,7 @@ impl<'a> Builder<'a> {
                 dist::GccDev,
                 dist::Gcc
             ),
-            Kind::Install => describe!(
+            CargoSubcommand::Install => describe!(
                 install::Docs,
                 install::Std,
                 // During the Rust compiler (rustc) installation process, we copy the entire sysroot binary
@@ -996,7 +998,7 @@ impl<'a> Builder<'a> {
                 install::RustcCodegenCranelift,
                 install::LlvmBitcodeLinker
             ),
-            Kind::Run => describe!(
+            CargoSubcommand::Run => describe!(
                 run::BuildManifest,
                 run::BumpStage0,
                 run::ReplaceVersionPlaceholder,
@@ -1012,18 +1014,18 @@ impl<'a> Builder<'a> {
                 run::Rustfmt,
                 run::GenerateHelp,
             ),
-            Kind::Setup => {
+            CargoSubcommand::Setup => {
                 describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)
             }
-            Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
-            Kind::Vendor => describe!(vendor::Vendor),
+            CargoSubcommand::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
+            CargoSubcommand::Vendor => describe!(vendor::Vendor),
             // special-cased in Build::build()
-            Kind::Format | Kind::Perf => vec![],
-            Kind::MiriTest | Kind::MiriSetup => unreachable!(),
+            CargoSubcommand::Format | CargoSubcommand::Perf => vec![],
+            CargoSubcommand::MiriTest | CargoSubcommand::MiriSetup => unreachable!(),
         }
     }
 
-    pub fn get_help(build: &Build, kind: Kind) -> Option<String> {
+    pub fn get_help(build: &Build, kind: CargoSubcommand) -> Option<String> {
         let step_descriptions = Builder::get_step_descriptions(kind);
         if step_descriptions.is_empty() {
             return None;
@@ -1033,7 +1035,7 @@ impl<'a> Builder<'a> {
         let builder = &builder;
         // The "build" kind here is just a placeholder, it will be replaced with something else in
         // the following statement.
-        let mut should_run = ShouldRun::new(builder, Kind::Build);
+        let mut should_run = ShouldRun::new(builder, CargoSubcommand::Build);
         for desc in step_descriptions {
             should_run.kind = desc.kind;
             should_run = (desc.should_run)(should_run);
@@ -1057,7 +1059,7 @@ impl<'a> Builder<'a> {
         Some(help)
     }
 
-    fn new_internal(build: &Build, kind: Kind, paths: Vec<PathBuf>) -> Builder<'_> {
+    fn new_internal(build: &Build, kind: CargoSubcommand, paths: Vec<PathBuf>) -> Builder<'_> {
         Builder {
             build,
             top_stage: build.config.stage,
@@ -1074,25 +1076,25 @@ impl<'a> Builder<'a> {
     pub fn new(build: &Build) -> Builder<'_> {
         let paths = &build.config.paths;
         let (kind, paths) = match build.config.cmd {
-            Subcommand::Build { .. } => (Kind::Build, &paths[..]),
-            Subcommand::Check { .. } => (Kind::Check, &paths[..]),
-            Subcommand::Clippy { .. } => (Kind::Clippy, &paths[..]),
-            Subcommand::Fix => (Kind::Fix, &paths[..]),
-            Subcommand::Doc { .. } => (Kind::Doc, &paths[..]),
-            Subcommand::Test { .. } => (Kind::Test, &paths[..]),
-            Subcommand::Miri { .. } => (Kind::Miri, &paths[..]),
-            Subcommand::Bench { .. } => (Kind::Bench, &paths[..]),
-            Subcommand::Dist => (Kind::Dist, &paths[..]),
-            Subcommand::Install => (Kind::Install, &paths[..]),
-            Subcommand::Run { .. } => (Kind::Run, &paths[..]),
-            Subcommand::Clean { .. } => (Kind::Clean, &paths[..]),
-            Subcommand::Format { .. } => (Kind::Format, &[][..]),
+            Subcommand::Build { .. } => (CargoSubcommand::Build, &paths[..]),
+            Subcommand::Check { .. } => (CargoSubcommand::Check, &paths[..]),
+            Subcommand::Clippy { .. } => (CargoSubcommand::Clippy, &paths[..]),
+            Subcommand::Fix => (CargoSubcommand::Fix, &paths[..]),
+            Subcommand::Doc { .. } => (CargoSubcommand::Doc, &paths[..]),
+            Subcommand::Test { .. } => (CargoSubcommand::Test, &paths[..]),
+            Subcommand::Miri { .. } => (CargoSubcommand::Miri, &paths[..]),
+            Subcommand::Bench { .. } => (CargoSubcommand::Bench, &paths[..]),
+            Subcommand::Dist => (CargoSubcommand::Dist, &paths[..]),
+            Subcommand::Install => (CargoSubcommand::Install, &paths[..]),
+            Subcommand::Run { .. } => (CargoSubcommand::Run, &paths[..]),
+            Subcommand::Clean { .. } => (CargoSubcommand::Clean, &paths[..]),
+            Subcommand::Format { .. } => (CargoSubcommand::Format, &[][..]),
             Subcommand::Setup { profile: ref path } => (
-                Kind::Setup,
+                CargoSubcommand::Setup,
                 path.as_ref().map_or([].as_slice(), |path| std::slice::from_ref(path)),
             ),
-            Subcommand::Vendor { .. } => (Kind::Vendor, &paths[..]),
-            Subcommand::Perf { .. } => (Kind::Perf, &paths[..]),
+            Subcommand::Vendor { .. } => (CargoSubcommand::Vendor, &paths[..]),
+            Subcommand::Perf { .. } => (CargoSubcommand::Perf, &paths[..]),
         };
 
         Self::new_internal(build, kind, paths.to_owned())
@@ -1104,7 +1106,7 @@ impl<'a> Builder<'a> {
 
     /// Run all default documentation steps to build documentation.
     pub fn run_default_doc_steps(&self) {
-        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
+        self.run_step_descriptions(&Builder::get_step_descriptions(CargoSubcommand::Doc), &[]);
     }
 
     pub fn doc_rust_lang_org_channel(&self) -> String {
@@ -1490,7 +1492,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     /// **WARNING**: This actually returns the **HOST** LLVM config, not LLVM config for the given
     /// *target*.
     pub fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
-        if self.config.llvm_enabled(target) && self.kind != Kind::Check && !self.config.dry_run() {
+        if self.config.llvm_enabled(target) && self.kind != CargoSubcommand::Check && !self.config.dry_run() {
             let llvm::LlvmResult { host_llvm_config, .. } = self.ensure(llvm::Llvm { target });
             if host_llvm_config.is_file() {
                 return Some(host_llvm_config);
@@ -1610,7 +1612,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     pub(crate) fn ensure_if_default<T, S: Step<Output = T>>(
         &'a self,
         step: S,
-        kind: Kind,
+        kind: CargoSubcommand,
     ) -> Option<S::Output> {
         let desc = StepDescription::from::<S>(kind);
         let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
@@ -1627,7 +1629,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     }
 
     /// Checks if any of the "should_run" paths is in the `Builder` paths.
-    pub(crate) fn was_invoked_explicitly<S: Step>(&'a self, kind: Kind) -> bool {
+    pub(crate) fn was_invoked_explicitly<S: Step>(&'a self, kind: CargoSubcommand) -> bool {
         let desc = StepDescription::from::<S>(kind);
         let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
 
@@ -1646,7 +1648,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     }
 
     pub(crate) fn maybe_open_in_browser<S: Step>(&self, path: impl AsRef<Path>) {
-        if self.was_invoked_explicitly::<S>(Kind::Doc) {
+        if self.was_invoked_explicitly::<S>(CargoSubcommand::Doc) {
             self.open_in_browser(path);
         } else {
             self.info(&format!("Doc path: {}", path.as_ref().display()));

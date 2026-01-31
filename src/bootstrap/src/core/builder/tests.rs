@@ -91,7 +91,8 @@ fn test_intersection() {
         CLIStepPath::from(PathBuf::from("library/alloc")),
         CLIStepPath::from(PathBuf::from("library/stdarch")),
     ];
-    let subset = library_set.intersection_removing_matches(&mut command_paths, Kind::Build);
+    let subset =
+        library_set.intersection_removing_matches(&mut command_paths, CargoSubcommand::Build);
     assert_eq!(subset, set(&["library/core", "library/alloc"]),);
     assert_eq!(
         command_paths,
@@ -115,7 +116,7 @@ fn test_resolve_parent_and_subpaths() {
     ];
 
     let library_set = set(&["src/tools/miri", "src/tools/miri/cargo-miri"]);
-    library_set.intersection_removing_matches(&mut command_paths, Kind::Build);
+    library_set.intersection_removing_matches(&mut command_paths, CargoSubcommand::Build);
 
     assert_eq!(
         command_paths,
@@ -513,7 +514,7 @@ mod snapshot {
         RenderConfig, TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3, configure, first, host_target,
         render_steps, run_build,
     };
-    use crate::core::builder::{Builder, Kind, StepDescription, StepMetadata};
+    use crate::core::builder::{Builder, CargoSubcommand, StepDescription, StepMetadata};
     use crate::core::config::TargetSelection;
     use crate::core::config::toml::target::{
         DefaultLinuxLinkerOverride, with_default_linux_linker_overrides,
