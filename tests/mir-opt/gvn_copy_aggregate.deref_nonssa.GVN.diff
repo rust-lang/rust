@@ -1,0 +1,48 @@
+- // MIR for `deref_nonssa` before GVN
++ // MIR for `deref_nonssa` after GVN
+  
+  fn deref_nonssa() -> Single {
+      let mut _0: Single;
+      let mut _1: Single;
+      let mut _4: Single;
+      let mut _5: u8;
+      scope 1 {
+          debug a => _1;
+          let _2: &Single;
+          scope 2 {
+              debug b => _2;
+              let _3: u8;
+              scope 3 {
+                  debug c => _3;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = Single(const 0_u8);
++         _1 = const Single(0_u8);
+          StorageLive(_2);
+          _2 = &_1;
+-         StorageLive(_3);
++         nop;
+          _3 = copy ((*_2).0: u8);
+          StorageLive(_4);
+-         _4 = Single(const 1_u8);
+-         _1 = move _4;
++         _4 = const Single(1_u8);
++         _1 = const Single(1_u8);
+          StorageDead(_4);
+          StorageLive(_5);
+          _5 = copy _3;
+-         _0 = Single(move _5);
++         _0 = Single(copy _3);
+          StorageDead(_5);
+-         StorageDead(_3);
++         nop;
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  
