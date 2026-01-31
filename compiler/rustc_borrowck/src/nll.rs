@@ -230,13 +230,13 @@ pub(super) fn dump_nll_mir<'tcx>(
     dumper.dump_mir(body);
 
     // Also dump the region constraint graph as a graphviz file.
-    let _: io::Result<()> = try {
+    let _ = try {
         let mut file = dumper.create_dump_file("regioncx.all.dot", body)?;
         regioncx.dump_graphviz_raw_constraints(tcx, &mut file)?;
     };
 
     // Also dump the region constraint SCC graph as a graphviz file.
-    let _: io::Result<()> = try {
+    let _ = try {
         let mut file = dumper.create_dump_file("regioncx.scc.dot", body)?;
         regioncx.dump_graphviz_scc_constraints(tcx, &mut file)?;
     };

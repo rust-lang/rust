@@ -157,13 +157,13 @@ impl<'dis, 'de, 'tcx> MirDumper<'dis, 'de, 'tcx> {
     /// - `foo & nll | bar & typeck` == match if `foo` and `nll` both appear in the name
     ///   or `typeck` and `bar` both appear in the name.
     pub fn dump_mir(&self, body: &Body<'tcx>) {
-        let _: io::Result<()> = try {
+        let _ = try {
             let mut file = self.create_dump_file("mir", body)?;
             self.dump_mir_to_writer(body, &mut file)?;
         };
 
         if self.tcx().sess.opts.unstable_opts.dump_mir_graphviz {
-            let _: io::Result<()> = try {
+            let _ = try {
                 let mut file = self.create_dump_file("dot", body)?;
                 write_mir_fn_graphviz(self.tcx(), body, false, &mut file)?;
             };
