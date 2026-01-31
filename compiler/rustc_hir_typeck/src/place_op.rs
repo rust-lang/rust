@@ -285,9 +285,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Clear previous flag; after a pointer indirection it does not apply any more.
                 inside_union = false;
             }
-            if source.is_union() {
-                inside_union = true;
-            }
             // Fix up the autoderefs. Autorefs can only occur immediately preceding
             // overloaded place ops, and will be fixed by them in order to get
             // the correct region.
@@ -334,6 +331,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     source = adjustment.target;
                 }
                 self.typeck_results.borrow_mut().adjustments_mut().insert(expr.hir_id, adjustments);
+            }
+            // Now that any autoderef of this expression component is complete, if it resolved to a
+            // `union` then remember we're inside a `union` as we iterate over subsequent expression
+            // components. If this test were performed prior to autoderef resolution, it would only
+            // detect expression components of the (owned) `union` type and not references thereto.
+            // See <https://github.com/rust-lang/rust/issues/141621>.
+            if source.is_union() {
+                inside_union = true;
             }
 
             match expr.kind {

@@ -26,7 +26,34 @@ LL |     unsafe { u.f.0.push(0) };
    = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
 
 error: not automatically applying `DerefMut` on `ManuallyDrop` union field
-  --> $DIR/union-deref.rs:21:14
+  --> $DIR/union-deref.rs:20:14
+   |
+LL |     unsafe { (&mut u).f.0 = Vec::new() };
+   |              ^^^^^^^^^^
+   |
+   = help: writing to this reference calls the destructor for the old value
+   = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
+
+error: not automatically applying `DerefMut` on `ManuallyDrop` union field
+  --> $DIR/union-deref.rs:22:19
+   |
+LL |     unsafe { &mut (&mut u).f.0 };
+   |                   ^^^^^^^^^^
+   |
+   = help: writing to this reference calls the destructor for the old value
+   = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
+
+error: not automatically applying `DerefMut` on `ManuallyDrop` union field
+  --> $DIR/union-deref.rs:24:14
+   |
+LL |     unsafe { (&mut u).f.0.push(0) };
+   |              ^^^^^^^^^^
+   |
+   = help: writing to this reference calls the destructor for the old value
+   = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
+
+error: not automatically applying `DerefMut` on `ManuallyDrop` union field
+  --> $DIR/union-deref.rs:29:14
    |
 LL |     unsafe { u.f.0.0 = Vec::new() };
    |              ^^^^^
@@ -35,7 +62,7 @@ LL |     unsafe { u.f.0.0 = Vec::new() };
    = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
 
 error: not automatically applying `DerefMut` on `ManuallyDrop` union field
-  --> $DIR/union-deref.rs:23:19
+  --> $DIR/union-deref.rs:31:19
    |
 LL |     unsafe { &mut u.f.0.0 };
    |                   ^^^^^
@@ -44,7 +71,7 @@ LL |     unsafe { &mut u.f.0.0 };
    = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
 
 error: not automatically applying `DerefMut` on `ManuallyDrop` union field
-  --> $DIR/union-deref.rs:25:14
+  --> $DIR/union-deref.rs:33:14
    |
 LL |     unsafe { u.f.0.0.push(0) };
    |              ^^^^^
@@ -52,5 +79,32 @@ LL |     unsafe { u.f.0.0.push(0) };
    = help: writing to this reference calls the destructor for the old value
    = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
 
-error: aborting due to 6 previous errors
+error: not automatically applying `DerefMut` on `ManuallyDrop` union field
+  --> $DIR/union-deref.rs:36:14
+   |
+LL |     unsafe { (&mut u).f.0.0 = Vec::new() };
+   |              ^^^^^^^^^^^^
+   |
+   = help: writing to this reference calls the destructor for the old value
+   = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
+
+error: not automatically applying `DerefMut` on `ManuallyDrop` union field
+  --> $DIR/union-deref.rs:38:19
+   |
+LL |     unsafe { &mut (&mut u).f.0.0 };
+   |                   ^^^^^^^^^^^^
+   |
+   = help: writing to this reference calls the destructor for the old value
+   = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
+
+error: not automatically applying `DerefMut` on `ManuallyDrop` union field
+  --> $DIR/union-deref.rs:40:14
+   |
+LL |     unsafe { (&mut u).f.0.0.push(0) };
+   |              ^^^^^^^^^^^^
+   |
+   = help: writing to this reference calls the destructor for the old value
+   = help: add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor
+
+error: aborting due to 12 previous errors
 
