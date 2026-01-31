@@ -44,7 +44,7 @@ macro_rules! define_server_dispatcher_impl {
     ) => {
         pub trait Server {
             type Span: 'static + Copy + Eq + Hash;
-            type Symbol: 'static;
+            type Symbol: 'static + Clone;
 
             fn globals(&mut self) -> ExpnGlobals<Self::Span>;
 

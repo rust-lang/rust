@@ -10,6 +10,7 @@
 
 use std::hash::Hash;
 use std::ops::{Bound, Range};
+use std::rc::Rc;
 use std::sync::Once;
 use std::{fmt, marker, panic, thread};
 
@@ -135,8 +136,8 @@ with_api!(self, declare_tags);
 /// That is, normally a pair of impls for `T::Foo` and `T::Bar`
 /// can overlap, but if the impls are, instead, on types like
 /// `Marked<T::Foo, Foo>` and `Marked<T::Bar, Bar>`, they can't.
-trait Mark {
-    type Unmarked;
+trait Mark: Clone {
+    type Unmarked: Clone;
     fn mark(unmarked: Self::Unmarked) -> Self;
     fn unmark(self) -> Self::Unmarked;
 }
@@ -147,7 +148,7 @@ struct Marked<T, M> {
     _marker: marker::PhantomData<M>,
 }
 
-impl<T, M> Mark for Marked<T, M> {
+impl<T: Clone, M: Clone> Mark for Marked<T, M> {
     type Unmarked = T;
     fn mark(unmarked: Self::Unmarked) -> Self {
         Marked { value: unmarked, _marker: marker::PhantomData }
@@ -175,6 +176,19 @@ impl<T: Mark> Mark for Vec<T> {
     fn unmark(self) -> Self::Unmarked {
         // Should be a no-op due to std's in-place collect optimizations.
         self.into_iter().map(T::unmark).collect()
+    }
+}
+
+impl<T: Mark + Clone> Mark for Rc<T>
+where
+    T::Unmarked: Clone,
+{
+    type Unmarked = Rc<T::Unmarked>;
+    fn mark(unmarked: Self::Unmarked) -> Self {
+        Rc::new(Mark::mark(Rc::unwrap_or_clone(unmarked)))
+    }
+    fn unmark(self) -> Self::Unmarked {
+        Rc::new(Mark::unmark(Rc::unwrap_or_clone(self)))
     }
 }
 
@@ -394,18 +408,33 @@ compound_traits!(
 
 #[derive(Clone)]
 pub struct TokenStream<Span, Symbol> {
-    pub trees: Vec<TokenTree<Span, Symbol>>,
+    pub trees: Rc<Vec<TokenTree<Span, Symbol>>>,
 }
 
 impl<Span, Symbol> Default for TokenStream<Span, Symbol> {
     fn default() -> Self {
-        Self { trees: Vec::new() }
+        Self { trees: Rc::new(Vec::new()) }
     }
 }
 
 compound_traits!(
     struct TokenStream<Span, Symbol> { trees }
 );
+/*
+#[derive(Clone)]
+pub struct RcTokenStream<Span, Symbol> {
+    pub trees: Rc<Vec<TokenTree<Span, Symbol>>>,
+}
+
+impl<Span, Symbol> Default for RcTokenStream<Span, Symbol> {
+    fn default() -> Self {
+        Self { trees: Rc::new(Vec::new()) }
+    }
+}
+
+compound_traits!(
+    struct RcTokenStream<Span, Symbol> { trees }
+);*/
 
 #[derive(Clone, Debug)]
 pub struct Diagnostic<Span> {

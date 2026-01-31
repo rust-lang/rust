@@ -176,7 +176,7 @@ impl TokenStream {
     #[unstable(feature = "proc_macro_expand", issue = "90765")]
     pub fn expand_expr(&self) -> Result<TokenStream, ExpandError> {
         match BridgeMethods::ts_expand_expr(stream_to_bridge_stream(self.clone())) {
-            Ok(stream) => Ok(TokenStream(Rc::new(stream.trees))),
+            Ok(stream) => Ok(TokenStream(Rc::clone(&stream.trees))),
             Err(_) => Err(ExpandError),
         }
     }
@@ -194,7 +194,7 @@ impl FromStr for TokenStream {
     type Err = LexError;
 
     fn from_str(src: &str) -> Result<TokenStream, LexError> {
-        Ok(TokenStream(Rc::new(BridgeMethods::ts_from_str(src).trees)))
+        Ok(TokenStream(Rc::clone(&BridgeMethods::ts_from_str(src).trees)))
     }
 }
 
@@ -238,7 +238,7 @@ pub use quote::{HasIterator, RepInterp, ThereIsNoIteratorInRepetition, ext, quot
 fn stream_to_bridge_stream(
     stream: TokenStream,
 ) -> bridge::TokenStream<bridge::client::Span, bridge::client::Symbol> {
-    bridge::TokenStream { trees: stream.0.to_vec() }
+    bridge::TokenStream { trees: stream.0.clone() }
 }
 
 fn tree_to_bridge_tree(
@@ -819,7 +819,7 @@ impl Group {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn stream(&self) -> TokenStream {
         match &self.0.stream {
-            Some(stream) => TokenStream(Rc::new(stream.trees.clone())),
+            Some(stream) => TokenStream(Rc::clone(&stream.trees)),
             None => TokenStream(Rc::new(vec![])),
         }
     }

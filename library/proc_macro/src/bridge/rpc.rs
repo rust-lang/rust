@@ -3,6 +3,7 @@
 use std::any::Any;
 use std::io::Write;
 use std::num::NonZero;
+use std::rc::Rc;
 
 use super::buffer::Buffer;
 
@@ -208,6 +209,18 @@ impl<'a, S, T: for<'s> Decode<'a, 's, S>> Decode<'a, '_, S> for Vec<T> {
             vec.push(T::decode(r, s));
         }
         vec
+    }
+}
+
+impl<S, T: Encode<S>> Encode<S> for Rc<T> {
+    fn encode(&self, w: &mut Buffer, s: &mut S) {
+        self.as_ref().encode(w, s);
+    }
+}
+
+impl<'a, S, T: for<'s> Decode<'a, 's, S>> Decode<'a, '_, S> for Rc<T> {
+    fn decode(r: &mut &'a [u8], s: &mut S) -> Self {
+        Rc::new(T::decode(r, s))
     }
 }
 

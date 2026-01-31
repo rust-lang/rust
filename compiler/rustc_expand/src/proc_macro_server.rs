@@ -1,4 +1,5 @@
 use std::ops::{Bound, Range};
+use std::rc::Rc;
 
 use ast::token::IdentIsRaw;
 use rustc_ast as ast;
@@ -363,7 +364,8 @@ impl<'a, 'b> Rustc<'a, 'b> {
 
     pub(crate) fn ts_pm_to_rustc(&mut self, ts: BridgeTokenStream) -> tokenstream::TokenStream {
         let mut t = tokenstream::TokenStream::new(vec![]);
-        for tree in ts.trees {
+
+        for tree in Rc::into_inner(ts.trees).expect("just decoded this `Rc`") {
             use rustc_ast::token::*;
 
             // The code below is conservative, using `token_alone`/`Spacing::Alone`
@@ -466,7 +468,7 @@ impl<'a, 'b> Rustc<'a, 'b> {
 
     pub(crate) fn ts_rustc_to_pm(&mut self, ts: tokenstream::TokenStream) -> BridgeTokenStream {
         let trees: Vec<TokenTree<Span, Symbol>> = FromInternal::from_internal((ts, self));
-        BridgeTokenStream { trees }
+        BridgeTokenStream { trees: Rc::new(trees) }
     }
 }
 
