@@ -12,7 +12,7 @@ pub trait CastInto<T: Copy>: Copy {
 }
 
 /// Collection of traits that allow us to be generic over integer size.
-pub trait Integer:
+pub trait Int:
     Sized
     + Clone
     + Copy
@@ -37,7 +37,7 @@ macro_rules! int {
                 }
             }
 
-            impl Integer for $ty {
+            impl Int for $ty {
                 const ZERO: Self = 0;
                 const ONE: Self = 1;
             }
@@ -68,7 +68,7 @@ pub trait RawFloat:
     + Debug
 {
     /// The unsigned integer with the same size as the float
-    type Int: Integer + Into<u64>;
+    type Int: Int + Into<u64>;
 
     /* general constants */
 
