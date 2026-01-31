@@ -266,6 +266,15 @@ mod ffi {
         is_lock_acquired: bool,
     }
 
+    #[must_use]
+    #[derive(Debug)]
+    struct MallocResult {
+        /// If not null, contains the error encountered during the handling of malloc.
+        error: UniquePtr<CxxString>,
+        /// The allocated address.
+        address: u64,
+    }
+
     /**** These are GenMC types that we have to copy-paste here since cxx does not support
     "importing" externally defined C++ types. ****/
 

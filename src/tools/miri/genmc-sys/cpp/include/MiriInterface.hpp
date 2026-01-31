@@ -36,6 +36,7 @@ struct StoreResult;
 struct ReadModifyWriteResult;
 struct CompareExchangeResult;
 struct MutexLockResult;
+struct MallocResult;
 
 // GenMC uses `int` for its thread IDs.
 using ThreadId = int;
@@ -387,5 +388,15 @@ inline MutexLockResult from_error(std::unique_ptr<std::string> error) {
                              /* is_lock_acquired: */ false };
 }
 } // namespace MutexLockResultExt
+
+namespace MallocResultExt {
+inline MallocResult ok(SVal addr) {
+    return MallocResult { .error = nullptr, .address = addr.get() };
+}
+
+inline MallocResult from_error(std::unique_ptr<std::string> error) {
+    return MallocResult { .error = std::move(error), .address = 0UL };
+}
+} // namespace MallocResultExt
 
 #endif /* GENMC_MIRI_INTERFACE_HPP */
