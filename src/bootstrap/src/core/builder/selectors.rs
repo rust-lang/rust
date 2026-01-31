@@ -11,9 +11,6 @@ use crate::core::builder::{Builder, Kind, PathSet, ShouldRun, StepDescription};
 mod tests;
 
 pub(crate) const PATH_REMAP: &[(&str, &[&str])] = &[
-    // bootstrap.toml uses `rust-analyzer-proc-macro-srv`, but the
-    // actual path is `proc-macro-srv-cli`
-    ("rust-analyzer-proc-macro-srv", &["src/tools/rust-analyzer/crates/proc-macro-srv-cli"]),
     // Make `x test tests` function the same as `x t tests/*`
     (
         "tests",
