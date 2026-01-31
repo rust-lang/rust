@@ -1,7 +1,9 @@
 use rustc_ast::{BorrowKind, UnOp};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{Expr, ExprKind, Mutability, find_attr};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, OverloadedDeref};
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AutoBorrow, DerefAdjustKind, OverloadedDeref,
+};
 use rustc_session::{declare_lint, declare_lint_pass};
 
 use crate::lints::{
@@ -165,12 +167,14 @@ fn peel_derefs_adjustments<'a>(mut adjs: &'a [Adjustment<'a>]) -> &'a [Adjustmen
 /// an implicit borrow (or has an implicit borrow via an overloaded deref).
 fn has_implicit_borrow(Adjustment { kind, .. }: &Adjustment<'_>) -> Option<(Mutability, bool)> {
     match kind {
-        &Adjust::Deref(Some(OverloadedDeref { mutbl, .. })) => Some((mutbl, true)),
+        &Adjust::Deref(DerefAdjustKind::Overloaded(OverloadedDeref { mutbl, .. })) => {
+            Some((mutbl, true))
+        }
         &Adjust::Borrow(AutoBorrow::Ref(mutbl)) => Some((mutbl.into(), false)),
         Adjust::NeverToAny
         | Adjust::Pointer(..)
         | Adjust::ReborrowPin(..)
-        | Adjust::Deref(None)
+        | Adjust::Deref(DerefAdjustKind::Builtin)
         | Adjust::Borrow(AutoBorrow::RawPtr(..)) => None,
     }
 }
