@@ -83,9 +83,9 @@ pub trait DepContext: Copy {
     }
 
     /// Load data from the on-disk cache.
-    fn try_load_from_on_disk_cache(self, dep_node: DepNode) {
+    fn try_load_from_on_disk_cache(self, dep_node: &DepNode) {
         if let Some(try_load_fn) = self.dep_kind_vtable(dep_node.kind).try_load_from_on_disk_cache {
-            try_load_fn(self, dep_node)
+            try_load_fn(self, *dep_node)
         }
     }
 

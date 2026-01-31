@@ -662,7 +662,7 @@ impl<D: Deps> DepGraphData<D> {
     }
 
     #[inline]
-    pub(crate) fn prev_node_of(&self, prev_index: SerializedDepNodeIndex) -> DepNode {
+    pub(crate) fn prev_node_of(&self, prev_index: SerializedDepNodeIndex) -> &DepNode {
         self.previous.index_to_node(prev_index)
     }
 
@@ -783,7 +783,7 @@ impl<D: Deps> DepGraphData<D> {
         #[cfg(debug_assertions)]
         self.current.record_edge(
             dep_node_index,
-            self.previous.index_to_node(prev_index),
+            *self.previous.index_to_node(prev_index),
             self.previous.fingerprint_by_index(prev_index),
         );
 
@@ -918,7 +918,7 @@ impl<D: Deps> DepGraphData<D> {
             DepNodeColor::Unknown => {}
         }
 
-        let dep_dep_node = &get_dep_dep_node();
+        let dep_dep_node = get_dep_dep_node();
 
         // We don't know the state of this dependency. If it isn't
         // an eval_always node, let's try to mark it green recursively.
@@ -989,7 +989,7 @@ impl<D: Deps> DepGraphData<D> {
         // We never try to mark eval_always nodes as green
         debug_assert!(!qcx.dep_context().is_eval_always(dep_node.kind));
 
-        debug_assert_eq!(self.previous.index_to_node(prev_dep_node_index), *dep_node);
+        debug_assert_eq!(self.previous.index_to_node(prev_dep_node_index), dep_node);
 
         let prev_deps = self.previous.edge_targets_from(prev_dep_node_index);
 
@@ -1450,7 +1450,7 @@ fn panic_on_forbidden_read<D: Deps>(data: &DepGraphData<D>, dep_node_index: DepN
     // previous session and has been marked green
     for prev_index in data.colors.values.indices() {
         if data.colors.current(prev_index) == Some(dep_node_index) {
-            dep_node = Some(data.previous.index_to_node(prev_index));
+            dep_node = Some(*data.previous.index_to_node(prev_index));
             break;
         }
     }
