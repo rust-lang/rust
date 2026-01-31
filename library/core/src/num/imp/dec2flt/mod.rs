@@ -88,7 +88,7 @@
 )]
 
 use common::BiasedFp;
-use float::RawFloat;
+use float::{FloatExt, Lemire};
 use lemire::compute_float;
 use parse::{parse_inf_nan, parse_number};
 use slow::parse_long_mantissa;
@@ -120,7 +120,7 @@ pub fn pfe_invalid() -> ParseFloatError {
 }
 
 /// Converts a `BiasedFp` to the closest machine float type.
-fn biased_fp_to_float<F: RawFloat>(x: BiasedFp) -> F {
+fn biased_fp_to_float<F: FloatExt>(x: BiasedFp) -> F {
     let mut word = x.m;
     word |= (x.p_biased as u64) << F::SIG_BITS;
     F::from_u64_bits(word)
@@ -128,7 +128,7 @@ fn biased_fp_to_float<F: RawFloat>(x: BiasedFp) -> F {
 
 /// Converts a decimal string into a floating point number.
 #[inline(always)] // Will be inlined into a function with `#[inline(never)]`, see above
-pub fn dec2flt<F: RawFloat>(s: &str) -> Result<F, ParseFloatError> {
+pub fn dec2flt<F: Lemire>(s: &str) -> Result<F, ParseFloatError> {
     let mut s = s.as_bytes();
     let Some(&c) = s.first() else { return Err(pfe_empty()) };
     let negative = c == b'-';

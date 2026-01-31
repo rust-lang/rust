@@ -1,6 +1,6 @@
 use core::num::imp::dec2flt;
 
-use dec2flt::float::RawFloat;
+use dec2flt::float::Float;
 use dec2flt::lemire::compute_float;
 
 #[cfg(target_has_reliable_f16)]

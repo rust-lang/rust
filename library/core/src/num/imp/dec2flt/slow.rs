@@ -2,7 +2,7 @@
 
 use dec2flt::common::BiasedFp;
 use dec2flt::decimal_seq::{DecimalSeq, parse_decimal_seq};
-use dec2flt::float::RawFloat;
+use dec2flt::float::Float;
 
 use crate::num::imp::dec2flt;
 
@@ -25,7 +25,7 @@ use crate::num::imp::dec2flt;
 ///
 /// The algorithms described here are based on "Processing Long Numbers Quickly",
 /// available here: <https://arxiv.org/pdf/2101.11408.pdf#section.11>.
-pub(crate) fn parse_long_mantissa<F: RawFloat>(s: &[u8]) -> BiasedFp {
+pub(crate) fn parse_long_mantissa<F: Float>(s: &[u8]) -> BiasedFp {
     const MAX_SHIFT: usize = 60;
     const NUM_POWERS: usize = 19;
     const POWERS: [u8; 19] =
