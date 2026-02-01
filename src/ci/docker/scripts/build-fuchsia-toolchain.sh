@@ -3,14 +3,23 @@
 set -ex
 source shared.sh
 
+# The Fuchsia SDK is used to set up a Fuchsia test environment. The latest version can be found at:
+# the latest Fuchsia checkout is found at:
+#   https://chrome-infra-packages.appspot.com/p/fuchsia/sdk/core/linux-amd64/+/latest
 FUCHSIA_SDK_URL=https://chrome-infra-packages.appspot.com/dl/fuchsia/sdk/core/linux-amd64
-FUCHSIA_SDK_ID=version:26.20241211.7.1
-FUCHSIA_SDK_SHA256=2cb7a9a0419f7413a46e0ccef7dad89f7c9979940d7c1ee87fac70ff499757d6
+FUCHSIA_SDK_ID=version:27.20250319.0.1
+FUCHSIA_SDK_SHA256=0b0eeed62b024d8910917a797d658098a312b7674c3742292b40ba10aa56ea8e
 FUCHSIA_SDK_USR_DIR=/usr/local/core-linux-amd64-fuchsia-sdk
+
+# The Clang toolchain used to compile Fuchsia. The version currently used by
+# the latest Fuchsia checkout is found in:
+#   https://fuchsia.googlesource.com/integration/+/refs/heads/main/toolchain. The
+# CIPD artifacts are found in:
+#   https://chrome-infra-packages.appspot.com/p/fuchsia/third_party/clang/linux-amd64
 CLANG_DOWNLOAD_URL=\
 https://chrome-infra-packages.appspot.com/dl/fuchsia/third_party/clang/linux-amd64
-CLANG_DOWNLOAD_ID=git_revision:388d7f144880dcd85ff31f06793304405a9f44b6
-CLANG_DOWNLOAD_SHA256=970d1f427b9c9a3049d8622c80c86830ff31b5334ad8da47a2f1e81143197e8b
+CLANG_DOWNLOAD_ID=git_revision:684052173971868aab0e6b62d7770a6299e84141
+CLANG_DOWNLOAD_SHA256=e82b7f96e1215d68fb8d39f21fdc5020ee4683baae247ac553017f65819bc409
 
 install_clang() {
   mkdir -p clang_download
