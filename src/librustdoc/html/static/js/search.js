@@ -1557,9 +1557,11 @@ class DocSearch {
             return query;
         }
         if (!query.literalSearch) {
-            // If there is more than one element in the query, we switch to literalSearch in any
-            // case.
-            query.literalSearch = parserState.totalElems > 1;
+            // If there is more than one element or only separators in the query,
+            // we switch to literalSearch in any case.
+            query.literalSearch = parserState.totalElems > 1 ||
+                /^[=, ]+$/.test(userQuery);
+
         }
         query.foundElems = query.elems.length + query.returned.length;
         query.totalElems = parserState.totalElems;

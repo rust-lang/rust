@@ -1,0 +1,17 @@
+// Regression test for https://github.com/rust-lang/rust/issues/150921
+//
+// Ensure `?search=!=` (unencoded value `!=`) round-trips through query-string parsing so
+// `!=` searches work.
+include: "utils.goml"
+
+// NOTE: This intentionally uses an *unencoded* value of `!=`.
+// In a query string, that means `?search=!=` (one '=' for the delimiter, one for the value).
+go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=!="
+
+// Wait for search results to be available.
+wait-for: "#crate-search"
+wait-for-false: "#search-tabs .count.loading"
+
+// `OperatorNotEqAlias` has `#[doc(alias = "!=")]`.
+wait-for: "//a[contains(@href,'struct.OperatorNotEqAlias.html')]"
+assert: "//a[contains(@href,'struct.OperatorNotEqAlias.html')]"
