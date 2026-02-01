@@ -506,7 +506,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let operands = self.arena.alloc_from_iter(operands);
-        let template = self.arena.alloc_from_iter(asm.template.iter().cloned());
+        let template = self
+            .arena
+            .alloc_from_iter(asm.template.iter().map(|i| self.lower_inline_asm_template_piece(i)));
         let template_strs = self.arena.alloc_from_iter(
             asm.template_strs
                 .iter()
@@ -523,5 +525,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             line_spans,
         };
         self.arena.alloc(hir_asm)
+    }
+
+    fn lower_inline_asm_template_piece(
+        &self,
+        template: &InlineAsmTemplatePiece,
+    ) -> InlineAsmTemplatePiece {
+        match template {
+            InlineAsmTemplatePiece::String(cow) => InlineAsmTemplatePiece::String(cow.clone()),
+            InlineAsmTemplatePiece::Placeholder { operand_idx, modifier, span } => {
+                InlineAsmTemplatePiece::Placeholder {
+                    operand_idx: *operand_idx,
+                    modifier: *modifier,
+                    span: self.lower_span(*span),
+                }
+            }
+        }
     }
 }
