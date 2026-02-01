@@ -205,6 +205,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         // See trait-system-refactor-initiative#234.
     }
 
+    fn expand_free_alias_tys<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
+        self.expand_free_alias_tys(t)
+    }
+
     fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
         self.expand_abstract_consts(t)
     }
