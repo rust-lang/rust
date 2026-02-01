@@ -1,0 +1,25 @@
+warning: ambiguous import visibility: pub(crate) or pub
+  --> $DIR/ambiguous-import-visibility.rs:12:9
+   |
+LL | pub use RustEmbed as Embed;
+   |         ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #149145 <https://github.com/rust-lang/rust/issues/149145>
+   = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
+note: `RustEmbed` could refer to the derive macro imported here
+  --> $DIR/ambiguous-import-visibility.rs:8:9
+   |
+LL | pub use same_res_ambigious_extern_macro::*;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `RustEmbed` to disambiguate
+   = help: or use `crate::RustEmbed` to refer to this derive macro unambiguously
+note: `RustEmbed` could also refer to the derive macro imported here
+  --> $DIR/ambiguous-import-visibility.rs:5:1
+   |
+LL | #[macro_use] // this imports the `RustEmbed` macro with `pub(crate)` visibility
+   | ^^^^^^^^^^^^
+   = note: `#[warn(ambiguous_import_visibilities)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+

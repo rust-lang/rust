@@ -20,6 +20,7 @@ declare_lint_pass! {
         AMBIGUOUS_GLOB_IMPORTED_TRAITS,
         AMBIGUOUS_GLOB_IMPORTS,
         AMBIGUOUS_GLOB_REEXPORTS,
+        AMBIGUOUS_IMPORT_VISIBILITIES,
         AMBIGUOUS_PANIC_IMPORTS,
         ARITHMETIC_OVERFLOW,
         ASM_SUB_REGISTER,
@@ -4561,6 +4562,54 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #147319),
         report_in_deps: false,
+    };
+}
+
+declare_lint! {
+    /// The `ambiguous_import_visibilities` lint detects imports that should report ambiguity
+    /// errors, but previously didn't do that due to rustc bugs.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(ambiguous_import_visibilities)]
+    /// mod reexport {
+    ///     mod m {
+    ///         pub struct S {}
+    ///     }
+    ///
+    ///     macro_rules! mac {
+    ///         () => { use m::S; }
+    ///     }
+    ///
+    ///     pub use m::*;
+    ///     mac!();
+    ///
+    ///     pub use S as Z; // ambiguous visibility
+    /// }
+    ///
+    /// fn main() {
+    ///     reexport::Z {};
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Previous versions of Rust compile it successfully because it
+    /// fetched the glob import's visibility for `pub use S as Z` import, and ignored the private
+    /// `use m::S` import that appeared later.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a
+    /// hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub AMBIGUOUS_IMPORT_VISIBILITIES,
+    Warn,
+    "detects certain glob imports that require reporting an ambiguity error",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #149145),
     };
 }
 
