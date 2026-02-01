@@ -156,10 +156,12 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
                     }
                 }
             }
-            debug_assert!(
-                !self.fx.cx.is_backend_ref(layout),
-                "Post-projection {place_ref:?} layout should be non-Ref, but it's {layout:?}",
-            );
+            // After projection, if the layout is still a backend ref (e.g., field projection
+            // on multi-variant enums), we need to use Memory instead of SSA.
+            if self.fx.cx.is_backend_ref(layout) {
+                self.locals[place_ref.local] = LocalKind::Memory;
+                return;
+            }
         }
 
         // Even with supported projections, we still need to have `visit_local`
