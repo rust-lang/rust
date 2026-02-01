@@ -28,7 +28,7 @@ where
             BackendRepr::ScalableVector { .. } => panic!("scalable vectors are unsupported"),
             BackendRepr::Scalar(scalar) => {
                 if is_ret && matches!(scalar.primitive(), Primitive::Int(Integer::I128, _)) {
-                    if cx.target_spec().rustc_abi == Some(RustcAbi::X86Softfloat) {
+                    if cx.target_spec().rustc_abi == Some(RustcAbi::Softfloat) {
                         // Use the native `i128` LLVM type for the softfloat ABI -- in other words, adjust nothing.
                     } else {
                         // `i128` is returned in xmm0 by Clang and GCC
