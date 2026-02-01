@@ -258,6 +258,25 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         self.eq_relations().inlined_probe_value(vid)
     }
 
+    /// Retrieves the type to which `vid` has been instantiated, if
+    /// any, along with the root `vid`.
+    pub(crate) fn probe_with_root_vid(
+        &mut self,
+        vid: ty::TyVid,
+    ) -> (ty::TyVid, TypeVariableValue<'tcx>) {
+        self.inlined_probe_with_vid(vid)
+    }
+
+    /// An always-inlined variant of `probe_with_root_vid`, for very hot call sites.
+    #[inline(always)]
+    pub(crate) fn inlined_probe_with_vid(
+        &mut self,
+        vid: ty::TyVid,
+    ) -> (ty::TyVid, TypeVariableValue<'tcx>) {
+        let (id, value) = self.eq_relations().inlined_probe_key_value(vid);
+        (id.vid, value)
+    }
+
     #[inline]
     fn eq_relations(&mut self) -> super::UnificationTable<'_, 'tcx, TyVidEqKey<'tcx>> {
         self.storage.eq_relations.with_log(self.undo_log)

@@ -1298,9 +1298,8 @@ dependencies = [
 
 [[package]]
 name = "ena"
-version = "0.14.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d248bdd43ce613d87415282f69b9bb99d947d290b10962dd6c56233312c2ad5"
+version = "0.14.4"
+source = "git+https://github.com/ShoyuVanilla/ena.git?rev=4153bd310d8470b166e14136b508eef1488399e2#4153bd310d8470b166e14136b508eef1488399e2"
 dependencies = [
  "log",
 ]
