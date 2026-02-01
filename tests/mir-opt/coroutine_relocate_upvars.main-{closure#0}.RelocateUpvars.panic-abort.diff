@@ -1,0 +1,91 @@
+- // MIR for `main::{closure#0}` before RelocateUpvars
++ // MIR for `main::{closure#0}` after RelocateUpvars
+  
+  fn main::{closure#0}(_1: {coroutine@$DIR/coroutine_relocate_upvars.rs:12:5: 12:7}, _2: ()) -> ()
+  yields ()
+   {
+-     debug x => (*(_1.0: &mut std::string::String));
++     debug x => (*_9);
++     debug x => _9;
+      let mut _0: ();
+      let mut _3: std::string::String;
+      let _4: ();
+      let mut _5: ();
+      let mut _6: &mut std::string::String;
+      let mut _7: &mut std::string::String;
+      let mut _8: &mut std::string::String;
++     let mut _9: &mut std::string::String;
++     let mut _10: &mut std::string::String;
+  
+      bb0: {
++         StorageLive(_9);
++         StorageLive(_10);
++         _10 = move (_1.0: &mut std::string::String);
++         _9 = move _10;
++         StorageDead(_10);
+          StorageLive(_3);
+          _3 = String::new() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         _6 = copy (_1.0: &mut std::string::String);
++         _6 = copy _9;
+          drop((*_6)) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+-         _7 = copy (_1.0: &mut std::string::String);
++         _7 = copy _9;
+          (*_7) = move _3;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = ();
+          _4 = yield(move _5) -> [resume: bb4, drop: bb6];
+      }
+  
+      bb4: {
+          StorageDead(_5);
+          StorageDead(_4);
+          _0 = const ();
+-         drop(_1) -> [return: bb5, unwind unreachable];
++         goto -> bb10;
+      }
+  
+      bb5: {
++         StorageDead(_9);
+          return;
+      }
+  
+      bb6: {
+          StorageDead(_5);
+          StorageDead(_4);
+          goto -> bb7;
+      }
+  
+      bb7: {
+-         drop(_1) -> [return: bb8, unwind unreachable];
++         goto -> bb11;
+      }
+  
+      bb8: {
+          coroutine_drop;
++     }
++ 
++     bb9 (cleanup): {
++         unreachable;
++     }
++ 
++     bb10: {
++         goto -> bb5;
++     }
++ 
++     bb11: {
++         goto -> bb8;
+      }
+  }
+  

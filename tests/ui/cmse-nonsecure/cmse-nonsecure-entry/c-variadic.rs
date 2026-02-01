@@ -3,11 +3,24 @@
 //@ compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
 //@ needs-llvm-components: arm
 //@ ignore-backends: gcc
-#![feature(cmse_nonsecure_entry, c_variadic, no_core, lang_items)]
+#![feature(cmse_nonsecure_entry, rustc_attrs, c_variadic, no_core, lang_items, transparent_unions)]
 #![no_core]
 
 extern crate minicore;
 use minicore::*;
+
+#[lang = "clone"]
+pub trait Clone: Sized {}
+
+#[lang = "maybe_uninit"]
+#[repr(transparent)]
+#[rustc_pub_transparent]
+pub union MaybeUninit<T> {
+    uninit: (),
+    value: ManuallyDrop<T>,
+}
+impl<T: Copy> Copy for MaybeUninit<T> {}
+impl<T: Copy> Clone for MaybeUninit<T> {}
 
 #[lang = "va_list"]
 struct VaList(*mut u8);

@@ -2470,7 +2470,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 // If the local may have been initialized, and it is now currently being
                 // mutated, then it is justified to be annotated with the `mut`
                 // keyword, since the mutation may be a possible reassignment.
-                if is_local_mutation_allowed != LocalMutationIsAllowed::Yes
+                if !matches!(is_local_mutation_allowed, LocalMutationIsAllowed::Yes)
                     && self.is_local_ever_initialized(local, state).is_some()
                 {
                     self.used_mut.insert(local);

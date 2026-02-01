@@ -3,8 +3,10 @@
 #![cfg_attr(attribute, move_size_limit = "1000")]
 //@ build-fail
 //@ only-64bit
-//@ revisions: attribute option
-//@ [option]compile-flags: -Zmove-size-limit=1000
+//@ revisions: attribute option option-relocate
+//@ compile-flags: -Zpack-coroutine-layout=no
+//@ [option] compile-flags: -Zmove-size-limit=1000
+//@ [option-relocate] compile-flags: -Zmove-size-limit=1000 -Zpack-coroutine-layout=captures-only
 
 //@ edition:2018
 //@ compile-flags: -Zmir-opt-level=0

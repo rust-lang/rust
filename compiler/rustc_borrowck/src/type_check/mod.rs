@@ -26,8 +26,8 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
-    GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, GenericArgsRef, Ty, TyCtxt,
+    TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
 };
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
@@ -2202,14 +2202,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             AggregateKind::Coroutine(_, args) => {
-                // It doesn't make sense to look at a field beyond the prefix;
-                // these require a variant index, and are not initialized in
-                // aggregate rvalues.
-                match args.as_coroutine().prefix_tys().get(field_index.as_usize()) {
-                    Some(ty) => Ok(*ty),
-                    None => Err(FieldAccessError::OutOfRange {
-                        field_count: args.as_coroutine().prefix_tys().len(),
-                    }),
+                // It doesn't make sense to look at a field beyond the captured
+                // upvars.
+                // Otherwise it require a variant index, and are not initialized
+                // in aggregate rvalues.
+                let upvar_tys = &args.as_coroutine().upvar_tys();
+                if let Some(ty) = upvar_tys.get(field_index.as_usize()) {
+                    Ok(*ty)
+                } else {
+                    Err(FieldAccessError::OutOfRange { field_count: upvar_tys.len() })
                 }
             }
             AggregateKind::CoroutineClosure(_, args) => {

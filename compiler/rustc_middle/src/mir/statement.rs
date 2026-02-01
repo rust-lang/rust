@@ -156,13 +156,13 @@ impl<'tcx> PlaceTy<'tcx> {
                     .get(f.index())
                     .copied()
                     .unwrap_or_else(|| bug!("field {f:?} out of range: {self_ty:?}")),
-                // Only prefix fields (upvars and current state) are
-                // accessible without a variant index.
-                ty::Coroutine(_, args) => {
-                    args.as_coroutine().prefix_tys().get(f.index()).copied().unwrap_or_else(|| {
-                        bug!("field {f:?} out of range of prefixes for {self_ty}")
-                    })
-                }
+                // Only upvars are accessible without a variant index.
+                ty::Coroutine(_, args) => args
+                    .as_coroutine()
+                    .upvar_tys()
+                    .get(f.index())
+                    .copied()
+                    .unwrap_or_else(|| bug!("field {f:?} out of range: {self_ty:?}")),
                 ty::Tuple(tys) => tys
                     .get(f.index())
                     .copied()

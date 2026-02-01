@@ -1,0 +1,105 @@
+- // MIR for `main::{closure#0}` before RelocateUpvars
++ // MIR for `main::{closure#0}` after RelocateUpvars
+  
+  fn main::{closure#0}(_1: {coroutine@$DIR/coroutine_relocate_upvars.rs:12:5: 12:7}, _2: ()) -> ()
+  yields ()
+   {
+-     debug x => (*(_1.0: &mut std::string::String));
++     debug x => (*_9);
++     debug x => _9;
+      let mut _0: ();
+      let mut _3: std::string::String;
+      let _4: ();
+      let mut _5: ();
+      let mut _6: &mut std::string::String;
+      let mut _7: &mut std::string::String;
+      let mut _8: &mut std::string::String;
++     let mut _9: &mut std::string::String;
++     let mut _10: &mut std::string::String;
+  
+      bb0: {
++         StorageLive(_9);
++         StorageLive(_10);
++         _10 = move (_1.0: &mut std::string::String);
++         _9 = move _10;
++         StorageDead(_10);
+          StorageLive(_3);
+          _3 = String::new() -> [return: bb1, unwind: bb10];
+      }
+  
+      bb1: {
+-         _6 = copy (_1.0: &mut std::string::String);
++         _6 = copy _9;
+          drop((*_6)) -> [return: bb2, unwind: bb3];
+      }
+  
+      bb2: {
+-         _7 = copy (_1.0: &mut std::string::String);
++         _7 = copy _9;
+          (*_7) = move _3;
+          goto -> bb4;
+      }
+  
+      bb3 (cleanup): {
+-         _8 = copy (_1.0: &mut std::string::String);
++         _8 = copy _9;
+          (*_8) = move _3;
+          goto -> bb10;
+      }
+  
+      bb4: {
+          StorageDead(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = ();
+          _4 = yield(move _5) -> [resume: bb5, drop: bb7];
+      }
+  
+      bb5: {
+          StorageDead(_5);
+          StorageDead(_4);
+          _0 = const ();
+-         drop(_1) -> [return: bb6, unwind: bb11];
++         goto -> bb12;
+      }
+  
+      bb6: {
++         StorageDead(_9);
+          return;
+      }
+  
+      bb7: {
+          StorageDead(_5);
+          StorageDead(_4);
+          goto -> bb8;
+      }
+  
+      bb8: {
+-         drop(_1) -> [return: bb9, unwind: bb11];
++         goto -> bb13;
+      }
+  
+      bb9: {
+          coroutine_drop;
+      }
+  
+      bb10 (cleanup): {
+          StorageDead(_3);
+-         drop(_1) -> [return: bb11, unwind terminate(cleanup)];
++         goto -> bb11;
+      }
+  
+      bb11 (cleanup): {
++         StorageDead(_9);
+          resume;
++     }
++ 
++     bb12: {
++         goto -> bb6;
++     }
++ 
++     bb13: {
++         goto -> bb9;
+      }
+  }
+  

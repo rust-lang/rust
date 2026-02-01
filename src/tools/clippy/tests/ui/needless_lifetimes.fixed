@@ -3,6 +3,7 @@
 #![warn(clippy::needless_lifetimes, clippy::elidable_lifetime_names)]
 #![allow(
     unused,
+    clippy::await_holding_lock,
     clippy::boxed_local,
     clippy::extra_unused_type_parameters,
     clippy::needless_pass_by_value,
