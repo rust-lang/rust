@@ -209,6 +209,8 @@ impl<'tcx> MonoItem<'tcx> {
         if codegen_fn_attrs.inline.always() {
             return InstantiationMode::LocalCopy;
         }
+        // FIXME: Ideally we'd check has_inline_always_override here, but we can't because symbol names
+        // depend on instantiation mode so instantiation mode can't depend on symbol name.
 
         // #[inline(never)] functions in general are poor candidates for inlining and thus since
         // LocalCopy generally increases code size for the benefit of optimizations from inlining,
