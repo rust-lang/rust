@@ -1,17 +1,22 @@
+// ignore-tidy-linelength
 //@ add-minicore
-//@ revisions: riscv32i riscv32imafc riscv32gc riscv32e riscv64imac riscv64gc
+//@ revisions: riscv32i riscv32imafc riscv32gc riscv32gc_stable riscv32e riscv64imac riscv64gc riscv64gc_stable
 //@[riscv32i] compile-flags: --target riscv32i-unknown-none-elf
 //@[riscv32i] needs-llvm-components: riscv
 //@[riscv32imafc] compile-flags: --target riscv32imafc-unknown-none-elf
 //@[riscv32imafc] needs-llvm-components: riscv
 //@[riscv32gc] compile-flags: --target riscv32gc-unknown-linux-gnu
 //@[riscv32gc] needs-llvm-components: riscv
+//@[riscv32gc_stable] compile-flags: --target riscv32gc-unknown-linux-gnu
+//@[riscv32gc_stable] needs-llvm-components: riscv
 //@[riscv32e] compile-flags: --target riscv32e-unknown-none-elf
 //@[riscv32e] needs-llvm-components: riscv
 //@[riscv64imac] compile-flags: --target riscv64imac-unknown-none-elf
 //@[riscv64imac] needs-llvm-components: riscv
 //@[riscv64gc] compile-flags: --target riscv64gc-unknown-linux-gnu
 //@[riscv64gc] needs-llvm-components: riscv
+//@[riscv64gc_stable] compile-flags: --target riscv64gc-unknown-linux-gnu
+//@[riscv64gc_stable] needs-llvm-components: riscv
 //@ ignore-backends: gcc
 
 // Unlike riscv32e-registers.rs, this tests if the rustc can reject invalid registers
@@ -19,6 +24,7 @@
 
 #![crate_type = "lib"]
 #![feature(no_core)]
+#![cfg_attr(not(any(riscv32gc_stable, riscv64gc_stable)), feature(asm_experimental_reg))]
 #![no_core]
 
 extern crate minicore;
@@ -26,6 +32,10 @@ use minicore::*;
 
 fn f() {
     let mut x = 0;
+    #[cfg(target_arch = "riscv32")]
+    let mut pair = 0_i64;
+    #[cfg(target_arch = "riscv64")]
+    let mut pair = 0_i128;
     let mut f = 0.0_f32;
     let mut d = 0.0_f64;
     unsafe {
@@ -76,6 +86,20 @@ fn f() {
         asm!("", out("x31") _);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
 
+        // reg_pair
+        // FIXME: message "can only be used as a clobber in stable" is not correct
+        asm!("/* {} */", in(reg_pair) pair); // requires asm_experimental_reg
+        //[riscv32gc_stable,riscv64gc_stable]~^ ERROR register class `reg_pair` can only be used as a clobber in stable
+        //[riscv32gc_stable]~^^ ERROR type `i64` cannot be used with this register class in stable
+        //[riscv64gc_stable]~^^^ ERROR type `i128` cannot be used with this register class in stable
+        asm!("/* {} */", out(reg_pair) pair); // requires asm_experimental_reg
+        //[riscv32gc_stable,riscv64gc_stable]~^ ERROR register class `reg_pair` can only be used as a clobber in stable
+        //[riscv32gc_stable]~^^ ERROR type `i64` cannot be used with this register class in stable
+        //[riscv64gc_stable]~^^^ ERROR type `i128` cannot be used with this register class in stable
+        asm!("/* {} */", out(reg_pair) _); // requires asm_experimental_reg
+        //[riscv32gc_stable,riscv64gc_stable]~^ ERROR register class `reg_pair` can only be used as a clobber in stable
+
+        // freg
         asm!("", out("f0") _); // ok
         asm!("/* {} */", in(freg) f);
         //[riscv32i,riscv32e,riscv64imac]~^ ERROR register class `freg` requires at least one of the following target features: d, f
