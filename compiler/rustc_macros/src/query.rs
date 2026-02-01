@@ -359,6 +359,7 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
             no_hash,
             anon,
             eval_always,
+            feedable,
             depth_limit,
             separate_provide_extern,
             return_result_from_ensure_ok,
