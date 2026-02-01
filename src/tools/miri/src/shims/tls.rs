@@ -1,7 +1,7 @@
 //! Implement thread-local storage.
 
-use std::collections::BTreeMap;
 use std::collections::btree_map::Entry as BTreeEntry;
+use std::collections::{BTreeMap, VecDeque};
 use std::task::Poll;
 
 use rustc_abi::{ExternAbi, HasDataLayout, Size};
@@ -22,11 +22,20 @@ pub struct TlsEntry<'tcx> {
 }
 
 #[derive(Default, Debug)]
-struct RunningDtorState {
+struct RunningPthreadDtorState {
     /// The last TlsKey used to retrieve a TLS destructor. `None` means that we
     /// have not tried to retrieve a TLS destructor yet or that we already tried
     /// all keys.
     last_key: Option<TlsKey>,
+}
+
+#[derive(Default, Debug)]
+struct RunningWindowsDtorState {
+    /// The last TlsKey for which a TLS destructor ran. `None` means that we
+    /// have not run a TLS destructor yet. This is used to clear the TLS value after the dtor returned.
+    last_key: Option<TlsKey>,
+    // Keys that have destructors that we still need to run.
+    remaining_keys: VecDeque<TlsKey>,
 }
 
 #[derive(Debug)]
@@ -220,10 +229,12 @@ enum TlsDtorsStatePriv<'tcx> {
     #[default]
     Init,
     MacOsDtors,
-    PthreadDtors(RunningDtorState),
-    /// For Windows Dtors, we store the list of functions that we still have to call.
-    /// These are functions from the magic `.CRT$XLB` linker section.
-    WindowsDtors(Vec<(ImmTy<'tcx>, Span)>),
+    PthreadDtors(RunningPthreadDtorState),
+    /// For Windows, we support two different ways dtors can be registered.
+    /// 1. Functions that are registered via the `FlsAlloc` function, which are invoked one by one.
+    /// 2. Functions from the magic `.CRT$XLB` linker section.
+    ///    We store these as a list of functions that we still have to call.
+    WindowsDtors(RunningWindowsDtorState, Vec<(ImmTy<'tcx>, Span)>),
     Done,
 }
 
@@ -250,8 +261,13 @@ impl<'tcx> TlsDtorsState<'tcx> {
                         Os::Windows => {
                             // Determine which destructors to run.
                             let dtors = this.lookup_windows_tls_dtors()?;
+
+                            // Fetch fls keys that have destructors. Keys registered during thread exit will not have their destructor called.
+                            // See also: `schedule_next_windows_fls_dtor`.
+                            let fls_keys_with_dtors = this.lookup_windows_fls_keys_with_dtors()?;
+
                             // And move to the next state, that runs them.
-                            break 'new_state WindowsDtors(dtors);
+                            break 'new_state WindowsDtors(RunningWindowsDtorState { last_key: None, remaining_keys: fls_keys_with_dtors }, dtors);
                         }
                         _ => {
                             // No TLS dtor support.
@@ -273,7 +289,13 @@ impl<'tcx> TlsDtorsState<'tcx> {
                         Poll::Ready(()) => break 'new_state Done,
                     }
                 }
-                WindowsDtors(dtors) => {
+                WindowsDtors(state, dtors) => {
+                    // Fls destructors are scheduled before the tls callback.
+                    match this.schedule_next_windows_fls_dtor(state)? {
+                        Poll::Pending => return interp_ok(Poll::Pending), // just keep going
+                        Poll::Ready(()) => {}
+                    }
+
                     if let Some((dtor, span)) = dtors.pop() {
                         this.schedule_windows_tls_dtor(dtor, span)?;
                         return interp_ok(Poll::Pending); // we stay in this state (but `dtors` got shorter)
@@ -304,6 +326,22 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Windows has a special magic linker section that is run on certain events.
         // We don't support most of that, but just enough to make thread-local dtors in `std` work.
         interp_ok(this.lookup_link_section(|section| section == ".CRT$XLB")?)
+    }
+
+    /// Lookup all the FLS keys (which are stored as TLS keys) that have a destructor.
+    /// See also: `schedule_next_windows_fls_dtor`.
+    fn lookup_windows_fls_keys_with_dtors(&mut self) -> InterpResult<'tcx, VecDeque<TlsKey>> {
+        let this = self.eval_context_mut();
+
+        interp_ok(
+            this.machine
+                .tls
+                .keys
+                .iter()
+                .filter(|(_, data)| data.dtor.is_some())
+                .map(|(key, _)| *key)
+                .collect(),
+        )
     }
 
     fn schedule_windows_tls_dtor(&mut self, dtor: ImmTy<'tcx>, span: Span) -> InterpResult<'tcx> {
@@ -360,7 +398,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// a destructor to schedule, and `false` otherwise.
     fn schedule_next_pthread_tls_dtor(
         &mut self,
-        state: &mut RunningDtorState,
+        state: &mut RunningPthreadDtorState,
     ) -> InterpResult<'tcx, Poll<()>> {
         let this = self.eval_context_mut();
         let active_thread = this.active_thread();
@@ -390,6 +428,77 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(Poll::Pending);
         }
 
+        interp_ok(Poll::Ready(()))
+    }
+
+    /// Schedule a Windows FLS destructor, if one is found.
+    fn schedule_next_windows_fls_dtor(
+        &mut self,
+        state: &mut RunningWindowsDtorState,
+    ) -> InterpResult<'tcx, Poll<()>> {
+        let this = self.eval_context_mut();
+        let active_thread = this.active_thread();
+
+        // According to [PflsCallbackFunction's docs],
+        // > If the FLS slot is in use, `FlsCallback`` is called on .. thread exit ..
+        // However, the exact order and semantics are not defined.
+        // We use the following implementation, which matches both observed behavior and
+        // Wine's implementation of the same logic in the [`RtlProcessFlsData`] function.
+        // 1. Fetch all the keys once (in `lookup_windows_fls_keys_with_dtors`).
+        // 2. Go over them one by one, in order, skipping keys without dtors.
+        // 3. Fetch the value associated with the key.
+        // 4. If it is non-zero, call the registered dtor.
+        // 5. After the dtor is called, clear the key's value, setting it to zero.
+        // New keys registered during thread exit are ignored, but values set before the dtor is scheduled are visible.
+        // Keys without dtors will not be set to zero.
+        // [PflsCallbackFunction's docs]: https://learn.microsoft.com/en-us/windows/win32/api/winnt/nc-winnt-pfls_callback_function
+        // [`RtlProcessFlsData`]: https://github.com/wine-mirror/wine/blob/wine-11.0/dlls/ntdll/thread.c#L679
+        
+        // We are done running the last key's destructor, so set it's value to zero.
+        if let Some(last_key) = state.last_key.take() {
+            if let Some(TlsEntry { data, .. }) = this.machine.tls.keys.get_mut(&last_key) {
+                 data.remove(&active_thread);
+            };
+        }
+
+        while let Some(key) = state.remaining_keys.pop_front() {
+            // Fetch dtor for this `key`.
+            // If the key doesn't have a dtor or does not exist any more, move on to the next key.
+            let (data, dtor) = match this.machine.tls.keys.get(&key) {
+                Some(TlsEntry { data, dtor: Some(dtor) }) => (data, dtor),
+                _ => continue,
+            };
+
+            let (instance, span) = dtor.to_owned();
+            
+            // If the key has no value in this thread, move on to the next key.
+            let ptr = match data.get(&active_thread) {
+                Some(data_scalar) => *data_scalar,
+                None => continue,
+            };
+
+            assert!(
+                ptr.to_target_usize(this).unwrap() != 0,
+                "TLS key's value can't be null (should be absent instead)"
+            );
+            
+            trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, active_thread);
+
+            // We'll clear this key's value next time we are called.
+            state.last_key = Some(key);
+
+            this.call_thread_root_function(
+                instance,
+                ExternAbi::System { unwind: false },
+                &[ImmTy::from_scalar(ptr, this.machine.layouts.mut_raw_ptr)],
+                None,
+                span,
+            )?;
+
+            return interp_ok(Poll::Pending);
+        }
+        
+        // We are done scheduling all the keys.
         interp_ok(Poll::Ready(()))
     }
 }
