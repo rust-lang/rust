@@ -508,6 +508,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         // Unresolved macros produce dummy outputs as a recovery measure.
         invocations.reverse();
         let mut expanded_fragments = Vec::new();
+        let mut expanded_fragments_len = 0;
         let mut undetermined_invocations = Vec::new();
         let (mut progress, mut force) = (false, !self.monotonic);
         loop {
@@ -602,6 +603,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         expanded_fragments.push(Vec::new());
                     }
                     expanded_fragments[depth - 1].push((expn_id, expanded_fragment));
+                    expanded_fragments_len += 1;
                     invocations.extend(derive_invocations.into_iter().rev());
                 }
                 ExpandResult::Retry(invoc) => {
@@ -622,7 +624,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         self.cx.force_mode = orig_force_mode;
 
         // Finally incorporate all the expanded macros into the input AST fragment.
-        let mut placeholder_expander = PlaceholderExpander::default();
+        let mut placeholder_expander = PlaceholderExpander::with_capacity(expanded_fragments_len);
         while let Some(expanded_fragments) = expanded_fragments.pop() {
             for (expn_id, expanded_fragment) in expanded_fragments.into_iter().rev() {
                 placeholder_expander
