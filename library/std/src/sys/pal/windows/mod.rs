@@ -233,6 +233,11 @@ pub fn cvt<I: IsZero>(i: I) -> io::Result<I> {
     if i.is_zero() { Err(io::Error::last_os_error()) } else { Ok(i) }
 }
 
+#[allow(dead_code)]
+pub fn cvt_nz<I: IsZero>(i: I) -> crate::io::Result<()> {
+    if i.is_zero() { Ok(()) } else { Err(crate::io::Error::last_os_error()) }
+}
+
 pub fn dur2timeout(dur: Duration) -> u32 {
     // Note that a duration is a (u64, u32) (seconds, nanoseconds) pair, and the
     // timeouts in windows APIs are typically u32 milliseconds. To translate, we
