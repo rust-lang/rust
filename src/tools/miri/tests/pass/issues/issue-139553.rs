@@ -11,7 +11,7 @@ fn main() {
 
     let t1 = thread::spawn(move || {
         // 1. The first action executed is an attempt to send the first value in the channel. This
-        //    will begin to initialize the channel but will stop at a critical momement as
+        //    will begin to initialize the channel but will stop at a critical moment as
         //    indicated by the `yield_now()` call in the `start_send` method of the implementation.
         let _ = s1.send(42);
         // 4. The sender is re-scheduled and it finishes the initialization of the channel by
