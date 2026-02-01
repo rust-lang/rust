@@ -1,0 +1,19 @@
+error[E0599]: no method named `cloned` found for enum `Option<i32>` in the current scope
+  --> $DIR/into-iter-on-cloned.rs:2:20
+   |
+LL |     let _: i32 = x.cloned().unwrap();
+   |                    ^^^^^^ help: delete the call to `cloned`
+   |
+   = note: this is already an `Option<i32>`
+
+error[E0599]: no method named `copied` found for enum `Option<i32>` in the current scope
+  --> $DIR/into-iter-on-cloned.rs:8:20
+   |
+LL |     let _: i32 = x.copied().unwrap();
+   |                    ^^^^^^ help: delete the call to `copied`
+   |
+   = note: this is already an `Option<i32>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

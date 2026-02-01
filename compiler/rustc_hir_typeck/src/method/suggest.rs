@@ -104,6 +104,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
     }
 
+    fn into_iterator_item_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+        let into_iter = self.tcx.get_diagnostic_item(sym::IntoIterator)?;
+
+        let item_def_id =
+            self.tcx.associated_item_def_ids(into_iter).into_iter().find(|&def_id| {
+                let item = self.tcx.associated_item(def_id);
+                matches!(item.kind, ty::AssocKind::Type { .. }) && item.name() == sym::Item
+            })?;
+
+        let projection = ty::AliasTy::new(self.tcx, *item_def_id, [ty]);
+        return Some(projection.to_ty(self.tcx));
+    }
+
+    fn is_cloned_on_non_ref_into_iter(&self, ty: Ty<'tcx>, method_name: Symbol) -> bool {
+        // Only care about `.cloned()` / `.copied()`
+        if !matches!(method_name.as_str(), "cloned" | "copied") {
+            return false;
+        }
+
+        // We only want to trigger when the receiver implements IntoIterator
+        // and its Item is NOT a reference.
+        let Some(item_ty) = self.into_iterator_item_ty(ty) else {
+            return false;
+        };
+
+        !item_ty.is_ref()
+    }
+
     fn impl_into_iterator_should_be_iterator(
         &self,
         ty: Ty<'tcx>,
@@ -850,6 +878,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "`count` is defined on `{iterator_trait}`, which `{rcvr_ty}` does not implement"
                 ));
             }
+        } else if self.is_cloned_on_non_ref_into_iter(rcvr_ty, item_ident.name) {
+            err.note(format!("this is already an `{}`", rcvr_ty));
+
+            if !span.in_external_macro(self.tcx.sess.source_map()) {
+                err.span_suggestion_short(
+                    span,
+                    format!("delete the call to `{}`", item_ident.name),
+                    "",
+                    Applicability::MachineApplicable,
+                );
+            }
+
+            return Err(());
         } else if self.impl_into_iterator_should_be_iterator(rcvr_ty, span, unsatisfied_predicates)
         {
             err.span_label(span, format!("`{rcvr_ty}` is not an iterator"));
