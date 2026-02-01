@@ -531,3 +531,21 @@ fn test_mutex_with_mut() {
     assert_eq!(*mutex.lock(), 5);
     assert_eq!(result, 10);
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Nonpoison Tests
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[test]
+fn test_mutex_guard_unlocked() {
+    let mutex = std::sync::nonpoison::Mutex::new(1usize);
+    let mut guard = mutex.lock();
+
+    assert!(matches!(mutex.try_lock(), std::sync::nonpoison::TryLockResult::Err(_)));
+
+    MutexGuard::unlocked(&mut guard, || {
+        assert!(matches!(mutex.try_lock(), std::sync::nonpoison::TryLockResult::Ok(_)));
+    });
+
+    assert!(matches!(mutex.try_lock(), std::sync::nonpoison::TryLockResult::Err(_)));
+}
