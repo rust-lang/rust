@@ -29,7 +29,6 @@ use tracing::{debug, instrument, trace};
 
 use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
 use crate::nll::ConstraintDescription;
-use crate::region_infer::values::RegionElement;
 use crate::region_infer::{BlameConstraint, TypeTest};
 use crate::session_diagnostics::{
     FnMutError, FnMutReturnTypeErr, GenericDoesNotLiveLongEnough, LifetimeOutliveErr,
@@ -104,15 +103,9 @@ pub(crate) enum RegionErrorKind<'tcx> {
     /// A generic bound failure for a type test (`T: 'a`).
     TypeTestError { type_test: TypeTest<'tcx> },
 
-    /// Higher-ranked subtyping error.
-    BoundUniversalRegionError {
-        /// The placeholder free region.
-        longer_fr: RegionVid,
-        /// The region element that erroneously must be outlived by `longer_fr`.
-        error_element: RegionElement<'tcx>,
-        /// The placeholder region.
-        placeholder: ty::PlaceholderRegion<'tcx>,
-    },
+    /// 'p outlives 'r, which does not hold. 'p is always a placeholder
+    /// and 'r is some other region.
+    PlaceholderOutlivesIllegalRegion { longer_fr: RegionVid, illegally_outlived_r: RegionVid },
 
     /// Any other lifetime error.
     RegionError {
@@ -360,28 +353,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     }
                 }
 
-                RegionErrorKind::BoundUniversalRegionError {
+                RegionErrorKind::PlaceholderOutlivesIllegalRegion {
                     longer_fr,
-                    placeholder,
-                    error_element,
+                    illegally_outlived_r,
                 } => {
-                    let error_vid = self.regioncx.region_from_element(longer_fr, &error_element);
-
-                    // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
-                    let cause = self
-                        .regioncx
-                        .best_blame_constraint(
-                            longer_fr,
-                            NllRegionVariableOrigin::Placeholder(placeholder),
-                            error_vid,
-                        )
-                        .0
-                        .cause;
-
-                    let universe = placeholder.universe;
-                    let universe_info = self.regioncx.universe_info(universe);
-
-                    universe_info.report_erroneous_element(self, placeholder, error_element, cause);
+                    self.report_erroneous_rvid_reaches_placeholder(longer_fr, illegally_outlived_r)
                 }
 
                 RegionErrorKind::RegionError { fr_origin, longer_fr, shorter_fr, is_reported } => {
@@ -410,6 +386,43 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         // Emit one outlives suggestions for each MIR def we borrowck
         outlives_suggestion.add_suggestion(self);
+    }
+
+    /// Report that `longer_fr: error_vid`, which doesn't hold,
+    /// where `longer_fr` is a placeholder.
+    fn report_erroneous_rvid_reaches_placeholder(
+        &mut self,
+        longer_fr: RegionVid,
+        error_vid: RegionVid,
+    ) {
+        use NllRegionVariableOrigin::*;
+
+        let origin_longer = self.regioncx.definitions[longer_fr].origin;
+
+        // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
+        let cause =
+            self.regioncx.best_blame_constraint(longer_fr, origin_longer, error_vid).0.cause;
+
+        let Placeholder(placeholder) = origin_longer else {
+            bug!("Expected {longer_fr:?} to come from placeholder!");
+        };
+
+        // FIXME: Is throwing away the existential region really the best here?
+        let error_region = match self.regioncx.definitions[error_vid].origin {
+            FreeRegion | Existential { .. } => None,
+            Placeholder(other_placeholder) => Some(other_placeholder),
+        };
+
+        // FIXME these methods should have better names, and also probably not be this generic.
+        // FIXME note that we *throw away* the error element here! We probably want to
+        // thread it through the computation further down and use it, but there currently isn't
+        // anything there to receive it.
+        self.regioncx.universe_info(placeholder.universe).report_erroneous_element(
+            self,
+            placeholder,
+            error_region,
+            cause,
+        );
     }
 
     /// Report an error because the universal region `fr` was required to outlive
