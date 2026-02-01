@@ -7,11 +7,12 @@ use std::str::FromStr;
 
 use polonius_engine::{Algorithm, AllFacts, Output};
 use rustc_data_structures::frozen::Frozen;
-use rustc_index::IndexSlice;
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::pretty::PrettyPrintMirOptions;
 use rustc_middle::mir::{Body, MirDumper, PassWhere, Promoted};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_session::config::MirIncludeSpans;
@@ -19,14 +20,19 @@ use rustc_span::sym;
 use tracing::{debug, instrument};
 
 use crate::borrow_set::BorrowSet;
+use crate::constraints::OutlivesConstraintSet;
 use crate::consumers::RustcFacts;
-use crate::diagnostics::RegionErrors;
-use crate::handle_placeholders::compute_sccs_applying_placeholder_outlives_constraints;
+use crate::diagnostics::{RegionErrors, UniverseInfo};
+use crate::handle_placeholders::{
+    LoweredConstraints, compute_sccs_applying_placeholder_outlives_constraints,
+};
 use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
 };
 use crate::polonius::{PoloniusContext, PoloniusDiagnosticsContext};
-use crate::region_infer::RegionInferenceContext;
+use crate::region_infer::graphviz::{dump_graphviz_raw_constraints, dump_graphviz_scc_constraints};
+use crate::region_infer::values::LivenessValues;
+use crate::region_infer::{self, InferredRegions, RegionDefinition, RegionInferenceContext};
 use crate::type_check::MirTypeckRegionConstraints;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
@@ -38,11 +44,15 @@ use crate::{
 /// The output of `nll::compute_regions`. This includes the computed `RegionInferenceContext`, any
 /// closure requirements to propagate, and any generated errors.
 pub(crate) struct NllOutput<'tcx> {
-    pub regioncx: RegionInferenceContext<'tcx>,
+    pub scc_values: InferredRegions<'tcx>,
     pub polonius_input: Option<Box<PoloniusFacts>>,
     pub polonius_output: Option<Box<PoloniusOutput>>,
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
     pub nll_errors: RegionErrors<'tcx>,
+    pub(crate) definitions: Frozen<IndexVec<RegionVid, RegionDefinition<'tcx>>>,
+    pub(crate) liveness_constraints: LivenessValues,
+    pub(crate) outlives_constraints: Frozen<OutlivesConstraintSet<'tcx>>,
+    pub(crate) universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     /// When using `-Zpolonius=next`: the data used to compute errors and diagnostics, e.g.
     /// localized typeck and liveness constraints.
@@ -91,19 +101,34 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
 ) -> Option<ClosureRegionRequirements<'tcx>> {
     // FIXME(#146079): we shouldn't have to clone all this stuff here.
     // Computing the region graph should take at least some of it by reference/`Rc`.
-    let lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
+    let LoweredConstraints {
+        constraint_sccs,
+        definitions,
+        scc_annotations,
+        outlives_constraints,
+        type_tests,
+        mut liveness_constraints,
+        universe_causes: _,
+        placeholder_indices,
+    } = compute_sccs_applying_placeholder_outlives_constraints(
         constraints.clone(),
         &universal_region_relations,
         infcx,
     );
-    let mut regioncx = RegionInferenceContext::new(
+
+    let regioncx = RegionInferenceContext::new(
         &infcx,
-        lowered_constraints,
-        universal_region_relations.clone(),
-        location_map,
+        constraint_sccs,
+        &definitions,
+        scc_annotations,
+        &outlives_constraints,
+        type_tests,
+        &mut liveness_constraints,
+        universal_region_relations,
     );
 
-    let (closure_region_requirements, _nll_errors) = regioncx.solve(infcx, body, None);
+    let (closure_region_requirements, _nll_errors, _scc_values) =
+        regioncx.solve(infcx, body, None, location_map, placeholder_indices);
     closure_region_requirements
 }
 
@@ -118,7 +143,7 @@ pub(crate) fn compute_regions<'tcx>(
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     location_map: Rc<DenseLocationMap>,
-    universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
+    universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
     constraints: MirTypeckRegionConstraints<'tcx>,
     mut polonius_facts: Option<AllFacts<RustcFacts>>,
     polonius_context: Option<PoloniusContext>,
@@ -144,11 +169,26 @@ pub(crate) fn compute_regions<'tcx>(
         &lowered_constraints,
     );
 
+    let LoweredConstraints {
+        constraint_sccs,
+        definitions,
+        scc_annotations,
+        outlives_constraints,
+        type_tests,
+        mut liveness_constraints,
+        universe_causes,
+        placeholder_indices,
+    } = lowered_constraints;
+
     let mut regioncx = RegionInferenceContext::new(
-        infcx,
-        lowered_constraints,
+        &infcx,
+        constraint_sccs,
+        &definitions,
+        scc_annotations,
+        &outlives_constraints,
+        type_tests,
+        &mut liveness_constraints,
         universal_region_relations,
-        location_map,
     );
 
     // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives constraints
@@ -179,16 +219,20 @@ pub(crate) fn compute_regions<'tcx>(
     });
 
     // Solve the region constraints.
-    let (closure_region_requirements, nll_errors) =
-        regioncx.solve(infcx, body, polonius_output.clone());
+    let (closure_region_requirements, nll_errors, scc_values) =
+        regioncx.solve(infcx, body, polonius_output.clone(), location_map, placeholder_indices);
 
     NllOutput {
-        regioncx,
         polonius_input: polonius_facts.map(Box::new),
         polonius_output,
         opt_closure_req: closure_region_requirements,
         nll_errors,
         polonius_diagnostics,
+        scc_values,
+        definitions,
+        liveness_constraints,
+        outlives_constraints,
+        universe_causes,
     }
 }
 
@@ -204,9 +248,13 @@ pub(crate) fn compute_regions<'tcx>(
 pub(super) fn dump_nll_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
-    regioncx: &RegionInferenceContext<'tcx>,
+    scc_values: &InferredRegions<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
+    region_definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    universal_region_relations: &UniversalRegionRelations<'tcx>,
+    outlives_constraints: &OutlivesConstraintSet<'tcx>,
+    liveness_constraints: &LivenessValues,
 ) {
     let tcx = infcx.tcx;
     let Some(dumper) = MirDumper::new(tcx, "nll", body) else { return };
@@ -222,7 +270,18 @@ pub(super) fn dump_nll_mir<'tcx>(
     };
 
     let extra_data = &|pass_where, out: &mut dyn std::io::Write| {
-        emit_nll_mir(tcx, regioncx, closure_region_requirements, borrow_set, pass_where, out)
+        emit_nll_mir(
+            tcx,
+            scc_values,
+            closure_region_requirements,
+            borrow_set,
+            region_definitions,
+            outlives_constraints,
+            universal_region_relations,
+            liveness_constraints,
+            pass_where,
+            out,
+        )
     };
 
     let dumper = dumper.set_extra_data(extra_data).set_options(options);
@@ -232,29 +291,40 @@ pub(super) fn dump_nll_mir<'tcx>(
     // Also dump the region constraint graph as a graphviz file.
     let _: io::Result<()> = try {
         let mut file = dumper.create_dump_file("regioncx.all.dot", body)?;
-        regioncx.dump_graphviz_raw_constraints(tcx, &mut file)?;
+        dump_graphviz_raw_constraints(tcx, region_definitions, outlives_constraints, &mut file)?;
     };
 
     // Also dump the region constraint SCC graph as a graphviz file.
     let _: io::Result<()> = try {
         let mut file = dumper.create_dump_file("regioncx.scc.dot", body)?;
-        regioncx.dump_graphviz_scc_constraints(tcx, &mut file)?;
+        dump_graphviz_scc_constraints(tcx, region_definitions, &scc_values.sccs, &mut file)?;
     };
 }
 
 /// Produces the actual NLL MIR sections to emit during the dumping process.
 pub(crate) fn emit_nll_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
-    regioncx: &RegionInferenceContext<'tcx>,
+    scc_values: &InferredRegions<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
+    region_definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    outlives_constraints: &OutlivesConstraintSet<'tcx>,
+    universal_region_relations: &UniversalRegionRelations<'tcx>,
+    liveness_constraints: &LivenessValues,
     pass_where: PassWhere,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
     match pass_where {
         // Before the CFG, dump out the values for each region variable.
         PassWhere::BeforeCFG => {
-            regioncx.dump_mir(tcx, out)?;
+            region_infer::MirDumper {
+                tcx,
+                definitions: region_definitions,
+                universal_region_relations,
+                outlives_constraints,
+                liveness_constraints,
+            }
+            .dump_mir(scc_values, out)?;
             writeln!(out, "|")?;
 
             if let Some(closure_region_requirements) = closure_region_requirements {
@@ -290,8 +360,8 @@ pub(crate) fn emit_nll_mir<'tcx>(
 pub(super) fn dump_annotation<'tcx, 'infcx>(
     infcx: &'infcx BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
-    regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
+    universal_regions: &UniversalRegions<'tcx>,
 ) {
     let tcx = infcx.tcx;
     let base_def_id = tcx.typeck_root_def_id(body.source.def_id());
@@ -310,7 +380,7 @@ pub(super) fn dump_annotation<'tcx, 'infcx>(
     let err = if let Some(closure_region_requirements) = closure_region_requirements {
         let mut err = infcx.dcx().struct_span_note(def_span, "external requirements");
 
-        regioncx.annotate(tcx, &mut err);
+        universal_regions.annotate(tcx, &mut err);
 
         err.note(format!(
             "number of external vids: {}",
@@ -328,7 +398,7 @@ pub(super) fn dump_annotation<'tcx, 'infcx>(
         err
     } else {
         let mut err = infcx.dcx().struct_span_note(def_span, "no external requirements");
-        regioncx.annotate(tcx, &mut err);
+        universal_regions.annotate(tcx, &mut err);
         err
     };
 

@@ -5,20 +5,38 @@
 
 use std::io::{self, Write};
 
+use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{RegionVid, TyCtxt};
 
-use super::{OutlivesConstraint, RegionInferenceContext};
+use super::OutlivesConstraint;
+use crate::constraints::OutlivesConstraintSet;
+use crate::region_infer::values::LivenessValues;
+use crate::region_infer::{InferredRegions, RegionDefinition};
 use crate::type_check::Locations;
+use crate::type_check::free_region_relations::UniversalRegionRelations;
+use crate::universal_regions::UniversalRegions;
 
 // Room for "'_#NNNNr" before things get misaligned.
 // Easy enough to fix if this ever doesn't seem like
 // enough.
 const REGION_WIDTH: usize = 8;
 
-impl<'tcx> RegionInferenceContext<'tcx> {
+pub(crate) struct MirDumper<'a, 'tcx> {
+    pub(crate) tcx: TyCtxt<'tcx>,
+    pub(crate) definitions: &'a IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    pub(crate) universal_region_relations: &'a UniversalRegionRelations<'tcx>,
+    pub(crate) outlives_constraints: &'a OutlivesConstraintSet<'tcx>,
+    pub(crate) liveness_constraints: &'a LivenessValues,
+}
+
+impl<'a, 'tcx> MirDumper<'a, 'tcx> {
     /// Write out our state into the `.mir` files.
-    pub(crate) fn dump_mir(&self, tcx: TyCtxt<'tcx>, out: &mut dyn Write) -> io::Result<()> {
+    pub(crate) fn dump_mir(
+        &self,
+        scc_values: &InferredRegions<'tcx>,
+        out: &mut dyn Write,
+    ) -> io::Result<()> {
         writeln!(out, "| Free Region Mapping")?;
 
         for region in self.regions() {
@@ -46,14 +64,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 "| {r:rw$?} | {ui:4?} | {v}",
                 r = region,
                 rw = REGION_WIDTH,
-                ui = self.max_nameable_universe(self.constraint_sccs.scc(region)),
-                v = self.region_value_str(region),
+                ui = scc_values.max_nameable_universe(region),
+                v = scc_values.region_value_str(region),
             )?;
         }
 
         writeln!(out, "|")?;
         writeln!(out, "| Inference Constraints")?;
-        self.for_each_constraint(tcx, &mut |msg| writeln!(out, "| {msg}"))?;
+        self.for_each_constraint(self.tcx, &mut |msg| writeln!(out, "| {msg}"))?;
 
         Ok(())
     }
@@ -74,7 +92,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
-        let mut constraints: Vec<_> = self.constraints.outlives().iter().collect();
+        let mut constraints: Vec<_> = self.outlives_constraints.outlives().iter().collect();
         constraints.sort_by_key(|c| (c.sup, c.sub));
         for constraint in &constraints {
             let OutlivesConstraint { sup, sub, locations, category, span, .. } = constraint;
@@ -88,5 +106,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         Ok(())
+    }
+    fn universal_regions(&self) -> &UniversalRegions<'tcx> {
+        &self.universal_region_relations.universal_regions
+    }
+
+    /// Returns an iterator over all the region indices.
+    pub(crate) fn regions(&self) -> impl Iterator<Item = RegionVid> + 'tcx {
+        self.definitions.indices()
     }
 }

@@ -403,8 +403,8 @@ impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
             // started MIR borrowchecking with, so the region
             // constraints have already been taken. Use the data from
             // our `mbcx` instead.
-            |vid| RegionVariableOrigin::Nll(mbcx.regioncx.definitions[vid].origin),
-            |vid| mbcx.regioncx.definitions[vid].universe,
+            |vid| RegionVariableOrigin::Nll(mbcx.definitions[vid].origin),
+            |vid| mbcx.definitions[vid].universe,
         )
     }
 }

@@ -33,19 +33,19 @@ fn render_universe(u: UniverseIndex) -> String {
 fn render_region_vid<'tcx>(
     tcx: TyCtxt<'tcx>,
     rvid: RegionVid,
-    regioncx: &RegionInferenceContext<'tcx>,
+    region_definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
 ) -> String {
-    let universe_str = render_universe(regioncx.region_definition(rvid).universe);
+    let universe_str = render_universe(region_definitions[rvid].universe);
 
     let external_name_str = if let Some(external_name) =
-        regioncx.region_definition(rvid).external_name.and_then(|e| e.get_name(tcx))
+        region_definitions[rvid].external_name.and_then(|e| e.get_name(tcx))
     {
         format!(" ({external_name})")
     } else {
         "".to_string()
     };
 
-    let extra_info = match regioncx.region_definition(rvid).origin {
+    let extra_info = match region_definitions[rvid].origin {
         NllRegionVariableOrigin::FreeRegion => "".to_string(),
         NllRegionVariableOrigin::Placeholder(p) => match p.bound.kind {
             ty::BoundRegionKind::Named(def_id) => {
@@ -63,37 +63,38 @@ fn render_region_vid<'tcx>(
     format!("{:?}{universe_str}{external_name_str}{extra_info}", rvid)
 }
 
-impl<'tcx> RegionInferenceContext<'tcx> {
-    /// Write out the region constraint graph.
-    pub(crate) fn dump_graphviz_raw_constraints(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        mut w: &mut dyn Write,
-    ) -> io::Result<()> {
-        dot::render(&RawConstraints { tcx, regioncx: self }, &mut w)
+/// Write out the region constraint graph.
+pub(crate) fn dump_graphviz_raw_constraints<'a, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    region_definitions: &'a IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    outlives_constraints: &'a OutlivesConstraintSet<'tcx>,
+    mut w: &mut dyn Write,
+) -> io::Result<()> {
+    dot::render(&RawConstraints { tcx, region_definitions, outlives_constraints }, &mut w)
+}
+
+/// Write out the region constraint SCC graph.
+pub(crate) fn dump_graphviz_scc_constraints<'a, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    region_definitions: &'a IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    constraint_sccs: &'a ConstraintSccs,
+    mut w: &mut dyn Write,
+) -> io::Result<()> {
+    let mut nodes_per_scc: IndexVec<ConstraintSccIndex, _> =
+        constraint_sccs.all_sccs().map(|_| Vec::new()).collect();
+
+    for region in region_definitions.indices() {
+        let scc = constraint_sccs.scc(region);
+        nodes_per_scc[scc].push(region);
     }
 
-    /// Write out the region constraint SCC graph.
-    pub(crate) fn dump_graphviz_scc_constraints(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        mut w: &mut dyn Write,
-    ) -> io::Result<()> {
-        let mut nodes_per_scc: IndexVec<ConstraintSccIndex, _> =
-            self.constraint_sccs.all_sccs().map(|_| Vec::new()).collect();
-
-        for region in self.definitions.indices() {
-            let scc = self.constraint_sccs.scc(region);
-            nodes_per_scc[scc].push(region);
-        }
-
-        dot::render(&SccConstraints { tcx, regioncx: self, nodes_per_scc }, &mut w)
-    }
+    dot::render(&SccConstraints { tcx, region_definitions, constraint_sccs, nodes_per_scc }, &mut w)
 }
 
 struct RawConstraints<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    regioncx: &'a RegionInferenceContext<'tcx>,
+    region_definitions: &'a IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    outlives_constraints: &'a OutlivesConstraintSet<'tcx>,
 }
 
 impl<'a, 'this, 'tcx> dot::Labeller<'this> for RawConstraints<'a, 'tcx> {
@@ -110,7 +111,7 @@ impl<'a, 'this, 'tcx> dot::Labeller<'this> for RawConstraints<'a, 'tcx> {
         Some(dot::LabelText::LabelStr(Cow::Borrowed("box")))
     }
     fn node_label(&'this self, n: &RegionVid) -> dot::LabelText<'this> {
-        dot::LabelText::LabelStr(render_region_vid(self.tcx, *n, self.regioncx).into())
+        dot::LabelText::LabelStr(render_region_vid(self.tcx, *n, self.region_definitions).into())
     }
     fn edge_label(&'this self, e: &OutlivesConstraint<'tcx>) -> dot::LabelText<'this> {
         dot::LabelText::LabelStr(render_outlives_constraint(e).into())
@@ -122,11 +123,11 @@ impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for RawConstraints<'a, 'tcx> {
     type Edge = OutlivesConstraint<'tcx>;
 
     fn nodes(&'this self) -> dot::Nodes<'this, RegionVid> {
-        let vids: Vec<RegionVid> = self.regioncx.definitions.indices().collect();
+        let vids: Vec<RegionVid> = self.region_definitions.indices().collect();
         vids.into()
     }
     fn edges(&'this self) -> dot::Edges<'this, OutlivesConstraint<'tcx>> {
-        (&self.regioncx.constraints.outlives().raw[..]).into()
+        (&self.outlives_constraints.outlives().raw[..]).into()
     }
 
     // Render `a: b` as `a -> b`, indicating the flow
@@ -143,8 +144,9 @@ impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for RawConstraints<'a, 'tcx> {
 
 struct SccConstraints<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    regioncx: &'a RegionInferenceContext<'tcx>,
     nodes_per_scc: IndexVec<ConstraintSccIndex, Vec<RegionVid>>,
+    region_definitions: &'a IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    constraint_sccs: &'a ConstraintSccs,
 }
 
 impl<'a, 'this, 'tcx> dot::Labeller<'this> for SccConstraints<'a, 'tcx> {
@@ -163,7 +165,7 @@ impl<'a, 'this, 'tcx> dot::Labeller<'this> for SccConstraints<'a, 'tcx> {
     fn node_label(&'this self, n: &ConstraintSccIndex) -> dot::LabelText<'this> {
         let nodes_str = self.nodes_per_scc[*n]
             .iter()
-            .map(|n| render_region_vid(self.tcx, *n, self.regioncx))
+            .map(|n| render_region_vid(self.tcx, *n, self.region_definitions))
             .join(", ");
         dot::LabelText::LabelStr(format!("SCC({n}) = {{{nodes_str}}}", n = n.as_usize()).into())
     }
@@ -174,20 +176,15 @@ impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for SccConstraints<'a, 'tcx> {
     type Edge = (ConstraintSccIndex, ConstraintSccIndex);
 
     fn nodes(&'this self) -> dot::Nodes<'this, ConstraintSccIndex> {
-        let vids: Vec<ConstraintSccIndex> = self.regioncx.constraint_sccs.all_sccs().collect();
+        let vids: Vec<ConstraintSccIndex> = self.constraint_sccs.all_sccs().collect();
         vids.into()
     }
     fn edges(&'this self) -> dot::Edges<'this, (ConstraintSccIndex, ConstraintSccIndex)> {
         let edges: Vec<_> = self
-            .regioncx
             .constraint_sccs
             .all_sccs()
             .flat_map(|scc_a| {
-                self.regioncx
-                    .constraint_sccs
-                    .successors(scc_a)
-                    .iter()
-                    .map(move |&scc_b| (scc_a, scc_b))
+                self.constraint_sccs.successors(scc_a).iter().map(move |&scc_b| (scc_a, scc_b))
             })
             .collect();
 

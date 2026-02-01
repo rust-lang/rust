@@ -9,21 +9,27 @@ use rustc_mir_dataflow::points::PointIndex;
 use rustc_session::config::MirIncludeSpans;
 
 use crate::borrow_set::BorrowSet;
-use crate::constraints::OutlivesConstraint;
+use crate::constraints::{OutlivesConstraint, OutlivesConstraintSet};
 use crate::polonius::{
     LocalizedOutlivesConstraint, LocalizedOutlivesConstraintSet, PoloniusDiagnosticsContext,
 };
 use crate::region_infer::values::LivenessValues;
+use crate::region_infer::{InferredRegions, RegionDefinition};
 use crate::type_check::Locations;
-use crate::{BorrowckInferCtxt, ClosureRegionRequirements, RegionInferenceContext};
+use crate::type_check::free_region_relations::UniversalRegionRelations;
+use crate::{BorrowckInferCtxt, ClosureRegionRequirements};
 
 /// `-Zdump-mir=polonius` dumps MIR annotated with NLL and polonius specific information.
 pub(crate) fn dump_polonius_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
-    regioncx: &RegionInferenceContext<'tcx>,
+    scc_values: &InferredRegions<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
+    region_definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    liveness_constraints: &LivenessValues,
+    outlives_constraints: &OutlivesConstraintSet<'tcx>,
+    universal_region_relations: &UniversalRegionRelations<'tcx>,
     polonius_diagnostics: Option<&PoloniusDiagnosticsContext>,
 ) {
     let tcx = infcx.tcx;
@@ -39,10 +45,14 @@ pub(crate) fn dump_polonius_mir<'tcx>(
     let extra_data = &|pass_where, out: &mut dyn io::Write| {
         emit_polonius_mir(
             tcx,
-            regioncx,
+            scc_values,
             closure_region_requirements,
             borrow_set,
             &polonius_diagnostics.localized_outlives_constraints,
+            &region_definitions,
+            &outlives_constraints,
+            &universal_region_relations,
+            liveness_constraints,
             pass_where,
             out,
         )
@@ -63,7 +73,10 @@ pub(crate) fn dump_polonius_mir<'tcx>(
         emit_polonius_dump(
             &dumper,
             body,
-            regioncx,
+            region_definitions,
+            liveness_constraints,
+            outlives_constraints,
+            scc_values,
             borrow_set,
             &polonius_diagnostics.localized_outlives_constraints,
             &mut file,
@@ -80,7 +93,10 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 fn emit_polonius_dump<'tcx>(
     dumper: &MirDumper<'_, '_, 'tcx>,
     body: &Body<'tcx>,
-    regioncx: &RegionInferenceContext<'tcx>,
+    region_definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    liveness_constraints: &LivenessValues,
+    outlives_constraints: &OutlivesConstraintSet<'tcx>,
+    scc_values: &InferredRegions<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     localized_outlives_constraints: &LocalizedOutlivesConstraintSet,
     out: &mut dyn io::Write,
@@ -105,7 +121,7 @@ fn emit_polonius_dump<'tcx>(
     writeln!(out, "<pre class='mermaid'>")?;
     let edge_count = emit_mermaid_constraint_graph(
         borrow_set,
-        regioncx.liveness_constraints(),
+        liveness_constraints,
         &localized_outlives_constraints,
         out,
     )?;
@@ -124,7 +140,7 @@ fn emit_polonius_dump<'tcx>(
     writeln!(out, "<div>")?;
     writeln!(out, "NLL regions")?;
     writeln!(out, "<pre class='mermaid'>")?;
-    emit_mermaid_nll_regions(dumper.tcx(), regioncx, out)?;
+    emit_mermaid_nll_regions(dumper.tcx(), region_definitions, outlives_constraints, out)?;
     writeln!(out, "</pre>")?;
     writeln!(out, "</div>")?;
 
@@ -132,7 +148,7 @@ fn emit_polonius_dump<'tcx>(
     writeln!(out, "<div>")?;
     writeln!(out, "NLL SCCs")?;
     writeln!(out, "<pre class='mermaid'>")?;
-    emit_mermaid_nll_sccs(dumper.tcx(), regioncx, out)?;
+    emit_mermaid_nll_sccs(dumper.tcx(), region_definitions, scc_values, out)?;
     writeln!(out, "</pre>")?;
     writeln!(out, "</div>")?;
 
@@ -190,24 +206,30 @@ fn emit_html_mir<'tcx>(
 /// Produces the actual NLL + Polonius MIR sections to emit during the dumping process.
 fn emit_polonius_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
-    regioncx: &RegionInferenceContext<'tcx>,
+    scc_values: &InferredRegions<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
     localized_outlives_constraints: &LocalizedOutlivesConstraintSet,
+    region_definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    outlives_constraints: &OutlivesConstraintSet<'tcx>,
+    universal_region_relations: &UniversalRegionRelations<'tcx>,
+    liveness: &LivenessValues,
     pass_where: PassWhere,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
     // Emit the regular NLL front-matter
     crate::nll::emit_nll_mir(
         tcx,
-        regioncx,
+        scc_values,
         closure_region_requirements,
         borrow_set,
+        region_definitions,
+        outlives_constraints,
+        universal_region_relations,
+        liveness,
         pass_where,
         out,
     )?;
-
-    let liveness = regioncx.liveness_constraints();
 
     // Add localized outlives constraints
     match pass_where {
@@ -286,10 +308,10 @@ fn emit_mermaid_cfg(body: &Body<'_>, out: &mut dyn io::Write) -> io::Result<()> 
 fn render_region<'tcx>(
     tcx: TyCtxt<'tcx>,
     region: RegionVid,
-    regioncx: &RegionInferenceContext<'tcx>,
+    region_definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let def = regioncx.region_definition(region);
+    let def = &region_definitions[region];
     let universe = def.universe;
 
     write!(out, "'{}", region.as_usize())?;
@@ -306,21 +328,23 @@ fn render_region<'tcx>(
 /// to the graphviz version.
 fn emit_mermaid_nll_regions<'tcx>(
     tcx: TyCtxt<'tcx>,
-    regioncx: &RegionInferenceContext<'tcx>,
+    region_definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    outlives_constraints: &OutlivesConstraintSet<'tcx>,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
     // The mermaid chart type: a top-down flowchart.
     writeln!(out, "flowchart TD")?;
 
     // Emit the region nodes.
-    for region in regioncx.definitions.indices() {
+    for region in region_definitions.indices() {
         write!(out, "{}[\"", region.as_usize())?;
-        render_region(tcx, region, regioncx, out)?;
+        render_region(tcx, region, region_definitions, out)?;
         writeln!(out, "\"]")?;
     }
 
     // Get a set of edges to check for the reverse edge being present.
-    let edges: FxHashSet<_> = regioncx.outlives_constraints().map(|c| (c.sup, c.sub)).collect();
+    let edges: FxHashSet<_> =
+        outlives_constraints.outlives().iter().map(|c| (c.sup, c.sub)).collect();
 
     // Order (and deduplicate) edges for traversal, to display them in a generally increasing order.
     let constraint_key = |c: &OutlivesConstraint<'_>| {
@@ -328,7 +352,7 @@ fn emit_mermaid_nll_regions<'tcx>(
         let max = c.sup.max(c.sub);
         (min, max)
     };
-    let mut ordered_edges: Vec<_> = regioncx.outlives_constraints().collect();
+    let mut ordered_edges: Vec<_> = outlives_constraints.outlives().iter().collect();
     ordered_edges.sort_by_key(|c| constraint_key(c));
     ordered_edges.dedup_by_key(|c| constraint_key(c));
 
@@ -358,7 +382,8 @@ fn emit_mermaid_nll_regions<'tcx>(
 /// to the graphviz version.
 fn emit_mermaid_nll_sccs<'tcx>(
     tcx: TyCtxt<'tcx>,
-    regioncx: &RegionInferenceContext<'tcx>,
+    region_definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    scc_values: &InferredRegions<'tcx>,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
     // The mermaid chart type: a top-down flowchart.
@@ -366,16 +391,16 @@ fn emit_mermaid_nll_sccs<'tcx>(
 
     // Gather and emit the SCC nodes.
     let mut nodes_per_scc: IndexVec<_, _> =
-        regioncx.constraint_sccs().all_sccs().map(|_| Vec::new()).collect();
-    for region in regioncx.definitions.indices() {
-        let scc = regioncx.constraint_sccs().scc(region);
+        scc_values.sccs.all_sccs().map(|_| Vec::new()).collect();
+    for region in region_definitions.indices() {
+        let scc = scc_values.scc(region);
         nodes_per_scc[scc].push(region);
     }
     for (scc, regions) in nodes_per_scc.iter_enumerated() {
         // The node label: the regions contained in the SCC.
         write!(out, "{scc}[\"SCC({scc}) = {{", scc = scc.as_usize())?;
         for (idx, &region) in regions.iter().enumerate() {
-            render_region(tcx, region, regioncx, out)?;
+            render_region(tcx, region, region_definitions, out)?;
             if idx < regions.len() - 1 {
                 write!(out, ",")?;
             }
@@ -384,8 +409,8 @@ fn emit_mermaid_nll_sccs<'tcx>(
     }
 
     // Emit the edges between SCCs.
-    let edges = regioncx.constraint_sccs().all_sccs().flat_map(|source| {
-        regioncx.constraint_sccs().successors(source).iter().map(move |&target| (source, target))
+    let edges = scc_values.sccs.all_sccs().flat_map(|source| {
+        scc_values.sccs.successors(source).iter().map(move |&target| (source, target))
     });
     for (source, target) in edges {
         writeln!(out, "{} --> {}", source.as_usize(), target.as_usize())?;

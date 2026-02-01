@@ -3434,7 +3434,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
             let tcx = self.infcx.tcx;
 
-            let return_ty = self.regioncx.universal_regions().unnormalized_output_ty;
+            let return_ty = self.universal_regions().unnormalized_output_ty;
 
             // to avoid panics
             if let Some(iter_trait) = tcx.get_diagnostic_item(sym::Iterator)
