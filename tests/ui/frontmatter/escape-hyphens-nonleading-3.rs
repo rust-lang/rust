@@ -6,6 +6,4 @@ x ---y
 // non-whitespace character preceding them.
 //@check-pass
 
-#![feature(frontmatter)]
-
 fn main() {}

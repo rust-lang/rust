@@ -6,8 +6,6 @@
 // Unfortunate recovery situation. Not really preventable with improving the
 // recovery strategy, but this type of code is rare enough already.
 
- #![feature(frontmatter)]
-
 fn foo(x: i32) -> i32 {
     ---x
     //~^ ERROR: invalid preceding whitespace for frontmatter close

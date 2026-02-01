@@ -1,19 +1,14 @@
-error: unclosed frontmatter
-  --> $DIR/fence-unclosed-6.rs:1:1
+error: invalid preceding whitespace for frontmatter close
+  --> $DIR/fence-unclosed-6.rs:3:1
    |
-LL | / ---
-LL | |
-LL | | 🦀---
-LL | |  ---
-...  |
-LL | |
-   | |_^
+LL |  ---
+   | ^^^^
    |
-note: frontmatter opening here was not closed
-  --> $DIR/fence-unclosed-6.rs:1:1
+note: frontmatter close should not be preceded by whitespace
+  --> $DIR/fence-unclosed-6.rs:3:1
    |
-LL | ---
-   | ^^^
+LL |  ---
+   | ^
 
 error: aborting due to 1 previous error
 

@@ -218,6 +218,38 @@ given:
 
 ### [Types](types.md)
 
+### Frontmatter
+
+There should be no blank lines between the frontmatter and either the start of the file or a shebang.
+There can be zero or one line between the frontmatter and any following content.
+
+The frontmatter fences should use the minimum number of dashes necessary for the contained content (one more than the longest series of initial dashes in the
+content, with a minimum of 3 to be recognized as frontmatter delimiters).
+If an infostring is present after the opening fence, there should be one space separating them.
+The frontmatter fence lines should not have trailing whitespace.
+
+Examples:
+
+```rust
+#!/usr/bin/env cargo
+---
+[dependencies]
+regex = "1"
+---
+
+fn main() {}
+```
+
+```rust
+#!/usr/bin/env cargo
+--- cargo
+[dependencies]
+regex = "1"
+---
+
+fn main() {}
+```
+
 ### Comments
 
 The following guidelines for comments are recommendations only, a mechanical

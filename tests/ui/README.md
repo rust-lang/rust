@@ -645,7 +645,7 @@ Tests for `extern "C"` and `extern "Rust`.
 
 ## `tests/ui/frontmatter/`
 
-Tests for `#![feature(frontmatter)]`. See [Tracking Issue for `frontmatter` #136889](https://github.com/rust-lang/rust/issues/136889).
+Tests for Cargo Script's frontmatter.
 
 ## `tests/ui/fully-qualified-type/`
 
