@@ -16,6 +16,7 @@ use super::error::invalid_attr;
 use crate::diagnostics::error::{
     DiagnosticDeriveError, span_err, throw_invalid_attr, throw_span_err,
 };
+use crate::diagnostics::message::Message;
 
 thread_local! {
     pub(crate) static CODE_IDENT_COUNT: RefCell<u32> = RefCell::new(0);
@@ -587,7 +588,7 @@ pub(super) enum SubdiagnosticKind {
 
 pub(super) struct SubdiagnosticVariant {
     pub(super) kind: SubdiagnosticKind,
-    pub(super) slug: Option<Path>,
+    pub(super) slug: Option<Message>,
 }
 
 impl SubdiagnosticVariant {
@@ -696,11 +697,25 @@ impl SubdiagnosticVariant {
         list.parse_args_with(|input: ParseStream<'_>| {
             let mut is_first = true;
             while !input.is_empty() {
+                // Try to parse an inline diagnostic message
+                if input.peek(LitStr) {
+                    let message = input.parse::<LitStr>()?;
+                    if !input.is_empty() { input.parse::<Token![,]>()?; }
+                    if is_first {
+                        slug = Some(Message::Inline(message.span(), message.value()));
+                        is_first = false;
+                    } else {
+                        span_err(message.span().unwrap(), "a diagnostic message must be the first argument to the attribute").emit();
+                    }
+                    continue
+                }
+
+                // Try to parse a slug instead
                 let arg_name: Path = input.parse::<Path>()?;
                 let arg_name_span = arg_name.span().unwrap();
                 if input.is_empty() || input.parse::<Token![,]>().is_ok() {
                     if is_first {
-                        slug = Some(arg_name);
+                        slug = Some(Message::Slug(arg_name));
                         is_first = false;
                     } else {
                         span_err(arg_name_span, "a diagnostic slug must be the first argument to the attribute").emit();
@@ -709,6 +724,7 @@ impl SubdiagnosticVariant {
                 }
                 is_first = false;
 
+                // Try to parse an argument
                 match (arg_name.require_ident()?.to_string().as_str(), &mut kind) {
                     ("code", SubdiagnosticKind::Suggestion { code_field, .. }) => {
                         let code_init = build_suggestion_code(

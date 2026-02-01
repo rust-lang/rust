@@ -1,143 +1,143 @@
 error: derive(Diagnostic): label without `#[primary_span]` field
-  --> $DIR/subdiagnostic-derive.rs:52:1
+  --> $DIR/subdiagnostic-derive-inline.rs:50:1
    |
-LL | #[label(no_crate_example)]
+LL | #[label("example message")]
    | ^
 
 error: derive(Diagnostic): diagnostic slug must be first argument of a `#[label(...)]` attribute
-  --> $DIR/subdiagnostic-derive.rs:59:1
+  --> $DIR/subdiagnostic-derive-inline.rs:57:1
    |
 LL | #[label]
    | ^
 
 error: derive(Diagnostic): `#[foo]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:68:1
+  --> $DIR/subdiagnostic-derive-inline.rs:66:1
    |
 LL | #[foo]
    | ^
 
 error: derive(Diagnostic): `#[label = ...]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:78:1
+  --> $DIR/subdiagnostic-derive-inline.rs:76:1
    |
 LL | #[label = "..."]
    | ^
 
 error: derive(Diagnostic): no nested attribute expected here
-  --> $DIR/subdiagnostic-derive.rs:87:9
+  --> $DIR/subdiagnostic-derive-inline.rs:85:9
    |
 LL | #[label(bug = "...")]
    |         ^^^
 
 error: derive(Diagnostic): diagnostic slug must be first argument of a `#[label(...)]` attribute
-  --> $DIR/subdiagnostic-derive.rs:87:1
+  --> $DIR/subdiagnostic-derive-inline.rs:85:1
    |
 LL | #[label(bug = "...")]
    | ^
 
 error: derive(Diagnostic): no nested attribute expected here
-  --> $DIR/subdiagnostic-derive.rs:97:9
+  --> $DIR/subdiagnostic-derive-inline.rs:95:9
    |
 LL | #[label(slug = 4)]
    |         ^^^^
 
 error: derive(Diagnostic): diagnostic slug must be first argument of a `#[label(...)]` attribute
-  --> $DIR/subdiagnostic-derive.rs:97:1
+  --> $DIR/subdiagnostic-derive-inline.rs:95:1
    |
 LL | #[label(slug = 4)]
    | ^
 
 error: derive(Diagnostic): no nested attribute expected here
-  --> $DIR/subdiagnostic-derive.rs:107:9
+  --> $DIR/subdiagnostic-derive-inline.rs:105:9
    |
 LL | #[label(slug("..."))]
    |         ^^^^
 
 error: derive(Diagnostic): diagnostic slug must be first argument of a `#[label(...)]` attribute
-  --> $DIR/subdiagnostic-derive.rs:107:1
+  --> $DIR/subdiagnostic-derive-inline.rs:105:1
    |
 LL | #[label(slug("..."))]
    | ^
 
 error: derive(Diagnostic): diagnostic slug must be first argument of a `#[label(...)]` attribute
-  --> $DIR/subdiagnostic-derive.rs:117:1
+  --> $DIR/subdiagnostic-derive-inline.rs:115:1
    |
 LL | #[label()]
    | ^
 
 error: derive(Diagnostic): no nested attribute expected here
-  --> $DIR/subdiagnostic-derive.rs:126:27
+  --> $DIR/subdiagnostic-derive-inline.rs:124:28
    |
-LL | #[label(no_crate_example, code = "...")]
-   |                           ^^^^
+LL | #[label("example message", code = "...")]
+   |                            ^^^^
 
 error: derive(Diagnostic): no nested attribute expected here
-  --> $DIR/subdiagnostic-derive.rs:135:27
+  --> $DIR/subdiagnostic-derive-inline.rs:133:28
    |
-LL | #[label(no_crate_example, applicability = "machine-applicable")]
-   |                           ^^^^^^^^^^^^^
+LL | #[label("example message", applicability = "machine-applicable")]
+   |                            ^^^^^^^^^^^^^
 
 error: derive(Diagnostic): unsupported type attribute for subdiagnostic enum
-  --> $DIR/subdiagnostic-derive.rs:144:1
+  --> $DIR/subdiagnostic-derive-inline.rs:142:1
    |
 LL | #[foo]
    | ^
 
 error: derive(Diagnostic): `#[bar]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:158:5
+  --> $DIR/subdiagnostic-derive-inline.rs:156:5
    |
 LL |     #[bar]
    |     ^
 
 error: derive(Diagnostic): `#[bar = ...]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:170:5
+  --> $DIR/subdiagnostic-derive-inline.rs:168:5
    |
 LL |     #[bar = "..."]
    |     ^
 
 error: derive(Diagnostic): `#[bar = ...]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:182:5
+  --> $DIR/subdiagnostic-derive-inline.rs:180:5
    |
 LL |     #[bar = 4]
    |     ^
 
 error: derive(Diagnostic): `#[bar(...)]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:194:5
+  --> $DIR/subdiagnostic-derive-inline.rs:192:5
    |
 LL |     #[bar("...")]
    |     ^
 
 error: derive(Diagnostic): no nested attribute expected here
-  --> $DIR/subdiagnostic-derive.rs:206:13
+  --> $DIR/subdiagnostic-derive-inline.rs:204:13
    |
 LL |     #[label(code = "...")]
    |             ^^^^
 
 error: derive(Diagnostic): diagnostic slug must be first argument of a `#[label(...)]` attribute
-  --> $DIR/subdiagnostic-derive.rs:206:5
+  --> $DIR/subdiagnostic-derive-inline.rs:204:5
    |
 LL |     #[label(code = "...")]
    |     ^
 
 error: derive(Diagnostic): the `#[primary_span]` attribute can only be applied to fields of type `Span` or `MultiSpan`
-  --> $DIR/subdiagnostic-derive.rs:235:5
+  --> $DIR/subdiagnostic-derive-inline.rs:233:5
    |
 LL |     #[primary_span]
    |     ^
 
 error: derive(Diagnostic): label without `#[primary_span]` field
-  --> $DIR/subdiagnostic-derive.rs:232:1
+  --> $DIR/subdiagnostic-derive-inline.rs:230:1
    |
-LL | #[label(no_crate_example)]
+LL | #[label("example message")]
    | ^
 
 error: derive(Diagnostic): `#[applicability]` is only valid on suggestions
-  --> $DIR/subdiagnostic-derive.rs:245:5
+  --> $DIR/subdiagnostic-derive-inline.rs:243:5
    |
 LL |     #[applicability]
    |     ^
 
 error: derive(Diagnostic): `#[bar]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:255:5
+  --> $DIR/subdiagnostic-derive-inline.rs:253:5
    |
 LL |     #[bar]
    |     ^
@@ -145,13 +145,13 @@ LL |     #[bar]
    = help: only `primary_span`, `applicability` and `skip_arg` are valid field attributes
 
 error: derive(Diagnostic): `#[bar = ...]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:266:5
+  --> $DIR/subdiagnostic-derive-inline.rs:264:5
    |
 LL |     #[bar = "..."]
    |     ^
 
 error: derive(Diagnostic): `#[bar(...)]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:277:5
+  --> $DIR/subdiagnostic-derive-inline.rs:275:5
    |
 LL |     #[bar("...")]
    |     ^
@@ -159,7 +159,7 @@ LL |     #[bar("...")]
    = help: only `primary_span`, `applicability` and `skip_arg` are valid field attributes
 
 error: unexpected unsupported untagged union
-  --> $DIR/subdiagnostic-derive.rs:293:1
+  --> $DIR/subdiagnostic-derive-inline.rs:291:1
    |
 LL | / union AC {
 LL | |
@@ -169,97 +169,97 @@ LL | | }
    | |_^
 
 error: derive(Diagnostic): a diagnostic slug must be the first argument to the attribute
-  --> $DIR/subdiagnostic-derive.rs:308:27
+  --> $DIR/subdiagnostic-derive-inline.rs:306:28
    |
-LL | #[label(no_crate_example, no_crate::example)]
-   |                           ^^^^^^^^
+LL | #[label("example message", no_crate::example)]
+   |                            ^^^^^^^^
 
 error: derive(Diagnostic): attribute specified multiple times
-  --> $DIR/subdiagnostic-derive.rs:321:5
+  --> $DIR/subdiagnostic-derive-inline.rs:319:5
    |
 LL |     #[primary_span]
    |     ^
    |
 note: previously specified here
-  --> $DIR/subdiagnostic-derive.rs:318:5
+  --> $DIR/subdiagnostic-derive-inline.rs:316:5
    |
 LL |     #[primary_span]
    |     ^
 
 error: derive(Diagnostic): subdiagnostic kind not specified
-  --> $DIR/subdiagnostic-derive.rs:327:8
+  --> $DIR/subdiagnostic-derive-inline.rs:325:8
    |
 LL | struct AG {
    |        ^^
 
 error: derive(Diagnostic): attribute specified multiple times
-  --> $DIR/subdiagnostic-derive.rs:364:46
+  --> $DIR/subdiagnostic-derive-inline.rs:362:47
    |
-LL | #[suggestion(no_crate_example, code = "...", code = "...")]
-   |                                              ^^^^
+LL | #[suggestion("example message", code = "...", code = "...")]
+   |                                               ^^^^
    |
 note: previously specified here
-  --> $DIR/subdiagnostic-derive.rs:364:32
+  --> $DIR/subdiagnostic-derive-inline.rs:362:33
    |
-LL | #[suggestion(no_crate_example, code = "...", code = "...")]
-   |                                ^^^^
+LL | #[suggestion("example message", code = "...", code = "...")]
+   |                                 ^^^^
 
 error: derive(Diagnostic): attribute specified multiple times
-  --> $DIR/subdiagnostic-derive.rs:382:5
+  --> $DIR/subdiagnostic-derive-inline.rs:380:5
    |
 LL |     #[applicability]
    |     ^
    |
 note: previously specified here
-  --> $DIR/subdiagnostic-derive.rs:379:5
+  --> $DIR/subdiagnostic-derive-inline.rs:377:5
    |
 LL |     #[applicability]
    |     ^
 
 error: derive(Diagnostic): the `#[applicability]` attribute can only be applied to fields of type `Applicability`
-  --> $DIR/subdiagnostic-derive.rs:392:5
+  --> $DIR/subdiagnostic-derive-inline.rs:390:5
    |
 LL |     #[applicability]
    |     ^
 
 error: derive(Diagnostic): suggestion without `code = "..."`
-  --> $DIR/subdiagnostic-derive.rs:405:1
+  --> $DIR/subdiagnostic-derive-inline.rs:403:1
    |
-LL | #[suggestion(no_crate_example)]
+LL | #[suggestion("example message")]
    | ^
 
 error: derive(Diagnostic): invalid applicability
-  --> $DIR/subdiagnostic-derive.rs:415:62
+  --> $DIR/subdiagnostic-derive-inline.rs:413:63
    |
-LL | #[suggestion(no_crate_example, code = "...", applicability = "foo")]
-   |                                                              ^^^^^
+LL | #[suggestion("example message", code = "...", applicability = "foo")]
+   |                                                               ^^^^^
 
 error: derive(Diagnostic): suggestion without `#[primary_span]` field
-  --> $DIR/subdiagnostic-derive.rs:433:1
+  --> $DIR/subdiagnostic-derive-inline.rs:431:1
    |
-LL | #[suggestion(no_crate_example, code = "...")]
+LL | #[suggestion("example message", code = "...")]
    | ^
 
 error: derive(Diagnostic): unsupported type attribute for subdiagnostic enum
-  --> $DIR/subdiagnostic-derive.rs:447:1
+  --> $DIR/subdiagnostic-derive-inline.rs:445:1
    |
 LL | #[label]
    | ^
 
 error: derive(Diagnostic): `var` doesn't refer to a field on this type
-  --> $DIR/subdiagnostic-derive.rs:467:39
+  --> $DIR/subdiagnostic-derive-inline.rs:465:40
    |
-LL | #[suggestion(no_crate_example, code = "{var}", applicability = "machine-applicable")]
-   |                                       ^^^^^^^
+LL | #[suggestion("example message", code = "{var}", applicability = "machine-applicable")]
+   |                                        ^^^^^^^
 
 error: derive(Diagnostic): `var` doesn't refer to a field on this type
-  --> $DIR/subdiagnostic-derive.rs:486:43
+  --> $DIR/subdiagnostic-derive-inline.rs:484:44
    |
-LL |     #[suggestion(no_crate_example, code = "{var}", applicability = "machine-applicable")]
-   |                                           ^^^^^^^
+LL |     #[suggestion("example message", code = "{var}", applicability = "machine-applicable")]
+   |                                            ^^^^^^^
 
 error: derive(Diagnostic): `#[suggestion_part]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:509:5
+  --> $DIR/subdiagnostic-derive-inline.rs:507:5
    |
 LL |     #[suggestion_part]
    |     ^
@@ -267,7 +267,7 @@ LL |     #[suggestion_part]
    = help: `#[suggestion_part(...)]` is only valid in multipart suggestions, use `#[primary_span]` instead
 
 error: derive(Diagnostic): `#[suggestion_part(...)]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:512:5
+  --> $DIR/subdiagnostic-derive-inline.rs:510:5
    |
 LL |     #[suggestion_part(code = "...")]
    |     ^
@@ -275,39 +275,39 @@ LL |     #[suggestion_part(code = "...")]
    = help: `#[suggestion_part(...)]` is only valid in multipart suggestions
 
 error: derive(Diagnostic): suggestion without `#[primary_span]` field
-  --> $DIR/subdiagnostic-derive.rs:506:1
+  --> $DIR/subdiagnostic-derive-inline.rs:504:1
    |
-LL | #[suggestion(no_crate_example, code = "...")]
+LL | #[suggestion("example message", code = "...")]
    | ^
 
 error: derive(Diagnostic): invalid nested attribute
-  --> $DIR/subdiagnostic-derive.rs:521:42
+  --> $DIR/subdiagnostic-derive-inline.rs:519:43
    |
-LL | #[multipart_suggestion(no_crate_example, code = "...", applicability = "machine-applicable")]
-   |                                          ^^^^
+LL | #[multipart_suggestion("example message", code = "...", applicability = "machine-applicable")]
+   |                                           ^^^^
    |
    = help: only `style` and `applicability` are valid nested attributes
 
 error: derive(Diagnostic): multipart suggestion without any `#[suggestion_part(...)]` fields
-  --> $DIR/subdiagnostic-derive.rs:521:1
+  --> $DIR/subdiagnostic-derive-inline.rs:519:1
    |
-LL | #[multipart_suggestion(no_crate_example, code = "...", applicability = "machine-applicable")]
+LL | #[multipart_suggestion("example message", code = "...", applicability = "machine-applicable")]
    | ^
 
 error: derive(Diagnostic): `#[suggestion_part(...)]` attribute without `code = "..."`
-  --> $DIR/subdiagnostic-derive.rs:531:5
+  --> $DIR/subdiagnostic-derive-inline.rs:529:5
    |
 LL |     #[suggestion_part]
    |     ^
 
 error: derive(Diagnostic): `#[suggestion_part(...)]` attribute without `code = "..."`
-  --> $DIR/subdiagnostic-derive.rs:539:5
+  --> $DIR/subdiagnostic-derive-inline.rs:537:5
    |
 LL |     #[suggestion_part()]
    |     ^
 
 error: derive(Diagnostic): `#[primary_span]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:548:5
+  --> $DIR/subdiagnostic-derive-inline.rs:546:5
    |
 LL |     #[primary_span]
    |     ^
@@ -315,169 +315,169 @@ LL |     #[primary_span]
    = help: multipart suggestions use one or more `#[suggestion_part]`s rather than one `#[primary_span]`
 
 error: derive(Diagnostic): multipart suggestion without any `#[suggestion_part(...)]` fields
-  --> $DIR/subdiagnostic-derive.rs:545:1
+  --> $DIR/subdiagnostic-derive-inline.rs:543:1
    |
-LL | #[multipart_suggestion(no_crate_example)]
+LL | #[multipart_suggestion("example message")]
    | ^
 
 error: derive(Diagnostic): `#[suggestion_part(...)]` attribute without `code = "..."`
-  --> $DIR/subdiagnostic-derive.rs:556:5
+  --> $DIR/subdiagnostic-derive-inline.rs:554:5
    |
 LL |     #[suggestion_part]
    |     ^
 
 error: derive(Diagnostic): `#[suggestion_part(...)]` attribute without `code = "..."`
-  --> $DIR/subdiagnostic-derive.rs:559:5
+  --> $DIR/subdiagnostic-derive-inline.rs:557:5
    |
 LL |     #[suggestion_part()]
    |     ^
 
 error: derive(Diagnostic): `code` is the only valid nested attribute
-  --> $DIR/subdiagnostic-derive.rs:562:23
+  --> $DIR/subdiagnostic-derive-inline.rs:560:23
    |
 LL |     #[suggestion_part(foo = "bar")]
    |                       ^^^
 
 error: derive(Diagnostic): the `#[suggestion_part(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
-  --> $DIR/subdiagnostic-derive.rs:566:5
+  --> $DIR/subdiagnostic-derive-inline.rs:564:5
    |
 LL |     #[suggestion_part(code = "...")]
    |     ^
 
 error: derive(Diagnostic): the `#[suggestion_part(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
-  --> $DIR/subdiagnostic-derive.rs:569:5
+  --> $DIR/subdiagnostic-derive-inline.rs:567:5
    |
 LL |     #[suggestion_part()]
    |     ^
 
 error: expected `,`
-  --> $DIR/subdiagnostic-derive.rs:562:27
+  --> $DIR/subdiagnostic-derive-inline.rs:560:27
    |
 LL |     #[suggestion_part(foo = "bar")]
    |                           ^
 
 error: derive(Diagnostic): attribute specified multiple times
-  --> $DIR/subdiagnostic-derive.rs:577:37
+  --> $DIR/subdiagnostic-derive-inline.rs:575:37
    |
 LL |     #[suggestion_part(code = "...", code = ",,,")]
    |                                     ^^^^
    |
 note: previously specified here
-  --> $DIR/subdiagnostic-derive.rs:577:23
+  --> $DIR/subdiagnostic-derive-inline.rs:575:23
    |
 LL |     #[suggestion_part(code = "...", code = ",,,")]
    |                       ^^^^
 
 error: derive(Diagnostic): `#[applicability]` has no effect if all `#[suggestion]`/`#[multipart_suggestion]` attributes have a static `applicability = "..."`
-  --> $DIR/subdiagnostic-derive.rs:606:5
+  --> $DIR/subdiagnostic-derive-inline.rs:604:5
    |
 LL |     #[applicability]
    |     ^
 
 error: derive(Diagnostic): expected exactly one string literal for `code = ...`
-  --> $DIR/subdiagnostic-derive.rs:654:28
+  --> $DIR/subdiagnostic-derive-inline.rs:652:28
    |
 LL |     #[suggestion_part(code("foo"))]
    |                            ^^^^^
 
 error: unexpected token, expected `)`
-  --> $DIR/subdiagnostic-derive.rs:654:28
+  --> $DIR/subdiagnostic-derive-inline.rs:652:28
    |
 LL |     #[suggestion_part(code("foo"))]
    |                            ^^^^^
 
 error: derive(Diagnostic): expected exactly one string literal for `code = ...`
-  --> $DIR/subdiagnostic-derive.rs:664:28
+  --> $DIR/subdiagnostic-derive-inline.rs:662:28
    |
 LL |     #[suggestion_part(code("foo", "bar"))]
    |                            ^^^^^
 
 error: unexpected token, expected `)`
-  --> $DIR/subdiagnostic-derive.rs:664:28
+  --> $DIR/subdiagnostic-derive-inline.rs:662:28
    |
 LL |     #[suggestion_part(code("foo", "bar"))]
    |                            ^^^^^
 
 error: derive(Diagnostic): expected exactly one string literal for `code = ...`
-  --> $DIR/subdiagnostic-derive.rs:674:28
+  --> $DIR/subdiagnostic-derive-inline.rs:672:28
    |
 LL |     #[suggestion_part(code(3))]
    |                            ^
 
 error: unexpected token, expected `)`
-  --> $DIR/subdiagnostic-derive.rs:674:28
+  --> $DIR/subdiagnostic-derive-inline.rs:672:28
    |
 LL |     #[suggestion_part(code(3))]
    |                            ^
 
 error: derive(Diagnostic): expected exactly one string literal for `code = ...`
-  --> $DIR/subdiagnostic-derive.rs:684:28
+  --> $DIR/subdiagnostic-derive-inline.rs:682:28
    |
 LL |     #[suggestion_part(code())]
    |                            ^
 
 error: expected string literal
-  --> $DIR/subdiagnostic-derive.rs:693:30
+  --> $DIR/subdiagnostic-derive-inline.rs:691:30
    |
 LL |     #[suggestion_part(code = 3)]
    |                              ^
 
 error: derive(Diagnostic): attribute specified multiple times
-  --> $DIR/subdiagnostic-derive.rs:735:1
+  --> $DIR/subdiagnostic-derive-inline.rs:733:1
    |
-LL | #[suggestion(no_crate_example, code = "", style = "hidden", style = "normal")]
+LL | #[suggestion("example message", code = "", style = "hidden", style = "normal")]
    | ^
    |
 note: previously specified here
-  --> $DIR/subdiagnostic-derive.rs:735:1
+  --> $DIR/subdiagnostic-derive-inline.rs:733:1
    |
-LL | #[suggestion(no_crate_example, code = "", style = "hidden", style = "normal")]
+LL | #[suggestion("example message", code = "", style = "hidden", style = "normal")]
    | ^
 
 error: derive(Diagnostic): `#[suggestion_hidden(...)]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:744:1
+  --> $DIR/subdiagnostic-derive-inline.rs:742:1
    |
-LL | #[suggestion_hidden(no_crate_example, code = "")]
+LL | #[suggestion_hidden("example message", code = "")]
    | ^
    |
    = help: Use `#[suggestion(..., style = "hidden")]` instead
 
 error: derive(Diagnostic): `#[suggestion_hidden(...)]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:752:1
+  --> $DIR/subdiagnostic-derive-inline.rs:750:1
    |
-LL | #[suggestion_hidden(no_crate_example, code = "", style = "normal")]
+LL | #[suggestion_hidden("example message", code = "", style = "normal")]
    | ^
    |
    = help: Use `#[suggestion(..., style = "hidden")]` instead
 
 error: derive(Diagnostic): invalid suggestion style
-  --> $DIR/subdiagnostic-derive.rs:760:51
+  --> $DIR/subdiagnostic-derive-inline.rs:758:52
    |
-LL | #[suggestion(no_crate_example, code = "", style = "foo")]
-   |                                                   ^^^^^
+LL | #[suggestion("example message", code = "", style = "foo")]
+   |                                                    ^^^^^
    |
    = help: valid styles are `normal`, `short`, `hidden`, `verbose` and `tool-only`
 
 error: expected string literal
-  --> $DIR/subdiagnostic-derive.rs:768:51
+  --> $DIR/subdiagnostic-derive-inline.rs:766:52
    |
-LL | #[suggestion(no_crate_example, code = "", style = 42)]
-   |                                                   ^^
+LL | #[suggestion("example message", code = "", style = 42)]
+   |                                                    ^^
 
 error: derive(Diagnostic): a diagnostic slug must be the first argument to the attribute
-  --> $DIR/subdiagnostic-derive.rs:776:43
+  --> $DIR/subdiagnostic-derive-inline.rs:774:44
    |
-LL | #[suggestion(no_crate_example, code = "", style)]
-   |                                           ^^^^^
+LL | #[suggestion("example message", code = "", style)]
+   |                                            ^^^^^
 
 error: expected `=`
-  --> $DIR/subdiagnostic-derive.rs:784:48
+  --> $DIR/subdiagnostic-derive-inline.rs:782:49
    |
-LL | #[suggestion(no_crate_example, code = "", style("foo"))]
-   |                                                ^
+LL | #[suggestion("example message", code = "", style("foo"))]
+   |                                                 ^
 
 error: derive(Diagnostic): `#[primary_span]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:795:5
+  --> $DIR/subdiagnostic-derive-inline.rs:793:5
    |
 LL |     #[primary_span]
    |     ^
@@ -486,61 +486,61 @@ LL |     #[primary_span]
    = help: to create a suggestion with multiple spans, use `#[multipart_suggestion]` instead
 
 error: derive(Diagnostic): suggestion without `#[primary_span]` field
-  --> $DIR/subdiagnostic-derive.rs:792:1
+  --> $DIR/subdiagnostic-derive-inline.rs:790:1
    |
-LL | #[suggestion(no_crate_example, code = "")]
+LL | #[suggestion("example message", code = "")]
    | ^
 
 error: cannot find attribute `foo` in this scope
-  --> $DIR/subdiagnostic-derive.rs:68:3
+  --> $DIR/subdiagnostic-derive-inline.rs:66:3
    |
 LL | #[foo]
    |   ^^^
 
 error: cannot find attribute `foo` in this scope
-  --> $DIR/subdiagnostic-derive.rs:144:3
+  --> $DIR/subdiagnostic-derive-inline.rs:142:3
    |
 LL | #[foo]
    |   ^^^
 
 error: cannot find attribute `bar` in this scope
-  --> $DIR/subdiagnostic-derive.rs:158:7
+  --> $DIR/subdiagnostic-derive-inline.rs:156:7
    |
 LL |     #[bar]
    |       ^^^
 
 error: cannot find attribute `bar` in this scope
-  --> $DIR/subdiagnostic-derive.rs:170:7
+  --> $DIR/subdiagnostic-derive-inline.rs:168:7
    |
 LL |     #[bar = "..."]
    |       ^^^
 
 error: cannot find attribute `bar` in this scope
-  --> $DIR/subdiagnostic-derive.rs:182:7
+  --> $DIR/subdiagnostic-derive-inline.rs:180:7
    |
 LL |     #[bar = 4]
    |       ^^^
 
 error: cannot find attribute `bar` in this scope
-  --> $DIR/subdiagnostic-derive.rs:194:7
+  --> $DIR/subdiagnostic-derive-inline.rs:192:7
    |
 LL |     #[bar("...")]
    |       ^^^
 
 error: cannot find attribute `bar` in this scope
-  --> $DIR/subdiagnostic-derive.rs:255:7
+  --> $DIR/subdiagnostic-derive-inline.rs:253:7
    |
 LL |     #[bar]
    |       ^^^
 
 error: cannot find attribute `bar` in this scope
-  --> $DIR/subdiagnostic-derive.rs:266:7
+  --> $DIR/subdiagnostic-derive-inline.rs:264:7
    |
 LL |     #[bar = "..."]
    |       ^^^
 
 error: cannot find attribute `bar` in this scope
-  --> $DIR/subdiagnostic-derive.rs:277:7
+  --> $DIR/subdiagnostic-derive-inline.rs:275:7
    |
 LL |     #[bar("...")]
    |       ^^^

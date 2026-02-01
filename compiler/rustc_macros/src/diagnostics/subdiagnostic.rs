@@ -11,6 +11,7 @@ use super::utils::SubdiagnosticVariant;
 use crate::diagnostics::error::{
     DiagnosticDeriveError, invalid_attr, span_err, throw_invalid_attr, throw_span_err,
 };
+use crate::diagnostics::message::Message;
 use crate::diagnostics::utils::{
     AllowMultipleAlternatives, FieldInfo, FieldInnerTy, FieldMap, SetOnce, SpannedOption,
     SubdiagnosticKind, build_field_mapping, build_suggestion_code, is_doc_comment, new_code_ident,
@@ -74,7 +75,7 @@ impl SubdiagnosticDerive {
                     has_subdiagnostic: false,
                     is_enum,
                 };
-                builder.into_tokens().unwrap_or_else(|v| v.to_compile_error())
+                builder.into_tokens(variant).unwrap_or_else(|v| v.to_compile_error())
             });
 
             quote! {
@@ -182,7 +183,9 @@ impl<'a> FromIterator<&'a SubdiagnosticKind> for KindsStatistics {
 }
 
 impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
-    fn identify_kind(&mut self) -> Result<Vec<(SubdiagnosticKind, Path)>, DiagnosticDeriveError> {
+    fn identify_kind(
+        &mut self,
+    ) -> Result<Vec<(SubdiagnosticKind, Message)>, DiagnosticDeriveError> {
         let mut kind_slugs = vec![];
 
         for attr in self.variant.ast().attrs {
@@ -494,7 +497,10 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         }
     }
 
-    pub(crate) fn into_tokens(&mut self) -> Result<TokenStream, DiagnosticDeriveError> {
+    pub(crate) fn into_tokens(
+        &mut self,
+        variant: &VariantInfo<'_>,
+    ) -> Result<TokenStream, DiagnosticDeriveError> {
         let kind_slugs = self.identify_kind()?;
 
         let kind_stats: KindsStatistics = kind_slugs.iter().map(|(kind, _slug)| kind).collect();
@@ -532,9 +538,8 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let mut calls = TokenStream::new();
         for (kind, slug) in kind_slugs {
             let message = format_ident!("__message");
-            calls.extend(
-                quote! { let #message = #diag.eagerly_translate(crate::fluent_generated::#slug); },
-            );
+            let message_stream = slug.diag_message(variant);
+            calls.extend(quote! { let #message = #diag.eagerly_translate(#message_stream); });
 
             let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);
             let call = match kind {

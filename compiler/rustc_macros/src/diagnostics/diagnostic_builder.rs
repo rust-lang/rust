@@ -4,13 +4,14 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::parse::ParseStream;
 use syn::spanned::Spanned;
-use syn::{Attribute, Meta, Path, Token, Type, parse_quote};
+use syn::{Attribute, LitStr, Meta, Path, Token, Type, parse_quote};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
 use super::utils::SubdiagnosticVariant;
 use crate::diagnostics::error::{
     DiagnosticDeriveError, span_err, throw_invalid_attr, throw_span_err,
 };
+use crate::diagnostics::message::Message;
 use crate::diagnostics::utils::{
     FieldInfo, FieldInnerTy, FieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
     build_field_mapping, is_doc_comment, report_error_if_not_applied_to_span, report_type_error,
@@ -41,9 +42,9 @@ pub(crate) struct DiagnosticDeriveVariantBuilder {
     /// derive builder.
     pub field_map: FieldMap,
 
-    /// Slug is a mandatory part of the struct attribute as corresponds to the Fluent message that
+    /// Message is a mandatory part of the struct attribute as corresponds to the Fluent message that
     /// has the actual diagnostic message.
-    pub slug: Option<Path>,
+    pub message: Option<Message>,
 
     /// Error codes are a optional part of the struct attribute - this is only set to detect
     /// multiple specifications.
@@ -90,7 +91,7 @@ impl DiagnosticDeriveKind {
                 span,
                 field_map: build_field_mapping(variant),
                 formatting_init: TokenStream::new(),
-                slug: None,
+                message: None,
                 code: None,
             };
             f(builder, variant)
@@ -105,8 +106,8 @@ impl DiagnosticDeriveKind {
 }
 
 impl DiagnosticDeriveVariantBuilder {
-    pub(crate) fn primary_message(&self) -> Option<&Path> {
-        match self.slug.as_ref() {
+    pub(crate) fn primary_message(&self) -> Option<&Message> {
+        match self.message.as_ref() {
             None => {
                 span_err(self.span, "diagnostic slug not specified")
                     .help(
@@ -116,7 +117,7 @@ impl DiagnosticDeriveVariantBuilder {
                     .emit();
                 None
             }
-            Some(slug)
+            Some(Message::Slug(slug))
                 if let Some(Mismatch { slug_name, crate_name, slug_prefix }) =
                     Mismatch::check(slug) =>
             {
@@ -126,7 +127,7 @@ impl DiagnosticDeriveVariantBuilder {
                     .emit();
                 None
             }
-            Some(slug) => Some(slug),
+            Some(msg) => Some(msg),
         }
     }
 
@@ -136,7 +137,8 @@ impl DiagnosticDeriveVariantBuilder {
         let ast = variant.ast();
         let attrs = &ast.attrs;
         let preamble = attrs.iter().map(|attr| {
-            self.generate_structure_code_for_attr(attr).unwrap_or_else(|v| v.to_compile_error())
+            self.generate_structure_code_for_attr(attr, variant)
+                .unwrap_or_else(|v| v.to_compile_error())
         });
 
         quote! {
@@ -154,7 +156,7 @@ impl DiagnosticDeriveVariantBuilder {
         }
         // ..and then subdiagnostic additions.
         for binding in variant.bindings().iter().filter(|bi| !should_generate_arg(bi.ast())) {
-            body.extend(self.generate_field_attrs_code(binding));
+            body.extend(self.generate_field_attrs_code(binding, variant));
         }
         body
     }
@@ -163,7 +165,7 @@ impl DiagnosticDeriveVariantBuilder {
     fn parse_subdiag_attribute(
         &self,
         attr: &Attribute,
-    ) -> Result<Option<(SubdiagnosticKind, Path, bool)>, DiagnosticDeriveError> {
+    ) -> Result<Option<(SubdiagnosticKind, Message, bool)>, DiagnosticDeriveError> {
         let Some(subdiag) = SubdiagnosticVariant::from_attr(attr, &self.field_map)? else {
             // Some attributes aren't errors - like documentation comments - but also aren't
             // subdiagnostics.
@@ -175,15 +177,18 @@ impl DiagnosticDeriveVariantBuilder {
                 .help("consider creating a `Subdiagnostic` instead"));
         }
 
-        let slug = subdiag.slug.unwrap_or_else(|| match subdiag.kind {
-            SubdiagnosticKind::Label => parse_quote! { _subdiag::label },
-            SubdiagnosticKind::Note => parse_quote! { _subdiag::note },
-            SubdiagnosticKind::NoteOnce => parse_quote! { _subdiag::note_once },
-            SubdiagnosticKind::Help => parse_quote! { _subdiag::help },
-            SubdiagnosticKind::HelpOnce => parse_quote! { _subdiag::help_once },
-            SubdiagnosticKind::Warn => parse_quote! { _subdiag::warn },
-            SubdiagnosticKind::Suggestion { .. } => parse_quote! { _subdiag::suggestion },
-            SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
+        // For subdiagnostics without a message specified, insert a placeholder slug
+        let slug = subdiag.slug.unwrap_or_else(|| {
+            Message::Slug(match subdiag.kind {
+                SubdiagnosticKind::Label => parse_quote! { _subdiag::label },
+                SubdiagnosticKind::Note => parse_quote! { _subdiag::note },
+                SubdiagnosticKind::NoteOnce => parse_quote! { _subdiag::note_once },
+                SubdiagnosticKind::Help => parse_quote! { _subdiag::help },
+                SubdiagnosticKind::HelpOnce => parse_quote! { _subdiag::help_once },
+                SubdiagnosticKind::Warn => parse_quote! { _subdiag::warn },
+                SubdiagnosticKind::Suggestion { .. } => parse_quote! { _subdiag::suggestion },
+                SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
+            })
         });
 
         Ok(Some((subdiag.kind, slug, false)))
@@ -195,6 +200,7 @@ impl DiagnosticDeriveVariantBuilder {
     fn generate_structure_code_for_attr(
         &mut self,
         attr: &Attribute,
+        variant: &VariantInfo<'_>,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
         // Always allow documentation comments.
         if is_doc_comment(attr) {
@@ -210,13 +216,21 @@ impl DiagnosticDeriveVariantBuilder {
                 let mut input = &*input;
                 let slug_recovery_point = input.fork();
 
-                let slug = input.parse::<Path>()?;
-                if input.is_empty() || input.peek(Token![,]) {
-                    self.slug = Some(slug);
+                if input.peek(LitStr) {
+                    // Parse an inline message
+                    let message = input.parse::<LitStr>()?;
+                    self.message = Some(Message::Inline(message.span(), message.value()));
                 } else {
-                    input = &slug_recovery_point;
+                    // Parse a slug
+                    let slug = input.parse::<Path>()?;
+                    if input.is_empty() || input.peek(Token![,]) {
+                        self.message = Some(Message::Slug(slug));
+                    } else {
+                        input = &slug_recovery_point;
+                    }
                 }
 
+                // Parse arguments
                 while !input.is_empty() {
                     input.parse::<Token![,]>()?;
                     // Allow trailing comma
@@ -266,7 +280,7 @@ impl DiagnosticDeriveVariantBuilder {
             | SubdiagnosticKind::NoteOnce
             | SubdiagnosticKind::Help
             | SubdiagnosticKind::HelpOnce
-            | SubdiagnosticKind::Warn => Ok(self.add_subdiagnostic(&fn_ident, slug)),
+            | SubdiagnosticKind::Warn => Ok(self.add_subdiagnostic(&fn_ident, slug, variant)),
             SubdiagnosticKind::Label | SubdiagnosticKind::Suggestion { .. } => {
                 throw_invalid_attr!(attr, |diag| diag
                     .help("`#[label]` and `#[suggestion]` can only be applied to fields"));
@@ -294,7 +308,11 @@ impl DiagnosticDeriveVariantBuilder {
         }
     }
 
-    fn generate_field_attrs_code(&mut self, binding_info: &BindingInfo<'_>) -> TokenStream {
+    fn generate_field_attrs_code(
+        &mut self,
+        binding_info: &BindingInfo<'_>,
+        variant: &VariantInfo<'_>,
+    ) -> TokenStream {
         let field = binding_info.ast();
         let field_binding = &binding_info.binding;
 
@@ -333,6 +351,7 @@ impl DiagnosticDeriveVariantBuilder {
                         attr,
                         FieldInfo { binding: binding_info, ty: inner_ty, span: &field.span() },
                         binding,
+                        variant
                     )
                     .unwrap_or_else(|v| v.to_compile_error());
 
@@ -350,6 +369,7 @@ impl DiagnosticDeriveVariantBuilder {
         attr: &Attribute,
         info: FieldInfo<'_>,
         binding: TokenStream,
+        variant: &VariantInfo<'_>,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
         let ident = &attr.path().segments.last().unwrap().ident;
         let name = ident.to_string();
@@ -388,7 +408,7 @@ impl DiagnosticDeriveVariantBuilder {
         match subdiag {
             SubdiagnosticKind::Label => {
                 report_error_if_not_applied_to_span(attr, &info)?;
-                Ok(self.add_spanned_subdiagnostic(binding, &fn_ident, slug))
+                Ok(self.add_spanned_subdiagnostic(binding, &fn_ident, slug, variant))
             }
             SubdiagnosticKind::Note
             | SubdiagnosticKind::NoteOnce
@@ -399,11 +419,11 @@ impl DiagnosticDeriveVariantBuilder {
                 if type_matches_path(inner, &["rustc_span", "Span"])
                     || type_matches_path(inner, &["rustc_span", "MultiSpan"])
                 {
-                    Ok(self.add_spanned_subdiagnostic(binding, &fn_ident, slug))
+                    Ok(self.add_spanned_subdiagnostic(binding, &fn_ident, slug, variant))
                 } else if type_is_unit(inner)
                     || (matches!(info.ty, FieldInnerTy::Plain(_)) && type_is_bool(inner))
                 {
-                    Ok(self.add_subdiagnostic(&fn_ident, slug))
+                    Ok(self.add_subdiagnostic(&fn_ident, slug, variant))
                 } else {
                     report_type_error(attr, "`Span`, `MultiSpan`, `bool` or `()`")?
                 }
@@ -429,6 +449,7 @@ impl DiagnosticDeriveVariantBuilder {
                     applicability.set_once(quote! { #static_applicability }, span);
                 }
 
+                let message = slug.diag_message(variant);
                 let applicability = applicability
                     .value()
                     .unwrap_or_else(|| quote! { rustc_errors::Applicability::Unspecified });
@@ -438,7 +459,7 @@ impl DiagnosticDeriveVariantBuilder {
                 Ok(quote! {
                     diag.span_suggestions_with_style(
                         #span_field,
-                        crate::fluent_generated::#slug,
+                        #message,
                         #code_field,
                         #applicability,
                         #style
@@ -455,22 +476,30 @@ impl DiagnosticDeriveVariantBuilder {
         &self,
         field_binding: TokenStream,
         kind: &Ident,
-        fluent_attr_identifier: Path,
+        message: Message,
+        variant: &VariantInfo<'_>,
     ) -> TokenStream {
         let fn_name = format_ident!("span_{}", kind);
+        let message = message.diag_message(variant);
         quote! {
             diag.#fn_name(
                 #field_binding,
-                crate::fluent_generated::#fluent_attr_identifier
+                #message
             );
         }
     }
 
     /// Adds a subdiagnostic by generating a `diag.span_$kind` call with the current slug
     /// and `fluent_attr_identifier`.
-    fn add_subdiagnostic(&self, kind: &Ident, fluent_attr_identifier: Path) -> TokenStream {
+    fn add_subdiagnostic(
+        &self,
+        kind: &Ident,
+        message: Message,
+        variant: &VariantInfo<'_>,
+    ) -> TokenStream {
+        let message = message.diag_message(variant);
         quote! {
-            diag.#kind(crate::fluent_generated::#fluent_attr_identifier);
+            diag.#kind(#message);
         }
     }
 
