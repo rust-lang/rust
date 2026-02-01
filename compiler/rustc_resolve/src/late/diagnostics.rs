@@ -2677,7 +2677,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         &mut names,
                         ScopeSet::All(ns),
                         parent_scope,
-                        ctxt,
+                        segment.ident.span.with_ctxt(ctxt),
                         filter_fn,
                     );
                     break;
