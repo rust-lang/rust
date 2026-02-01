@@ -1,11 +1,11 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/2502
+
 //@ check-pass
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
-
-
 struct font<'a> {
-    fontbuf: &'a Vec<u8> ,
+    fontbuf: &'a Vec<u8>,
 }
 
 impl<'a> font<'a> {
@@ -14,10 +14,8 @@ impl<'a> font<'a> {
     }
 }
 
-fn font(fontbuf: &Vec<u8> ) -> font<'_> {
-    font {
-        fontbuf: fontbuf
-    }
+fn font(fontbuf: &Vec<u8>) -> font<'_> {
+    font { fontbuf }
 }
 
-pub fn main() { }
+pub fn main() {}
