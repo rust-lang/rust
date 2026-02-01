@@ -1,0 +1,24 @@
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-return-type-notation.rs:9:5
+   |
+LL |     fn f() -> impl Sized;
+   |               ---------- return type from trait method defined here
+...
+LL |     fn f() {}
+   |     ^^^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+note: the lint level is defined here
+  --> $DIR/refine-return-type-notation.rs:2:9
+   |
+LL | #![deny(refining_impl_trait)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(refining_impl_trait_internal)]` implied by `#[deny(refining_impl_trait)]`
+help: replace the return type so that it matches the trait
+   |
+LL |     fn f()-> impl Sized  {}
+   |           +++++++++++++
+
+error: aborting due to 1 previous error
+

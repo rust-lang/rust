@@ -6,6 +6,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint_defs::builtin::{REFINING_IMPL_TRAIT_INTERNAL, REFINING_IMPL_TRAIT_REACHABLE};
 use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
+use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_signature};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode,
@@ -332,6 +333,17 @@ fn report_mismatched_rpitit_signature<'tcx>(
             hir::FnRetTy::Return(ty) => ty.span,
         });
 
+    // Use ForSignature mode to ensure RPITITs are printed as `impl Trait` rather than
+    // `impl Trait { T::method(..) }` when RTN is enabled.
+    //
+    // We use `with_no_trimmed_paths!` to avoid triggering the `trimmed_def_paths` query,
+    // which requires diagnostic context (via `must_produce_diag`). Since we're formatting
+    // the type before creating the diagnostic, we need to avoid this query. This is the
+    // standard approach used elsewhere in the compiler for formatting types in suggestions
+    // (e.g., see `rustc_hir_typeck/src/demand.rs`).
+    let return_ty_suggestion =
+        with_no_trimmed_paths!(with_types_for_signature!(format!("{return_ty}")));
+
     let span = unmatched_bound.unwrap_or(span);
     tcx.emit_node_span_lint(
         if is_internal { REFINING_IMPL_TRAIT_INTERNAL } else { REFINING_IMPL_TRAIT_REACHABLE },
@@ -342,7 +354,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
             trait_return_span,
             pre,
             post,
-            return_ty,
+            return_ty: return_ty_suggestion,
             unmatched_bound,
         },
     );
