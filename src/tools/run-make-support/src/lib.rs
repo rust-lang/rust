@@ -47,6 +47,7 @@ pub use crate::assertion_helpers::{
     assert_contains, assert_contains_regex, assert_count_is, assert_dirs_are_equal, assert_equals,
     assert_not_contains, assert_not_contains_regex,
 };
+pub use crate::command::CompletedProcess;
 // `diff` is implemented in terms of the [similar] library.
 //
 // [similar]: https://github.com/mitsuhiko/similar
