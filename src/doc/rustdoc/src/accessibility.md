@@ -45,7 +45,7 @@
 
 ## Known Accessibility Issues in Rustdoc
 
-1. There are some contrast issues with certain parts of the webpage (see [#151422](https://github.com/rust-lang/rust/issues/151422))
+1. None right now, but if you experience or find one, feel free to open an issue!
 
 ## Where to Get Help
 
