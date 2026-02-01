@@ -16,5 +16,5 @@ macro_rules! make_macro {
     }
 }
 
-make_macro!((meow));
+make_macro!( meow);
 //~^ ERROR macros that expand to items must be delimited with braces or followed by a semicolon

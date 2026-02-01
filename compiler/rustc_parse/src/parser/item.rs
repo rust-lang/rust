@@ -518,7 +518,12 @@ impl<'a> Parser<'a> {
         match self.parse_delim_args() {
             // `( .. )` or `[ .. ]` (followed by `;`), or `{ .. }`.
             Ok(args) => {
-                self.eat_semi_for_macro_if_needed(&args);
+                if self.is_incorrect_macro_rules_parens(&path, &args) {
+                    let DelimSpan { open, close } = args.dspan;
+                    self.report_invalid_macro_expansion_item(&args, Some((open, close)));
+                } else {
+                    self.eat_semi_for_macro_if_needed(&args);
+                }
                 self.complain_if_pub_macro(vis, false);
                 Ok(MacCall { path, args })
             }
@@ -2395,13 +2400,28 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Check if this looks like `macro_rules!(name) { ... }` - a common mistake when trying
+    /// to define a macro. Returns `true` if it matches this pattern.
+    fn is_incorrect_macro_rules_parens(&self, path: &ast::Path, args: &DelimArgs) -> bool {
+        if !args.need_semicolon() || self.token != token::OpenBrace {
+            return false;
+        }
+        let is_macro_rules =
+            path.segments.first().map(|seg| seg.ident.name == sym::macro_rules).unwrap_or(false);
+        is_macro_rules && args.delim == Delimiter::Parenthesis
+    }
+
     fn eat_semi_for_macro_if_needed(&mut self, args: &DelimArgs) {
         if args.need_semicolon() && !self.eat(exp!(Semi)) {
-            self.report_invalid_macro_expansion_item(args);
+            self.report_invalid_macro_expansion_item(args, None);
         }
     }
 
-    fn report_invalid_macro_expansion_item(&self, args: &DelimArgs) {
+    fn report_invalid_macro_expansion_item(
+        &self,
+        args: &DelimArgs,
+        macro_rules_suggestion: Option<(Span, Span)>,
+    ) {
         let span = args.dspan.entire();
         let mut err = self.dcx().struct_span_err(
             span,
@@ -2411,17 +2431,25 @@ impl<'a> Parser<'a> {
         // macros within the same crate (that we can fix), which is sad.
         if !span.from_expansion() {
             let DelimSpan { open, close } = args.dspan;
-            err.multipart_suggestion(
-                "change the delimiters to curly braces",
-                vec![(open, "{".to_string()), (close, '}'.to_string())],
-                Applicability::MaybeIncorrect,
-            );
-            err.span_suggestion(
-                span.with_neighbor(self.token.span).shrink_to_hi(),
-                "add a semicolon",
-                ';',
-                Applicability::MaybeIncorrect,
-            );
+            if let Some((open, close)) = macro_rules_suggestion {
+                err.multipart_suggestion(
+                    "to define a macro, remove the parentheses around the macro name",
+                    vec![(open, " ".to_string()), (close, String::new())],
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                err.multipart_suggestion(
+                    "change the delimiters to curly braces",
+                    vec![(open, "{".to_string()), (close, '}'.to_string())],
+                    Applicability::MaybeIncorrect,
+                );
+                err.span_suggestion(
+                    span.with_neighbor(self.token.span).shrink_to_hi(),
+                    "add a semicolon",
+                    ';',
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
         err.emit();
     }
