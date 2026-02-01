@@ -1,12 +1,13 @@
 use std::ffi::CString;
 
+use bitflags::Flags;
 use llvm::Linkage::*;
 use rustc_abi::Align;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 use rustc_middle::bug;
-use rustc_middle::ty::offload_meta::OffloadMetadata;
+use rustc_middle::ty::offload_meta::{MappingFlags, OffloadMetadata};
 
 use crate::builder::Builder;
 use crate::common::CodegenCx;
@@ -345,7 +346,9 @@ impl KernelArgsTy {
 #[derive(Copy, Clone)]
 pub(crate) struct OffloadKernelGlobals<'ll> {
     pub offload_sizes: &'ll llvm::Value,
-    pub memtransfer_types: &'ll llvm::Value,
+    pub memtransfer_begin: &'ll llvm::Value,
+    pub memtransfer_kernel: &'ll llvm::Value,
+    pub memtransfer_end: &'ll llvm::Value,
     pub region_id: &'ll llvm::Value,
     pub offload_entry: &'ll llvm::Value,
 }
@@ -424,18 +427,38 @@ pub(crate) fn gen_define_handling<'ll>(
 
     let offload_entry_ty = offload_globals.offload_entry_ty;
 
-    // FIXME(Sa4dUs): add `OMP_MAP_TARGET_PARAM = 0x20` only if necessary
     let (sizes, transfer): (Vec<_>, Vec<_>) =
-        metadata.iter().map(|m| (m.payload_size, m.mode.bits() | 0x20)).unzip();
+        metadata.iter().map(|m| (m.payload_size, m.mode)).unzip();
+    // Our begin mapper should only see simplified information about which args have to be
+    // transferred to the device, the end mapper only about which args should be transferred back.
+    // Any information beyond that makes it harder for LLVM's opt pass to evaluate whether it can
+    // safely move (=optimize) the LLVM-IR location of this data transfer. Only the mapping types
+    // mentioned below are handled, so make sure that we don't generate any other ones.
+    let handled_mappings = MappingFlags::TO
+        | MappingFlags::FROM
+        | MappingFlags::TARGET_PARAM
+        | MappingFlags::LITERAL
+        | MappingFlags::IMPLICIT;
+    for arg in &transfer {
+        debug_assert!(!arg.contains_unknown_bits());
+        debug_assert!(arg.difference(handled_mappings).is_empty());
+    }
+
+    let valid_begin_mappings = MappingFlags::TO | MappingFlags::LITERAL | MappingFlags::IMPLICIT;
+    let transfer_to: Vec<u64> =
+        transfer.clone().iter().map(|m| m.intersection(valid_begin_mappings).bits()).collect();
+    let transfer_from: Vec<u64> =
+        transfer.iter().map(|m| m.intersection(MappingFlags::FROM).bits()).collect();
+    // FIXME(offload): add `OMP_MAP_TARGET_PARAM = 0x20` only if necessary
+    let transfer_kernel = vec![MappingFlags::TARGET_PARAM.bits(); transfer_to.len()];
 
     let offload_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &sizes);
-    // Here we figure out whether something needs to be copied to the gpu (=1), from the gpu (=2),
-    // or both to and from the gpu (=3). Other values shouldn't affect us for now.
-    // A non-mutable reference or pointer will be 1, an array that's not read, but fully overwritten
-    // will be 2. For now, everything is 3, until we have our frontend set up.
-    // 1+2+32: 1 (MapTo), 2 (MapFrom), 32 (Add one extra input ptr per function, to be used later).
-    let memtransfer_types =
-        add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}"), &transfer);
+    let memtransfer_begin =
+        add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}.begin"), &transfer_to);
+    let memtransfer_kernel =
+        add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}.kernel"), &transfer_kernel);
+    let memtransfer_end =
+        add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}.end"), &transfer_from);
 
     // Next: For each function, generate these three entries. A weak constant,
     // the llvm.rodata entry name, and  the llvm_offload_entries value
@@ -468,8 +491,14 @@ pub(crate) fn gen_define_handling<'ll>(
     let c_section_name = CString::new("llvm_offload_entries").unwrap();
     llvm::set_section(offload_entry, &c_section_name);
 
-    let result =
-        OffloadKernelGlobals { offload_sizes, memtransfer_types, region_id, offload_entry };
+    let result = OffloadKernelGlobals {
+        offload_sizes,
+        memtransfer_begin,
+        memtransfer_kernel,
+        memtransfer_end,
+        region_id,
+        offload_entry,
+    };
 
     cx.offload_kernel_cache.borrow_mut().insert(symbol, result);
 
@@ -532,8 +561,14 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     offload_dims: &OffloadKernelDims<'ll>,
 ) {
     let cx = builder.cx;
-    let OffloadKernelGlobals { offload_sizes, offload_entry, memtransfer_types, region_id } =
-        offload_data;
+    let OffloadKernelGlobals {
+        offload_sizes,
+        offload_entry,
+        memtransfer_begin,
+        memtransfer_kernel,
+        memtransfer_end,
+        region_id,
+    } = offload_data;
     let OffloadKernelDims { num_workgroups, threads_per_block, workgroup_dims, thread_dims } =
         offload_dims;
 
@@ -680,14 +715,14 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     generate_mapper_call(
         builder,
         geps,
-        memtransfer_types,
+        memtransfer_begin,
         begin_mapper_decl,
         fn_ty,
         num_args,
         s_ident_t,
     );
     let values =
-        KernelArgsTy::new(&cx, num_args, memtransfer_types, geps, workgroup_dims, thread_dims);
+        KernelArgsTy::new(&cx, num_args, memtransfer_kernel, geps, workgroup_dims, thread_dims);
 
     // Step 3)
     // Here we fill the KernelArgsTy, see the documentation above
@@ -713,7 +748,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     generate_mapper_call(
         builder,
         geps,
-        memtransfer_types,
+        memtransfer_end,
         end_mapper_decl,
         fn_ty,
         num_args,
