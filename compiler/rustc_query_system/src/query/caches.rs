@@ -30,6 +30,8 @@ pub trait QueryCache: Sized {
     fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex);
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex));
+
+    fn len(&self) -> usize;
 }
 
 /// In-memory cache for queries whose keys aren't suitable for any of the
@@ -71,6 +73,10 @@ where
             }
         }
     }
+
+    fn len(&self) -> usize {
+        self.cache.len()
+    }
 }
 
 /// In-memory cache for queries whose key type only has one value (e.g. `()`).
@@ -106,6 +112,10 @@ where
         if let Some(value) = self.cache.get() {
             f(&(), &value.0, value.1)
         }
+    }
+
+    fn len(&self) -> usize {
+        self.cache.get().is_some().into()
     }
 }
 
@@ -157,6 +167,10 @@ where
         });
         self.foreign.iter(f);
     }
+
+    fn len(&self) -> usize {
+        self.local.len() + self.foreign.len()
+    }
 }
 
 impl<K, V> QueryCache for VecCache<K, V, DepNodeIndex>
@@ -179,5 +193,9 @@ where
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
         self.iter(f)
+    }
+
+    fn len(&self) -> usize {
+        self.len()
     }
 }

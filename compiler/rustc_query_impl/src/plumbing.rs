@@ -415,9 +415,8 @@ pub(crate) fn query_key_hash_verify<'tcx>(
 ) {
     let _timer = qcx.tcx.prof.generic_activity_with_arg("query_key_hash_verify_for", query.name());
 
-    let mut map = UnordMap::default();
-
     let cache = query.query_cache(qcx);
+    let mut map = UnordMap::with_capacity(cache.len());
     cache.iter(&mut |key, _, _| {
         let node = DepNode::construct(qcx.tcx, query.dep_kind(), key);
         if let Some(other_key) = map.insert(node, *key) {
