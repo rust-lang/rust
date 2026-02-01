@@ -341,6 +341,46 @@ use crate::vec::{self, Vec};
 ///
 /// Here, there's no need to allocate more memory inside the loop.
 ///
+/// # Invariant
+///
+/// Rust libraries may assume that `String`s are always valid UTF-8, [just like `str`s](prim@str#invariant).
+///
+/// Constructing a non-UTF-8 `String` is not immediate undefined behavior, but any function
+/// called on a `String` may assume that it is valid UTF-8, which means that a non-UTF-8 `String`
+/// can lead to undefined behavior down the road.
+///
+/// As an exception, some functions explicitly allow invalid UTF-8, and will not immediately cause undefined
+/// behavior if called on a `String` containing invalid UTF-8. In general, all of `String`'s associated
+/// functions other than those listed here should be assumed to require their input be valid UTF-8.
+/// Note that calling one of these functions on a `String` containing invalid UTF-8, may result in the return value
+/// also containing invalid UTF-8, if relevant.
+///
+/// * `String::as_bytes`
+/// * `String::as_bytes_mut`
+/// * `String::as_str`
+/// * `String::as_mut_str`
+/// * `String::as_ptr`
+/// * `String::as_mut_ptr`
+/// * `String::as_mut_vec`
+/// * `String::capacity`
+/// * `String::len`
+/// * `String::clear`
+/// * `<String as Drop>::drop` (i.e. dropping a `String` that contains invalid UTF-8 does not alone cause UB)
+/// * `String::leak`
+/// * `String::into_boxed_str`
+/// * `String::reserve`
+/// * `String::reserve_exact`
+/// * `String::try_reserve`
+/// * `String::try_reserve_exact`
+/// * `<String as Deref>::deref`
+/// * `<String as DerefMut>::deref_mut`
+/// * `<String as AsRef<str>>::as_ref`
+/// * `<String as AsMut<str>>::as_mut`
+/// * `<String as Borrow<str>>::borrow`
+/// * `<String as BorrowMut<str>>::borrow_mut`
+/// * `<String as Clone>::clone`
+/// * `<String as Clone>::clone_from`
+///
 /// [str]: prim@str "str"
 /// [`str`]: prim@str "str"
 /// [`&str`]: prim@str "&str"
@@ -993,7 +1033,7 @@ impl String {
     /// This function is unsafe because it does not check that the bytes passed
     /// to it are valid UTF-8. If this constraint is violated, it may cause
     /// memory unsafety issues with future users of the `String`, as the rest of
-    /// the standard library assumes that `String`s are valid UTF-8.
+    /// the standard library [assumes that `String`s are valid UTF-8](String#invariant).
     ///
     /// # Examples
     ///
@@ -1814,8 +1854,8 @@ impl String {
     /// This function is unsafe because the returned `&mut Vec` allows writing
     /// bytes which are not valid UTF-8. If this constraint is violated, using
     /// the original `String` after dropping the `&mut Vec` may violate memory
-    /// safety, as the rest of the standard library assumes that `String`s are
-    /// valid UTF-8.
+    /// safety, as the rest of the standard library [assumes that `String`s are
+    /// valid UTF-8](String#invariant).
     ///
     /// # Examples
     ///

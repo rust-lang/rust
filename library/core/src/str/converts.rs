@@ -2,7 +2,7 @@
 
 use super::Utf8Error;
 use super::validations::run_utf8_validation;
-use crate::{mem, ptr};
+use crate::ptr;
 
 /// Converts a slice of bytes to a string slice.
 ///
@@ -152,7 +152,10 @@ pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 ///
 /// # Safety
 ///
-/// The bytes passed in must be valid UTF-8.
+/// This function is unsafe because it does not check that the bytes passed
+/// to it are valid UTF-8. If this constraint is violated, it may cause
+/// memory unsafety issues with future users of the `str`, as the rest of
+/// the standard library [assumes that `str`s are valid UTF-8](prim@str#invariant).
 ///
 /// # Examples
 ///
@@ -176,9 +179,11 @@ pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 #[rustc_const_stable(feature = "const_str_from_utf8_unchecked", since = "1.55.0")]
 #[rustc_diagnostic_item = "str_from_utf8_unchecked"]
 pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
-    // SAFETY: the caller must guarantee that the bytes `v` are valid UTF-8.
-    // Also relies on `&str` and `&[u8]` having the same layout.
-    unsafe { mem::transmute(v) }
+    // SAFETY: the pointer dereference is safe because that pointer
+    // comes from a reference which is guaranteed to be valid for reads.
+    // If the input bytes are not valid UTF-8, then the returned `&str` will
+    // have invalid UTF-8, which is unsafe but not immediate UB.
+    unsafe { &*(v as *const [u8] as *const str) }
 }
 
 /// Converts a slice of bytes to a string slice without checking
@@ -206,10 +211,10 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 #[rustc_const_stable(feature = "const_str_from_utf8_unchecked_mut", since = "1.83.0")]
 #[rustc_diagnostic_item = "str_from_utf8_unchecked_mut"]
 pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
-    // SAFETY: the caller must guarantee that the bytes `v`
-    // are valid UTF-8, thus the cast to `*mut str` is safe.
-    // Also, the pointer dereference is safe because that pointer
+    // SAFETY: the pointer dereference is safe because that pointer
     // comes from a reference which is guaranteed to be valid for writes.
+    // If the input bytes are not valid UTF-8, then the returned `&mut str` will
+    // have invalid UTF-8, which is unsafe but not immediate UB.
     unsafe { &mut *(v as *mut [u8] as *mut str) }
 }
 
