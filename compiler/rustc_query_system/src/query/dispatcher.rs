@@ -5,17 +5,17 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_span::ErrorGuaranteed;
 
 use super::QueryStackFrameExtra;
-use crate::dep_graph::{DepKind, DepNode, DepNodeParams, HasDepContext, SerializedDepNodeIndex};
+use crate::dep_graph::{DepKind, DepNode, DepNodeParams, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::{CycleError, CycleErrorHandling, DepNodeIndex, QueryContext, QueryState};
 
 pub type HashResult<V> = Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>;
 
-/// Unambiguous shorthand for `<This::Qcx as HasDepContext>::DepContext`.
+/// Unambiguous shorthand for `<This::Qcx as QueryContext<'tcx>>::DepContext`.
 #[expect(type_alias_bounds)]
 type DepContextOf<'tcx, This: QueryDispatcher<'tcx>> =
-    <<This as QueryDispatcher<'tcx>>::Qcx as HasDepContext>::DepContext;
+    <<This as QueryDispatcher<'tcx>>::Qcx as QueryContext<'tcx>>::DepContext;
 
 /// Trait that can be used as a vtable for a single query, providing operations
 /// and metadata for that query.

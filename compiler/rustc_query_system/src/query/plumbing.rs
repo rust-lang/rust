@@ -18,9 +18,7 @@ use rustc_span::{DUMMY_SP, Span};
 use tracing::instrument;
 
 use super::{QueryDispatcher, QueryStackDeferred, QueryStackFrameExtra};
-use crate::dep_graph::{
-    DepContext, DepGraphData, DepNode, DepNodeIndex, DepNodeParams, HasDepContext,
-};
+use crate::dep_graph::{DepContext, DepGraphData, DepNode, DepNodeIndex, DepNodeParams};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryLatch, report_cycle};
@@ -530,7 +528,7 @@ where
 fn execute_job_incr<'tcx, Q>(
     query: Q,
     qcx: Q::Qcx,
-    dep_graph_data: &DepGraphData<<Q::Qcx as HasDepContext>::Deps>,
+    dep_graph_data: &DepGraphData<<Q::Qcx as QueryContext<'tcx>>::Deps>,
     key: Q::Key,
     mut dep_node_opt: Option<DepNode>,
     job_id: QueryJobId,
@@ -569,6 +567,7 @@ where
 
         dep_graph_data.with_task(
             dep_node,
+            *qcx.dep_context(),
             (qcx, query),
             key,
             |(qcx, query), key| query.compute(qcx, key),
@@ -584,7 +583,7 @@ where
 #[inline(always)]
 fn try_load_from_disk_and_cache_in_memory<'tcx, Q>(
     query: Q,
-    dep_graph_data: &DepGraphData<<Q::Qcx as HasDepContext>::Deps>,
+    dep_graph_data: &DepGraphData<<Q::Qcx as QueryContext<'tcx>>::Deps>,
     qcx: Q::Qcx,
     key: &Q::Key,
     dep_node: &DepNode,
