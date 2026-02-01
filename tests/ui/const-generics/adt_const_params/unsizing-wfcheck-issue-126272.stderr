@@ -19,11 +19,13 @@ LL | struct Bar<T>(T);
    |            this could be changed to `T: ?Sized`...
 
 error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
-  --> $DIR/unsizing-wfcheck-issue-126272.rs:8:32
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:9:8
    |
 LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
-   |                                ^^^^^^^^^^^^
-...
+   |                                ------------ in this derive macro expansion
+LL | struct Foo {
+   |        ^^^
+LL |
 LL |     nested: &'static Bar<dyn std::fmt::Debug>,
    |     ----------------------------------------- this field does not implement `ConstParamTy_`
    |
@@ -59,12 +61,13 @@ help: the trait `Debug` is implemented for `Bar<T>`
 LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
    |          ^^^^^
 note: required for `Bar<(dyn Debug + 'static)>` to implement `Debug`
-  --> $DIR/unsizing-wfcheck-issue-126272.rs:19:10
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:20:8
    |
 LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
-   |          ^^^^^
+   |          ----- in this derive macro expansion
 LL | struct Bar<T>(T);
-   |            - unsatisfied trait bound introduced in this `derive` macro
+   |        ^^^ - unsatisfied trait bound
+   = help: consider manually implementing `Debug` to avoid undesired bounds
    = note: 2 redundant requirements hidden
    = note: required for `&&'static Bar<(dyn Debug + 'static)>` to implement `Debug`
    = note: required for the cast from `&&&'static Bar<(dyn Debug + 'static)>` to `&dyn Debug`
@@ -93,10 +96,13 @@ help: the trait `Eq` is implemented for `Bar<T>`
 LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
    |                            ^^
 note: required for `Bar<dyn Debug>` to implement `Eq`
-  --> $DIR/unsizing-wfcheck-issue-126272.rs:19:28
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:20:8
    |
 LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
-   |                            ^^ unsatisfied trait bound introduced in this `derive` macro
+   |                            -- in this derive macro expansion
+LL | struct Bar<T>(T);
+   |        ^^^ - type parameter would need to implement `Eq`
+   = help: consider manually implementing `Eq` to avoid undesired bounds
    = note: 1 redundant requirement hidden
    = note: required for `&'static Bar<dyn Debug>` to implement `Eq`
 note: required by a bound in `std::cmp::AssertParamIsEq`

@@ -1748,19 +1748,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Find all the requirements that come from a local `impl` block.
         let mut skip_list: UnordSet<_> = Default::default();
         let mut spanned_predicates = FxIndexMap::default();
+        let mut manually_impl = false;
         for (p, parent_p, cause) in unsatisfied_predicates {
             // Extract the predicate span and parent def id of the cause,
             // if we have one.
-            let (item_def_id, cause_span) = match cause.as_ref().map(|cause| cause.code()) {
-                Some(ObligationCauseCode::ImplDerived(data)) => {
-                    (data.impl_or_alias_def_id, data.span)
-                }
-                Some(
-                    ObligationCauseCode::WhereClauseInExpr(def_id, span, _, _)
-                    | ObligationCauseCode::WhereClause(def_id, span),
-                ) if !span.is_dummy() => (*def_id, *span),
-                _ => continue,
-            };
+            let (item_def_id, cause_span, cause_msg) =
+                match cause.as_ref().map(|cause| cause.code()) {
+                    Some(ObligationCauseCode::ImplDerived(data)) => {
+                        let msg = if let DefKind::Impl { of_trait: true } =
+                            self.tcx.def_kind(data.impl_or_alias_def_id)
+                        {
+                            format!(
+                                "type parameter would need to implement `{}`",
+                                self.tcx
+                                    .item_name(self.tcx.impl_trait_id(data.impl_or_alias_def_id))
+                            )
+                        } else {
+                            format!("unsatisfied bound `{p}` introduced here")
+                        };
+                        (data.impl_or_alias_def_id, data.span, msg)
+                    }
+                    Some(
+                        ObligationCauseCode::WhereClauseInExpr(def_id, span, _, _)
+                        | ObligationCauseCode::WhereClause(def_id, span),
+                    ) if !span.is_dummy() => {
+                        (*def_id, *span, format!("unsatisfied bound `{p}` introduced here"))
+                    }
+                    _ => continue,
+                };
 
             // Don't point out the span of `WellFormed` predicates.
             if !matches!(
@@ -1791,13 +1806,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let entry = entry.or_insert_with(|| {
                         (FxIndexSet::default(), FxIndexSet::default(), Vec::new())
                     });
-                    entry.0.insert(span);
+                    entry.0.insert(cause_span);
                     entry.1.insert((
-                        span,
-                        "unsatisfied trait bound introduced in this `derive` macro",
+                        cause_span,
+                        cause_msg,
                     ));
                     entry.2.push(p);
                     skip_list.insert(p);
+                    manually_impl = true;
                 }
 
                 // Unmet obligation coming from an `impl`.
@@ -1842,7 +1858,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     entry.2.push(p);
                     if cause_span != *item_span {
                         entry.0.insert(cause_span);
-                        entry.1.insert((cause_span, "unsatisfied trait bound introduced here"));
+                        entry.1.insert((cause_span, "unsatisfied trait bound introduced here".to_string()));
                     } else {
                         if let Some(of_trait) = of_trait {
                             entry.0.insert(of_trait.trait_ref.path.span);
@@ -1850,9 +1866,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         entry.0.insert(self_ty.span);
                     };
                     if let Some(of_trait) = of_trait {
-                        entry.1.insert((of_trait.trait_ref.path.span, ""));
+                        entry.1.insert((of_trait.trait_ref.path.span, String::new()));
                     }
-                    entry.1.insert((self_ty.span, ""));
+                    entry.1.insert((self_ty.span, String::new()));
                 }
                 Some(Node::Item(hir::Item {
                     kind: hir::ItemKind::Trait(_, rustc_ast::ast::IsAuto::Yes, ..),
@@ -1881,8 +1897,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (FxIndexSet::default(), FxIndexSet::default(), Vec::new())
                     });
                     entry.0.insert(cause_span);
-                    entry.1.insert((ident.span, ""));
-                    entry.1.insert((cause_span, "unsatisfied trait bound introduced here"));
+                    entry.1.insert((ident.span, String::new()));
+                    entry.1.insert((cause_span, "unsatisfied trait bound introduced here".to_string()));
                     entry.2.push(p);
                 }
                 _ => {
@@ -2082,6 +2098,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             *suggested_derive = self.suggest_derive(err, unsatisfied_predicates);
             *unsatisfied_bounds = true;
+        }
+        if manually_impl {
+            err.help("consider manually implementing the trait to avoid undesired bounds");
         }
     }
 

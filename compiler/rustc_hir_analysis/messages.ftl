@@ -142,6 +142,7 @@ hir_analysis_copy_impl_on_non_adt =
 hir_analysis_copy_impl_on_type_with_dtor =
     the trait `Copy` cannot be implemented for this type; the type has a destructor
     .label = `Copy` not allowed on types with destructors
+    .note = destructor declared here
 
 hir_analysis_cross_crate_traits = cross-crate traits with a default impl, like `{$traits}`, can only be implemented for a struct/enum type, not `{$self_ty}`
     .label = can't implement cross-crate trait with a default impl for non-struct/enum type
