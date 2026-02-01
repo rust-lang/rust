@@ -72,7 +72,7 @@
 // Lints:
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(fuzzy_provenance_casts)]
-#![warn(deprecated_in_future)]
+#![warn(deprecated)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]

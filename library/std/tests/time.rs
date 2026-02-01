@@ -120,7 +120,7 @@ fn instant_checked_duration_since_nopanic() {
 #[test]
 fn instant_saturating_duration_since_nopanic() {
     let a = Instant::now();
-    #[allow(deprecated, deprecated_in_future)]
+    #[allow(deprecated)]
     let ret = (a - Duration::SECOND).saturating_duration_since(a);
     assert_eq!(ret, Duration::ZERO);
 }

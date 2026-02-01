@@ -80,7 +80,7 @@
 #![deny(rust_2021_incompatible_or_patterns)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(fuzzy_provenance_casts)]
-#![warn(deprecated_in_future)]
+#![warn(deprecated)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]
@@ -254,11 +254,11 @@ mod internal_macros;
 mod legacy_int_modules;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(clippy::useless_attribute)] // FIXME false positive (https://github.com/rust-lang/rust-clippy/issues/15636)
-#[allow(deprecated_in_future)]
+#[allow(deprecated)]
 pub use legacy_int_modules::{i8, i16, i32, i64, isize, u8, u16, u32, u64, usize};
 #[stable(feature = "i128", since = "1.26.0")]
 #[allow(clippy::useless_attribute)] // FIXME false positive (https://github.com/rust-lang/rust-clippy/issues/15636)
-#[allow(deprecated_in_future)]
+#[allow(deprecated)]
 pub use legacy_int_modules::{i128, u128};
 
 #[path = "num/f128.rs"]
@@ -370,7 +370,7 @@ pub mod primitive;
     unused_imports,
     unsafe_op_in_unsafe_fn,
     ambiguous_glob_reexports,
-    deprecated_in_future,
+    deprecated,
     unreachable_pub
 )]
 #[allow(rustdoc::bare_urls)]

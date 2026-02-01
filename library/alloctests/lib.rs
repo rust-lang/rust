@@ -4,7 +4,7 @@
 #![no_std]
 // Lints:
 #![deny(unsafe_op_in_unsafe_fn)]
-#![warn(deprecated_in_future)]
+#![warn(deprecated)]
 #![warn(missing_debug_implementations)]
 #![allow(explicit_outlives_requirements)]
 #![allow(internal_features)]
