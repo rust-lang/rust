@@ -10,7 +10,6 @@ use std::{io, iter};
 use ::serde::de::{self, Deserializer, Error as _};
 use ::serde::ser::{SerializeSeq, Serializer};
 use ::serde::{Deserialize, Serialize};
-use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::attrs::AttributeKind;
@@ -28,6 +27,7 @@ use crate::config::ShouldMerge;
 use crate::error::Error;
 use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
+use crate::html::format::join_path_syms_lazy;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::{self, IndexItem, IndexItemFunctionType, RenderType, RenderTypeId};
 
@@ -971,6 +971,17 @@ struct PathData {
     exact_module_path: Option<Vec<Symbol>>,
 }
 
+struct SerializedPath<'a>(&'a [Symbol]);
+
+impl<'a> Serialize for SerializedPath<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.collect_str(&join_path_syms_lazy(self.0))
+    }
+}
+
 impl Serialize for PathData {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -978,17 +989,9 @@ impl Serialize for PathData {
     {
         let mut seq = serializer.serialize_seq(None)?;
         seq.serialize_element(&self.ty)?;
-        seq.serialize_element(&if self.module_path.is_empty() {
-            String::new()
-        } else {
-            join_path_syms(&self.module_path)
-        })?;
-        if let Some(ref path) = self.exact_module_path {
-            seq.serialize_element(&if path.is_empty() {
-                String::new()
-            } else {
-                join_path_syms(path)
-            })?;
+        seq.serialize_element(&SerializedPath(&self.module_path))?;
+        if let Some(path) = &self.exact_module_path {
+            seq.serialize_element(&SerializedPath(path))?;
         }
         seq.end()
     }
