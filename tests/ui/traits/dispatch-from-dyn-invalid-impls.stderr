@@ -1,3 +1,24 @@
+error[E0119]: conflicting implementations of trait `DispatchFromDyn<&Ptr<_>>` for type `&Ptr<_>`
+  --> $DIR/dispatch-from-dyn-invalid-impls.rs:73:1
+   |
+LL | impl<'a, T: ?Sized, U: ?Sized> DispatchFromDyn<&'a Ptr<U>> for &'a Ptr<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<'a, T, U> DispatchFromDyn<&'a U> for &'a T
+             where T: Unsize<U>, T: ?Sized, U: ?Sized;
+   = note: downstream crates may implement trait `std::marker::Unsize<std::boxed::Box<_>>` for type `std::boxed::Box<_>`
+
+error[E0119]: conflicting implementations of trait `DispatchFromDyn<&Outer<_>>` for type `&Outer<_>`
+  --> $DIR/dispatch-from-dyn-invalid-impls.rs:80:1
+   |
+LL | impl<'a, T: Unsize<U> + ?Sized, U: ?Sized> DispatchFromDyn<&'a Outer<U>> for &'a Outer<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<'a, T, U> DispatchFromDyn<&'a U> for &'a T
+             where T: Unsize<U>, T: ?Sized, U: ?Sized;
+
 error[E0378]: the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment that don't mention type/const generics, and nothing else
   --> $DIR/dispatch-from-dyn-invalid-impls.rs:19:1
    |
@@ -54,7 +75,7 @@ LL | |     T: Unsize<U>
    |
    = note: extra field `1` of type `OverAlignedZst` is not allowed
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0374, E0375, E0378.
-For more information about an error, try `rustc --explain E0374`.
+Some errors have detailed explanations: E0119, E0374, E0375, E0378.
+For more information about an error, try `rustc --explain E0119`.
