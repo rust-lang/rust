@@ -173,9 +173,6 @@ impl FileDescription for AnonSocket {
         // FIXME: File creation flags should be ignored.
 
         let o_nonblock = ecx.eval_libc_i32("O_NONBLOCK");
-        let o_rdonly = ecx.eval_libc_i32("O_RDONLY");
-        let o_wronly = ecx.eval_libc_i32("O_WRONLY");
-        let o_rdwr = ecx.eval_libc_i32("O_RDWR");
 
         // O_NONBLOCK flag can be set / unset by user.
         if flag & o_nonblock == o_nonblock {
@@ -184,9 +181,6 @@ impl FileDescription for AnonSocket {
         } else {
             self.is_nonblock.set(false);
         }
-
-        // Ignore all file access mode flags.
-        flag &= !(o_rdonly | o_wronly | o_rdwr);
 
         // Throw error if there is any unsupported flag.
         if flag != 0 {

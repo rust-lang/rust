@@ -194,7 +194,32 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 let [flag] = check_min_vararg_count("fcntl(fd, F_SETFL, ...)", varargs)?;
-                let flag = this.read_scalar(flag)?.to_i32()?;
+                let mut flag = this.read_scalar(flag)?.to_i32()?;
+
+                let allowed_flags = match this.tcx.sess.target.os {
+                    Os::MacOs =>
+                        this.eval_libc_i32("O_NONBLOCK")
+                            | this.eval_libc_i32("O_APPEND")
+                            | this.eval_libc_i32("O_ASYNC"),
+                    Os::FreeBsd =>
+                        this.eval_libc_i32("O_NONBLOCK")
+                            | this.eval_libc_i32("O_APPEND")
+                            | this.eval_libc_i32("O_DIRECT")
+                            | this.eval_libc_i32("O_ASYNC"),
+                    Os::Solaris | Os::Illumos =>
+                        this.eval_libc_i32("O_NONBLOCK")
+                            | this.eval_libc_i32("O_APPEND")
+                            | this.eval_libc_i32("O_DIRECT"),
+                    // Linux + Android match case
+                    _ =>
+                        this.eval_libc_i32("O_NONBLOCK")
+                            | this.eval_libc_i32("O_APPEND")
+                            | this.eval_libc_i32("O_DIRECT")
+                            | this.eval_libc_i32("O_NOATIME")
+                            | this.eval_libc_i32("O_ASYNC"),
+                };
+
+                flag &= allowed_flags;
 
                 fd.set_flags(flag, this)
             }
