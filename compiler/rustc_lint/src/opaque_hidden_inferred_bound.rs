@@ -1,3 +1,4 @@
+use rustc_ast::BoundPolarity;
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
@@ -66,6 +67,33 @@ declare_lint! {
 
 declare_lint_pass!(OpaqueHiddenInferredBound => [OPAQUE_HIDDEN_INFERRED_BOUND]);
 
+/// Check if an opaque type has an explicit `?Sized` bound by examining its HIR bounds.
+fn opaque_has_maybe_sized_bound<'tcx>(
+    cx: &LateContext<'tcx>,
+    opaque_def_id: rustc_span::def_id::DefId,
+) -> bool {
+    let Some(local_def_id) = opaque_def_id.as_local() else {
+        return false;
+    };
+
+    let opaque_ty = match cx.tcx.hir_node_by_def_id(local_def_id) {
+        hir::Node::OpaqueTy(opaque) => opaque,
+        _ => return false,
+    };
+
+    // Check if any of the bounds is a `?Sized` bound
+    for bound in opaque_ty.bounds {
+        if let hir::GenericBound::Trait(poly_trait_ref) = bound
+            && matches!(poly_trait_ref.modifiers.polarity, BoundPolarity::Maybe(_))
+            && cx.tcx.is_lang_item(poly_trait_ref.trait_ref.path.res.def_id(), hir::LangItem::Sized)
+        {
+            return true;
+        }
+    }
+
+    false
+}
+
 impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         let hir::TyKind::OpaqueDef(opaque) = &ty.kind else {
@@ -98,12 +126,14 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 let Some(proj_term) = proj.term.as_type() else { return };
 
                 // HACK: `impl Trait<Assoc = impl Trait2>` from an RPIT is "ok"...
+                // unless the nested opaque has an explicit `?Sized` bound.
                 if let ty::Alias(ty::Opaque, opaque_ty) = *proj_term.kind()
                     && cx.tcx.parent(opaque_ty.def_id) == def_id
                     && matches!(
                         opaque.origin,
                         hir::OpaqueTyOrigin::FnReturn { .. } | hir::OpaqueTyOrigin::AsyncFn { .. }
                     )
+                    && !opaque_has_maybe_sized_bound(cx, opaque_ty.def_id)
                 {
                     return;
                 }

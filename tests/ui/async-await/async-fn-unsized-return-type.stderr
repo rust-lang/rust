@@ -1,0 +1,21 @@
+error: opaque type `impl Future<Output = impl Debug + ?Sized>` does not satisfy its associated type bounds
+  --> $DIR/async-fn-unsized-return-type.rs:8:29
+   |
+LL | async fn unsized_async() -> impl Debug + ?Sized {
+   |                             ^^^^^^^^^^^^^^^^^^^
+   |
+  --> $SRC_DIR/core/src/future/future.rs:LL:COL
+   |
+   = note: this associated type bound is unsatisfied for `impl Debug + ?Sized`
+note: the lint level is defined here
+  --> $DIR/async-fn-unsized-return-type.rs:2:9
+   |
+LL | #![deny(opaque_hidden_inferred_bound)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add this bound
+   |
+LL | async fn unsized_async() -> impl Debug + ?Sized + Sized {
+   |                                                 +++++++
+
+error: aborting due to 1 previous error
+
