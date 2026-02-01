@@ -38,6 +38,7 @@ pub(super) fn check_trait<'tcx>(
     checker.check(lang_items.drop_trait(), visit_implementation_of_drop)?;
     checker.check(lang_items.async_drop_trait(), visit_implementation_of_drop)?;
     checker.check(lang_items.copy_trait(), visit_implementation_of_copy)?;
+    checker.check(lang_items.unpin_trait(), visit_implementation_of_unpin)?;
     checker.check(lang_items.const_param_ty_trait(), |checker| {
         visit_implementation_of_const_param_ty(checker)
     })?;
@@ -132,6 +133,41 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
                 .span_delayed_bug(span, format!("cannot implement `Copy` for `{}`", self_type)))
         }
     }
+}
+
+fn visit_implementation_of_unpin(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    let impl_header = checker.impl_header;
+    let impl_did = checker.impl_def_id;
+    debug!("visit_implementation_of_unpin: impl_did={:?}", impl_did);
+
+    let self_type = impl_header.trait_ref.instantiate_identity().self_ty();
+    debug!("visit_implementation_of_unpin: self_type={:?}", self_type);
+
+    let span = tcx.def_span(impl_did);
+
+    if tcx.features().pin_ergonomics() {
+        match self_type.kind() {
+            // Soundness concerns: a type `T` annotated with `#[pin_v2]` is allowed to project
+            // `Pin<&mut T>` to its field `Pin<&mut U>` safely (even if `U: !Unpin`).
+            // If `T` is allowed to impl `Unpin` manually (note that `Unpin` is a safe trait,
+            // which cannot carry safety properties), then `&mut U` could be obtained from
+            // `&mut T` that dereferenced by `Pin<&mut T>`, which breaks the safety contract of
+            // `Pin<&mut U>` for `U: !Unpin`.
+            ty::Adt(adt, _) if adt.is_pin_project() => {
+                return Err(tcx.dcx().emit_err(crate::errors::ImplUnpinForPinProjectedType {
+                    span,
+                    adt_span: tcx.def_span(adt.did()),
+                    adt_name: tcx.item_name(adt.did()),
+                }));
+            }
+            ty::Adt(_, _) => {}
+            _ => {
+                return Err(tcx.dcx().span_delayed_bug(span, "impl of `Unpin` for a non-adt type"));
+            }
+        };
+    }
+    Ok(())
 }
 
 fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
