@@ -868,26 +868,35 @@ ul.block, .block li, .block ul {
 	z-index: 1;
 }
 
+.sidebar {
+	/* Align the sidebar crate link with the search bar, which have different
+		font sizes. They should be the same height, so that the crate lockup and the
+		main header are also the same height.
+
+		|        | font-size | line-height | total line-height | padding/margin-y |     total    |
+		|:-------|----------:|------------:|------------------:|-----------------:|-------------:|
+		| crate  |  1.375rem |        1.25 |           1.72rem |                x |   4x+1.72rem |
+		| search |      1rem |        1.15 |           1.15rem |              8px | 1.15rem+16px |
+
+		4x + 1.72rem = 1.15rem + 16px
+		4x = 1.15rem + 16px - 1.72rem
+		4x = 16px - 0.57rem
+		x = ( 16px - 0.57rem ) / 4
+	*/
+	--sidebar-crate-margin-padding-y: calc( ( 16px - 0.57rem ) / 4 );
+}
+
 .sidebar-crate h2 a {
 	display: block;
 	/* extend click target to far edge of screen (mile wide bar) */
 	border-left: solid var(--sidebar-elems-left-padding) transparent;
 	background-clip: border-box;
-	margin: 0 calc(-24px + 0.25rem) 0 calc(-0.2rem - var(--sidebar-elems-left-padding));
-	/* Align the sidebar crate link with the search bar, which have different
-		font sizes.
-
-		|        | font-size | line-height | total line-height | padding-y |     total    |
-		|:-------|----------:|------------:|------------------:|----------:|-------------:|
-		| crate  |  1.375rem |        1.25 |           1.72rem |         x |   2x+1.72rem |
-		| search |      1rem |        1.15 |           1.15rem |       8px | 1.15rem+16px |
-
-		2x + 1.72rem = 1.15rem + 16px
-		2x = 1.15rem + 16px - 1.72rem
-		2x = 16px - 0.57rem
-		x = ( 16px - 0.57rem ) / 2
-	*/
-	padding: calc( ( 16px - 0.57rem ) / 2 ) 0.25rem;
+	margin:
+		var(--sidebar-crate-margin-padding-y)
+		calc(-24px + 0.25rem)
+		var(--sidebar-crate-margin-padding-y)
+		calc(-0.2rem - var(--sidebar-elems-left-padding));
+	padding: var(--sidebar-crate-margin-padding-y) 0.25rem;
 	padding-left: 0.2rem;
 }
 
@@ -896,10 +905,25 @@ ul.block, .block li, .block ul {
 	font-weight: normal;
 	font-size: 1rem;
 	overflow-wrap: break-word;
+	margin-top: calc(-1 * var(--sidebar-crate-margin-padding-y));
+	margin-bottom: var(--sidebar-crate-margin-padding-y);
 }
 
 .sidebar-crate + .version {
-	margin-top: -1rem;
+	/* make the git commit the same height as the Since · Source line,
+		even though these also have different font sizes
+
+		|        | font-size | line-height | total line-height | padding-y |     total     |
+		|:-------|----------:|------------:|------------------:|----------:|--------------:|
+		| Commit |  0.875rem |        1.25 |        1.09375rem |         x | 1.09375rem+2x |
+		| Since  |      1rem |        1.25 |        1.25rem    |   1.25rem |       1.25rem |
+
+		1.09375+2x = 1.25
+		2x = 0.15625
+		x = 0.078125
+	*/
+	padding-top: 0.078125rem;
+	margin-top: calc(-1 * var(--sidebar-crate-margin-padding-y) - 1rem);
 	margin-bottom: 1rem;
 }
 
