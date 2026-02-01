@@ -1992,12 +1992,13 @@ where
                 // As in the `DropKind::Storage` case below:
                 // we emit lint-related drops on the unwind path when `storage_dead_on_unwind`
                 // is true, so we need to adjust `unwind_to` in that case.
-                if storage_dead_on_unwind && unwind_to != DropIdx::MAX {
-                    debug_assert_eq!(
-                        unwind_drops.drop_nodes[unwind_to].data.local,
-                        drop_data.local
-                    );
-                    debug_assert_eq!(unwind_drops.drop_nodes[unwind_to].data.kind, drop_data.kind);
+                // Only adjust if the drop matches what unwind_to is pointing to (since we process
+                // drops in reverse order, unwind_to might not match the current drop).
+                if storage_dead_on_unwind
+                    && unwind_to != DropIdx::MAX
+                    && unwind_drops.drop_nodes[unwind_to].data.local == drop_data.local
+                    && unwind_drops.drop_nodes[unwind_to].data.kind == drop_data.kind
+                {
                     unwind_to = unwind_drops.drop_nodes[unwind_to].next;
                 }
 
@@ -2035,12 +2036,13 @@ where
                 // When `storage_dead_on_unwind` is true, we need to adjust the `unwind_to` pointer
                 // now that the storage-dead has completed, so that any future drops we emit will
                 // not register storage-dead.
-                if storage_dead_on_unwind && unwind_to != DropIdx::MAX {
-                    debug_assert_eq!(
-                        unwind_drops.drop_nodes[unwind_to].data.local,
-                        drop_data.local
-                    );
-                    debug_assert_eq!(unwind_drops.drop_nodes[unwind_to].data.kind, drop_data.kind);
+                // Only adjust if the drop matches what unwind_to is pointing to (since we process
+                // drops in reverse order, unwind_to might not match the current drop).
+                if storage_dead_on_unwind
+                    && unwind_to != DropIdx::MAX
+                    && unwind_drops.drop_nodes[unwind_to].data.local == drop_data.local
+                    && unwind_drops.drop_nodes[unwind_to].data.kind == drop_data.kind
+                {
                     unwind_to = unwind_drops.drop_nodes[unwind_to].next;
                 }
                 if let Some(idx) = dropline_to {
