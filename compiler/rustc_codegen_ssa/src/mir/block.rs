@@ -15,6 +15,7 @@ use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, PassMode};
+use smallvec::SmallVec;
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -398,124 +399,70 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         };
 
-        let mut target_iter = targets.iter();
-        if target_iter.len() == 1 {
-            // If there are two targets (one conditional, one fallback), emit `br` instead of
-            // `switch`.
-            let (test_value, target) = target_iter.next().unwrap();
-            let otherwise = targets.otherwise();
-            let lltarget = helper.llbb_with_cleanup(self, target);
-            let llotherwise = helper.llbb_with_cleanup(self, otherwise);
-            let target_cold = self.cold_blocks[target];
-            let otherwise_cold = self.cold_blocks[otherwise];
-            // If `target_cold == otherwise_cold`, the branches have the same weight
-            // so there is no expectation. If they differ, the `target` branch is expected
-            // when the `otherwise` branch is cold.
-            let expect = if target_cold == otherwise_cold { None } else { Some(otherwise_cold) };
-            if switch_ty == bx.tcx().types.bool {
-                // Don't generate trivial icmps when switching on bool.
-                match test_value {
-                    0 => {
-                        let expect = expect.map(|e| !e);
-                        bx.cond_br_with_expect(discr_value, llotherwise, lltarget, expect);
-                    }
-                    1 => {
-                        bx.cond_br_with_expect(discr_value, lltarget, llotherwise, expect);
-                    }
-                    _ => bug!(),
+        let bool_ty = bx.tcx().types.bool;
+        let normalized = self.normalize_switch_targets(
+            targets,
+            switch_ty == bool_ty,
+            self.cx.sess().opts.optimize,
+        );
+        match normalized {
+            NormalizedSwitch::BooleanBranch { then_bb, then_cold, else_bb, needs_trunc } => {
+                let discr_value = if needs_trunc {
+                    let bool_llty = bx.immediate_backend_type(bx.layout_of(bool_ty));
+                    bx.unchecked_utrunc(discr_value, bool_llty)
+                } else {
+                    discr_value
+                };
+                if let Some(then_cold) = then_cold {
+                    bx.cond_br_with_weight(
+                        discr_value,
+                        helper.llbb_with_cleanup(self, then_bb),
+                        helper.llbb_with_cleanup(self, else_bb),
+                        then_cold,
+                    )
+                } else {
+                    bx.cond_br(
+                        discr_value,
+                        helper.llbb_with_cleanup(self, then_bb),
+                        helper.llbb_with_cleanup(self, else_bb),
+                    )
                 }
-            } else {
+            }
+            NormalizedSwitch::Branch { then_bb: (test_value, then_bb), then_cold, else_bb } => {
                 let switch_llty = bx.immediate_backend_type(bx.layout_of(switch_ty));
                 let llval = bx.const_uint_big(switch_llty, test_value);
                 let cmp = bx.icmp(IntPredicate::IntEQ, discr_value, llval);
-                bx.cond_br_with_expect(cmp, lltarget, llotherwise, expect);
-            }
-        } else if target_iter.len() == 2
-            && self.mir[targets.otherwise()].is_empty_unreachable()
-            && targets.all_values().contains(&Pu128(0))
-            && targets.all_values().contains(&Pu128(1))
-        {
-            // This is the really common case for `bool`, `Option`, etc.
-            // By using `trunc nuw` we communicate that other values are
-            // impossible without needing `switch` or `assume`s.
-            let true_bb = targets.target_for_value(1);
-            let false_bb = targets.target_for_value(0);
-            let true_ll = helper.llbb_with_cleanup(self, true_bb);
-            let false_ll = helper.llbb_with_cleanup(self, false_bb);
+                let lltarget = helper.llbb_with_cleanup(self, then_bb);
+                let llotherwise = helper.llbb_with_cleanup(self, else_bb);
 
-            let expected_cond_value = if self.cx.sess().opts.optimize == OptLevel::No {
-                None
-            } else {
-                match (self.cold_blocks[true_bb], self.cold_blocks[false_bb]) {
-                    // Same coldness, no expectation
-                    (true, true) | (false, false) => None,
-                    // Different coldness, expect the non-cold one
-                    (true, false) => Some(false),
-                    (false, true) => Some(true),
+                if let Some(then_cold) = then_cold {
+                    bx.cond_br_with_weight(cmp, lltarget, llotherwise, then_cold)
+                } else {
+                    bx.cond_br(cmp, lltarget, llotherwise)
                 }
-            };
-
-            let bool_ty = bx.tcx().types.bool;
-            let cond = if switch_ty == bool_ty {
-                discr_value
-            } else {
-                let bool_llty = bx.immediate_backend_type(bx.layout_of(bool_ty));
-                bx.unchecked_utrunc(discr_value, bool_llty)
-            };
-            bx.cond_br_with_expect(cond, true_ll, false_ll, expected_cond_value);
-        } else if self.cx.sess().opts.optimize == OptLevel::No
-            && target_iter.len() == 2
-            && self.mir[targets.otherwise()].is_empty_unreachable()
-        {
-            // In unoptimized builds, if there are two normal targets and the `otherwise` target is
-            // an unreachable BB, emit `br` instead of `switch`. This leaves behind the unreachable
-            // BB, which will usually (but not always) be dead code.
-            //
-            // Why only in unoptimized builds?
-            // - In unoptimized builds LLVM uses FastISel which does not support switches, so it
-            //   must fall back to the slower SelectionDAG isel. Therefore, using `br` gives
-            //   significant compile time speedups for unoptimized builds.
-            // - In optimized builds the above doesn't hold, and using `br` sometimes results in
-            //   worse generated code because LLVM can no longer tell that the value being switched
-            //   on can only have two values, e.g. 0 and 1.
-            //
-            let (test_value1, target1) = target_iter.next().unwrap();
-            let (_test_value2, target2) = target_iter.next().unwrap();
-            let ll1 = helper.llbb_with_cleanup(self, target1);
-            let ll2 = helper.llbb_with_cleanup(self, target2);
-            let switch_llty = bx.immediate_backend_type(bx.layout_of(switch_ty));
-            let llval = bx.const_uint_big(switch_llty, test_value1);
-            let cmp = bx.icmp(IntPredicate::IntEQ, discr_value, llval);
-            bx.cond_br(cmp, ll1, ll2);
-        } else {
-            let otherwise = targets.otherwise();
-            let otherwise_cold = self.cold_blocks[otherwise];
-            let otherwise_unreachable = self.mir[otherwise].is_empty_unreachable();
-            let cold_count = targets.iter().filter(|(_, target)| self.cold_blocks[*target]).count();
-            let none_cold = cold_count == 0;
-            let all_cold = cold_count == targets.iter().len();
-            if (none_cold && (!otherwise_cold || otherwise_unreachable))
-                || (all_cold && (otherwise_cold || otherwise_unreachable))
-            {
-                // All targets have the same weight,
-                // or `otherwise` is unreachable and it's the only target with a different weight.
-                bx.switch(
-                    discr_value,
-                    helper.llbb_with_cleanup(self, targets.otherwise()),
-                    target_iter
-                        .map(|(value, target)| (value, helper.llbb_with_cleanup(self, target))),
-                );
-            } else {
-                // Targets have different weights
-                bx.switch_with_weights(
-                    discr_value,
-                    helper.llbb_with_cleanup(self, targets.otherwise()),
-                    otherwise_cold,
-                    target_iter.map(|(value, target)| {
-                        (value, helper.llbb_with_cleanup(self, target), self.cold_blocks[target])
-                    }),
-                );
             }
+            NormalizedSwitch::Switch { values, targets, targets_cold } => {
+                let (&else_bb, targets) = targets.split_last().unwrap();
+                let else_llbb = helper.llbb_with_cleanup(self, else_bb);
+                let cases = values
+                    .iter()
+                    .zip(targets)
+                    .map(|(&value, &target)| (value.get(), helper.llbb_with_cleanup(self, target)));
+                if let Some(targets_cold) = targets_cold {
+                    let (&else_cold, targets_cold) = targets_cold.split_last().unwrap();
+                    bx.switch_with_weights(
+                        discr_value,
+                        else_llbb,
+                        else_cold,
+                        cases
+                            .zip(targets_cold)
+                            .map(|((value, target), &cold)| (value, target, cold)),
+                    );
+                } else {
+                    bx.switch(discr_value, else_llbb, cases);
+                }
+            }
+            NormalizedSwitch::Jump { target } => bx.br(helper.llbb_with_cleanup(self, target)),
         }
     }
 
@@ -2041,6 +1988,92 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         }
     }
+
+    fn normalize_switch_targets(
+        &self,
+        targets: &SwitchTargets,
+        discr_boolean: bool,
+        opt_level: OptLevel,
+    ) -> NormalizedSwitch {
+        let mut target_iter = targets.iter();
+        let target_iter_len = target_iter.len();
+        if target_iter_len == 0 {
+            return NormalizedSwitch::Jump { target: targets.otherwise() };
+        }
+        let mut targets_cold = targets.all_targets().iter().map(|&target| self.cold_blocks[target]);
+        let use_weights =
+            targets_cold.clone().any(|hot| hot) && targets_cold.clone().any(|hot| !hot);
+
+        // If there are more than two targets we need to switch.
+        // Additionally, if there are two targets, with an empty-unreachable other branch,
+        // and we are in an opt-level greater than 0, emit a switch.
+        // Why only in optimized builds?
+        // - In unoptimized builds LLVM uses FastISel which does not support switches, so it
+        //   must fall back to the slower SelectionDAG isel. Therefore, using `br` gives
+        //   significant compile time speedups for unoptimized builds.
+        // - In optimized builds the above doesn't hold, and using `br` sometimes results in
+        //   worse generated code because LLVM can no longer tell that the value being switched
+        //   on can only have two values, e.g. 0 and 1.
+
+        if target_iter_len > 2
+            || target_iter_len == 2 && !self.mir[targets.otherwise()].is_empty_unreachable()
+            || target_iter_len == 2
+                && self.mir[targets.otherwise()].is_empty_unreachable()
+                && opt_level != OptLevel::No
+        {
+            return NormalizedSwitch::Switch {
+                values: targets.all_values().into(),
+                targets: targets.all_targets().into(),
+                targets_cold: use_weights.then(|| targets_cold.collect()),
+            };
+        }
+
+        let then_bb = target_iter.next().unwrap();
+        let then_cold = targets_cold.next().unwrap();
+        let else_bb =
+            if target_iter_len == 1 { targets.otherwise() } else { target_iter.next().unwrap().1 };
+
+        if discr_boolean {
+            // Emit a `br i1`, swapping the argument order if required
+            let (test_value, then_bb) = then_bb;
+            let (then_bb, then_cold, else_bb) = if test_value == 1 {
+                (then_bb, then_cold, else_bb)
+            } else {
+                (else_bb, targets_cold.next().unwrap(), then_bb)
+            };
+            NormalizedSwitch::BooleanBranch {
+                needs_trunc: false,
+                then_bb,
+                then_cold: use_weights.then_some(then_cold),
+                else_bb,
+            }
+        } else if target_iter_len == 2
+            && let &[Pu128(then_value), Pu128(else_value)] = targets.all_values()
+            && ((then_value == 1 && else_value == 0) || (then_value == 0 && else_value == 1))
+        {
+            // Same as above, but with a non-boolean discriminant (e.g. an enum discriminant)
+            // This emits a `trunc nuw` to communicate that other values are impossible,
+            // without needing `switch` or `assume`/`expect`
+            let (then_bb, then_cold, else_bb) = if then_value == 1 {
+                (then_bb.1, then_cold, else_bb)
+            } else {
+                (else_bb, targets_cold.next().unwrap(), then_bb.1)
+            };
+            NormalizedSwitch::BooleanBranch {
+                needs_trunc: true,
+                then_bb,
+                then_cold: use_weights.then_some(then_cold),
+                else_bb,
+            }
+        } else {
+            // Need to emit an icmp and branch on it
+            NormalizedSwitch::Branch {
+                then_bb,
+                then_cold: use_weights.then_some(then_cold),
+                else_bb,
+            }
+        }
+    }
 }
 
 enum ReturnDest<'tcx, V> {
@@ -2096,4 +2129,34 @@ pub fn store_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     } else {
         bx.store(value, ptr, align);
     };
+}
+
+/// Normalized version of [`SwitchTargets`].
+enum NormalizedSwitch {
+    /// Discriminant is a bool with 1=>then, 0=>else
+    /// If `needs_trunc` is true, this is not a boolean but some other
+    /// value which may be 0 or 1, and therefore needs `trunc nuw`
+    BooleanBranch {
+        needs_trunc: bool,
+        then_bb: mir::BasicBlock,
+        then_cold: Option<bool>,
+        else_bb: mir::BasicBlock,
+        // else_cold is the inverse of then_cold
+    },
+    /// If discr==then_bb.0=>then, otherwise=>else
+    Branch {
+        then_bb: (u128, mir::BasicBlock),
+        then_cold: Option<bool>,
+        else_bb: mir::BasicBlock,
+        // else_cold is the inverse of then_cold
+    },
+    /// Equivalent to [`SwitchTargets`], but known to have at least 3 targets
+    Switch {
+        values: SmallVec<[Pu128; 2]>,
+        targets: SmallVec<[mir::BasicBlock; 3]>,
+        targets_cold: Option<SmallVec<[bool; 3]>>,
+    },
+    Jump {
+        target: mir::BasicBlock,
+    },
 }
