@@ -7,6 +7,7 @@
 use std::borrow::Cow;
 use std::fmt::Write;
 use std::hash::Hash;
+use std::mem;
 use std::num::NonZero;
 
 use either::{Left, Right};
@@ -288,6 +289,7 @@ struct ValidityVisitor<'rt, 'tcx, M: Machine<'tcx>> {
     /// If this is `Some`, then `reset_provenance_and_padding` must be true (but not vice versa:
     /// we might not track data vs padding bytes if the operand isn't stored in memory anyway).
     data_bytes: Option<RangeSet>,
+    may_dangle: bool,
 }
 
 impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
@@ -503,27 +505,29 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             // alignment and size determined by the layout (size will be 0,
             // alignment should take attributes into account).
             .unwrap_or_else(|| (place.layout.size, place.layout.align.abi));
-        // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
-        try_validation!(
-            self.ecx.check_ptr_access(
-                place.ptr(),
-                size,
-                CheckInAllocMsg::Dereferenceable, // will anyway be replaced by validity message
-            ),
-            self.path,
-            Ub(DanglingIntPointer { addr: 0, .. }) => NullPtr { ptr_kind, maybe: false },
-            Ub(DanglingIntPointer { addr: i, .. }) => DanglingPtrNoProvenance {
-                ptr_kind,
-                // FIXME this says "null pointer" when null but we need translate
-                pointer: format!("{}", Pointer::<Option<AllocId>>::without_provenance(i))
-            },
-            Ub(PointerOutOfBounds { .. }) => DanglingPtrOutOfBounds {
-                ptr_kind
-            },
-            Ub(PointerUseAfterFree(..)) => DanglingPtrUseAfterFree {
-                ptr_kind,
-            },
-        );
+        if !self.may_dangle {
+            // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
+            try_validation!(
+                self.ecx.check_ptr_access(
+                    place.ptr(),
+                    size,
+                    CheckInAllocMsg::Dereferenceable, // will anyway be replaced by validity message
+                ),
+                self.path,
+                Ub(DanglingIntPointer { addr: 0, .. }) => NullPtr { ptr_kind, maybe: false },
+                Ub(DanglingIntPointer { addr: i, .. }) => DanglingPtrNoProvenance {
+                    ptr_kind,
+                    // FIXME this says "null pointer" when null but we need translate
+                    pointer: format!("{}", Pointer::<Option<AllocId>>::without_provenance(i))
+                },
+                Ub(PointerOutOfBounds { .. }) => DanglingPtrOutOfBounds {
+                    ptr_kind
+                },
+                Ub(PointerUseAfterFree(..)) => DanglingPtrUseAfterFree {
+                    ptr_kind,
+                },
+            );
+        }
         try_validation!(
             self.ecx.check_ptr_align(
                 place.ptr(),
@@ -536,6 +540,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 found_bytes: has.bytes()
             },
         );
+
         // Make sure this is non-null. We checked dereferenceability above, but if `size` is zero
         // that does not imply non-null.
         let scalar = Scalar::from_maybe_pointer(place.ptr(), self.ecx);
@@ -1269,6 +1274,14 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                     ty::PatternKind::Or(_patterns) => {}
                 }
             }
+            ty::Adt(adt, _) if adt.is_maybe_dangling() => {
+                let could_dangle = mem::replace(&mut self.may_dangle, true);
+
+                let inner = self.ecx.project_field(val, FieldIdx::ZERO)?;
+                self.visit_value(&inner)?;
+
+                self.may_dangle = could_dangle;
+            }
             _ => {
                 // default handler
                 try_validation!(
@@ -1354,6 +1367,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ecx,
                 reset_provenance_and_padding,
                 data_bytes: reset_padding.then_some(RangeSet(Vec::new())),
+                may_dangle: false,
             };
             v.visit_value(val)?;
             v.reset_padding(val)?;
