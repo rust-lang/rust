@@ -3412,9 +3412,9 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// Iterates over the slice `other`, clones each element, and then appends
     /// it to this `Vec`. The `other` slice is traversed in-order.
     ///
-    /// Note that this function is the same as [`extend`],
-    /// except that it also works with slice elements that are Clone but not Copy.
-    /// If Rust gets specialization this function may be deprecated.
+    /// Note that this function is the same as [`extend`]:
+    /// `vec.extend(slice.iter())` achieves the same result with the same
+    /// performance.
     ///
     /// # Panics
     ///
@@ -3432,7 +3432,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
     pub fn extend_from_slice(&mut self, other: &[T]) {
-        self.spec_extend(other.iter())
+        self.extend(other.iter())
     }
 
     /// Given a range `src`, clones a slice of elements in that range and appends it to the end.
