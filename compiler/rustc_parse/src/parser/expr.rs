@@ -1579,7 +1579,31 @@ impl<'a> Parser<'a> {
     fn parse_expr_lit(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
         match self.parse_opt_token_lit() {
-            Some((token_lit, _)) => {
+            Some((token_lit, span)) => {
+                // For raw string literals with suffixes, report the error immediately
+                // This helps provide better error messages for cases like r#"..."#suffix
+                if token_lit.suffix.is_some()
+                    && matches!(token_lit.kind, token::StrRaw(_))
+                    && ast::LitKind::from_token_lit(token_lit).is_err()
+                {
+                    if let Err(err) = ast::LitKind::from_token_lit(token_lit) {
+                        let guar = report_lit_error(&self.psess, err, token_lit, span);
+                        let token_lit = token::Lit::new(token::Err(guar), token_lit.symbol, None);
+                        let expr =
+                            self.mk_expr(lo.to(self.prev_token.span), ExprKind::Lit(token_lit));
+
+                        // Consume the next token if it looks like another string literal
+                        // This prevents cascading errors when raw strings with invalid suffixes
+                        // are immediately followed by another string
+                        if let TokenKind::Literal(lit) = &self.token.kind {
+                            if matches!(lit.kind, token::LitKind::Str | token::LitKind::StrRaw(_)) {
+                                self.bump();
+                            }
+                        }
+
+                        return self.maybe_recover_from_bad_qpath(expr);
+                    }
+                }
                 let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Lit(token_lit));
                 self.maybe_recover_from_bad_qpath(expr)
             }
