@@ -85,7 +85,7 @@ pub(super) fn build_custom_mir<'tcx>(
         block_map: FxHashMap::default(),
     };
 
-    let res: PResult<_> = try {
+    let res = try {
         pctxt.parse_args(params)?;
         pctxt.parse_body(expr)?;
     };

@@ -1023,7 +1023,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             hir::ExprKind::MethodCall(segment, ..) => {
                 if let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id) {
                     let generics = tcx.generics_of(def_id);
-                    let insertable: Option<_> = try {
+                    let insertable = try {
                         if generics.has_impl_trait() {
                             None?
                         }
@@ -1061,7 +1061,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         //
         // FIXME: We deal with that one separately for now,
         // would be good to remove this special case.
-        let last_segment_using_path_data: Option<_> = try {
+        let last_segment_using_path_data = try {
             let generics_def_id = tcx.res_generics_def_id(path.res)?;
             let generics = tcx.generics_of(generics_def_id);
             if generics.has_impl_trait() {
@@ -1117,19 +1117,18 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 };
 
                 let generics = tcx.generics_of(def_id);
-                let segment: Option<_> = try {
-                    if !segment.infer_args || generics.has_impl_trait() {
-                        do yeet ();
-                    }
+                let segment = if !segment.infer_args || generics.has_impl_trait() {
+                    None
+                } else {
                     let span = tcx.hir_span(segment.hir_id);
                     let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
-                    InsertableGenericArgs {
+                    Some(InsertableGenericArgs {
                         insert_span,
                         args,
                         generics_def_id: def_id,
                         def_id,
                         have_turbofish: false,
-                    }
+                    })
                 };
 
                 let parent_def_id = generics.parent.unwrap();

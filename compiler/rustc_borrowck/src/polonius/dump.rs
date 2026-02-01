@@ -58,7 +58,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 
     let dumper = dumper.set_extra_data(extra_data).set_options(options);
 
-    let _: io::Result<()> = try {
+    let _ = try {
         let mut file = dumper.create_dump_file("html", body)?;
         emit_polonius_dump(
             &dumper,

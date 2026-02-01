@@ -582,7 +582,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
     let deps_output = outputs.path(OutputType::DepInfo);
     let deps_filename = deps_output.as_path();
 
-    let result: io::Result<()> = try {
+    let result = try {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
         let mut files: IndexMap<String, (u64, Option<SourceFileHash>)> = sess

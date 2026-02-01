@@ -1845,7 +1845,7 @@ fn compare_synthetic_generics<'tcx>(
                 // The case where the impl method uses `impl Trait` but the trait method uses
                 // explicit generics
                 err.span_label(impl_span, "expected generic parameter, found `impl Trait`");
-                let _: Option<_> = try {
+                try {
                     // try taking the name from the trait impl
                     // FIXME: this is obviously suboptimal since the name can already be used
                     // as another generic argument
@@ -1882,7 +1882,7 @@ fn compare_synthetic_generics<'tcx>(
                 // The case where the trait method uses `impl Trait`, but the impl method uses
                 // explicit generics.
                 err.span_label(impl_span, "expected `impl Trait`, found generic parameter");
-                let _: Option<_> = try {
+                try {
                     let impl_m = impl_m.def_id.as_local()?;
                     let impl_m = tcx.hir_expect_impl_item(impl_m);
                     let (sig, _) = impl_m.expect_fn();
