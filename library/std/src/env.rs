@@ -518,8 +518,8 @@ pub struct JoinPathsError {
 ///
 /// Returns an [`Err`] (containing an error message) if one of the input
 /// [`Path`]s contains an invalid character for constructing the `PATH`
-/// variable (a double quote on Windows or a colon on Unix), or if the system
-/// does not have a `PATH`-like variable (e.g. UEFI or WASI).
+/// variable (a double quote on Windows or a colon on Unix or semicolon on
+/// UEFI), or if the system does not have a `PATH`-like variable (e.g. WASI).
 ///
 /// # Examples
 ///
