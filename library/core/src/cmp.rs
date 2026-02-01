@@ -26,7 +26,10 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 mod bytewise;
+mod clamp;
 pub(crate) use bytewise::BytewiseEq;
+#[unstable(feature = "clamp_bounds", issue = "147781")]
+pub use clamp::ClampBounds;
 
 use self::Ordering::*;
 use crate::marker::{Destruct, PointeeSized};
@@ -1099,6 +1102,35 @@ pub const trait Ord: [const] Eq + [const] PartialOrd<Self> + PointeeSized {
         } else {
             self
         }
+    }
+
+    /// Restrict a value to a certain range.
+    ///
+    /// This is equal to `max`, `min`, or `clamp`, depending on whether the range is `min..`,
+    /// `..=max`, or `min..=max`, respectively. Exclusive ranges are not permitted.
+    ///
+    /// # Panics
+    ///
+    /// Panics on `min..=max` if `min > max`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clamp_to)]
+    /// assert_eq!((-3).clamp_to(-2..=1), -2);
+    /// assert_eq!(0.clamp_to(-2..=1), 0);
+    /// assert_eq!(2.clamp_to(..=1), 1);
+    /// assert_eq!(5.clamp_to(7..), 7);
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "clamp_to", issue = "147781")]
+    fn clamp_to<R>(self, range: R) -> Self
+    where
+        Self: Sized + [const] Destruct,
+        R: [const] ClampBounds<Self>,
+    {
+        range.clamp(self)
     }
 }
 
