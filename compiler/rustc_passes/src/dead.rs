@@ -17,7 +17,7 @@ use rustc_hir::{self as hir, Node, PatKind, QPath};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, AssocTag, TyCtxt};
+use rustc_middle::ty::{self, AssocTag, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::DEAD_CODE;
 use rustc_session::lint::{self, LintExpectationId};
@@ -110,6 +110,56 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
+    fn check_assoc_ty(&mut self, def_id: LocalDefId) {
+        let def_kind = self.tcx.def_kind(def_id);
+
+        match def_kind {
+            // Check `T::Ty` used in types of inputs and output
+            DefKind::Fn | DefKind::AssocFn => {
+                let fn_sig = self.tcx.fn_sig(def_id).instantiate_identity();
+                for ty in fn_sig.inputs().skip_binder() {
+                    self.visit_middle_ty(ty.clone());
+                }
+                self.visit_middle_ty(fn_sig.output().skip_binder().clone());
+            }
+            // Check `T::Ty` used in assoc type
+            DefKind::AssocTy => {
+                if matches!(self.tcx.def_kind(self.tcx.local_parent(def_id)), DefKind::Impl { .. })
+                    || matches!(
+                        self.tcx.hir_expect_trait_item(def_id).kind,
+                        hir::TraitItemKind::Type(_, Some(_))
+                    )
+                {
+                    self.visit_middle_ty(self.tcx.type_of(def_id).instantiate_identity());
+                }
+            }
+            // Check `T::Ty` used in assoc const's type
+            DefKind::AssocConst => {
+                self.visit_middle_ty(self.tcx.type_of(def_id).instantiate_identity());
+            }
+            _ => (),
+        }
+
+        if matches!(
+            def_kind,
+            DefKind::Struct
+                | DefKind::Union
+                | DefKind::Enum
+                | DefKind::Fn
+                | DefKind::Const
+                | DefKind::Trait
+                | DefKind::Impl { .. }
+                | DefKind::AssocFn
+                | DefKind::AssocTy
+                | DefKind::AssocConst
+        ) {
+            let preds = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx);
+            for pred in preds.iter() {
+                <Self as TypeVisitor<TyCtxt<'tcx>>>::visit_predicate(self, pred.0.as_predicate());
+            }
+        }
+    }
+
     fn insert_def_id(&mut self, def_id: DefId) {
         if let Some(def_id) = def_id.as_local() {
             debug_assert!(!should_explore(self.tcx, def_id));
@@ -119,12 +169,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn handle_res(&mut self, res: Res) {
         match res {
-            Res::Def(
-                DefKind::Const | DefKind::AssocConst | DefKind::AssocTy | DefKind::TyAlias,
-                def_id,
-            ) => {
-                self.check_def_id(def_id);
-            }
             Res::PrimTy(..) | Res::SelfCtor(..) | Res::Local(..) => {}
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), ctor_def_id) => {
                 // Using a variant in patterns should not make the variant live,
@@ -366,6 +410,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 continue;
             }
 
+            self.check_assoc_ty(id);
             self.visit_node(self.tcx.hir_node_by_def_id(id))?;
         }
 
@@ -419,15 +464,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     intravisit::walk_item(self, item)
                 }
                 hir::ItemKind::ForeignMod { .. } => ControlFlow::Continue(()),
-                hir::ItemKind::Trait(.., trait_item_refs) => {
-                    // mark assoc ty live if the trait is live
-                    for trait_item in trait_item_refs {
-                        if self.tcx.def_kind(trait_item.owner_id) == DefKind::AssocTy {
-                            self.check_def_id(trait_item.owner_id.to_def_id());
-                        }
-                    }
-                    intravisit::walk_item(self, item)
-                }
                 _ => intravisit::walk_item(self, item),
             },
             Node::TraitItem(trait_item) => {
@@ -513,6 +549,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
         true
     }
+
+    fn visit_middle_ty(&mut self, ty: Ty<'tcx>) {
+        <Self as TypeVisitor<TyCtxt<'tcx>>>::visit_ty(self, ty);
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
@@ -589,6 +629,9 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             }
             _ => (),
         }
+
+        // Check `T::Ty` used in the type of `expr`
+        self.visit_middle_ty(self.typeck_results().expr_ty(expr));
 
         intravisit::walk_expr(self, expr)
     }
@@ -677,16 +720,16 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             && let Some(segment) = t.path.segments.last()
             && let Some(args) = segment.args
         {
+            // Mark assoc items used if they are constrained in the trait ref
             for constraint in args.constraints {
                 if let Some(local_def_id) = self
                     .tcx
                     .associated_items(trait_def_id)
-                    .find_by_ident_and_kind(
-                        self.tcx,
-                        constraint.ident,
-                        AssocTag::Const,
-                        trait_def_id,
-                    )
+                    .filter_by_name_unhygienic(constraint.ident.name)
+                    .filter(|item| matches!(item.as_tag(), AssocTag::Const | AssocTag::Type))
+                    .find(|item| {
+                        self.tcx.hygienic_eq(constraint.ident, item.ident(self.tcx), trait_def_id)
+                    })
                     .and_then(|item| item.def_id.as_local())
                 {
                     self.worklist.push((local_def_id, ComesFromAllowExpect::No));
@@ -695,6 +738,30 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         }
 
         intravisit::walk_trait_ref(self, t)
+    }
+
+    fn visit_field_def(&mut self, field_def: &'tcx hir::FieldDef<'tcx>) -> Self::Result {
+        // Check `T::Ty` used in field's type, marks assoc types live whether the field is used or not
+        // Consider that there would be three situations:
+        // 1. `field` is used, it's good
+        // 2. `field` is not used but marked like `#[allow(dead_code)]`,
+        //    it's annoying to mark the assoc type `#[allow(dead_code)]` again
+        // 3. `field` is not used and will be linted,
+        //    the assoc type will be linted after removing the unused field
+        self.visit_middle_ty(self.tcx.type_of(field_def.def_id).instantiate_identity());
+        intravisit::walk_field_def(self, field_def)
+    }
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MarkSymbolVisitor<'tcx> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
+        match ty.kind() {
+            ty::Alias(_, alias) => {
+                self.check_def_id(alias.def_id);
+            }
+            _ => (),
+        }
+        ty.super_visit_with(self);
     }
 }
 
