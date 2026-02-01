@@ -405,7 +405,6 @@ trigger_files = [
 trigger_files = [
     "library/std/src/os/darwin",
     "library/std/src/sys/platform_version/darwin",
-    "library/std/src/sys/sync/thread_parking/darwin.rs",
     "compiler/rustc_target/src/spec/base/apple",
 ]
 

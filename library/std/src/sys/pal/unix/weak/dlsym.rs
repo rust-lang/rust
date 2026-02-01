@@ -8,8 +8,9 @@ use crate::{mem, ptr};
 mod tests;
 
 pub(crate) macro weak {
-    (fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;) => (
-        static DLSYM: DlsymWeak<unsafe extern "C" fn($($t),*) -> $ret> = {
+    ($v:vis fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;) => {
+        #[allow(non_upper_case_globals)]
+        $v static $name: DlsymWeak<unsafe extern "C" fn($($t),*) -> $ret> = {
             let Ok(name) = CStr::from_bytes_with_nul(concat!(stringify!($name), '\0').as_bytes()) else {
                 panic!("symbol name may not contain NUL")
             };
@@ -20,9 +21,7 @@ pub(crate) macro weak {
             // the function pointer be unsafe.
             unsafe { DlsymWeak::new(name) }
         };
-
-        let $name = &DLSYM;
-    )
+    }
 }
 
 pub(crate) struct DlsymWeak<F> {
