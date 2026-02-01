@@ -8,7 +8,7 @@
 
 #![deny(unsafe_code)]
 
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::ops::{Bound, Range};
 use std::sync::Once;
 use std::{fmt, marker, mem, panic, thread};
@@ -373,11 +373,67 @@ pub struct Punct<Span> {
 
 compound_traits!(struct Punct<Span> { ch, joint, span });
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone)]
 pub struct Ident<Span, Symbol> {
     pub sym: Symbol,
     pub is_raw: bool,
     pub span: Span,
+}
+
+impl<Span, Symbol> PartialEq for Ident<Span, Symbol>
+where
+    Symbol: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.sym == other.sym && self.is_raw == other.is_raw
+    }
+}
+
+impl<Span, Symbol> PartialEq<String> for Ident<Span, Symbol>
+where
+    Symbol: PartialEq<str>,
+{
+    fn eq(&self, other: &String) -> bool {
+        if self.is_raw {
+            other.strip_prefix("r#").is_some_and(|s| self.sym == *s)
+        } else {
+            self.sym == **other
+        }
+    }
+}
+
+impl<Span, Symbol> PartialEq<str> for Ident<Span, Symbol>
+where
+    Symbol: PartialEq<str>,
+{
+    fn eq(&self, other: &str) -> bool {
+        if self.is_raw {
+            other.strip_prefix("r#").is_some_and(|s| self.sym == *s)
+        } else {
+            self.sym == *other
+        }
+    }
+}
+
+impl<Span, Symbol> Eq for Ident<Span, Symbol> where Symbol: PartialEq {}
+
+impl<Span, Symbol: Hash> Hash for Ident<Span, Symbol> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.sym.hash(state);
+        self.is_raw.hash(state);
+    }
+}
+
+/// Prints the identifier as a string that should be losslessly convertible back
+/// into the same identifier.
+#[stable(feature = "proc_macro_lib2", since = "1.29.0")]
+impl<Span, Symbol: fmt::Display> fmt::Display for Ident<Span, Symbol> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_raw {
+            f.write_str("r#")?;
+        }
+        fmt::Display::fmt(&self.sym, f)
+    }
 }
 
 compound_traits!(struct Ident<Span, Symbol> { sym, is_raw, span });
