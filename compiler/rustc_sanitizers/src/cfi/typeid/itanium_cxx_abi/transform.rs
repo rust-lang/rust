@@ -243,24 +243,24 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
         .flat_map(|super_poly_trait_ref| {
             tcx.associated_items(super_poly_trait_ref.def_id())
                 .in_definition_order()
-                .filter(|item| item.is_type())
+                .filter(|item| item.is_type() || item.is_const())
                 .filter(|item| !tcx.generics_require_sized_self(item.def_id))
-                .map(move |assoc_ty| {
+                .map(move |assoc_item| {
                     super_poly_trait_ref.map_bound(|super_trait_ref| {
-                        let alias_ty =
-                            ty::AliasTy::new_from_args(tcx, assoc_ty.def_id, super_trait_ref.args);
-                        let resolved = tcx.normalize_erasing_regions(
-                            ty::TypingEnv::fully_monomorphized(),
-                            alias_ty.to_ty(tcx),
+                        let projection_term = ty::AliasTerm::new_from_args(
+                            tcx,
+                            assoc_item.def_id,
+                            super_trait_ref.args,
                         );
-                        debug!("Resolved {:?} -> {resolved}", alias_ty.to_ty(tcx));
+                        let term = tcx.normalize_erasing_regions(
+                            ty::TypingEnv::fully_monomorphized(),
+                            projection_term.to_term(tcx),
+                        );
+                        debug!("Projection {:?} -> {term}", projection_term.to_term(tcx),);
                         ty::ExistentialPredicate::Projection(
                             ty::ExistentialProjection::erase_self_ty(
                                 tcx,
-                                ty::ProjectionPredicate {
-                                    projection_term: alias_ty.into(),
-                                    term: resolved.into(),
-                                },
+                                ty::ProjectionPredicate { projection_term, term },
                             ),
                         )
                     })
