@@ -291,9 +291,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         always_sized: bool,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         let (present_first, present_second) = {
-            let mut present_variants = variants
-                .iter_enumerated()
-                .filter_map(|(i, v)| if !repr.c() && absent(v) { None } else { Some(i) });
+            let mut present_variants = variants.iter_enumerated().filter_map(|(i, v)| {
+                if !repr.inhibit_enum_layout_opt() && absent(v) { None } else { Some(i) }
+            });
             (present_variants.next(), present_variants.next())
         };
         let present_first = match present_first {
