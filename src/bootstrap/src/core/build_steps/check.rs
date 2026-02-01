@@ -13,7 +13,8 @@ use crate::core::build_steps::tool::{
     prepare_tool_cargo,
 };
 use crate::core::builder::{
-    self, Alias, Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
+    self, Alias, Builder, Cargo, CargoSubcommand, RunConfig, ShouldRun, Step, StepMetadata,
+    crate_description,
 };
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
@@ -134,7 +135,7 @@ impl Step for Std {
             Mode::Std,
             SourceType::InTree,
             target,
-            Kind::Check,
+            CargoSubcommand::Check,
         );
 
         std_cargo(builder, target, &mut cargo, &self.crates);
@@ -142,7 +143,7 @@ impl Step for Std {
         let stamp =
             build_stamp::libstd_stamp(builder, build_compiler, target).with_prefix("check-test");
         let _guard = builder.msg(
-            Kind::Check,
+            CargoSubcommand::Check,
             "library test/bench/example targets",
             Mode::Std,
             build_compiler,
@@ -330,7 +331,7 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = run.make_run_crates(Alias::Compiler);
+        let crates = run.expand_alias(Alias::Compiler);
         run.builder.ensure(Rustc::new(run.builder, run.target, crates));
     }
 
@@ -351,7 +352,7 @@ impl Step for Rustc {
             Mode::Rustc,
             SourceType::InTree,
             target,
-            Kind::Check,
+            CargoSubcommand::Check,
         );
 
         rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
@@ -365,7 +366,7 @@ impl Step for Rustc {
         }
 
         let _guard = builder.msg(
-            Kind::Check,
+            CargoSubcommand::Check,
             format_args!("compiler artifacts{}", crate_description(&self.crates)),
             Mode::Rustc,
             self.build_compiler.build_compiler(),
@@ -557,7 +558,7 @@ impl Step for CraneliftCodegenBackend {
             Mode::Codegen,
             SourceType::InTree,
             target,
-            builder.kind,
+            builder.cargo_cmd,
         );
 
         cargo
@@ -567,7 +568,7 @@ impl Step for CraneliftCodegenBackend {
         self.build_compiler.configure_cargo(&mut cargo);
 
         let _guard = builder.msg(
-            Kind::Check,
+            CargoSubcommand::Check,
             "rustc_codegen_cranelift",
             Mode::Codegen,
             build_compiler,
@@ -642,15 +643,20 @@ impl Step for GccCodegenBackend {
             Mode::Codegen,
             SourceType::InTree,
             target,
-            builder.kind,
+            builder.cargo_cmd,
         );
 
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo, target);
         self.build_compiler.configure_cargo(&mut cargo);
 
-        let _guard =
-            builder.msg(Kind::Check, "rustc_codegen_gcc", Mode::Codegen, build_compiler, target);
+        let _guard = builder.msg(
+            CargoSubcommand::Check,
+            "rustc_codegen_gcc",
+            Mode::Codegen,
+            build_compiler,
+            target,
+        );
 
         let stamp = build_stamp::codegen_backend_stamp(
             builder,
@@ -706,7 +712,7 @@ macro_rules! tool_check_step {
             const IS_HOST: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.paths(&[ $path, $( $alt_path ),* ])
+                run.path($path) $( .path( $alt_path ) )*
             }
 
             fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -775,7 +781,7 @@ fn run_tool_check_step(
         build_compiler,
         mode,
         target,
-        builder.kind,
+        builder.cargo_cmd,
         path,
         // Currently, all of the tools that use this macro/function are in-tree.
         // If support for out-of-tree tools is re-added in the future, those
@@ -804,7 +810,7 @@ fn run_tool_check_step(
     let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, mode, target))
         .with_prefix(&format!("{display_name}-check"));
 
-    let _guard = builder.msg(builder.kind, display_name, mode, build_compiler, target);
+    let _guard = builder.msg(builder.cargo_cmd, display_name, mode, build_compiler, target);
     run_cargo(
         builder,
         cargo,

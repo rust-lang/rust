@@ -13,7 +13,7 @@ use crate::core::config::{Config, TargetSelection};
 use crate::utils::exec::command;
 use crate::utils::helpers::t;
 use crate::utils::tarball::GeneratedTarball;
-use crate::{Compiler, Kind};
+use crate::{CargoSubcommand, Compiler};
 
 #[cfg(target_os = "illumos")]
 const SHELL: &str = "bash";
@@ -70,8 +70,14 @@ fn install_sh(
     tarball: &GeneratedTarball,
 ) {
     let _guard = match build_compiler.into() {
-        Some(build_compiler) => builder.msg(Kind::Install, package, None, build_compiler, target),
-        None => builder.msg_unstaged(Kind::Install, package, target.unwrap_or(builder.host_target)),
+        Some(build_compiler) => {
+            builder.msg(CargoSubcommand::Install, package, None, build_compiler, target)
+        }
+        None => builder.msg_unstaged(
+            CargoSubcommand::Install,
+            package,
+            target.unwrap_or(builder.host_target),
+        ),
     };
 
     let prefix = default_path(&builder.config.prefix, "/usr/local");

@@ -1,0 +1,138 @@
+---
+source: src/bootstrap/src/core/builder/selectors/tests.rs
+expression: check compiletest --include-default-paths
+---
+[Check] check::Rustc
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({check::compiler})
+    - Alias({check::compiler/rustc})
+    - Alias({check::compiler/rustc_abi})
+    - Alias({check::compiler/rustc_arena})
+    - Alias({check::compiler/rustc_ast})
+    - Alias({check::compiler/rustc_ast_ir})
+    - Alias({check::compiler/rustc_ast_lowering})
+    - Alias({check::compiler/rustc_ast_passes})
+    - Alias({check::compiler/rustc_ast_pretty})
+    - Alias({check::compiler/rustc_attr_parsing})
+    - Alias({check::compiler/rustc_baked_icu_data})
+    - Alias({check::compiler/rustc_borrowck})
+    - Alias({check::compiler/rustc_builtin_macros})
+    - Alias({check::compiler/rustc_codegen_llvm})
+    - Alias({check::compiler/rustc_codegen_ssa})
+    - Alias({check::compiler/rustc_const_eval})
+    - Alias({check::compiler/rustc_data_structures})
+    - Alias({check::compiler/rustc_driver})
+    - Alias({check::compiler/rustc_driver_impl})
+    - Alias({check::compiler/rustc_error_codes})
+    - Alias({check::compiler/rustc_error_messages})
+    - Alias({check::compiler/rustc_errors})
+    - Alias({check::compiler/rustc_expand})
+    - Alias({check::compiler/rustc_feature})
+    - Alias({check::compiler/rustc_fluent_macro})
+    - Alias({check::compiler/rustc_fs_util})
+    - Alias({check::compiler/rustc_graphviz})
+    - Alias({check::compiler/rustc_hashes})
+    - Alias({check::compiler/rustc_hir})
+    - Alias({check::compiler/rustc_hir_analysis})
+    - Alias({check::compiler/rustc_hir_id})
+    - Alias({check::compiler/rustc_hir_pretty})
+    - Alias({check::compiler/rustc_hir_typeck})
+    - Alias({check::compiler/rustc_incremental})
+    - Alias({check::compiler/rustc_index})
+    - Alias({check::compiler/rustc_index_macros})
+    - Alias({check::compiler/rustc_infer})
+    - Alias({check::compiler/rustc_interface})
+    - Alias({check::compiler/rustc_lexer})
+    - Alias({check::compiler/rustc_lint})
+    - Alias({check::compiler/rustc_lint_defs})
+    - Alias({check::compiler/rustc_llvm})
+    - Alias({check::compiler/rustc_log})
+    - Alias({check::compiler/rustc_macros})
+    - Alias({check::compiler/rustc_metadata})
+    - Alias({check::compiler/rustc_middle})
+    - Alias({check::compiler/rustc_mir_build})
+    - Alias({check::compiler/rustc_mir_dataflow})
+    - Alias({check::compiler/rustc_mir_transform})
+    - Alias({check::compiler/rustc_monomorphize})
+    - Alias({check::compiler/rustc_next_trait_solver})
+    - Alias({check::compiler/rustc_parse})
+    - Alias({check::compiler/rustc_parse_format})
+    - Alias({check::compiler/rustc_passes})
+    - Alias({check::compiler/rustc_pattern_analysis})
+    - Alias({check::compiler/rustc_privacy})
+    - Alias({check::compiler/rustc_proc_macro})
+    - Alias({check::compiler/rustc_public})
+    - Alias({check::compiler/rustc_public_bridge})
+    - Alias({check::compiler/rustc_query_impl})
+    - Alias({check::compiler/rustc_query_system})
+    - Alias({check::compiler/rustc_resolve})
+    - Alias({check::compiler/rustc_sanitizers})
+    - Alias({check::compiler/rustc_serialize})
+    - Alias({check::compiler/rustc_session})
+    - Alias({check::compiler/rustc_span})
+    - Alias({check::compiler/rustc_symbol_mangling})
+    - Alias({check::compiler/rustc_target})
+    - Alias({check::compiler/rustc_thread_pool})
+    - Alias({check::compiler/rustc_trait_selection})
+    - Alias({check::compiler/rustc_traits})
+    - Alias({check::compiler/rustc_transmute})
+    - Alias({check::compiler/rustc_ty_utils})
+    - Alias({check::compiler/rustc_type_ir})
+    - Alias({check::compiler/rustc_type_ir_macros})
+    - Alias({check::compiler/rustc_windows_rc})
+[Check] check::Rustdoc
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({check::src/librustdoc})
+    - Alias({check::src/tools/rustdoc})
+[Check] check::CraneliftCodegenBackend
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({check::cg_clif})
+    - Alias({check::rustc_codegen_cranelift})
+[Check] check::GccCodegenBackend
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({check::cg_gcc})
+    - Alias({check::rustc_codegen_gcc})
+[Check] check::Clippy
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({check::src/tools/clippy})
+[Check] check::Miri
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({check::src/tools/miri})
+[Check] check::CargoMiri
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({check::src/tools/miri/cargo-miri})
+[Check] check::MiroptTestTools
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({check::src/tools/miropt-test-tools})
+[Check] check::Rustfmt
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({check::src/tools/rustfmt})
+[Check] check::RustAnalyzer
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({check::src/tools/rust-analyzer})
+[Check] check::TestFloatParse
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({check::src/tools/test-float-parse})
+[Check] check::FeaturesStatusDump
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({check::src/tools/features-status-dump})
+[Check] check::Std
+    targets: [aarch64-unknown-linux-gnu]
+    - Alias({check::library})
+    - Alias({check::library/alloc})
+    - Alias({check::library/alloctests})
+    - Alias({check::library/compiler-builtins/compiler-builtins})
+    - Alias({check::library/core})
+    - Alias({check::library/coretests})
+    - Alias({check::library/panic_abort})
+    - Alias({check::library/panic_unwind})
+    - Alias({check::library/proc_macro})
+    - Alias({check::library/rustc-std-workspace-core})
+    - Alias({check::library/std})
+    - Alias({check::library/std_detect})
+    - Alias({check::library/sysroot})
+    - Alias({check::library/test})
+    - Alias({check::library/unwind})
+[Check] check::Compiletest
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({check::src/tools/compiletest})

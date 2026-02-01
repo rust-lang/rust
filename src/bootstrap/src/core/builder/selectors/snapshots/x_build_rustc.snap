@@ -1,0 +1,7 @@
+---
+source: src/bootstrap/src/core/builder/selectors/tests.rs
+expression: build rustc
+---
+[Build] compile::Assemble
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({build::compiler/rustc})

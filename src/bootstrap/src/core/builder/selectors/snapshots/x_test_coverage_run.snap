@@ -1,0 +1,7 @@
+---
+source: src/bootstrap/src/core/builder/selectors/tests.rs
+expression: test coverage-run
+---
+[Test] test::Coverage
+    targets: [aarch64-unknown-linux-gnu]
+    - Alias({test::coverage-run})

@@ -1,0 +1,22 @@
+---
+source: src/bootstrap/src/core/builder/selectors/tests.rs
+expression: build library
+---
+[Build] compile::Std
+    targets: [aarch64-unknown-linux-gnu]
+    - Alias({build::library})
+    - Alias({build::library/alloc})
+    - Alias({build::library/compiler-builtins/compiler-builtins})
+    - Alias({build::library/core})
+    - Alias({build::library/panic_abort})
+    - Alias({build::library/panic_unwind})
+    - Alias({build::library/proc_macro})
+    - Alias({build::library/rustc-std-workspace-core})
+    - Alias({build::library/std})
+    - Alias({build::library/std_detect})
+    - Alias({build::library/sysroot})
+    - Alias({build::library/test})
+    - Alias({build::library/unwind})
+[Build] compile::StartupObjects
+    targets: [aarch64-unknown-linux-gnu]
+    - Alias({build::library/rtstartup})

@@ -1,0 +1,20 @@
+---
+source: src/bootstrap/src/core/builder/selectors/tests.rs
+expression: miri
+---
+[Miri] test::Crate
+    targets: [aarch64-unknown-linux-gnu]
+    - Alias({miri::library/alloc})
+    - Alias({miri::library/alloctests})
+    - Alias({miri::library/compiler-builtins/compiler-builtins})
+    - Alias({miri::library/core})
+    - Alias({miri::library/coretests})
+    - Alias({miri::library/panic_abort})
+    - Alias({miri::library/panic_unwind})
+    - Alias({miri::library/proc_macro})
+    - Alias({miri::library/rustc-std-workspace-core})
+    - Alias({miri::library/std})
+    - Alias({miri::library/std_detect})
+    - Alias({miri::library/sysroot})
+    - Alias({miri::library/test})
+    - Alias({miri::library/unwind})

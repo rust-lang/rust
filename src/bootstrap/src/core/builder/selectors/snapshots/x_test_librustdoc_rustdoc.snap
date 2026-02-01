@@ -1,0 +1,11 @@
+---
+source: src/bootstrap/src/core/builder/selectors/tests.rs
+expression: test librustdoc rustdoc
+---
+[Test] test::CrateRustdoc
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/librustdoc})
+    - Alias({test::src/tools/rustdoc})
+[Test] test::RustdocBook
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/doc/rustdoc})

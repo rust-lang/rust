@@ -1,0 +1,20 @@
+---
+source: src/bootstrap/src/core/builder/selectors/tests.rs
+expression: setup
+---
+[Setup] setup::Profile
+    targets: [aarch64-unknown-linux-gnu]
+    - Alias({setup::compiler})
+    - Alias({setup::dist})
+    - Alias({setup::library})
+    - Alias({setup::none})
+    - Alias({setup::tools})
+[Setup] setup::Hook
+    targets: [aarch64-unknown-linux-gnu]
+    - Alias({setup::hook})
+[Setup] setup::Link
+    targets: [aarch64-unknown-linux-gnu]
+    - Alias({setup::link})
+[Setup] setup::Editor
+    targets: [aarch64-unknown-linux-gnu]
+    - Alias({setup::editor})

@@ -1,7 +1,6 @@
 use std::any::{Any, type_name};
 use std::cell::{Cell, RefCell};
-use std::collections::BTreeSet;
-use std::fmt::{Debug, Write};
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -10,6 +9,7 @@ use std::time::{Duration, Instant};
 use std::{env, fs};
 
 use clap::ValueEnum;
+pub use selectors::{Alias, ShouldRun, StepSelectors, crate_description};
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
@@ -20,21 +20,20 @@ use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
 };
-use crate::core::builder::cli_paths::CLIStepPath;
+use crate::core::config::TargetSelection;
 use crate::core::config::flags::Subcommand;
-use crate::core::config::{DryRun, TargetSelection};
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
-use crate::{Build, Crate, trace};
+use crate::{Build, trace};
 
 mod cargo;
-mod cli_paths;
+mod selectors;
 #[cfg(test)]
 mod tests;
 
-/// Builds and performs different [`Self::kind`]s of stuff and actions, taking
+/// Builds and performs different [`Self::cargo_cmd`]s of stuff and actions, taking
 /// into account build configuration from e.g. bootstrap.toml.
 pub struct Builder<'a> {
     /// Build configuration from e.g. bootstrap.toml.
@@ -46,7 +45,7 @@ pub struct Builder<'a> {
     pub top_stage: u32,
 
     /// What to build or what action to perform.
-    pub kind: Kind,
+    pub cargo_cmd: CargoSubcommand,
 
     /// A cache of outputs of [`Step`]s so we can avoid running steps we already
     /// ran.
@@ -71,7 +70,17 @@ pub struct Builder<'a> {
     /// executed to be logged instead. Used by snapshot tests of command-line
     /// paths-to-steps handling.
     #[expect(clippy::type_complexity)]
-    log_cli_step_for_tests: Option<Box<dyn Fn(&StepDescription, &[PathSet], &[TargetSelection])>>,
+    log_cli_step_for_tests:
+        Option<Box<dyn Fn(&StepDescription, &[StepSelectors], &[TargetSelection])>>,
+}
+
+struct StepDescription {
+    is_host: bool,
+    should_run: fn(ShouldRun<'_>) -> ShouldRun<'_>,
+    is_default_step_fn: fn(&Builder<'_>) -> bool,
+    make_run: fn(RunConfig<'_>),
+    name: &'static str,
+    cargo_cmd: CargoSubcommand,
 }
 
 impl Deref for Builder<'_> {
@@ -166,7 +175,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StepMetadata {
     name: String,
-    kind: Kind,
+    cargo_cmd: CargoSubcommand,
     target: TargetSelection,
     built_by: Option<Compiler>,
     stage: Option<u32>,
@@ -176,35 +185,42 @@ pub struct StepMetadata {
 
 impl StepMetadata {
     pub fn build(name: &str, target: TargetSelection) -> Self {
-        Self::new(name, target, Kind::Build)
+        Self::new(name, target, CargoSubcommand::Build)
     }
 
     pub fn check(name: &str, target: TargetSelection) -> Self {
-        Self::new(name, target, Kind::Check)
+        Self::new(name, target, CargoSubcommand::Check)
     }
 
     pub fn clippy(name: &str, target: TargetSelection) -> Self {
-        Self::new(name, target, Kind::Clippy)
+        Self::new(name, target, CargoSubcommand::Clippy)
     }
 
     pub fn doc(name: &str, target: TargetSelection) -> Self {
-        Self::new(name, target, Kind::Doc)
+        Self::new(name, target, CargoSubcommand::Doc)
     }
 
     pub fn dist(name: &str, target: TargetSelection) -> Self {
-        Self::new(name, target, Kind::Dist)
+        Self::new(name, target, CargoSubcommand::Dist)
     }
 
     pub fn test(name: &str, target: TargetSelection) -> Self {
-        Self::new(name, target, Kind::Test)
+        Self::new(name, target, CargoSubcommand::Test)
     }
 
     pub fn run(name: &str, target: TargetSelection) -> Self {
-        Self::new(name, target, Kind::Run)
+        Self::new(name, target, CargoSubcommand::Run)
     }
 
-    fn new(name: &str, target: TargetSelection, kind: Kind) -> Self {
-        Self { name: name.to_string(), kind, target, built_by: None, stage: None, metadata: None }
+    fn new(name: &str, target: TargetSelection, cargo_cmd: CargoSubcommand) -> Self {
+        Self {
+            name: name.to_string(),
+            cargo_cmd,
+            target,
+            built_by: None,
+            stage: None,
+            metadata: None,
+        }
     }
 
     pub fn built_by(mut self, compiler: Compiler) -> Self {
@@ -242,403 +258,17 @@ impl StepMetadata {
 pub struct RunConfig<'a> {
     pub builder: &'a Builder<'a>,
     pub target: TargetSelection,
-    pub paths: Vec<PathSet>,
+    pub paths: Vec<StepSelectors>,
 }
 
 impl RunConfig<'_> {
     pub fn build_triple(&self) -> TargetSelection {
         self.builder.build.host_target
     }
-
-    /// Return a list of crate names selected by `run.paths`.
-    #[track_caller]
-    pub fn cargo_crates_in_set(&self) -> Vec<String> {
-        let mut crates = Vec::new();
-        for krate in &self.paths {
-            let path = &krate.assert_single_path().path;
-
-            let crate_name = self
-                .builder
-                .crate_paths
-                .get(path)
-                .unwrap_or_else(|| panic!("missing crate for path {}", path.display()));
-
-            crates.push(crate_name.to_string());
-        }
-        crates
-    }
-
-    /// Given an `alias` selected by the `Step` and the paths passed on the command line,
-    /// return a list of the crates that should be built.
-    ///
-    /// Normally, people will pass *just* `library` if they pass it.
-    /// But it's possible (although strange) to pass something like `library std core`.
-    /// Build all crates anyway, as if they hadn't passed the other args.
-    pub fn make_run_crates(&self, alias: Alias) -> Vec<String> {
-        let has_alias =
-            self.paths.iter().any(|set| set.assert_single_path().path.ends_with(alias.as_str()));
-        if !has_alias {
-            return self.cargo_crates_in_set();
-        }
-
-        let crates = match alias {
-            Alias::Library => self.builder.in_tree_crates("sysroot", Some(self.target)),
-            Alias::Compiler => self.builder.in_tree_crates("rustc-main", Some(self.target)),
-        };
-
-        crates.into_iter().map(|krate| krate.name.to_string()).collect()
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum Alias {
-    Library,
-    Compiler,
-}
-
-impl Alias {
-    fn as_str(self) -> &'static str {
-        match self {
-            Alias::Library => "library",
-            Alias::Compiler => "compiler",
-        }
-    }
-}
-
-/// A description of the crates in this set, suitable for passing to `builder.info`.
-///
-/// `crates` should be generated by [`RunConfig::cargo_crates_in_set`].
-pub fn crate_description(crates: &[impl AsRef<str>]) -> String {
-    if crates.is_empty() {
-        return "".into();
-    }
-
-    let mut descr = String::from("{");
-    descr.push_str(crates[0].as_ref());
-    for krate in &crates[1..] {
-        descr.push_str(", ");
-        descr.push_str(krate.as_ref());
-    }
-    descr.push('}');
-    descr
-}
-
-struct StepDescription {
-    is_host: bool,
-    should_run: fn(ShouldRun<'_>) -> ShouldRun<'_>,
-    is_default_step_fn: fn(&Builder<'_>) -> bool,
-    make_run: fn(RunConfig<'_>),
-    name: &'static str,
-    kind: Kind,
-}
-
-#[derive(Clone, PartialOrd, Ord, PartialEq, Eq)]
-pub struct TaskPath {
-    pub path: PathBuf,
-    pub kind: Option<Kind>,
-}
-
-impl Debug for TaskPath {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(kind) = &self.kind {
-            write!(f, "{}::", kind.as_str())?;
-        }
-        write!(f, "{}", self.path.display())
-    }
-}
-
-/// Collection of paths used to match a task rule.
-#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
-pub enum PathSet {
-    /// A collection of individual paths or aliases.
-    ///
-    /// These are generally matched as a path suffix. For example, a
-    /// command-line value of `std` will match if `library/std` is in the
-    /// set.
-    ///
-    /// NOTE: the paths within a set should always be aliases of one another.
-    /// For example, `src/librustdoc` and `src/tools/rustdoc` should be in the same set,
-    /// but `library/core` and `library/std` generally should not, unless there's no way (for that Step)
-    /// to build them separately.
-    Set(BTreeSet<TaskPath>),
-    /// A "suite" of paths.
-    ///
-    /// These can match as a path suffix (like `Set`), or as a prefix. For
-    /// example, a command-line value of `tests/ui/abi/variadic-ffi.rs`
-    /// will match `tests/ui`. A command-line value of `ui` would also
-    /// match `tests/ui`.
-    Suite(TaskPath),
-}
-
-impl PathSet {
-    fn empty() -> PathSet {
-        PathSet::Set(BTreeSet::new())
-    }
-
-    fn one<P: Into<PathBuf>>(path: P, kind: Kind) -> PathSet {
-        let mut set = BTreeSet::new();
-        set.insert(TaskPath { path: path.into(), kind: Some(kind) });
-        PathSet::Set(set)
-    }
-
-    fn has(&self, needle: &Path, module: Kind) -> bool {
-        match self {
-            PathSet::Set(set) => set.iter().any(|p| Self::check(p, needle, module)),
-            PathSet::Suite(suite) => Self::check(suite, needle, module),
-        }
-    }
-
-    // internal use only
-    fn check(p: &TaskPath, needle: &Path, module: Kind) -> bool {
-        let check_path = || {
-            // This order is important for retro-compatibility, as `starts_with` was introduced later.
-            p.path.ends_with(needle) || p.path.starts_with(needle)
-        };
-        if let Some(p_kind) = &p.kind { check_path() && *p_kind == module } else { check_path() }
-    }
-
-    /// Return all `TaskPath`s in `Self` that contain any of the `needles`, removing the
-    /// matched needles.
-    ///
-    /// This is used for `StepDescription::krate`, which passes all matching crates at once to
-    /// `Step::make_run`, rather than calling it many times with a single crate.
-    /// See `tests.rs` for examples.
-    fn intersection_removing_matches(&self, needles: &mut [CLIStepPath], module: Kind) -> PathSet {
-        let mut check = |p| {
-            let mut result = false;
-            for n in needles.iter_mut() {
-                let matched = Self::check(p, &n.path, module);
-                if matched {
-                    n.will_be_executed = true;
-                    result = true;
-                }
-            }
-            result
-        };
-        match self {
-            PathSet::Set(set) => PathSet::Set(set.iter().filter(|&p| check(p)).cloned().collect()),
-            PathSet::Suite(suite) => {
-                if check(suite) {
-                    self.clone()
-                } else {
-                    PathSet::empty()
-                }
-            }
-        }
-    }
-
-    /// A convenience wrapper for Steps which know they have no aliases and all their sets contain only a single path.
-    ///
-    /// This can be used with [`ShouldRun::crate_or_deps`], [`ShouldRun::path`], or [`ShouldRun::alias`].
-    #[track_caller]
-    pub fn assert_single_path(&self) -> &TaskPath {
-        match self {
-            PathSet::Set(set) => {
-                assert_eq!(set.len(), 1, "called assert_single_path on multiple paths");
-                set.iter().next().unwrap()
-            }
-            PathSet::Suite(_) => unreachable!("called assert_single_path on a Suite path"),
-        }
-    }
-}
-
-impl StepDescription {
-    fn from<S: Step>(kind: Kind) -> StepDescription {
-        StepDescription {
-            is_host: S::IS_HOST,
-            should_run: S::should_run,
-            is_default_step_fn: S::is_default_step,
-            make_run: S::make_run,
-            name: std::any::type_name::<S>(),
-            kind,
-        }
-    }
-
-    fn maybe_run(&self, builder: &Builder<'_>, mut pathsets: Vec<PathSet>) {
-        pathsets.retain(|set| !self.is_excluded(builder, set));
-
-        if pathsets.is_empty() {
-            return;
-        }
-
-        // Determine the targets participating in this rule.
-        let targets = if self.is_host { &builder.hosts } else { &builder.targets };
-
-        // Log the step that's about to run, for snapshot tests.
-        if let Some(ref log_cli_step) = builder.log_cli_step_for_tests {
-            log_cli_step(self, &pathsets, targets);
-            // Return so that the step won't actually run in snapshot tests.
-            return;
-        }
-
-        for target in targets {
-            let run = RunConfig { builder, paths: pathsets.clone(), target: *target };
-            (self.make_run)(run);
-        }
-    }
-
-    fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
-        if builder.config.skip.iter().any(|e| pathset.has(e, builder.kind)) {
-            if !matches!(builder.config.get_dry_run(), DryRun::SelfCheck) {
-                println!("Skipping {pathset:?} because it is excluded");
-            }
-            return true;
-        }
-
-        if !builder.config.skip.is_empty()
-            && !matches!(builder.config.get_dry_run(), DryRun::SelfCheck)
-        {
-            builder.do_if_verbose(|| {
-                println!(
-                    "{:?} not skipped for {:?} -- not in {:?}",
-                    pathset, self.name, builder.config.skip
-                )
-            });
-        }
-        false
-    }
-}
-
-/// Builder that allows steps to register command-line paths/aliases that
-/// should cause those steps to be run.
-///
-/// For example, if the user invokes `./x test compiler` or `./x doc unstable-book`,
-/// this allows bootstrap to determine what steps "compiler" or "unstable-book"
-/// correspond to.
-pub struct ShouldRun<'a> {
-    pub builder: &'a Builder<'a>,
-    kind: Kind,
-
-    // use a BTreeSet to maintain sort order
-    paths: BTreeSet<PathSet>,
-}
-
-impl<'a> ShouldRun<'a> {
-    fn new(builder: &'a Builder<'_>, kind: Kind) -> ShouldRun<'a> {
-        ShouldRun { builder, kind, paths: BTreeSet::new() }
-    }
-
-    /// Indicates it should run if the command-line selects the given crate or
-    /// any of its (local) dependencies.
-    ///
-    /// `make_run` will be called a single time with all matching command-line paths.
-    pub fn crate_or_deps(self, name: &str) -> Self {
-        let crates = self.builder.in_tree_crates(name, None);
-        self.crates(crates)
-    }
-
-    /// Indicates it should run if the command-line selects any of the given crates.
-    ///
-    /// `make_run` will be called a single time with all matching command-line paths.
-    ///
-    /// Prefer [`ShouldRun::crate_or_deps`] to this function where possible.
-    pub(crate) fn crates(mut self, crates: Vec<&Crate>) -> Self {
-        for krate in crates {
-            let path = krate.local_path(self.builder);
-            self.paths.insert(PathSet::one(path, self.kind));
-        }
-        self
-    }
-
-    // single alias, which does not correspond to any on-disk path
-    pub fn alias(mut self, alias: &str) -> Self {
-        // exceptional case for `Kind::Setup` because its `library`
-        // and `compiler` options would otherwise naively match with
-        // `compiler` and `library` folders respectively.
-        assert!(
-            self.kind == Kind::Setup || !self.builder.src.join(alias).exists(),
-            "use `builder.path()` for real paths: {alias}"
-        );
-        self.paths.insert(PathSet::Set(
-            std::iter::once(TaskPath { path: alias.into(), kind: Some(self.kind) }).collect(),
-        ));
-        self
-    }
-
-    /// single, non-aliased path
-    ///
-    /// Must be an on-disk path; use `alias` for names that do not correspond to on-disk paths.
-    pub fn path(self, path: &str) -> Self {
-        self.paths(&[path])
-    }
-
-    /// Multiple aliases for the same job.
-    ///
-    /// This differs from [`path`] in that multiple calls to path will end up calling `make_run`
-    /// multiple times, whereas a single call to `paths` will only ever generate a single call to
-    /// `make_run`.
-    ///
-    /// This is analogous to `all_krates`, although `all_krates` is gone now. Prefer [`path`] where possible.
-    ///
-    /// [`path`]: ShouldRun::path
-    pub fn paths(mut self, paths: &[&str]) -> Self {
-        let submodules_paths = self.builder.submodule_paths();
-
-        self.paths.insert(PathSet::Set(
-            paths
-                .iter()
-                .map(|p| {
-                    // assert only if `p` isn't submodule
-                    if !submodules_paths.iter().any(|sm_p| p.contains(sm_p)) {
-                        assert!(
-                            self.builder.src.join(p).exists(),
-                            "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {p}"
-                        );
-                    }
-
-                    TaskPath { path: p.into(), kind: Some(self.kind) }
-                })
-                .collect(),
-        ));
-        self
-    }
-
-    /// Handles individual files (not directories) within a test suite.
-    fn is_suite_path(&self, requested_path: &Path) -> Option<&PathSet> {
-        self.paths.iter().find(|pathset| match pathset {
-            PathSet::Suite(suite) => requested_path.starts_with(&suite.path),
-            PathSet::Set(_) => false,
-        })
-    }
-
-    pub fn suite_path(mut self, suite: &str) -> Self {
-        self.paths.insert(PathSet::Suite(TaskPath { path: suite.into(), kind: Some(self.kind) }));
-        self
-    }
-
-    // allows being more explicit about why should_run in Step returns the value passed to it
-    pub fn never(mut self) -> ShouldRun<'a> {
-        self.paths.insert(PathSet::empty());
-        self
-    }
-
-    /// Given a set of requested paths, return the subset which match the Step for this `ShouldRun`,
-    /// removing the matches from `paths`.
-    ///
-    /// NOTE: this returns multiple PathSets to allow for the possibility of multiple units of work
-    /// within the same step. For example, `test::Crate` allows testing multiple crates in the same
-    /// cargo invocation, which are put into separate sets because they aren't aliases.
-    ///
-    /// The reason we return PathSet instead of PathBuf is to allow for aliases that mean the same thing
-    /// (for now, just `all_krates` and `paths`, but we may want to add an `aliases` function in the future?)
-    fn pathset_for_paths_removing_matches(
-        &self,
-        paths: &mut [CLIStepPath],
-        kind: Kind,
-    ) -> Vec<PathSet> {
-        let mut sets = vec![];
-        for pathset in &self.paths {
-            let subset = pathset.intersection_removing_matches(paths, kind);
-            if subset != PathSet::empty() {
-                sets.push(subset);
-            }
-        }
-        sets
-    }
 }
 
 #[derive(Debug, Copy, Clone, Eq, Hash, PartialEq, PartialOrd, Ord, ValueEnum)]
-pub enum Kind {
+pub enum CargoSubcommand {
     #[value(alias = "b")]
     Build,
     #[value(alias = "c")]
@@ -664,38 +294,38 @@ pub enum Kind {
     Perf,
 }
 
-impl Kind {
+impl CargoSubcommand {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Kind::Build => "build",
-            Kind::Check => "check",
-            Kind::Clippy => "clippy",
-            Kind::Fix => "fix",
-            Kind::Format => "fmt",
-            Kind::Test => "test",
-            Kind::Miri => "miri",
-            Kind::MiriSetup => panic!("`as_str` is not supported for `Kind::MiriSetup`."),
-            Kind::MiriTest => panic!("`as_str` is not supported for `Kind::MiriTest`."),
-            Kind::Bench => "bench",
-            Kind::Doc => "doc",
-            Kind::Clean => "clean",
-            Kind::Dist => "dist",
-            Kind::Install => "install",
-            Kind::Run => "run",
-            Kind::Setup => "setup",
-            Kind::Vendor => "vendor",
-            Kind::Perf => "perf",
+            CargoSubcommand::Build => "build",
+            CargoSubcommand::Check => "check",
+            CargoSubcommand::Clippy => "clippy",
+            CargoSubcommand::Fix => "fix",
+            CargoSubcommand::Format => "fmt",
+            CargoSubcommand::Test => "test",
+            CargoSubcommand::Miri => "miri",
+            CargoSubcommand::MiriSetup => panic!("`as_str` is not supported for `MiriSetup`."),
+            CargoSubcommand::MiriTest => panic!("`as_str` is not supported for `MiriTest`."),
+            CargoSubcommand::Bench => "bench",
+            CargoSubcommand::Doc => "doc",
+            CargoSubcommand::Clean => "clean",
+            CargoSubcommand::Dist => "dist",
+            CargoSubcommand::Install => "install",
+            CargoSubcommand::Run => "run",
+            CargoSubcommand::Setup => "setup",
+            CargoSubcommand::Vendor => "vendor",
+            CargoSubcommand::Perf => "perf",
         }
     }
 
     pub fn description(&self) -> String {
         match self {
-            Kind::Test => "Testing",
-            Kind::Bench => "Benchmarking",
-            Kind::Doc => "Documenting",
-            Kind::Run => "Running",
-            Kind::Clippy => "Linting",
-            Kind::Perf => "Profiling & benchmarking",
+            CargoSubcommand::Test => "Testing",
+            CargoSubcommand::Bench => "Benchmarking",
+            CargoSubcommand::Doc => "Documenting",
+            CargoSubcommand::Run => "Running",
+            CargoSubcommand::Clippy => "Linting",
+            CargoSubcommand::Perf => "Profiling & benchmarking",
             _ => {
                 let title_letter = self.as_str()[0..1].to_ascii_uppercase();
                 return format!("{title_letter}{}ing", &self.as_str()[1..]);
@@ -757,14 +387,14 @@ impl Step for Libdir {
 pub const STEP_SPAN_TARGET: &str = "STEP";
 
 impl<'a> Builder<'a> {
-    fn get_step_descriptions(kind: Kind) -> Vec<StepDescription> {
+    fn get_step_descriptions(cargo_cmd: CargoSubcommand) -> Vec<StepDescription> {
         macro_rules! describe {
             ($($rule:ty),+ $(,)?) => {{
-                vec![$(StepDescription::from::<$rule>(kind)),+]
+                vec![$(StepDescription::from::<$rule>(cargo_cmd)),+]
             }};
         }
-        match kind {
-            Kind::Build => describe!(
+        match cargo_cmd {
+            CargoSubcommand::Build => describe!(
                 compile::Std,
                 compile::Rustc,
                 compile::Assemble,
@@ -807,7 +437,7 @@ impl<'a> Builder<'a> {
                 tool::WasmComponentLd,
                 tool::LldWrapper
             ),
-            Kind::Clippy => describe!(
+            CargoSubcommand::Clippy => describe!(
                 clippy::Std,
                 clippy::Rustc,
                 clippy::Bootstrap,
@@ -836,7 +466,7 @@ impl<'a> Builder<'a> {
                 clippy::Tidy,
                 clippy::CI,
             ),
-            Kind::Check | Kind::Fix => describe!(
+            CargoSubcommand::Check | CargoSubcommand::Fix => describe!(
                 check::Rustc,
                 check::Rustdoc,
                 check::CraneliftCodegenBackend,
@@ -865,7 +495,7 @@ impl<'a> Builder<'a> {
                 // quicker steps run before this.
                 check::Std,
             ),
-            Kind::Test => describe!(
+            CargoSubcommand::Test => describe!(
                 crate::core::build_steps::toolstate::ToolStateCheck,
                 test::Tidy,
                 test::BootstrapPy,
@@ -929,9 +559,11 @@ impl<'a> Builder<'a> {
                 test::RunMakeCargo,
                 test::BuildStd,
             ),
-            Kind::Miri => describe!(test::Crate),
-            Kind::Bench => describe!(test::Crate, test::CrateLibrustc, test::CrateRustdoc),
-            Kind::Doc => describe!(
+            CargoSubcommand::Miri => describe!(test::Crate),
+            CargoSubcommand::Bench => {
+                describe!(test::Crate, test::CrateLibrustc, test::CrateRustdoc)
+            }
+            CargoSubcommand::Doc => describe!(
                 doc::UnstableBook,
                 doc::UnstableBookGen,
                 doc::TheBook,
@@ -961,7 +593,7 @@ impl<'a> Builder<'a> {
                 doc::BuildHelper,
                 doc::Compiletest,
             ),
-            Kind::Dist => describe!(
+            CargoSubcommand::Dist => describe!(
                 dist::Docs,
                 dist::RustcDocs,
                 dist::JsonDocs,
@@ -995,7 +627,7 @@ impl<'a> Builder<'a> {
                 dist::GccDev,
                 dist::Gcc
             ),
-            Kind::Install => describe!(
+            CargoSubcommand::Install => describe!(
                 install::Docs,
                 install::Std,
                 // During the Rust compiler (rustc) installation process, we copy the entire sysroot binary
@@ -1014,7 +646,7 @@ impl<'a> Builder<'a> {
                 install::RustcCodegenCranelift,
                 install::LlvmBitcodeLinker
             ),
-            Kind::Run => describe!(
+            CargoSubcommand::Run => describe!(
                 run::BuildManifest,
                 run::BumpStage0,
                 run::ReplaceVersionPlaceholder,
@@ -1030,56 +662,22 @@ impl<'a> Builder<'a> {
                 run::Rustfmt,
                 run::GenerateHelp,
             ),
-            Kind::Setup => {
+            CargoSubcommand::Setup => {
                 describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)
             }
-            Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
-            Kind::Vendor => describe!(vendor::Vendor),
+            CargoSubcommand::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
+            CargoSubcommand::Vendor => describe!(vendor::Vendor),
             // special-cased in Build::build()
-            Kind::Format | Kind::Perf => vec![],
-            Kind::MiriTest | Kind::MiriSetup => unreachable!(),
+            CargoSubcommand::Format | CargoSubcommand::Perf => vec![],
+            CargoSubcommand::MiriTest | CargoSubcommand::MiriSetup => unreachable!(),
         }
     }
 
-    pub fn get_help(build: &Build, kind: Kind) -> Option<String> {
-        let step_descriptions = Builder::get_step_descriptions(kind);
-        if step_descriptions.is_empty() {
-            return None;
-        }
-
-        let builder = Self::new_internal(build, kind, vec![]);
-        let builder = &builder;
-        // The "build" kind here is just a placeholder, it will be replaced with something else in
-        // the following statement.
-        let mut should_run = ShouldRun::new(builder, Kind::Build);
-        for desc in step_descriptions {
-            should_run.kind = desc.kind;
-            should_run = (desc.should_run)(should_run);
-        }
-        let mut help = String::from("Available paths:\n");
-        let mut add_path = |path: &Path| {
-            t!(write!(help, "    ./x.py {} {}\n", kind.as_str(), path.display()));
-        };
-        for pathset in should_run.paths {
-            match pathset {
-                PathSet::Set(set) => {
-                    for path in set {
-                        add_path(&path.path);
-                    }
-                }
-                PathSet::Suite(path) => {
-                    add_path(&path.path.join("..."));
-                }
-            }
-        }
-        Some(help)
-    }
-
-    fn new_internal(build: &Build, kind: Kind, paths: Vec<PathBuf>) -> Builder<'_> {
+    fn new_internal(build: &Build, cargo_cmd: CargoSubcommand, paths: Vec<PathBuf>) -> Builder<'_> {
         Builder {
             build,
             top_stage: build.config.stage,
-            kind,
+            cargo_cmd,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
             time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
@@ -1091,38 +689,38 @@ impl<'a> Builder<'a> {
 
     pub fn new(build: &Build) -> Builder<'_> {
         let paths = &build.config.paths;
-        let (kind, paths) = match build.config.cmd {
-            Subcommand::Build { .. } => (Kind::Build, &paths[..]),
-            Subcommand::Check { .. } => (Kind::Check, &paths[..]),
-            Subcommand::Clippy { .. } => (Kind::Clippy, &paths[..]),
-            Subcommand::Fix => (Kind::Fix, &paths[..]),
-            Subcommand::Doc { .. } => (Kind::Doc, &paths[..]),
-            Subcommand::Test { .. } => (Kind::Test, &paths[..]),
-            Subcommand::Miri { .. } => (Kind::Miri, &paths[..]),
-            Subcommand::Bench { .. } => (Kind::Bench, &paths[..]),
-            Subcommand::Dist => (Kind::Dist, &paths[..]),
-            Subcommand::Install => (Kind::Install, &paths[..]),
-            Subcommand::Run { .. } => (Kind::Run, &paths[..]),
-            Subcommand::Clean { .. } => (Kind::Clean, &paths[..]),
-            Subcommand::Format { .. } => (Kind::Format, &[][..]),
+        let (cargo_cmd, paths) = match build.config.cmd {
+            Subcommand::Build { .. } => (CargoSubcommand::Build, &paths[..]),
+            Subcommand::Check { .. } => (CargoSubcommand::Check, &paths[..]),
+            Subcommand::Clippy { .. } => (CargoSubcommand::Clippy, &paths[..]),
+            Subcommand::Fix => (CargoSubcommand::Fix, &paths[..]),
+            Subcommand::Doc { .. } => (CargoSubcommand::Doc, &paths[..]),
+            Subcommand::Test { .. } => (CargoSubcommand::Test, &paths[..]),
+            Subcommand::Miri { .. } => (CargoSubcommand::Miri, &paths[..]),
+            Subcommand::Bench { .. } => (CargoSubcommand::Bench, &paths[..]),
+            Subcommand::Dist => (CargoSubcommand::Dist, &paths[..]),
+            Subcommand::Install => (CargoSubcommand::Install, &paths[..]),
+            Subcommand::Run { .. } => (CargoSubcommand::Run, &paths[..]),
+            Subcommand::Clean { .. } => (CargoSubcommand::Clean, &paths[..]),
+            Subcommand::Format { .. } => (CargoSubcommand::Format, &[][..]),
             Subcommand::Setup { profile: ref path } => (
-                Kind::Setup,
+                CargoSubcommand::Setup,
                 path.as_ref().map_or([].as_slice(), |path| std::slice::from_ref(path)),
             ),
-            Subcommand::Vendor { .. } => (Kind::Vendor, &paths[..]),
-            Subcommand::Perf { .. } => (Kind::Perf, &paths[..]),
+            Subcommand::Vendor { .. } => (CargoSubcommand::Vendor, &paths[..]),
+            Subcommand::Perf { .. } => (CargoSubcommand::Perf, &paths[..]),
         };
 
-        Self::new_internal(build, kind, paths.to_owned())
+        Self::new_internal(build, cargo_cmd, paths.to_owned())
     }
 
     pub fn execute_cli(&self) {
-        self.run_step_descriptions(&Builder::get_step_descriptions(self.kind), &self.paths);
+        self.run_step_descriptions(&Builder::get_step_descriptions(self.cargo_cmd), &self.paths);
     }
 
     /// Run all default documentation steps to build documentation.
     pub fn run_default_doc_steps(&self) {
-        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
+        self.run_step_descriptions(&Builder::get_step_descriptions(CargoSubcommand::Doc), &[]);
     }
 
     pub fn doc_rust_lang_org_channel(&self) -> String {
@@ -1138,7 +736,7 @@ impl<'a> Builder<'a> {
     }
 
     fn run_step_descriptions(&self, v: &[StepDescription], paths: &[PathBuf]) {
-        cli_paths::match_paths_to_steps_and_run(self, v, paths);
+        selectors::match_paths_to_steps_and_run(self, v, paths);
     }
 
     /// Returns if `std` should be statically linked into `rustc_driver`.
@@ -1508,7 +1106,10 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     /// **WARNING**: This actually returns the **HOST** LLVM config, not LLVM config for the given
     /// *target*.
     pub fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
-        if self.config.llvm_enabled(target) && self.kind != Kind::Check && !self.config.dry_run() {
+        if self.config.llvm_enabled(target)
+            && self.cargo_cmd != CargoSubcommand::Check
+            && !self.config.dry_run()
+        {
             let llvm::LlvmResult { host_llvm_config, .. } = self.ensure(llvm::Llvm { target });
             if host_llvm_config.is_file() {
                 return Some(host_llvm_config);
@@ -1622,49 +1223,8 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         out
     }
 
-    /// Ensure that a given step is built *only if it's supposed to be built by default*, returning
-    /// its output. This will cache the step, so it's safe (and good!) to call this as often as
-    /// needed to ensure that all dependencies are build.
-    pub(crate) fn ensure_if_default<T, S: Step<Output = T>>(
-        &'a self,
-        step: S,
-        kind: Kind,
-    ) -> Option<S::Output> {
-        let desc = StepDescription::from::<S>(kind);
-        let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
-
-        // Avoid running steps contained in --skip
-        for pathset in &should_run.paths {
-            if desc.is_excluded(self, pathset) {
-                return None;
-            }
-        }
-
-        // Only execute if it's supposed to run as default
-        if (desc.is_default_step_fn)(self) { Some(self.ensure(step)) } else { None }
-    }
-
-    /// Checks if any of the "should_run" paths is in the `Builder` paths.
-    pub(crate) fn was_invoked_explicitly<S: Step>(&'a self, kind: Kind) -> bool {
-        let desc = StepDescription::from::<S>(kind);
-        let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
-
-        for path in &self.paths {
-            if should_run.paths.iter().any(|s| s.has(path, desc.kind))
-                && !desc.is_excluded(
-                    self,
-                    &PathSet::Suite(TaskPath { path: path.clone(), kind: Some(desc.kind) }),
-                )
-            {
-                return true;
-            }
-        }
-
-        false
-    }
-
     pub(crate) fn maybe_open_in_browser<S: Step>(&self, path: impl AsRef<Path>) {
-        if self.was_invoked_explicitly::<S>(Kind::Doc) {
+        if self.was_invoked_explicitly::<S>(CargoSubcommand::Doc) {
             self.open_in_browser(path);
         } else {
             self.info(&format!("Doc path: {}", path.as_ref().display()));

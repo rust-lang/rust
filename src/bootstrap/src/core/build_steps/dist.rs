@@ -29,7 +29,7 @@ use crate::core::build_steps::tool::{
 };
 use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor};
 use crate::core::build_steps::{compile, llvm};
-use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
+use crate::core::builder::{Builder, CargoSubcommand, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::{GccCiMode, TargetSelection};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::channel::{self, Info};
@@ -536,7 +536,7 @@ impl Step for Rustc {
 
             if let Some(ra_proc_macro_srv) = builder.ensure_if_default(
                 tool::RustAnalyzerProcMacroSrv::from_compilers(compilers),
-                builder.kind,
+                builder.cargo_cmd,
             ) {
                 let dst = image.join("libexec");
                 builder.install(&ra_proc_macro_srv.tool_path, &dst, FileType::Executable);
@@ -1854,7 +1854,8 @@ impl Step for Extended {
         let mut built_tools = HashSet::new();
         macro_rules! add_component {
             ($name:expr => $step:expr) => {
-                if let Some(Some(tarball)) = builder.ensure_if_default($step, Kind::Dist) {
+                if let Some(Some(tarball)) = builder.ensure_if_default($step, CargoSubcommand::Dist)
+                {
                     tarballs.push(tarball);
                     built_tools.insert($name);
                 }

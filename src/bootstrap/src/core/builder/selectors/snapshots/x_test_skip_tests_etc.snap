@@ -1,0 +1,140 @@
+---
+source: src/bootstrap/src/core/builder/selectors/tests.rs
+expression: test --skip=tests --skip=coverage-map --skip=coverage-run --skip=library --skip=tidyselftest
+---
+[Test] test::Tidy
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/tools/tidy})
+[Test] test::CodegenCranelift
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::compiler/rustc_codegen_cranelift})
+[Test] test::CodegenGCC
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::compiler/rustc_codegen_gcc})
+[Test] test::CrateLibrustc
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::compiler})
+    - Alias({test::compiler/rustc})
+    - Alias({test::compiler/rustc_abi})
+    - Alias({test::compiler/rustc_arena})
+    - Alias({test::compiler/rustc_ast})
+    - Alias({test::compiler/rustc_ast_ir})
+    - Alias({test::compiler/rustc_ast_lowering})
+    - Alias({test::compiler/rustc_ast_passes})
+    - Alias({test::compiler/rustc_ast_pretty})
+    - Alias({test::compiler/rustc_attr_parsing})
+    - Alias({test::compiler/rustc_baked_icu_data})
+    - Alias({test::compiler/rustc_borrowck})
+    - Alias({test::compiler/rustc_builtin_macros})
+    - Alias({test::compiler/rustc_codegen_llvm})
+    - Alias({test::compiler/rustc_codegen_ssa})
+    - Alias({test::compiler/rustc_const_eval})
+    - Alias({test::compiler/rustc_data_structures})
+    - Alias({test::compiler/rustc_driver})
+    - Alias({test::compiler/rustc_driver_impl})
+    - Alias({test::compiler/rustc_error_codes})
+    - Alias({test::compiler/rustc_error_messages})
+    - Alias({test::compiler/rustc_errors})
+    - Alias({test::compiler/rustc_expand})
+    - Alias({test::compiler/rustc_feature})
+    - Alias({test::compiler/rustc_fluent_macro})
+    - Alias({test::compiler/rustc_fs_util})
+    - Alias({test::compiler/rustc_graphviz})
+    - Alias({test::compiler/rustc_hashes})
+    - Alias({test::compiler/rustc_hir})
+    - Alias({test::compiler/rustc_hir_analysis})
+    - Alias({test::compiler/rustc_hir_id})
+    - Alias({test::compiler/rustc_hir_pretty})
+    - Alias({test::compiler/rustc_hir_typeck})
+    - Alias({test::compiler/rustc_incremental})
+    - Alias({test::compiler/rustc_index})
+    - Alias({test::compiler/rustc_index_macros})
+    - Alias({test::compiler/rustc_infer})
+    - Alias({test::compiler/rustc_interface})
+    - Alias({test::compiler/rustc_lexer})
+    - Alias({test::compiler/rustc_lint})
+    - Alias({test::compiler/rustc_lint_defs})
+    - Alias({test::compiler/rustc_llvm})
+    - Alias({test::compiler/rustc_log})
+    - Alias({test::compiler/rustc_macros})
+    - Alias({test::compiler/rustc_metadata})
+    - Alias({test::compiler/rustc_middle})
+    - Alias({test::compiler/rustc_mir_build})
+    - Alias({test::compiler/rustc_mir_dataflow})
+    - Alias({test::compiler/rustc_mir_transform})
+    - Alias({test::compiler/rustc_monomorphize})
+    - Alias({test::compiler/rustc_next_trait_solver})
+    - Alias({test::compiler/rustc_parse})
+    - Alias({test::compiler/rustc_parse_format})
+    - Alias({test::compiler/rustc_passes})
+    - Alias({test::compiler/rustc_pattern_analysis})
+    - Alias({test::compiler/rustc_privacy})
+    - Alias({test::compiler/rustc_proc_macro})
+    - Alias({test::compiler/rustc_public})
+    - Alias({test::compiler/rustc_public_bridge})
+    - Alias({test::compiler/rustc_query_impl})
+    - Alias({test::compiler/rustc_query_system})
+    - Alias({test::compiler/rustc_resolve})
+    - Alias({test::compiler/rustc_sanitizers})
+    - Alias({test::compiler/rustc_serialize})
+    - Alias({test::compiler/rustc_session})
+    - Alias({test::compiler/rustc_span})
+    - Alias({test::compiler/rustc_symbol_mangling})
+    - Alias({test::compiler/rustc_target})
+    - Alias({test::compiler/rustc_thread_pool})
+    - Alias({test::compiler/rustc_trait_selection})
+    - Alias({test::compiler/rustc_traits})
+    - Alias({test::compiler/rustc_transmute})
+    - Alias({test::compiler/rustc_ty_utils})
+    - Alias({test::compiler/rustc_type_ir})
+    - Alias({test::compiler/rustc_type_ir_macros})
+    - Alias({test::compiler/rustc_windows_rc})
+[Test] test::CrateRustdoc
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/librustdoc})
+    - Alias({test::src/tools/rustdoc})
+[Test] test::CrateRustdocJsonTypes
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/rustdoc-json-types})
+[Test] test::CrateBootstrap
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/tools/coverage-dump})
+    - Alias({test::src/tools/jsondoclint})
+    - Alias({test::src/tools/replace-version-placeholder})
+[Test] test::RemoteTestClientTests
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/tools/remote-test-client})
+[Test] test::Linkcheck
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/tools/linkchecker})
+[Test] test::TierCheck
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/tools/tier-check})
+[Test] test::RustAnalyzer
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/tools/rust-analyzer})
+[Test] test::ErrorIndex
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::error-index})
+    - Alias({test::src/tools/error_index_generator})
+[Test] test::RustdocBook
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/doc/rustdoc})
+[Test] test::UnstableBook
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/doc/unstable-book})
+[Test] test::RustcBook
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/doc/rustc})
+[Test] test::RustdocTheme
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/tools/rustdoc-themes})
+[Test] test::HtmlCheck
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/tools/html-checker})
+[Test] test::RustInstaller
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/tools/rust-installer})
+[Test] test::TestFloatParse
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::src/tools/test-float-parse})

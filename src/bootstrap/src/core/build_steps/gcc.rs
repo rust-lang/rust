@@ -13,7 +13,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use crate::core::builder::{Builder, Cargo, Kind, RunConfig, ShouldRun, Step};
+use crate::core::builder::{Builder, Cargo, CargoSubcommand, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
@@ -100,7 +100,7 @@ impl Step for Gcc {
             GccBuildStatus::ShouldBuild(m) => m,
         };
 
-        let action = Kind::Build.description();
+        let action = CargoSubcommand::Build.description();
         let msg = format!("{action} GCC for {target_pair}");
         let _guard = builder.group(&msg);
         t!(metadata.stamp.remove());

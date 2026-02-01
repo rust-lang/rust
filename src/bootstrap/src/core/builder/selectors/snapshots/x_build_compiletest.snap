@@ -1,0 +1,7 @@
+---
+source: src/bootstrap/src/core/builder/selectors/tests.rs
+expression: build compiletest
+---
+[Build] tool::Compiletest
+    targets: [aarch64-unknown-linux-gnu]
+    - Alias({build::src/tools/compiletest})

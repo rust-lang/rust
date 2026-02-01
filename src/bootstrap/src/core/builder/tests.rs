@@ -1,4 +1,5 @@
 use std::env::VarError;
+use std::fmt::Write;
 use std::{panic, thread};
 
 use build_helper::stage0_parser::parse_stage0_file;
@@ -7,7 +8,7 @@ use llvm::prebuilt_llvm_config;
 use super::*;
 use crate::Flags;
 use crate::core::build_steps::doc::DocumentationFormat;
-use crate::core::builder::cli_paths::PATH_REMAP;
+use crate::core::builder::selectors::{CLIStepPath, PATH_REMAP, StepSelection};
 use crate::core::config::Config;
 use crate::utils::cache::ExecutedStep;
 use crate::utils::helpers::get_host_target;
@@ -78,52 +79,6 @@ fn test_valid() {
 fn test_invalid() {
     // make sure that invalid paths are caught, even when combined with valid paths
     check_cli(["test", "library/std", "x"]);
-}
-
-#[test]
-fn test_intersection() {
-    let set = |paths: &[&str]| {
-        PathSet::Set(paths.into_iter().map(|p| TaskPath { path: p.into(), kind: None }).collect())
-    };
-    let library_set = set(&["library/core", "library/alloc", "library/std"]);
-    let mut command_paths = vec![
-        CLIStepPath::from(PathBuf::from("library/core")),
-        CLIStepPath::from(PathBuf::from("library/alloc")),
-        CLIStepPath::from(PathBuf::from("library/stdarch")),
-    ];
-    let subset = library_set.intersection_removing_matches(&mut command_paths, Kind::Build);
-    assert_eq!(subset, set(&["library/core", "library/alloc"]),);
-    assert_eq!(
-        command_paths,
-        vec![
-            CLIStepPath::from(PathBuf::from("library/core")).will_be_executed(true),
-            CLIStepPath::from(PathBuf::from("library/alloc")).will_be_executed(true),
-            CLIStepPath::from(PathBuf::from("library/stdarch")).will_be_executed(false),
-        ]
-    );
-}
-
-#[test]
-fn test_resolve_parent_and_subpaths() {
-    let set = |paths: &[&str]| {
-        PathSet::Set(paths.into_iter().map(|p| TaskPath { path: p.into(), kind: None }).collect())
-    };
-
-    let mut command_paths = vec![
-        CLIStepPath::from(PathBuf::from("src/tools/miri")),
-        CLIStepPath::from(PathBuf::from("src/tools/miri/cargo-miri")),
-    ];
-
-    let library_set = set(&["src/tools/miri", "src/tools/miri/cargo-miri"]);
-    library_set.intersection_removing_matches(&mut command_paths, Kind::Build);
-
-    assert_eq!(
-        command_paths,
-        vec![
-            CLIStepPath::from(PathBuf::from("src/tools/miri")).will_be_executed(true),
-            CLIStepPath::from(PathBuf::from("src/tools/miri/cargo-miri")).will_be_executed(true),
-        ]
-    );
 }
 
 #[test]
@@ -513,7 +468,7 @@ mod snapshot {
         RenderConfig, TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3, configure, first, host_target,
         render_steps, run_build,
     };
-    use crate::core::builder::{Builder, Kind, StepDescription, StepMetadata};
+    use crate::core::builder::{Builder, CargoSubcommand, StepDescription, StepMetadata};
     use crate::core::config::TargetSelection;
     use crate::core::config::toml::target::{
         DefaultLinuxLinkerOverride, with_default_linux_linker_overrides,
@@ -3032,8 +2987,8 @@ impl ExecutedSteps {
 }
 
 fn fuzzy_metadata_eq(executed: &StepMetadata, to_match: &StepMetadata) -> bool {
-    let StepMetadata { name, kind, target, built_by: _, stage: _, metadata } = executed;
-    *name == to_match.name && *kind == to_match.kind && *target == to_match.target
+    let StepMetadata { name, cargo_cmd: kind, target, built_by: _, stage: _, metadata } = executed;
+    *name == to_match.name && *kind == to_match.cargo_cmd && *target == to_match.target
 }
 
 impl<S: Step> From<S> for StepMetadata {
@@ -3097,7 +3052,7 @@ fn render_steps(steps: &[ExecutedStep], config: RenderConfig) -> String {
 }
 
 fn render_metadata(metadata: &StepMetadata, config: &RenderConfig) -> String {
-    let mut record = format!("[{}] ", metadata.kind.as_str());
+    let mut record = format!("[{}] ", metadata.cargo_cmd.as_str());
     if let Some(compiler) = metadata.built_by {
         write!(record, "{} -> ", render_compiler(compiler, config));
     }

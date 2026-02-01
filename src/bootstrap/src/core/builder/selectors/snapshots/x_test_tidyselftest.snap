@@ -1,0 +1,7 @@
+---
+source: src/bootstrap/src/core/builder/selectors/tests.rs
+expression: test tidyselftest
+---
+[Test] test::CrateBootstrap
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({test::tidyselftest})

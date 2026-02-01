@@ -1,0 +1,16 @@
+---
+source: src/bootstrap/src/core/builder/selectors/tests.rs
+expression: install
+---
+[Install] install::Docs
+    targets: [aarch64-unknown-linux-gnu]
+    - Alias({install::src/doc})
+[Install] install::Std
+    targets: [aarch64-unknown-linux-gnu]
+    - Alias({install::library/std})
+[Install] install::Rustc
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({install::compiler/rustc})
+[Install] install::LlvmTools
+    targets: [x86_64-unknown-linux-gnu]
+    - Alias({install::llvm-tools})

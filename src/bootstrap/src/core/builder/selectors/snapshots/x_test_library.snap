@@ -1,0 +1,20 @@
+---
+source: src/bootstrap/src/core/builder/selectors/tests.rs
+expression: test library
+---
+[Test] test::Crate
+    targets: [aarch64-unknown-linux-gnu]
+    - Alias({test::library/alloc})
+    - Alias({test::library/alloctests})
+    - Alias({test::library/compiler-builtins/compiler-builtins})
+    - Alias({test::library/core})
+    - Alias({test::library/coretests})
+    - Alias({test::library/panic_abort})
+    - Alias({test::library/panic_unwind})
+    - Alias({test::library/proc_macro})
+    - Alias({test::library/rustc-std-workspace-core})
+    - Alias({test::library/std})
+    - Alias({test::library/std_detect})
+    - Alias({test::library/sysroot})
+    - Alias({test::library/test})
+    - Alias({test::library/unwind})

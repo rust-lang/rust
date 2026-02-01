@@ -1,0 +1,21 @@
+---
+source: src/bootstrap/src/core/builder/selectors/tests.rs
+expression: check library
+---
+[Check] check::Std
+    targets: [aarch64-unknown-linux-gnu]
+    - Alias({check::library})
+    - Alias({check::library/alloc})
+    - Alias({check::library/alloctests})
+    - Alias({check::library/compiler-builtins/compiler-builtins})
+    - Alias({check::library/core})
+    - Alias({check::library/coretests})
+    - Alias({check::library/panic_abort})
+    - Alias({check::library/panic_unwind})
+    - Alias({check::library/proc_macro})
+    - Alias({check::library/rustc-std-workspace-core})
+    - Alias({check::library/std})
+    - Alias({check::library/std_detect})
+    - Alias({check::library/sysroot})
+    - Alias({check::library/test})
+    - Alias({check::library/unwind})

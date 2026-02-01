@@ -34,7 +34,7 @@ use utils::channel::GitInfo;
 use utils::exec::ExecutionContext;
 
 use crate::core::builder;
-use crate::core::builder::Kind;
+use crate::core::builder::CargoSubcommand;
 use crate::core::config::{BootstrapOverrideLld, DryRun, LlvmLibunwind, TargetSelection, flags};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo};
@@ -42,9 +42,9 @@ use crate::utils::helpers::{self, dir_is_empty, exe, libdir, set_file_times, spl
 mod core;
 mod utils;
 
-pub use core::builder::PathSet;
 #[cfg(feature = "tracing")]
 pub use core::builder::STEP_SPAN_TARGET;
+pub use core::builder::StepSelectors;
 pub use core::config::flags::{Flags, Subcommand};
 pub use core::config::{ChangeId, Config};
 
@@ -854,7 +854,12 @@ impl Build {
     }
 
     /// Gets the space-separated set of activated features for the compiler.
-    fn rustc_features(&self, kind: Kind, target: TargetSelection, crates: &[String]) -> String {
+    fn rustc_features(
+        &self,
+        cargo_subcommand: CargoSubcommand,
+        target: TargetSelection,
+        crates: &[String],
+    ) -> String {
         let possible_features_by_crates: HashSet<_> = crates
             .iter()
             .flat_map(|krate| &self.crates[krate].features)
@@ -867,7 +872,9 @@ impl Build {
         if self.config.jemalloc(target) && check("jemalloc") {
             features.push("jemalloc");
         }
-        if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
+        if (self.config.llvm_enabled(target) || cargo_subcommand == CargoSubcommand::Check)
+            && check("llvm")
+        {
             features.push("llvm");
         }
         if self.config.llvm_enzyme {
@@ -880,7 +887,7 @@ impl Build {
         if self.config.rust_randomize_layout && check("rustc_randomized_layouts") {
             features.push("rustc_randomized_layouts");
         }
-        if self.config.compile_time_deps && kind == Kind::Check {
+        if self.config.compile_time_deps && cargo_subcommand == CargoSubcommand::Check {
             features.push("check_only");
         }
 
@@ -1122,7 +1129,7 @@ impl Build {
     #[track_caller]
     fn msg(
         &self,
-        action: impl Into<Kind>,
+        action: impl Into<CargoSubcommand>,
         what: impl Display,
         mode: impl Into<Option<Mode>>,
         target_and_stage: impl Into<TargetAndStage>,
@@ -1131,7 +1138,7 @@ impl Build {
         let target_and_stage = target_and_stage.into();
         let action = action.into();
         assert!(
-            action != Kind::Test,
+            action != CargoSubcommand::Test,
             "Please use `Build::msg_test` instead of `Build::msg(Kind::Test)`"
         );
 
@@ -1183,7 +1190,7 @@ impl Build {
         target: TargetSelection,
         stage: u32,
     ) -> Option<gha::Group> {
-        let action = Kind::Test.description();
+        let action = CargoSubcommand::Test.description();
         let msg = format!("{action} stage{stage} {what} ({target})");
         self.group(&msg)
     }
@@ -1195,7 +1202,7 @@ impl Build {
     #[track_caller]
     fn msg_unstaged(
         &self,
-        action: impl Into<Kind>,
+        action: impl Into<CargoSubcommand>,
         what: impl Display,
         target: TargetSelection,
     ) -> Option<gha::Group> {

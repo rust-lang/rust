@@ -16,7 +16,8 @@ use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, SourceType, Tool, prepare_tool_cargo,
 };
 use crate::core::builder::{
-    self, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
+    self, Builder, CargoSubcommand, Compiler, RunConfig, ShouldRun, Step, StepMetadata,
+    crate_description,
 };
 use crate::core::config::{Config, TargetSelection};
 use crate::helpers::{submodule_path_of, symlink_dir, t, up_to_date};
@@ -279,7 +280,8 @@ impl Step for TheBook {
         let shared_assets = builder.ensure(SharedAssets { target });
 
         // build the redirect pages
-        let _guard = builder.msg(Kind::Doc, "book redirect pages", None, build_compiler, target);
+        let _guard =
+            builder.msg(CargoSubcommand::Doc, "book redirect pages", None, build_compiler, target);
         if builder.config.dry_run() {
             return;
         }
@@ -374,7 +376,7 @@ impl Step for Standalone {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let build_compiler = self.build_compiler;
-        let _guard = builder.msg(Kind::Doc, "standalone", None, build_compiler, target);
+        let _guard = builder.msg(CargoSubcommand::Doc, "standalone", None, build_compiler, target);
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
 
@@ -436,7 +438,8 @@ impl Step for Standalone {
 
         // We open doc/index.html as the default if invoked as `x.py doc --open`
         // with no particular explicit doc requested (e.g. library/core).
-        if builder.paths.is_empty() || builder.was_invoked_explicitly::<Self>(Kind::Doc) {
+        if builder.paths.is_empty() || builder.was_invoked_explicitly::<Self>(CargoSubcommand::Doc)
+        {
             let index = out.join("index.html");
             builder.open_in_browser(index);
         }
@@ -483,7 +486,7 @@ impl Step for Releases {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let build_compiler = self.build_compiler;
-        let _guard = builder.msg(Kind::Doc, "releases", None, build_compiler, target);
+        let _guard = builder.msg(CargoSubcommand::Doc, "releases", None, build_compiler, target);
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
 
@@ -540,7 +543,7 @@ impl Step for Releases {
 
         // We open doc/RELEASES.html as the default if invoked as `x.py doc --open RELEASES.md`
         // with no particular explicit doc requested (e.g. library/core).
-        if builder.was_invoked_explicitly::<Self>(Kind::Doc) {
+        if builder.was_invoked_explicitly::<Self>(CargoSubcommand::Doc) {
             builder.open_in_browser(&html);
         }
     }
@@ -798,7 +801,7 @@ fn doc_std(
         Mode::Std,
         SourceType::InTree,
         target,
-        Kind::Doc,
+        CargoSubcommand::Doc,
     );
 
     compile::std_cargo(builder, target, &mut cargo, requested_crates);
@@ -823,7 +826,7 @@ fn doc_std(
 
     let description =
         format!("library{} in {} format", crate_description(requested_crates), format.as_str());
-    let _guard = builder.msg(Kind::Doc, description, Mode::Std, build_compiler, target);
+    let _guard = builder.msg(CargoSubcommand::Doc, description, Mode::Std, build_compiler, target);
 
     cargo.into_cmd().run(builder);
     builder.cp_link_r(&out_dir, out);
@@ -905,7 +908,7 @@ impl Step for Rustc {
         builder.std(build_compiler, builder.config.host_target);
 
         let _guard = builder.msg(
-            Kind::Doc,
+            CargoSubcommand::Doc,
             format!("compiler{}", crate_description(&self.crates)),
             Mode::Rustc,
             build_compiler,
@@ -919,7 +922,7 @@ impl Step for Rustc {
             Mode::Rustc,
             SourceType::InTree,
             target,
-            Kind::Doc,
+            CargoSubcommand::Doc,
         );
 
         cargo.rustdocflag("--document-private-items");
@@ -1083,7 +1086,7 @@ macro_rules! tool_doc {
                     build_compiler,
                     mode,
                     target,
-                    Kind::Doc,
+                    CargoSubcommand::Doc,
                     $path,
                     source_type,
                     &[],
@@ -1128,7 +1131,7 @@ macro_rules! tool_doc {
                 let proc_macro_out_dir = builder.stage_out(build_compiler, mode).join("doc");
                 symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
 
-                let _guard = builder.msg(Kind::Doc, stringify!($tool).to_lowercase(), None, build_compiler, target);
+                let _guard = builder.msg(CargoSubcommand::Doc, stringify!($tool).to_lowercase(), None, build_compiler, target);
                 cargo.into_cmd().run(builder);
 
                 if !builder.config.dry_run() {
@@ -1417,7 +1420,7 @@ impl Step for RustcBook {
         // path.
         builder.add_rustc_lib_path(self.build_compiler, &mut cmd);
         let doc_generator_guard =
-            builder.msg(Kind::Run, "lint-docs", None, self.build_compiler, self.target);
+            builder.msg(CargoSubcommand::Run, "lint-docs", None, self.build_compiler, self.target);
         cmd.run(builder);
         drop(doc_generator_guard);
 
