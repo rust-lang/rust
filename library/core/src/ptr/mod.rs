@@ -1543,7 +1543,7 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
     // SAFETY: the caller must guarantee that `dst` is valid to be
     // cast to a mutable reference (valid for writes, aligned, initialized),
     // and cannot overlap `src` since `dst` must point to a distinct
-    // allocation.
+    // allocation. We are excluding null (with a ZST check) before creating a reference.
     unsafe {
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
@@ -1554,6 +1554,13 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
                 is_zst: bool = T::IS_ZST,
             ) => ub_checks::maybe_is_aligned_and_not_null(addr, align, is_zst)
         );
+        if T::IS_ZST {
+            // `dst` may be valid for read and writes while also being null, in which case we cannot
+            // call `mem::replace`. However, we also don't have to actually do anything since there
+            // isn't actually any data to be copied anyway. All values of type `T` are
+            // bit-identical, so we can just return `src`` here.
+            return src;
+        }
         mem::replace(&mut *dst, src)
     }
 }
