@@ -729,7 +729,7 @@ impl<'a> ExtCtxt<'a> {
         ty: Box<ast::Ty>,
         rhs: ast::ConstItemRhs,
     ) -> Box<ast::Item> {
-        let defaultness = ast::Defaultness::Final;
+        let defaultness = ast::Defaultness::Implicit;
         self.item(
             span,
             AttrVec::new(),

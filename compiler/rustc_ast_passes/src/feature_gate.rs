@@ -538,6 +538,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(frontmatter, "frontmatters are experimental");
     gate_all!(coroutines, "coroutine syntax is experimental");
     gate_all!(const_block_items, "const block items are experimental");
+    gate_all!(final_associated_functions, "`final` on trait functions is experimental");
 
     if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {

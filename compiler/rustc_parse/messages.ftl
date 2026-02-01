@@ -396,6 +396,10 @@ parse_inappropriate_default = {$article} {$descr} cannot be `default`
     .label = `default` because of this
     .note = only associated `fn`, `const`, and `type` items can be `default`
 
+parse_inappropriate_final = {$article} {$descr} cannot be `final`
+    .label = `final` because of this
+    .note = only associated functions in traits can be `final`
+
 parse_inclusive_range_extra_equals = unexpected `=` after inclusive range
     .suggestion_remove_eq = use `..=` instead
     .note = inclusive ranges end with a single equals sign (`..=`)

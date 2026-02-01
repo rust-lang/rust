@@ -329,7 +329,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
 
     let decl = ecx.fn_decl(ThinVec::new(), ast::FnRetTy::Ty(main_ret_ty));
     let sig = ast::FnSig { decl, header: ast::FnHeader::default(), span: sp };
-    let defaultness = ast::Defaultness::Final;
+    let defaultness = ast::Defaultness::Implicit;
 
     // Honor the reexport_test_harness_main attribute
     let main_ident = match cx.reexport_test_harness_main {

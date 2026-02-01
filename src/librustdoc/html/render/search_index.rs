@@ -1968,7 +1968,7 @@ pub(crate) fn get_function_type_for_search(
         clean::ForeignFunctionItem(ref f, _)
         | clean::FunctionItem(ref f)
         | clean::MethodItem(ref f, _)
-        | clean::RequiredMethodItem(ref f) => {
+        | clean::RequiredMethodItem(ref f, _) => {
             get_fn_inputs_and_outputs(f, tcx, impl_or_trait_generics, cache)
         }
         clean::ConstantItem(ref c) => make_nullary_fn(&c.type_),

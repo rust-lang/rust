@@ -296,7 +296,7 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
         MethodItem(m, _) => {
             ItemEnum::Function(from_clean_function(m, true, header.unwrap(), renderer))
         }
-        RequiredMethodItem(m) => {
+        RequiredMethodItem(m, _) => {
             ItemEnum::Function(from_clean_function(m, false, header.unwrap(), renderer))
         }
         ImplItem(i) => ItemEnum::Impl(i.into_json(renderer)),

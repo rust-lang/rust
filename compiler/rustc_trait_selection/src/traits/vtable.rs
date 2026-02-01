@@ -210,6 +210,11 @@ fn own_existential_vtable_entries_iter(
         debug!("own_existential_vtable_entry: trait_method={:?}", trait_method);
         let def_id = trait_method.def_id;
 
+        // Final methods should not be included in the vtable.
+        if trait_method.defaultness(tcx).is_final() {
+            return None;
+        }
+
         // Some methods cannot be called on an object; skip those.
         if !is_vtable_safe_method(tcx, trait_def_id, trait_method) {
             debug!("own_existential_vtable_entry: not vtable safe");
