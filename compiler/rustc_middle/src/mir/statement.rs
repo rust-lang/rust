@@ -441,7 +441,22 @@ impl<'tcx> Place<'tcx> {
     where
         D: ?Sized + HasLocalDecls<'tcx>,
     {
-        PlaceTy::from_ty(local_decls.local_decls()[local].ty).multi_projection_ty(tcx, projection)
+        // Start at the last field projection, since it contains full type info.
+        let (start, rest) = if let Some(idx) =
+            projection.iter().rev().position(|elem| matches!(elem, PlaceElem::Field(..)))
+        {
+            // Fixup for `idx` being in the reversed list.
+            let idx = projection.len() - 1 - idx;
+            // Get the field projection and the rest after it.
+            let Some((PlaceElem::Field(_idx, ty), rest)) = projection[idx..].split_first() else {
+                unreachable!()
+            };
+            (*ty, rest)
+        } else {
+            (local_decls.local_decls()[local].ty, projection)
+        };
+
+        PlaceTy::from_ty(start).multi_projection_ty(tcx, rest)
     }
 
     pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
