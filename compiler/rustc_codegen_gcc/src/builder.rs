@@ -1640,6 +1640,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
+    fn funclet_pad_value(&self, _funclet: &Funclet) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
     fn catch_pad(&mut self, _parent: RValue<'gcc>, _args: &[RValue<'gcc>]) -> Funclet {
         unimplemented!();
     }
@@ -1650,6 +1654,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _unwind: Option<Block<'gcc>>,
         _handlers: &[Block<'gcc>],
     ) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
+    fn wasm_get_exception_and_selector(&mut self, _funclet: &Funclet) {
         unimplemented!();
     }
 

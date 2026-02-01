@@ -1272,6 +1272,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         Funclet::new(ret.expect("LLVM does not have support for catchpad"))
     }
 
+    fn funclet_pad_value(&self, funclet: &Funclet<'ll>) -> &'ll Value {
+        funclet.cleanuppad()
+    }
+
     fn catch_switch(
         &mut self,
         parent: Option<&'ll Value>,
@@ -1294,6 +1298,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             }
         }
         ret
+    }
+
+    fn wasm_get_exception_and_selector(&mut self, funclet: &Funclet<'ll>) {
+        self.call_intrinsic("llvm.wasm.get.exception", &[], &[funclet.cleanuppad()]);
+        self.call_intrinsic("llvm.wasm.get.ehselector", &[], &[funclet.cleanuppad()]);
     }
 
     // Atomic Operations
