@@ -1449,6 +1449,60 @@ impl f128 {
     pub const fn algebraic_rem(self, rhs: f128) -> f128 {
         intrinsics::frem_algebraic(self, rhs)
     }
+
+    /// Fused multiply-add with relaxed precision semantics. Computes `(self * a) + b`,
+    /// non-deterministically executing either a fused multiply-add (one rounding) or
+    /// two separate operations with intermediate rounding.
+    ///
+    /// The operation may be fused if the code generator determines that the target
+    /// instruction set has support for a fused operation and that it is more efficient
+    /// than separate multiply and add instructions. Whether fusion occurs is unspecified
+    /// and may depend on optimization level and context.
+    ///
+    /// # Precision
+    ///
+    /// Unlike [`mul_add`](Self::mul_add), this operation does not guarantee which
+    /// rounding behavior will occur. It may perform either:
+    /// - A fused multiply-add with one rounding (more accurate)
+    /// - Separate multiply and add operations with two roundings (less accurate)
+    ///
+    /// Use this method when you need performance optimization but can tolerate
+    /// non-deterministic precision. If you require guaranteed precision, use
+    /// [`mul_add`](Self::mul_add) (guaranteed one rounding) or the separate
+    /// multiply and add operations (guaranteed two roundings).
+    ///
+    /// If you want even more optimization opportunities and aren't concerned about
+    /// error bounds, consider using the algebraic operations such as
+    /// [`algebraic_mul`](Self::algebraic_mul) and [`algebraic_add`](Self::algebraic_add).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// #![feature(float_mul_add_relaxed)]
+    /// # #[cfg(reliable_f128)] {
+    ///
+    /// let m = 10.0_f128;
+    /// let x = 4.0_f128;
+    /// let b = 60.0_f128;
+    ///
+    /// // The result may be computed as either:
+    /// // - (m * x) + b with fused rounding, or
+    /// // - (m * x) + b with separate roundings
+    /// let result = m.mul_add_relaxed(x, b);
+    ///
+    /// // For simple values, both approaches give the same result
+    /// assert_eq!(result, 100.0);
+    /// # }
+    /// ```
+    #[cfg(target_has_reliable_f128_math)]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_mul_add_relaxed", issue = "151770")]
+    #[rustc_const_unstable(feature = "float_mul_add_relaxed", issue = "151770")]
+    #[inline]
+    pub const fn mul_add_relaxed(self, a: f128, b: f128) -> f128 {
+        intrinsics::fmuladdf128(self, a, b)
+    }
 }
 
 // Functions in this module fall into `core_float_math`
