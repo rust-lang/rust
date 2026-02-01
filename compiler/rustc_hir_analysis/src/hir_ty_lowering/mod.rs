@@ -405,6 +405,11 @@ impl<'tcx> ForbidMCGParamUsesFolder<'tcx> {
                 diag.span_note(impl_.self_ty.span, "not a concrete type");
             }
         }
+        if self.tcx.features().min_generic_const_args()
+            && !self.tcx.features().opaque_generic_const_args()
+        {
+            diag.help("add `#![feature(opaque_generic_const_args)]` to allow generic expressions as the RHS of const items");
+        }
         diag.emit()
     }
 }

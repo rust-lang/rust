@@ -14,6 +14,7 @@ where
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
     ) -> QueryResult<I> {
+        // FIXME(ogca): should we also stop ogca normalization during coherence here or just in normalize_free_alias?
         if let Some(normalized_const) = self.evaluate_const(
             goal.param_env,
             ty::UnevaluatedConst::new(

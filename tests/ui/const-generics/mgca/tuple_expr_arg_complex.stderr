@@ -21,6 +21,8 @@ error: generic parameters may not be used in const operations
    |
 LL |     takes_nested_tuple::<{ (N, (N, const { N + 1 })) }>();
    |                                            ^
+   |
+   = help: add `#![feature(opaque_generic_const_args)]` to allow generic expressions as the RHS of const items
 
 error: aborting due to 4 previous errors
 

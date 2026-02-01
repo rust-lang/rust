@@ -200,3 +200,23 @@ impl<I: Interner> ValTreeKind<I> {
         }
     }
 }
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
+pub enum AnonConstKind {
+    /// `feature(generic_const_exprs)` anon consts are allowed to use arbitrary generic parameters in scope
+    GCE,
+    /// stable `min_const_generics` anon consts are not allowed to use any generic parameters
+    MCG,
+    /// `feature(opaque_generic_const_args)` anon consts are allowed to use arbitrary
+    /// generic parameters in scope, but only if they syntactically reference them.
+    OGCA,
+    /// anon consts used as the length of a repeat expr are syntactically allowed to use generic parameters
+    /// but must not depend on the actual instantiation. See #76200 for more information
+    RepeatExprCount,
+    /// anon consts outside of the type system, e.g. enum discriminants
+    NonTypeSystem,
+}
