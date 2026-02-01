@@ -2950,7 +2950,7 @@ fn prepare_cargo_test(
     // Pass in some standard flags then iterate over the graph we've discovered
     // in `cargo metadata` with the maps above and figure out what `-p`
     // arguments need to get passed.
-    if builder.kind == CargoSubcommand::Test && !builder.fail_fast {
+    if builder.cargo_cmd == CargoSubcommand::Test && !builder.fail_fast {
         cargo.arg("--no-fail-fast");
     }
 
@@ -2985,7 +2985,7 @@ fn prepare_cargo_test(
     //
     // We skip everything on Miri as then this overwrites the libdir set up
     // by `Cargo::new` and that actually makes things go wrong.
-    if builder.kind != CargoSubcommand::Miri {
+    if builder.cargo_cmd != CargoSubcommand::Miri {
         let mut dylib_paths = builder.rustc_lib_paths(compiler);
         dylib_paths.push(builder.sysroot_target_libdir(compiler, target));
         helpers::add_dylib_path(dylib_paths, &mut cargo);
@@ -3060,7 +3060,7 @@ impl Step for Crate {
         // See [field@compile::Std::force_recompile].
         builder.ensure(Std::new(build_compiler, build_compiler.host).force_recompile(true));
 
-        let mut cargo = if builder.kind == CargoSubcommand::Miri {
+        let mut cargo = if builder.cargo_cmd == CargoSubcommand::Miri {
             if builder.top_stage == 0 {
                 eprintln!("ERROR: `x.py miri` requires stage 1 or higher");
                 std::process::exit(1);
@@ -3107,13 +3107,13 @@ impl Step for Crate {
                 mode,
                 SourceType::InTree,
                 target,
-                builder.kind,
+                builder.cargo_cmd,
             )
         };
 
         match mode {
             Mode::Std => {
-                if builder.kind == CargoSubcommand::Miri {
+                if builder.cargo_cmd == CargoSubcommand::Miri {
                     // We can't use `std_cargo` as that uses `optimized-compiler-builtins` which
                     // needs host tools for the given target. This is similar to what `compile::Std`
                     // does when `is_for_mir_opt_tests` is true. There's probably a chance for
@@ -3197,7 +3197,7 @@ impl Step for CrateRustdoc {
             compiler,
             Mode::ToolRustcPrivate,
             target,
-            builder.kind,
+            builder.cargo_cmd,
             "src/tools/rustdoc",
             SourceType::InTree,
             &[],
@@ -3283,7 +3283,7 @@ impl Step for CrateRustdocJsonTypes {
             self.build_compiler,
             Mode::ToolTarget,
             target,
-            builder.kind,
+            builder.cargo_cmd,
             "src/rustdoc-json-types",
             SourceType::InTree,
             &[],

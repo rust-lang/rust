@@ -558,7 +558,7 @@ impl Step for CraneliftCodegenBackend {
             Mode::Codegen,
             SourceType::InTree,
             target,
-            builder.kind,
+            builder.cargo_cmd,
         );
 
         cargo
@@ -643,7 +643,7 @@ impl Step for GccCodegenBackend {
             Mode::Codegen,
             SourceType::InTree,
             target,
-            builder.kind,
+            builder.cargo_cmd,
         );
 
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
@@ -781,7 +781,7 @@ fn run_tool_check_step(
         build_compiler,
         mode,
         target,
-        builder.kind,
+        builder.cargo_cmd,
         path,
         // Currently, all of the tools that use this macro/function are in-tree.
         // If support for out-of-tree tools is re-added in the future, those
@@ -810,7 +810,7 @@ fn run_tool_check_step(
     let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, mode, target))
         .with_prefix(&format!("{display_name}-check"));
 
-    let _guard = builder.msg(builder.kind, display_name, mode, build_compiler, target);
+    let _guard = builder.msg(builder.cargo_cmd, display_name, mode, build_compiler, target);
     run_cargo(
         builder,
         cargo,

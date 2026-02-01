@@ -1214,7 +1214,7 @@ pub fn rustc_cargo(
 ) {
     cargo
         .arg("--features")
-        .arg(builder.rustc_features(builder.kind, target, crates))
+        .arg(builder.rustc_features(builder.cargo_cmd, target, crates))
         .arg("--manifest-path")
         .arg(builder.src.join("compiler/rustc/Cargo.toml"));
 
@@ -1398,7 +1398,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
             crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target, false)
                 .should_build();
 
-        let skip_llvm = (builder.kind == CargoSubcommand::Check) && building_llvm_is_expensive;
+        let skip_llvm = (builder.cargo_cmd == CargoSubcommand::Check) && building_llvm_is_expensive;
         if !skip_llvm {
             rustc_llvm_env(builder, cargo, target)
         }
@@ -2398,7 +2398,7 @@ impl Step for Assemble {
                 // Note: this would be also an issue for other rustc-private tools, but that is "solved"
                 // by check::Std being last in the list of checked things (see
                 // `Builder::get_step_descriptions`).
-                if builder.kind == CargoSubcommand::Check && builder.top_stage == 1 {
+                if builder.cargo_cmd == CargoSubcommand::Check && builder.top_stage == 1 {
                     continue;
                 }
 

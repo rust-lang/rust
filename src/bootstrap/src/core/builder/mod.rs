@@ -34,7 +34,7 @@ mod selectors;
 #[cfg(test)]
 mod tests;
 
-/// Builds and performs different [`Self::kind`]s of stuff and actions, taking
+/// Builds and performs different [`Self::cargo_cmd`]s of stuff and actions, taking
 /// into account build configuration from e.g. bootstrap.toml.
 pub struct Builder<'a> {
     /// Build configuration from e.g. bootstrap.toml.
@@ -46,7 +46,7 @@ pub struct Builder<'a> {
     pub top_stage: u32,
 
     /// What to build or what action to perform.
-    pub kind: CargoSubcommand,
+    pub cargo_cmd: CargoSubcommand,
 
     /// A cache of outputs of [`Step`]s so we can avoid running steps we already
     /// ran.
@@ -167,7 +167,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StepMetadata {
     name: String,
-    kind: CargoSubcommand,
+    cargo_cmd: CargoSubcommand,
     target: TargetSelection,
     built_by: Option<Compiler>,
     stage: Option<u32>,
@@ -204,8 +204,15 @@ impl StepMetadata {
         Self::new(name, target, CargoSubcommand::Run)
     }
 
-    fn new(name: &str, target: TargetSelection, kind: CargoSubcommand) -> Self {
-        Self { name: name.to_string(), kind, target, built_by: None, stage: None, metadata: None }
+    fn new(name: &str, target: TargetSelection, cargo_cmd: CargoSubcommand) -> Self {
+        Self {
+            name: name.to_string(),
+            cargo_cmd,
+            target,
+            built_by: None,
+            stage: None,
+            metadata: None,
+        }
     }
 
     pub fn built_by(mut self, compiler: Compiler) -> Self {
@@ -330,19 +337,19 @@ struct StepDescription {
     is_default_step_fn: fn(&Builder<'_>) -> bool,
     make_run: fn(RunConfig<'_>),
     name: &'static str,
-    kind: CargoSubcommand,
+    cargo_cmd: CargoSubcommand,
 }
 
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub struct StepSelection {
     pub path: PathBuf,
-    pub kind: Option<CargoSubcommand>,
+    pub cargo_cmd: Option<CargoSubcommand>,
 }
 
 impl Debug for StepSelection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(kind) = &self.kind {
-            write!(f, "{}::", kind.as_str())?;
+        if let Some(cmd) = &self.cargo_cmd {
+            write!(f, "{}::", cmd.as_str())?;
         }
         write!(f, "{}", self.path.display())
     }
@@ -376,9 +383,9 @@ impl StepSelectors {
         StepSelectors::Alias(BTreeSet::new())
     }
 
-    fn one<P: Into<PathBuf>>(path: P, kind: CargoSubcommand) -> StepSelectors {
+    fn one<P: Into<PathBuf>>(path: P, cargo_cmd: CargoSubcommand) -> StepSelectors {
         let mut set = BTreeSet::new();
-        set.insert(StepSelection { path: path.into(), kind: Some(kind) });
+        set.insert(StepSelection { path: path.into(), cargo_cmd: Some(cargo_cmd) });
         StepSelectors::Alias(set)
     }
 
@@ -395,7 +402,7 @@ impl StepSelectors {
             // This order is important for retro-compatibility, as `starts_with` was introduced later.
             p.path.ends_with(needle) || p.path.starts_with(needle)
         };
-        if let Some(p_kind) = &p.kind { check_path() && *p_kind == module } else { check_path() }
+        if let Some(p_kind) = &p.cargo_cmd { check_path() && *p_kind == module } else { check_path() }
     }
 
     /// Return all `TaskPath`s in `Self` that contain any of the `needles`, removing the
@@ -444,14 +451,14 @@ impl StepSelectors {
 }
 
 impl StepDescription {
-    fn from<S: Step>(kind: CargoSubcommand) -> StepDescription {
+    fn from<S: Step>(cargo_cmd: CargoSubcommand) -> StepDescription {
         StepDescription {
             is_host: S::IS_HOST,
             should_run: S::should_run,
             is_default_step_fn: S::is_default_step,
             make_run: S::make_run,
             name: std::any::type_name::<S>(),
-            kind,
+            cargo_cmd,
         }
     }
 
@@ -479,7 +486,7 @@ impl StepDescription {
     }
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &StepSelectors) -> bool {
-        if builder.config.skip.iter().any(|e| pathset.has(e, builder.kind)) {
+        if builder.config.skip.iter().any(|e| pathset.has(e, builder.cargo_cmd)) {
             if !matches!(builder.config.get_dry_run(), DryRun::SelfCheck) {
                 println!("Skipping {pathset:?} because it is excluded");
             }
@@ -508,15 +515,15 @@ impl StepDescription {
 /// correspond to.
 pub struct ShouldRun<'a> {
     pub builder: &'a Builder<'a>,
-    kind: CargoSubcommand,
+    cargo_cmd: CargoSubcommand,
 
     // use a BTreeSet to maintain sort order
     paths: BTreeSet<StepSelectors>,
 }
 
 impl<'a> ShouldRun<'a> {
-    fn new(builder: &'a Builder<'_>, kind: CargoSubcommand) -> ShouldRun<'a> {
-        ShouldRun { builder, kind, paths: BTreeSet::new() }
+    fn new(builder: &'a Builder<'_>, cargo_cmd: CargoSubcommand) -> ShouldRun<'a> {
+        ShouldRun { builder, cargo_cmd, paths: BTreeSet::new() }
     }
 
     /// Indicates it should run if the command-line selects the given crate or
@@ -536,7 +543,7 @@ impl<'a> ShouldRun<'a> {
     pub(crate) fn crates(mut self, crates: Vec<&Crate>) -> Self {
         for krate in crates {
             let path = krate.local_path(self.builder);
-            self.paths.insert(StepSelectors::one(path, self.kind));
+            self.paths.insert(StepSelectors::one(path, self.cargo_cmd));
         }
         self
     }
@@ -547,11 +554,11 @@ impl<'a> ShouldRun<'a> {
         // and `compiler` options would otherwise naively match with
         // `compiler` and `library` folders respectively.
         assert!(
-            self.kind == CargoSubcommand::Setup || !self.builder.src.join(alias).exists(),
+            self.cargo_cmd == CargoSubcommand::Setup || !self.builder.src.join(alias).exists(),
             "use `builder.path()` for real paths: {alias}"
         );
         self.paths.insert(StepSelectors::Alias(
-            std::iter::once(StepSelection { path: alias.into(), kind: Some(self.kind) }).collect(),
+            std::iter::once(StepSelection { path: alias.into(), cargo_cmd: Some(self.cargo_cmd) }).collect(),
         ));
         self
     }
@@ -570,7 +577,7 @@ impl<'a> ShouldRun<'a> {
             );
         }
 
-        let task = StepSelection { path: path.into(), kind: Some(self.kind) };
+        let task = StepSelection { path: path.into(), cargo_cmd: Some(self.cargo_cmd) };
         self.paths.insert(StepSelectors::Alias(BTreeSet::from_iter([task])));
         self
     }
@@ -584,7 +591,7 @@ impl<'a> ShouldRun<'a> {
     }
 
     pub fn suite_path(mut self, suite: &str) -> Self {
-        self.paths.insert(StepSelectors::TestSuite(StepSelection { path: suite.into(), kind: Some(self.kind) }));
+        self.paths.insert(StepSelectors::TestSuite(StepSelection { path: suite.into(), cargo_cmd: Some(self.cargo_cmd) }));
         self
     }
 
@@ -606,11 +613,11 @@ impl<'a> ShouldRun<'a> {
     fn pathset_for_paths_removing_matches(
         &self,
         paths: &mut [CLIStepPath],
-        kind: CargoSubcommand,
+        cargo_cmd: CargoSubcommand,
     ) -> Vec<StepSelectors> {
         let mut sets = vec![];
         for pathset in &self.paths {
-            let subset = pathset.intersection_removing_matches(paths, kind);
+            let subset = pathset.intersection_removing_matches(paths, cargo_cmd);
             if subset != StepSelectors::empty() {
                 sets.push(subset);
             }
@@ -656,8 +663,8 @@ impl CargoSubcommand {
             CargoSubcommand::Format => "fmt",
             CargoSubcommand::Test => "test",
             CargoSubcommand::Miri => "miri",
-            CargoSubcommand::MiriSetup => panic!("`as_str` is not supported for `Kind::MiriSetup`."),
-            CargoSubcommand::MiriTest => panic!("`as_str` is not supported for `Kind::MiriTest`."),
+            CargoSubcommand::MiriSetup => panic!("`as_str` is not supported for `MiriSetup`."),
+            CargoSubcommand::MiriTest => panic!("`as_str` is not supported for `MiriTest`."),
             CargoSubcommand::Bench => "bench",
             CargoSubcommand::Doc => "doc",
             CargoSubcommand::Clean => "clean",
@@ -739,13 +746,13 @@ impl Step for Libdir {
 pub const STEP_SPAN_TARGET: &str = "STEP";
 
 impl<'a> Builder<'a> {
-    fn get_step_descriptions(kind: CargoSubcommand) -> Vec<StepDescription> {
+    fn get_step_descriptions(cargo_cmd: CargoSubcommand) -> Vec<StepDescription> {
         macro_rules! describe {
             ($($rule:ty),+ $(,)?) => {{
-                vec![$(StepDescription::from::<$rule>(kind)),+]
+                vec![$(StepDescription::from::<$rule>(cargo_cmd)),+]
             }};
         }
-        match kind {
+        match cargo_cmd {
             CargoSubcommand::Build => describe!(
                 compile::Std,
                 compile::Rustc,
@@ -1025,24 +1032,24 @@ impl<'a> Builder<'a> {
         }
     }
 
-    pub fn get_help(build: &Build, kind: CargoSubcommand) -> Option<String> {
-        let step_descriptions = Builder::get_step_descriptions(kind);
+    pub fn get_help(build: &Build, cargo_cmd: CargoSubcommand) -> Option<String> {
+        let step_descriptions = Builder::get_step_descriptions(cargo_cmd);
         if step_descriptions.is_empty() {
             return None;
         }
 
-        let builder = Self::new_internal(build, kind, vec![]);
+        let builder = Self::new_internal(build, cargo_cmd, vec![]);
         let builder = &builder;
-        // The "build" kind here is just a placeholder, it will be replaced with something else in
+        // The "build" cmd here is just a placeholder, it will be replaced with something else in
         // the following statement.
         let mut should_run = ShouldRun::new(builder, CargoSubcommand::Build);
         for desc in step_descriptions {
-            should_run.kind = desc.kind;
+            should_run.cargo_cmd = desc.cargo_cmd;
             should_run = (desc.should_run)(should_run);
         }
         let mut help = String::from("Available paths:\n");
         let mut add_path = |path: &Path| {
-            t!(write!(help, "    ./x.py {} {}\n", kind.as_str(), path.display()));
+            t!(write!(help, "    ./x.py {} {}\n", cargo_cmd.as_str(), path.display()));
         };
         for pathset in should_run.paths {
             match pathset {
@@ -1059,11 +1066,11 @@ impl<'a> Builder<'a> {
         Some(help)
     }
 
-    fn new_internal(build: &Build, kind: CargoSubcommand, paths: Vec<PathBuf>) -> Builder<'_> {
+    fn new_internal(build: &Build, cargo_cmd: CargoSubcommand, paths: Vec<PathBuf>) -> Builder<'_> {
         Builder {
             build,
             top_stage: build.config.stage,
-            kind,
+            cargo_cmd,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
             time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
@@ -1075,7 +1082,7 @@ impl<'a> Builder<'a> {
 
     pub fn new(build: &Build) -> Builder<'_> {
         let paths = &build.config.paths;
-        let (kind, paths) = match build.config.cmd {
+        let (cargo_cmd, paths) = match build.config.cmd {
             Subcommand::Build { .. } => (CargoSubcommand::Build, &paths[..]),
             Subcommand::Check { .. } => (CargoSubcommand::Check, &paths[..]),
             Subcommand::Clippy { .. } => (CargoSubcommand::Clippy, &paths[..]),
@@ -1097,11 +1104,11 @@ impl<'a> Builder<'a> {
             Subcommand::Perf { .. } => (CargoSubcommand::Perf, &paths[..]),
         };
 
-        Self::new_internal(build, kind, paths.to_owned())
+        Self::new_internal(build, cargo_cmd, paths.to_owned())
     }
 
     pub fn execute_cli(&self) {
-        self.run_step_descriptions(&Builder::get_step_descriptions(self.kind), &self.paths);
+        self.run_step_descriptions(&Builder::get_step_descriptions(self.cargo_cmd), &self.paths);
     }
 
     /// Run all default documentation steps to build documentation.
@@ -1492,7 +1499,10 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     /// **WARNING**: This actually returns the **HOST** LLVM config, not LLVM config for the given
     /// *target*.
     pub fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
-        if self.config.llvm_enabled(target) && self.kind != CargoSubcommand::Check && !self.config.dry_run() {
+        if self.config.llvm_enabled(target)
+            && self.cargo_cmd != CargoSubcommand::Check
+            && !self.config.dry_run()
+        {
             let llvm::LlvmResult { host_llvm_config, .. } = self.ensure(llvm::Llvm { target });
             if host_llvm_config.is_file() {
                 return Some(host_llvm_config);
@@ -1612,10 +1622,10 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     pub(crate) fn ensure_if_default<T, S: Step<Output = T>>(
         &'a self,
         step: S,
-        kind: CargoSubcommand,
+        cargo_cmd: CargoSubcommand,
     ) -> Option<S::Output> {
-        let desc = StepDescription::from::<S>(kind);
-        let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
+        let desc = StepDescription::from::<S>(cargo_cmd);
+        let should_run = (desc.should_run)(ShouldRun::new(self, desc.cargo_cmd));
 
         // Avoid running steps contained in --skip
         for pathset in &should_run.paths {
@@ -1629,15 +1639,15 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     }
 
     /// Checks if any of the "should_run" paths is in the `Builder` paths.
-    pub(crate) fn was_invoked_explicitly<S: Step>(&'a self, kind: CargoSubcommand) -> bool {
-        let desc = StepDescription::from::<S>(kind);
-        let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
+    pub(crate) fn was_invoked_explicitly<S: Step>(&'a self, cargo_cmd: CargoSubcommand) -> bool {
+        let desc = StepDescription::from::<S>(cargo_cmd);
+        let should_run = (desc.should_run)(ShouldRun::new(self, desc.cargo_cmd));
 
         for path in &self.paths {
-            if should_run.paths.iter().any(|s| s.has(path, desc.kind))
+            if should_run.paths.iter().any(|s| s.has(path, desc.cargo_cmd))
                 && !desc.is_excluded(
                     self,
-                    &StepSelectors::TestSuite(StepSelection { path: path.clone(), kind: Some(desc.kind) }),
+                    &StepSelectors::TestSuite(StepSelection { path: path.clone(), cargo_cmd: Some(desc.cargo_cmd) }),
                 )
             {
                 return true;

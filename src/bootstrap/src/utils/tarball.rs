@@ -375,7 +375,7 @@ impl<'a> Tarball<'a> {
         }
 
         // For `x install` tarball files aren't needed, so we can speed up the process by not producing them.
-        let compression_profile = if self.builder.kind == CargoSubcommand::Install {
+        let compression_profile = if self.builder.cargo_cmd == CargoSubcommand::Install {
             self.builder.do_if_verbose(|| {
                 println!("Forcing dist.compression-profile = 'no-op' for `x install`.")
             });

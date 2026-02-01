@@ -83,7 +83,12 @@ fn test_invalid() {
 #[test]
 fn test_intersection() {
     let set = |paths: &[&str]| {
-        StepSelectors::Alias(paths.into_iter().map(|p| StepSelection { selector: p.into(), kind: None }).collect())
+        StepSelectors::Alias(
+            paths
+                .into_iter()
+                .map(|p| StepSelection { selector: p.into(), cargo_cmd: None })
+                .collect(),
+        )
     };
     let library_set = set(&["library/core", "library/alloc", "library/std"]);
     let mut command_paths = vec![
@@ -107,7 +112,12 @@ fn test_intersection() {
 #[test]
 fn test_resolve_parent_and_subpaths() {
     let set = |paths: &[&str]| {
-        StepSelectors::Alias(paths.into_iter().map(|p| StepSelection { selector: p.into(), kind: None }).collect())
+        StepSelectors::Alias(
+            paths
+                .into_iter()
+                .map(|p| StepSelection { selector: p.into(), cargo_cmd: None })
+                .collect(),
+        )
     };
 
     let mut command_paths = vec![
@@ -3033,8 +3043,8 @@ impl ExecutedSteps {
 }
 
 fn fuzzy_metadata_eq(executed: &StepMetadata, to_match: &StepMetadata) -> bool {
-    let StepMetadata { name, kind, target, built_by: _, stage: _, metadata } = executed;
-    *name == to_match.name && *kind == to_match.kind && *target == to_match.target
+    let StepMetadata { name, cargo_cmd: kind, target, built_by: _, stage: _, metadata } = executed;
+    *name == to_match.name && *kind == to_match.cargo_cmd && *target == to_match.target
 }
 
 impl<S: Step> From<S> for StepMetadata {
@@ -3098,7 +3108,7 @@ fn render_steps(steps: &[ExecutedStep], config: RenderConfig) -> String {
 }
 
 fn render_metadata(metadata: &StepMetadata, config: &RenderConfig) -> String {
-    let mut record = format!("[{}] ", metadata.kind.as_str());
+    let mut record = format!("[{}] ", metadata.cargo_cmd.as_str());
     if let Some(compiler) = metadata.built_by {
         write!(record, "{} -> ", render_compiler(compiler, config));
     }

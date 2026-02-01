@@ -536,7 +536,7 @@ impl Step for Rustc {
 
             if let Some(ra_proc_macro_srv) = builder.ensure_if_default(
                 tool::RustAnalyzerProcMacroSrv::from_compilers(compilers),
-                builder.kind,
+                builder.cargo_cmd,
             ) {
                 let dst = image.join("libexec");
                 builder.install(&ra_proc_macro_srv.tool_path, &dst, FileType::Executable);

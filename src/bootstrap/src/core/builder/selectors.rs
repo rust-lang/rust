@@ -113,16 +113,19 @@ pub(crate) fn match_paths_to_steps_and_run(
         .iter()
         .map(|desc| StepExtra {
             desc,
-            should_run: (desc.should_run)(ShouldRun::new(builder, desc.kind)),
+            should_run: (desc.should_run)(ShouldRun::new(builder, desc.cargo_cmd)),
         })
         .collect::<Vec<_>>();
 
     // FIXME(Zalathar): This particular check isn't related to path-to-step
     // matching, and should probably be hoisted to somewhere much earlier.
-    if builder.download_rustc() && (builder.kind == CargoSubcommand::Dist || builder.kind == CargoSubcommand::Install) {
+    if builder.download_rustc()
+        && (builder.cargo_cmd == CargoSubcommand::Dist
+            || builder.cargo_cmd == CargoSubcommand::Install)
+    {
         eprintln!(
             "ERROR: '{}' subcommand is incompatible with `rust.download-rustc`.",
-            builder.kind.as_str()
+            builder.cargo_cmd.as_str()
         );
         crate::exit!(1);
     }
@@ -199,7 +202,7 @@ pub(crate) fn match_paths_to_steps_and_run(
     let mut steps_to_run = vec![];
 
     for StepExtra { desc, should_run } in &steps {
-        let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
+        let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.cargo_cmd);
 
         // This value is used for sorting the step execution order.
         // By default, `usize::MAX` is used as the index for steps to assign them the lowest priority.
@@ -233,10 +236,10 @@ pub(crate) fn match_paths_to_steps_and_run(
     paths.retain(|p| !p.will_be_executed);
 
     if !paths.is_empty() {
-        eprintln!("ERROR: no `{}` rules matched {:?}", builder.kind.as_str(), paths);
+        eprintln!("ERROR: no `{}` rules matched {:?}", builder.cargo_cmd.as_str(), paths);
         eprintln!(
             "HELP: run `x.py {} --help --verbose` to show a list of available paths",
-            builder.kind.as_str()
+            builder.cargo_cmd.as_str()
         );
         eprintln!(
             "NOTE: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"

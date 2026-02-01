@@ -854,7 +854,12 @@ impl Build {
     }
 
     /// Gets the space-separated set of activated features for the compiler.
-    fn rustc_features(&self, kind: CargoSubcommand, target: TargetSelection, crates: &[String]) -> String {
+    fn rustc_features(
+        &self,
+        cargo_subcommand: CargoSubcommand,
+        target: TargetSelection,
+        crates: &[String],
+    ) -> String {
         let possible_features_by_crates: HashSet<_> = crates
             .iter()
             .flat_map(|krate| &self.crates[krate].features)
@@ -867,7 +872,9 @@ impl Build {
         if self.config.jemalloc(target) && check("jemalloc") {
             features.push("jemalloc");
         }
-        if (self.config.llvm_enabled(target) || kind == CargoSubcommand::Check) && check("llvm") {
+        if (self.config.llvm_enabled(target) || cargo_subcommand == CargoSubcommand::Check)
+            && check("llvm")
+        {
             features.push("llvm");
         }
         if self.config.llvm_enzyme {
@@ -880,7 +887,7 @@ impl Build {
         if self.config.rust_randomize_layout && check("rustc_randomized_layouts") {
             features.push("rustc_randomized_layouts");
         }
-        if self.config.compile_time_deps && kind == CargoSubcommand::Check {
+        if self.config.compile_time_deps && cargo_subcommand == CargoSubcommand::Check {
             features.push("check_only");
         }
 

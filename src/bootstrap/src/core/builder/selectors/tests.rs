@@ -40,7 +40,7 @@ fn render_steps_for_cli_args(args_str: &str) -> String {
         use std::fmt::Write;
         let mut buf = buf2.lock().unwrap();
 
-        let StepDescription { name, kind, .. } = step_desc;
+        let StepDescription { name, cargo_cmd: kind, .. } = step_desc;
         // Strip boilerplate to make step names easier to read.
         let name = name.strip_prefix("bootstrap::core::build_steps::").unwrap_or(name);
 
