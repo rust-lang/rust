@@ -7,7 +7,7 @@ use rustc_data_structures::{outline, sharded, sync};
 use rustc_errors::{Diag, FatalError, StashKey};
 use rustc_middle::dep_graph::DepsType;
 use rustc_middle::ty::TyCtxt;
-use rustc_query_system::dep_graph::{DepGraphData, DepNodeKey, HasDepContext};
+use rustc_query_system::dep_graph::{DepGraphData, DepNodeKey};
 use rustc_query_system::query::{
     ActiveKeyStatus, CycleError, CycleErrorHandling, QueryCache, QueryContext, QueryDispatcher,
     QueryJob, QueryJobId, QueryJobInfo, QueryLatch, QueryMap, QueryMode, QueryStackDeferred,
@@ -482,6 +482,7 @@ where
 
         dep_graph_data.with_task(
             dep_node,
+            qcx.tcx,
             (qcx, query),
             key,
             |(qcx, query), key| query.compute(qcx, key),
