@@ -250,6 +250,13 @@ fn hir_enclosing_body_owner(tcx: TyCtxt<'_>, hir_id: HirId) -> Option<LocalDefId
             return None;
         } else if let Some((def_id, _)) = node.associated_body() {
             return Some(def_id);
+        // Items don't have enclosing bodies.
+        // If we go any further, we might encounter an enclosing function
+        // (e.g. if we're inside an impl that's inside of a function).
+        // This would cause us to erroneously consider this function to be the owner
+        // of the node and produce invalid `HirId`s later.
+        } else if matches!(node, Node::Item(_)) {
+            return None;
         }
     }
     None
