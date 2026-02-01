@@ -293,13 +293,6 @@ fn array_default_impl_avoids_leaks_on_panic() {
 }
 
 #[test]
-fn empty_array_is_always_default() {
-    struct DoesNotImplDefault;
-
-    let _arr = <[DoesNotImplDefault; 0]>::default();
-}
-
-#[test]
 fn array_map() {
     let a = [1, 2, 3];
     let b = a.map(|v| v + 1);

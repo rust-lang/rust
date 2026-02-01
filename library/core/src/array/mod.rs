@@ -498,7 +498,7 @@ macro_rules! array_impl_default {
     };
     {$n:expr,} => {
         #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] {
+        impl<T> Default for [T; $n] where T: Default {
             fn default() -> [T; $n] { [] }
         }
     };
