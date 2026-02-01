@@ -235,6 +235,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.check_place_expr_if_unsized(fn_input_ty, arg_expr);
         }
 
+        let formal_input_tys_ns;
+        let formal_input_tys = if self.next_trait_solver() {
+            // In the new solver, the normalizations are done lazily.
+            // Because of this, if we encounter unnormalized alias types inside this
+            // fudge scope, we might lose the relationships between them and other vars
+            // when fudging inference variables created here.
+            // So, we utilize generalization to normalize aliases by adding a new
+            // inference var and equating it with the type we want to pull out of the
+            // fudge scope.
+            formal_input_tys_ns = formal_input_tys
+                .iter()
+                .map(|&ty| {
+                    // If we replace a (unresolved) inference var with a new inference
+                    // var, it will be eventually resolved to itself and this will
+                    // weaken type inferences as the new inference var will be fudged
+                    // out and lose all relationships with other vars while the former
+                    // will not be fudged.
+                    if ty.is_ty_var() {
+                        return ty;
+                    }
+
+                    let generalized_ty = self.next_ty_var(call_span);
+                    self.demand_eqtype(call_span, ty, generalized_ty);
+                    generalized_ty
+                })
+                .collect_vec();
+
+            formal_input_tys_ns.as_slice()
+        } else {
+            formal_input_tys
+        };
+
         // First, let's unify the formal method signature with the expectation eagerly.
         // We use this to guide coercion inference; it's output is "fudged" which means
         // any remaining type variables are assigned to new, unrelated variables. This
@@ -257,39 +289,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // No argument expectations are produced if unification fails.
                     let origin = self.misc(call_span);
                     ocx.sup(&origin, self.param_env, expected_output, formal_output)?;
-
-                    let formal_input_tys_ns;
-                    let formal_input_tys = if self.next_trait_solver() {
-                        // In the new solver, the normalizations are done lazily.
-                        // Because of this, if we encounter unnormalized alias types inside this
-                        // fudge scope, we might lose the relationships between them and other vars
-                        // when fudging inference variables created here.
-                        // So, we utilize generalization to normalize aliases by adding a new
-                        // inference var and equating it with the type we want to pull out of the
-                        // fudge scope.
-                        formal_input_tys_ns = formal_input_tys
-                            .iter()
-                            .map(|&ty| {
-                                // If we replace a (unresolved) inference var with a new inference
-                                // var, it will be eventually resolved to itself and this will
-                                // weaken type inferences as the new inference var will be fudged
-                                // out and lose all relationships with other vars while the former
-                                // will not be fudged.
-                                if ty.is_ty_var() {
-                                    return ty;
-                                }
-
-                                let generalized_ty = self.next_ty_var(call_span);
-                                ocx.eq(&origin, self.param_env, ty, generalized_ty).unwrap();
-                                generalized_ty
-                            })
-                            .collect_vec();
-
-                        formal_input_tys_ns.as_slice()
-                    } else {
-                        formal_input_tys
-                    };
-
                     if !ocx.try_evaluate_obligations().is_empty() {
                         return Err(TypeError::Mismatch);
                     }
@@ -305,7 +304,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
                 .ok()
             })
-            .unwrap_or_default();
+            .unwrap_or_default()
+            .filter(|expected_input_tys: &Vec<Ty<'_>>| {
+                // Check the well-formedness of expected input tys, as using ill-formed
+                // expectation may cause type inference errors.
+                self.probe(|_| {
+                    let ocx = ObligationCtxt::new(self);
+                    for &ty in expected_input_tys {
+                        ocx.register_obligation(traits::Obligation::new(
+                            self.tcx,
+                            self.misc(call_span),
+                            self.param_env,
+                            ty::ClauseKind::WellFormed(ty.into()),
+                        ));
+                    }
+                    ocx.try_evaluate_obligations().is_empty()
+                })
+            });
 
         let mut err_code = E0061;
 

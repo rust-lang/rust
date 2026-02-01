@@ -2,8 +2,8 @@
 //@ check-pass
 
 // A regression test for https://github.com/rust-lang/trait-system-refactor-initiative/issues/252.
-// `fn fudge_inference_if_ok` might lose relationships between ty vars so we need to normalize
-// them inside the fudge scope.
+// `fn fudge_inference_if_ok` might lose relationships between ty vars so we need to make sure
+// there'll be no ambiguous aliases referencing infer vars from inside of the fudge scope.
 
 trait Trait {
     type Assoc;
