@@ -1634,10 +1634,12 @@ class DocSearch {
          * parent,
          * trait_parent,
          * deprecated,
+         * unstable,
          * associated_item_disambiguator
          * @type {rustdoc.ArrayWithOptionals<[
          *     number,
          *     rustdoc.ItemType,
+         *     number,
          *     number,
          *     number,
          *     number,
@@ -1654,7 +1656,8 @@ class DocSearch {
             parent: raw[4] === 0 ? null : raw[4] - 1,
             traitParent: raw[5] === 0 ? null : raw[5] - 1,
             deprecated: raw[6] === 1 ? true : false,
-            associatedItemDisambiguator: raw.length === 7 ? null : raw[7],
+            unstable: raw[7] === 1 ? true : false,
+            associatedItemDisambiguator: raw.length === 8 ? null : raw[8],
         };
     }
 
@@ -1947,6 +1950,7 @@ class DocSearch {
             path,
             functionData,
             deprecated: entry ? entry.deprecated : false,
+            unstable: entry ? entry.unstable : false,
             parent,
             traitParent,
         };
@@ -2855,6 +2859,13 @@ class DocSearch {
                     // sort deprecated items later
                     a = Number(aai.deprecated);
                     b = Number(bbi.deprecated);
+                    if (a !== b) {
+                        return a - b;
+                    }
+
+                    // sort unstable items later
+                    a = Number(aai.unstable);
+                    b = Number(bbi.unstable);
                     if (a !== b) {
                         return a - b;
                     }

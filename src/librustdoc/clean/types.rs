@@ -431,6 +431,10 @@ impl Item {
         self.deprecation(tcx).is_some_and(|deprecation| deprecation.is_in_effect())
     }
 
+    pub(crate) fn is_unstable(&self) -> bool {
+        self.stability.is_some_and(|x| x.is_unstable())
+    }
+
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
         self.item_id.as_def_id().map(|did| inner_docs(tcx.get_all_attrs(did))).unwrap_or(false)
     }
