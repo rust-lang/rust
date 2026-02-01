@@ -4,8 +4,8 @@ expression: test librustdoc rustdoc
 ---
 [Test] test::CrateRustdoc
     targets: [x86_64-unknown-linux-gnu]
-    - Set({test::src/librustdoc})
-    - Set({test::src/tools/rustdoc})
+    - Alias({test::src/librustdoc})
+    - Alias({test::src/tools/rustdoc})
 [Test] test::RustdocBook
     targets: [x86_64-unknown-linux-gnu]
-    - Set({test::src/doc/rustdoc})
+    - Alias({test::src/doc/rustdoc})

@@ -3,10 +3,61 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use super::match_paths_to_steps_and_run;
+use super::*;
 use crate::Build;
 use crate::core::builder::{Builder, StepDescription};
 use crate::utils::tests::TestCtx;
+
+#[test]
+fn test_intersection() {
+    let set = |paths: &[&str]| {
+        StepSelectors::Alias(
+            paths.into_iter().map(|p| StepSelection { path: p.into(), cargo_cmd: None }).collect(),
+        )
+    };
+    let library_set = set(&["library/core", "library/alloc", "library/std"]);
+    let mut command_paths = vec![
+        CLIStepPath::from(PathBuf::from("library/core")),
+        CLIStepPath::from(PathBuf::from("library/alloc")),
+        CLIStepPath::from(PathBuf::from("library/stdarch")),
+    ];
+    let subset =
+        library_set.intersection_removing_matches(&mut command_paths, CargoSubcommand::Build);
+    assert_eq!(subset, set(&["library/core", "library/alloc"]),);
+    assert_eq!(
+        command_paths,
+        vec![
+            CLIStepPath::from(PathBuf::from("library/core")).will_be_executed(true),
+            CLIStepPath::from(PathBuf::from("library/alloc")).will_be_executed(true),
+            CLIStepPath::from(PathBuf::from("library/stdarch")).will_be_executed(false),
+        ]
+    );
+}
+
+#[test]
+fn test_resolve_parent_and_subpaths() {
+    let set = |paths: &[&str]| {
+        StepSelectors::Alias(
+            paths.into_iter().map(|p| StepSelection { path: p.into(), cargo_cmd: None }).collect(),
+        )
+    };
+
+    let mut command_paths = vec![
+        CLIStepPath::from(PathBuf::from("src/tools/miri")),
+        CLIStepPath::from(PathBuf::from("src/tools/miri/cargo-miri")),
+    ];
+
+    let library_set = set(&["src/tools/miri", "src/tools/miri/cargo-miri"]);
+    library_set.intersection_removing_matches(&mut command_paths, CargoSubcommand::Build);
+
+    assert_eq!(
+        command_paths,
+        vec![
+            CLIStepPath::from(PathBuf::from("src/tools/miri")).will_be_executed(true),
+            CLIStepPath::from(PathBuf::from("src/tools/miri/cargo-miri")).will_be_executed(true),
+        ]
+    );
+}
 
 fn render_steps_for_cli_args(args_str: &str) -> String {
     // Split a single string into a step kind and subsequent arguments.

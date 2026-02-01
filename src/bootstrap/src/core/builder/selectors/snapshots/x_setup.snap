@@ -1,20 +1,20 @@
 ---
-source: src/bootstrap/src/core/builder/cli_paths/tests.rs
+source: src/bootstrap/src/core/builder/selectors/tests.rs
 expression: setup
 ---
 [Setup] setup::Profile
     targets: [aarch64-unknown-linux-gnu]
-    - Set({setup::compiler})
-    - Set({setup::dist})
-    - Set({setup::library})
-    - Set({setup::none})
-    - Set({setup::tools})
+    - Alias({setup::compiler})
+    - Alias({setup::dist})
+    - Alias({setup::library})
+    - Alias({setup::none})
+    - Alias({setup::tools})
 [Setup] setup::Hook
     targets: [aarch64-unknown-linux-gnu]
-    - Set({setup::hook})
+    - Alias({setup::hook})
 [Setup] setup::Link
     targets: [aarch64-unknown-linux-gnu]
-    - Set({setup::link})
+    - Alias({setup::link})
 [Setup] setup::Editor
     targets: [aarch64-unknown-linux-gnu]
-    - Set({setup::editor})
+    - Alias({setup::editor})

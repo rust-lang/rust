@@ -1,21 +1,21 @@
 ---
-source: src/bootstrap/src/core/builder/cli_paths/tests.rs
+source: src/bootstrap/src/core/builder/selectors/tests.rs
 expression: check library
 ---
 [Check] check::Std
     targets: [aarch64-unknown-linux-gnu]
-    - Set({check::library})
-    - Set({check::library/alloc})
-    - Set({check::library/alloctests})
-    - Set({check::library/compiler-builtins/compiler-builtins})
-    - Set({check::library/core})
-    - Set({check::library/coretests})
-    - Set({check::library/panic_abort})
-    - Set({check::library/panic_unwind})
-    - Set({check::library/proc_macro})
-    - Set({check::library/rustc-std-workspace-core})
-    - Set({check::library/std})
-    - Set({check::library/std_detect})
-    - Set({check::library/sysroot})
-    - Set({check::library/test})
-    - Set({check::library/unwind})
+    - Alias({check::library})
+    - Alias({check::library/alloc})
+    - Alias({check::library/alloctests})
+    - Alias({check::library/compiler-builtins/compiler-builtins})
+    - Alias({check::library/core})
+    - Alias({check::library/coretests})
+    - Alias({check::library/panic_abort})
+    - Alias({check::library/panic_unwind})
+    - Alias({check::library/proc_macro})
+    - Alias({check::library/rustc-std-workspace-core})
+    - Alias({check::library/std})
+    - Alias({check::library/std_detect})
+    - Alias({check::library/sysroot})
+    - Alias({check::library/test})
+    - Alias({check::library/unwind})

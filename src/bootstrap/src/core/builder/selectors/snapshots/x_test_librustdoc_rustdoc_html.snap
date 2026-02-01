@@ -1,10 +1,10 @@
 ---
-source: src/bootstrap/src/core/builder/cli_paths/tests.rs
+source: src/bootstrap/src/core/builder/selectors/tests.rs
 expression: test librustdoc rustdoc-html
 ---
 [Test] test::CrateRustdoc
     targets: [x86_64-unknown-linux-gnu]
-    - Set({test::src/librustdoc})
+    - Alias({test::src/librustdoc})
 [Test] test::RustdocHtml
     targets: [x86_64-unknown-linux-gnu]
-    - Suite(test::tests/rustdoc-html)
+    - TestSuite(test::tests/rustdoc-html)

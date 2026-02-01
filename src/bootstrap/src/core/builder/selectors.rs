@@ -706,3 +706,8 @@ impl<'a> Builder<'a> {
         false
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+}

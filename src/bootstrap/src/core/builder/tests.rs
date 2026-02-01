@@ -1,4 +1,5 @@
 use std::env::VarError;
+use std::fmt::Write;
 use std::{panic, thread};
 
 use build_helper::stage0_parser::parse_stage0_file;
@@ -7,7 +8,7 @@ use llvm::prebuilt_llvm_config;
 use super::*;
 use crate::Flags;
 use crate::core::build_steps::doc::DocumentationFormat;
-use crate::core::builder::selectors::PATH_REMAP;
+use crate::core::builder::selectors::{CLIStepPath, PATH_REMAP, StepSelection};
 use crate::core::config::Config;
 use crate::utils::cache::ExecutedStep;
 use crate::utils::helpers::get_host_target;
@@ -78,63 +79,6 @@ fn test_valid() {
 fn test_invalid() {
     // make sure that invalid paths are caught, even when combined with valid paths
     check_cli(["test", "library/std", "x"]);
-}
-
-#[test]
-fn test_intersection() {
-    let set = |paths: &[&str]| {
-        StepSelectors::Alias(
-            paths
-                .into_iter()
-                .map(|p| StepSelection { selector: p.into(), cargo_cmd: None })
-                .collect(),
-        )
-    };
-    let library_set = set(&["library/core", "library/alloc", "library/std"]);
-    let mut command_paths = vec![
-        CLIStepPath::from(PathBuf::from("library/core")),
-        CLIStepPath::from(PathBuf::from("library/alloc")),
-        CLIStepPath::from(PathBuf::from("library/stdarch")),
-    ];
-    let subset =
-        library_set.intersection_removing_matches(&mut command_paths, CargoSubcommand::Build);
-    assert_eq!(subset, set(&["library/core", "library/alloc"]),);
-    assert_eq!(
-        command_paths,
-        vec![
-            CLIStepPath::from(PathBuf::from("library/core")).will_be_executed(true),
-            CLIStepPath::from(PathBuf::from("library/alloc")).will_be_executed(true),
-            CLIStepPath::from(PathBuf::from("library/stdarch")).will_be_executed(false),
-        ]
-    );
-}
-
-#[test]
-fn test_resolve_parent_and_subpaths() {
-    let set = |paths: &[&str]| {
-        StepSelectors::Alias(
-            paths
-                .into_iter()
-                .map(|p| StepSelection { selector: p.into(), cargo_cmd: None })
-                .collect(),
-        )
-    };
-
-    let mut command_paths = vec![
-        CLIStepPath::from(PathBuf::from("src/tools/miri")),
-        CLIStepPath::from(PathBuf::from("src/tools/miri/cargo-miri")),
-    ];
-
-    let library_set = set(&["src/tools/miri", "src/tools/miri/cargo-miri"]);
-    library_set.intersection_removing_matches(&mut command_paths, CargoSubcommand::Build);
-
-    assert_eq!(
-        command_paths,
-        vec![
-            CLIStepPath::from(PathBuf::from("src/tools/miri")).will_be_executed(true),
-            CLIStepPath::from(PathBuf::from("src/tools/miri/cargo-miri")).will_be_executed(true),
-        ]
-    );
 }
 
 #[test]
