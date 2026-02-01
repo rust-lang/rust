@@ -7,6 +7,8 @@ use rustc_hir::{AttrPath, Target};
 use rustc_parse::exp;
 use rustc_parse::parser::Parser;
 use rustc_session::Session;
+use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::lint::builtin::UNREACHABLE_CFG_SELECT_PREDICATES;
 use rustc_span::{ErrorGuaranteed, Span, sym};
 
 use crate::parser::MetaItemOrLitParser;
@@ -15,6 +17,15 @@ use crate::{AttributeParser, ParsedDescription, ShouldEmit, parse_cfg_entry};
 pub enum CfgSelectPredicate {
     Cfg(CfgEntry),
     Wildcard(Token),
+}
+
+impl CfgSelectPredicate {
+    fn span(&self) -> Span {
+        match self {
+            CfgSelectPredicate::Cfg(cfg_entry) => cfg_entry.span(),
+            CfgSelectPredicate::Wildcard(token) => token.span,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -110,6 +121,20 @@ pub fn parse_cfg_select(
                 None => branches.reachable.push((cfg, tts, span)),
                 Some(_) => branches.unreachable.push((CfgSelectPredicate::Cfg(cfg), tts, span)),
             }
+        }
+    }
+
+    if let Some((underscore, _, _)) = branches.wildcard
+        && features.map_or(false, |f| f.enabled(rustc_span::sym::cfg_select))
+    {
+        for (predicate, _, _) in &branches.unreachable {
+            let span = predicate.span();
+            p.psess.buffer_lint(
+                UNREACHABLE_CFG_SELECT_PREDICATES,
+                span,
+                lint_node_id,
+                BuiltinLintDiag::UnreachableCfg { span, wildcard_span: underscore.span },
+            );
         }
     }
 
