@@ -1198,6 +1198,36 @@ macro_rules! uint_impl {
             }
         }
 
+        /// Unchecked integer division. Computes `self / rhs`, assuming `rhs` is not zero.
+        ///
+        /// Calling `x.unchecked_div(y)` is semantically equivalent to calling
+        /// `x.`[`checked_div`]`(y).`[`unwrap_unchecked`]`()`.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when `rhs == 0`,
+        /// i.e. when [`checked_div`] would return `None`.
+        ///
+        /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
+        #[doc = concat!("[`checked_div`]: ", stringify!($SelfT), "::checked_div")]
+        #[doc = concat!("[`wrapping_div`]: ", stringify!($SelfT), "::wrapping_div")]
+        #[unstable(feature = "unchecked_div_rem", issue = "136716")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+        pub const unsafe fn unchecked_div(self, rhs: Self) -> Self {
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_div cannot divide by zero"),
+                (
+                    rhs: $SelfT = rhs
+                ) => rhs != 0,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe { intrinsics::unchecked_div(self, rhs) }
+        }
+
         /// Strict integer division. Computes `self / rhs`.
         ///
         /// Strict division on unsigned types is just normal division. There's no
@@ -1394,6 +1424,33 @@ macro_rules! uint_impl {
                 // SAFETY: div by zero has been checked above and unsigned types have no other
                 // failure modes for division
                 Some(unsafe { intrinsics::unchecked_rem(self, rhs) })
+            }
+        }
+
+        /// Unchecked integer remainder. Computes `self % rhs`, assuming `rhs` is not zero.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when `rhs == 0`,
+        /// i.e. when [`checked_rem`] would return `None`.
+        ///
+        #[doc = concat!("[`checked_rem`]: ", stringify!($SelfT), "::checked_rem")]
+        #[unstable(feature = "unchecked_div_rem", issue = "136716")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+        pub const unsafe fn unchecked_rem(self, rhs: Self) -> Self {
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_rem cannot divide by zero"),
+                (
+                    rhs: $SelfT = rhs
+                ) => rhs != 0,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_rem(self, rhs)
             }
         }
 
