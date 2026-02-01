@@ -771,9 +771,11 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                     Ok(s.get(start - 1..start) == Some("{"))
                                 });
                             if let Ok(true) = field_is_format_named_arg {
-                                err.help(
-                                    format!("you might have meant to use the available field in a format string: `\"{{}}\", self.{}`", segment.ident.name),
-                                );
+                                err.help(format!(
+                                    "you might have meant to use the available field in a format \
+                                     string: `\"{{}}\", self.{}`",
+                                    segment.ident.name,
+                                ));
                             } else {
                                 err.span_suggestion_verbose(
                                     span.shrink_to_lo(),
@@ -1029,13 +1031,19 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_typo(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_, 'ast, 'ra>,
+        mut source: PathSource<'_, 'ast, 'ra>,
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
         base_error: &BaseError,
         suggested_candidates: FxHashSet<String>,
     ) -> bool {
+        if self.diag_metadata.currently_processing_generic_args
+            && matches!(source, PathSource::Type)
+        {
+            source = PathSource::TypeParam;
+        }
+
         let is_expected = &|res| source.is_expected(res);
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let typo_sugg =

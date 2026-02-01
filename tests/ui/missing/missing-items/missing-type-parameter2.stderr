@@ -18,7 +18,7 @@ LL | impl<N> X<N> {}
    |     +++
 
 error[E0425]: cannot find type `N` in this scope
-  --> $DIR/missing-type-parameter2.rs:6:28
+  --> $DIR/missing-type-parameter2.rs:5:28
    |
 LL | impl<T, const A: u8 = 2> X<N> {}
    |      -                     ^
@@ -36,7 +36,7 @@ LL | impl<T, const A: u8 = 2, N> X<N> {}
    |                        +++
 
 error[E0425]: cannot find type `T` in this scope
-  --> $DIR/missing-type-parameter2.rs:11:20
+  --> $DIR/missing-type-parameter2.rs:9:20
    |
 LL | struct X<const N: u8>();
    | ------------------------ similarly named struct `X` defined here
@@ -55,7 +55,7 @@ LL | fn foo<T>(_: T) where T: Send {}
    |       +++
 
 error[E0425]: cannot find type `T` in this scope
-  --> $DIR/missing-type-parameter2.rs:11:11
+  --> $DIR/missing-type-parameter2.rs:9:11
    |
 LL | struct X<const N: u8>();
    | ------------------------ similarly named struct `X` defined here
@@ -74,7 +74,7 @@ LL | fn foo<T>(_: T) where T: Send {}
    |       +++
 
 error[E0425]: cannot find type `A` in this scope
-  --> $DIR/missing-type-parameter2.rs:15:24
+  --> $DIR/missing-type-parameter2.rs:13:24
    |
 LL | struct X<const N: u8>();
    | ------------------------ similarly named struct `X` defined here
@@ -92,35 +92,12 @@ help: you might be missing a type parameter
 LL | fn bar<const N: u8, A>(_: A) {}
    |                   +++
 
-error[E0747]: unresolved item provided when a constant was expected
-  --> $DIR/missing-type-parameter2.rs:3:8
-   |
-LL | impl X<N> {}
-   |        ^
-   |
-help: if this generic argument was intended as a const parameter, surround it with braces
-   |
-LL | impl X<{ N }> {}
-   |        +   +
-
 error: defaults for generic parameters are not allowed here
-  --> $DIR/missing-type-parameter2.rs:6:9
+  --> $DIR/missing-type-parameter2.rs:5:9
    |
 LL | impl<T, const A: u8 = 2> X<N> {}
    |         ^^^^^^^^^^^^^^^
 
-error[E0747]: unresolved item provided when a constant was expected
-  --> $DIR/missing-type-parameter2.rs:6:28
-   |
-LL | impl<T, const A: u8 = 2> X<N> {}
-   |                            ^
-   |
-help: if this generic argument was intended as a const parameter, surround it with braces
-   |
-LL | impl<T, const A: u8 = 2> X<{ N }> {}
-   |                            +   +
+error: aborting due to 6 previous errors
 
-error: aborting due to 8 previous errors
-
-Some errors have detailed explanations: E0425, E0747.
-For more information about an error, try `rustc --explain E0425`.
+For more information about this error, try `rustc --explain E0425`.
