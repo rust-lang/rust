@@ -112,6 +112,7 @@
 #![feature(str_internals)]
 #![feature(strict_provenance_lints)]
 #![feature(test)]
+#![feature(titlecase)]
 #![feature(trusted_len)]
 #![feature(trusted_random_access)]
 #![feature(try_blocks)]

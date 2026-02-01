@@ -1,5 +1,6 @@
+use std::char::{self, CharCase};
+use std::str;
 use std::str::FromStr;
-use std::{char, str};
 
 #[test]
 fn test_convert() {
@@ -40,6 +41,29 @@ fn test_from_str() {
 }
 
 #[test]
+fn test_is_cased() {
+    assert!('a'.is_cased());
+    assert!('ö'.is_cased());
+    assert!('ß'.is_cased());
+    assert!('Ü'.is_cased());
+    assert!('P'.is_cased());
+    assert!('ª'.is_cased());
+    assert!(!'攂'.is_cased());
+}
+
+#[test]
+fn test_char_case() {
+    for c in '\0'..='\u{10FFFF}' {
+        match c.case() {
+            None => assert!(!c.is_cased()),
+            Some(CharCase::Lower) => assert!(c.is_lowercase()),
+            Some(CharCase::Upper) => assert!(c.is_uppercase()),
+            Some(CharCase::Title) => assert!(c.is_titlecase()),
+        }
+    }
+}
+
+#[test]
 fn test_is_lowercase() {
     assert!('a'.is_lowercase());
     assert!('ö'.is_lowercase());
@@ -49,12 +73,43 @@ fn test_is_lowercase() {
 }
 
 #[test]
+fn test_is_titlecase() {
+    assert!('ǅ'.is_titlecase());
+    assert!('ᾨ'.is_titlecase());
+    assert!(!'h'.is_titlecase());
+    assert!(!'ä'.is_titlecase());
+    assert!(!'ß'.is_titlecase());
+    assert!(!'Ö'.is_titlecase());
+    assert!(!'T'.is_titlecase());
+}
+
+#[test]
 fn test_is_uppercase() {
     assert!(!'h'.is_uppercase());
     assert!(!'ä'.is_uppercase());
     assert!(!'ß'.is_uppercase());
     assert!('Ö'.is_uppercase());
     assert!('T'.is_uppercase());
+}
+
+#[test]
+fn titlecase_fast_path() {
+    for c in '\0'..='\u{01C4}' {
+        assert!(!(c.is_cased() && !c.is_lowercase() && !c.is_uppercase()))
+    }
+}
+
+#[test]
+fn at_most_one_case() {
+    for c in '\0'..='\u{10FFFF}' {
+        assert_eq!(
+            !c.is_cased() as u8
+                + c.is_lowercase() as u8
+                + c.is_uppercase() as u8
+                + c.is_titlecase() as u8,
+            1
+        );
+    }
 }
 
 #[test]

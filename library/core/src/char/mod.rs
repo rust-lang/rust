@@ -363,13 +363,22 @@ impl fmt::Display for EscapeDebug {
 }
 
 macro_rules! casemappingiter_impls {
-    ($(#[$attr:meta])* $ITER_NAME:ident) => {
+    (
+        #[$stab:meta]
+        #[$dendstab:meta]
+        #[$fusedstab:meta]
+        #[$exactstab:meta]
+        #[$displaystab:meta]
+        #[$partialstab:meta]
+        $(#[$attr:meta])*
+        $ITER_NAME:ident
+    ) => {
         $(#[$attr])*
-        #[stable(feature = "rust1", since = "1.0.0")]
+        #[$stab]
         #[derive(Debug, Clone)]
         pub struct $ITER_NAME(CaseMappingIter);
 
-        #[stable(feature = "rust1", since = "1.0.0")]
+        #[$stab]
         impl Iterator for $ITER_NAME {
             type Item = char;
             fn next(&mut self) -> Option<char> {
@@ -405,7 +414,7 @@ macro_rules! casemappingiter_impls {
             }
         }
 
-        #[stable(feature = "case_mapping_double_ended", since = "1.59.0")]
+        #[$dendstab]
         impl DoubleEndedIterator for $ITER_NAME {
             fn next_back(&mut self) -> Option<char> {
                 self.0.next_back()
@@ -423,10 +432,10 @@ macro_rules! casemappingiter_impls {
             }
         }
 
-        #[stable(feature = "fused", since = "1.26.0")]
+        #[$fusedstab]
         impl FusedIterator for $ITER_NAME {}
 
-        #[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
+        #[$exactstab]
         impl ExactSizeIterator for $ITER_NAME {
             fn len(&self) -> usize {
                 self.0.len()
@@ -453,27 +462,55 @@ macro_rules! casemappingiter_impls {
         #[unstable(feature = "std_internals", issue = "none")]
         unsafe impl TrustedRandomAccess for $ITER_NAME {}
 
-        #[stable(feature = "char_struct_display", since = "1.16.0")]
+        #[$displaystab]
         impl fmt::Display for $ITER_NAME {
             #[inline]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt::Display::fmt(&self.0, f)
             }
         }
+
+        #[$partialstab]
+        impl PartialEq<ToUppercase> for $ITER_NAME {
+            #[inline]
+            fn eq(&self, other: &ToUppercase) -> bool {
+                self.0 == other.0
+            }
+        }
+
+        #[unstable(feature = "titlecase", issue = "none")]
+        impl PartialEq<ToTitlecase> for $ITER_NAME {
+            #[inline]
+            fn eq(&self, other: &ToTitlecase) -> bool {
+                self.0 == other.0
+            }
+        }
+
+        #[$partialstab]
+        impl PartialEq<ToLowercase> for $ITER_NAME {
+            #[inline]
+            fn eq(&self, other: &ToLowercase) -> bool {
+                self.0 == other.0
+            }
+        }
+
+        #[$partialstab]
+        impl PartialEq<char> for $ITER_NAME {
+            #[inline]
+            fn eq(&self, other: &char) -> bool {
+                self.0 == *other
+            }
+        }
     }
 }
 
 casemappingiter_impls! {
-    /// Returns an iterator that yields the lowercase equivalent of a `char`.
-    ///
-    /// This `struct` is created by the [`to_lowercase`] method on [`char`]. See
-    /// its documentation for more.
-    ///
-    /// [`to_lowercase`]: char::to_lowercase
-    ToLowercase
-}
-
-casemappingiter_impls! {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[stable(feature = "case_mapping_double_ended", since = "1.59.0")]
+    #[stable(feature = "fused", since = "1.26.0")]
+    #[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
+    #[stable(feature = "char_struct_display", since = "1.16.0")]
+    #[stable(feature = "iter_partialeq", since = "CURRENT_RUSTC_VERSION")]
     /// Returns an iterator that yields the uppercase equivalent of a `char`.
     ///
     /// This `struct` is created by the [`to_uppercase`] method on [`char`]. See
@@ -481,6 +518,38 @@ casemappingiter_impls! {
     ///
     /// [`to_uppercase`]: char::to_uppercase
     ToUppercase
+}
+
+casemappingiter_impls! {
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[unstable(feature = "titlecase", issue = "none")]
+    #[unstable(feature = "titlecase", issue = "none")]
+    /// Returns an iterator that yields the titlecase equivalent of a `char`.
+    ///
+    /// This `struct` is created by the [`to_titlecase`] method on [`char`]. See
+    /// its documentation for more.
+    ///
+    /// [`to_titlecase`]: char::to_titlecase
+    ToTitlecase
+}
+
+casemappingiter_impls! {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[stable(feature = "case_mapping_double_ended", since = "1.59.0")]
+    #[stable(feature = "fused", since = "1.26.0")]
+    #[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
+    #[stable(feature = "char_struct_display", since = "1.16.0")]
+    #[stable(feature = "iter_partialeq", since = "CURRENT_RUSTC_VERSION")]
+    /// Returns an iterator that yields the lowercase equivalent of a `char`.
+    ///
+    /// This `struct` is created by the [`to_lowercase`] method on [`char`]. See
+    /// its documentation for more.
+    ///
+    /// [`to_lowercase`]: char::to_lowercase
+    ToLowercase
 }
 
 #[derive(Debug, Clone)]
@@ -589,6 +658,22 @@ impl fmt::Display for CaseMappingIter {
     }
 }
 
+impl PartialEq for CaseMappingIter {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_slice() == other.0.as_slice()
+    }
+}
+
+impl Eq for CaseMappingIter {}
+
+impl PartialEq<char> for CaseMappingIter {
+    #[inline]
+    fn eq(&self, other: &char) -> bool {
+        self.0.as_slice() == &[*other]
+    }
+}
+
 /// The error type returned when a checked char conversion fails.
 #[stable(feature = "u8_from_char", since = "1.59.0")]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -603,3 +688,16 @@ impl fmt::Display for TryFromCharError {
 
 #[stable(feature = "u8_from_char", since = "1.59.0")]
 impl Error for TryFromCharError {}
+
+/// The case of a cased character,
+/// as returned by [`char::case`].
+#[unstable(feature = "titlecase", issue = "none")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum CharCase {
+    /// Lowercase. Corresponds to the `Lowercase` Unicode property.
+    Lower = 0b00,
+    /// Titlecase. Corresponds to the `Titlecase_Letter` Unicode general category.
+    Title = 0b10,
+    /// Uppercase. Corresponds to the `Uppercase` Unicode property.
+    Upper = 0b11,
+}
