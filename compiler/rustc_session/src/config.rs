@@ -995,7 +995,7 @@ pub struct NextSolverConfig {
     pub coherence: bool = true,
     /// Whether the new trait solver should be enabled everywhere.
     /// This is only `true` if `coherence` is also enabled.
-    pub globally: bool = false,
+    pub globally: bool = true,
 }
 
 #[derive(Clone)]

@@ -3477,7 +3477,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn next_trait_solver_globally(self) -> bool {
-        self.sess.opts.unstable_opts.next_solver.globally
+        self.sess.opts.unstable_opts.next_solver.globally && !self.features().generic_const_exprs()
     }
 
     pub fn next_trait_solver_in_coherence(self) -> bool {

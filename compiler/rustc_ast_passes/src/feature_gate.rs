@@ -661,10 +661,13 @@ fn check_new_solver_banned_features(sess: &Session, features: &Features) {
         .map(|feat| feat.attr_sp)
     {
         #[allow(rustc::symbol_intern_string_literal)]
-        sess.dcx().emit_err(errors::IncompatibleFeatures {
-            spans: vec![gce_span],
-            f1: Symbol::intern("-Znext-solver=globally"),
-            f2: sym::generic_const_exprs,
-        });
+        sess.dcx()
+            .create_fatal(errors::IncompatibleFeatures {
+                spans: vec![gce_span],
+                f1: Symbol::intern("-Znext-solver=globally"),
+                f2: sym::generic_const_exprs,
+            })
+            .with_code(rustc_errors::E0001)
+            .emit();
     }
 }
