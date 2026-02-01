@@ -285,9 +285,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Clear previous flag; after a pointer indirection it does not apply any more.
                 inside_union = false;
             }
-            if source.is_union() {
-                inside_union = true;
-            }
             // Fix up the autoderefs. Autorefs can only occur immediately preceding
             // overloaded place ops, and will be fixed by them in order to get
             // the correct region.
@@ -335,6 +332,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     source = adjustment.target;
                 }
                 self.typeck_results.borrow_mut().adjustments_mut().insert(expr.hir_id, adjustments);
+            }
+            if source.is_union() {
+                inside_union = true;
             }
 
             match expr.kind {
