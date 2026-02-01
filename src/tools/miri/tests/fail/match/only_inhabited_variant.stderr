@@ -1,13 +1,8 @@
-error: Undefined Behavior: constructing invalid value: encountered a dangling reference (use-after-free)
-  --> tests/fail/closures/deref-in-pattern.rs:LL:CC
+error: Undefined Behavior: read discriminant of an uninhabited enum variant
+  --> tests/fail/match/only_inhabited_variant.rs:LL:CC
    |
-LL |       let _ = || {
-   |  _____________^
-LL | |         match x {
-LL | |             &&_y => {}
-LL | |         }
-LL | |     };
-   | |_____^ Undefined Behavior occurred here
+LL |     match r {
+   |           ^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

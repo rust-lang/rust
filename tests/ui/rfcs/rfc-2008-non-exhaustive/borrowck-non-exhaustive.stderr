@@ -1,5 +1,5 @@
 error[E0503]: cannot use `x` because it was mutably borrowed
-  --> $DIR/borrowck-non-exhaustive.rs:12:11
+  --> $DIR/borrowck-non-exhaustive.rs:17:11
    |
 LL |     let y = &mut x;
    |             ------ `x` is borrowed here
@@ -9,6 +9,17 @@ LL |     match x {
 LL |     drop(y);
    |          - borrow later used here
 
-error: aborting due to 1 previous error
+error[E0503]: cannot use `x` because it was mutably borrowed
+  --> $DIR/borrowck-non-exhaustive.rs:25:11
+   |
+LL |     let y = &mut x;
+   |             ------ `x` is borrowed here
+LL |     match x {
+   |           ^ use of borrowed `x`
+...
+LL |     drop(y);
+   |          - borrow later used here
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0503`.

@@ -12,7 +12,9 @@
           debug residual => _4;
           scope 2 {
               scope 8 (inlined #[track_caller] <Result<i32, i32> as FromResidual<Result<Infallible, i32>>>::from_residual) {
-                  let _10: i32;
+                  let mut _10: isize;
+                  let _11: i32;
+                  let mut _12: bool;
                   scope 9 {
                       scope 10 (inlined <i32 as From<i32>>::from) {
                       }
@@ -58,8 +60,15 @@
   
       bb3: {
           _4 = copy ((_2 as Break).0: std::result::Result<std::convert::Infallible, i32>);
-          _10 = copy ((_4 as Err).0: i32);
-          _0 = Result::<i32, i32>::Err(copy _10);
+          StorageLive(_10);
+          StorageLive(_12);
+          _10 = discriminant(_4);
+          _12 = Eq(copy _10, const 1_isize);
+          assume(move _12);
+          _11 = copy ((_4 as Err).0: i32);
+          _0 = Result::<i32, i32>::Err(copy _11);
+          StorageDead(_12);
+          StorageDead(_10);
           StorageDead(_2);
           return;
       }

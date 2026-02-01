@@ -1,13 +1,8 @@
-error: Undefined Behavior: constructing invalid value: encountered a dangling reference (use-after-free)
-  --> tests/fail/closures/partial-pattern.rs:LL:CC
+error: Undefined Behavior: enum value has invalid tag: 0x15
+  --> tests/fail/match/single_variant.rs:LL:CC
    |
-LL |       let _ = || {
-   |  _____________^
-LL | |         match x {
-LL | |             (&_y, _) => {}
-LL | |         }
-LL | |     };
-   | |_____^ Undefined Behavior occurred here
+LL |         match y {
+   |               ^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
