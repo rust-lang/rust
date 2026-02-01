@@ -25,12 +25,32 @@ impl<'a, 'tcx> VirtualIndex {
     ) -> Bx::Value {
         // Load the function pointer from the object.
         debug!("get_fn({llvtable:?}, {ty:?}, {self:?})");
-
-        let llty = bx.fn_ptr_backend_type(fn_abi);
         let ptr_size = bx.data_layout().pointer_size();
         let vtable_byte_offset = self.0 * ptr_size.bytes();
 
-        load_vtable(bx, llvtable, llty, vtable_byte_offset, ty, nonnull)
+        if bx.cx().sess().opts.unstable_opts.experimental_relative_rust_abi_vtables {
+            let llty = bx.vtable_component_type(fn_abi);
+            load_vtable(
+                bx,
+                llvtable,
+                llty,
+                vtable_byte_offset / 2,
+                ty,
+                nonnull,
+                /*load_relative*/ true,
+            )
+        } else {
+            let llty = bx.fn_ptr_backend_type(fn_abi);
+            load_vtable(
+                bx,
+                llvtable,
+                llty,
+                vtable_byte_offset,
+                ty,
+                nonnull,
+                /*load_relative*/ false,
+            )
+        }
     }
 
     pub(crate) fn get_optional_fn<Bx: BuilderMethods<'a, 'tcx>>(
@@ -61,12 +81,33 @@ impl<'a, 'tcx> VirtualIndex {
     ) -> Bx::Value {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", llvtable, self);
-
-        let llty = bx.type_isize();
         let ptr_size = bx.data_layout().pointer_size();
         let vtable_byte_offset = self.0 * ptr_size.bytes();
 
-        load_vtable(bx, llvtable, llty, vtable_byte_offset, ty, false)
+        if bx.cx().sess().opts.unstable_opts.experimental_relative_rust_abi_vtables {
+            let llty = bx.type_i32();
+            let val = load_vtable(
+                bx,
+                llvtable,
+                llty,
+                vtable_byte_offset / 2,
+                ty,
+                false,
+                /*load_relative*/ false,
+            );
+            bx.zext(val, bx.type_isize())
+        } else {
+            let llty = bx.type_isize();
+            load_vtable(
+                bx,
+                llvtable,
+                llty,
+                vtable_byte_offset,
+                ty,
+                false,
+                /*load_relative*/ false,
+            )
+        }
     }
 }
 
@@ -114,9 +155,17 @@ pub(crate) fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
 
     let vtable_alloc_id = tcx.vtable_allocation((ty, trait_ref));
     let vtable_allocation = tcx.global_alloc(vtable_alloc_id).unwrap_memory();
-    let vtable_const = cx.const_data_from_alloc(vtable_allocation);
-    let align = cx.data_layout().pointer_align().abi;
-    let vtable = cx.static_addr_of(vtable_const, align, Some("vtable"));
+    let num_entries = {
+        if let Some(trait_ref) = trait_ref {
+            let trait_ref = trait_ref.with_self_ty(tcx, ty);
+            let trait_ref = tcx.erase_and_anonymize_regions(trait_ref);
+            tcx.vtable_entries(trait_ref)
+        } else {
+            TyCtxt::COMMON_VTABLE_ENTRIES
+        }
+    }
+    .len();
+    let vtable = cx.construct_vtable(vtable_allocation, num_entries as u64);
 
     cx.apply_vcall_visibility_metadata(ty, trait_ref, vtable);
     cx.create_vtable_debuginfo(ty, trait_ref, vtable);
@@ -132,6 +181,7 @@ pub(crate) fn load_vtable<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     vtable_byte_offset: u64,
     ty: Ty<'tcx>,
     nonnull: bool,
+    load_relative: bool,
 ) -> Bx::Value {
     let ptr_align = bx.data_layout().pointer_align().abi;
 
@@ -141,6 +191,7 @@ pub(crate) fn load_vtable<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         if let Some(trait_ref) = dyn_trait_in_self(bx.tcx(), ty) {
             let typeid =
                 bx.typeid_metadata(typeid_for_trait_ref(bx.tcx(), trait_ref).as_bytes()).unwrap();
+            // FIXME: Add correct intrinsic for RV here.
             let func = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
             return func;
         } else if nonnull {
@@ -148,11 +199,23 @@ pub(crate) fn load_vtable<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         }
     }
 
-    let gep = bx.inbounds_ptradd(llvtable, bx.const_usize(vtable_byte_offset));
-    let ptr = bx.load(llty, gep, ptr_align);
+    let ptr = if load_relative {
+        bx.load_relative(llvtable, bx.const_i32(vtable_byte_offset.try_into().unwrap()))
+    } else {
+        let gep = bx.inbounds_ptradd(llvtable, bx.const_usize(vtable_byte_offset));
+        bx.load(llty, gep, ptr_align)
+    };
+
     // VTable loads are invariant.
     bx.set_invariant_load(ptr);
-    if nonnull {
+    // FIXME: The verifier complains with
+    //
+    //   nonnull applies only to load instructions, use attributes for calls or invokes
+    //   @llvm.load.relative.i32  (ptr nonnull %13, i32 12), !dbg !4323, !invariant.load !27, !noalias !27, !nonnull !27
+    //
+    // For now, do not mark the load relative intrinsic with nonnull, but I think it should be fine
+    // to do so since it's effectively a load.
+    if nonnull && !load_relative {
         bx.nonnull_metadata(ptr);
     }
     ptr

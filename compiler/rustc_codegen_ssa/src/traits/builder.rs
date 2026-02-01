@@ -238,6 +238,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn scalable_alloca(&mut self, elt: u64, align: Align, element_ty: Ty<'_>) -> Self::Value;
 
     fn load(&mut self, ty: Self::Type, ptr: Self::Value, align: Align) -> Self::Value;
+    fn load_relative(&mut self, ptr: Self::Value, byte_offset: Self::Value) -> Self::Value;
     fn volatile_load(&mut self, ty: Self::Type, ptr: Self::Value) -> Self::Value;
     fn atomic_load(
         &mut self,

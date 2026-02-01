@@ -2694,6 +2694,16 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         early_dcx.early_fatal("can't dump dependency graph without `-Z query-dep-graph`");
     }
 
+    // The rust build system doesn't have a good way of saying "cross compile these
+    // libraries for other targets with this flag", so unconditionally build these
+    // archs with relative vtables enabled by default.
+    if target_triple.tuple().ends_with("fuchsia")
+        || target_triple.tuple().contains("-cros-")
+        || target_triple.tuple().contains("android")
+    {
+        unstable_opts.experimental_relative_rust_abi_vtables = true;
+    }
+
     let logical_env = parse_logical_env(early_dcx, matches);
 
     let sysroot = Sysroot::new(matches.opt_str("sysroot").map(PathBuf::from));

@@ -202,7 +202,28 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             if let Some(entry_idx) = vptr_entry_idx {
                 let ptr_size = bx.data_layout().pointer_size();
                 let vtable_byte_offset = u64::try_from(entry_idx).unwrap() * ptr_size.bytes();
-                load_vtable(bx, old_info, bx.type_ptr(), vtable_byte_offset, source, true)
+                if bx.cx().sess().opts.unstable_opts.experimental_relative_rust_abi_vtables {
+                    let val = load_vtable(
+                        bx,
+                        old_info,
+                        bx.type_ptr(),
+                        vtable_byte_offset / 2,
+                        source,
+                        true,
+                        /*load_relative*/ true,
+                    );
+                    bx.zext(val, bx.type_isize())
+                } else {
+                    load_vtable(
+                        bx,
+                        old_info,
+                        bx.type_ptr(),
+                        vtable_byte_offset,
+                        source,
+                        true,
+                        /*load_relative*/ false,
+                    )
+                }
             } else {
                 old_info
             }

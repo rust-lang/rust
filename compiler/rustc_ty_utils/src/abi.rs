@@ -312,8 +312,21 @@ fn arg_attrs_for_rust_scalar<'tcx>(
             None
         };
         if let Some(kind) = kind {
-            attrs.pointee_align =
-                Some(pointee.align.min(cx.tcx().sess.target.max_reliable_alignment()));
+            let is_vtable = if let ty::Ref(_, ty, _) = *layout.ty.kind() {
+                ty.is_trait()
+                    && matches!(kind, PointerKind::SharedRef { frozen: true })
+                    && !is_return
+            } else {
+                false
+            };
+
+            if cx.tcx().sess.opts.unstable_opts.experimental_relative_rust_abi_vtables && is_vtable
+            {
+                attrs.pointee_align = Some(cx.tcx().data_layout.i32_align);
+            } else {
+                attrs.pointee_align =
+                    Some(pointee.align.min(cx.tcx().sess.target.max_reliable_alignment()));
+            }
 
             attrs.pointee_size = match kind {
                 // LLVM dereferenceable attribute has unclear semantics on the return type,
@@ -330,8 +343,16 @@ fn arg_attrs_for_rust_scalar<'tcx>(
                 PointerKind::Box { .. }
                 | PointerKind::SharedRef { frozen: false }
                 | PointerKind::MutableRef { unpin: false } => Size::ZERO,
-                PointerKind::SharedRef { frozen: true }
-                | PointerKind::MutableRef { unpin: true } => pointee.size,
+                PointerKind::SharedRef { frozen: true } => {
+                    if cx.tcx().sess.opts.unstable_opts.experimental_relative_rust_abi_vtables
+                        && is_vtable
+                    {
+                        pointee.size / 2
+                    } else {
+                        pointee.size
+                    }
+                }
+                PointerKind::MutableRef { unpin: true } => pointee.size,
             };
 
             // The aliasing rules for `Box<T>` are still not decided, but currently we emit

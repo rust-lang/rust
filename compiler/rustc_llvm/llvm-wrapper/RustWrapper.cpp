@@ -135,6 +135,10 @@ extern "C" void LLVMRustSetLastError(const char *Err) {
   LastError = strdup(Err);
 }
 
+extern "C" LLVMValueRef LLVMDSOLocalEquivalent(LLVMValueRef GlobalVal) {
+  return wrap(DSOLocalEquivalent::get(unwrap<GlobalValue>(GlobalVal)));
+}
+
 extern "C" void LLVMRustSetNormalizedTarget(LLVMModuleRef M,
                                             const char *Target) {
 #if LLVM_VERSION_GE(21, 0)
@@ -720,6 +724,14 @@ extern "C" void LLVMRustSetAllowReassoc(LLVMValueRef V) {
   if (auto I = dyn_cast<Instruction>(unwrap<Value>(V))) {
     I->setHasAllowReassoc(true);
   }
+}
+
+extern "C" LLVMValueRef LLVMBuildLoadRelative(LLVMBuilderRef B, LLVMValueRef Ptr,
+                                              LLVMValueRef ByteOffset) {
+  Type *Int32Ty = Type::getInt32Ty(unwrap(B)->getContext());
+  Value *call = unwrap(B)->CreateIntrinsic(
+      Intrinsic::load_relative, {Int32Ty}, {unwrap(Ptr), unwrap(ByteOffset)});
+  return wrap(call);
 }
 
 extern "C" uint64_t LLVMRustGetArrayNumElements(LLVMTypeRef Ty) {
