@@ -1682,6 +1682,7 @@ rustc_queries! {
     /// then you should take a `TypingEnv` to ensure that you handle opaque types correctly.
     query param_env(def_id: DefId) -> ty::ParamEnv<'tcx> {
         desc { |tcx| "computing normalized predicates of `{}`", tcx.def_path_str(def_id) }
+        cache_on_disk_if { true }
         feedable
     }
 
