@@ -354,7 +354,13 @@ fn make_attr_token_stream(
                         FrameData { open_delim_sp: Some((delim, span, spacing)), inner: vec![] },
                     ));
                 } else if let Some(delim) = kind.close_delim() {
-                    let frame_data = mem::replace(&mut stack_top, stack_rest.pop().unwrap());
+                    // If there's no matching opening delimiter, the token stream is malformed,
+                    // likely due to a improper delimiter positions in the source code.
+                    // It's not delimiter mismatch, and lexer can not detect it, so we just ignore it here.
+                    let Some(frame) = stack_rest.pop() else {
+                        return AttrTokenStream::new(stack_top.inner);
+                    };
+                    let frame_data = mem::replace(&mut stack_top, frame);
                     let (open_delim, open_sp, open_spacing) = frame_data.open_delim_sp.unwrap();
                     assert!(
                         open_delim.eq_ignoring_invisible_origin(&delim),
