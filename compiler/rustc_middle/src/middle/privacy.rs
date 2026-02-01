@@ -7,6 +7,7 @@ use std::hash::Hash;
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def::DefKind;
+use rustc_hir::{ItemKind, UseKind};
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
@@ -180,8 +181,11 @@ impl EffectiveVisibilities {
             // All effective visibilities except `reachable_through_impl_trait` are limited to
             // nominal visibility. For some items nominal visibility doesn't make sense so we
             // don't check this condition for them.
-            let is_impl = matches!(tcx.def_kind(def_id), DefKind::Impl { .. });
-            if !is_impl && tcx.trait_impl_of_assoc(def_id.to_def_id()).is_none() {
+            let def_kind = tcx.def_kind(def_id);
+            let is_impl = matches!(def_kind, DefKind::Impl { .. });
+            let is_glob_use = matches!(def_kind, DefKind::Use)
+                && matches!(tcx.hir_expect_item(def_id).kind, ItemKind::Use(_, UseKind::Glob));
+            if !is_impl && tcx.trait_impl_of_assoc(def_id.to_def_id()).is_none() && !is_glob_use {
                 let nominal_vis = tcx.visibility(def_id);
                 if !nominal_vis.is_at_least(ev.reachable, tcx) {
                     span_bug!(
