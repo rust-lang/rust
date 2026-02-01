@@ -26,8 +26,8 @@ if __name__ == "__main__":
             try:
                 os.execvp("python3", ["python3"] + sys.argv)
             except OSError:
-                # Python 3 isn't available, fall back to python 2
-                pass
+                print("Python 3 is not available. Please install Python 3.6 or later.")
+                sys.exit(1)
 
     # soft deprecation of old python versions
     skip_check = os.environ.get("RUST_IGNORE_OLD_PYTHON") == "1"
