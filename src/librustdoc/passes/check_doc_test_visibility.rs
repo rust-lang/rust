@@ -10,19 +10,11 @@ use rustc_middle::lint::{LevelAndSource, LintLevelSource};
 use rustc_session::lint;
 use tracing::debug;
 
-use super::Pass;
-use crate::clean;
 use crate::clean::utils::inherits_doc_hidden;
-use crate::clean::*;
+use crate::clean::{self, *};
 use crate::core::DocContext;
 use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine, find_testable_code};
 use crate::visit::DocVisitor;
-
-pub(crate) const CHECK_DOC_TEST_VISIBILITY: Pass = Pass {
-    name: "check_doc_test_visibility",
-    run: Some(check_doc_test_visibility),
-    description: "run various visibility-related lints on doctests",
-};
 
 struct DocTestVisibilityLinter<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
