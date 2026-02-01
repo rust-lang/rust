@@ -54,7 +54,7 @@ use core::ops::Add;
 use core::ops::AddAssign;
 use core::ops::{self, Range, RangeBounds};
 use core::str::pattern::{Pattern, Utf8Pattern};
-use core::{fmt, hash, ptr, slice};
+use core::{fmt, hash, hint, ptr, slice};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::Allocator;
@@ -1645,53 +1645,57 @@ impl String {
     where
         F: FnMut(char) -> bool,
     {
-        struct SetLenOnDrop<'a> {
-            s: &'a mut String,
-            idx: usize,
-            del_bytes: usize,
-        }
-
-        impl<'a> Drop for SetLenOnDrop<'a> {
-            fn drop(&mut self) {
-                let new_len = self.idx - self.del_bytes;
-                debug_assert!(new_len <= self.s.len());
-                unsafe { self.s.vec.set_len(new_len) };
-            }
-        }
-
         let len = self.len();
-        let mut guard = SetLenOnDrop { s: self, idx: 0, del_bytes: 0 };
-
-        while guard.idx < len {
-            let ch =
-                // SAFETY: `guard.idx` is positive-or-zero and less that len so the `get_unchecked`
-                // is in bound. `self` is valid UTF-8 like string and the returned slice starts at
-                // a unicode code point so the `Chars` always return one character.
-                unsafe { guard.s.get_unchecked(guard.idx..len).chars().next().unwrap_unchecked() };
-            let ch_len = ch.len_utf8();
-
-            if !f(ch) {
-                guard.del_bytes += ch_len;
-            } else if guard.del_bytes > 0 {
-                // SAFETY: `guard.idx` is in bound and `guard.del_bytes` represent the number of
-                // bytes that are erased from the string so the resulting `guard.idx -
-                // guard.del_bytes` always represent a valid unicode code point.
-                //
-                // `guard.del_bytes` >= `ch.len_utf8()`, so taking a slice with `ch.len_utf8()` len
-                // is safe.
-                ch.encode_utf8(unsafe {
-                    crate::slice::from_raw_parts_mut(
-                        guard.s.as_mut_ptr().add(guard.idx - guard.del_bytes),
-                        ch.len_utf8(),
-                    )
-                });
-            }
-
-            // Point idx to the next char
-            guard.idx += ch_len;
+        if len == 0 {
+            // Explicit check results in better optimization
+            return;
         }
 
-        drop(guard);
+        struct PanicGuard {
+            s: ptr::NonNull<String>,
+            read: usize,
+            write: usize,
+        }
+
+        impl Drop for PanicGuard {
+            fn drop(&mut self) {
+                // SAFETY: This is guaranteed to be the only mutable reference to `s`.
+                let str = unsafe { &mut *self.s.as_ptr() };
+                debug_assert!(self.write <= str.len());
+                // SAFETY: Restore the string length to the number of bytes written so far.
+                unsafe { str.vec.set_len(self.write) }
+            }
+        }
+
+        // Faster read-path
+        let string_ptr = ptr::NonNull::from(&mut *self);
+        let data_ptr = self.vec.as_mut_ptr();
+        let mut chars = self.char_indices();
+        let (read, write) = loop {
+            let Some((write, ch)) = chars.next() else { return };
+            if hint::unlikely(!f(ch)) {
+                break (chars.offset(), write);
+            }
+        };
+
+        // Critical section starts here, at least one character is going to be removed.
+        let mut g = PanicGuard { s: string_ptr, read, write };
+        // Slower write-path
+        while let Some((read, ch)) = chars.next() {
+            let ch_len = chars.offset() - read;
+            if f(ch) {
+                // SAFETY: `g.read` is in bound because `g.write` <= `g.read` - `ch_len`,
+                // so taking a slice with `ch_len` is safe.
+                unsafe {
+                    ptr::copy(data_ptr.add(g.read), data_ptr.add(g.write), ch_len);
+                }
+                g.write += ch_len;
+            }
+            g.read += ch_len;
+        }
+
+        // All characters have been processed, set the final length by dropping the guard.
+        drop(g);
     }
 
     /// Inserts a character into this `String` at byte position `idx`.
