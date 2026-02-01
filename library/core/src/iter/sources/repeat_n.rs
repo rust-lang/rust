@@ -102,6 +102,15 @@ impl<A: fmt::Debug> fmt::Debug for RepeatN<A> {
     }
 }
 
+/// Creates an empty iterator, like [`repeat_n(value, 0)`][`repeat_n`]
+/// but without needing any such value at hand.
+#[stable(feature = "iter_repeat_n_default", since = "CURRENT_RUSTC_VERSION")]
+impl<A> Default for RepeatN<A> {
+    fn default() -> Self {
+        RepeatN { count: 0, element: MaybeUninit::uninit() }
+    }
+}
+
 #[stable(feature = "iter_repeat_n", since = "1.82.0")]
 impl<A: Clone> Iterator for RepeatN<A> {
     type Item = A;
