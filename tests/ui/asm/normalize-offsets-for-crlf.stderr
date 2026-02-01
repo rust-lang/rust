@@ -1,0 +1,10 @@
+error: invalid instruction mnemonic 'non_existent_mnemonic'
+   |
+note: instantiated into assembly here
+  --> <inline asm>:6:1
+   |
+LL | non_existent_mnemonic
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

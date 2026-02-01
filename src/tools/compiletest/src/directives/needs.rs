@@ -290,7 +290,7 @@ pub(super) fn handle_needs(
     }
 
     // Handled elsewhere.
-    if name == "needs-llvm-components" {
+    if name == "needs-llvm-components" || name == "needs-backends" {
         return IgnoreDecision::Continue;
     }
 
