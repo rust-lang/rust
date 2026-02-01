@@ -469,6 +469,9 @@
 //@ revisions: riscv32im_unknown_none_elf
 //@ [riscv32im_unknown_none_elf] compile-flags: --target riscv32im-unknown-none-elf
 //@ [riscv32im_unknown_none_elf] needs-llvm-components: riscv
+//@ revisions: riscv32im_unknown_openvm_elf
+//@ [riscv32im_unknown_openvm_elf] compile-flags: --target riscv32im-unknown-openvm-elf
+//@ [riscv32im_unknown_openvm_elf] needs-llvm-components: riscv
 //@ revisions: riscv32ima_unknown_none_elf
 //@ [riscv32ima_unknown_none_elf] compile-flags: --target riscv32ima-unknown-none-elf
 //@ [riscv32ima_unknown_none_elf] needs-llvm-components: riscv
