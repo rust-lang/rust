@@ -124,6 +124,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `gc`
 `gfni`
 `guarded-storage`
+`h`
 `hard-float`
 `hard-float-abi`
 `hard-tp`
@@ -328,6 +329,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `sve2-sha3`
 `sve2-sm4`
 `sve2p1`
+`svinval`
 `tail-call`
 `tbm`
 `thumb-mode`
