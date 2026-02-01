@@ -390,6 +390,14 @@ pub(crate) struct UnusedMultiple {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_parsing_invalid_export_visibility)]
+pub(crate) struct InvalidExportVisibility {
+    #[primary_span]
+    pub span: Span,
+    pub unrecognized_visibility: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_parsing_null_on_export, code = E0648)]
 pub(crate) struct NullOnExport {
     #[primary_span]

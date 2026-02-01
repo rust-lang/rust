@@ -1,0 +1,38 @@
+error: invalid export visibility: unrecognized visibility value
+  --> $DIR/export-visibility-with-unrecognized-arg.rs:5:23
+   |
+LL | #[export_visibility = "unrecognized visibility value"]
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: invalid export visibility: hidden
+  --> $DIR/export-visibility-with-unrecognized-arg.rs:12:23
+   |
+LL | #[export_visibility = "hidden"]
+   |                       ^^^^^^^^
+
+error: invalid export visibility: protected
+  --> $DIR/export-visibility-with-unrecognized-arg.rs:16:23
+   |
+LL | #[export_visibility = "protected"]
+   |                       ^^^^^^^^^^^
+
+error: invalid export visibility: interposable
+  --> $DIR/export-visibility-with-unrecognized-arg.rs:20:23
+   |
+LL | #[export_visibility = "interposable"]
+   |                       ^^^^^^^^^^^^^^
+
+error: invalid export visibility: default
+  --> $DIR/export-visibility-with-unrecognized-arg.rs:26:23
+   |
+LL | #[export_visibility = "default"]
+   |                       ^^^^^^^^^
+
+error: invalid export visibility: public
+  --> $DIR/export-visibility-with-unrecognized-arg.rs:30:23
+   |
+LL | #[export_visibility = "public"]
+   |                       ^^^^^^^^
+
+error: aborting due to 6 previous errors
+

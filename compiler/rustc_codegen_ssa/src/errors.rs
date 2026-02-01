@@ -1254,3 +1254,17 @@ pub(crate) struct LtoProcMacro;
 #[diag(codegen_ssa_dynamic_linking_with_lto)]
 #[note]
 pub(crate) struct DynamicLinkingWithLTO;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_export_visibility_with_rustc_std_internal_symbol)]
+pub(crate) struct ExportVisibilityWithRustcStdInternalSymbol {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_export_visibility_without_no_mangle_nor_export_name)]
+pub(crate) struct ExportVisibilityWithoutNoMangleNorExportName {
+    #[primary_span]
+    pub span: Span,
+}

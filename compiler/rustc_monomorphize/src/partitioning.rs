@@ -931,6 +931,11 @@ fn mono_item_visibility<'tcx>(
 }
 
 fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibility {
+    // If present, then symbol-specific `#[export_visibility = ...]` "wins".
+    if let Some(visibility) = tcx.codegen_fn_attrs(id).export_visibility {
+        return visibility;
+    }
+
     // Fast-path to avoid expensive query call below
     if tcx.sess.default_visibility() == SymbolVisibility::Interposable {
         return Visibility::Default;
