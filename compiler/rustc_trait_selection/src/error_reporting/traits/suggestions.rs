@@ -4247,16 +4247,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     })
                 } else if let Some(where_pred) = where_pred.as_projection_clause()
                     && let Some(failed_pred) = failed_pred.as_projection_clause()
-                    && let Some(found) = failed_pred.skip_binder().term.as_type()
                 {
-                    type_diffs = vec![TypeError::Sorts(ty::error::ExpectedFound {
-                        expected: where_pred
-                            .skip_binder()
-                            .projection_term
-                            .expect_ty(self.tcx)
-                            .to_ty(self.tcx),
-                        found,
-                    })];
+                    self.enter_forall(failed_pred, |failed_pred| {
+                        if let Some(found) = failed_pred.term.as_type() {
+                            let where_pred = self.instantiate_binder_with_fresh_vars(
+                                expr.span,
+                                BoundRegionConversionTime::HigherRankedType,
+                                where_pred,
+                            );
+                            type_diffs = vec![TypeError::Sorts(ty::error::ExpectedFound {
+                                expected: where_pred
+                                    .projection_term
+                                    .expect_ty(self.tcx)
+                                    .to_ty(self.tcx),
+                                found,
+                            })];
+                        }
+                    });
                 }
             }
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
