@@ -7,6 +7,7 @@ use super::super::{
 use super::TrustedLen;
 use crate::array;
 use crate::cmp::{self, Ordering};
+use crate::marker::Destruct;
 use crate::num::NonZero;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
@@ -254,13 +255,17 @@ pub const trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_non_const_trait_method]
     fn last(self) -> Option<Self::Item>
     where
-        Self: Sized,
+        Self: Sized + [const] Destruct,
+        Self::Item: [const] Destruct,
     {
         #[inline]
-        fn some<T>(_: Option<T>, x: T) -> Option<T> {
+        #[rustc_const_unstable(feature = "const_destruct", issue = "133214")]
+        const fn some<T>(_: Option<T>, x: T) -> Option<T>
+        where
+            T: [const] Destruct,
+        {
             Some(x)
         }
 
@@ -2457,12 +2462,11 @@ pub const trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_try_fold", since = "1.27.0")]
-    #[rustc_non_const_trait_method]
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>,
+        F: [const] FnMut(B, Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = B>,
     {
         let mut accum = init;
         while let Some(x) = self.next() {
@@ -2636,11 +2640,10 @@ pub const trait Iterator {
     #[doc(alias = "inject", alias = "foldl")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_non_const_trait_method]
     fn fold<B, F>(mut self, init: B, mut f: F) -> B
     where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
+        Self: Sized + [const] Destruct,
+        F: [const] FnMut(B, Self::Item) -> B + [const] Destruct,
     {
         let mut accum = init;
         while let Some(x) = self.next() {
@@ -2674,11 +2677,10 @@ pub const trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_fold_self", since = "1.51.0")]
-    #[rustc_non_const_trait_method]
     fn reduce<F>(mut self, f: F) -> Option<Self::Item>
     where
-        Self: Sized,
-        F: FnMut(Self::Item, Self::Item) -> Self::Item,
+        Self: Sized + [const] Destruct,
+        F: [const] FnMut(Self::Item, Self::Item) -> Self::Item + [const] Destruct,
     {
         let first = self.next()?;
         Some(self.fold(first, f))
@@ -2746,14 +2748,13 @@ pub const trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "iterator_try_reduce", issue = "87053")]
-    #[rustc_non_const_trait_method]
     fn try_reduce<R>(
         &mut self,
-        f: impl FnMut(Self::Item, Self::Item) -> R,
+        f: impl [const] FnMut(Self::Item, Self::Item) -> R + [const] Destruct,
     ) -> ChangeOutputType<R, Option<R::Output>>
     where
         Self: Sized,
-        R: Try<Output = Self::Item, Residual: Residual<Option<Self::Item>>>,
+        R: [const] Try<Output = Self::Item, Residual: [const] Residual<Option<Self::Item>>>,
     {
         let first = match self.next() {
             Some(i) => i,
