@@ -182,6 +182,7 @@ where
     let result = f();
 
     // prevent this frame from being tail-call optimised away
+    #[allow(black_box_zst_calls)]
     crate::hint::black_box(());
 
     result
