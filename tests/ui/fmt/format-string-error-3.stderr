@@ -1,0 +1,12 @@
+error: invalid format string: python's f-string debug `=` is not supported in rust, use `dbg(x)` instead
+  --> $DIR/format-string-error-3.rs:3:17
+   |
+LL |     println!("{x=}");
+   |               - ^ expected `}` in format string
+   |               |
+   |               because of this opening brace
+   |
+   = note: to print `{`, you can escape it using `{{`
+
+error: aborting due to 1 previous error
+

@@ -318,3 +318,5 @@ builtin_macros_unexpected_lit = expected path to a trait, found literal
     .other = for example, write `#[derive(Debug)]` for `Debug`
 
 builtin_macros_unnameable_test_items = cannot test inner items
+
+builtin_macros_use_rust_debug_printing_macro = use rust debug printing macro
