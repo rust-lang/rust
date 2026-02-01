@@ -706,9 +706,9 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
         body,
         &[
             // Add some UB checks before any UB gets optimized away.
+            &check_enums::CheckEnums,
             &check_alignment::CheckAlignment,
             &check_null::CheckNull,
-            &check_enums::CheckEnums,
             // Before inlining: trim down MIR with passes to reduce inlining work.
 
             // Has to be done before inlining, otherwise actual call will be almost always inlined.

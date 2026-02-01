@@ -208,7 +208,7 @@ impl<O> AssertKind<O> {
                 LangItem::PanicGenFnNonePanic
             }
             NullPointerDereference => LangItem::PanicNullPointerDereference,
-            InvalidEnumConstruction(_) => LangItem::PanicInvalidEnumConstruction,
+            InvalidEnumConstruction(..) => LangItem::PanicInvalidEnumConstruction,
             ResumedAfterDrop(CoroutineKind::Coroutine(_)) => LangItem::PanicCoroutineResumedDrop,
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
                 LangItem::PanicAsyncFnResumedDrop
@@ -285,8 +285,11 @@ impl<O> AssertKind<O> {
                 )
             }
             NullPointerDereference => write!(f, "\"null pointer dereference occurred\""),
-            InvalidEnumConstruction(source) => {
-                write!(f, "\"trying to construct an enum from an invalid value {{}}\", {source:?}")
+            InvalidEnumConstruction(ty, source) => {
+                write!(
+                    f,
+                    "\"trying to construct an enum from an invalid value {{}}; type {{}}\", {source:?}, {ty:?}"
+                )
             }
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
                 write!(f, "\"coroutine resumed after completion\"")
@@ -371,7 +374,7 @@ impl<O> AssertKind<O> {
                 middle_assert_coroutine_resume_after_panic
             }
             NullPointerDereference => middle_assert_null_ptr_deref,
-            InvalidEnumConstruction(_) => middle_assert_invalid_enum_construction,
+            InvalidEnumConstruction(..) => middle_assert_invalid_enum_construction,
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
                 middle_assert_async_resume_after_drop
             }
@@ -425,8 +428,9 @@ impl<O> AssertKind<O> {
                 add!("required", format!("{required:#?}"));
                 add!("found", format!("{found:#?}"));
             }
-            InvalidEnumConstruction(source) => {
+            InvalidEnumConstruction(ty, source) => {
                 add!("source", format!("{source:#?}"));
+                add!("ty", format!("{ty:#?}"));
             }
         }
     }
