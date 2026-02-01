@@ -1,7 +1,7 @@
 use crate::cmp;
 use crate::fmt::{self, Debug};
 use crate::iter::{
-    FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen, UncheckedIterator,
+    FusedIterator, InPlaceIterable, Repeat, SourceIter, TrustedFused, TrustedLen, UncheckedIterator,
 };
 use crate::num::NonZero;
 
@@ -409,6 +409,22 @@ where
 impl<A, B> ExactSizeIterator for Zip<A, B>
 where
     A: ExactSizeIterator,
+    B: ExactSizeIterator,
+{
+}
+
+#[stable(feature = "exact_size_zip_repeat", since = "CURRENT_RUSTC_VERSION")]
+impl<A, B> ExactSizeIterator for Zip<A, Repeat<B>>
+where
+    A: ExactSizeIterator,
+    B: Clone,
+{
+}
+
+#[stable(feature = "exact_size_zip_repeat", since = "CURRENT_RUSTC_VERSION")]
+impl<A, B> ExactSizeIterator for Zip<Repeat<A>, B>
+where
+    A: Clone,
     B: ExactSizeIterator,
 {
 }
