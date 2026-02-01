@@ -22,13 +22,18 @@ use rustc_codegen_ssa::traits::{
     ArgAbiBuilderMethods, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
     IntrinsicCallBuilderMethods, LayoutTypeCodegenMethods,
 };
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
+#[cfg(feature = "master")]
+use rustc_middle::ty::layout::FnAbiOf;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::callconv::{ArgAbi, PassMode};
 
-use crate::abi::{FnAbiGccExt, GccType};
+#[cfg(feature = "master")]
+use crate::abi::FnAbiGccExt;
+use crate::abi::GccType;
 use crate::builder::Builder;
 use crate::common::{SignType, TypeReflection};
 use crate::context::CodegenCx;
@@ -617,8 +622,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 *func
             } else {
                 self.linkage.set(FunctionType::Extern);
-                let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
-                let fn_ty = fn_abi.gcc_type(self);
 
                 let func = match sym {
                     "llvm.fma.f16" => {
@@ -631,13 +634,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
                 self.intrinsics.borrow_mut().insert(sym.to_string(), func);
 
-                self.on_stack_function_params
-                    .borrow_mut()
-                    .insert(func, fn_ty.on_stack_param_indices);
-                #[cfg(feature = "master")]
-                for fn_attr in fn_ty.fn_attributes {
-                    func.add_attribute(fn_attr);
-                }
+                self.on_stack_function_params.borrow_mut().insert(func, FxHashSet::default());
 
                 crate::attributes::from_fn_attrs(self, func, instance);
 
