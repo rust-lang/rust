@@ -112,17 +112,29 @@ metadata_incompatible_target_modifiers =
 metadata_incompatible_target_modifiers_help_allow = if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error
 metadata_incompatible_target_modifiers_help_fix = set `{$flag_name_prefixed}={$extern_value}` in this crate or `{$flag_name_prefixed}={$local_value}` in `{$extern_crate}`
 
-metadata_incompatible_target_modifiers_help_fix_l_missed = set `{$flag_name_prefixed}={$extern_value}` in this crate or unset `{$flag_name_prefixed}` in `{$extern_crate}`
+metadata_incompatible_target_modifiers_help_fix_l_missed = set {$value_len ->
+    [0]      `{$flag_name_prefixed}`
+    *[other] `{$flag_name_prefixed}={$extern_value}`
+    } in this crate or unset `{$flag_name_prefixed}` in `{$extern_crate}`
 
-metadata_incompatible_target_modifiers_help_fix_r_missed = unset `{$flag_name_prefixed}` in this crate or set `{$flag_name_prefixed}={$local_value}` in `{$extern_crate}`
+metadata_incompatible_target_modifiers_help_fix_r_missed = unset `{$flag_name_prefixed}` in this crate or set {$value_len ->
+    [0]      `{$flag_name_prefixed}`
+    *[other] `{$flag_name_prefixed}={$local_value}`
+    } in `{$extern_crate}`
 
 metadata_incompatible_target_modifiers_l_missed =
     mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`
-    .note = unset `{$flag_name_prefixed}` in this crate is incompatible with `{$flag_name_prefixed}={$extern_value}` in dependency `{$extern_crate}`
+    .note = `{$flag_name_prefixed}` is unset in this crate which is incompatible with {$value_len ->
+        [0]      `{$flag_name_prefixed}` being set
+        *[other] `{$flag_name_prefixed}={$extern_value}`
+    } in dependency `{$extern_crate}`
     .help = the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
 metadata_incompatible_target_modifiers_r_missed =
     mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`
-    .note = `{$flag_name_prefixed}={$local_value}` in this crate is incompatible with unset `{$flag_name_prefixed}` in dependency `{$extern_crate}`
+    .note = {$value_len ->
+        [0]      `{$flag_name_prefixed}` being set
+        *[other] `{$flag_name_prefixed}={$local_value}`
+    } in this crate is incompatible with `{$flag_name_prefixed}` being unset in dependency `{$extern_crate}`
     .help = the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
 
 metadata_incompatible_with_immediate_abort =

@@ -6,5 +6,5 @@
     "target-pointer-width": 32,
     "arch": "x86",
     "os": "linux",
-    "need-explicit-cpu": true
+    "requires-explicit-and-consistent-cpu": true
 }

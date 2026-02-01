@@ -5,8 +5,10 @@
 //@ revisions: bpf ptx
 //@ [bpf] compile-flags: --target=bpfel-unknown-none -C linker-flavor=bpf --crate-type=rlib
 //@ [bpf] needs-llvm-components: bpf
-//@ [ptx] compile-flags: --target=nvptx64-nvidia-cuda -C linker-flavor=ptx --crate-type=rlib
+//@ [ptx] compile-flags: --target=nvptx64-nvidia-cuda -Ctarget-cpu=sm_30 -Clinker-flavor=ptx
+//@ [ptx] compile-flags: --crate-type=rlib
 //@ [ptx] needs-llvm-components: nvptx
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![no_core]

@@ -99,7 +99,7 @@
 //@ [r47] needs-llvm-components: mips
 //@ [r48] compile-flags: --target mipsel-unknown-linux-musl
 //@ [r48] needs-llvm-components: mips
-//@ [r49] compile-flags: --target nvptx64-nvidia-cuda
+//@ [r49] compile-flags: --target nvptx64-nvidia-cuda -Ctarget-cpu=sm_30
 //@ [r49] needs-llvm-components: nvptx
 //@ [r50] compile-flags: --target powerpc-unknown-linux-gnu
 //@ [r50] needs-llvm-components: powerpc

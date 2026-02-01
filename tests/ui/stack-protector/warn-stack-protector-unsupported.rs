@@ -1,6 +1,6 @@
 //@ build-pass
 //@ revisions: all strong basic
-//@ compile-flags: --target nvptx64-nvidia-cuda
+//@ compile-flags: --target nvptx64-nvidia-cuda -Ctarget-cpu=sm_30
 //@ needs-llvm-components: nvptx
 //@ [all] compile-flags: -Z stack-protector=all
 //@ [strong] compile-flags: -Z stack-protector=strong
@@ -24,7 +24,7 @@ trait Sized: MetaSized {}
 #[lang = "copy"]
 trait Copy {}
 
-pub fn main(){}
+pub fn main() {}
 
 //[all]~? WARN `-Z stack-protector=all` is not supported for target nvptx64-nvidia-cuda and will be ignored
 //[strong]~? WARN `-Z stack-protector=strong` is not supported for target nvptx64-nvidia-cuda and will be ignored

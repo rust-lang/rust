@@ -1,16 +1,17 @@
+//@ add-minicore
 //@ assembly-output: ptx-linker
-//@ compile-flags: --crate-type cdylib
-//@ only-nvptx64
-//@ ignore-nvptx64
+//@ compile-flags: --target nvptx64-nvidia-cuda --crate-type cdylib -Ctarget-cpu=sm_30
+//@ needs-llvm-components: nvptx
+//@ ignore-backends: gcc
 
-#![feature(abi_ptx)]
-#![no_std]
+#![feature(abi_ptx, no_core, intrinsics)]
+#![no_core]
 
-//@ aux-build: breakpoint-panic-handler.rs
-extern crate breakpoint_panic_handler;
+extern crate minicore;
+use minicore::*;
 
-//@ aux-build: non-inline-dependency.rs
-extern crate non_inline_dependency as dep;
+#[rustc_intrinsic]
+pub const unsafe fn unchecked_add<T: Copy>(x: T, y: T) -> T;
 
 // Verify that no extra function declarations are present.
 // CHECK-NOT: .func
@@ -19,7 +20,7 @@ extern crate non_inline_dependency as dep;
 #[no_mangle]
 pub unsafe extern "ptx-kernel" fn top_kernel(a: *const u32, b: *mut u32) {
     // CHECK: add.s32 %{{r[0-9]+}}, %{{r[0-9]+}}, 5;
-    *b = *a + 5;
+    *b = unchecked_add(*a, 5);
 }
 
 // Verify that no extra function definitions are here.
