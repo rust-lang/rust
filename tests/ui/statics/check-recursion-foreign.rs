@@ -15,4 +15,7 @@ extern "C" {
 
 pub static B: &'static c_int = unsafe { &test_static };
 
-pub fn main() {}
+pub fn main() {
+    // Make sure to actually reference the static.
+    unsafe { assert_eq!(test_static, 0); }
+}
