@@ -4,7 +4,7 @@ use crate::sys::thread_local::{abort_on_dtor_unwind, destructors};
 
 #[derive(Clone, Copy)]
 enum State {
-    Initial,
+    Uninitialized,
     Alive,
     Destroyed,
 }
@@ -19,7 +19,7 @@ pub struct Storage<T> {
 
 impl<T> Storage<T> {
     pub const fn new(val: T) -> Storage<T> {
-        Storage { state: Cell::new(State::Initial), val: UnsafeCell::new(val) }
+        Storage { state: Cell::new(State::Uninitialized), val: UnsafeCell::new(val) }
     }
 
     /// Gets a pointer to the TLS value. If the TLS variable has been destroyed,
@@ -32,16 +32,22 @@ impl<T> Storage<T> {
     /// The `self` reference must remain valid until the TLS destructor is run.
     #[inline]
     pub unsafe fn get(&self) -> *const T {
-        match self.state.get() {
-            State::Alive => self.val.get(),
-            State::Destroyed => ptr::null(),
-            State::Initial => unsafe { self.initialize() },
+        if let State::Alive = self.state.get() {
+            self.val.get()
+        } else {
+            unsafe { self.get_or_init_slow() }
         }
     }
 
     #[cold]
-    unsafe fn initialize(&self) -> *const T {
-        // Register the destructor
+    unsafe fn get_or_init_slow(&self) -> *const T {
+        match self.state.get() {
+            State::Uninitialized => {}
+            State::Alive => return self.val.get(),
+            State::Destroyed => return ptr::null(),
+        }
+
+        // Register the destructor.
 
         // SAFETY:
         // The caller guarantees that `self` will be valid until thread destruction.
