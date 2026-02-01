@@ -131,7 +131,7 @@ fn emit_ptr_va_arg<'ll, 'tcx>(
     );
     if indirect {
         let tmp_ret = bx.load(llty, addr, addr_align);
-        bx.load(bx.cx.layout_of(target_ty).llvm_type(bx.cx), tmp_ret, align.abi)
+        bx.load(layout.llvm_type(bx.cx), tmp_ret, align.abi)
     } else {
         bx.load(llty, addr, addr_align)
     }
@@ -1007,6 +1007,8 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
 
 /// Determine the va_arg implementation to use. The LLVM va_arg instruction
 /// is lacking in some instances, so we should only use it as a fallback.
+///
+/// <https://llvm.org/docs/LangRef.html#va-arg-instruction>
 pub(super) fn emit_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     addr: OperandRef<'tcx, &'ll Value>,
@@ -1014,6 +1016,10 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
 ) -> &'ll Value {
     let layout = bx.cx.layout_of(target_ty);
     let target_ty_size = layout.layout.size().bytes();
+
+    // Some ABIs have special behavior for zero-sized types. currently `VaArgSafe` is not
+    // implemented for any zero-sized types, so this assert should always hold.
+    assert!(!bx.layout_of(target_ty).is_zst());
 
     let target = &bx.cx.tcx.sess.target;
     match target.arch {
@@ -1026,17 +1032,24 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             if target.is_like_windows { AllowHigherAlign::No } else { AllowHigherAlign::Yes },
             ForceRightAdjust::No,
         ),
-        Arch::AArch64 | Arch::Arm64EC if target.is_like_windows || target.is_like_darwin => {
-            emit_ptr_va_arg(
-                bx,
-                addr,
-                target_ty,
-                PassMode::Direct,
-                SlotSize::Bytes8,
-                if target.is_like_windows { AllowHigherAlign::No } else { AllowHigherAlign::Yes },
-                ForceRightAdjust::No,
-            )
-        }
+        Arch::Arm64EC => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            PassMode::Direct,
+            SlotSize::Bytes8,
+            if target.is_like_windows { AllowHigherAlign::No } else { AllowHigherAlign::Yes },
+            ForceRightAdjust::No,
+        ),
+        Arch::AArch64 if target.is_like_windows || target.is_like_darwin => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            PassMode::Direct,
+            SlotSize::Bytes8,
+            if target.is_like_windows { AllowHigherAlign::No } else { AllowHigherAlign::Yes },
+            ForceRightAdjust::No,
+        ),
         Arch::AArch64 => emit_aapcs_va_arg(bx, addr, target_ty),
         Arch::Arm => {
             // Types wider than 16 bytes are not currently supported. Clang has special logic for
@@ -1064,7 +1077,16 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             AllowHigherAlign::Yes,
             ForceRightAdjust::Yes,
         ),
-        Arch::LoongArch32 => emit_ptr_va_arg(
+        Arch::RiscV32 if target.abi == Abi::Ilp32e => {
+            // FIXME: clang manually adjusts the alignment for this ABI. It notes:
+            //
+            // > To be compatible with GCC's behaviors, we force arguments with
+            // > 2×XLEN-bit alignment and size at most 2×XLEN bits like `long long`,
+            // > `unsigned long long` and `double` to have 4-byte alignment. This
+            // > behavior may be changed when RV32E/ILP32E is ratified.
+            bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx))
+        }
+        Arch::RiscV32 | Arch::LoongArch32 => emit_ptr_va_arg(
             bx,
             addr,
             target_ty,
@@ -1073,7 +1095,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             AllowHigherAlign::Yes,
             ForceRightAdjust::No,
         ),
-        Arch::LoongArch64 => emit_ptr_va_arg(
+        Arch::RiscV64 | Arch::LoongArch64 => emit_ptr_va_arg(
             bx,
             addr,
             target_ty,
@@ -1140,16 +1162,34 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
         // This includes `target.is_like_darwin`, which on x86_64 targets is like sysv64.
         Arch::X86_64 => emit_x86_64_sysv64_va_arg(bx, addr, target_ty),
         Arch::Xtensa => emit_xtensa_va_arg(bx, addr, target_ty),
-        Arch::Hexagon => {
-            if target.env == Env::Musl {
-                emit_hexagon_va_arg_musl(bx, addr, target_ty)
-            } else {
-                emit_hexagon_va_arg_bare_metal(bx, addr, target_ty)
-            }
+        Arch::Hexagon => match target.env {
+            Env::Musl => emit_hexagon_va_arg_musl(bx, addr, target_ty),
+            _ => emit_hexagon_va_arg_bare_metal(bx, addr, target_ty),
+        },
+        Arch::Sparc64 => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            if target_ty_size > 2 * 8 { PassMode::Indirect } else { PassMode::Direct },
+            SlotSize::Bytes8,
+            AllowHigherAlign::Yes,
+            ForceRightAdjust::No,
+        ),
+
+        Arch::Bpf => bug!("bpf does not support c-variadic functions"),
+        Arch::SpirV => bug!("spirv does not support c-variadic functions"),
+
+        Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => {
+            // FIXME: port MipsTargetLowering::lowerVAARG.
+            bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx))
         }
-        // For all other architecture/OS combinations fall back to using
-        // the LLVM va_arg instruction.
-        // https://llvm.org/docs/LangRef.html#va-arg-instruction
-        _ => bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx)),
+        Arch::Sparc | Arch::Avr | Arch::M68k | Arch::Msp430 => {
+            // Clang uses the LLVM implementation for these architectures.
+            bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx))
+        }
+        Arch::Other(_) => {
+            // For custom targets, use the LLVM va_arg instruction as a fallback.
+            bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx))
+        }
     }
 }
