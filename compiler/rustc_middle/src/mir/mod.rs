@@ -418,11 +418,19 @@ impl<'tcx> Body<'tcx> {
 
     pub fn typing_env(&self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
         match self.phase {
-            // FIXME(#132279): we should reveal the opaques defined in the body during analysis.
-            MirPhase::Built | MirPhase::Analysis(_) => TypingEnv {
-                typing_mode: ty::TypingMode::non_body_analysis(),
-                param_env: tcx.param_env(self.source.def_id()),
-            },
+            MirPhase::Built | MirPhase::Analysis(_) => {
+                let def_id = self.source.def_id();
+                let typing_mode = match self.source.instance {
+                    InstanceKind::Item(item_def_id) => item_def_id
+                        .as_local()
+                        .map_or(ty::TypingMode::non_body_analysis(), |local_def_id| {
+                            ty::TypingMode::analysis_in_body(tcx, local_def_id)
+                        }),
+                    _ => ty::TypingMode::non_body_analysis(),
+                };
+
+                TypingEnv { typing_mode, param_env: tcx.param_env(def_id) }
+            }
             MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
         }
     }

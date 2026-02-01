@@ -619,6 +619,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if pred.has_opaque_types() {
             return true;
         }
+        if self.typing_env.typing_mode.may_define_opaque_types() {
+            return true;
+        }
 
         let (infcx, param_env) = self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
         let ocx = ObligationCtxt::new(&infcx);
