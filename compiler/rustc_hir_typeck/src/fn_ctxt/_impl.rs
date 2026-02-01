@@ -339,9 +339,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         *entry.get_mut() = adj;
                     }
 
+                    (
+                        &mut [.., Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. }],
+                        &[Adjustment { kind: Adjust::Deref(_), .. }, ..],
+                    ) => {
+                        // A reborrow has no effect before a dereference, so we can safely merge adjustments.
+                        // A more general version of the above case.
+                        let entry_mut = entry.get_mut();
+                        entry_mut.pop();
+                        entry_mut.extend_from_slice(&adj[1..]);
+                    }
+
                     _ => {
-                        // FIXME: currently we never try to compose autoderefs
-                        // and ReifyFnPointer/UnsafeFnPointer, but we could.
+                        // FIXME: currently we never try to compose ReifyFnPointer/UnsafeFnPointer, but we could.
                         self.dcx().span_delayed_bug(
                             expr.span,
                             format!(
