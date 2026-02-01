@@ -625,7 +625,7 @@ fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) {
     }
 }
 
-fn print_crate_info(
+pub fn print_crate_info(
     codegen_backend: &dyn CodegenBackend,
     sess: &Session,
     parse_attrs: bool,
