@@ -226,7 +226,17 @@ impl Repr {
 }
 
 impl Drop for Repr {
-    #[inline]
+    // This was #[inline] previously. Inlining the destructor of ErrorData is in
+    // no way helpful in real programs (as the source of the error will not be
+    // inlined, so there will not be any match assumptions to gain). The cost,
+    // meanwhile, is a code size increase by a factor of up to 5.4 in the case
+    // of dropping multiple io::Results in the same function
+    // (https://godbolt.org/z/8hfGchjsT).
+    //
+    // FIXME this is not the optimal place for this hint (notably, we cannot
+    // apply it to the 32-bit variant). See the discussion in
+    // https://github.com/rust-lang/rust/pull/149146
+    #[inline(never)]
     fn drop(&mut self) {
         // Safety: We're a Repr, decode_repr is fine. The `Box::from_raw` is
         // safe because we're being dropped.
