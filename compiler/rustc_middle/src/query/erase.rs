@@ -15,7 +15,7 @@ use rustc_span::source_map::Spanned;
 
 use crate::mir::interpret::EvalToValTreeResult;
 use crate::mir::mono::{MonoItem, NormalizationErrorInMono};
-use crate::query::CyclePlaceholder;
+use crate::query::plumbing::CyclePlaceholder;
 use crate::traits::solve;
 use crate::ty::adjustment::CoerceUnsizedInfo;
 use crate::ty::{self, Ty, TyCtxt};

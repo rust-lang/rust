@@ -11,7 +11,8 @@ use rustc_middle::bug;
 use rustc_middle::metadata::{AmbigModChild, ModChild};
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
-use rustc_middle::query::{ExternProviders, LocalCrate};
+use rustc_middle::queries::ExternProviders;
+use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
@@ -134,8 +135,8 @@ macro_rules! provide_one {
     ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => $compute:block) => {
         fn $name<'tcx>(
             $tcx: TyCtxt<'tcx>,
-            def_id_arg: rustc_middle::query::queries::$name::Key<'tcx>,
-        ) -> rustc_middle::query::queries::$name::ProvidedValue<'tcx> {
+            def_id_arg: rustc_middle::queries::query_info::$name::Key<'tcx>,
+        ) -> rustc_middle::queries::query_info::$name::ProvidedValue<'tcx> {
             let _prof_timer =
                 $tcx.prof.generic_activity(concat!("metadata_decode_entry_", stringify!($name)));
 
