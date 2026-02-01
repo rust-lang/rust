@@ -1,12 +1,11 @@
-//@ known-bug: rust-lang/rust#129556
+// Regression test for #129556: trait const param default used to ICE in ArgFolder.
 
+#![allow(incomplete_features)]
 #![feature(adt_const_params)]
 #![feature(generic_const_exprs)]
 
 use core::marker::ConstParamTy;
-
-// #[derive(ConstParamTy, PartialEq, Eq)]
-// struct StructOrEnum;
+//~^ ERROR failed to resolve: you might be missing crate `core`
 
 #[derive(ConstParamTy, PartialEq, Eq)]
 enum StructOrEnum {
@@ -14,13 +13,14 @@ enum StructOrEnum {
 }
 
 trait TraitParent<const SMTH: StructOrEnum = { StructOrEnum::A }> {}
+//~^ ERROR `StructOrEnum` must implement `ConstParamTy`
 
 trait TraitChild<const SMTH: StructOrEnum = { StructOrEnum::A }>: TraitParent<SMTH> {}
+//~^ ERROR `StructOrEnum` must implement `ConstParamTy`
 
 impl TraitParent for StructOrEnum {}
 
-// ICE occurs
 impl TraitChild for StructOrEnum {}
+//~^ ERROR mismatched types
 
-// ICE does not occur
-// impl TraitChild<{ StructOrEnum::A }> for StructOrEnum {}
+fn main() {}

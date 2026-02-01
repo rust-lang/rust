@@ -1,0 +1,50 @@
+error[E0405]: cannot find trait `HashMapBase` in this scope
+  --> $DIR/ice-issue-116519-2.rs:19:15
+   |
+LL | impl<CellIdx> HashMapBase<CellIdx> for RobinHashTable<MAX_LENGTH, CellIdx> {}
+   |               ^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find type `MAX_LENGTH` in this scope
+  --> $DIR/ice-issue-116519-2.rs:19:55
+   |
+LL | impl<CellIdx> HashMapBase<CellIdx> for RobinHashTable<MAX_LENGTH, CellIdx> {}
+   |                                                       ^^^^^^^^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | impl<CellIdx, MAX_LENGTH> HashMapBase<CellIdx> for RobinHashTable<MAX_LENGTH, CellIdx> {}
+   |             ++++++++++++
+
+error[E0392]: type parameter `V` is never used
+  --> $DIR/ice-issue-116519-2.rs:10:34
+   |
+LL | struct Cond<const PRED: bool, U, V>(std::marker::PhantomData<U>,);
+   |                                  ^ unused type parameter
+   |
+   = help: consider removing `V`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `V` to be a const parameter, use `const V: /* Type */` instead
+
+error[E0392]: type parameter `CellIdx` is never used
+  --> $DIR/ice-issue-116519-2.rs:15:5
+   |
+LL |     CellIdx = <Cond<{ }, u16, u32> as Ret>::R,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unused type parameter
+   |
+   = help: consider removing `CellIdx`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `CellIdx` to be a const parameter, use `const CellIdx: /* Type */` instead
+
+error[E0747]: unresolved item provided when a constant was expected
+  --> $DIR/ice-issue-116519-2.rs:19:55
+   |
+LL | impl<CellIdx> HashMapBase<CellIdx> for RobinHashTable<MAX_LENGTH, CellIdx> {}
+   |                                                       ^^^^^^^^^^
+   |
+help: if this generic argument was intended as a const parameter, surround it with braces
+   |
+LL | impl<CellIdx> HashMapBase<CellIdx> for RobinHashTable<{ MAX_LENGTH }, CellIdx> {}
+   |                                                       +            +
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0392, E0405, E0425, E0747.
+For more information about an error, try `rustc --explain E0392`.

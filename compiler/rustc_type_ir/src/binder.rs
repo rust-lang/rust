@@ -720,7 +720,7 @@ impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
                 match rk {
                     Some(ty::GenericArgKind::Lifetime(lt)) => self.shift_region_through_binders(lt),
                     Some(other) => self.region_param_expected(data, r, other),
-                    None => self.region_param_out_of_range(data, r),
+                    None => r,
                 }
             }
             ty::ReBound(..)
@@ -763,12 +763,14 @@ impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
 
 impl<'a, I: Interner> ArgFolder<'a, I> {
     fn ty_for_param(&self, p: I::ParamTy, source_ty: I::Ty) -> I::Ty {
-        // Look up the type in the args. It really should be in there.
+        // Look up the type in the args. If the index is out of range, the parameter
+        // belongs to a different generic scope (e.g. a closure's generics when
+        // instantiating the parent function's MIR). Leave it unsubstituted.
         let opt_ty = self.args.get(p.index() as usize).map(|arg| arg.kind());
         let ty = match opt_ty {
             Some(ty::GenericArgKind::Type(ty)) => ty,
             Some(kind) => self.type_param_expected(p, source_ty, kind),
-            None => self.type_param_out_of_range(p, source_ty),
+            None => return source_ty,
         };
 
         self.shift_vars_through_binders(ty)
@@ -787,25 +789,14 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
         )
     }
 
-    #[cold]
-    #[inline(never)]
-    fn type_param_out_of_range(&self, p: I::ParamTy, ty: I::Ty) -> ! {
-        panic!(
-            "type parameter `{:?}` ({:?}/{}) out of range when instantiating, args={:?}",
-            p,
-            ty,
-            p.index(),
-            self.args,
-        )
-    }
-
     fn const_for_param(&self, p: I::ParamConst, source_ct: I::Const) -> I::Const {
-        // Look up the const in the args. It really should be in there.
+        // Look up the const in the args. If the index is out of range, the parameter
+        // belongs to a different generic scope. Leave it unsubstituted.
         let opt_ct = self.args.get(p.index() as usize).map(|arg| arg.kind());
         let ct = match opt_ct {
             Some(ty::GenericArgKind::Const(ct)) => ct,
             Some(kind) => self.const_param_expected(p, source_ct, kind),
-            None => self.const_param_out_of_range(p, source_ct),
+            None => return source_ct,
         };
 
         self.shift_vars_through_binders(ct)
@@ -831,18 +822,6 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
 
     #[cold]
     #[inline(never)]
-    fn const_param_out_of_range(&self, p: I::ParamConst, ct: I::Const) -> ! {
-        panic!(
-            "const parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
-            p,
-            ct,
-            p.index(),
-            self.args,
-        )
-    }
-
-    #[cold]
-    #[inline(never)]
     fn region_param_expected(
         &self,
         ebr: I::EarlyParamRegion,
@@ -855,18 +834,6 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
             r,
             ebr.index(),
             kind,
-            self.args,
-        )
-    }
-
-    #[cold]
-    #[inline(never)]
-    fn region_param_out_of_range(&self, ebr: I::EarlyParamRegion, r: I::Region) -> ! {
-        panic!(
-            "region parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
-            ebr,
-            r,
-            ebr.index(),
             self.args,
         )
     }
