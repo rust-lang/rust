@@ -81,6 +81,30 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_fn_trait(self, id: DefId) -> bool {
         self.fn_trait_kind_from_def_id(id).is_some()
     }
+
+    /// Returns `true` if `id` is a `DefId` of one of `Range` types.
+    pub fn is_range(self, id: DefId) -> bool {
+        match self.as_lang_item(id) {
+            Some(item) => match item {
+                LangItem::RangeFrom
+                | LangItem::RangeFull
+                | LangItem::RangeInclusiveStruct
+                | LangItem::RangeInclusiveNew
+                | LangItem::Range
+                | LangItem::RangeToInclusive
+                | LangItem::RangeTo
+                | LangItem::RangeMax
+                | LangItem::RangeMin
+                | LangItem::RangeSub
+                | LangItem::RangeFromCopy
+                | LangItem::RangeCopy
+                | LangItem::RangeInclusiveCopy
+                | LangItem::RangeToInclusiveCopy => true,
+                _ => false,
+            },
+            None => false,
+        }
+    }
 }
 
 /// Returns `true` if the specified `lang_item` must be present for this

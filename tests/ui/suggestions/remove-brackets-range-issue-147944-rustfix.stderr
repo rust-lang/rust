@@ -1,0 +1,99 @@
+error[E0277]: the trait bound `[RangeTo<{integer}>; 1]: RangeBounds<usize>` is not satisfied
+  --> $DIR/remove-brackets-range-issue-147944-rustfix.rs:6:15
+   |
+LL |     vec.drain([..3]);
+   |         ----- ^^^^^ the trait `RangeBounds<usize>` is not implemented for `[RangeTo<{integer}>; 1]`
+   |         |
+   |         required by a bound introduced by this call
+   |
+note: required by a bound in `Vec::<T, A>::drain`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+help: consider removing `[]`
+   |
+LL -     vec.drain([..3]);
+LL +     vec.drain(..3);
+   |
+
+error[E0277]: the trait bound `[std::ops::RangeToInclusive<{integer}>; 1]: RangeBounds<usize>` is not satisfied
+  --> $DIR/remove-brackets-range-issue-147944-rustfix.rs:10:15
+   |
+LL |     vec.drain([..=3]);
+   |         ----- ^^^^^^ the trait `RangeBounds<usize>` is not implemented for `[std::ops::RangeToInclusive<{integer}>; 1]`
+   |         |
+   |         required by a bound introduced by this call
+   |
+note: required by a bound in `Vec::<T, A>::drain`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+help: consider removing `[]`
+   |
+LL -     vec.drain([..=3]);
+LL +     vec.drain(..=3);
+   |
+
+error[E0277]: the trait bound `[std::ops::Range<{integer}>; 1]: RangeBounds<usize>` is not satisfied
+  --> $DIR/remove-brackets-range-issue-147944-rustfix.rs:14:15
+   |
+LL |     vec.drain([1..3]);
+   |         ----- ^^^^^^ the trait `RangeBounds<usize>` is not implemented for `[std::ops::Range<{integer}>; 1]`
+   |         |
+   |         required by a bound introduced by this call
+   |
+note: required by a bound in `Vec::<T, A>::drain`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+help: consider removing `[]`
+   |
+LL -     vec.drain([1..3]);
+LL +     vec.drain(1..3);
+   |
+
+error[E0277]: the trait bound `[std::ops::RangeInclusive<{integer}>; 1]: RangeBounds<usize>` is not satisfied
+  --> $DIR/remove-brackets-range-issue-147944-rustfix.rs:18:15
+   |
+LL |     vec.drain([1..=3]);
+   |         ----- ^^^^^^^ the trait `RangeBounds<usize>` is not implemented for `[std::ops::RangeInclusive<{integer}>; 1]`
+   |         |
+   |         required by a bound introduced by this call
+   |
+note: required by a bound in `Vec::<T, A>::drain`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+help: consider removing `[]`
+   |
+LL -     vec.drain([1..=3]);
+LL +     vec.drain(1..=3);
+   |
+
+error[E0277]: the trait bound `[std::ops::RangeFrom<{integer}>; 1]: RangeBounds<usize>` is not satisfied
+  --> $DIR/remove-brackets-range-issue-147944-rustfix.rs:22:15
+   |
+LL |     vec.drain([1..]);
+   |         ----- ^^^^^ the trait `RangeBounds<usize>` is not implemented for `[std::ops::RangeFrom<{integer}>; 1]`
+   |         |
+   |         required by a bound introduced by this call
+   |
+note: required by a bound in `Vec::<T, A>::drain`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+help: consider removing `[]`
+   |
+LL -     vec.drain([1..]);
+LL +     vec.drain(1..);
+   |
+
+error[E0277]: the trait bound `[RangeFull; 1]: RangeBounds<usize>` is not satisfied
+  --> $DIR/remove-brackets-range-issue-147944-rustfix.rs:26:15
+   |
+LL |     vec.drain([..]);
+   |         ----- ^^^^ the trait `RangeBounds<usize>` is not implemented for `[RangeFull; 1]`
+   |         |
+   |         required by a bound introduced by this call
+   |
+note: required by a bound in `Vec::<T, A>::drain`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+help: consider removing `[]`
+   |
+LL -     vec.drain([..]);
+LL +     vec.drain(..);
+   |
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
