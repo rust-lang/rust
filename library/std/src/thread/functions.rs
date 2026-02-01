@@ -168,7 +168,11 @@ pub fn yield_now() {
     imp::yield_now()
 }
 
-/// Determines whether the current thread is unwinding because of panic.
+/// Determines whether the current thread is unwinding or aborting because of panic.
+///
+/// This returns `true` if the current thread is currently panicking. This is
+/// true during unwinding (when `panic = "unwind"`) and also during the
+/// execution of the [panic hook] when `panic = "abort"`.
 ///
 /// A common use of this feature is to poison shared resources when writing
 /// unsafe code, by checking `panicking` when the `drop` is called.
@@ -210,6 +214,7 @@ pub fn yield_now() {
 /// ```
 ///
 /// [Mutex]: crate::sync::Mutex
+/// [panic hook]: crate::panic::set_hook
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
