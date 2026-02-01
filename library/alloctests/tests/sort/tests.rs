@@ -362,6 +362,13 @@ fn sort_vs_sort_by_impl<S: Sort>() {
     assert_eq!(input_sort_by, expected);
 }
 
+pub fn box_value_impl<S: Sort>() {
+    for len in [3, 9, 35, 56, 132] {
+        test_is_sorted::<Box<i32>, S>(len, Box::new, patterns::random);
+        test_is_sorted::<Box<i32>, S>(len, Box::new, |len| patterns::random_sorted(len, 80.0));
+    }
+}
+
 gen_sort_test_fns_with_default_patterns!(
     correct_i32,
     |len, pattern_fn| test_is_sorted::<i32, S>(len, |val| val, pattern_fn),
@@ -967,6 +974,7 @@ define_instantiate_sort_tests!(
     [miri_yes, fixed_seed_rand_vec_prefix],
     [miri_yes, int_edge],
     [miri_yes, sort_vs_sort_by],
+    [miri_yes, box_value],
     [miri_yes, correct_i32_random],
     [miri_yes, correct_i32_random_z1],
     [miri_yes, correct_i32_random_d2],
