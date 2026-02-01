@@ -688,6 +688,13 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         tcx.dcx().emit_fatal(errors::CpuRequired);
     }
 
+    if let Some(target_cpu) = &tcx.sess.opts.cg.target_cpu
+        && tcx.sess.target.unsupported_cpus.contains(&target_cpu.into())
+    {
+        // The target cpu is explicitly listed as an unsupported cpu
+        tcx.dcx().emit_fatal(errors::CpuUnsupported { target_cpu: target_cpu.clone() });
+    }
+
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
 
     // Run the monomorphization collector and partition the collected items into

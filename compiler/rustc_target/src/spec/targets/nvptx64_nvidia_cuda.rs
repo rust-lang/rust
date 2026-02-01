@@ -1,6 +1,6 @@
 use crate::spec::{
     Arch, LinkSelfContainedDefault, LinkerFlavor, MergeFunctions, Os, PanicStrategy, Target,
-    TargetMetadata, TargetOptions,
+    TargetMetadata, TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -22,7 +22,13 @@ pub(crate) fn target() -> Target {
             linker_flavor: LinkerFlavor::Llbc,
 
             // With `ptx-linker` approach, it can be later overridden via link flags.
-            cpu: "sm_30".into(),
+            cpu: "sm_70".into(),
+
+            // No longer supported architectures
+            unsupported_cpus: cvs!(
+                "sm_20", "sm_21", "sm_30", "sm_32", "sm_35", "sm_37", "sm_50", "sm_52", "sm_53",
+                "sm_60", "sm_61", "sm_62"
+            ),
 
             // FIXME: create tests for the atomics.
             max_atomic_width: Some(64),
