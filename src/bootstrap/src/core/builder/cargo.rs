@@ -331,10 +331,6 @@ impl Cargo {
             self.rustflags.arg("-Clink-arg=-gz");
         }
 
-        // Ignore linker warnings for now. These are complicated to fix and don't affect the build.
-        // FIXME: we should really investigate these...
-        self.rustflags.arg("-Alinker-messages");
-
         // Throughout the build Cargo can execute a number of build scripts
         // compiling C/C++ code and we need to pass compilers, archivers, flags, etc
         // obtained previously to those build scripts.
@@ -1256,13 +1252,7 @@ impl Builder<'_> {
         // when compiling the standard library, since this might be linked into the final outputs
         // produced by rustc. Since this mitigation is only available on Windows, only enable it
         // for the standard library in case the compiler is run on a non-Windows platform.
-        // This is not needed for stage 0 artifacts because these will only be used for building
-        // the stage 1 compiler.
-        if cfg!(windows)
-            && mode == Mode::Std
-            && self.config.control_flow_guard
-            && compiler.stage >= 1
-        {
+        if cfg!(windows) && mode == Mode::Std && self.config.control_flow_guard {
             rustflags.arg("-Ccontrol-flow-guard");
         }
 
@@ -1270,9 +1260,7 @@ impl Builder<'_> {
         // standard library, since this might be linked into the final outputs produced by rustc.
         // Since this mitigation is only available on Windows, only enable it for the standard
         // library in case the compiler is run on a non-Windows platform.
-        // This is not needed for stage 0 artifacts because these will only be used for building
-        // the stage 1 compiler.
-        if cfg!(windows) && mode == Mode::Std && self.config.ehcont_guard && compiler.stage >= 1 {
+        if cfg!(windows) && mode == Mode::Std && self.config.ehcont_guard {
             rustflags.arg("-Zehcont-guard");
         }
 
@@ -1289,51 +1277,12 @@ impl Builder<'_> {
         rustdocflags.arg("--crate-version").arg(&rust_version);
 
         // Environment variables *required* throughout the build
-        //
-        // FIXME: should update code to not require this env var
 
-        // The host this new compiler will *run* on.
-        cargo.env("CFG_COMPILER_HOST_TRIPLE", target.triple);
         // The host this new compiler is being *built* on.
         cargo.env("CFG_COMPILER_BUILD_TRIPLE", compiler.host.triple);
 
         // Set this for all builds to make sure doc builds also get it.
         cargo.env("CFG_RELEASE_CHANNEL", &self.config.channel);
-
-        // This one's a bit tricky. As of the time of this writing the compiler
-        // links to the `winapi` crate on crates.io. This crate provides raw
-        // bindings to Windows system functions, sort of like libc does for
-        // Unix. This crate also, however, provides "import libraries" for the
-        // MinGW targets. There's an import library per dll in the windows
-        // distribution which is what's linked to. These custom import libraries
-        // are used because the winapi crate can reference Windows functions not
-        // present in the MinGW import libraries.
-        //
-        // For example MinGW may ship libdbghelp.a, but it may not have
-        // references to all the functions in the dbghelp dll. Instead the
-        // custom import library for dbghelp in the winapi crates has all this
-        // information.
-        //
-        // Unfortunately for us though the import libraries are linked by
-        // default via `-ldylib=winapi_foo`. That is, they're linked with the
-        // `dylib` type with a `winapi_` prefix (so the winapi ones don't
-        // conflict with the system MinGW ones). This consequently means that
-        // the binaries we ship of things like rustc_codegen_llvm (aka the rustc_codegen_llvm
-        // DLL) when linked against *again*, for example with procedural macros
-        // or plugins, will trigger the propagation logic of `-ldylib`, passing
-        // `-lwinapi_foo` to the linker again. This isn't actually available in
-        // our distribution, however, so the link fails.
-        //
-        // To solve this problem we tell winapi to not use its bundled import
-        // libraries. This means that it will link to the system MinGW import
-        // libraries by default, and the `-ldylib=foo` directives will still get
-        // passed to the final linker, but they'll look like `-lfoo` which can
-        // be resolved because MinGW has the import library. The downside is we
-        // don't get newer functions from Windows, but we don't use any of them
-        // anyway.
-        if !mode.is_tool() {
-            cargo.env("WINAPI_NO_BUNDLED_LIBRARIES", "1");
-        }
 
         // verbose cargo output is very noisy, so only enable it with -vv
         for _ in 0..self.verbosity.saturating_sub(1) {
