@@ -380,9 +380,11 @@ pub(crate) fn run_global_ctxt(
         show_coverage,
     };
 
-    for cnum in tcx.crates(()) {
-        crate::visit_lib::lib_embargo_visit_item(&mut ctxt, cnum.as_def_id());
-    }
+    tcx.sess.time("lib_embargo_visit_crates", || {
+        for cnum in tcx.crates(()) {
+            crate::visit_lib::lib_embargo_visit_item(&mut ctxt, cnum.as_def_id());
+        }
+    });
 
     // Small hack to force the Sized trait to be present.
     //
