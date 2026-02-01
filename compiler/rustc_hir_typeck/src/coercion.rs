@@ -1250,10 +1250,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // The signature must match.
             let (a_sig, b_sig) = self.normalize(new.span, (a_sig, b_sig));
+            let outer_universe = self.infcx.universe();
             let sig = self
                 .at(cause, self.param_env)
                 .lub(a_sig, b_sig)
                 .map(|ok| self.register_infer_ok_obligations(ok))?;
+
+            // See comment in `unify_raw` for why we leak check here
+            self.leak_check(outer_universe, None)?;
 
             // Reify both sides and return the reified fn pointer type.
             let fn_ptr = Ty::new_fn_ptr(self.tcx, sig);

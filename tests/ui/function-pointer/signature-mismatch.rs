@@ -2,5 +2,5 @@
 
 fn main() {
     let _ = [std::ops::Add::add, std::ops::Mul::mul, std::ops::Mul::mul as fn(_, &_)];
-    //~^ ERROR: mismatched types
+    //~^ ERROR: non-primitive cast
 }
