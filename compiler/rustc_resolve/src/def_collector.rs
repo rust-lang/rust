@@ -1,6 +1,6 @@
 use std::mem;
 
-use rustc_ast::visit::FnKind;
+use rustc_ast::visit::{BoundKind, FnKind};
 use rustc_ast::*;
 use rustc_attr_parsing::{AttributeParser, Early, OmitDoc, ShouldEmit};
 use rustc_expand::expand::AstFragment;
@@ -311,6 +311,19 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         }
     }
 
+    fn visit_where_bound_predicate(&mut self, pred: &'a WhereBoundPredicate) {
+        let prev = self.resolver.visit_non_lifetime_binder.enter_where_bound_predicate();
+        for generic_param in &pred.bound_generic_params {
+            self.visit_generic_param(&generic_param);
+        }
+        self.resolver.visit_non_lifetime_binder = prev;
+
+        self.visit_ty(&pred.bounded_ty);
+        for generic_bound in &pred.bounds {
+            self.visit_param_bound(generic_bound, BoundKind::Bound);
+        }
+    }
+
     fn visit_variant_data(&mut self, data: &'a VariantData) {
         // The assumption here is that non-`cfg` macro expansion cannot change field indices.
         // It currently holds because only inert attributes are accepted on fields,
@@ -339,8 +352,30 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         //
         // In that case, the impl-trait is lowered as an additional generic parameter.
         self.with_impl_trait(ImplTraitContext::Universal, |this| {
-            visit::walk_generic_param(this, param)
+            this.visit_id(param.id);
+            this.visit_ident(&param.ident);
+            for attr in &param.attrs {
+                this.visit_attribute(attr)
+            }
+
+            let prev = this.resolver.visit_non_lifetime_binder.enter_generic_bound();
+            for bound in &param.bounds {
+                this.visit_param_bound(bound, BoundKind::Bound);
+            }
+            this.resolver.visit_non_lifetime_binder = prev;
+
+            this.visit_generic_param_kind(&param.kind);
         });
+    }
+
+    fn visit_poly_trait_ref(&mut self, poly_trait_ref: &'a PolyTraitRef) {
+        let prev = self.resolver.visit_non_lifetime_binder.enter_where_bound_predicate();
+        for generic_param in &poly_trait_ref.bound_generic_params {
+            self.visit_generic_param(&generic_param);
+        }
+        self.resolver.visit_non_lifetime_binder = prev;
+
+        self.visit_trait_ref(&poly_trait_ref.trait_ref);
     }
 
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
@@ -372,6 +407,12 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         if !self.resolver.tcx.features().min_generic_const_args() {
             let parent =
                 self.create_def(constant.id, None, DefKind::AnonConst, constant.value.span);
+
+            if self.resolver.visit_non_lifetime_binder.in_generic_bound() {
+                // Record anno const blocks inside non-lifetime binders, e.g., `for<T: Trait<{ ... }>>`.
+                self.resolver.hirless_def_ids.insert(parent);
+            }
+
             return self.with_parent(parent, |this| visit::walk_anon_const(this, constant));
         }
 

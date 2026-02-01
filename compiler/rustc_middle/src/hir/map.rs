@@ -17,6 +17,7 @@ use rustc_hir::*;
 use rustc_hir_pretty as pprust_hir;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
+use tracing::debug;
 
 use crate::hir::{ModuleItems, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -50,6 +51,13 @@ impl<'tcx> Iterator for ParentHirIterator<'tcx> {
         let HirId { owner, local_id } = self.current_id;
 
         let parent_id = if local_id == ItemLocalId::ZERO {
+            if let Some(parent_def_id) = self.tcx.opt_local_parent(owner.def_id)
+                && self.tcx.resolutions(()).hirless_def_ids.contains(&parent_def_id)
+            {
+                debug!("{:?} has hirless parent {:?}", owner, parent_def_id);
+                return None;
+            }
+
             // We go from an owner to its parent, so clear the cache.
             self.current_owner_nodes = None;
             self.tcx.hir_owner_parent(owner)
