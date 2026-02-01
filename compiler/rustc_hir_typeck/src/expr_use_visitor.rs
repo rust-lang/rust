@@ -749,16 +749,6 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 adjustment::Adjust::Borrow(ref autoref) => {
                     self.walk_autoref(expr, &place_with_id, autoref);
                 }
-
-                adjustment::Adjust::ReborrowPin(mutbl) => {
-                    // Reborrowing a Pin is like a combinations of a deref and a borrow, so we do
-                    // both.
-                    let bk = match mutbl {
-                        ty::Mutability::Not => ty::BorrowKind::Immutable,
-                        ty::Mutability::Mut => ty::BorrowKind::Mutable,
-                    };
-                    self.delegate.borrow_mut().borrow(&place_with_id, place_with_id.hir_id, bk);
-                }
             }
             place_with_id = self.cat_expr_adjusted(expr, place_with_id, adjustment)?;
         }
@@ -1301,8 +1291,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
             adjustment::Adjust::NeverToAny
             | adjustment::Adjust::Pointer(_)
-            | adjustment::Adjust::Borrow(_)
-            | adjustment::Adjust::ReborrowPin(..) => {
+            | adjustment::Adjust::Borrow(_) => {
                 // Result is an rvalue.
                 Ok(self.cat_rvalue(expr.hir_id, target))
             }

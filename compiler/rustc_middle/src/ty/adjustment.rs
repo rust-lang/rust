@@ -103,10 +103,6 @@ pub enum Adjust {
     Borrow(AutoBorrow),
 
     Pointer(PointerCoercion),
-
-    /// Take a pinned reference and reborrow as a `Pin<&mut T>` or `Pin<&T>`.
-    // FIXME(pin_ergonomics): This can be replaced with a `Deref(Pin)` followed by a `Borrow(Pin)`
-    ReborrowPin(hir::Mutability),
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]

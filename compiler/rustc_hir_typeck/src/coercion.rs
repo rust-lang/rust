@@ -853,7 +853,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // To complete the reborrow, we need to make sure we can unify the inner types, and if so we
         // add the adjustments.
-        self.unify_and(a, b, [], Adjust::ReborrowPin(mut_b), ForceLeakCheck::No)
+        self.unify_and(
+            a,
+            b,
+            [Adjustment { kind: Adjust::Deref(DerefAdjustKind::Pin), target: a_ty }],
+            Adjust::Borrow(AutoBorrow::Pin(mut_b)),
+            ForceLeakCheck::No,
+        )
     }
 
     /// Coerce pinned reference to regular reference or vice versa

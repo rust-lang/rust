@@ -222,68 +222,6 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 debug!(?kind);
                 kind
             }
-            Adjust::ReborrowPin(mutbl) => {
-                debug!("apply ReborrowPin adjustment");
-                // Rewrite `$expr` as `Pin { __pointer: &(mut)? *($expr).__pointer }`
-
-                // We'll need these types later on
-                let pin_ty_args = match expr.ty.kind() {
-                    ty::Adt(_, args) => args,
-                    _ => bug!("ReborrowPin with non-Pin type"),
-                };
-                let pin_ty = pin_ty_args.iter().next().unwrap().expect_ty();
-                let ptr_target_ty = match pin_ty.kind() {
-                    ty::Ref(_, ty, _) => *ty,
-                    _ => bug!("ReborrowPin with non-Ref type"),
-                };
-
-                // pointer = ($expr).__pointer
-                let pointer_target = ExprKind::Field {
-                    lhs: self.thir.exprs.push(expr),
-                    variant_index: FIRST_VARIANT,
-                    name: FieldIdx::ZERO,
-                };
-                let arg = Expr { temp_scope_id, ty: pin_ty, span, kind: pointer_target };
-                let arg = self.thir.exprs.push(arg);
-
-                // arg = *pointer
-                let expr = ExprKind::Deref { arg };
-                let arg = self.thir.exprs.push(Expr {
-                    temp_scope_id,
-                    ty: ptr_target_ty,
-                    span,
-                    kind: expr,
-                });
-
-                // expr = &mut target
-                let borrow_kind = match mutbl {
-                    hir::Mutability::Mut => BorrowKind::Mut { kind: mir::MutBorrowKind::Default },
-                    hir::Mutability::Not => BorrowKind::Shared,
-                };
-                let new_pin_target =
-                    Ty::new_ref(self.tcx, self.tcx.lifetimes.re_erased, ptr_target_ty, mutbl);
-                let expr = self.thir.exprs.push(Expr {
-                    temp_scope_id,
-                    ty: new_pin_target,
-                    span,
-                    kind: ExprKind::Borrow { borrow_kind, arg },
-                });
-
-                // kind = Pin { __pointer: pointer }
-                let pin_did = self.tcx.require_lang_item(rustc_hir::LangItem::Pin, span);
-                let args = self.tcx.mk_args(&[new_pin_target.into()]);
-                let kind = ExprKind::Adt(Box::new(AdtExpr {
-                    adt_def: self.tcx.adt_def(pin_did),
-                    variant_index: FIRST_VARIANT,
-                    args,
-                    fields: Box::new([FieldExpr { name: FieldIdx::ZERO, expr }]),
-                    user_ty: None,
-                    base: AdtExprBase::None,
-                }));
-
-                debug!(?kind);
-                kind
-            }
         };
 
         Expr { temp_scope_id, ty: adjustment.target, span, kind }
