@@ -1791,7 +1791,7 @@ fn self_contained_components(
         if let Some(self_contained) = sess.opts.cg.link_self_contained.explicitly_set {
             // Emit an error if the user requested self-contained mode on the CLI but the target
             // explicitly refuses it.
-            if sess.target.link_self_contained.is_disabled() {
+            if sess.target.link_self_contained.is_disabled() && self_contained {
                 sess.dcx().emit_err(errors::UnsupportedLinkSelfContained);
             }
             self_contained
