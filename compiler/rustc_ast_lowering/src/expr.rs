@@ -967,14 +967,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::Break(this.lower_loop_destination(None), Some(x_expr));
                 this.arena.alloc(this.expr(gen_future_span, expr_break))
             });
-            self.arm(ready_pat, break_x)
+            self.arm(ready_pat, break_x, span)
         };
 
         // `::std::task::Poll::Pending => {}`
         let pending_arm = {
             let pending_pat = self.pat_lang_item_variant(span, hir::LangItem::PollPending, &[]);
             let empty_block = self.expr_block_empty(span);
-            self.arm(pending_pat, empty_block)
+            self.arm(pending_pat, empty_block, span)
         };
 
         let inner_match_stmt = {
@@ -1028,7 +1028,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         // mut __awaitee => loop { ... }
-        let awaitee_arm = self.arm(awaitee_pat, loop_expr);
+        let awaitee_arm = self.arm(awaitee_pat, loop_expr, span);
 
         // `match ::std::future::IntoFuture::into_future(<expr>) { ... }`
         let into_future_expr = match await_kind {
@@ -1818,7 +1818,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let break_expr =
                 self.with_loop_scope(loop_hir_id, |this| this.expr_break_alloc(for_span));
             let pat = self.pat_none(for_span);
-            self.arm(pat, break_expr)
+            self.arm(pat, break_expr, for_span)
         };
 
         // Some(<pat>) => <body>,
@@ -1827,7 +1827,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let body_block =
                 self.with_loop_scope(loop_hir_id, |this| this.lower_block(body, false));
             let body_expr = self.arena.alloc(self.expr_block(body_block));
-            self.arm(some_pat, body_expr)
+            self.arm(some_pat, body_expr, for_span)
         };
 
         // `mut iter`
@@ -1886,7 +1886,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let loop_expr = self.arena.alloc(hir::Expr { hir_id: loop_hir_id, kind, span: for_span });
 
         // `mut iter => { ... }`
-        let iter_arm = self.arm(iter_pat, loop_expr);
+        let iter_arm = self.arm(iter_pat, loop_expr, for_span);
 
         let match_expr = match loop_kind {
             ForLoopKind::For => {
@@ -1931,7 +1931,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::LangItem::IntoAsyncIterIntoIter,
                     arena_vec![self; head],
                 );
-                let iter_arm = self.arm(async_iter_pat, inner_match_expr);
+                let iter_arm = self.arm(async_iter_pat, inner_match_expr, for_span);
                 self.arena.alloc(self.expr_match(
                     for_span,
                     iter,
@@ -1998,7 +1998,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let val_expr = self.expr_ident(span, val_ident, val_pat_nid);
             self.lower_attrs(val_expr.hir_id, &attrs, span, Target::Expression);
             let continue_pat = self.pat_cf_continue(unstable_span, val_pat);
-            self.arm(continue_pat, val_expr)
+            self.arm(continue_pat, val_expr, try_span)
         };
 
         // `ControlFlow::Break(residual) =>
@@ -2041,7 +2041,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.lower_attrs(ret_expr.hir_id, &attrs, span, Target::Expression);
 
             let break_pat = self.pat_cf_break(try_span, residual_local);
-            self.arm(break_pat, ret_expr)
+            self.arm(break_pat, ret_expr, try_span)
         };
 
         hir::ExprKind::Match(
@@ -2369,12 +2369,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         pat: &'hir hir::Pat<'hir>,
         expr: &'hir hir::Expr<'hir>,
+        span: Span,
     ) -> hir::Arm<'hir> {
         hir::Arm {
             hir_id: self.next_id(),
             pat,
             guard: None,
-            span: self.lower_span(expr.span),
+            span: self.lower_span(span),
             body: expr,
         }
     }
