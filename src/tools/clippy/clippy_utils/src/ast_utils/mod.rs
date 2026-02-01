@@ -370,7 +370,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
             eq_defaultness(*ld, *rd)
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
-                && eq_ty(lt, rt)
+                && eq_fn_ret_ty(lt, rt)
                 && both(lb.as_ref(), rb.as_ref(), eq_const_item_rhs)
         },
         (
@@ -630,7 +630,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
             eq_defaultness(*ld, *rd)
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
-                && eq_ty(lt, rt)
+                && eq_fn_ret_ty(lt, rt)
                 && both(lb.as_ref(), rb.as_ref(), eq_const_item_rhs)
         },
         (

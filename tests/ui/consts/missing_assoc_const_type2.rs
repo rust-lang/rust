@@ -9,8 +9,8 @@ trait Range {
 
 struct TwoDigits;
 impl Range for TwoDigits {
-    const FIRST:  = 10;
-    //~^ ERROR: missing type
+    const FIRST: _ = 10;
+    //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for associated constants [E0121]
     const LAST: u8 = 99;
 }
 

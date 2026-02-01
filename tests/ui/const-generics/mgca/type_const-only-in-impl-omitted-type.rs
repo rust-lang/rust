@@ -10,8 +10,9 @@ struct GoodS;
 impl BadTr for GoodS {
     #[type_const]
     const NUM: = 84;
-    //~^ ERROR: missing type for `const` item
-
+    //~^ ERROR: omitting type on const item declaration is experimental [E0658]
+    //~| ERROR: mismatched types [E0308]
+    //~| ERROR: implemented const `NUM` has an incompatible type for trait [E0326]
 }
 
 fn accept_bad_tr<const N: usize, T: BadTr<NUM = { N }>>(_x: &T) {}
