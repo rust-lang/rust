@@ -1,0 +1,38 @@
+error[E0277]: the size for values of type `[u32]` cannot be known at compilation time
+  --> $DIR/ice-137582-reduced.rs:3:14
+   |
+LL | const VALUE: [u32] = [0; 4];
+   |              ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u32]`
+   = note: statics and constants must have a statically known size
+
+error[E0658]: use of unstable library feature `unsized_const_params`
+  --> $DIR/ice-137582-reduced.rs:7:19
+   |
+LL | struct SomeStruct<const V: [u32]> {}
+   |                   ^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unsized_const_params)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: required for `[u32]` to implement `ConstParamTy_`
+
+error[E0277]: the size for values of type `[u32]` cannot be known at compilation time
+  --> $DIR/ice-137582-reduced.rs:10:17
+   |
+LL | impl SomeStruct<VALUE> {}
+   |                 ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u32]`
+   = note: statics and constants must have a statically known size
+
+error[E0308]: mismatched types
+  --> $DIR/ice-137582-reduced.rs:3:22
+   |
+LL | const VALUE: [u32] = [0; 4];
+   |                      ^^^^^^ expected `[u32]`, found `[u32; 4]`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0658.
+For more information about an error, try `rustc --explain E0277`.
