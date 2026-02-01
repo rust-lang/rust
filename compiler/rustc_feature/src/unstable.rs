@@ -373,6 +373,8 @@ declare_features! (
     (unstable, async_for_loop, "1.77.0", Some(118898)),
     /// Allows `async` trait bound modifier.
     (unstable, async_trait_bounds, "1.85.0", Some(62290)),
+    /// Target features on avr.
+    (unstable, avr_target_feature, "CURRENT_RUSTC_VERSION", Some(146889)),
     /// Allows using Intel AVX10 target features and intrinsics
     (unstable, avx10_target_feature, "1.88.0", Some(138843)),
     /// Target features on bpf.
