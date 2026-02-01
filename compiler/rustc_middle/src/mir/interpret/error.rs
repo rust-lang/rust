@@ -392,6 +392,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     DerefFunctionPointer(AllocId),
     /// Trying to access the data behind a vtable pointer.
     DerefVTablePointer(AllocId),
+    /// Trying to access the data behind a va_list pointer.
+    DerefVaListPointer(AllocId),
     /// Trying to access the actual type id.
     DerefTypeIdPointer(AllocId),
     /// Using a non-boolean `u8` as bool.
@@ -402,6 +404,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     InvalidTag(Scalar<AllocId>),
     /// Using a pointer-not-to-a-function as function pointer.
     InvalidFunctionPointer(Pointer<AllocId>),
+    /// Using a pointer-not-to-a-va-list as variable argument list pointer.
+    InvalidVaListPointer(Pointer<AllocId>),
     /// Using a pointer-not-to-a-vtable as vtable pointer.
     InvalidVTablePointer(Pointer<AllocId>),
     /// Using a vtable for the wrong trait.
@@ -434,6 +438,12 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     },
     /// ABI-incompatible return types.
     AbiMismatchReturn { caller_ty: Ty<'tcx>, callee_ty: Ty<'tcx> },
+    /// `va_arg` was called on an exhausted `VaList`.
+    VaArgOutOfBounds,
+    /// The caller and callee disagree on whether they are c-variadic or not.
+    CVariadicMismatch { caller_is_c_variadic: bool, callee_is_c_variadic: bool },
+    /// The caller and callee disagree on the number of fixed (i.e. non-c-variadic) arguments.
+    CVariadicFixedCountMismatch { caller: u32, callee: u32 },
 }
 
 #[derive(Debug, Clone, Copy)]

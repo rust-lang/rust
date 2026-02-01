@@ -381,6 +381,14 @@ pub struct NonConstClosure {
     pub non_or_conditionally: &'static str,
 }
 
+#[derive(Diagnostic)]
+#[diag(const_eval_c_variadic_call, code = E0015)]
+pub struct NonConstCVariadicCall {
+    #[primary_span]
+    pub span: Span,
+    pub kind: ConstContext,
+}
+
 #[derive(Subdiagnostic)]
 pub enum NonConstClosureNote {
     #[note(const_eval_closure_fndef_not_const)]
@@ -492,11 +500,13 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             WriteToReadOnly(_) => const_eval_write_to_read_only,
             DerefFunctionPointer(_) => const_eval_deref_function_pointer,
             DerefVTablePointer(_) => const_eval_deref_vtable_pointer,
+            DerefVaListPointer(_) => const_eval_deref_va_list_pointer,
             DerefTypeIdPointer(_) => const_eval_deref_typeid_pointer,
             InvalidBool(_) => const_eval_invalid_bool,
             InvalidChar(_) => const_eval_invalid_char,
             InvalidTag(_) => const_eval_invalid_tag,
             InvalidFunctionPointer(_) => const_eval_invalid_function_pointer,
+            InvalidVaListPointer(_) => const_eval_invalid_va_list_pointer,
             InvalidVTablePointer(_) => const_eval_invalid_vtable_pointer,
             InvalidVTableTrait { .. } => const_eval_invalid_vtable_trait,
             InvalidStr(_) => const_eval_invalid_str,
@@ -509,8 +519,12 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             InvalidNichedEnumVariantWritten { .. } => {
                 const_eval_invalid_niched_enum_variant_written
             }
+            VaArgOutOfBounds => const_eval_va_arg_out_of_bounds,
+
             AbiMismatchArgument { .. } => const_eval_incompatible_arg_types,
             AbiMismatchReturn { .. } => const_eval_incompatible_return_types,
+            CVariadicMismatch { .. } => const_eval_c_variadic_mismatch,
+            CVariadicFixedCountMismatch { .. } => const_eval_c_variadic_fixed_count_mismatch,
         }
     }
 
@@ -535,6 +549,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             | InvalidMeta(InvalidMetaKind::TooBig)
             | InvalidUninitBytes(None)
             | DeadLocal
+            | VaArgOutOfBounds
             | UninhabitedEnumVariantWritten(_)
             | UninhabitedEnumVariantRead(_) => {}
 
@@ -555,7 +570,10 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                 diag.arg("len", len);
                 diag.arg("index", index);
             }
-            UnterminatedCString(ptr) | InvalidFunctionPointer(ptr) | InvalidVTablePointer(ptr) => {
+            UnterminatedCString(ptr)
+            | InvalidFunctionPointer(ptr)
+            | InvalidVTablePointer(ptr)
+            | InvalidVaListPointer(ptr) => {
                 diag.arg("pointer", ptr);
             }
             InvalidVTableTrait { expected_dyn_type, vtable_dyn_type } => {
@@ -609,6 +627,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             WriteToReadOnly(alloc)
             | DerefFunctionPointer(alloc)
             | DerefVTablePointer(alloc)
+            | DerefVaListPointer(alloc)
             | DerefTypeIdPointer(alloc) => {
                 diag.arg("allocation", alloc);
             }
@@ -644,6 +663,14 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             AbiMismatchReturn { caller_ty, callee_ty } => {
                 diag.arg("caller_ty", caller_ty);
                 diag.arg("callee_ty", callee_ty);
+            }
+            CVariadicMismatch { caller_is_c_variadic, callee_is_c_variadic } => {
+                diag.arg("caller_is_c_variadic", caller_is_c_variadic);
+                diag.arg("callee_is_c_variadic", callee_is_c_variadic);
+            }
+            CVariadicFixedCountMismatch { caller, callee } => {
+                diag.arg("caller", caller);
+                diag.arg("callee", callee);
             }
         }
     }

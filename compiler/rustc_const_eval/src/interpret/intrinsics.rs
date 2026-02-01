@@ -22,8 +22,8 @@ use super::memory::MemoryKind;
 use super::util::ensure_monomorphic_enough;
 use super::{
     AllocId, CheckInAllocMsg, ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Pointer,
-    PointerArithmetic, Provenance, Scalar, err_ub_custom, err_unsup_format, interp_ok, throw_inval,
-    throw_ub_custom, throw_ub_format,
+    PointerArithmetic, Projectable, Provenance, Scalar, err_ub_custom, err_unsup_format, interp_ok,
+    throw_inval, throw_ub, throw_ub_custom, throw_ub_format, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
 use crate::interpret::Writeable;
@@ -734,6 +734,57 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.float_muladd_intrinsic::<Quad>(args, dest, MulAddType::Nondeterministic)?
             }
 
+            sym::va_copy => {
+                let va_list = self.deref_pointer(&args[0])?;
+                let key_mplace = self.va_list_key_field(&va_list)?;
+                let key = self.read_pointer(&key_mplace)?;
+
+                let varargs = self.get_ptr_va_list(key)?;
+                let copy_key = self.va_list_ptr(varargs.clone());
+
+                let copy_key_mplace = self.va_list_key_field(dest)?;
+                self.write_pointer(copy_key, &copy_key_mplace)?;
+            }
+
+            sym::va_end => {
+                let va_list = self.deref_pointer(&args[0])?;
+                let key_mplace = self.va_list_key_field(&va_list)?;
+                let key = self.read_pointer(&key_mplace)?;
+
+                self.deallocate_va_list(key)?;
+            }
+
+            sym::va_arg => {
+                let va_list = self.deref_pointer(&args[0])?;
+                let key_mplace = self.va_list_key_field(&va_list)?;
+                let key = self.read_pointer(&key_mplace)?;
+
+                // Invalidate the old list and get its content. We'll recreate the
+                // new list (one element shorter) below.
+                let mut varargs = self.deallocate_va_list(key)?;
+
+                let Some(arg_mplace) = varargs.pop_front() else {
+                    throw_ub!(VaArgOutOfBounds);
+                };
+
+                // NOTE: In C some type conversions are allowed (e.g. casting between signed and
+                // unsigned integers). For now we require c-variadic arguments to be read with the
+                // exact type they were passed as.
+                if arg_mplace.layout.ty != dest.layout.ty {
+                    throw_unsup_format!(
+                        "va_arg type mismatch: requested `{}`, but next argument is `{}`",
+                        dest.layout.ty,
+                        arg_mplace.layout.ty
+                    );
+                }
+                // Copy the argument.
+                self.copy_op(&arg_mplace, dest)?;
+
+                // Update the VaList pointer.
+                let new_key = self.va_list_ptr(varargs);
+                self.write_pointer(new_key, &key_mplace)?;
+            }
+
             // Unsupported intrinsic: skip the return_to_block below.
             _ => return interp_ok(false),
         }
@@ -1213,5 +1264,27 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // The INEXACT flag is ignored on purpose to allow rounding.
             interp_ok(Some(ImmTy::from_scalar(val, cast_to)))
         }
+    }
+
+    /// Get the MPlace of the key from the place storing the VaList.
+    pub(super) fn va_list_key_field<P: Projectable<'tcx, M::Provenance>>(
+        &self,
+        va_list: &P,
+    ) -> InterpResult<'tcx, P> {
+        // The struct wrapped by VaList.
+        let va_list_inner = self.project_field(va_list, FieldIdx::ZERO)?;
+
+        // Find the first pointer field in this struct. The exact index is target-specific.
+        let ty::Adt(adt, substs) = va_list_inner.layout().ty.kind() else {
+            bug!("invalid VaListImpl layout");
+        };
+
+        for (i, field) in adt.non_enum_variant().fields.iter().enumerate() {
+            if field.ty(*self.tcx, substs).is_raw_ptr() {
+                return self.project_field(&va_list_inner, FieldIdx::from_usize(i));
+            }
+        }
+
+        bug!("no VaListImpl field is a pointer");
     }
 }

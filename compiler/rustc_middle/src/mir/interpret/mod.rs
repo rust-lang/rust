@@ -407,7 +407,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
                 // No data to be accessed here. But vtables are pointer-aligned.
                 (Size::ZERO, tcx.data_layout.pointer_align().abi)
             }
-            // Fake allocation, there's nothing to access here
+            // Fake allocation, there's nothing to access here.
             GlobalAlloc::TypeId { .. } => (Size::ZERO, Align::ONE),
         }
     }

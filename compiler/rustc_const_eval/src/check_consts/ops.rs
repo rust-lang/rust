@@ -75,6 +75,27 @@ impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
     }
 }
 
+/// A c-variadic function call.
+#[derive(Debug)]
+pub(crate) struct FnCallCVariadic;
+impl<'tcx> NonConstOp<'tcx> for FnCallCVariadic {
+    fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
+        Status::Unstable {
+            gate: sym::const_c_variadic,
+            gate_already_checked: false,
+            safe_to_expose_on_stable: false,
+            is_function_call: true,
+        }
+    }
+
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
+        ccx.tcx.sess.create_feature_err(
+            errors::NonConstCVariadicCall { span, kind: ccx.const_kind() },
+            sym::const_c_variadic,
+        )
+    }
+}
+
 /// A call to a function that is in a trait, or has trait bounds that make it conditionally-const.
 #[derive(Debug)]
 pub(crate) struct ConditionallyConstCall<'tcx> {

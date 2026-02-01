@@ -12,13 +12,14 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_mir_dataflow::impls::always_storage_live_locals;
 use rustc_span::Span;
+use rustc_target::callconv::ArgAbi;
 use tracing::field::Empty;
 use tracing::{info_span, instrument, trace};
 
 use super::{
-    AllocId, CtfeProvenance, Immediate, InterpCx, InterpResult, Machine, MemPlace, MemPlaceMeta,
-    MemoryKind, Operand, PlaceTy, Pointer, Provenance, ReturnAction, Scalar, from_known_layout,
-    interp_ok, throw_ub, throw_unsup,
+    AllocId, CtfeProvenance, FnArg, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace,
+    MemPlaceMeta, MemoryKind, Operand, PlaceTy, Pointer, Provenance, ReturnAction, Scalar,
+    from_known_layout, interp_ok, throw_ub, throw_unsup,
 };
 use crate::{enter_trace_span, errors};
 
@@ -90,6 +91,10 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     ///
     /// Do *not* access this directly; always go through the machine hook!
     pub locals: IndexVec<mir::Local, LocalState<'tcx, Prov>>,
+
+    /// The complete variable argument list of this frame. Its elements must be dropped when the
+    /// frame is popped.
+    pub(super) va_list: Vec<MPlaceTy<'tcx, Prov>>,
 
     /// The span of the `tracing` crate is stored here.
     /// When the guard is dropped, the span is exited. This gives us
@@ -259,6 +264,7 @@ impl<'tcx, Prov: Provenance> Frame<'tcx, Prov> {
             return_cont: self.return_cont,
             return_place: self.return_place,
             locals: self.locals,
+            va_list: self.va_list,
             loc: self.loc,
             extra,
             tracing_span: self.tracing_span,
@@ -377,6 +383,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return_cont,
             return_place: return_place.clone(),
             locals,
+            va_list: vec![],
             instance,
             tracing_span: SpanGuard::new(),
             extra: (),
@@ -449,10 +456,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
 
         let return_action = if cleanup {
-            // We need to take the locals out, since we need to mutate while iterating.
             for local in &frame.locals {
                 self.deallocate_local(local.value)?;
             }
+
+            // Deallocate any c-variadic arguments.
+            self.deallocate_varargs(&frame.va_list)?;
 
             // Call the machine hook, which determines the next steps.
             let return_action = M::after_stack_pop(self, frame, unwinding)?;
@@ -623,6 +632,48 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Layouts of locals are requested a lot, so we cache them.
         state.layout.set(Some(layout));
         interp_ok(layout)
+    }
+}
+
+impl<'a, 'tcx: 'a, M: Machine<'tcx>> InterpCx<'tcx, M> {
+    pub(crate) fn allocate_varargs<I>(
+        &mut self,
+        caller_args: &mut I,
+    ) -> InterpResult<'tcx, Vec<MPlaceTy<'tcx, M::Provenance>>>
+    where
+        I: Iterator<Item = (&'a FnArg<'tcx, M::Provenance>, &'a ArgAbi<'tcx, Ty<'tcx>>)>,
+    {
+        // Consume the remaining arguments and store them in fresh allocations.
+        let mut varargs = Vec::new();
+        for (fn_arg, abi) in caller_args {
+            // FIXME: do we have to worry about in-place argument passing?
+            let op = self.copy_fn_arg(fn_arg);
+            let mplace = self.allocate(abi.layout, MemoryKind::Stack)?;
+            self.copy_op(&op, &mplace)?;
+
+            varargs.push(mplace);
+        }
+
+        interp_ok(varargs)
+    }
+
+    fn deallocate_varargs(
+        &mut self,
+        varargs: &[MPlaceTy<'tcx, M::Provenance>],
+    ) -> InterpResult<'tcx> {
+        for vararg in varargs {
+            let ptr = vararg.ptr();
+
+            trace!(
+                "deallocating vararg {:?}: {:?}",
+                vararg,
+                // Locals always have a `alloc_id` (they are never the result of a int2ptr).
+                self.dump_alloc(ptr.provenance.unwrap().get_alloc_id().unwrap())
+            );
+            self.deallocate_ptr(ptr, None, MemoryKind::Stack)?;
+        }
+
+        interp_ok(())
     }
 }
 

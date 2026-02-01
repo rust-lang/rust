@@ -200,12 +200,13 @@ impl fmt::Debug for VaList<'_> {
 
 impl VaList<'_> {
     // Helper used in the implementation of the `va_copy` intrinsic.
-    pub(crate) fn duplicate(&self) -> Self {
-        Self { inner: self.inner.clone(), _marker: self._marker }
+    pub(crate) const fn duplicate(&self) -> Self {
+        Self { inner: self.inner, _marker: self._marker }
     }
 }
 
-impl Clone for VaList<'_> {
+#[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
+impl<'f> const Clone for VaList<'f> {
     #[inline]
     fn clone(&self) -> Self {
         // We only implement Clone and not Copy because some future target might not be able to
@@ -216,7 +217,8 @@ impl Clone for VaList<'_> {
     }
 }
 
-impl<'f> Drop for VaList<'f> {
+#[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
+impl<'f> const Drop for VaList<'f> {
     fn drop(&mut self) {
         // SAFETY: this variable argument list is being dropped, so won't be read from again.
         unsafe { va_end(self) }
@@ -291,7 +293,8 @@ impl<'f> VaList<'f> {
     ///
     /// [valid]: https://doc.rust-lang.org/nightly/nomicon/what-unsafe-does.html
     #[inline]
-    pub unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
+    #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
+    pub const unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
         // SAFETY: the caller must uphold the safety contract for `va_arg`.
         unsafe { va_arg(self) }
     }

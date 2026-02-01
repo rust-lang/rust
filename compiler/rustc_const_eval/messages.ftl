@@ -35,6 +35,16 @@ const_eval_bad_pointer_op_attempting = {const_eval_bad_pointer_op}: {$operation 
 
 const_eval_bounds_check_failed =
     indexing out of bounds: the len is {$len} but the index is {$index}
+
+const_eval_c_variadic_call =
+    calling const c-variadic functions is unstable in {const_eval_const_context}s
+
+const_eval_c_variadic_fixed_count_mismatch =
+    calling a C-variadic function with {$caller} fixed arguments, but the function expects {$callee}
+
+const_eval_c_variadic_mismatch =
+    calling a function where the caller and callee disagree on whether the function is C-variadic
+
 const_eval_call_nonzero_intrinsic =
     `{$name}` called on 0
 
@@ -91,6 +101,8 @@ const_eval_deref_function_pointer =
     accessing {$allocation} which contains a function
 const_eval_deref_typeid_pointer =
     accessing {$allocation} which contains a `TypeId`
+const_eval_deref_va_list_pointer =
+    accessing {$allocation} which contains a variable argument list
 const_eval_deref_vtable_pointer =
     accessing {$allocation} which contains a vtable
 const_eval_division_by_zero =
@@ -194,6 +206,9 @@ const_eval_invalid_uninit_bytes =
     reading memory at {$alloc}{$access}, but memory is uninitialized at {$uninit}, and this operation requires initialized memory
 const_eval_invalid_uninit_bytes_unknown =
     using uninitialized data, but this operation requires initialized memory
+
+const_eval_invalid_va_list_pointer =
+    using {$pointer} as variable argument list pointer but it does not point to a variable argument list
 
 const_eval_invalid_vtable_pointer =
     using {$pointer} as vtable pointer but it does not point to a vtable
@@ -429,6 +444,8 @@ const_eval_unterminated_c_string =
 
 const_eval_unwind_past_top =
     unwinding past the topmost frame of the stack
+
+const_eval_va_arg_out_of_bounds = more C-variadic arguments read than were passed
 
 ## The `front_matter`s here refer to either `const_eval_front_matter_invalid_value` or `const_eval_front_matter_invalid_value_with_path`.
 ## (We'd love to sort this differently to make that more clear but tidy won't let us...)

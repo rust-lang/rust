@@ -82,10 +82,6 @@ ast_passes_c_variadic_no_extern = `...` is not supported for non-extern function
 
 ast_passes_c_variadic_not_supported = the `{$target}` target does not support c-variadic functions
 
-ast_passes_const_and_c_variadic = functions cannot be both `const` and C-variadic
-    .const = `const` because of this
-    .variadic = C-variadic because of this
-
 ast_passes_const_and_coroutine = functions cannot be both `const` and `{$coroutine_kind}`
     .const = `const` because of this
     .coroutine = `{$coroutine_kind}` because of this
