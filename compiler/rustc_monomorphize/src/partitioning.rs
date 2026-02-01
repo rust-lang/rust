@@ -165,7 +165,7 @@ where
     // Merge until we don't exceed the max CGU count.
     // `merge_codegen_units` is responsible for updating the CGU size
     // estimates.
-    {
+    if tcx.sess.opts.incremental.is_none() {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
         merge_codegen_units(cx, &mut codegen_units);
         debug_dump(tcx, "MERGE", &codegen_units);
