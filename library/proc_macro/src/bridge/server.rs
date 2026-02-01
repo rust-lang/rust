@@ -4,46 +4,26 @@ use std::cell::Cell;
 use std::marker::PhantomData;
 
 use super::*;
+use crate::bridge;
 
 pub(super) struct HandleStore<S: Server> {
-    token_stream: handle::OwnedStore<MarkedTokenStream<S>>,
     span: handle::InternedStore<MarkedSpan<S>>,
 }
 
 impl<S: Server> HandleStore<S> {
     fn new(handle_counters: &'static client::HandleCounters) -> Self {
-        HandleStore {
-            token_stream: handle::OwnedStore::new(&handle_counters.token_stream),
-            span: handle::InternedStore::new(&handle_counters.span),
-        }
+        HandleStore { span: handle::InternedStore::new(&handle_counters.span) }
     }
 }
 
-pub(super) type MarkedTokenStream<S> = Marked<<S as Server>::TokenStream, client::TokenStream>;
+pub(super) type MarkedTokenStream<S> = bridge::TokenStream<MarkedSpan<S>, MarkedSymbol<S>>;
+//bridge::TokenStream<client::Span, client::Symbol>;
 pub(super) type MarkedSpan<S> = Marked<<S as Server>::Span, client::Span>;
 pub(super) type MarkedSymbol<S> = Marked<<S as Server>::Symbol, client::Symbol>;
 
-impl<S: Server> Encode<HandleStore<S>> for MarkedTokenStream<S> {
-    fn encode(self, w: &mut Buffer, s: &mut HandleStore<S>) {
-        s.token_stream.alloc(self).encode(w, s);
-    }
-}
-
-impl<S: Server> Decode<'_, '_, HandleStore<S>> for MarkedTokenStream<S> {
-    fn decode(r: &mut &[u8], s: &mut HandleStore<S>) -> Self {
-        s.token_stream.take(handle::Handle::decode(r, &mut ()))
-    }
-}
-
-impl<'s, S: Server> Decode<'_, 's, HandleStore<S>> for &'s MarkedTokenStream<S> {
-    fn decode(r: &mut &[u8], s: &'s mut HandleStore<S>) -> Self {
-        &s.token_stream[handle::Handle::decode(r, &mut ())]
-    }
-}
-
 impl<S: Server> Encode<HandleStore<S>> for MarkedSpan<S> {
-    fn encode(self, w: &mut Buffer, s: &mut HandleStore<S>) {
-        s.span.alloc(self).encode(w, s);
+    fn encode(&self, w: &mut Buffer, s: &mut HandleStore<S>) {
+        s.span.alloc(*self).encode(w, s);
     }
 }
 
@@ -63,9 +43,8 @@ macro_rules! define_server_dispatcher_impl {
         $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
     ) => {
         pub trait Server {
-            type TokenStream: 'static + Clone;
             type Span: 'static + Copy + Eq + Hash;
-            type Symbol: 'static;
+            type Symbol: 'static + Clone;
 
             fn globals(&mut self) -> ExpnGlobals<Self::Span>;
 
@@ -81,7 +60,6 @@ macro_rules! define_server_dispatcher_impl {
         // FIXME(eddyb) `pub` only for `ExecutionStrategy` below.
         pub trait DispatcherTrait {
             // HACK(eddyb) these are here to allow `Self::$name` to work below.
-            type TokenStream;
             type Span;
             type Symbol;
 
@@ -89,7 +67,6 @@ macro_rules! define_server_dispatcher_impl {
         }
 
         impl<S: Server> DispatcherTrait for Dispatcher<S> {
-            type TokenStream = MarkedTokenStream<S>;
             type Span = MarkedSpan<S>;
             type Symbol = MarkedSymbol<S>;
 
@@ -307,12 +284,11 @@ impl client::Client<crate::TokenStream, crate::TokenStream> {
         &self,
         strategy: &impl ExecutionStrategy,
         server: S,
-        input: S::TokenStream,
+        input: TokenStream<S::Span, S::Symbol>,
         force_show_panics: bool,
-    ) -> Result<S::TokenStream, PanicMessage>
+    ) -> Result<TokenStream<S::Span, S::Symbol>, PanicMessage>
     where
         S: Server,
-        S::TokenStream: Default,
     {
         let client::Client { handle_counters, run, _marker } = *self;
         run_server(
@@ -323,7 +299,7 @@ impl client::Client<crate::TokenStream, crate::TokenStream> {
             run,
             force_show_panics,
         )
-        .map(|s| <Option<MarkedTokenStream<S>>>::unmark(s).unwrap_or_default())
+        .map(|s| <MarkedTokenStream<S>>::unmark(s))
     }
 }
 
@@ -332,13 +308,12 @@ impl client::Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream
         &self,
         strategy: &impl ExecutionStrategy,
         server: S,
-        input: S::TokenStream,
-        input2: S::TokenStream,
+        input: TokenStream<S::Span, S::Symbol>,
+        input2: TokenStream<S::Span, S::Symbol>,
         force_show_panics: bool,
-    ) -> Result<S::TokenStream, PanicMessage>
+    ) -> Result<TokenStream<S::Span, S::Symbol>, PanicMessage>
     where
         S: Server,
-        S::TokenStream: Default,
     {
         let client::Client { handle_counters, run, _marker } = *self;
         run_server(
@@ -349,6 +324,6 @@ impl client::Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream
             run,
             force_show_panics,
         )
-        .map(|s| <Option<MarkedTokenStream<S>>>::unmark(s).unwrap_or_default())
+        .map(|s| <MarkedTokenStream<S>>::unmark(s))
     }
 }
