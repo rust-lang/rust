@@ -1,0 +1,15 @@
+error[E0282]: type annotations needed
+  --> $DIR/not-diverging-block.rs:6:11
+   |
+LL |     match !{ return } {}
+   |           ^^^^^^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+  --> $DIR/not-diverging-block.rs:13:8
+   |
+LL |     if !{ return } {}
+   |        ^^^^^^^^^^^ cannot infer type
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.
