@@ -3,7 +3,7 @@
 fn main() {
     b'µ';
     //~^ ERROR: non-ASCII character in byte literal
-    //~| HELP: if you meant to use the unicode code point for 'µ', use a \xHH escape
+    //~| NOTE: this multibyte character does not fit into a single byte
     //~| NOTE: must be ASCII
 
     b'字';
@@ -14,5 +14,15 @@ fn main() {
     b"字";
     //~^ ERROR: non-ASCII character in byte string literal
     //~| HELP: if you meant to use the UTF-8 encoding of '字', use \xHH escapes
+    //~| NOTE: must be ASCII
+
+    b"µ";
+    //~^ ERROR: non-ASCII character in byte string literal
+    //~| HELP: if you meant to use the UTF-8 encoding of 'µ', use \xHH escapes
+    //~| NOTE: must be ASCII
+
+    b"ñ";
+    //~^ ERROR: non-ASCII character in byte string literal
+    //~| HELP: if you meant to use the UTF-8 encoding of 'ñ', use \xHH escapes
     //~| NOTE: must be ASCII
 }

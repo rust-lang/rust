@@ -26,10 +26,10 @@ error: non-ASCII character in byte string literal
 LL |     b"é";
    |       ^ must be ASCII
    |
-help: if you meant to use the unicode code point for 'é', use a \xHH escape
+help: if you meant to use the UTF-8 encoding of 'é', use \xHH escapes
    |
 LL -     b"é";
-LL +     b"\xE9";
+LL +     b"\xC3\xA9";
    |
 
 error: non-ASCII character in raw byte string literal
