@@ -386,11 +386,16 @@ pub struct String {
 /// assert_eq!(vec![0, 159], value.unwrap_err().into_bytes());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_has_incoherent_inherent_impls]
 #[cfg_attr(not(no_global_oom_handling), derive(Clone))]
 #[derive(Debug, PartialEq, Eq)]
-pub struct FromUtf8Error {
-    bytes: Vec<u8>,
-    error: Utf8Error,
+pub struct FromUtf8Error<Input = Vec<u8>> {
+    #[doc(hidden)]
+    #[unstable(feature = "from_utf8_error_internals", issue = "none")]
+    pub input: Input,
+    #[doc(hidden)]
+    #[unstable(feature = "from_utf8_error_internals", issue = "none")]
+    pub error: Utf8Error,
 }
 
 /// A possible error value when converting a `String` from a UTF-16 byte slice.
@@ -560,7 +565,7 @@ impl String {
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
         match str::from_utf8(&vec) {
             Ok(..) => Ok(String { vec }),
-            Err(e) => Err(FromUtf8Error { bytes: vec, error: e }),
+            Err(e) => Err(FromUtf8Error { input: vec, error: e }),
         }
     }
 
@@ -2224,7 +2229,7 @@ impl FromUtf8Error {
     #[must_use]
     #[stable(feature = "from_utf8_error_as_bytes", since = "1.26.0")]
     pub fn as_bytes(&self) -> &[u8] {
-        &self.bytes[..]
+        &self.input[..]
     }
 
     /// Converts the bytes into a `String` lossily, substituting invalid UTF-8
@@ -2251,11 +2256,11 @@ impl FromUtf8Error {
         const REPLACEMENT: &str = "\u{FFFD}";
 
         let mut res = {
-            let mut v = Vec::with_capacity(self.bytes.len());
+            let mut v = Vec::with_capacity(self.input.len());
 
             // `Utf8Error::valid_up_to` returns the maximum index of validated
             // UTF-8 bytes. Copy the valid bytes into the output buffer.
-            v.extend_from_slice(&self.bytes[..self.error.valid_up_to()]);
+            v.extend_from_slice(&self.input[..self.error.valid_up_to()]);
 
             // SAFETY: This is safe because the only bytes present in the buffer
             // were validated as UTF-8 by the call to `String::from_utf8` which
@@ -2263,7 +2268,7 @@ impl FromUtf8Error {
             unsafe { String::from_utf8_unchecked(v) }
         };
 
-        let iter = self.bytes[self.error.valid_up_to()..].utf8_chunks();
+        let iter = self.input[self.error.valid_up_to()..].utf8_chunks();
 
         for chunk in iter {
             res.push_str(chunk.valid());
@@ -2294,9 +2299,11 @@ impl FromUtf8Error {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_bytes(self) -> Vec<u8> {
-        self.bytes
+        self.input
     }
+}
 
+impl<T> FromUtf8Error<T> {
     /// Fetch a `Utf8Error` to get more details about the conversion failure.
     ///
     /// The [`Utf8Error`] type provided by [`std::str`] represents an error that may

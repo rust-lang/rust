@@ -11,6 +11,7 @@ use crate::hash::{Hash, Hasher};
 use crate::ops::{self, Range};
 use crate::rc::Rc;
 use crate::str::FromStr;
+use crate::string::FromUtf8Error;
 use crate::sync::Arc;
 use crate::sys::os_str::{Buf, Slice};
 use crate::sys::{AsInner, FromInner, IntoInner};
@@ -613,6 +614,43 @@ impl From<String> for OsString {
     #[inline]
     fn from(s: String) -> OsString {
         OsString { inner: Buf::from_string(s) }
+    }
+}
+
+#[stable(feature = "tryfrom_os_string_for_string", since = "CURRENT_RUSTC_VERSION")]
+impl TryFrom<OsString> for String {
+    type Error = FromUtf8Error<OsString>;
+
+    /// Attempts to convert an [`OsString`] into a [`String`].
+    ///
+    /// This conversion does not allocate or copy memory.
+    fn try_from(s: OsString) -> Result<Self, Self::Error> {
+        unsafe {
+            match s.as_os_str().inner.to_str() {
+                Ok(_) => Ok(String::from_utf8_unchecked(s.into_encoded_bytes())),
+                Err(error) => Err(FromUtf8Error { input: s, error }),
+            }
+        }
+    }
+}
+
+impl FromUtf8Error<OsString> {
+    /// Returns an [`OsStr`] slice that was attempted to convert to a `String`.
+    #[stable(feature = "tryfrom_os_string_for_string", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_incoherent_impl]
+    pub fn as_os_str(&self) -> &OsStr {
+        &self.input[..]
+    }
+
+    /// Returns the [`OsString`] that was attempted to convert to a `String`.
+    ///
+    /// This method is carefully constructed to avoid allocation. It will
+    /// consume the error, moving out the string, so that a copy of the string
+    /// does not need to be made.
+    #[stable(feature = "tryfrom_os_string_for_string", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_incoherent_impl]
+    pub fn into_os_string(self) -> OsString {
+        self.input
     }
 }
 
