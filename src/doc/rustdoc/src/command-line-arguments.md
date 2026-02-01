@@ -440,6 +440,35 @@ When `rustdoc` receives this flag, it will print an extra "Version (version)" in
 the crate root's docs. You can use this flag to differentiate between different versions of your
 library's documentation.
 
+## `--emit`: control the types of output for rustdoc to emit
+
+This flag controls the types of output by rustdoc. It accepts a comma-separated
+list of values, and may be specified multiple times. The valid emit kinds are:
+
+- `toolchain-shared-resources` --- Generates shared static files whose
+  contents are tied to a specific toolchain version. These are written with a
+  filename that includes a hash of their contents, so they are safe to cache
+  with the change if the toolchain version or their contents change, or with
+  the `Cache-Control: immutable` directive.
+- `invocation-specific` --- Generates files based on the crate(s) being
+  documented. These file names need to be deterministic so there is no
+  content-hash in their file names.
+- `dep-info` --- Generates a file with Makefile syntax that indicates all the
+  source files that were loaded to document the crate. The default output
+  filename is `CRATE_NAME.d`. This emit type can can optionally be followed by
+  `=` to specify an explicit output path, for example,
+  `--emit=dep-info=/path/to/foo.d`. The output can be sent to stdout by
+  specifying `-` as the path (e.g., `--emit=dep-info=-`).
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs --emit=toolchain-shared-resources,invocation-specific,dep-info=/path/too/build/cache/foo.d
+```
+
+If not specified, the default emit types would be
+`--emit=toolchain-shared-resources,invocation-specific`.
+
 ## `-`: load source code from the standard input
 
 If you specify `-` as the INPUT on the command line, then `rustdoc` will read the
