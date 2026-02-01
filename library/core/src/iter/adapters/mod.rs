@@ -8,6 +8,7 @@ mod chain;
 mod cloned;
 mod copied;
 mod cycle;
+mod dedup;
 mod enumerate;
 mod filter;
 mod filter_map;
@@ -38,6 +39,10 @@ pub use self::chain::chain;
 pub use self::cloned::Cloned;
 #[stable(feature = "iter_copied", since = "1.36.0")]
 pub use self::copied::Copied;
+#[unstable(feature = "iter_dedup", issue = "83747")]
+pub use self::dedup::Dedup;
+#[unstable(feature = "iter_dedup", issue = "83747")]
+pub use self::dedup::{DedupEq, DedupKey};
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub use self::flatten::Flatten;
 #[unstable(feature = "iter_intersperse", issue = "79524")]
