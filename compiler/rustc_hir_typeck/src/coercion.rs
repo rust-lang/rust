@@ -783,7 +783,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         self.fcx.set_tainted_by_errors(guar);
                     }
                 }
-                Ok(Some(impl_source)) => queue.extend(impl_source.nested_obligations()),
+                Ok(Some(impl_source)) => {
+                    let nested = impl_source.nested_obligations();
+                    if nested.len() == 1 && &obligation == &nested[0] {
+                        // Avoid hang when expanding the current obligation to the same obligation.
+                        // This doesn't occur under normal circumstances, only on incorrect
+                        // recursive type definitions. Issue #148653.
+                    } else {
+                        queue.extend(nested);
+                    }
+                }
             }
         }
 
