@@ -1875,7 +1875,7 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
         tag: Scalar,
         tag_encoding: TagEncoding<VariantIdx>,
         tag_field: FieldIdx,
-        variants: IndexVec<VariantIdx, LayoutData<FieldIdx, VariantIdx>>,
+        variants: IndexVec<VariantIdx, VariantLayout<FieldIdx>>,
     },
 }
 
@@ -2229,4 +2229,39 @@ pub enum AbiFromStrErr {
     Unknown,
     /// no "-unwind" variant can be used here
     NoExplicitUnwind,
+}
+
+// NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+pub struct VariantLayout<FieldIdx: Idx> {
+    pub size: Size,
+    pub backend_repr: BackendRepr,
+    pub field_offsets: IndexVec<FieldIdx, Size>,
+    fields_in_memory_order: IndexVec<u32, FieldIdx>,
+    uninhabited: bool,
+}
+
+impl<FieldIdx: Idx> VariantLayout<FieldIdx> {
+    pub fn from_layout(layout: LayoutData<FieldIdx, impl Idx>) -> Self {
+        let FieldsShape::Arbitrary { offsets, in_memory_order } = layout.fields else {
+            panic!("Layout of fields should be Arbitrary for variants");
+        };
+
+        Self {
+            size: layout.size,
+            backend_repr: layout.backend_repr,
+            field_offsets: offsets,
+            fields_in_memory_order: in_memory_order,
+            uninhabited: layout.uninhabited,
+        }
+    }
+
+    pub fn is_uninhabited(&self) -> bool {
+        self.uninhabited
+    }
+
+    pub fn has_fields(&self) -> bool {
+        self.field_offsets.len() > 0
+    }
 }

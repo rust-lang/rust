@@ -803,8 +803,8 @@ where
                 tcx.mk_layout(LayoutData::uninhabited_variant(cx, variant_index, fields))
             }
 
-            Variants::Multiple { ref variants, .. } => {
-                cx.tcx().mk_layout(variants[variant_index].clone())
+            Variants::Multiple { .. } => {
+                cx.tcx().mk_layout(LayoutData::for_variant(&this, variant_index))
             }
         };
 

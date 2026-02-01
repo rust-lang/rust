@@ -42,68 +42,32 @@ error: layout_of(UnsignedAroundZero) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
-                       largest_niche: None,
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 9885373149222004003,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
-                       largest_niche: None,
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 9885373149222004003,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
-                       largest_niche: None,
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        uninhabited: false,
-                       variants: Single {
-                           index: 2,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 9885373149222004003,
                    },
                ],
            },
@@ -160,68 +124,32 @@ error: layout_of(SignedAroundZero) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
-                       largest_niche: None,
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 2684536712112553499,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
-                       largest_niche: None,
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 2684536712112553499,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
-                       largest_niche: None,
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        uninhabited: false,
-                       variants: Single {
-                           index: 2,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 2684536712112553499,
                    },
                ],
            },
