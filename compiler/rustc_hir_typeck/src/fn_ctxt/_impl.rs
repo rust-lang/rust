@@ -545,11 +545,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // reader, although I have my doubts). Also pass in types with inference
     // types, because they may be repeated. Other sorts of things are already
     // sufficiently enforced with erased regions. =)
-    fn can_contain_user_lifetime_bounds<T>(t: T) -> bool
+    fn can_contain_user_lifetime_bounds<T>(_: T) -> bool
     where
         T: TypeVisitable<TyCtxt<'tcx>>,
     {
-        t.has_free_regions() || t.has_aliases() || t.has_infer_types()
+        true
     }
 
     pub(crate) fn node_ty(&self, id: HirId) -> Ty<'tcx> {
