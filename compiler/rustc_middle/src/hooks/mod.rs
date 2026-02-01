@@ -3,13 +3,15 @@
 //! similar to queries, but queries come with a lot of machinery for caching and incremental
 //! compilation, whereas hooks are just plain function pointers without any of the query magic.
 
+use std::marker::PhantomData;
+
 use rustc_hir::def_id::{DefId, DefPathHash};
 use rustc_session::StableCrateId;
 use rustc_span::def_id::{CrateNum, LocalDefId};
-use rustc_span::{ExpnHash, ExpnId};
+use rustc_span::{ExpnHash, ExpnId, Span};
 
-use crate::mir;
 use crate::ty::{Ty, TyCtxt};
+use crate::{mir, ty};
 
 macro_rules! declare_hooks {
     ($($(#[$attr:meta])*hook $name:ident($($arg:ident: $K:ty),*) -> $V:ty;)*) => {
@@ -34,8 +36,10 @@ macro_rules! declare_hooks {
 
         impl Default for Providers {
             fn default() -> Self {
+                #[allow(unused)]
                 Providers {
-                    $($name: |_, $($arg,)*| default_hook(stringify!($name), &($($arg,)*))),*
+                    $($name:
+                        |_, $($arg,)*| default_hook(stringify!($name))),*
                 }
             }
         }
@@ -107,11 +111,23 @@ declare_hooks! {
     ///
     /// Creates the MIR for a given `DefId`, including unreachable code.
     hook build_mir_inner_impl(def: LocalDefId) -> mir::Body<'tcx>;
+
+    /// TODO
+    hook try_eagerly_normalize_alias(
+        type_erased_infcx: TypeErasedInfcx<'_, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        span: Span,
+        alias: ty::AliasTy<'tcx>
+    ) -> Ty<'tcx>;
+}
+
+#[repr(transparent)]
+pub struct TypeErasedInfcx<'a, 'tcx> {
+    _infcx: *const (),
+    phantom: PhantomData<&'a mut &'tcx ()>,
 }
 
 #[cold]
-fn default_hook(name: &str, args: &dyn std::fmt::Debug) -> ! {
-    bug!(
-        "`tcx.{name}{args:?}` cannot be called as `{name}` was never assigned to a provider function"
-    )
+fn default_hook(name: &str) -> ! {
+    bug!("`tcx.{name}` cannot be called as `{name}` was never assigned to a provider function")
 }

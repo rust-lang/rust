@@ -1,5 +1,5 @@
 use std::cell::{Cell, RefCell};
-use std::fmt;
+use std::{fmt, mem};
 
 pub use at::DefineOpaqueTypes;
 use free_regions::RegionRelations;
@@ -21,6 +21,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::extension;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
+use rustc_middle::hooks::TypeErasedInfcx;
 use rustc_middle::infer::canonical::{CanonicalQueryInput, CanonicalVarValues};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::select;
@@ -1463,6 +1464,17 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
             }
         }
+    }
+
+    pub fn try_eagerly_normalize_alias<'a>(
+        &'a self,
+        param_env: ty::ParamEnv<'tcx>,
+        span: Span,
+        alias: ty::AliasTy<'tcx>,
+    ) -> Ty<'tcx> {
+        let erased =
+            unsafe { mem::transmute::<&'a InferCtxt<'tcx>, TypeErasedInfcx<'a, 'tcx>>(self) };
+        self.tcx.try_eagerly_normalize_alias(erased, param_env, span, alias)
     }
 
     /// Attach a callback to be invoked on each root obligation evaluated in the new trait solver.

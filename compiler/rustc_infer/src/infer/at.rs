@@ -140,6 +140,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
                 ty::Contravariant,
                 actual,
                 self.cause.span,
+                &mut |alias| {
+                    self.infcx.try_eagerly_normalize_alias(self.param_env, self.cause.span, alias)
+                },
             )
             .map(|goals| self.goals_to_obligations(goals))
         } else {
@@ -173,6 +176,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
                 ty::Covariant,
                 actual,
                 self.cause.span,
+                &mut |alias| {
+                    self.infcx.try_eagerly_normalize_alias(self.param_env, self.cause.span, alias)
+                },
             )
             .map(|goals| self.goals_to_obligations(goals))
         } else {
@@ -225,6 +231,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
                 ty::Invariant,
                 actual,
                 self.cause.span,
+                &mut |alias| {
+                    self.infcx.try_eagerly_normalize_alias(self.param_env, self.cause.span, alias)
+                },
             )
             .map(|goals| self.goals_to_obligations(goals))
         } else {

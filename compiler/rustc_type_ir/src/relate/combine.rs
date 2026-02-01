@@ -40,6 +40,8 @@ where
 
     /// Register `AliasRelate` obligation(s) that both types must be related to each other.
     fn register_alias_relate_predicate(&mut self, a: I::Ty, b: I::Ty);
+
+    fn try_eagerly_normalize_alias(&mut self, alias: ty::AliasTy<I>) -> I::Ty;
 }
 
 pub fn super_combine_tys<Infcx, I, R>(
@@ -115,18 +117,13 @@ where
             panic!("We do not expect to encounter `Fresh` variables in the new solver")
         }
 
-        (_, ty::Alias(..)) | (ty::Alias(..), _) if infcx.next_trait_solver() => {
-            match relation.structurally_relate_aliases() {
-                StructurallyRelateAliases::Yes => structurally_relate_tys(relation, a, b),
-                StructurallyRelateAliases::No => {
-                    relation.register_alias_relate_predicate(a, b);
-                    Ok(a)
-                }
-            }
-        }
-
         // All other cases of inference are errors
         (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
+
+        (ty::Alias(..), _) | (_, ty::Alias(..)) if infcx.next_trait_solver() => {
+            assert_eq!(relation.structurally_relate_aliases(), StructurallyRelateAliases::Yes);
+            structurally_relate_tys(relation, a, b)
+        }
 
         (ty::Alias(ty::Opaque, _), _) | (_, ty::Alias(ty::Opaque, _)) => {
             assert!(!infcx.next_trait_solver());
