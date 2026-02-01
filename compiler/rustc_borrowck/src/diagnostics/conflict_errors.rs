@@ -3450,6 +3450,24 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     Applicability::MaybeIncorrect,
                 );
             }
+
+            if let Some(cow) = tcx.get_diagnostic_item(sym::Cow)
+                && let ty::Adt(adtdef, _) = return_ty.kind()
+                && adtdef.did() == cow
+            {
+                if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(return_span) {
+                    if let Some(pos) = snippet.rfind(".to_owned") {
+                        let byte_pos = BytePos(pos as u32 + 1u32);
+                        let to_owned_span = return_span.with_hi(return_span.lo() + byte_pos);
+                        err.span_suggestion_short(
+                            to_owned_span.shrink_to_hi(),
+                            "try using `.into_owned()` if you meant to convert a `Cow<'_, T>` to an owned `T`",
+                            "in",
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
         }
 
         Err(err)
