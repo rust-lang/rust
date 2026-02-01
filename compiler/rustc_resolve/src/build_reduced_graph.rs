@@ -614,97 +614,96 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         let prefix = crate_root.into_iter().chain(prefix_iter).collect::<Vec<_>>();
         debug!("build_reduced_graph_for_use_tree: prefix={:?}", prefix);
 
-        let empty_for_self = |prefix: &[Segment]| {
-            prefix.is_empty() || prefix.len() == 1 && prefix[0].ident.name == kw::PathRoot
-        };
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename) => {
                 let mut ident = use_tree.ident();
                 let mut module_path = prefix;
                 let mut source = module_path.pop().unwrap();
-                let mut type_ns_only = false;
 
-                if nested {
-                    // Correctly handle `self`
-                    if source.ident.name == kw::SelfLower {
-                        type_ns_only = true;
+                // `true` for `...::{self [as target]}` imports, `false` otherwise.
+                let type_ns_only = nested && source.ident.name == kw::SelfLower;
 
-                        if empty_for_self(&module_path) {
-                            self.r.report_error(
-                                use_tree.span,
-                                ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix,
+                match source.ident.name {
+                    kw::DollarCrate => {
+                        if !module_path.is_empty() {
+                            self.r.dcx().span_err(
+                                source.ident.span,
+                                "`$crate` in paths can only be used in start position",
                             );
                             return;
                         }
-
-                        // Replace `use foo::{ self };` with `use foo;`
-                        let self_span = source.ident.span;
-                        source = module_path.pop().unwrap();
-                        if rename.is_none() {
-                            // Keep the span of `self`, but the name of `foo`
-                            ident = Ident::new(source.ident.name, self_span);
+                    }
+                    kw::Crate => {
+                        if !module_path.is_empty() {
+                            self.r.dcx().span_err(
+                                source.ident.span,
+                                "`crate` in paths can only be used in start position",
+                            );
+                            return;
                         }
                     }
-                } else {
-                    // Disallow `self`
-                    if source.ident.name == kw::SelfLower {
-                        let parent = module_path.last();
-
-                        let span = match parent {
-                            // only `::self` from `use foo::self as bar`
-                            Some(seg) => seg.ident.span.shrink_to_hi().to(source.ident.span),
-                            None => source.ident.span,
-                        };
-                        let span_with_rename = match rename {
-                            // only `self as bar` from `use foo::self as bar`
-                            Some(rename) => source.ident.span.to(rename.span),
-                            None => source.ident.span,
-                        };
-                        self.r.report_error(
-                            span,
-                            ResolutionError::SelfImportsOnlyAllowedWithin {
-                                root: parent.is_none(),
-                                span_with_rename,
-                            },
-                        );
-
-                        // Error recovery: replace `use foo::self;` with `use foo;`
+                    kw::Super => {
+                        if module_path.iter().any(|seg| seg.ident.name != kw::Super) {
+                            self.r.dcx().span_err(
+                                source.ident.span,
+                                "`super` in paths can only be used in start position or after another `super`",
+                            );
+                            return;
+                        }
+                    }
+                    kw::SelfLower => {
                         if let Some(parent) = module_path.pop() {
+                            // Suggest `use prefix::{self};` for `use prefix::self;`
+                            if !type_ns_only
+                                && (parent.ident.name != kw::PathRoot
+                                    || self.r.path_root_is_crate_root(parent.ident))
+                            {
+                                let span_with_rename = match rename {
+                                    Some(rename) => source.ident.span.to(rename.span),
+                                    None => source.ident.span,
+                                };
+
+                                self.r.report_error(
+                                    parent.ident.span.shrink_to_hi().to(source.ident.span),
+                                    ResolutionError::SelfImportsOnlyAllowedWithin {
+                                        root: parent.ident.name == kw::PathRoot,
+                                        span_with_rename,
+                                    },
+                                );
+                            }
+
+                            let self_span = source.ident.span;
                             source = parent;
                             if rename.is_none() {
-                                ident = source.ident;
+                                ident = Ident::new(source.ident.name, self_span);
                             }
                         }
                     }
-
-                    // Disallow `use $crate;`
-                    if source.ident.name == kw::DollarCrate && module_path.is_empty() {
-                        let crate_root = self.r.resolve_crate_root(source.ident);
-                        let crate_name = match crate_root.kind {
-                            ModuleKind::Def(.., name) => name,
-                            ModuleKind::Block => unreachable!(),
-                        };
-                        // HACK(eddyb) unclear how good this is, but keeping `$crate`
-                        // in `source` breaks `tests/ui/imports/import-crate-var.rs`,
-                        // while the current crate doesn't have a valid `crate_name`.
-                        if let Some(crate_name) = crate_name {
-                            // `crate_name` should not be interpreted as relative.
-                            module_path.push(Segment::from_ident_and_id(
-                                Ident::new(kw::PathRoot, source.ident.span),
-                                self.r.next_node_id(),
-                            ));
-                            source.ident.name = crate_name;
-                        }
-                        if rename.is_none() {
-                            ident.name = sym::dummy;
-                        }
-
-                        self.r.dcx().emit_err(errors::CrateImported { span: item.span });
-                    }
+                    _ => {}
                 }
 
-                if ident.name == kw::Crate {
-                    self.r.dcx().emit_err(errors::UnnamedCrateRootImport { span: ident.span });
+                // Deny `use ::{self};` after edition 2015
+                if source.ident.name == kw::PathRoot
+                    && !self.r.path_root_is_crate_root(source.ident)
+                {
+                    self.r.dcx().span_err(use_tree.span, "extern prelude cannot be imported");
+                    return;
+                }
+
+                // Deny importing path-kw without renaming
+                if rename.is_none() && ident.is_path_segment_keyword() {
+                    let ident = use_tree.ident();
+
+                    // Don't suggest `use xx::self as name;` for `use xx::self;`
+                    // But it's OK to suggest `use xx::{self as name};` for `use xx::{self};`
+                    let sugg = if !type_ns_only && ident.name == kw::SelfLower {
+                        None
+                    } else {
+                        Some(errors::UnnamedImportSugg { span: ident.span, ident })
+                    };
+
+                    self.r.dcx().emit_err(errors::UnnamedImport { span: ident.span, sugg });
+                    return;
                 }
 
                 let kind = ImportKind::Single {
@@ -734,32 +733,6 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 }
             }
             ast::UseTreeKind::Nested { ref items, .. } => {
-                // Ensure there is at most one `self` in the list
-                let self_spans = items
-                    .iter()
-                    .filter_map(|(use_tree, _)| {
-                        if let ast::UseTreeKind::Simple(..) = use_tree.kind
-                            && use_tree.ident().name == kw::SelfLower
-                        {
-                            return Some(use_tree.span);
-                        }
-
-                        None
-                    })
-                    .collect::<Vec<_>>();
-                if self_spans.len() > 1 {
-                    let mut e = self.r.into_struct_error(
-                        self_spans[0],
-                        ResolutionError::SelfImportCanOnlyAppearOnceInTheList,
-                    );
-
-                    for other_span in self_spans.iter().skip(1) {
-                        e.span_label(*other_span, "another `self` import appears here");
-                    }
-
-                    e.emit();
-                }
-
                 for &(ref tree, id) in items {
                     self.build_reduced_graph_for_use_tree(
                         // This particular use tree
@@ -771,7 +744,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 // Empty groups `a::b::{}` are turned into synthetic `self` imports
                 // `a::b::c::{self as _}`, so that their prefixes are correctly
                 // resolved and checked for privacy/stability/etc.
-                if items.is_empty() && !empty_for_self(&prefix) {
+                if items.is_empty()
+                    && !prefix.is_empty()
+                    && (prefix.len() > 1 || prefix[0].ident.name != kw::PathRoot)
+                {
                     let new_span = prefix[prefix.len() - 1].ident.span;
                     let tree = ast::UseTree {
                         prefix: ast::Path::from_ident(Ident::new(kw::SelfLower, new_span)),

@@ -2,7 +2,7 @@
 //@ compile-flags:--extern xcrate
 //@ edition:2018
 
-use crate; //~ ERROR crate root imports need to be explicitly named: `use crate as name;`
+use crate; //~ ERROR imports need to be explicitly named
 use *; //~ ERROR cannot glob-import all possible crates
 
 fn main() {
