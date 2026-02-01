@@ -17,7 +17,7 @@ use hir_def::{
         path::Path,
         scope::{ExprScopes, ScopeId},
     },
-    hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
+    hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat, PatId},
     lang_item::LangItems,
     nameres::MacroSubNs,
     resolver::{HasResolver, Resolver, TypeNs, ValueNs, resolver_for_scope},
@@ -44,6 +44,7 @@ use hir_ty::{
 };
 use intern::sym;
 use itertools::Itertools;
+use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     AliasTyKind,
     inherent::{AdtDef, IntoKind, Ty as _},
@@ -1241,18 +1242,28 @@ impl<'db> SourceAnalyzer<'db> {
         let body = self.store()?;
         let infer = self.infer()?;
 
-        let expr_id = self.expr_id(literal.clone().into())?;
-        let substs = infer.expr_or_pat_ty(expr_id).as_adt()?.1;
-
-        let (variant, missing_fields, _exhaustive) = match expr_id {
-            ExprOrPatId::ExprId(expr_id) => {
-                record_literal_missing_fields(db, infer, expr_id, &body[expr_id])?
-            }
-            ExprOrPatId::PatId(pat_id) => {
-                record_pattern_missing_fields(db, infer, pat_id, &body[pat_id])?
-            }
-        };
+        let expr_id = self.expr_id(literal.clone().into())?.as_expr()?;
+        let substs = infer.expr_ty(expr_id).as_adt()?.1;
+        let (variant, missing_fields) =
+            record_literal_missing_fields(db, infer, expr_id, &body[expr_id])?;
         let res = self.missing_fields(db, substs, variant, missing_fields);
+        Some(res)
+    }
+
+    pub(crate) fn record_literal_matched_fields(
+        &self,
+        db: &'db dyn HirDatabase,
+        literal: &ast::RecordExpr,
+    ) -> Option<Vec<(Field, Type<'db>)>> {
+        let body = self.store()?;
+        let infer = self.infer()?;
+
+        let expr_id = self.expr_id(literal.clone().into())?.as_expr()?;
+        let substs = infer.expr_ty(expr_id).as_adt()?.1;
+        let (variant, matched_fields) =
+            record_literal_matched_fields(db, infer, expr_id, &body[expr_id])?;
+
+        let res = self.missing_fields(db, substs, variant, matched_fields);
         Some(res)
     }
 
@@ -1267,9 +1278,26 @@ impl<'db> SourceAnalyzer<'db> {
         let pat_id = self.pat_id(&pattern.clone().into())?.as_pat()?;
         let substs = infer.pat_ty(pat_id).as_adt()?.1;
 
-        let (variant, missing_fields, _exhaustive) =
+        let (variant, missing_fields) =
             record_pattern_missing_fields(db, infer, pat_id, &body[pat_id])?;
         let res = self.missing_fields(db, substs, variant, missing_fields);
+        Some(res)
+    }
+
+    pub(crate) fn record_pattern_matched_fields(
+        &self,
+        db: &'db dyn HirDatabase,
+        pattern: &ast::RecordPat,
+    ) -> Option<Vec<(Field, Type<'db>)>> {
+        let body = self.store()?;
+        let infer = self.infer()?;
+
+        let pat_id = self.pat_id(&pattern.clone().into())?.as_pat()?;
+        let substs = infer.pat_ty(pat_id).as_adt()?.1;
+
+        let (variant, matched_fields) =
+            record_pattern_matched_fields(db, infer, pat_id, &body[pat_id])?;
+        let res = self.missing_fields(db, substs, variant, matched_fields);
         Some(res)
     }
 
@@ -1809,4 +1837,68 @@ pub(crate) fn name_hygiene(db: &dyn HirDatabase, name: InFile<&SyntaxNode>) -> H
     let span_map = db.expansion_span_map(macro_file);
     let ctx = span_map.span_at(name.value.text_range().start()).ctx;
     HygieneId::new(ctx.opaque_and_semiopaque(db))
+}
+
+fn record_literal_matched_fields(
+    db: &dyn HirDatabase,
+    infer: &InferenceResult,
+    id: ExprId,
+    expr: &Expr,
+) -> Option<(VariantId, Vec<LocalFieldId>)> {
+    let (fields, _spread) = match expr {
+        Expr::RecordLit { fields, spread, .. } => (fields, spread),
+        _ => return None,
+    };
+
+    let variant_def = infer.variant_resolution_for_expr(id)?;
+    if let VariantId::UnionId(_) = variant_def {
+        return None;
+    }
+
+    let variant_data = variant_def.fields(db);
+
+    let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
+    // suggest fields if:
+    // - not in code
+    let matched_fields: Vec<LocalFieldId> = variant_data
+        .fields()
+        .iter()
+        .filter_map(|(f, d)| (!specified_fields.contains(&d.name)).then_some(f))
+        .collect();
+    if matched_fields.is_empty() {
+        return None;
+    }
+    Some((variant_def, matched_fields))
+}
+
+fn record_pattern_matched_fields(
+    db: &dyn HirDatabase,
+    infer: &InferenceResult,
+    id: PatId,
+    pat: &Pat,
+) -> Option<(VariantId, Vec<LocalFieldId>)> {
+    let (fields, _ellipsis) = match pat {
+        Pat::Record { path: _, args, ellipsis } => (args, *ellipsis),
+        _ => return None,
+    };
+
+    let variant_def = infer.variant_resolution_for_pat(id)?;
+    if let VariantId::UnionId(_) = variant_def {
+        return None;
+    }
+
+    let variant_data = variant_def.fields(db);
+
+    let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
+    // suggest fields if:
+    // - not in code
+    let matched_fields: Vec<LocalFieldId> = variant_data
+        .fields()
+        .iter()
+        .filter_map(|(f, d)| if !specified_fields.contains(&d.name) { Some(f) } else { None })
+        .collect();
+    if matched_fields.is_empty() {
+        return None;
+    }
+    Some((variant_def, matched_fields))
 }

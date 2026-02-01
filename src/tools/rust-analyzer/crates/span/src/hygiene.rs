@@ -8,9 +8,9 @@
 //!
 //! # The Expansion Order Hierarchy
 //!
-//! `ExpnData` in rustc, rust-analyzer's version is [`MacroCallLoc`]. Traversing the hierarchy
-//! upwards can be achieved by walking up [`MacroCallLoc::kind`]'s contained file id, as
-//! [`MacroFile`]s are interned [`MacroCallLoc`]s.
+//! `ExpnData` in rustc, rust-analyzer's version is `MacroCallLoc`. Traversing the hierarchy
+//! upwards can be achieved by walking up `MacroCallLoc::kind`'s contained file id, as
+//! `MacroFile`s are interned `MacroCallLoc`s.
 //!
 //! # The Macro Definition Hierarchy
 //!
@@ -18,7 +18,7 @@
 //!
 //! # The Call-site Hierarchy
 //!
-//! `ExpnData::call_site` in rustc, [`MacroCallLoc::call_site`] in rust-analyzer.
+//! `ExpnData::call_site` in rustc, `MacroCallLoc::call_site` in rust-analyzer.
 use crate::Edition;
 use std::fmt;
 
@@ -241,9 +241,7 @@ const _: () = {
                     edition: zalsa_::interned::Lookup::into_owned(data.2),
                     parent: zalsa_::interned::Lookup::into_owned(data.3),
                     opaque: opaque(zalsa_::FromId::from_id(id)),
-                    opaque_and_semiopaque: opaque_and_semiopaque(
-                        zalsa_::FromId::from_id(id),
-                    ),
+                    opaque_and_semiopaque: opaque_and_semiopaque(zalsa_::FromId::from_id(id)),
                 },
             )
         }

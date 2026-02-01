@@ -33,8 +33,8 @@ fn expand_record_rest_pattern(
     record_pat: ast::RecordPat,
     rest_pat: ast::RestPat,
 ) -> Option<()> {
-    let missing_fields = ctx.sema.record_pattern_missing_fields(&record_pat);
-    if missing_fields.is_empty() {
+    let matched_fields = ctx.sema.record_pattern_matched_fields(&record_pat);
+    if matched_fields.is_empty() {
         cov_mark::hit!(no_missing_fields);
         return None;
     }
@@ -53,7 +53,7 @@ fn expand_record_rest_pattern(
         |builder| {
             let make = SyntaxFactory::with_mappings();
             let mut editor = builder.make_editor(rest_pat.syntax());
-            let new_fields = old_field_list.fields().chain(missing_fields.iter().map(|(f, _)| {
+            let new_fields = old_field_list.fields().chain(matched_fields.iter().map(|(f, _)| {
                 make.record_pat_field_shorthand(
                     make.ident_pat(
                         false,

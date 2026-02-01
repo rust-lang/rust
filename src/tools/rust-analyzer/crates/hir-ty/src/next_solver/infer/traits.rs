@@ -55,6 +55,13 @@ impl ObligationCause {
     }
 }
 
+impl Default for ObligationCause {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// An `Obligation` represents some trait reference (e.g., `i32: Eq`) for
 /// which the "impl_source" must be found. The process of finding an "impl_source" is
 /// called "resolving" the `Obligation`. This process consists of

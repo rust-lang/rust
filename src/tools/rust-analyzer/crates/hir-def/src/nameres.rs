@@ -61,6 +61,7 @@ mod tests;
 use std::ops::{Deref, DerefMut, Index, IndexMut};
 
 use base_db::Crate;
+use either::Either;
 use hir_expand::{
     EditionedFileId, ErasedAstId, HirFileId, InFile, MacroCallId, mod_path::ModPath, name::Name,
     proc_macro::ProcMacroKind,
@@ -75,8 +76,8 @@ use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
-    AstId, BlockId, BlockLoc, ExternCrateId, FunctionId, FxIndexMap, Lookup, MacroCallStyles,
-    MacroExpander, MacroId, ModuleId, ModuleIdLt, ProcMacroId, UseId,
+    AstId, BlockId, BlockLoc, BuiltinDeriveImplId, ExternCrateId, FunctionId, FxIndexMap, Lookup,
+    MacroCallStyles, MacroExpander, MacroId, ModuleId, ModuleIdLt, ProcMacroId, UseId,
     db::DefDatabase,
     item_scope::{BuiltinShadowMode, ItemScope},
     item_tree::TreeId,
@@ -192,7 +193,8 @@ pub struct DefMap {
     /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
     /// attributes.
     // FIXME: Figure out a better way for the IDE layer to resolve these?
-    derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<(Name, MacroId, MacroCallId)>>,
+    derive_helpers_in_scope:
+        FxHashMap<AstId<ast::Item>, Vec<(Name, MacroId, Either<MacroCallId, BuiltinDeriveImplId>)>>,
     /// A mapping from [`hir_expand::MacroDefId`] to [`crate::MacroId`].
     pub macro_def_to_macro_id: FxHashMap<ErasedAstId, MacroId>,
 
@@ -214,7 +216,7 @@ struct DefMapCrateData {
     registered_tools: Vec<Symbol>,
     /// Unstable features of Rust enabled with `#![feature(A, B)]`.
     unstable_features: FxHashSet<Symbol>,
-    /// #[rustc_coherence_is_core]
+    /// `#[rustc_coherence_is_core]`
     rustc_coherence_is_core: bool,
     no_core: bool,
     no_std: bool,
@@ -540,7 +542,7 @@ impl DefMap {
     pub fn derive_helpers_in_scope(
         &self,
         id: AstId<ast::Adt>,
-    ) -> Option<&[(Name, MacroId, MacroCallId)]> {
+    ) -> Option<&[(Name, MacroId, Either<MacroCallId, BuiltinDeriveImplId>)]> {
         self.derive_helpers_in_scope.get(&id.map(|it| it.upcast())).map(Deref::deref)
     }
 

@@ -455,6 +455,21 @@ pub fn explicit_item_bounds<'db>(
     clauses.map_bound(|clauses| clauses.iter().copied())
 }
 
+pub fn explicit_item_self_bounds<'db>(
+    interner: DbInterner<'db>,
+    def_id: SolverDefId,
+) -> EarlyBinder<'db, impl DoubleEndedIterator<Item = Clause<'db>> + ExactSizeIterator> {
+    let db = interner.db();
+    let clauses = match def_id {
+        SolverDefId::TypeAliasId(type_alias) => {
+            crate::lower::type_alias_self_bounds(db, type_alias)
+        }
+        SolverDefId::InternedOpaqueTyId(id) => id.self_predicates(db),
+        _ => panic!("Unexpected GenericDefId"),
+    };
+    clauses.map_bound(|clauses| clauses.iter().copied())
+}
+
 pub struct ContainsTypeErrors;
 
 impl<'db> TypeVisitor<DbInterner<'db>> for ContainsTypeErrors {

@@ -47,7 +47,7 @@ use crate::{
     hir::{
         Array, Binding, BindingAnnotation, BindingId, BindingProblems, CaptureBy, ClosureKind,
         Expr, ExprId, Item, Label, LabelId, Literal, MatchArm, Movability, OffsetOf, Pat, PatId,
-        RecordFieldPat, RecordLitField, Statement, generics::GenericParams,
+        RecordFieldPat, RecordLitField, RecordSpread, Statement, generics::GenericParams,
     },
     item_scope::BuiltinShadowMode,
     item_tree::FieldsShape,
@@ -150,6 +150,7 @@ pub(super) fn lower_body(
     };
 
     let body_expr = collector.collect(
+        &mut params,
         body,
         if is_async_fn {
             Awaitable::Yes
@@ -903,24 +904,57 @@ impl<'db> ExprCollector<'db> {
         })
     }
 
-    fn collect(&mut self, expr: Option<ast::Expr>, awaitable: Awaitable) -> ExprId {
+    /// An `async fn` needs to capture all parameters in the generated `async` block, even if they have
+    /// non-captured patterns such as wildcards (to ensure consistent drop order).
+    fn lower_async_fn(&mut self, params: &mut Vec<PatId>, body: ExprId) -> ExprId {
+        let mut statements = Vec::new();
+        for param in params {
+            let name = match self.store.pats[*param] {
+                Pat::Bind { id, .. }
+                    if matches!(
+                        self.store.bindings[id].mode,
+                        BindingAnnotation::Unannotated | BindingAnnotation::Mutable
+                    ) =>
+                {
+                    // If this is a direct binding, we can leave it as-is, as it'll always be captured anyway.
+                    continue;
+                }
+                Pat::Bind { id, .. } => {
+                    // If this is a `ref` binding, we can't leave it as is but we can at least reuse the name, for better display.
+                    self.store.bindings[id].name.clone()
+                }
+                _ => self.generate_new_name(),
+            };
+            let binding_id =
+                self.alloc_binding(name.clone(), BindingAnnotation::Mutable, HygieneId::ROOT);
+            let pat_id = self.alloc_pat_desugared(Pat::Bind { id: binding_id, subpat: None });
+            let expr = self.alloc_expr_desugared(Expr::Path(name.into()));
+            statements.push(Statement::Let {
+                pat: *param,
+                type_ref: None,
+                initializer: Some(expr),
+                else_branch: None,
+            });
+            *param = pat_id;
+        }
+
+        self.alloc_expr_desugared(Expr::Async {
+            id: None,
+            statements: statements.into_boxed_slice(),
+            tail: Some(body),
+        })
+    }
+
+    fn collect(
+        &mut self,
+        params: &mut Vec<PatId>,
+        expr: Option<ast::Expr>,
+        awaitable: Awaitable,
+    ) -> ExprId {
         self.awaitable_context.replace(awaitable);
         self.with_label_rib(RibKind::Closure, |this| {
-            if awaitable == Awaitable::Yes {
-                match expr {
-                    Some(e) => {
-                        let syntax_ptr = AstPtr::new(&e);
-                        let expr = this.collect_expr(e);
-                        this.alloc_expr_desugared_with_ptr(
-                            Expr::Async { id: None, statements: Box::new([]), tail: Some(expr) },
-                            syntax_ptr,
-                        )
-                    }
-                    None => this.missing_expr(),
-                }
-            } else {
-                this.collect_expr_opt(expr)
-            }
+            let body = this.collect_expr_opt(expr);
+            if awaitable == Awaitable::Yes { this.lower_async_fn(params, body) } else { body }
         })
     }
 
@@ -1232,10 +1266,16 @@ impl<'db> ExprCollector<'db> {
                             Some(RecordLitField { name, expr })
                         })
                         .collect();
-                    let spread = nfl.spread().map(|s| self.collect_expr(s));
+                    let spread_expr = nfl.spread().map(|s| self.collect_expr(s));
+                    let has_spread_syntax = nfl.dotdot_token().is_some();
+                    let spread = match (spread_expr, has_spread_syntax) {
+                        (None, false) => RecordSpread::None,
+                        (None, true) => RecordSpread::FieldDefaults,
+                        (Some(expr), _) => RecordSpread::Expr(expr),
+                    };
                     Expr::RecordLit { path, fields, spread }
                 } else {
-                    Expr::RecordLit { path, fields: Box::default(), spread: None }
+                    Expr::RecordLit { path, fields: Box::default(), spread: RecordSpread::None }
                 };
 
                 self.alloc_expr(record_lit, syntax_ptr)
@@ -1961,7 +2001,7 @@ impl<'db> ExprCollector<'db> {
         }
     }
 
-    fn collect_expr_opt(&mut self, expr: Option<ast::Expr>) -> ExprId {
+    pub fn collect_expr_opt(&mut self, expr: Option<ast::Expr>) -> ExprId {
         match expr {
             Some(expr) => self.collect_expr(expr),
             None => self.missing_expr(),

@@ -23,12 +23,11 @@ use crate::{
     },
     process::ProcMacroServerProcess,
     transport::codec::postcard::PostcardProtocol,
-    version,
 };
 
 pub mod msg;
 
-pub type SubCallback<'a> = &'a mut dyn FnMut(SubRequest) -> Result<SubResponse, ServerError>;
+pub type SubCallback<'a> = &'a dyn Fn(SubRequest) -> Result<SubResponse, ServerError>;
 
 pub fn run_conversation<C: Codec>(
     writer: &mut dyn Write,
@@ -138,6 +137,7 @@ pub(crate) fn find_proc_macros(
 
 pub(crate) fn expand(
     proc_macro: &ProcMacro,
+    process: &ProcMacroServerProcess,
     subtree: tt::SubtreeView<'_>,
     attr: Option<tt::SubtreeView<'_>>,
     env: Vec<(String, String)>,
@@ -147,7 +147,7 @@ pub(crate) fn expand(
     current_dir: String,
     callback: SubCallback<'_>,
 ) -> Result<Result<tt::TopSubtree, String>, crate::ServerError> {
-    let version = proc_macro.process.version();
+    let version = process.version();
     let mut span_data_table = SpanDataIndexMap::default();
     let def_site = span_data_table.insert_full(def_site).0;
     let call_site = span_data_table.insert_full(call_site).0;
@@ -158,13 +158,8 @@ pub(crate) fn expand(
             macro_name: proc_macro.name.to_string(),
             attributes: attr
                 .map(|subtree| FlatTree::from_subtree(subtree, version, &mut span_data_table)),
-            has_global_spans: ExpnGlobals {
-                serialize: version >= version::HAS_GLOBAL_SPANS,
-                def_site,
-                call_site,
-                mixed_site,
-            },
-            span_data_table: if proc_macro.process.rust_analyzer_spans() {
+            has_global_spans: ExpnGlobals { def_site, call_site, mixed_site },
+            span_data_table: if process.rust_analyzer_spans() {
                 serialize_span_data_index_map(&span_data_table)
             } else {
                 Vec::new()
@@ -175,7 +170,7 @@ pub(crate) fn expand(
         current_dir: Some(current_dir),
     })));
 
-    let response_payload = run_request(&proc_macro.process, task, callback)?;
+    let response_payload = run_request(process, task, callback)?;
 
     match response_payload {
         BidirectionalMessage::Response(Response::ExpandMacro(it)) => Ok(it
@@ -212,14 +207,7 @@ fn run_request(
     if let Some(err) = srv.exited() {
         return Err(err.clone());
     }
-
-    match srv.use_postcard() {
-        true => srv.run_bidirectional::<PostcardProtocol>(msg, callback),
-        false => Err(ServerError {
-            message: "bidirectional messaging does not support JSON".to_owned(),
-            io: None,
-        }),
-    }
+    srv.run_bidirectional::<PostcardProtocol>(msg, callback)
 }
 
 pub fn reject_subrequests(req: SubRequest) -> Result<SubResponse, ServerError> {

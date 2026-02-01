@@ -3,7 +3,7 @@ use syntax::{
     SyntaxKind::WHITESPACE,
     ast::{
         AstNode, BlockExpr, ElseBranch, Expr, IfExpr, MatchArm, Pat, edit::AstNodeEdit, make,
-        syntax_factory::SyntaxFactory,
+        prec::ExprPrecedence, syntax_factory::SyntaxFactory,
     },
     syntax_editor::Element,
 };
@@ -49,7 +49,7 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext<'_>)
 
     let guard_condition = guard.condition()?.reset_indent();
     let arm_expr = match_arm.expr()?;
-    let then_branch = make::block_expr(None, Some(arm_expr.reset_indent().indent(1.into())));
+    let then_branch = crate::utils::wrap_block(&arm_expr);
     let if_expr = make::expr_if(guard_condition, then_branch, None).indent(arm_expr.indent_level());
 
     let target = guard.syntax().text_range();
@@ -109,6 +109,7 @@ pub(crate) fn move_arm_cond_to_match_guard(
     let match_arm: MatchArm = ctx.find_node_at_offset::<MatchArm>()?;
     let match_pat = match_arm.pat()?;
     let arm_body = match_arm.expr()?;
+    let arm_guard = match_arm.guard().and_then(|it| it.condition());
 
     let mut replace_node = None;
     let if_expr: IfExpr = IfExpr::cast(arm_body.syntax().clone()).or_else(|| {
@@ -149,6 +150,25 @@ pub(crate) fn move_arm_cond_to_match_guard(
                 0
             };
             let indent_level = match_arm.indent_level();
+            let make_guard = |cond: Option<Expr>| {
+                let condition = match (arm_guard.clone(), cond) {
+                    (None, None) => return None,
+                    (None, Some(it)) | (Some(it), None) => it,
+                    (Some(lhs), Some(rhs)) => {
+                        let op_expr = |expr: Expr| {
+                            if expr.precedence().needs_parentheses_in(ExprPrecedence::LAnd) {
+                                make.expr_paren(expr).into()
+                            } else {
+                                expr
+                            }
+                        };
+                        let op = syntax::ast::BinaryOp::LogicOp(syntax::ast::LogicOp::And);
+                        let expr_bin = make.expr_bin(op_expr(lhs), op, op_expr(rhs));
+                        expr_bin.into()
+                    }
+                };
+                Some(make.match_guard(condition))
+            };
 
             for (cond, block) in conds_blocks {
                 let only_expr = block.statements().next().is_none();
@@ -156,8 +176,7 @@ pub(crate) fn move_arm_cond_to_match_guard(
                     Some(then_expr) if only_expr => then_expr,
                     _ => block.dedent(dedent.into()).into(),
                 };
-                let guard = make.match_guard(cond);
-                let new_arm = make.match_arm(match_pat.clone(), Some(guard), expr);
+                let new_arm = make.match_arm(match_pat.clone(), make_guard(Some(cond)), expr);
                 replace_arms.push(new_arm);
             }
             if let Some(block) = tail {
@@ -170,7 +189,7 @@ pub(crate) fn move_arm_cond_to_match_guard(
                     }
                     _ => block.dedent(dedent.into()).into(),
                 };
-                let new_arm = make.match_arm(match_pat, None, expr);
+                let new_arm = make.match_arm(match_pat, make_guard(None), expr);
                 replace_arms.push(new_arm);
             } else {
                 // There's no else branch. Add a pattern without guard, unless the following match
@@ -185,7 +204,7 @@ pub(crate) fn move_arm_cond_to_match_guard(
                     }
                     _ => {
                         let block_expr = make.expr_empty_block().into();
-                        replace_arms.push(make.match_arm(match_pat, None, block_expr));
+                        replace_arms.push(make.match_arm(match_pat, make_guard(None), block_expr));
                     }
                 }
             }
@@ -326,6 +345,35 @@ fn main() {
     }
 
     #[test]
+    fn move_guard_to_block_arm_body_works() {
+        check_assist(
+            move_guard_to_arm_body,
+            r#"
+fn main() {
+    match 92 {
+        x $0if x > 10 => {
+            let _ = true;
+            false
+        },
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x => if x > 10 {
+            let _ = true;
+            false
+        },
+        _ => true
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn move_let_guard_to_arm_body_works() {
         check_assist(
             move_guard_to_arm_body,
@@ -376,9 +424,7 @@ fn main() {
             && true
             && true {
             {
-                {
-                    false
-                }
+                false
             }
         },
         _ => true
@@ -1079,6 +1125,42 @@ fn main() {
             3
         }
         x => {}
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn move_arm_cond_to_match_guard_elseif_exist_guard() {
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    let cond = true;
+    match 92 {
+        3 => true,
+        x if cond => if x $0> 10 {
+            false
+        } else if x > 5 {
+            true
+        } else if x > 4 || x < -2 {
+            false
+        } else {
+            true
+        },
+    }
+}
+"#,
+            r#"
+fn main() {
+    let cond = true;
+    match 92 {
+        3 => true,
+        x if cond && x > 10 => false,
+        x if cond && x > 5 => true,
+        x if cond && (x > 4 || x < -2) => false,
+        x if cond => true,
     }
 }
 "#,

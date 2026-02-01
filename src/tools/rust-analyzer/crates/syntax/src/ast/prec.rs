@@ -154,6 +154,11 @@ fn check_ancestry(ancestor: &SyntaxNode, descendent: &SyntaxNode) -> bool {
     bail()
 }
 
+fn next_token_of(node: &SyntaxNode) -> Option<ast::SyntaxToken> {
+    let last = node.last_token()?;
+    skip_trivia_token(last.next_token()?, Direction::Next)
+}
+
 impl Expr {
     pub fn precedence(&self) -> ExprPrecedence {
         precedence(self)
@@ -197,6 +202,8 @@ impl Expr {
         if is_parent_call_expr && is_field_expr {
             return true;
         }
+        let place_of_parent =
+            || place_of.ancestors().find(|it| it.parent().is_none_or(|p| &p == parent.syntax()));
 
         // Special-case block weirdness
         if parent.child_is_followed_by_a_block() {
@@ -226,11 +233,20 @@ impl Expr {
         // For `&&`, we avoid introducing `<ret-like> && <expr>` into a binary chain.
 
         if self.precedence() == ExprPrecedence::Jump
-            && let Some(node) =
-                place_of.ancestors().find(|it| it.parent().is_none_or(|p| &p == parent.syntax()))
-            && let Some(next) =
-                node.last_token().and_then(|t| skip_trivia_token(t.next_token()?, Direction::Next))
+            && let Some(node) = place_of_parent()
+            && let Some(next) = next_token_of(&node)
             && matches!(next.kind(), T![||] | T![&&])
+        {
+            return true;
+        }
+
+        // Special-case `2 as x < 3`
+        if let ast::Expr::CastExpr(it) = self
+            && let Some(ty) = it.ty()
+            && ty.syntax().last_token().and_then(|it| ast::NameLike::cast(it.parent()?)).is_some()
+            && let Some(node) = place_of_parent()
+            && let Some(next) = next_token_of(&node)
+            && matches!(next.kind(), T![<] | T![<<])
         {
             return true;
         }

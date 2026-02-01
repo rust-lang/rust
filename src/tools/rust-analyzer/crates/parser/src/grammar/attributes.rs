@@ -24,15 +24,11 @@ fn attr(p: &mut Parser<'_>, inner: bool) {
         p.bump(T![!]);
     }
 
-    if p.eat(T!['[']) {
+    if p.expect(T!['[']) {
         meta(p);
-
-        if !p.eat(T![']']) {
-            p.error("expected `]`");
-        }
-    } else {
-        p.error("expected `[`");
+        p.expect(T![']']);
     }
+
     attr.complete(p, ATTR);
 }
 
@@ -74,7 +70,7 @@ pub(super) fn meta(p: &mut Parser<'_>) {
     paths::attr_path(p);
 
     match p.current() {
-        T![=] => {
+        T![=] if !p.at(T![=>]) && !p.at(T![==]) => {
             p.bump(T![=]);
             if expressions::expr(p).is_none() {
                 p.error("expected expression");
