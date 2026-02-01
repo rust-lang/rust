@@ -1,6 +1,6 @@
 //@ compile-flags: -Znext-solver=globally
 
-// Regression test for #151957
+// Regression test for https://github.com/rust-lang/rust/issues/151957
 
 trait PointeeSized {
     type Undefined;
