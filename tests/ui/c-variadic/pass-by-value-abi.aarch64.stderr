@@ -19,6 +19,7 @@ error: fn_abi_of(take_va_list) = FnAbi {
                            uninhabited: false,
                            variants: Single {
                                index: 0,
+                               variants: None,
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: Align(8 bytes),
@@ -58,6 +59,7 @@ error: fn_abi_of(take_va_list) = FnAbi {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),

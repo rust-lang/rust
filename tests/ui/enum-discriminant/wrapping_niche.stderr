@@ -58,6 +58,7 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
@@ -79,6 +80,7 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 1,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
@@ -100,6 +102,7 @@ error: layout_of(UnsignedAroundZero) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 2,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
@@ -176,6 +179,7 @@ error: layout_of(SignedAroundZero) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 0,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
@@ -197,6 +201,7 @@ error: layout_of(SignedAroundZero) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 1,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
@@ -218,6 +223,7 @@ error: layout_of(SignedAroundZero) = Layout {
                        uninhabited: false,
                        variants: Single {
                            index: 2,
+                           variants: None,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),

@@ -127,7 +127,7 @@ where
             FieldsShape::Arbitrary { .. } => {
                 match arg_layout.variants {
                     Variants::Multiple { .. } => return Err(CannotUseFpConv),
-                    Variants::Single { .. } | Variants::Empty => (),
+                    Variants::Single { .. } | Variants::Empty { .. } => (),
                 }
                 for i in arg_layout.fields.index_by_increasing_offset() {
                     let field = arg_layout.field(cx, i);
