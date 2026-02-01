@@ -280,6 +280,10 @@ impl File {
         Ok(f)
     }
 
+    pub fn close(self) -> io::Result<()> {
+        self.0
+    }
+
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         self.0.file_info().map(FileAttr::from_uefi)
     }

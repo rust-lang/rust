@@ -73,6 +73,10 @@ impl FromRawHandle for Handle {
 }
 
 impl Handle {
+    pub fn close(self) -> io::Result<()> {
+        self.0.close()
+    }
+
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let res = unsafe { self.synchronous_read(buf.as_mut_ptr().cast(), buf.len(), None) };
 

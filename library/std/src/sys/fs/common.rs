@@ -24,6 +24,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 
     let ret = io::copy(&mut reader, &mut writer)?;
     writer.set_permissions(perm)?;
+    writer.close()?;
     Ok(ret)
 }
 

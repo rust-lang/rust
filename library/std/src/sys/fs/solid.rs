@@ -4,7 +4,7 @@ use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
-use crate::mem::MaybeUninit;
+use crate::mem::{ManuallyDrop, MaybeUninit};
 use crate::os::raw::{c_int, c_short};
 use crate::os::solid::ffi::OsStrExt;
 use crate::path::{Path, PathBuf};
@@ -333,6 +333,14 @@ impl File {
         }
     }
 
+    pub fn close(self) -> io::Result<()> {
+        let this = ManuallyDrop::new(self);
+        match error::SolidError::err_if_negative(unsafe { abi::SOLID_FS_Close(this.fd.raw()) }) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e.as_io_error()),
+        }
+    }
+
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         unsupported()
     }
@@ -620,5 +628,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let mut reader = File::open(from)?;
     let mut writer = File::create(to)?;
 
-    io::copy(&mut reader, &mut writer)
+    let ret = io::copy(&mut reader, &mut writer)?;
+    writer.close()?;
+    Ok(ret)
 }

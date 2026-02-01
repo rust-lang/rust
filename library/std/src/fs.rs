@@ -418,7 +418,10 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 #[stable(feature = "fs_read_write_bytes", since = "1.26.0")]
 pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result<()> {
     fn inner(path: &Path, contents: &[u8]) -> io::Result<()> {
-        File::create(path)?.write_all(contents)
+        let mut file = File::create(path)?;
+        file.write_all(contents)?;
+        file.close()?;
+        Ok(())
     }
     inner(path.as_ref(), contents.as_ref())
 }
@@ -743,6 +746,11 @@ impl File {
     #[cfg_attr(not(test), rustc_diagnostic_item = "file_options")]
     pub fn options() -> OpenOptions {
         OpenOptions::new()
+    }
+
+    /// Drops the file, returning any errors encountered.
+    pub(crate) fn close(self) -> io::Result<()> {
+        self.inner.close()
     }
 
     /// Attempts to sync all OS-internal file content and metadata to disk.
