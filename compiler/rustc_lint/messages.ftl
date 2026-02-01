@@ -857,6 +857,16 @@ lint_supertrait_as_deref_target = this `Deref` implementation is covered by an i
 lint_surrogate_char_cast = surrogate values are not valid for `char`
     .note = `0xD800..=0xDFFF` are reserved for Unicode surrogates and are not valid `char` values
 
+lint_suspicious_cargo_cfg_target_family_comparison =
+    comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+    .note = `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+    .suggestion = compare against each family instead
+
+lint_suspicious_cargo_cfg_target_family_match =
+    matching on `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+    .note = `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+    .suggestion = compare against each family instead
+
 lint_suspicious_double_ref_clone =
     using `.clone()` on a double reference, which returns `{$ty}` instead of cloning the inner type
 

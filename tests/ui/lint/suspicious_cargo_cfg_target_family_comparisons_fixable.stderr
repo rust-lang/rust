@@ -1,0 +1,43 @@
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons_fixable.rs:13:8
+   |
+LL |     if target_family == unix {}
+   |        ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+   = note: `#[warn(suspicious_cargo_cfg_target_family_comparisons)]` (part of `#[warn(future_incompatible)]`) on by default
+help: compare against each family instead
+   |
+LL |     if target_family.split(',').any(|x| x == unix) {}
+   |                     +++++++++++++++++++++        +
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons_fixable.rs:16:8
+   |
+LL |     if target_family != unix {}
+   |        ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+help: compare against each family instead
+   |
+LL -     if target_family != unix {}
+LL +     if !target_family.split(',').any(|x| x == unix) {}
+   |
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons_fixable.rs:19:13
+   |
+LL |     let _ = env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "unix";
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+help: compare against each family instead
+   |
+LL |     let _ = env::var("CARGO_CFG_TARGET_FAMILY").unwrap().split(',').any(|x| x == "unix");
+   |                                                         +++++++++++++++++++++          +
+
+warning: 3 warnings emitted
+
