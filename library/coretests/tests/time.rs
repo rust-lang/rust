@@ -598,3 +598,248 @@ fn from_neg_zero() {
     assert_eq!(Duration::from_secs_f32(-0.0), Duration::ZERO);
     assert_eq!(Duration::from_secs_f64(-0.0), Duration::ZERO);
 }
+
+/// Test that multiplying/dividing by 1.0 preserves precision.
+/// Regression test for <https://github.com/rust-lang/rust/issues/149794>
+#[test]
+fn mul_div_float_precision() {
+    // Multiplying by 1.0 should preserve the exact value
+    let d1 = Duration::from_millis(100);
+    assert_eq!(d1.mul_f32(1.0), d1);
+    assert_eq!(d1.mul_f64(1.0), d1);
+
+    let d2 = Duration::new(1, 111);
+    assert_eq!(d2.mul_f32(1.0), d2);
+    assert_eq!(d2.mul_f64(1.0), d2);
+
+    // Dividing by 1.0 should preserve the exact value
+    assert_eq!(d1.div_f32(1.0), d1);
+    assert_eq!(d1.div_f64(1.0), d1);
+    assert_eq!(d2.div_f32(1.0), d2);
+    assert_eq!(d2.div_f64(1.0), d2);
+
+    // Multiplying by small integers should match integer multiplication
+    assert_eq!(d1.mul_f32(2.0), d1 * 2);
+    assert_eq!(d1.mul_f32(3.0), d1 * 3);
+    assert_eq!(d1.mul_f64(2.0), d1 * 2);
+    assert_eq!(d1.mul_f64(3.0), d1 * 3);
+
+    assert_eq!(d2.mul_f32(2.0), d2 * 2);
+    assert_eq!(d2.mul_f32(3.0), d2 * 3);
+    assert_eq!(d2.mul_f64(2.0), d2 * 2);
+    assert_eq!(d2.mul_f64(3.0), d2 * 3);
+
+    // Duration::MAX.mul_f32(1.0) should not panic and should preserve the value
+    assert_eq!(Duration::MAX.mul_f32(1.0), Duration::MAX);
+    assert_eq!(Duration::MAX.mul_f64(1.0), Duration::MAX);
+    assert_eq!(Duration::MAX.div_f32(1.0), Duration::MAX);
+    assert_eq!(Duration::MAX.div_f64(1.0), Duration::MAX);
+
+    // Fractional multipliers should work correctly
+    assert_eq!(Duration::from_secs(10).mul_f64(0.5), Duration::from_secs(5));
+    assert_eq!(Duration::from_secs(10).div_f64(2.0), Duration::from_secs(5));
+
+    // Nanosecond precision should be maintained
+    let d3 = Duration::new(0, 123_456_789);
+    assert_eq!(d3.mul_f64(1.0), d3);
+    assert_eq!(d3.div_f64(1.0), d3);
+}
+
+#[test]
+#[should_panic]
+fn mul_f64_negative() {
+    let _ = Duration::from_secs(1).mul_f64(-1.0);
+}
+
+#[test]
+#[should_panic]
+fn mul_f32_negative() {
+    let _ = Duration::from_secs(1).mul_f32(-1.0);
+}
+
+#[test]
+#[should_panic]
+fn div_f64_negative() {
+    let _ = Duration::from_secs(1).div_f64(-1.0);
+}
+
+#[test]
+#[should_panic]
+fn div_f32_negative() {
+    let _ = Duration::from_secs(1).div_f32(-1.0);
+}
+
+#[test]
+#[should_panic]
+fn mul_f64_nan() {
+    let _ = Duration::from_secs(1).mul_f64(f64::NAN);
+}
+
+#[test]
+#[should_panic]
+fn mul_f32_nan() {
+    let _ = Duration::from_secs(1).mul_f32(f32::NAN);
+}
+
+#[test]
+#[should_panic]
+fn div_f64_nan() {
+    let _ = Duration::from_secs(1).div_f64(f64::NAN);
+}
+
+#[test]
+#[should_panic]
+fn div_f32_nan() {
+    let _ = Duration::from_secs(1).div_f32(f32::NAN);
+}
+
+#[test]
+#[should_panic]
+fn mul_f64_infinity() {
+    let _ = Duration::from_secs(1).mul_f64(f64::INFINITY);
+}
+
+#[test]
+#[should_panic]
+fn mul_f32_infinity() {
+    let _ = Duration::from_secs(1).mul_f32(f32::INFINITY);
+}
+
+#[test]
+#[should_panic]
+fn div_f64_zero() {
+    let _ = Duration::from_secs(1).div_f64(0.0);
+}
+
+#[test]
+#[should_panic]
+fn div_f32_zero() {
+    let _ = Duration::from_secs(1).div_f32(0.0);
+}
+
+#[test]
+#[should_panic]
+fn mul_f64_overflow() {
+    let _ = Duration::MAX.mul_f64(2.0);
+}
+
+#[test]
+#[should_panic]
+fn mul_f32_overflow() {
+    let _ = Duration::MAX.mul_f32(2.0);
+}
+
+#[test]
+#[should_panic]
+fn mul_f64_neg_infinity() {
+    let _ = Duration::from_secs(1).mul_f64(f64::NEG_INFINITY);
+}
+
+#[test]
+#[should_panic]
+fn mul_f32_neg_infinity() {
+    let _ = Duration::from_secs(1).mul_f32(f32::NEG_INFINITY);
+}
+
+#[test]
+fn div_f64_neg_infinity() {
+    // Division by negative infinity produces -0.0, which is treated as zero
+    assert_eq!(Duration::from_secs(1).div_f64(f64::NEG_INFINITY), Duration::ZERO);
+}
+
+#[test]
+fn div_f32_neg_infinity() {
+    assert_eq!(Duration::from_secs(1).div_f32(f32::NEG_INFINITY), Duration::ZERO);
+}
+
+#[test]
+fn div_f64_infinity() {
+    assert_eq!(Duration::from_secs(1).div_f64(f64::INFINITY), Duration::ZERO);
+    assert_eq!(Duration::MAX.div_f64(f64::INFINITY), Duration::ZERO);
+}
+
+#[test]
+fn div_f32_infinity() {
+    assert_eq!(Duration::from_secs(1).div_f32(f32::INFINITY), Duration::ZERO);
+    assert_eq!(Duration::MAX.div_f32(f32::INFINITY), Duration::ZERO);
+}
+
+#[test]
+fn mul_div_zero_duration() {
+    assert_eq!(Duration::ZERO.mul_f64(1.0), Duration::ZERO);
+    assert_eq!(Duration::ZERO.mul_f64(1000.0), Duration::ZERO);
+    assert_eq!(Duration::ZERO.mul_f32(1.0), Duration::ZERO);
+    assert_eq!(Duration::ZERO.mul_f32(1000.0), Duration::ZERO);
+
+    assert_eq!(Duration::ZERO.div_f64(1.0), Duration::ZERO);
+    assert_eq!(Duration::ZERO.div_f64(1000.0), Duration::ZERO);
+    assert_eq!(Duration::ZERO.div_f32(1.0), Duration::ZERO);
+    assert_eq!(Duration::ZERO.div_f32(1000.0), Duration::ZERO);
+
+    assert_eq!(Duration::from_secs(100).mul_f64(0.0), Duration::ZERO);
+    assert_eq!(Duration::from_secs(100).mul_f32(0.0), Duration::ZERO);
+}
+
+#[test]
+fn mul_div_subnormal() {
+    let subnormal_f64 = f64::from_bits(1);
+    let subnormal_f32 = f32::from_bits(1);
+
+    assert_eq!(Duration::from_secs(1).mul_f64(subnormal_f64), Duration::ZERO);
+    assert_eq!(Duration::from_secs(1).mul_f32(subnormal_f32), Duration::ZERO);
+
+    assert_eq!(Duration::from_nanos(1).mul_f64(1e-20), Duration::ZERO);
+    assert_eq!(Duration::from_nanos(1).mul_f32(1e-20), Duration::ZERO);
+}
+
+#[test]
+fn mul_div_rounding_boundaries() {
+    let almost_one_sec = Duration::new(0, 999_999_999);
+    assert_eq!(almost_one_sec.mul_f64(1.0), almost_one_sec);
+    assert_eq!(almost_one_sec.div_f64(1.0), almost_one_sec);
+
+    let half_sec = Duration::from_millis(500);
+    assert_eq!(half_sec.mul_f64(2.0), Duration::from_secs(1));
+    assert_eq!(half_sec.mul_f32(2.0), Duration::from_secs(1));
+
+    let d = Duration::new(0, 999_999_999);
+    assert_eq!(d.mul_f64(2.0), Duration::new(1, 999_999_998));
+
+    let d = Duration::from_secs(1);
+    assert_eq!(d.mul_f64(2.0), Duration::from_secs(2));
+    assert_eq!(d.mul_f64(4.0), Duration::from_secs(4));
+    assert_eq!(d.mul_f64(8.0), Duration::from_secs(8));
+    assert_eq!(d.mul_f64(0.5), Duration::from_millis(500));
+    assert_eq!(d.mul_f64(0.25), Duration::from_millis(250));
+    assert_eq!(d.mul_f64(0.125), Duration::from_millis(125));
+}
+
+#[test]
+fn mul_div_small_durations() {
+    let one_ns = Duration::from_nanos(1);
+    assert_eq!(one_ns.mul_f64(1.0), one_ns);
+    assert_eq!(one_ns.mul_f64(2.0), Duration::from_nanos(2));
+    assert_eq!(one_ns.div_f64(1.0), one_ns);
+
+    let one_us = Duration::from_micros(1);
+    assert_eq!(one_us.mul_f64(1.0), one_us);
+    assert_eq!(one_us.mul_f64(1000.0), Duration::from_millis(1));
+    assert_eq!(one_us.div_f64(1.0), one_us);
+
+    let one_ms = Duration::from_millis(1);
+    assert_eq!(one_ms.mul_f64(1.0), one_ms);
+    assert_eq!(one_ms.mul_f64(1000.0), Duration::from_secs(1));
+    assert_eq!(one_ms.div_f64(1.0), one_ms);
+}
+
+#[test]
+fn mul_div_large_factors() {
+    let d = Duration::from_nanos(1);
+    assert_eq!(d.mul_f64(1e9), Duration::from_secs(1));
+    assert_eq!(d.mul_f64(1e6), Duration::from_millis(1));
+
+    let d = Duration::from_secs(1);
+    assert_eq!(d.div_f64(1e9), Duration::from_nanos(1));
+    assert_eq!(d.div_f64(1e6), Duration::from_micros(1));
+    assert_eq!(d.div_f64(1e3), Duration::from_millis(1));
+}
