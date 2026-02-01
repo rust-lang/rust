@@ -19,7 +19,7 @@ use rustc_hir::attrs::{AttributeKind, PrintAttribute};
 use rustc_hir::{
     BindingMode, ByRef, ConstArg, ConstArgExprField, ConstArgKind, GenericArg, GenericBound,
     GenericParam, GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind,
-    PreciseCapturingArg, RangeEnd, Term, TyPatKind,
+    PreciseCapturingArg, RangeEnd, Term, TyFieldPath, TyPatKind,
 };
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::{DUMMY_SP, FileName, Ident, Span, Symbol, kw, sym};
@@ -463,6 +463,17 @@ impl<'a> State<'a> {
                 self.print_type(ty);
                 self.word(" is ");
                 self.print_ty_pat(pat);
+            }
+            hir::TyKind::FieldOf(ty, TyFieldPath { variant, field }) => {
+                self.word("field_of!(");
+                self.print_type(ty);
+                self.word(", ");
+                if let Some(variant) = *variant {
+                    self.print_ident(variant);
+                    self.word(".");
+                }
+                self.print_ident(*field);
+                self.word(")");
             }
         }
         self.end(ib)

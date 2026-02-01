@@ -77,9 +77,9 @@ use crate::traits::solve::{
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, ParamTy,
-    Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
+    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, FieldId, GenericArg,
+    GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst,
+    ParamTy, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
     PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
     ValTree, ValTreeKind, Visibility,
 };
@@ -243,6 +243,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn adt_def(self, adt_def_id: DefId) -> Self::AdtDef {
         self.adt_def(adt_def_id)
     }
+
+    type FieldId = FieldId;
 
     fn alias_ty_kind(self, alias: ty::AliasTy<'tcx>) -> ty::AliasTyKind {
         match self.def_kind(alias.def_id) {
@@ -570,6 +572,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::Str
             | ty::Array(_, _)
             | ty::Pat(_, _)
+            | ty::FRT(..)
             | ty::Slice(_)
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
@@ -809,6 +812,8 @@ bidirectional_lang_item_map! {
     CoroutineReturn,
     CoroutineYield,
     DynMetadata,
+    FieldBase,
+    FieldType,
     FutureOutput,
     Metadata,
 // tidy-alphabetical-end
@@ -840,6 +845,7 @@ bidirectional_lang_item_map! {
     Destruct,
     DiscriminantKind,
     Drop,
+    Field,
     Fn,
     FnMut,
     FnOnce,
@@ -2637,6 +2643,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 Infer,
                 Alias,
                 Pat,
+                FRT,
                 Foreign
             )?;
 

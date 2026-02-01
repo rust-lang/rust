@@ -119,6 +119,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_pat(interner: I, ty: Self, pat: I::Pat) -> Self;
 
+    fn new_field_representing_type(interner: I, ty: Self, field: I::FieldId) -> Self;
+
     fn new_unsafe_binder(interner: I, ty: ty::Binder<I, I::Ty>) -> Self;
 
     fn tuple_fields(self) -> I::Tys;
@@ -152,6 +154,9 @@ pub trait Ty<I: Interner<Ty = Self>>:
     /// Checks whether this type is an ADT that has unsafe fields.
     fn has_unsafe_fields(self) -> bool;
 
+    /// Checks whether this type is an ADT that is `repr(packed)`.
+    fn is_packed(self) -> bool;
+
     fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
         self.kind().fn_sig(interner)
     }
@@ -174,6 +179,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Foreign(_)
             | ty::Array(_, _)
             | ty::Pat(_, _)
+            | ty::FRT(_, _)
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
@@ -558,6 +564,8 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
 
     fn is_struct(self) -> bool;
 
+    fn is_packed(self) -> bool;
+
     /// Returns the type of the struct tail.
     ///
     /// Expects the `AdtDef` to be a struct. If it is not, then this will panic.
@@ -579,6 +587,10 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn is_fundamental(self) -> bool;
 
     fn destructor(self, interner: I) -> Option<AdtDestructorKind>;
+}
+
+pub trait FieldId<I: Interner>: Copy + Debug + Hash + Eq {
+    fn ty(self, interner: I, ty: I::Ty) -> I::Ty;
 }
 
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {

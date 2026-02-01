@@ -1730,6 +1730,12 @@ impl<'hir> Block<'hir> {
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub struct TyFieldPath {
+    pub variant: Option<Ident>,
+    pub field: Ident,
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct TyPat<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
@@ -3773,6 +3779,10 @@ pub enum TyKind<'hir, Unambig = ()> {
     Err(rustc_span::ErrorGuaranteed),
     /// Pattern types (`pattern_type!(u32 is 1..)`)
     Pat(&'hir Ty<'hir>, &'hir TyPat<'hir>),
+    /// Field representing type (`field_of!(Struct, field)`).
+    ///
+    /// The optional ident is the variant when an enum is passed `field_of!(Enum, Variant.field)`.
+    FieldOf(&'hir Ty<'hir>, &'hir TyFieldPath),
     /// `TyKind::Infer` means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     ///

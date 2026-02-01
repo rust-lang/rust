@@ -3,7 +3,7 @@ use std::fmt::{self, Write as _};
 use std::iter;
 use std::ops::{Deref, DerefMut};
 
-use rustc_abi::{ExternAbi, Size};
+use rustc_abi::{ExternAbi, FIRST_VARIANT, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
@@ -720,6 +720,29 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 write!(self, "(")?;
                 ty.print(self)?;
                 write!(self, ") is {pat:?}")?;
+            }
+            ty::FRT(ty, field) => {
+                write!(self, "field_of!(")?;
+                ty.print(self)?;
+                write!(self, ", ")?;
+                match ty.kind() {
+                    ty::Adt(def, _) => {
+                        let variant = if def.is_enum() {
+                            let variant = &def.variants()[field.variant];
+                            write!(self, "{}.", variant.name)?;
+                            variant
+                        } else {
+                            def.non_enum_variant()
+                        };
+                        write!(self, "{}", variant.fields[field.field].name)?;
+                    }
+                    ty::Tuple(_) => {
+                        debug_assert_eq!(field.variant, FIRST_VARIANT);
+                        write!(self, "{}", field.field.index())?;
+                    }
+                    _ => bug!("unexpected ty in resolved FRT: {ty}"),
+                }
+                write!(self, ")")?;
             }
             ty::RawPtr(ty, mutbl) => {
                 write!(self, "*{} ", mutbl.ptr_str())?;

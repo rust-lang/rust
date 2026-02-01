@@ -579,6 +579,8 @@ impl FromClean<clean::Type> for Type {
                 type_: Box::new(t.into_json(renderer)),
                 __pat_unstable_do_not_use: p.to_string(),
             },
+            // FIXME(FRTs): implement
+            clean::Type::FRT(..) => todo!(),
             ImplTrait(g) => Type::ImplTrait(g.into_json(renderer)),
             Infer => Type::Infer,
             RawPointer(mutability, type_) => Type::RawPointer {

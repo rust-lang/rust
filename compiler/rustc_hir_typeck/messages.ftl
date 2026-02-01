@@ -193,8 +193,6 @@ hir_typeck_no_associated_item = no {$item_kind} named `{$item_ident}` found for 
     *[other] {" "}in the current scope
 }
 
-hir_typeck_no_field_on_type = no field `{$field}` on type `{$ty}`
-
 hir_typeck_no_field_on_variant = no field named `{$field}` on enum variant `{$container}::{$ident}`
 hir_typeck_no_field_on_variant_enum = this enum variant...
 hir_typeck_no_field_on_variant_field = ...does not have this field

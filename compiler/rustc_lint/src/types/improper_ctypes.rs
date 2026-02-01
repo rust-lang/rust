@@ -580,6 +580,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // but only the base type is relevant for being representable in FFI.
             ty::Pat(base, ..) => self.visit_type(state, base),
 
+            ty::FRT(..) => FfiUnsafe {
+                ty,
+                reason: fluent::lint_improper_ctypes_field_representing_types_reason,
+                help: None,
+            },
+
             // Primitive types with a stable representation.
             ty::Bool | ty::Int(..) | ty::Uint(..) | ty::Float(..) | ty::Never => FfiSafe,
 

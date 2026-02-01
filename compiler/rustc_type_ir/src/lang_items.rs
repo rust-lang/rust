@@ -9,6 +9,8 @@ pub enum SolverLangItem {
     CoroutineReturn,
     CoroutineYield,
     DynMetadata,
+    FieldBase,
+    FieldType,
     FutureOutput,
     Metadata,
     // tidy-alphabetical-end
@@ -36,6 +38,7 @@ pub enum SolverTraitLangItem {
     Destruct,
     DiscriminantKind,
     Drop,
+    Field,
     Fn,
     FnMut,
     FnOnce,

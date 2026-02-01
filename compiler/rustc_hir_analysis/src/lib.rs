@@ -82,7 +82,7 @@ mod impl_wf_check;
 mod outlives;
 mod variance;
 
-pub use errors::NoVariantNamed;
+pub use errors::{NoFieldOnType, NoVariantNamed};
 use rustc_abi::{CVariadicStatus, ExternAbi};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;

@@ -1170,6 +1170,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Char
             | ty::Str
             | ty::Never
+            | ty::FRT(..)
             | ty::Ref(..)
             | ty::RawPtr(_, _)
             | ty::FnDef(..)
@@ -1211,6 +1212,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Char
             | ty::Str
             | ty::Never
+            | ty::FRT(..)
             | ty::Ref(..)
             | ty::RawPtr(_, _)
             | ty::FnDef(..)
@@ -1262,6 +1264,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Char
             | ty::Str
             | ty::Never
+            | ty::FRT(..)
             | ty::Ref(..)
             | ty::RawPtr(..)
             | ty::FnDef(..)
@@ -1433,6 +1436,9 @@ impl<'tcx> Ty<'tcx> {
             // Raw pointers use bitwise comparison.
             ty::RawPtr(_, _) | ty::FnPtr(..) => true,
 
+            // FRTs are ZSTs.
+            ty::FRT(..) => true,
+
             // Floating point numbers are not `Eq`.
             ty::Float(_) => false,
 
@@ -1512,6 +1518,7 @@ pub fn needs_drop_components_with_async<'tcx>(
         | ty::Uint(_)
         | ty::Float(_)
         | ty::Never
+        | ty::FRT(..)
         | ty::FnDef(..)
         | ty::FnPtr(..)
         | ty::Char

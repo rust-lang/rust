@@ -376,6 +376,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             }
             ty::Alias(kind, data) => ty::Alias(kind, data.try_fold_with(folder)?),
             ty::Pat(ty, pat) => ty::Pat(ty.try_fold_with(folder)?, pat.try_fold_with(folder)?),
+            ty::FRT(ty, field) => ty::FRT(ty.try_fold_with(folder)?, field),
 
             ty::Bool
             | ty::Char
@@ -415,6 +416,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::CoroutineClosure(did, args) => ty::CoroutineClosure(did, args.fold_with(folder)),
             ty::Alias(kind, data) => ty::Alias(kind, data.fold_with(folder)),
             ty::Pat(ty, pat) => ty::Pat(ty.fold_with(folder), pat.fold_with(folder)),
+            ty::FRT(ty, field) => ty::FRT(ty.fold_with(folder), field),
 
             ty::Bool
             | ty::Char
@@ -467,6 +469,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
                 try_visit!(ty.visit_with(visitor));
                 pat.visit_with(visitor)
             }
+            ty::FRT(ty, _field) => ty.visit_with(visitor),
 
             ty::Error(guar) => guar.visit_with(visitor),
 

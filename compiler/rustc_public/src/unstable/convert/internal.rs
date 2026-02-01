@@ -153,6 +153,7 @@ impl RustcInternal for RigidTy {
             RigidTy::Pat(ty, pat) => {
                 rustc_ty::TyKind::Pat(ty.internal(tables, tcx), pat.internal(tables, tcx))
             }
+            RigidTy::FRT(ty, field) => rustc_ty::TyKind::FRT(ty.internal(tables, tcx), *field),
             RigidTy::Adt(def, args) => {
                 rustc_ty::TyKind::Adt(def.internal(tables, tcx), args.internal(tables, tcx))
             }

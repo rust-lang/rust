@@ -496,6 +496,8 @@ pub use core::cmp;
 pub use core::convert;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::default;
+#[unstable(feature = "field_projections", issue = "145383")]
+pub use core::field;
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub use core::future;
 #[stable(feature = "core_hint", since = "1.27.0")]

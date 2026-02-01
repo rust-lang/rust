@@ -186,6 +186,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Foreign(_) => "extern type".into(),
             ty::Array(..) => "array".into(),
             ty::Pat(..) => "pattern type".into(),
+            ty::FRT(..) => "field representing type".into(),
             ty::Slice(_) => "slice".into(),
             ty::RawPtr(_, _) => "raw pointer".into(),
             ty::Ref(.., mutbl) => match mutbl {

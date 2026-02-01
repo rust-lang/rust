@@ -379,6 +379,8 @@ fn layout_of_uncached<'tcx>(
             tcx.mk_layout(layout)
         }
 
+        ty::FRT(..) => cx.layout_of(tcx.types.unit)?.layout,
+
         // Basic scalars.
         ty::Bool => tcx.mk_layout(LayoutData::scalar(
             cx,

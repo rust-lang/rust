@@ -992,7 +992,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | LangItem::FnOnce
                         | LangItem::AsyncFn
                         | LangItem::AsyncFnMut
-                        | LangItem::AsyncFnOnce,
+                        | LangItem::AsyncFnOnce
+                        | LangItem::Field,
                     ) => true,
                     Some(LangItem::AsyncFnKindHelper) => {
                         // FIXME(async_closures): Validity constraints here could be cleaned up.
@@ -1023,6 +1024,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Str
                         | ty::Array(..)
                         | ty::Pat(..)
+                        | ty::FRT(..)
                         | ty::Slice(_)
                         | ty::RawPtr(..)
                         | ty::Ref(..)
@@ -1078,6 +1080,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             | ty::Str
                             | ty::Array(..)
                             | ty::Pat(..)
+                            | ty::FRT(..)
                             | ty::Slice(_)
                             | ty::RawPtr(..)
                             | ty::Ref(..)
@@ -1547,6 +1550,17 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
             }
         });
         (metadata_ty.into(), obligations)
+    } else if tcx.is_lang_item(trait_def_id, LangItem::Field) {
+        let &ty::FRT(container, field) = self_ty.kind() else {
+            bug!("only `field_of!()` can implement `Field`")
+        };
+        if tcx.is_lang_item(item_def_id, LangItem::FieldBase) {
+            (container.into(), PredicateObligations::new())
+        } else if tcx.is_lang_item(item_def_id, LangItem::FieldType) {
+            (field.ty(tcx, container).into(), PredicateObligations::new())
+        } else {
+            bug!("unexpected associated type {:?} in `Field`", obligation.predicate);
+        }
     } else {
         bug!("unexpected builtin trait with associated type: {:?}", obligation.predicate);
     };

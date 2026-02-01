@@ -1295,6 +1295,15 @@ pub struct NoVariantNamed<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
+#[derive(Diagnostic)]
+#[diag(hir_analysis_no_field_on_type, code = E0609)]
+pub struct NoFieldOnType<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub field: Ident,
+}
+
 // FIXME(fmease): Deduplicate:
 
 #[derive(Diagnostic)]

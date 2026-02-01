@@ -1035,6 +1035,12 @@ impl Rewrite for ast::Ty {
                 let pat = pat.rewrite_result(context, shape)?;
                 Ok(format!("{ty} is {pat}"))
             }
+            ast::TyKind::FieldOf(ref ty, ref fields) => {
+                let ty = ty.rewrite_result(context, shape)?;
+                let fields = fields.iter().map(|f| format!("{f}")).collect::<Vec<_>>();
+                let fields = fields.join(".");
+                Ok(format!("field_of!({ty}, {fields})",))
+            }
             ast::TyKind::UnsafeBinder(ref binder) => {
                 let mut result = String::new();
                 if binder.generic_params.is_empty() {
