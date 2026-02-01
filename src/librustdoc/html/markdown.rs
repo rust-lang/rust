@@ -36,6 +36,7 @@ use std::str::{self, CharIndices};
 use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Weak};
 
+use math_core::{LatexToMathML, MathCoreConfig, MathDisplay};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Diag, DiagMessage};
 use rustc_hir::def_id::LocalDefId;
@@ -71,6 +72,7 @@ pub(crate) fn summary_opts() -> Options {
         | Options::ENABLE_STRIKETHROUGH
         | Options::ENABLE_TASKLISTS
         | Options::ENABLE_SMART_PUNCTUATION
+        | Options::ENABLE_MATH
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -500,6 +502,51 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for SpannedLinkReplacer<
     }
 }
 
+/// Convert $\LaTeX$ math markup into MathML Core
+struct Math<'a, I: Iterator<Item = Event<'a>>> {
+    inner: I,
+    converter: LatexToMathML,
+}
+
+impl<'a, I: Iterator<Item = Event<'a>>> Math<'a, I> {
+    fn new(iter: I) -> Self {
+        Self {
+            inner: iter,
+            converter: LatexToMathML::new(MathCoreConfig {
+                pretty_print: math_core::PrettyPrint::Never,
+                xml_namespace: false,
+                ..MathCoreConfig::default()
+            })
+            .expect("no custom macros are specified, so error should be impossible"),
+        }
+    }
+}
+
+impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Math<'a, I> {
+    type Item = Event<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.inner.next() {
+            Some(Event::InlineMath(latex)) => {
+                let mathml = self
+                    .converter
+                    .convert_with_local_counter(&latex, MathDisplay::Inline)
+                    .expect("a production-ready version of this should handle the error somehow");
+                Some(Event::InlineHtml(mathml.into()))
+            }
+            Some(Event::DisplayMath(latex)) => {
+                let mathml = self
+                    .converter
+                    .convert_with_local_counter(&latex, MathDisplay::Block)
+                    .expect("a production-ready version of this should handle the error somehow");
+                // as counterintuitive as it might seem, block equations are still parsed as inline
+                Some(Event::InlineHtml(mathml.into()))
+            }
+            event => event,
+        }
+    }
+}
+
 /// Wrap HTML tables into `<div>` to prevent having the doc blocks width being too big.
 struct TableWrapper<'a, I: Iterator<Item = Event<'a>>> {
     inner: I,
@@ -624,7 +671,7 @@ fn check_if_allowed_tag(t: &TagEnd) -> bool {
             | TagEnd::Strong
             | TagEnd::Strikethrough
             | TagEnd::Link
-            | TagEnd::BlockQuote
+            | TagEnd::BlockQuote(..)
     )
 }
 
@@ -1369,6 +1416,7 @@ impl<'a> Markdown<'a> {
             let p = SpannedLinkReplacer::new(p, links);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
+            let p = Math::new(p);
             CodeBlocks::new(p, codes, edition, playground)
         })
     }
@@ -1451,6 +1499,7 @@ impl MarkdownWithToc<'_> {
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
             let p = CodeBlocks::new(p, codes, edition, playground);
+            let p = Math::new(p);
             html::push_html(&mut s, p);
         });
 
@@ -1500,6 +1549,7 @@ impl<'a> MarkdownItemInfo<'a> {
             let p = p.filter(|event| {
                 !matches!(event, Event::Start(Tag::Paragraph) | Event::End(TagEnd::Paragraph))
             });
+            let p = Math::new(p);
             html::write_html_fmt(&mut f, p)
         })
     }
@@ -1914,7 +1964,9 @@ pub(crate) fn markdown_links<'md, R>(
                             span_for_link(&dest_url, span)
                         }
                     }
-                    LinkType::Autolink | LinkType::Email => unreachable!(),
+                    LinkType::Autolink | LinkType::Email | LinkType::WikiLink { .. } => {
+                        unreachable!()
+                    }
                 };
 
                 if let Some(link) = preprocess_link(MarkdownLink {
