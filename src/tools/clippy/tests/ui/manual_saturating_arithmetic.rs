@@ -1,4 +1,4 @@
-#![allow(clippy::legacy_numeric_constants, unused_imports)]
+#![allow(clippy::legacy_numeric_constants, unused_imports, deprecated)]
 
 fn main() {
     let _ = 1u32.checked_add(1).unwrap_or(u32::max_value());

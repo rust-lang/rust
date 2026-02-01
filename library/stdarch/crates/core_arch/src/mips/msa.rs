@@ -9187,7 +9187,6 @@ mod tests {
         core_arch::{mips::msa::*, simd::*},
         mem,
     };
-    use std::{f32, f64};
     use stdarch_test::simd_test;
 
     #[simd_test(enable = "msa")]
