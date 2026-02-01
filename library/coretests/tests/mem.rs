@@ -802,9 +802,9 @@ fn const_maybe_uninit_zeroed() {
 #[test]
 fn drop_guards_only_dropped_by_closure_when_run() {
     let value_drops = Cell::new(0);
-    let value = DropGuard::new((), |()| value_drops.set(1 + value_drops.get()));
+    let value = DropGuard::new(|| value_drops.set(1 + value_drops.get()));
     let closure_drops = Cell::new(0);
-    let guard = DropGuard::new(value, |_| closure_drops.set(1 + closure_drops.get()));
+    let guard = DropGuard::with_value(value, |_| closure_drops.set(1 + closure_drops.get()));
     assert_eq!(value_drops.get(), 0);
     assert_eq!(closure_drops.get(), 0);
     drop(guard);
@@ -815,8 +815,8 @@ fn drop_guards_only_dropped_by_closure_when_run() {
 #[test]
 fn drop_guard_into_inner() {
     let dropped = Cell::new(false);
-    let value = DropGuard::new(42, |_| dropped.set(true));
-    let guard = DropGuard::new(value, |_| dropped.set(true));
+    let value = DropGuard::with_value(42, |_| dropped.set(true));
+    let guard = DropGuard::with_value(value, |_| dropped.set(true));
     let inner = DropGuard::dismiss(guard);
     assert_eq!(dropped.get(), false);
     assert_eq!(*inner, 42);
@@ -827,10 +827,10 @@ fn drop_guard_into_inner() {
 fn drop_guard_always_drops_value_if_closure_drop_unwinds() {
     // Create a value with a destructor, which we will validate ran successfully.
     let mut value_was_dropped = false;
-    let value_with_tracked_destruction = DropGuard::new((), |_| value_was_dropped = true);
+    let value_with_tracked_destruction = DropGuard::new(|| value_was_dropped = true);
 
     // Create a closure that will begin unwinding when dropped.
-    let drop_bomb = DropGuard::new((), |_| panic!());
+    let drop_bomb = DropGuard::new(|| panic!());
     let closure_that_panics_on_drop = move |_| {
         let _drop_bomb = drop_bomb;
     };
@@ -838,8 +838,17 @@ fn drop_guard_always_drops_value_if_closure_drop_unwinds() {
     // This will run the closure, which will panic when dropped. This should
     // run the destructor of the value we passed, which we validate.
     let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let guard = DropGuard::new(value_with_tracked_destruction, closure_that_panics_on_drop);
+        let guard =
+            DropGuard::with_value(value_with_tracked_destruction, closure_that_panics_on_drop);
         DropGuard::dismiss(guard);
     }));
     assert!(value_was_dropped);
+}
+
+#[test]
+fn defer_moved_value() {
+    let data = "owned data".to_string();
+    defer! {
+       std::thread::spawn(move || { assert_eq!(data.as_str(), "owned data") }).join().ok();
+    };
 }

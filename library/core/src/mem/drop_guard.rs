@@ -14,12 +14,33 @@ use crate::ops::{Deref, DerefMut};
 /// #![feature(drop_guard)]
 ///
 /// use std::mem::DropGuard;
+/// use std::mem::defer;
+///
+/// {
+///     // Create a new guard that will do something
+///     // when dropped.
+///     defer! {
+///         println!("Goodbye, world!");
+///     }
+///
+///     // The guard will be dropped here, printing:
+///     // "Goodbye, world!"
+/// }
+///
+/// {
+///     // Create a new guard that will do something
+///     // when dropped.
+///     let _guard = DropGuard::new(|| println!("Goodbye, world!"));
+///
+///     // The guard will be dropped here, printing:
+///     // "Goodbye, world!"
+/// }
 ///
 /// {
 ///     // Create a new guard around a string that will
 ///     // print its value when dropped.
 ///     let s = String::from("Chashu likes tuna");
-///     let mut s = DropGuard::new(s, |s| println!("{s}"));
+///     let mut s = DropGuard::with_value(s, |s| println!("{s}"));
 ///
 ///     // Modify the string contained in the guard.
 ///     s.push_str("!!!");
@@ -31,7 +52,7 @@ use crate::ops::{Deref, DerefMut};
 #[unstable(feature = "drop_guard", issue = "144426")]
 #[doc(alias = "ScopeGuard")]
 #[doc(alias = "defer")]
-pub struct DropGuard<T, F>
+pub struct DropGuard<T = (), F = UnitFn<fn()>>
 where
     F: FnOnce(T),
 {
@@ -39,11 +60,56 @@ where
     f: ManuallyDrop<F>,
 }
 
+/// Create an anonymous `DropGuard` with a cleanup closure.
+///
+/// The macro takes statements, which are the body of a closure
+/// that will run when the scope is exited.
+///
+/// # Example
+///
+/// ```rust
+/// # #![allow(unused)]
+/// #![feature(drop_guard)]
+///
+/// use std::mem::defer;
+///
+/// defer! {
+///     println!("Goodbye, world!");
+/// }
+/// ```
+#[unstable(feature = "drop_guard", issue = "144426")]
+pub macro defer($($t:tt)*) {
+    let _guard = $crate::mem::DropGuard::new(|| { $($t)* });
+}
+
+impl<F> DropGuard<(), UnitFn<F>>
+where
+    F: FnOnce(),
+{
+    /// Create a new instance of `DropGuard` with a cleanup closure.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # #![allow(unused)]
+    /// #![feature(drop_guard)]
+    ///
+    /// use std::mem::DropGuard;
+    ///
+    /// let guard = DropGuard::new(|| println!("Goodbye, world!"));
+    /// ```
+    #[unstable(feature = "drop_guard", issue = "144426")]
+    #[must_use]
+    pub const fn new(f: F) -> Self {
+        Self { inner: ManuallyDrop::new(()), f: ManuallyDrop::new(UnitFn(f)) }
+    }
+}
+
 impl<T, F> DropGuard<T, F>
 where
     F: FnOnce(T),
 {
-    /// Create a new instance of `DropGuard`.
+    /// Create a new instance of `DropGuard` with a value and a cleanup closure.
     ///
     /// # Example
     ///
@@ -54,11 +120,11 @@ where
     /// use std::mem::DropGuard;
     ///
     /// let value = String::from("Chashu likes tuna");
-    /// let guard = DropGuard::new(value, |s| println!("{s}"));
+    /// let guard = DropGuard::with_value(value, |s| println!("{s}"));
     /// ```
     #[unstable(feature = "drop_guard", issue = "144426")]
     #[must_use]
-    pub const fn new(inner: T, f: F) -> Self {
+    pub const fn with_value(inner: T, f: F) -> Self {
         Self { inner: ManuallyDrop::new(inner), f: ManuallyDrop::new(f) }
     }
 
@@ -78,7 +144,7 @@ where
     /// use std::mem::DropGuard;
     ///
     /// let value = String::from("Nori likes chicken");
-    /// let guard = DropGuard::new(value, |s| println!("{s}"));
+    /// let guard = DropGuard::with_value(value, |s| println!("{s}"));
     /// assert_eq!(DropGuard::dismiss(guard), "Nori likes chicken");
     /// ```
     #[unstable(feature = "drop_guard", issue = "144426")]
@@ -156,5 +222,30 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
+    }
+}
+
+#[unstable(feature = "drop_guard", issue = "144426")]
+pub struct UnitFn<F>(F);
+
+#[unstable(feature = "drop_guard", issue = "144426")]
+impl<F> FnOnce<((),)> for UnitFn<F>
+where
+    F: FnOnce(),
+{
+    type Output = ();
+
+    extern "rust-call" fn call_once(self, _args: ((),)) -> Self::Output {
+        (self.0)()
+    }
+}
+
+#[unstable(feature = "drop_guard", issue = "144426")]
+impl<F> Debug for UnitFn<F>
+where
+    F: FnOnce(),
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "UnitFn")
     }
 }

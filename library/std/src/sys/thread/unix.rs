@@ -56,7 +56,7 @@ impl Thread {
         let data = init;
         let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
         assert_eq!(libc::pthread_attr_init(attr.as_mut_ptr()), 0);
-        let mut attr = DropGuard::new(&mut attr, |attr| {
+        let mut attr = DropGuard::with_value(&mut attr, |attr| {
             assert_eq!(libc::pthread_attr_destroy(attr.as_mut_ptr()), 0)
         });
 
