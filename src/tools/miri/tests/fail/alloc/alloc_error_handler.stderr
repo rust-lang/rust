@@ -10,17 +10,21 @@ LL |         crate::process::abort()
    = note: stack backtrace:
            0: std::alloc::rust_oom::{closure#0}
                at RUSTLIB/std/src/alloc.rs:LL:CC
-           1: std::sys::backtrace::__rust_end_short_backtrace
+           1: std::backtrace::__rust_end_short_backtrace::{closure#0}
                at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
-           2: std::alloc::rust_oom
+           2: std::sys::backtrace::call_with_short_backtrace_marker
+               at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
+           3: std::backtrace::__rust_end_short_backtrace
+               at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
+           4: std::alloc::rust_oom
                at RUSTLIB/std/src/alloc.rs:LL:CC
-           3: std::alloc::_::__rust_alloc_error_handler
+           5: std::alloc::_::__rust_alloc_error_handler
                at RUSTLIB/std/src/alloc.rs:LL:CC
-           4: std::alloc::handle_alloc_error::rt_error
+           6: std::alloc::handle_alloc_error::rt_error
                at RUSTLIB/alloc/src/alloc.rs:LL:CC
-           5: std::alloc::handle_alloc_error
+           7: std::alloc::handle_alloc_error
                at RUSTLIB/alloc/src/alloc.rs:LL:CC
-           6: main
+           8: main
                at tests/fail/alloc/alloc_error_handler.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
