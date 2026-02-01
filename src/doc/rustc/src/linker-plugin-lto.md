@@ -3,20 +3,23 @@
 The `-C linker-plugin-lto` flag allows for deferring the LTO optimization
 to the actual linking step, which in turn allows for performing
 interprocedural optimizations across programming language boundaries if
-all the object files being linked were created by LLVM based toolchains.
-The prime example here would be linking Rust code together with
-Clang-compiled C/C++ code.
+all the object files being linked were created by LLVM-based toolchains
+using the **same** LTO mode: either ThinLTO or full (also known as fat).
+The examples would be linking Rust code together with
+Clang-compiled C/C++ code and LLVMFlang-compiled Fortran code.
 
 ## Usage
 
-There are two main cases how linker plugin based LTO can be used:
+There are two main cases how linker-plugin-based LTO can be used:
 
  - compiling a Rust `staticlib` that is used as a C ABI dependency
  - compiling a Rust binary where `rustc` invokes the linker
 
 In both cases the Rust code has to be compiled with `-C linker-plugin-lto` and
-the C/C++ code with `-flto` or `-flto=thin` so that object files are emitted
-as LLVM bitcode.
+the C/C++ code with `-flto=thin` so that object files are emitted as LLVM bitcode.
+C/C++/Fortran code compiled with `-flto=full` is also emitted as LLVM bitcode;
+however, this bitcode can be used for interlanguage optimizations only if `rustc`
+is invoked with both `-C linker-plugin-lto` and `-C lto`, enabling full LTO.
 
 ### Rust `staticlib` as dependency in C/C++ program
 
@@ -54,7 +57,7 @@ that an appropriate linker is used.
 Using `rustc` directly:
 
 ```bash
-# Compile C code with `-flto`
+# Compile C code with `-flto=thin`
 clang ./clib.c -flto=thin -c -o ./clib.o -O2
 # Create a static library from the C code
 ar crus ./libxyz.a ./clib.o
@@ -66,7 +69,7 @@ rustc -Clinker-plugin-lto -L. -Copt-level=2 -Clinker=clang -Clink-arg=-fuse-ld=l
 Using `cargo` directly:
 
 ```bash
-# Compile C code with `-flto`
+# Compile C code with `-flto=thin`
 clang ./clib.c -flto=thin -c -o ./clib.o -O2
 # Create a static library from the C code
 ar crus ./libxyz.a ./clib.o
@@ -74,6 +77,42 @@ ar crus ./libxyz.a ./clib.o
 # Set the linking arguments via RUSTFLAGS
 RUSTFLAGS="-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld" cargo build --release
 ```
+
+### Fortran code as a dependency in Rust
+
+Rust code can also be linked together with Fortran code compiled by LLVM `flang`.
+The following examples demonstrate full LTO usage, as LLVM `flang` does not
+currently support ThinLTO. The same approach can be applied to compile C or C++
+code with full LTO.
+
+Using `rustc` directly:
+
+```bash
+# Compile Fortran code with `-flto=full`
+flang ./ftnlib.f90 -flto=full -c -o ./ftnlib.f90.o -O3
+# Create a static library from the Fortran code
+ar crus ./libftn.a ./ftnlib.f90.o
+
+# Invoke `rustc` with the additional arguments, `-Clto` is mandatory
+rustc -Clinker-plugin-lto -Clto -L. -Copt-level=3 -Clinker=flang -C default-linker-libraries=yes -Clink-arg=-fuse-ld=lld ./main.rs
+```
+
+Using `cargo` directly:
+
+```bash
+# Compile Fortran code with `-flto=full`
+flang ./ftnlib.f90 -flto=full -c -o ./ftnlib.f90.o -O3
+# Create a static library from the Fortran code
+ar crus ./libftn.a ./ftnlib.f90.o
+
+# Set the linking arguments via RUSTFLAGS, `-Clto` is mandatory
+RUSTFLAGS="-Clinker-plugin-lto -Clto -Clinker=flang -C default-linker-libraries=yes -Clink-arg=-fuse-ld=lld" cargo build --release
+```
+
+Note, LLVM `flang` can be used as a linker driver starting from flang 21.1.8.
+The `-C default-linker-libraries=yes` option may be omitted if the Fortran
+runtime is not required; however, most Fortran code depends on the runtime,
+so enabling default linker libraries is usually necessary.
 
 ### Explicitly specifying the linker plugin to be used by `rustc`
 
@@ -179,11 +218,11 @@ for clang, rust in sorted(version_map.items()):
 -->
 
 In order for this kind of LTO to work, the LLVM linker plugin must be able to
-handle the LLVM bitcode produced by both `rustc` and `clang`.
+handle the LLVM bitcode produced by both `rustc` and `clang`/`flang`.
 
-Best results are achieved by using a `rustc` and `clang` that are based on the
-exact same version of LLVM. One can use `rustc -vV` in order to view the LLVM
-used by a given `rustc` version. Note that the version number given
+Best results are achieved by using a `rustc` and LLVM compilers that are based
+on the exact same version of LLVM. One can use `rustc -vV` in order to view
+the LLVM used by a given `rustc` version. Note that the version number given
 here is only an approximation as Rust sometimes uses unstable revisions of
 LLVM. However, the approximation is usually reliable.
 
@@ -204,6 +243,6 @@ The following table shows known good combinations of toolchain versions.
 | 1.78 - 1.81  |      18       |
 | 1.82 - 1.86  |      19       |
 | 1.87 - 1.90  |      20       |
-| 1.91 - 1.92  |      21       |
+| 1.91 - 1.93  |      21       |
 
 Note that the compatibility policy for this feature might change in the future.
