@@ -37,7 +37,7 @@ use super::compare_impl_item::check_type_bounds;
 use super::*;
 use crate::check::wfcheck::{
     check_associated_item, check_trait_item, check_variances_for_type_defn, check_where_clauses,
-    enter_wf_checking_ctxt,
+    enter_wf_checking_ctxt, enter_wf_checking_ctxt_without_checking_global_bounds,
 };
 
 fn add_abi_diag_help<T: EmissionGuarantee>(abi: ExternAbi, diag: &mut Diag<'_, T>) {
@@ -939,10 +939,11 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
             check_type_alias_type_params_are_used(tcx, def_id);
+
+            let ty = tcx.type_of(def_id).instantiate_identity();
+            let span = tcx.def_span(def_id);
             if tcx.type_alias_is_lazy(def_id) {
                 res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
-                    let ty = tcx.type_of(def_id).instantiate_identity();
-                    let span = tcx.def_span(def_id);
                     let item_ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), ty);
                     wfcx.register_wf_obligation(
                         span,
@@ -953,6 +954,24 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     Ok(())
                 }));
                 check_variances_for_type_defn(tcx, def_id);
+            } else {
+                res = res.and(enter_wf_checking_ctxt_without_checking_global_bounds(
+                    tcx,
+                    def_id,
+                    |wfcx| {
+                        // HACK: We sometimes incidentally check that const arguments
+                        // have the correct type as a side effect of the anon const
+                        // desugaring. To make this "consistent" for users we explicitly
+                        // check `ConstArgHasType` clauses so that const args that don't
+                        // go through an anon const still have their types checked.
+                        //
+                        // We use the unnormalized type as this mirrors the behaviour
+                        // that we previously would have had when all const arguments
+                        // were anon consts.
+                        wfcx.register_const_arg_has_type_obligations_from_wf(span, ty);
+                        Ok(())
+                    },
+                ));
             }
 
             // Only `Node::Item` and `Node::ForeignItem` still have HIR based

@@ -123,11 +123,57 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             ty::ClauseKind::WellFormed(term),
         ));
     }
+
+    pub(super) fn register_const_arg_has_type_obligations_from_wf(&self, span: Span, ty: Ty<'tcx>) {
+        let Some(wf_obligations) = traits::wf::unnormalized_obligations(
+            self.ocx.infcx,
+            self.param_env,
+            ty.into(),
+            span,
+            self.body_def_id,
+        ) else {
+            return;
+        };
+
+        let const_arg_has_type_clauses =
+            wf_obligations.into_iter().filter(|o| match o.predicate.kind().skip_binder() {
+                ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _))
+                    if matches!(ct.kind(), ty::ConstKind::Param(..)) =>
+                {
+                    true
+                }
+                _ => false,
+            });
+        self.ocx.register_obligations(const_arg_has_type_clauses);
+    }
 }
 
 pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     body_def_id: LocalDefId,
+    f: F,
+) -> Result<(), ErrorGuaranteed>
+where
+    F: for<'a> FnOnce(&WfCheckingCtxt<'a, 'tcx>) -> Result<(), ErrorGuaranteed>,
+{
+    enter_wf_checking_ctxt_inner(tcx, body_def_id, !tcx.features().trivial_bounds(), f)
+}
+
+pub(super) fn enter_wf_checking_ctxt_without_checking_global_bounds<'tcx, F>(
+    tcx: TyCtxt<'tcx>,
+    body_def_id: LocalDefId,
+    f: F,
+) -> Result<(), ErrorGuaranteed>
+where
+    F: for<'a> FnOnce(&WfCheckingCtxt<'a, 'tcx>) -> Result<(), ErrorGuaranteed>,
+{
+    enter_wf_checking_ctxt_inner(tcx, body_def_id, false, f)
+}
+
+pub(super) fn enter_wf_checking_ctxt_inner<'tcx, F>(
+    tcx: TyCtxt<'tcx>,
+    body_def_id: LocalDefId,
+    check_false_global_bounds: bool,
     f: F,
 ) -> Result<(), ErrorGuaranteed>
 where
@@ -139,7 +185,7 @@ where
 
     let mut wfcx = WfCheckingCtxt { ocx, body_def_id, param_env };
 
-    if !tcx.features().trivial_bounds() {
+    if check_false_global_bounds {
         wfcx.check_false_global_bounds()
     }
     f(&mut wfcx)?;
