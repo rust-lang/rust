@@ -927,14 +927,20 @@ marker_impls! {
 /// This is part of [RFC 3467](https://rust-lang.github.io/rfcs/3467-unsafe-pinned.html), and is
 /// tracked by [#125735](https://github.com/rust-lang/rust/issues/125735).
 #[lang = "unsafe_unpin"]
-pub(crate) unsafe auto trait UnsafeUnpin {}
+#[unstable(feature = "unsafe_unpin", issue = "125735")]
+pub unsafe auto trait UnsafeUnpin {}
 
+#[unstable(feature = "unsafe_unpin", issue = "125735")]
 impl<T: ?Sized> !UnsafeUnpin for UnsafePinned<T> {}
-unsafe impl<T: ?Sized> UnsafeUnpin for PhantomData<T> {}
-unsafe impl<T: ?Sized> UnsafeUnpin for *const T {}
-unsafe impl<T: ?Sized> UnsafeUnpin for *mut T {}
-unsafe impl<T: ?Sized> UnsafeUnpin for &T {}
-unsafe impl<T: ?Sized> UnsafeUnpin for &mut T {}
+marker_impls! {
+#[unstable(feature = "unsafe_unpin", issue = "125735")]
+    unsafe UnsafeUnpin for
+        {T: ?Sized} PhantomData<T>,
+        {T: ?Sized} *const T,
+        {T: ?Sized} *mut T,
+        {T: ?Sized} &T,
+        {T: ?Sized} &mut T,
+}
 
 /// Types that do not require any pinning guarantees.
 ///
@@ -1027,6 +1033,7 @@ impl !Unpin for PhantomPinned {}
 // continue working. Ideally PhantomPinned could just wrap an `UnsafePinned<()>` to get the same
 // effect, but we can't add a new field to an already stable unit struct -- that would be a breaking
 // change.
+#[unstable(feature = "unsafe_unpin", issue = "125735")]
 impl !UnsafeUnpin for PhantomPinned {}
 
 marker_impls! {
