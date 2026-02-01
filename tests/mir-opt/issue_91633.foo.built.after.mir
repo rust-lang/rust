@@ -34,12 +34,12 @@ fn foo(_1: Box<[T]>) -> T {
         FakeRead(ForLet(None), _2);
         StorageDead(_4);
         _0 = move _2;
-        drop(_2) -> [return: bb3, unwind: bb5];
+        drop(_2) -> [return: bb3, unwind: bb6];
     }
 
     bb3: {
         StorageDead(_2);
-        drop(_1) -> [return: bb4, unwind: bb6];
+        drop(_1) -> [return: bb4, unwind: bb7];
     }
 
     bb4: {
@@ -47,10 +47,17 @@ fn foo(_1: Box<[T]>) -> T {
     }
 
     bb5 (cleanup): {
-        drop(_1) -> [return: bb6, unwind terminate(cleanup)];
+        StorageDead(_3);
+        StorageDead(_4);
+        goto -> bb6;
     }
 
     bb6 (cleanup): {
+        StorageDead(_2);
+        drop(_1) -> [return: bb7, unwind terminate(cleanup)];
+    }
+
+    bb7 (cleanup): {
         resume;
     }
 }
