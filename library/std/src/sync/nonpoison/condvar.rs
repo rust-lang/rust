@@ -82,11 +82,6 @@ impl Condvar {
     /// the predicate must always be checked each time this function returns to
     /// protect against spurious wakeups.
     ///
-    /// # Panics
-    ///
-    /// This function may [`panic!`] if it is used with more than one mutex
-    /// over time.
-    ///
     /// [`notify_one`]: Self::notify_one
     /// [`notify_all`]: Self::notify_all
     ///
