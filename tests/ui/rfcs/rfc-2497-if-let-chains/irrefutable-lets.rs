@@ -9,7 +9,10 @@
 use std::ops::Range;
 
 fn main() {
-    let opt = Some(None..Some(1));
+    // Type explicitly given on LHS because it would obfuscate the irrefutable pattern
+    // since currently Range type has difficulty inferring types with one end not being
+    // a concrete type
+    let opt = Some(None::<Option<i32>>..Some(1));
 
     if let first = &opt && let Some(second) = first && let None = second.start {}
     //[disallowed]~^ ERROR leading irrefutable pattern in let chain
@@ -27,7 +30,9 @@ fn main() {
     if let Some(ref first) = opt && let second = first && let _third = second {}
     //[disallowed]~^ ERROR trailing irrefutable patterns in let chain
 
-    if let Range { start: local_start, end: _ } = (None..Some(1)) && let None = local_start {}
+    // Type explicitly given on None for reasons mentioned in lines 12-14
+    if let Range { start: local_start, end: _ } = (None::<Option<i32>>..Some(1))
+        && let None = local_start {}
     //[disallowed]~^ ERROR leading irrefutable pattern in let chain
 
     if let (a, b, c) = (Some(1), Some(1), Some(1)) && let None = Some(1) {}

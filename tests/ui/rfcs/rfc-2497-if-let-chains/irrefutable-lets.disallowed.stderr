@@ -1,5 +1,5 @@
 error: leading irrefutable pattern in let chain
-  --> $DIR/irrefutable-lets.rs:14:8
+  --> $DIR/irrefutable-lets.rs:17:8
    |
 LL |     if let first = &opt && let Some(second) = first && let None = second.start {}
    |        ^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL | #![cfg_attr(disallowed, deny(irrefutable_let_patterns))]
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: irrefutable `if let` patterns
-  --> $DIR/irrefutable-lets.rs:20:8
+  --> $DIR/irrefutable-lets.rs:23:8
    |
 LL |     if let first = &opt && let (a, b) = (1, 2) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -22,7 +22,7 @@ LL |     if let first = &opt && let (a, b) = (1, 2) {}
    = help: consider replacing the `if let` with a `let`
 
 error: leading irrefutable pattern in let chain
-  --> $DIR/irrefutable-lets.rs:23:8
+  --> $DIR/irrefutable-lets.rs:26:8
    |
 LL |     if let first = &opt && let Some(second) = first && let None = second.start && let v = 0 {}
    |        ^^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL |     if let first = &opt && let Some(second) = first && let None = second.st
    = help: consider moving it outside of the construct
 
 error: trailing irrefutable pattern in let chain
-  --> $DIR/irrefutable-lets.rs:23:83
+  --> $DIR/irrefutable-lets.rs:26:83
    |
 LL |     if let first = &opt && let Some(second) = first && let None = second.start && let v = 0 {}
    |                                                                                   ^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     if let first = &opt && let Some(second) = first && let None = second.st
    = help: consider moving it into the body
 
 error: trailing irrefutable patterns in let chain
-  --> $DIR/irrefutable-lets.rs:27:37
+  --> $DIR/irrefutable-lets.rs:30:37
    |
 LL |     if let Some(ref first) = opt && let second = first && let _third = second {}
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,16 +49,16 @@ LL |     if let Some(ref first) = opt && let second = first && let _third = seco
    = help: consider moving them into the body
 
 error: leading irrefutable pattern in let chain
-  --> $DIR/irrefutable-lets.rs:30:8
+  --> $DIR/irrefutable-lets.rs:34:8
    |
-LL |     if let Range { start: local_start, end: _ } = (None..Some(1)) && let None = local_start {}
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     if let Range { start: local_start, end: _ } = (None::<Option<i32>>..Some(1))
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this pattern will always match
    = help: consider moving it outside of the construct
 
 error: leading irrefutable pattern in let chain
-  --> $DIR/irrefutable-lets.rs:33:8
+  --> $DIR/irrefutable-lets.rs:38:8
    |
 LL |     if let (a, b, c) = (Some(1), Some(1), Some(1)) && let None = Some(1) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -67,7 +67,7 @@ LL |     if let (a, b, c) = (Some(1), Some(1), Some(1)) && let None = Some(1) {}
    = help: consider moving it outside of the construct
 
 error: leading irrefutable pattern in let chain
-  --> $DIR/irrefutable-lets.rs:36:8
+  --> $DIR/irrefutable-lets.rs:41:8
    |
 LL |     if let first = &opt && let None = Some(1) {}
    |        ^^^^^^^^^^^^^^^^
@@ -76,7 +76,7 @@ LL |     if let first = &opt && let None = Some(1) {}
    = help: consider moving it outside of the construct
 
 error: irrefutable `if let` guard patterns
-  --> $DIR/irrefutable-lets.rs:45:28
+  --> $DIR/irrefutable-lets.rs:50:28
    |
 LL |         Some(ref first) if let second = first && let _third = second && let v = 4 + 4 => {},
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL |         Some(ref first) if let second = first && let _third = second && let
    = help: consider removing the guard and adding a `let` inside the match arm
 
 error: trailing irrefutable patterns in let chain
-  --> $DIR/irrefutable-lets.rs:60:16
+  --> $DIR/irrefutable-lets.rs:65:16
    |
 LL |             && let v = local_end && let w = v => {},
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -94,7 +94,7 @@ LL |             && let v = local_end && let w = v => {},
    = help: consider moving them into the body
 
 error: irrefutable `while let` patterns
-  --> $DIR/irrefutable-lets.rs:69:11
+  --> $DIR/irrefutable-lets.rs:74:11
    |
 LL |     while let first = &opt && let (a, b) = (1, 2) {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -103,7 +103,7 @@ LL |     while let first = &opt && let (a, b) = (1, 2) {}
    = help: consider instead using a `loop { ... }` with a `let` inside it
 
 error: trailing irrefutable patterns in let chain
-  --> $DIR/irrefutable-lets.rs:72:40
+  --> $DIR/irrefutable-lets.rs:77:40
    |
 LL |     while let Some(ref first) = opt && let second = first && let _third = second {}
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -112,7 +112,7 @@ LL |     while let Some(ref first) = opt && let second = first && let _third = s
    = help: consider moving them into the body
 
 error: trailing irrefutable pattern in let chain
-  --> $DIR/irrefutable-lets.rs:88:12
+  --> $DIR/irrefutable-lets.rs:93:12
    |
 LL |         && let x = &opt
    |            ^^^^^^^^^^^^
@@ -121,7 +121,7 @@ LL |         && let x = &opt
    = help: consider moving it into the body
 
 error: leading irrefutable pattern in let chain
-  --> $DIR/irrefutable-lets.rs:94:12
+  --> $DIR/irrefutable-lets.rs:99:12
    |
 LL |         if let x = opt.clone().map(|_| 1)
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
