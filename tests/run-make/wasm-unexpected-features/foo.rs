@@ -14,6 +14,11 @@ unsafe extern "Rust" {
     fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
 }
 
+#[rustc_std_internal_symbol]
+pub unsafe fn __rdl_alloc_error_handler(_size: usize, _align: usize) -> ! {
+    loop {}
+}
+
 #[used]
 static mut BUF: [u8; 1024] = [0; 1024];
 

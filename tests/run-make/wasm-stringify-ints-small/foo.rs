@@ -1,5 +1,6 @@
 #![crate_type = "cdylib"]
 
+#[link(wasm_import_module = "the-world")]
 extern "C" {
     fn observe(ptr: *const u8, len: usize);
 }
@@ -7,6 +8,7 @@ extern "C" {
 macro_rules! s {
     ( $( $f:ident -> $t:ty );* $(;)* ) => {
         $(
+            #[link(wasm_import_module = "the-world")]
             extern "C" {
                 fn $f() -> $t;
             }

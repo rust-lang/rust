@@ -28,16 +28,6 @@ pub(crate) fn options() -> TargetOptions {
                 // stack overflow will be guaranteed to trap as it underflows instead of
                 // corrupting static data.
                 concat!($prefix, "--stack-first"),
-                // FIXME we probably shouldn't pass this but instead pass an explicit list
-                // of symbols we'll allow to be undefined. We don't currently have a
-                // mechanism of knowing, however, which symbols are intended to be imported
-                // from the environment and which are intended to be imported from other
-                // objects linked elsewhere. This is a coarse approximation but is sure to
-                // hide some bugs and frustrate someone at some point, so we should ideally
-                // work towards a world where we can explicitly list symbols that are
-                // supposed to be imported and have all other symbols generate errors if
-                // they remain undefined.
-                concat!($prefix, "--allow-undefined"),
                 // LLD only implements C++-like demangling, which doesn't match our own
                 // mangling scheme. Tell LLD to not demangle anything and leave it up to
                 // us to demangle these symbols later. Currently rustc does not perform
