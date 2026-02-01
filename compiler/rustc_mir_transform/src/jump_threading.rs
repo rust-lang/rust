@@ -79,6 +79,10 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
         sess.mir_opt_level() >= 2
     }
 
+    fn is_convergence_safe(&self) -> bool {
+        false
+    }
+
     #[instrument(skip_all level = "debug")]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
