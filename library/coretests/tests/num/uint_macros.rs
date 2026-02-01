@@ -332,29 +332,124 @@ macro_rules! uint_module {
 
             fn test_pow() {
                 {
-                    const R: $T = 2;
-                    assert_eq_const_safe!($T: R.pow(2), 4 as $T);
-                    assert_eq_const_safe!($T: R.pow(0), 1 as $T);
-                    assert_eq_const_safe!($T: R.wrapping_pow(2), 4 as $T);
+                    const R: $T = 0;
                     assert_eq_const_safe!($T: R.wrapping_pow(0), 1 as $T);
-                    assert_eq_const_safe!(Option<$T>: R.checked_pow(2), Some(4 as $T));
+                    assert_eq_const_safe!($T: R.wrapping_pow(1), 0 as $T);
+                    assert_eq_const_safe!($T: R.wrapping_pow(2), 0 as $T);
+                    assert_eq_const_safe!($T: R.wrapping_pow(128), 0 as $T);
+                    assert_eq_const_safe!($T: R.wrapping_pow(129), 0 as $T);
+
                     assert_eq_const_safe!(Option<$T>: R.checked_pow(0), Some(1 as $T));
-                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(2), (4 as $T, false));
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(1), Some(0 as $T));
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(2), Some(0 as $T));
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(128), Some(0 as $T));
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(129), Some(0 as $T));
+
                     assert_eq_const_safe!(($T, bool): R.overflowing_pow(0), (1 as $T, false));
-                    assert_eq_const_safe!($T: R.saturating_pow(2), 4 as $T);
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(1), (0 as $T, false));
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(2), (0 as $T, false));
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(128), (0 as $T, false));
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(129), (0 as $T, false));
+
                     assert_eq_const_safe!($T: R.saturating_pow(0), 1 as $T);
+                    assert_eq_const_safe!($T: R.saturating_pow(1), 0 as $T);
+                    assert_eq_const_safe!($T: R.saturating_pow(2), 0 as $T);
+                    assert_eq_const_safe!($T: R.saturating_pow(128), 0 as $T);
+                    assert_eq_const_safe!($T: R.saturating_pow(129), 0 as $T);
+                }
+
+                {
+                    const R: $T = 1;
+                    assert_eq_const_safe!($T: R.wrapping_pow(0), 1 as $T);
+                    assert_eq_const_safe!($T: R.wrapping_pow(1), 1 as $T);
+                    assert_eq_const_safe!($T: R.wrapping_pow(2), 1 as $T);
+                    assert_eq_const_safe!($T: R.wrapping_pow(128), 1 as $T);
+                    assert_eq_const_safe!($T: R.wrapping_pow(129), 1 as $T);
+
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(0), Some(1 as $T));
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(1), Some(1 as $T));
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(2), Some(1 as $T));
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(128), Some(1 as $T));
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(129), Some(1 as $T));
+
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(0), (1 as $T, false));
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(1), (1 as $T, false));
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(2), (1 as $T, false));
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(128), (1 as $T, false));
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(129), (1 as $T, false));
+
+                    assert_eq_const_safe!($T: R.saturating_pow(0), 1 as $T);
+                    assert_eq_const_safe!($T: R.saturating_pow(1), 1 as $T);
+                    assert_eq_const_safe!($T: R.saturating_pow(2), 1 as $T);
+                    assert_eq_const_safe!($T: R.saturating_pow(128), 1 as $T);
+                    assert_eq_const_safe!($T: R.saturating_pow(129), 1 as $T);
+                }
+
+                {
+                    const R: $T = 2;
+                    assert_eq_const_safe!($T: R.wrapping_pow(0), 1 as $T);
+                    assert_eq_const_safe!($T: R.wrapping_pow(1), 2 as $T);
+                    assert_eq_const_safe!($T: R.wrapping_pow(2), 4 as $T);
+                    assert_eq_const_safe!($T: R.wrapping_pow(128), 0 as $T);
+                    assert_eq_const_safe!($T: R.wrapping_pow(129), 0 as $T);
+
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(0), Some(1 as $T));
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(1), Some(2 as $T));
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(2), Some(4 as $T));
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(128), None);
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(129), None);
+
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(0), (1 as $T, false));
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(1), (2 as $T, false));
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(2), (4 as $T, false));
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(128), (0 as $T, true));
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(129), (0 as $T, true));
+
+                    assert_eq_const_safe!($T: R.saturating_pow(0), 1 as $T);
+                    assert_eq_const_safe!($T: R.saturating_pow(1), 2 as $T);
+                    assert_eq_const_safe!($T: R.saturating_pow(2), 4 as $T);
+                    assert_eq_const_safe!($T: R.saturating_pow(128), $T::MAX);
+                    assert_eq_const_safe!($T: R.saturating_pow(129), $T::MAX);
+                }
+
+                // Overflow in the shift caclculation should result in the final
+                // result being 0 rather than accidentally succeeding due to a
+                // shift within the word size.
+                // eg `4 ** 0x8000_0000` should give 0 rather than 1 << 0
+                {
+                    const R: $T = 4;
+                    const HALF: u32 = u32::MAX / 2 + 1;
+                    assert_eq_const_safe!($T: R.wrapping_pow(HALF), 0 as $T);
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(HALF), None);
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(HALF), (0 as $T, true));
+                    assert_eq_const_safe!($T: R.saturating_pow(HALF), $T::MAX);
                 }
 
                 {
                     const R: $T = $T::MAX;
-                    // use `^` to represent .pow() with no overflow.
-                    // if itest::MAX == 2^j-1, then itest is a `j` bit int,
-                    // so that `itest::MAX*itest::MAX == 2^(2*j)-2^(j+1)+1`,
-                    // thussaturating_pow the overflowing result is exactly 1.
+                    assert_eq_const_safe!($T: R.wrapping_pow(0), 1 as $T);
+                    assert_eq_const_safe!($T: R.wrapping_pow(1), R as $T);
                     assert_eq_const_safe!($T: R.wrapping_pow(2), 1 as $T);
+                    assert_eq_const_safe!($T: R.wrapping_pow(128), 1 as $T);
+                    assert_eq_const_safe!($T: R.wrapping_pow(129), R as $T);
+
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(0), Some(1 as $T));
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(1), Some(R as $T));
                     assert_eq_const_safe!(Option<$T>: R.checked_pow(2), None);
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(128), None);
+                    assert_eq_const_safe!(Option<$T>: R.checked_pow(129), None);
+
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(0), (1 as $T, false));
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(1), (R as $T, false));
                     assert_eq_const_safe!(($T, bool): R.overflowing_pow(2), (1 as $T, true));
-                    assert_eq_const_safe!($T: R.saturating_pow(2), MAX);
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(128), (1 as $T, true));
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(129), (R as $T, true));
+
+                    assert_eq_const_safe!($T: R.saturating_pow(0), 1 as $T);
+                    assert_eq_const_safe!($T: R.saturating_pow(1), R as $T);
+                    assert_eq_const_safe!($T: R.saturating_pow(2), $T::MAX);
+                    assert_eq_const_safe!($T: R.saturating_pow(128), $T::MAX);
+                    assert_eq_const_safe!($T: R.saturating_pow(129), $T::MAX);
                 }
             }
 
