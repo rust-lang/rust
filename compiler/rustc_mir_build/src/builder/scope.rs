@@ -1181,16 +1181,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     DropKind::ForLint => {
                         // If this ForLint drop is in unwind_drops, we need to adjust
-                        // unwind_to to match, just like in build_scope_drops
-                        if has_storage_drops && unwind_to != DropIdx::MAX {
-                            debug_assert_eq!(
-                                unwind_drops.drop_nodes[unwind_to].data.local,
-                                drop_data.local
-                            );
-                            debug_assert_eq!(
-                                unwind_drops.drop_nodes[unwind_to].data.kind,
-                                drop_data.kind
-                            );
+                        // unwind_to to match, just like in build_scope_drops.
+                        // Only adjust if the drop matches what unwind_to is pointing to
+                        // (since we process drops in reverse order, unwind_to might not
+                        // match the current drop).
+                        if has_storage_drops
+                            && unwind_to != DropIdx::MAX
+                            && unwind_drops.drop_nodes[unwind_to].data.local == drop_data.local
+                            && unwind_drops.drop_nodes[unwind_to].data.kind == drop_data.kind
+                        {
                             unwind_to = unwind_drops.drop_nodes[unwind_to].next;
                         }
                         self.cfg.push(
@@ -1206,16 +1205,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     DropKind::Storage => {
                         // If this StorageDead drop is in unwind_drops, we need to adjust
-                        // unwind_to to match, just like in build_scope_drops
-                        if has_storage_drops && unwind_to != DropIdx::MAX {
-                            debug_assert_eq!(
-                                unwind_drops.drop_nodes[unwind_to].data.local,
-                                drop_data.local
-                            );
-                            debug_assert_eq!(
-                                unwind_drops.drop_nodes[unwind_to].data.kind,
-                                drop_data.kind
-                            );
+                        // unwind_to to match, just like in build_scope_drops.
+                        // Only adjust if the drop matches what unwind_to is pointing to
+                        // (since we process drops in reverse order, unwind_to might not
+                        // match the current drop).
+                        if has_storage_drops
+                            && unwind_to != DropIdx::MAX
+                            && unwind_drops.drop_nodes[unwind_to].data.local == drop_data.local
+                            && unwind_drops.drop_nodes[unwind_to].data.kind == drop_data.kind
+                        {
                             unwind_to = unwind_drops.drop_nodes[unwind_to].next;
                         }
                         // Only temps and vars need their storage dead.
