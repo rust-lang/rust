@@ -179,8 +179,9 @@ pub(crate) fn frame_pointer_type_attr<'ll>(
     fp.ratchet(opts.cg.force_frame_pointers);
     let attr_value = match fp {
         FramePointer::Always => "all",
-        FramePointer::NonLeaf => "non-leaf",
-        FramePointer::MayOmit => return None,
+        // TODO: a real impl instead of a shitty one-off hack
+        FramePointer::NonLeaf | FramePointer::MayOmit => "non-leaf",
+        // FramePointer::MayOmit => return None,
     };
     Some(llvm::CreateAttrStringValue(cx.llcx, "frame-pointer", attr_value))
 }
