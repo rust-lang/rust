@@ -511,6 +511,15 @@ impl<A: Allocator> Write for Vec<u8, A> {
         Ok(())
     }
 
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
+        if let Some(s) = args.as_statically_known_str() {
+            self.write_all(s.as_bytes())
+        } else {
+            self.reserve(args.estimated_capacity());
+            io::default_write_fmt(self, args)
+        }
+    }
+
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
@@ -660,6 +669,15 @@ impl<A: Allocator> Write for VecDeque<u8, A> {
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
         self.write_vectored(bufs)?;
         Ok(())
+    }
+
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
+        if let Some(s) = args.as_statically_known_str() {
+            self.write_all(s.as_bytes())
+        } else {
+            self.reserve(args.estimated_capacity());
+            io::default_write_fmt(self, args)
+        }
     }
 
     #[inline]
