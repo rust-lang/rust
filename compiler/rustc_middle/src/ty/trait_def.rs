@@ -10,6 +10,7 @@ use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::Span;
 use tracing::debug;
 
+use crate::queries::Queries;
 use crate::query::LocalCrate;
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};

@@ -4,6 +4,7 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::{
     BasicBlock, Body, InlineAsmOperand, Local, Location, Place, START_BLOCK, StatementKind, TerminatorKind, traversal,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 
 mod possible_borrower;

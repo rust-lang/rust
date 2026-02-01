@@ -11,6 +11,7 @@ use rustc_span::{DUMMY_SP, Ident, LocalExpnId, Span, Symbol};
 
 use crate::infer::canonical::CanonicalQueryInput;
 use crate::mir::mono::CollectionMode;
+use crate::queries::Queries;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
 use crate::ty::{self, GenericArg, GenericArgsRef, Ty, TyCtxt};

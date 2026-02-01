@@ -20,6 +20,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::middle::stability::{AllowUnstable, Deprecated, DeprecationEntry, EvalResult};
+use rustc_middle::queries::Queries;
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{AssocContainer, TyCtxt};

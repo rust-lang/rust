@@ -2,6 +2,7 @@ use rustc_abi::{HasDataLayout, Size, TagEncoding, Variants};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::*;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_session::Session;

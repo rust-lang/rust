@@ -4,6 +4,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::{BasicCoverageBlock, CoverageIdsInfo, CoverageKind, MappingKind};
 use rustc_middle::mir::{Body, Statement, StatementKind};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_span::def_id::LocalDefId;

@@ -13,6 +13,7 @@ use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{ItemKind, Node, UseKind};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyCtxt, UintTy};

@@ -2,6 +2,7 @@
 
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_hir::def_id::DefId;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Instance};
 
 use super::utils::{DIB, debug_context};

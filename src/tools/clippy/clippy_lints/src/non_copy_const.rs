@@ -19,6 +19,7 @@
 
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant, const_item_rhs_to_expr};
+use rustc_middle::queries::Queries;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::is_in_const_context;
 use clippy_utils::macros::macro_backtrace;

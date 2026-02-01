@@ -4,6 +4,7 @@
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir::{LangItem, Safety};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::ImplPolarity::*;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{ImplTraitHeader, TraitDef, TyCtxt};

@@ -5,6 +5,7 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportLevel};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{CrateType, Lto};
 use tracing::info;

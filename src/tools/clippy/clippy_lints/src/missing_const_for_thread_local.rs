@@ -8,6 +8,7 @@ use clippy_utils::{fn_has_unsatisfiable_preds, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, intravisit};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_session::impl_lint_pass;
 use rustc_span::sym::{self, thread_local_macro};
 

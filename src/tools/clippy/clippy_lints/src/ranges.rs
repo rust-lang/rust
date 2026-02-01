@@ -12,6 +12,7 @@ use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass, Lint};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, ClauseKind, GenericArgKind, PredicatePolarity, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;

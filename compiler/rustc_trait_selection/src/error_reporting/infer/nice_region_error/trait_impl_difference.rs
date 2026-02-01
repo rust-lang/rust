@@ -7,6 +7,7 @@ use rustc_hir::intravisit::{Visitor, walk_ty};
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_infer::infer::SubregionOrigin;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::RegionHighlightMode;

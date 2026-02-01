@@ -3,6 +3,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, Attribute, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::AssocContainer;
 use rustc_session::config::CrateType;
 use rustc_session::declare_lint_pass;

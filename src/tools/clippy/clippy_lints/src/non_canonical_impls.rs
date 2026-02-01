@@ -6,6 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Block, Body, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, LangItem, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{TyCtxt, TypeckResults};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;

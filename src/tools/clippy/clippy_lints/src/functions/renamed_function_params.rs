@@ -3,6 +3,7 @@ use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{Impl, ImplItem, ImplItemKind, ItemKind, Node, TraitRef};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_span::Span;
 use rustc_span::symbol::{Ident, kw};
 use std::iter;

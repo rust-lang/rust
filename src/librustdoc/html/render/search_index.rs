@@ -15,6 +15,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::sym;

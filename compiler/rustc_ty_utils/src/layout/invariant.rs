@@ -1,6 +1,7 @@
 use rustc_abi::{BackendRepr, FieldsShape, Scalar, Size, TagEncoding, Variants};
 use rustc_data_structures::assert_matches;
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
 
 /// Enforce some basic invariants on layouts.

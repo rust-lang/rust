@@ -8,6 +8,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QPath};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, sym};

@@ -16,6 +16,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_index::IndexVec;
 use rustc_middle::mir;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, GenericArgsRef, Instance, Ty, TypeVisitableExt};
 use rustc_session::Session;

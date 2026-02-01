@@ -1,5 +1,6 @@
 use std::fmt;
 
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
 pub use rustc_middle::traits::query::type_op::{DeeplyNormalize, Normalize};

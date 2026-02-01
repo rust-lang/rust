@@ -1,6 +1,7 @@
 use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, Subdiagnostic};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{Span, kw};
 

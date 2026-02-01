@@ -3,6 +3,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{GenericArg, Item, ItemKind, QPath, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_session::declare_lint_pass;
 

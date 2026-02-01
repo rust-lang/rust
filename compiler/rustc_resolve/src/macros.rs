@@ -20,6 +20,7 @@ use rustc_hir::attrs::{CfgEntry, StrippedCfgItem};
 use rustc_hir::def::{self, DefKind, MacroKinds, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::lint::builtin::{
     LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,

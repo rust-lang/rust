@@ -1,6 +1,7 @@
 use clippy_utils::res::MaybeResPath;
 use rustc_hir::def::Res;
 use rustc_hir::{Impl, Item, ItemKind};
+use rustc_middle::queries::Queries;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 

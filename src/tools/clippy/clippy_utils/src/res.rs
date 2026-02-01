@@ -4,6 +4,7 @@ use rustc_hir::{
     self as hir, Expr, ExprKind, HirId, LangItem, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, TyKind,
 };
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{AdtDef, AdtKind, Binder, EarlyBinder, Ty, TypeckResults};
 use rustc_span::{Ident, Symbol};

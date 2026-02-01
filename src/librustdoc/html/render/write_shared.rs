@@ -29,6 +29,7 @@ use indexmap::IndexMap;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_span::Symbol;

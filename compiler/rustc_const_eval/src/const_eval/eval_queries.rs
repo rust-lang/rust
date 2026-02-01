@@ -6,6 +6,7 @@ use rustc_errors::E0080;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo, ReportedErrorInfo};
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
+use rustc_middle::queries::Queries;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;

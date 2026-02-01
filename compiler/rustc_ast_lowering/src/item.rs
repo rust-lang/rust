@@ -9,6 +9,7 @@ use rustc_hir::{
     self as hir, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin, Target, find_attr,
 };
 use rustc_index::{IndexSlice, IndexVec};
+use rustc_middle::queries::Queries;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::def_id::DefId;

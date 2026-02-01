@@ -5,6 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{Expr, ExprKind, PatKind};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_span::symbol::sym;
 
 use super::MANUAL_OK_OR;

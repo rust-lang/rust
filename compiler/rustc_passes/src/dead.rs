@@ -16,6 +16,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, Node, PatKind, QPath};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};

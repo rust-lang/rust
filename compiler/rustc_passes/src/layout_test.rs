@@ -3,6 +3,7 @@ use rustc_hir::attrs::{AttributeKind, RustcLayoutType};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::find_attr;
+use rustc_middle::queries::Queries;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers};
 use rustc_middle::ty::{self, Ty, TyCtxt};

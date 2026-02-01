@@ -3,6 +3,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir;
 use rustc_middle::mir::mono::MonoItemPartitions;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefIdSet;
 

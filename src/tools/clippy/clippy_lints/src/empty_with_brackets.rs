@@ -10,6 +10,7 @@ use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, Node, Pat, PatKind, Path, QPath, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Span};

@@ -6,6 +6,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::lang_items::{self, LangItem};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
 use rustc_middle::middle::lang_items::required;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 use rustc_target::spec::Os;

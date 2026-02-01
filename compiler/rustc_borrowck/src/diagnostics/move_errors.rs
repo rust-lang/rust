@@ -5,6 +5,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, CaptureBy, ExprKind, HirId, Node};
 use rustc_middle::bug;
 use rustc_middle::mir::*;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{LookupResult, MovePathIndex};
 use rustc_span::def_id::DefId;

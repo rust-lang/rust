@@ -49,6 +49,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::Target;
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_middle::queries::Queries;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{Asyncness, DelegationAttrs, DelegationFnSigAttrs, ResolverAstLowering};
 use rustc_span::symbol::kw;

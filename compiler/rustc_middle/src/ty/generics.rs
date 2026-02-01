@@ -6,6 +6,7 @@ use rustc_span::{Span, Symbol, kw};
 use tracing::instrument;
 
 use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
+use crate::queries::Queries;
 use crate::ty;
 use crate::ty::{EarlyBinder, GenericArgsRef};
 

@@ -4,6 +4,7 @@ use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, GenericArg, Ty};
 use rustc_span::Symbol;
 use rustc_span::def_id::DefId;

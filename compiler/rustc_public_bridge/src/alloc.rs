@@ -8,6 +8,7 @@ use rustc_abi::{Size, TyAndLayout};
 use rustc_middle::mir::interpret::{
     AllocId, AllocInit, AllocRange, Allocation, ConstAllocation, Pointer, Scalar, alloc_range,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{Ty, layout};
 
 use super::{CompilerCtxt, Tables};

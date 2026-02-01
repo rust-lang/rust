@@ -1,6 +1,7 @@
 //! Implementation of InternalCx.
 
 pub(crate) use helpers::*;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{List, Ty, TyCtxt};
 use rustc_middle::{mir, ty};
 
@@ -91,6 +92,6 @@ impl<'tcx> InternalCx<'tcx> for TyCtxt<'tcx> {
     }
 
     fn adt_def(self, def_id: rustc_hir::def_id::DefId) -> ty::AdtDef<'tcx> {
-        self.adt_def(def_id)
+        self.query().adt_def(def_id)
     }
 }

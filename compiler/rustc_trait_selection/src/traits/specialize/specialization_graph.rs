@@ -2,6 +2,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_macros::extension;
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 pub use rustc_middle::traits::specialization_graph::*;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};

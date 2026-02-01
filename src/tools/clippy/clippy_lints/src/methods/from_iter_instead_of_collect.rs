@@ -10,6 +10,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{self as hir, Expr, ExprKind, GenericArg, QPath, TyKind};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_span::sym;
 

@@ -9,6 +9,7 @@ use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, OpaqueTypeStorageEn
 use rustc_infer::traits::ObligationCause;
 use rustc_macros::extension;
 use rustc_middle::mir::{Body, ConstraintCategory};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{
     self, DefiningScopeKind, DefinitionSiteHiddenType, FallibleTypeFolder, GenericArg,
     GenericArgsRef, OpaqueTypeKey, ProvisionalHiddenType, Region, RegionVid, Ty, TyCtxt,

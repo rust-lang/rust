@@ -12,10 +12,10 @@ pub use sealed::IntoQueryParam;
 
 use crate::dep_graph;
 use crate::dep_graph::DepKind;
-use crate::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
-use crate::query::{
+use crate::queries::{
     ExternProviders, PerQueryVTables, Providers, QueryArenas, QueryCaches, QueryEngine, QueryStates,
 };
+use crate::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
 use crate::ty::TyCtxt;
 
 pub type WillCacheOnDiskForKeyFn<'tcx, Key> = fn(tcx: TyCtxt<'tcx>, key: &Key) -> bool;
@@ -81,6 +81,11 @@ pub struct QuerySystem<'tcx> {
     pub fns: QuerySystemFns,
 
     pub jobs: AtomicU64,
+}
+
+#[derive(Copy, Clone)]
+pub struct ExplicitQuery<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
 }
 
 #[derive(Copy, Clone)]
@@ -169,6 +174,12 @@ impl<'tcx> TyCtxt<'tcx> {
         TyCtxtAt { tcx: self, span }
     }
 
+    /// Explicitly call a query.
+    #[inline(always)]
+    pub fn query(self) -> ExplicitQuery<'tcx> {
+        ExplicitQuery { tcx: self }
+    }
+
     pub fn try_mark_green(self, dep_node: &dep_graph::DepNode) -> bool {
         (self.query_system.fns.try_mark_green)(self, dep_node)
     }
@@ -227,8 +238,8 @@ macro_rules! separate_provide_extern_decl {
     ([(separate_provide_extern) $($rest:tt)*][$name:ident]) => {
         for<'tcx> fn(
             TyCtxt<'tcx>,
-            queries::$name::Key<'tcx>,
-        ) -> queries::$name::ProvidedValue<'tcx>
+            query_info::$name::Key<'tcx>,
+        ) -> query_info::$name::ProvidedValue<'tcx>
     };
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
         separate_provide_extern_decl!([$($modifiers)*][$($args)*])
@@ -268,7 +279,7 @@ macro_rules! define_callbacks {
     ) => {
 
         #[allow(unused_lifetimes)]
-        pub mod queries {
+        pub mod query_info {
             $(pub mod $name {
                 use super::super::*;
                 use $crate::query::erase::{self, Erased};
@@ -320,7 +331,7 @@ macro_rules! define_callbacks {
                     erase::erase_val(value)
                 }
 
-                pub type Storage<'tcx> = <$($K)* as keys::Key>::Cache<Erased<$V>>;
+                pub type Storage<'tcx> = <$($K)* as $crate::query::Key>::Cache<Erased<$V>>;
 
                 // Ensure that keys grow no larger than 88 bytes by accident.
                 // Increase this limit if necessary, but do try to keep the size low if possible
@@ -371,7 +382,7 @@ macro_rules! define_callbacks {
 
         #[derive(Default)]
         pub struct QueryCaches<'tcx> {
-            $($(#[$attr])* pub $name: queries::$name::Storage<'tcx>,)*
+            $($(#[$attr])* pub $name: query_info::$name::Storage<'tcx>,)*
         }
 
         impl<'tcx> TyCtxtEnsureOk<'tcx> {
@@ -406,11 +417,27 @@ macro_rules! define_callbacks {
             })*
         }
 
-        impl<'tcx> TyCtxt<'tcx> {
+        /// Extension trait allowing calling queries directly on `TyCtxt`.
+        pub trait Queries<'tcx> {
+            $(
+                #[must_use]
+                fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V;
+            )*
+        }
+
+        impl<'tcx> Queries<'tcx> for ExplicitQuery<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            #[must_use]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
+            fn $name(self, key: query_helper_param_ty!($($K)*) ) -> $V
+            {
+                self.tcx.at(DUMMY_SP).$name(key)
+            })*
+        }
+
+        impl<'tcx> Queries<'tcx> for TyCtxt<'tcx> {
+            $($(#[$attr])*
+            #[inline(always)]
+            fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
                 self.at(DUMMY_SP).$name(key)
             })*
@@ -438,7 +465,7 @@ macro_rules! define_callbacks {
         /// ("Per" just makes this pluralized name more visually distinct.)
         pub struct PerQueryVTables<'tcx> {
             $(
-                pub $name: ::rustc_middle::query::plumbing::QueryVTable<'tcx, queries::$name::Storage<'tcx>>,
+                pub $name: ::rustc_middle::query::plumbing::QueryVTable<'tcx, query_info::$name::Storage<'tcx>>,
             )*
         }
 
@@ -452,8 +479,8 @@ macro_rules! define_callbacks {
         pub struct Providers {
             $(pub $name: for<'tcx> fn(
                 TyCtxt<'tcx>,
-                queries::$name::LocalKey<'tcx>,
-            ) -> queries::$name::ProvidedValue<'tcx>,)*
+                query_info::$name::LocalKey<'tcx>,
+            ) -> query_info::$name::ProvidedValue<'tcx>,)*
         }
 
         pub struct ExternProviders {
@@ -490,7 +517,7 @@ macro_rules! define_callbacks {
             $(pub $name: for<'tcx> fn(
                 TyCtxt<'tcx>,
                 Span,
-                queries::$name::Key<'tcx>,
+                query_info::$name::Key<'tcx>,
                 QueryMode,
             ) -> Option<$crate::query::erase::Erased<$V>>,)*
         }
@@ -514,11 +541,11 @@ macro_rules! define_feedable {
         $(impl<'tcx, K: IntoQueryParam<$($K)*> + Copy> TyCtxtFeed<'tcx, K> {
             $(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, value: queries::$name::ProvidedValue<'tcx>) {
+            pub fn $name(self, value: query_info::$name::ProvidedValue<'tcx>) {
                 let key = self.key().into_query_param();
 
                 let tcx = self.tcx;
-                let erased = queries::$name::provided_to_erased(tcx, value);
+                let erased = query_info::$name::provided_to_erased(tcx, value);
                 let cache = &tcx.query_system.caches.$name;
 
                 let dep_kind: dep_graph::DepKind = dep_graph::dep_kinds::$name;

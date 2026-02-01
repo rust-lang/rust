@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_middle::mir::{Body, Location};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::relate::{
     self, Relate, RelateResult, TypeRelation, relate_args_with_variances,
 };

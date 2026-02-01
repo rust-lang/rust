@@ -11,6 +11,7 @@ use rustc_hir::{
 };
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;

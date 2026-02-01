@@ -1,4 +1,5 @@
 use rustc_hir as hir;
+use rustc_middle::queries::Queries;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_trait_selection::error_reporting::traits::suggestions::suggest_desugaring_async_fn_to_impl_future_in_trait;
 

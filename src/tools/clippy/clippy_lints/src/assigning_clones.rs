@@ -9,6 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Instance, Mutability};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, SyntaxContext};

@@ -13,6 +13,7 @@ use rustc_hir::{
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeckResults};
 use rustc_span::Span;

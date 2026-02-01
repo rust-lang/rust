@@ -6,6 +6,7 @@ use rustc_middle::mir::{
     Body, Const, ConstValue, Operand, Place, RETURN_PLACE, Rvalue, START_BLOCK, StatementKind,
     TerminatorKind, UnevaluatedConst,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{Ty, TyCtxt, TypeVisitableExt};
 
 /// If the given def is a trivial const, returns the value and type the const evaluates to.

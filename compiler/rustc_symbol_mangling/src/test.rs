@@ -5,6 +5,7 @@
 //! paths etc in all kinds of annoying scenarios.
 
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{GenericArgs, Instance, TyCtxt};
 use rustc_span::{Symbol, sym};

@@ -11,6 +11,7 @@
 
 use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_hir::{Attribute, CRATE_OWNER_ID, OwnerId};
+use rustc_middle::queries::Queries;
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};

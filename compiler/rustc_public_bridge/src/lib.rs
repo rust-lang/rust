@@ -27,6 +27,7 @@ use context::CompilerCtxt;
 use rustc_data_structures::fx::{self, FxIndexMap};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::AllocId;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};

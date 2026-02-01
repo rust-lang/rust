@@ -3,6 +3,7 @@ use std::{fs, io};
 
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_fs_util::TempDirBuilder;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{CrateType, OutFileName, OutputType};

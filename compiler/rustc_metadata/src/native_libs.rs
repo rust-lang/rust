@@ -6,6 +6,7 @@ use rustc_attr_parsing::eval_config_entry;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::attrs::{AttributeKind, NativeLibKind, PeImportNameType};
 use rustc_hir::find_attr;
+use rustc_middle::queries::Queries;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_session::Session;

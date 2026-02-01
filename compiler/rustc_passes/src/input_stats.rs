@@ -7,6 +7,7 @@ use rustc_ast::{self as ast, AttrVec, NodeId, visit as ast_visit};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_hir::{self as hir, AmbigArg, HirId, intravisit as hir_visit};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;

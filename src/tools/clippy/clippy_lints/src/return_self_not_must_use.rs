@@ -6,6 +6,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, OwnerId, TraitItem, TraitItemKind, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 

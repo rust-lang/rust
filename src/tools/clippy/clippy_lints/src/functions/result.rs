@@ -3,6 +3,7 @@ use clippy_utils::res::MaybeDef;
 use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::{Span, sym};

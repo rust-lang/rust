@@ -18,6 +18,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_span::Symbol;

@@ -12,6 +12,7 @@
 
 #[macro_use]
 extern crate rustc_middle;
+use rustc_middle::queries::Queries;
 extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_codegen_ssa;

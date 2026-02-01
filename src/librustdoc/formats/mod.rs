@@ -4,6 +4,7 @@ pub(crate) mod renderer;
 
 pub(crate) use renderer::{FormatRenderer, run_format};
 use rustc_hir::def_id::DefId;
+use rustc_middle::queries::Queries;
 
 use crate::clean::{self, ItemId};
 use crate::html::render::Context;

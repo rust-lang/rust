@@ -7,6 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{FnKind, Visitor};
 use rustc_hir::{Attribute, GenericParamKind, PatExprKind, PatKind, find_attr};
 use rustc_middle::hir::nested_filter::All;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::AssocContainer;
 use rustc_session::config::CrateType;
 use rustc_session::{declare_lint, declare_lint_pass};

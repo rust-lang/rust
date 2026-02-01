@@ -114,6 +114,7 @@ use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::{AmbigModChild, ModChild};
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout, CoroutineSavedLocal, SourceInfo};
+use crate::queries::Queries;
 use crate::query::{IntoQueryParam, Providers};
 use crate::ty;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -1381,7 +1382,7 @@ impl<'tcx> FieldDef {
     /// Returns the type of this field. The resulting type is not normalized. The `arg` is
     /// typically obtained via the second field of [`TyKind::Adt`].
     pub fn ty(&self, tcx: TyCtxt<'tcx>, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        tcx.type_of(self.did).instantiate(tcx, args)
+        tcx.query().type_of(self.did).instantiate(tcx, args)
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`
@@ -1650,17 +1651,19 @@ impl<'tcx> TyCtxt<'tcx> {
         match res {
             Res::Def(DefKind::Variant, did) => {
                 let enum_did = self.parent(did);
-                self.adt_def(enum_did).variant_with_id(did)
+                self.query().adt_def(enum_did).variant_with_id(did)
             }
-            Res::Def(DefKind::Struct | DefKind::Union, did) => self.adt_def(did).non_enum_variant(),
+            Res::Def(DefKind::Struct | DefKind::Union, did) => {
+                self.query().adt_def(did).non_enum_variant()
+            }
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_did) => {
                 let variant_did = self.parent(variant_ctor_did);
                 let enum_did = self.parent(variant_did);
-                self.adt_def(enum_did).variant_with_ctor_id(variant_ctor_did)
+                self.query().adt_def(enum_did).variant_with_ctor_id(variant_ctor_did)
             }
             Res::Def(DefKind::Ctor(CtorOf::Struct, ..), ctor_did) => {
                 let struct_did = self.parent(ctor_did);
-                self.adt_def(struct_did).non_enum_variant()
+                self.query().adt_def(struct_did).non_enum_variant()
             }
             _ => bug!("expect_variant_res used with unexpected res {:?}", res),
         }
@@ -1798,7 +1801,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // If we have a `Coroutine` that comes from an coroutine-closure,
             // then it may be a by-move or by-ref body.
             let ty::Coroutine(_, identity_args) =
-                *self.type_of(def_id).instantiate_identity().kind()
+                *self.query().type_of(def_id).instantiate_identity().kind()
             else {
                 unreachable!();
             };

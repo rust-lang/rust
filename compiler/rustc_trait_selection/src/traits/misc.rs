@@ -4,6 +4,7 @@ use hir::LangItem;
 use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::sym;
 

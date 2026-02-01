@@ -2,6 +2,7 @@ use rustc_data_structures::assert_matches;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, CanonicalUserType, TyCtxt};
 use tracing::debug;
 

@@ -28,6 +28,7 @@ use rustc_hir::{
 };
 use rustc_middle::dep_graph::{DepNode, DepNodeExt, dep_kind_from_label, label_strs};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;

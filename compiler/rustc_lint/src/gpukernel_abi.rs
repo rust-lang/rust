@@ -3,6 +3,7 @@ use std::iter;
 use rustc_abi::ExternAbi;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{self as hir, find_attr};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::Span;

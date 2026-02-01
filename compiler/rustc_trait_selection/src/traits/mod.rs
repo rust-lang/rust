@@ -30,6 +30,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 pub use rustc_infer::traits::*;
 use rustc_macros::TypeVisitable;
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};

@@ -58,6 +58,7 @@ use rustc_hir::{
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
+use rustc_middle::queries::Queries;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::parse::add_feature_diagnostics;

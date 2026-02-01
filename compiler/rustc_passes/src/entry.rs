@@ -3,6 +3,7 @@ use rustc_errors::codes::*;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{CRATE_HIR_ID, ItemId, Node, find_attr};
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{CrateType, EntryFnType, sigpipe};

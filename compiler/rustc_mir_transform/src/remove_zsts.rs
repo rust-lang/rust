@@ -2,6 +2,7 @@
 
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
 pub(super) struct RemoveZsts;

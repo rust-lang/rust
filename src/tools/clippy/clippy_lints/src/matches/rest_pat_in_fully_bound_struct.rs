@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::{Pat, PatKind, QPath};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty;
 
 use super::REST_PAT_IN_FULLY_BOUND_STRUCTS;

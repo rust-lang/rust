@@ -20,6 +20,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, Lto, OutputType, Passes, SplitDwarfKind, SwitchWithOptPath};

@@ -4,6 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CRATE_DEF_ID;
+use rustc_middle::queries::Queries;
 use rustc_middle::span_bug;
 use rustc_middle::thir::visit::{self, Visitor};
 use rustc_middle::thir::{BodyTy, Expr, ExprId, ExprKind, Thir};

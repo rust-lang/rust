@@ -14,6 +14,7 @@ use rustc_hir::{BorrowKind, Expr, ExprKind, ItemKind, LangItem, Node};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind, OverloadedDeref};
 use rustc_middle::ty::{
     self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionPredicate, TraitPredicate, Ty,

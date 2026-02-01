@@ -4,6 +4,7 @@ use clippy_utils::trait_ref_of_method;
 use clippy_utils::ty::InteriorMut;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;

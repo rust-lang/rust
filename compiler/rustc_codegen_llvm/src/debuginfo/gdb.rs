@@ -5,6 +5,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir::attrs::DebuggerVisualizerType;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_session::config::{CrateType, DebugInfo};
 
 use crate::builder::Builder;

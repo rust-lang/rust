@@ -9,6 +9,7 @@ use rustc_errors::timings::TimingSection;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::DepGraph;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, OutputFilenames, OutputType};

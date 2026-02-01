@@ -5,6 +5,7 @@ use clippy_utils::{is_bool, is_from_proc_macro};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{Body, EnumDef, FieldDef, Item, ItemKind, QPath, TyKind, UseKind, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Symbol;
 

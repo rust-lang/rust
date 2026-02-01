@@ -12,6 +12,7 @@ use rustc_hir::{
     Arm, BindingMode, ByRef, Expr, ExprKind, ItemKind, Node, Pat, PatExpr, PatExprKind, PatKind, Path, QPath,
 };
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_span::sym;
 
 pub(crate) fn check_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {

@@ -16,6 +16,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path};
 use rustc_lint::{MissingDoc, late_lint_mod};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::{
     self, CrateType, ErrorOutputType, Input, OutputType, OutputTypes, ResolveDocLinks,

@@ -5,6 +5,7 @@ use clippy_utils::source::snippet_opt;
 use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {

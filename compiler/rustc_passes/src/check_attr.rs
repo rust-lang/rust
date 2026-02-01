@@ -35,6 +35,7 @@ use rustc_hir::{
 use rustc_macros::LintDiagnostic;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};

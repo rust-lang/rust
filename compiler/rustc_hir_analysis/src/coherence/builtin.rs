@@ -11,6 +11,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{self, RegionResolutionError, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{

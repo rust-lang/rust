@@ -9,6 +9,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::queries::Queries;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::{LocalDefId, LocalDefIdSet};

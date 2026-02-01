@@ -3,6 +3,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_infer::infer::region_constraints::{ConstraintKind, RegionConstraintData};
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Region, Ty, fold_regions};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{Symbol, kw};

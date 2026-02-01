@@ -11,6 +11,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_macros::LintDiagnostic;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::relate::{
     Relate, RelateResult, TypeRelation, relate_args_with_variances, structurally_relate_consts,
     structurally_relate_tys,

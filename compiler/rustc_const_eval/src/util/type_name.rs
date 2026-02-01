@@ -4,6 +4,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::print::{PrettyPrinter, PrintError, Printer};
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
 

@@ -12,6 +12,7 @@ use rustc_data_structures::assert_matches;
 use rustc_hir as hir;
 use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
 use rustc_middle::mir::*;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use tracing::{debug, instrument};

@@ -5,6 +5,7 @@ use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{self as hir, Attribute, QPath};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, sym};
 

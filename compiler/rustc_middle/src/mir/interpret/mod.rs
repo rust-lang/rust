@@ -44,6 +44,7 @@ pub use self::error::{
 pub use self::pointer::{CtfeProvenance, Pointer, PointerArithmetic, Provenance};
 pub use self::value::Scalar;
 use crate::mir;
+use crate::queries::Queries;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::print::with_no_trimmed_paths;
 use crate::ty::{self, Instance, Ty, TyCtxt};

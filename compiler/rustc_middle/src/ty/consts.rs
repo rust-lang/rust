@@ -7,6 +7,7 @@ use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
 
 use crate::mir::interpret::Scalar;
+use crate::queries::Queries;
 use crate::ty::{self, Ty, TyCtxt};
 
 mod int;

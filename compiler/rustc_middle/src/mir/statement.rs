@@ -6,6 +6,7 @@ use tracing::{debug, instrument};
 
 use super::interpret::GlobalAlloc;
 use super::*;
+use crate::queries::Queries;
 use crate::ty::CoroutineArgsExt;
 
 ///////////////////////////////////////////////////////////////////////////

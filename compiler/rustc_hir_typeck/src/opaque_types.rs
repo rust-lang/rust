@@ -1,5 +1,6 @@
 use rustc_hir::def::DefKind;
 use rustc_infer::traits::ObligationCause;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{
     self, DefiningScopeKind, DefinitionSiteHiddenType, OpaqueTypeKey, ProvisionalHiddenType,
     TypeVisitableExt, TypingMode,

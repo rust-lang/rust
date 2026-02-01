@@ -10,6 +10,7 @@ use rustc_infer::traits::{
     TraitEngine,
 };
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{

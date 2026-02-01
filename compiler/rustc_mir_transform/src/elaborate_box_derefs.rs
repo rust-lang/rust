@@ -9,6 +9,7 @@ use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_index::{IndexVec, indexvec};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
+use rustc_middle::queries::Queries;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 

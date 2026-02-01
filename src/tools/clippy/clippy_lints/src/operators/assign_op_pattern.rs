@@ -12,6 +12,7 @@ use rustc_hir::{HirId, HirIdSet};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::LateContext;
 use rustc_middle::mir::FakeReadCause;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::BorrowKind;
 
 use super::ASSIGN_OP_PATTERN;

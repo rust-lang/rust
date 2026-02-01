@@ -19,6 +19,7 @@ use indexmap::IndexSet;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefIdMap;
+use rustc_middle::queries::Queries;
 use rustc_session::Session;
 use rustc_session::config::DebugInfo;
 use rustc_span::{RemapPathScopeComponents, SourceFileHash, StableSourceFileId};

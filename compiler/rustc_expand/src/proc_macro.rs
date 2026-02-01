@@ -1,5 +1,6 @@
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::ErrorGuaranteed;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_parse::parser::{AllowConstBlockItems, ForceCollect, Parser};
 use rustc_session::Session;

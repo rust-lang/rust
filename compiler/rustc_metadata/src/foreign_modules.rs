@@ -2,6 +2,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_middle::queries::Queries;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::ForeignModule;

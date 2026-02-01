@@ -1,5 +1,6 @@
 use rustc_hir as hir;
 use rustc_hir::{Expr, Stmt};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{Mutability, TyKind};
 use rustc_session::lint::fcw;
 use rustc_session::{declare_lint, declare_lint_pass};

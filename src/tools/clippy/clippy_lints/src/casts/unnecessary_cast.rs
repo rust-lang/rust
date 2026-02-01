@@ -9,6 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, Lit, Node, Path, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, FloatTy, InferTy, Ty};
 use rustc_span::{Symbol, sym};

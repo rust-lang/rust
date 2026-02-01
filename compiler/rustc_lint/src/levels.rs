@@ -13,6 +13,7 @@ use rustc_middle::lint::{
     LevelAndSource, LintExpectation, LintLevelSource, ShallowLintLevelMap, lint_level,
     reveal_actual_level,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;

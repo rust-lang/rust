@@ -24,6 +24,7 @@ use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{Expr, ExprKind, LangItem, RustcVersion, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Upcast};
 use rustc_session::impl_lint_pass;

@@ -6,6 +6,7 @@ use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, GenericArg, Mutability, QPath, Ty, TyKind};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_span::source_map::Spanned;
 
 use super::MANUAL_DANGLING_PTR;

@@ -5,6 +5,7 @@ use rustc_errors::{Diag, IntoDiagArg};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
 use rustc_middle::ty::{self, GenericArgsRef, RePlaceholder, Region, TyCtxt};

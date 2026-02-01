@@ -3,6 +3,7 @@ use clippy_utils::diagnostics::span_lint;
 use itertools::Itertools;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_middle::queries::Queries;
 use rustc_lint::LateContext;
 use rustc_span::DUMMY_SP;
 

@@ -13,6 +13,7 @@ use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::{LayoutOf, MaybeResult, TyAndLayout};
 use rustc_middle::ty::{self, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;

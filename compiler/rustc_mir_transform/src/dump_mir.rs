@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io;
 
 use rustc_middle::mir::{Body, write_mir_pretty};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OutFileName, OutputType};
 

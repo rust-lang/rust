@@ -20,6 +20,7 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
 
 use crate::hir::{ModuleItems, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
+use crate::queries::Queries;
 use crate::query::LocalCrate;
 use crate::ty::TyCtxt;
 

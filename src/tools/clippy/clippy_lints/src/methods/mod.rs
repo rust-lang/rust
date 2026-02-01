@@ -1,6 +1,7 @@
 mod bind_instead_of_map;
 mod bytecount;
 mod bytes_count_to_len;
+use rustc_middle::queries::Queries;
 mod bytes_nth;
 mod case_sensitive_file_extension_comparisons;
 mod chars_cmp;

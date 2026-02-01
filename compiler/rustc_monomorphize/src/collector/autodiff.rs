@@ -1,4 +1,5 @@
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, GenericArg, IntrinsicDef, TyCtxt};
 
 use crate::collector::{MonoItems, create_fn_mono_item};

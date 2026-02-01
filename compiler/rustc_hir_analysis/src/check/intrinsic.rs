@@ -3,6 +3,7 @@
 use rustc_abi::ExternAbi;
 use rustc_errors::DiagMessage;
 use rustc_hir::{self as hir, LangItem};
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;

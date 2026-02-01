@@ -7,6 +7,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::check::check_function_signature;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::traits::WellFormedLoc;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Binder, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::sym;

@@ -15,6 +15,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::{Symbol, kw, sym};
 use tracing::{debug, warn};

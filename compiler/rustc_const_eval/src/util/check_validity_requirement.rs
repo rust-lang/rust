@@ -1,4 +1,5 @@
 use rustc_abi::{BackendRepr, FieldsShape, Scalar, Variants};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::{
     HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement,
 };

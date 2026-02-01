@@ -8,6 +8,7 @@ use rustc_hir::{
     FnSig, Node, TyKind,
 };
 use rustc_lint::{LateContext, LintContext};
+use rustc_middle::queries::Queries;
 use rustc_span::sym;
 
 use super::INFINITE_LOOP;

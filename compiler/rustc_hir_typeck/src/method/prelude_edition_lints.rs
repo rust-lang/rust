@@ -6,6 +6,7 @@ use rustc_ast::join_path_idents;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
+use rustc_middle::queries::Queries;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::lint::builtin::{RUST_2021_PRELUDE_COLLISIONS, RUST_2024_PRELUDE_COLLISIONS};

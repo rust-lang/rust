@@ -8,6 +8,7 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_middle::queries::Queries;
 use rustc_span::{Symbol, sym};
 use rustdoc_json_types as types;
 

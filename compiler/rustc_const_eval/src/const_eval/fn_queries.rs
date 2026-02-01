@@ -4,6 +4,7 @@ use rustc_hir::{
     Constness, ExprKind, ForeignItemKind, ImplItem, ImplItemImplKind, ImplItemKind, Item, ItemKind,
     Node, TraitItem, TraitItemKind, VariantData, find_attr,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 

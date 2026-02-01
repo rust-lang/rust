@@ -56,6 +56,7 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::{Dependencies, DependencyList, Linkage};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::CrateDepKind;

@@ -1,6 +1,7 @@
 use rustc_ast::LitKind;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{BinOpKind, Expr, ExprKind, TyKind, find_attr};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::RawPtr;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, sym};

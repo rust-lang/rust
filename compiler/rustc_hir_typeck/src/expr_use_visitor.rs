@@ -21,6 +21,7 @@ use rustc_middle::hir::place::ProjectionKind;
 // Export these here so that Clippy can use them.
 pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 use rustc_middle::mir::FakeReadCause;
+use rustc_middle::queries::Queries;
 use rustc_middle::thir::DerefPatBorrowMode;
 use rustc_middle::ty::adjustment::DerefAdjustKind;
 use rustc_middle::ty::{

@@ -4,6 +4,7 @@ use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, struct_span_
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, GenericArg};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{
     self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty,
 };

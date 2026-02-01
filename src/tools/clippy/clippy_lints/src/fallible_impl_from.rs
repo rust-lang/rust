@@ -4,6 +4,7 @@ use clippy_utils::method_chain_args;
 use clippy_utils::res::MaybeDef;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, sym};

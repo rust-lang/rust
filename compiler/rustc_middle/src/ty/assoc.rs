@@ -6,6 +6,7 @@ use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{ErrorGuaranteed, Ident, Symbol};
 
 use super::{TyCtxt, Visibility};
+use crate::queries::Queries;
 use crate::ty;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable, Hash, Encodable, Decodable)]

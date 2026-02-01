@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::source::SpanRangeExt;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::queries::Queries;
 use rustc_hir::intravisit::FnKind;
 use rustc_lint::{LateContext, LintContext};
 use rustc_span::Span;

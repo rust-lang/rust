@@ -8,6 +8,7 @@ use rustc_hir::attrs::InstructionSetAttr;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 #[cfg(feature = "master")]
 use rustc_middle::mir::TerminatorKind;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty;
 #[cfg(feature = "master")]
 use rustc_target::spec::Arch;

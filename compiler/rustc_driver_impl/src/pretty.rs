@@ -6,6 +6,7 @@ use std::fmt::Write;
 use rustc_ast_pretty::pprust as pprust_ast;
 use rustc_middle::bug;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_build::thir::print::{thir_flat, thir_tree};
 use rustc_public::rustc_internal::pretty::write_smir_pretty;

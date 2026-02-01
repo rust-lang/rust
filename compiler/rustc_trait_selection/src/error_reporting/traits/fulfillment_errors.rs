@@ -20,6 +20,7 @@ use rustc_hir::{self as hir, LangItem, Node};
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_infer::traits::ImplSource;
 use rustc_infer::traits::solve::Goal;
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::SignatureMismatchData;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;

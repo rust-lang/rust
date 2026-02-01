@@ -1,6 +1,7 @@
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, Visibility};
 use gccjit::{Function, FunctionType};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 

@@ -6,6 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::{Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_session::impl_lint_pass;
 use rustc_span::{FileName, Span};
 use std::collections::hash_map::Entry;

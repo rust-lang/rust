@@ -3,6 +3,7 @@
 //! [`PointerCoercion::Unsize`]: `rustc_middle::ty::adjustment::PointerCoercion::Unsize`
 
 use rustc_codegen_ssa::base::validate_trivial_unsize;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 

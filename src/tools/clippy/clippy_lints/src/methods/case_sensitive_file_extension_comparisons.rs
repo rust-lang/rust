@@ -7,6 +7,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::LateContext;
+use rustc_middle::queries::Queries;
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 

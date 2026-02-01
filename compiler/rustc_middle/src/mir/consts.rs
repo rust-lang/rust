@@ -9,6 +9,7 @@ use rustc_type_ir::TypeVisitableExt;
 use super::interpret::ReportedErrorInfo;
 use crate::mir::interpret::{AllocId, AllocRange, ErrorHandled, GlobalAlloc, Scalar, alloc_range};
 use crate::mir::{Promoted, pretty_print_const_value};
+use crate::queries::Queries;
 use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
 use crate::ty::{self, ConstKind, GenericArgsRef, ScalarInt, Ty, TyCtxt};
 

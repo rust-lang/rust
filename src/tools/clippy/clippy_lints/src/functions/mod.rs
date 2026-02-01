@@ -16,6 +16,7 @@ use rustc_ast::{self as ast, visit};
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::{declare_lint_pass, impl_lint_pass};
 use rustc_span::Span;

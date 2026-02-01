@@ -8,6 +8,7 @@ use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
 use rustc_hir::{BlockCheckMode, Expr, ExprKind, HirId, Stmt, UnsafeSource, find_attr};
 use rustc_lint::{LateContext, LateLintPass, Level, LintContext};
 use rustc_middle::lint::LevelAndSource;
+use rustc_middle::queries::Queries;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, SyntaxContext};
 use std::collections::BTreeMap;

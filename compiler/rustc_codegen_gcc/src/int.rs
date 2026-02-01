@@ -10,6 +10,7 @@ use gccjit::{
 use rustc_abi::{CanonAbi, Endian, ExternAbi};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, BuilderMethods, OverflowOp};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty};
 use rustc_target::callconv::{ArgAbi, ArgAttributes, FnAbi, PassMode};
 use rustc_type_ir::{Interner, TyKind};

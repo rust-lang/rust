@@ -13,6 +13,7 @@ use rustc_hir::{
     ImplItemImplKind, ImplItemKind, Item, ItemKind, Node, Pat, PatExpr, PatExprKind, PatKind, Path, QPath, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::Ty as MiddleTy;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;

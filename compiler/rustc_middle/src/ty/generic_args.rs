@@ -14,6 +14,7 @@ use rustc_type_ir::WithCachedTypeInfo;
 use rustc_type_ir::walk::TypeWalker;
 use smallvec::SmallVec;
 
+use crate::queries::Queries;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::{
     self, ClosureArgs, CoroutineArgs, CoroutineClosureArgs, FallibleTypeFolder, InlineConstArgs,

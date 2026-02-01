@@ -1,6 +1,7 @@
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;

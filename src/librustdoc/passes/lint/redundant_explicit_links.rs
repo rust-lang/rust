@@ -5,6 +5,7 @@ use rustc_errors::SuggestionStyle;
 use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, DocLinkResMap, Namespace, Res};
 use rustc_lint_defs::Applicability;
+use rustc_middle::queries::Queries;
 use rustc_resolve::rustdoc::pulldown_cmark::{
     BrokenLink, BrokenLinkCallback, CowStr, Event, LinkType, OffsetIter, Parser, Tag,
 };

@@ -63,6 +63,7 @@ use cranelift_codegen::entity::SecondaryMap;
 use cranelift_codegen::ir::Fact;
 use cranelift_codegen::ir::entities::AnyEntity;
 use cranelift_codegen::write::{FuncWriter, PlainWriter};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::Session;
 use rustc_session::config::{OutputFilenames, OutputType};

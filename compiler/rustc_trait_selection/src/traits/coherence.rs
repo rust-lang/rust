@@ -14,6 +14,7 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::PredicateObligations;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
 use rustc_middle::traits::specialization_graph::OverlapMode;

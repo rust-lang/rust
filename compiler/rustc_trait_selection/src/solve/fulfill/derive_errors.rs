@@ -7,6 +7,7 @@ use rustc_infer::traits::{
     self, MismatchedProjectionTypes, Obligation, ObligationCause, ObligationCauseCode,
     PredicateObligation, SelectionError,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Ty, TyCtxt};

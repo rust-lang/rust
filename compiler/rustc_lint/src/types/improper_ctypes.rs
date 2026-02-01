@@ -9,6 +9,7 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{
     self, Adt, AdtDef, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt,

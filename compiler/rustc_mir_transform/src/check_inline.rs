@@ -5,6 +5,7 @@ use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::{Body, TerminatorKind};
+use rustc_middle::queries::Queries;
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::sym;

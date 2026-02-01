@@ -1,6 +1,7 @@
 use rustc_abi::ExternAbi;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::queries::Queries;
 use rustc_hir::intravisit::FnKind;
 use rustc_lint::LateContext;
 use rustc_span::Span;

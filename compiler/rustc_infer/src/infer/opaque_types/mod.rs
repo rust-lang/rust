@@ -1,6 +1,7 @@
 use hir::def_id::{DefId, LocalDefId};
 use rustc_hir as hir;
 use rustc_middle::bug;
+use rustc_middle::queries::Queries;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};

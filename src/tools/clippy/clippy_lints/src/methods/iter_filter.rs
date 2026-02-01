@@ -6,6 +6,7 @@ use rustc_lint::{LateContext, LintContext};
 use super::{ITER_FILTER_IS_OK, ITER_FILTER_IS_SOME};
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use rustc_middle::queries::Queries;
 use clippy_utils::source::{indent_of, reindent_multiline};
 use clippy_utils::{get_parent_expr, peel_blocks, span_contains_comment, sym};
 use rustc_errors::Applicability;

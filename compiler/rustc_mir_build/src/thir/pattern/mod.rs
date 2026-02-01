@@ -15,6 +15,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, RangeEnd};
 use rustc_index::Idx;
 use rustc_middle::mir::interpret::LitToConstInput;
+use rustc_middle::queries::Queries;
 use rustc_middle::thir::{
     Ascription, DerefPatBorrowMode, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };

@@ -20,6 +20,7 @@ use tracing::debug;
 
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::queries::Queries;
 use crate::ty::{self, GenericArgs, Instance, InstanceKind, SymbolName, Ty, TyCtxt};
 
 /// Describes how a monomorphization will be instantiated in object files.

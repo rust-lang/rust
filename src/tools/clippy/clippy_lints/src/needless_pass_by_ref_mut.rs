@@ -16,6 +16,7 @@ use rustc_hir::{
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, Ty, TyCtxt, UpvarId, UpvarPath};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;

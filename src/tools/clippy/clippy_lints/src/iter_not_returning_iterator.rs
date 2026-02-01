@@ -3,6 +3,7 @@ use clippy_utils::ty::implements_trait;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{FnSig, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::queries::Queries;
 use rustc_session::declare_lint_pass;
 use rustc_span::{Symbol, sym};
 

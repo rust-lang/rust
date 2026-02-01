@@ -25,6 +25,7 @@ use rustc_middle::mir::{
     MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, START_BLOCK,
     SourceInfo, Statement, StatementKind, TerminatorKind,
 };
+use rustc_middle::queries::Queries;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
