@@ -775,17 +775,22 @@ impl<D: Deps> DepGraphData<D> {
         }
     }
 
-    fn promote_node_and_deps_to_current(&self, prev_index: SerializedDepNodeIndex) -> DepNodeIndex {
+    fn promote_node_and_deps_to_current(
+        &self,
+        prev_index: SerializedDepNodeIndex,
+    ) -> Option<DepNodeIndex> {
         self.current.debug_assert_not_in_new_nodes(&self.previous, prev_index);
 
         let dep_node_index = self.current.encoder.send_promoted(prev_index, &self.colors);
 
         #[cfg(debug_assertions)]
-        self.current.record_edge(
-            dep_node_index,
-            *self.previous.index_to_node(prev_index),
-            self.previous.fingerprint_by_index(prev_index),
-        );
+        if let Some(dep_node_index) = dep_node_index {
+            self.current.record_edge(
+                dep_node_index,
+                *self.previous.index_to_node(prev_index),
+                self.previous.fingerprint_by_index(prev_index),
+            );
+        }
 
         dep_node_index
     }
@@ -1004,8 +1009,10 @@ impl<D: Deps> DepGraphData<D> {
         // There may be multiple threads trying to mark the same dep node green concurrently
 
         // We allocating an entry for the node in the current dependency graph and
-        // adding all the appropriate edges imported from the previous graph
-        let dep_node_index = self.promote_node_and_deps_to_current(prev_dep_node_index);
+        // adding all the appropriate edges imported from the previous graph.
+        //
+        // `no_hash` nodes may fail this promotion due to already being conservatively colored red.
+        let dep_node_index = self.promote_node_and_deps_to_current(prev_dep_node_index)?;
 
         // ... and finally storing a "Green" entry in the color map.
         // Multiple threads can all write the same color here
@@ -1372,26 +1379,27 @@ impl DepNodeColorMap {
     }
 
     /// This tries to atomically mark a node green and assign `index` as the new
-    /// index. This returns `Ok` if `index` gets assigned, otherwise it returns
-    /// the already allocated index in `Err`.
-    #[inline]
-    pub(super) fn try_mark_green(
+    /// index if `green` is true, otherwise it will try to atomicaly mark it red.
+    ///
+    /// This returns `Ok` if `index` gets assigned or the node is marked red, otherwise it returns
+    /// the already allocated index in `Err` if it is green already. If it was already
+    /// red, `Err(None)` is returned.
+    #[inline(always)]
+    pub(super) fn try_mark(
         &self,
         prev_index: SerializedDepNodeIndex,
         index: DepNodeIndex,
-    ) -> Result<(), DepNodeIndex> {
+        green: bool,
+    ) -> Result<(), Option<DepNodeIndex>> {
         let value = &self.values[prev_index];
         match value.compare_exchange(
             COMPRESSED_UNKNOWN,
-            index.as_u32(),
+            if green { index.as_u32() } else { COMPRESSED_RED },
             Ordering::Relaxed,
             Ordering::Relaxed,
         ) {
             Ok(_) => Ok(()),
-            Err(v) => Err({
-                assert_ne!(v, COMPRESSED_RED, "tried to mark a red node as green");
-                DepNodeIndex::from_u32(v)
-            }),
+            Err(v) => Err(if v == COMPRESSED_RED { None } else { Some(DepNodeIndex::from_u32(v)) }),
         }
     }
 
@@ -1414,7 +1422,7 @@ impl DepNodeColorMap {
     pub(super) fn insert_red(&self, index: SerializedDepNodeIndex) {
         let value = self.values[index].swap(COMPRESSED_RED, Ordering::Release);
         // Sanity check for duplicate nodes
-        assert_eq!(value, COMPRESSED_UNKNOWN, "trying to encode a dep node twice");
+        assert_eq!(value, COMPRESSED_UNKNOWN, "tried to color an already colored node as red");
     }
 }
 

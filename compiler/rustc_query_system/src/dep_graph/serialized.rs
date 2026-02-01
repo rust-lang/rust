@@ -898,15 +898,12 @@ impl<D: Deps> GraphEncoder<D> {
 
         let index = self.status.next_index(&mut *local);
 
-        if is_green {
-            // Use `try_mark_green` to avoid racing when `send_promoted` is called concurrently
-            // on the same index.
-            match colors.try_mark_green(prev_index, index) {
-                Ok(()) => (),
-                Err(dep_node_index) => return dep_node_index,
-            }
-        } else {
-            colors.insert_red(prev_index);
+        // Use `try_mark` to avoid racing when `send_promoted` is called concurrently
+        // on the same index.
+        match colors.try_mark(prev_index, index, is_green) {
+            Ok(()) => (),
+            Err(None) => panic!("dep node {:?} is unexpectedly red", prev_index),
+            Err(Some(dep_node_index)) => return dep_node_index,
         }
 
         self.status.bump_index(&mut *local);
@@ -918,13 +915,13 @@ impl<D: Deps> GraphEncoder<D> {
     /// from the previous dep graph and expects all edges to already have a new dep node index
     /// assigned.
     ///
-    /// This will also ensure the dep node is marked green.
+    /// This will also ensure the dep node is marked green if `Some` is returned.
     #[inline]
     pub(crate) fn send_promoted(
         &self,
         prev_index: SerializedDepNodeIndex,
         colors: &DepNodeColorMap,
-    ) -> DepNodeIndex {
+    ) -> Option<DepNodeIndex> {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
 
         let mut local = self.status.local.borrow_mut();
@@ -932,7 +929,7 @@ impl<D: Deps> GraphEncoder<D> {
 
         // Use `try_mark_green` to avoid racing when `send_promoted` or `send_and_color`
         // is called concurrently on the same index.
-        match colors.try_mark_green(prev_index, index) {
+        match colors.try_mark(prev_index, index, true) {
             Ok(()) => {
                 self.status.bump_index(&mut *local);
                 self.status.encode_promoted_node(
@@ -942,7 +939,7 @@ impl<D: Deps> GraphEncoder<D> {
                     colors,
                     &mut *local,
                 );
-                index
+                Some(index)
             }
             Err(dep_node_index) => dep_node_index,
         }
