@@ -119,6 +119,11 @@ fn mir_borrowck(
     def: LocalDefId,
 ) -> Result<&FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'_>>, ErrorGuaranteed> {
     assert!(!tcx.is_typeck_child(def.to_def_id()));
+    if tcx.is_trivial_const(def) {
+        debug!("Skipping borrowck because of trivial const");
+        let opaque_types = Default::default();
+        return Ok(tcx.arena.alloc(opaque_types));
+    }
     let (input_body, _) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
 
