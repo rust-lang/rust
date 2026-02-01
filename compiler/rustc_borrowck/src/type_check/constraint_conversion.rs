@@ -3,7 +3,9 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::SubregionOrigin;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
-use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
+use rustc_infer::infer::outlives::obligations::{
+    OutlivesHandlingDelegate, TypeOutlivesOpCtxt, require_type_outlives,
+};
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::traits::query::type_op::DeeplyNormalize;
 use rustc_middle::bug;
@@ -191,14 +193,14 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                         // we don't actually use this for anything, but
                         // the `TypeOutlives` code needs an origin.
                         let origin = SubregionOrigin::RelateParamBound(self.span, t1, None);
-                        TypeOutlives::new(
-                            &mut *self,
-                            tcx,
-                            region_bound_pairs,
-                            Some(implicit_region_bound),
-                            known_type_outlives_obligations,
-                        )
-                        .type_must_outlive(
+                        require_type_outlives(
+                            &mut TypeOutlivesOpCtxt::new(
+                                &mut *self,
+                                tcx,
+                                region_bound_pairs,
+                                Some(implicit_region_bound),
+                                known_type_outlives_obligations,
+                            ),
                             origin,
                             t1,
                             r2,
@@ -302,7 +304,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'b, 'tcx> {
+impl<'a, 'b, 'tcx> OutlivesHandlingDelegate<'tcx> for &'a mut ConstraintConversion<'b, 'tcx> {
     fn push_sub_region_constraint(
         &mut self,
         _origin: SubregionOrigin<'tcx>,

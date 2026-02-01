@@ -181,7 +181,7 @@ pub(crate) enum Cause {
 ///
 /// For more information about this translation, see
 /// `InferCtxt::process_registered_region_obligations` and
-/// `InferCtxt::type_must_outlive` in `rustc_infer::infer::InferCtxt`.
+/// [`rustc_infer::infer::outlives::obligations::require_type_outlives`].
 #[derive(Clone, Debug)]
 pub(crate) struct TypeTest<'tcx> {
     /// The type `T` that must outlive the region.
@@ -837,8 +837,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         lub
     }
 
-    /// Tests if `test` is true when applied to `lower_bound` at
-    /// `point`.
+    /// Tests if `generic_ty: lower_bound` holds by evaluating `verify_bound`
     fn eval_verify_bound(
         &self,
         infcx: &InferCtxt<'tcx>,
