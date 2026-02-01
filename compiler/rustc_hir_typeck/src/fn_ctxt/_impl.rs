@@ -549,7 +549,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     where
         T: TypeVisitable<TyCtxt<'tcx>>,
     {
-        t.has_free_regions() || t.has_aliases() || t.has_infer_types()
+        // FIXME(mgca): should this also count stuff with infer consts
+        t.has_free_regions() || t.has_aliases() || t.has_infer_types() || t.has_param()
     }
 
     pub(crate) fn node_ty(&self, id: HirId) -> Ty<'tcx> {
