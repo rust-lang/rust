@@ -964,6 +964,53 @@ impl<T: [const] Destruct> const Drop for Guard<'_, T> {
     }
 }
 
+/// Panic guard for incremental initialization of arrays from the back.
+///
+/// Elements of the array are populated starting from the end towards the beginning.
+/// Disarm the guard with `mem::forget` once the array has been fully initialized.
+///
+/// # Safety
+///
+/// All write accesses to this structure are unsafe and must maintain a correct
+/// count of `initialized` elements.
+struct GuardBack<'a, T> {
+    /// The array to be initialized (will be filled from the end).
+    pub array_mut: &'a mut [MaybeUninit<T>],
+    /// The number of items that have been initialized so far.
+    pub initialized: usize,
+}
+
+impl<T> GuardBack<'_, T> {
+    /// Adds an item to the array and updates the initialized item counter.
+    ///
+    /// # Safety
+    ///
+    /// No more than N elements must be initialized.
+    #[inline]
+    pub(crate) unsafe fn push_unchecked(&mut self, item: T) {
+        // SAFETY: If `initialized` was correct before and the caller does not
+        // invoke this method more than N times, then writes will be in-bounds
+        // and slots will not be initialized more than once.
+        unsafe {
+            self.initialized = self.initialized.unchecked_add(1);
+            let index = self.array_mut.len().unchecked_sub(self.initialized);
+            self.array_mut.get_unchecked_mut(index).write(item);
+        }
+    }
+}
+
+impl<T> Drop for GuardBack<'_, T> {
+    #[inline]
+    fn drop(&mut self) {
+        debug_assert!(self.initialized <= self.array_mut.len());
+        let len = self.array_mut.len();
+        // SAFETY: this slice will contain only initialized objects.
+        unsafe {
+            self.array_mut.get_unchecked_mut(len - self.initialized..len).assume_init_drop();
+        }
+    }
+}
+
 /// Pulls `N` items from `iter` and returns them as an array. If the iterator
 /// yields fewer than `N` items, `Err` is returned containing an iterator over
 /// the already yielded items.
@@ -1010,6 +1057,59 @@ fn iter_next_chunk_erased<T>(
         let Some(item) = iter.next() else {
             // Unlike `try_from_fn_erased`, we want to keep the partial results,
             // so we need to defuse the guard instead of using `?`.
+            let initialized = guard.initialized;
+            mem::forget(guard);
+            return Err(initialized);
+        };
+
+        // SAFETY: The loop condition ensures we have space to push the item
+        unsafe { guard.push_unchecked(item) };
+    }
+
+    mem::forget(guard);
+    Ok(())
+}
+
+/// Pulls `N` items from the back of `iter` and returns them as an array.
+/// If the iterator yields fewer than `N` items, `Err` is returned containing
+/// an iterator over the already yielded items.
+///
+/// Since the iterator is passed as a mutable reference and this function calls
+/// `next_back` at most `N` times, the iterator can still be used afterwards to
+/// retrieve the remaining items.
+///
+/// If `iter.next_back()` panics, all items already yielded by the iterator are
+/// dropped.
+///
+/// Used for [`DoubleEndedIterator::next_chunk_back`].
+#[inline]
+pub(crate) fn iter_next_chunk_back<T, const N: usize>(
+    iter: &mut impl DoubleEndedIterator<Item = T>,
+) -> Result<[T; N], IntoIter<T, N>> {
+    let mut array = [const { MaybeUninit::uninit() }; N];
+    let r = iter_next_chunk_back_erased(&mut array, iter);
+    match r {
+        Ok(()) => {
+            // SAFETY: All elements of `array` were populated.
+            Ok(unsafe { MaybeUninit::array_assume_init(array) })
+        }
+        Err(initialized) => {
+            // SAFETY: Only the last `initialized` elements were populated
+            Err(unsafe { IntoIter::new_unchecked(array, N - initialized..N) })
+        }
+    }
+}
+
+/// Version of [`iter_next_chunk_back`] using a passed-in slice.
+#[inline]
+fn iter_next_chunk_back_erased<T>(
+    buffer: &mut [MaybeUninit<T>],
+    iter: &mut impl DoubleEndedIterator<Item = T>,
+) -> Result<(), usize> {
+    // if `Iterator::next_back` panics, this guard will drop already initialized items
+    let mut guard = GuardBack { array_mut: buffer, initialized: 0 };
+    while guard.initialized < guard.array_mut.len() {
+        let Some(item) = iter.next_back() else {
             let initialized = guard.initialized;
             mem::forget(guard);
             return Err(initialized);
