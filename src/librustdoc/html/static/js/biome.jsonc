@@ -1,0 +1,32 @@
+{
+    "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+    "files": { "ignore": ["*.d.ts"] },
+    "formatter": { "enabled": false, "indentStyle": "space", "indentWidth": 4 },
+    "organizeImports": { "enabled": false },
+    "linter": {
+        "enabled": true,
+        "rules": {
+            "recommended": false,
+            "correctness": {
+                "noConstAssign": "error",
+            },
+            "style": {
+                "noCommaOperator": "error",
+                "noVar": "error",
+                "useConst": "error"
+            },
+            "suspicious": {
+                "noCatchAssign": "error",
+                "noDebugger": "error",
+                "noDoubleEquals": "error",
+                "noDuplicateCase": "error",
+                "noDuplicateObjectKeys": "error",
+                "noDuplicateParameters": "error",
+                "noFallthroughSwitchClause": "error",
+                "noImportAssign": "error",
+                "noLabelVar": "error",
+                "noSelfCompare": "error"
+            }
+        }
+    }
+}
