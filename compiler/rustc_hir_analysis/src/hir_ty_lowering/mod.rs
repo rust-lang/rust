@@ -31,7 +31,7 @@ use rustc_errors::{
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId, find_attr};
+use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId, PathSegment, find_attr};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::DynCompatibilityViolation;
 use rustc_macros::{TypeFoldable, TypeVisitable};
@@ -53,6 +53,7 @@ use tracing::{debug, instrument};
 
 use crate::check::check_abi;
 use crate::check_c_variadic_abi;
+use crate::delegation::get_delegation_self_ty;
 use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
@@ -321,7 +322,7 @@ pub enum IsMethodCall {
 
 /// Denotes the "position" of a generic argument, indicating if it is a generic type,
 /// generic function or generic method call.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum GenericArgPosition {
     Type,
     Value, // e.g., functions
@@ -547,7 +548,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         def_id: DefId,
         item_segment: &hir::PathSegment<'tcx>,
     ) -> GenericArgsRef<'tcx> {
-        let (args, _) = self.lower_generic_args_of_path(span, def_id, &[], item_segment, None);
+        let (args, _) = self.lower_generic_args_of_path(
+            span,
+            def_id,
+            &[],
+            item_segment,
+            None,
+            GenericArgPosition::Type,
+        );
         if let Some(c) = item_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((def_id, item_segment, span)));
         }
@@ -596,6 +604,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         parent_args: &[ty::GenericArg<'tcx>],
         segment: &hir::PathSegment<'tcx>,
         self_ty: Option<Ty<'tcx>>,
+        pos: GenericArgPosition,
     ) -> (GenericArgsRef<'tcx>, GenericArgCountResult) {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
@@ -618,14 +627,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             assert!(self_ty.is_none());
         }
 
-        let arg_count = check_generic_arg_count(
-            self,
-            def_id,
-            segment,
-            generics,
-            GenericArgPosition::Type,
-            self_ty.is_some(),
-        );
+        let arg_count =
+            check_generic_arg_count(self, def_id, segment, generics, pos, self_ty.is_some());
 
         // Skip processing if type has no generic parameters.
         // Traits always have `Self` as a generic parameter, which means they will not return early
@@ -788,6 +791,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             infer_args: segment.infer_args,
             incorrect_args: &arg_count.correct,
         };
+
         let args = lower_generic_args(
             self,
             def_id,
@@ -809,8 +813,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         item_segment: &hir::PathSegment<'tcx>,
         parent_args: GenericArgsRef<'tcx>,
     ) -> GenericArgsRef<'tcx> {
-        let (args, _) =
-            self.lower_generic_args_of_path(span, item_def_id, parent_args, item_segment, None);
+        let (args, _) = self.lower_generic_args_of_path(
+            span,
+            item_def_id,
+            parent_args,
+            item_segment,
+            None,
+            GenericArgPosition::Type,
+        );
         if let Some(c) = item_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((item_def_id, item_segment, span)));
         }
@@ -922,6 +932,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             &[],
             segment,
             Some(self_ty),
+            GenericArgPosition::Type,
         );
 
         let constraints = segment.args().constraints;
@@ -1097,8 +1108,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> ty::TraitRef<'tcx> {
         self.report_internal_fn_trait(span, trait_def_id, trait_segment, is_impl);
 
-        let (generic_args, _) =
-            self.lower_generic_args_of_path(span, trait_def_id, &[], trait_segment, Some(self_ty));
+        let (generic_args, _) = self.lower_generic_args_of_path(
+            span,
+            trait_def_id,
+            &[],
+            trait_segment,
+            Some(self_ty),
+            GenericArgPosition::Type,
+        );
         if let Some(c) = trait_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((trait_def_id, trait_segment, span)));
         }
@@ -2844,11 +2861,92 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .map(|l| tcx.at(expr.span).lit_to_const(l))
     }
 
-    fn lower_delegation_ty(&self, idx: hir::InferDelegationKind) -> Ty<'tcx> {
-        let delegation_sig = self.tcx().inherit_sig_for_delegation_item(self.item_def_id());
+    // Creates user-specified generic arguments from delegation path,
+    // they will be used during delegation signature and predicates inheritance.
+    // Example: reuse Trait::<'static, i32, 1>::foo::<A, B>
+    // we want to extract [Self, 'static, i32, 1] for parent and [A, B] for child.
+    pub fn get_delegation_user_specified_args(
+        &self,
+    ) -> (&'tcx [ty::GenericArg<'tcx>], &'tcx [ty::GenericArg<'tcx>]) {
+        let info = self
+            .tcx()
+            .hir_node(self.tcx().local_def_id_to_hir_id(self.item_def_id()))
+            .fn_sig()
+            .expect("Lowering delegation")
+            .decl
+            .opt_delegation_generics_info()
+            .expect("Lowering delegation");
+
+        let get_segment = |hir_id: Option<HirId>| -> Option<(&'tcx PathSegment<'tcx>, DefId)> {
+            hir_id.map(|hir_id| {
+                let segment = self.tcx().hir_node(hir_id).expect_path_segment();
+                let def_id = segment.res.def_id();
+
+                (segment, def_id)
+            })
+        };
+
+        let parent_args = get_segment(info.parent_args_segment_id).map(|(segment, def_id)| {
+            let self_ty = get_delegation_self_ty(self.tcx(), self.item_def_id());
+
+            // FIXME(fn_delegation): execute this call with silenced dcx, as now warnings are duplicated, remove
+            // diagnostics deduplication in `free-fn-to-trait-infer.rs` and `generics-gen-args-errors.rs`.
+            self.lower_generic_args_of_path(
+                segment.ident.span,
+                def_id,
+                &[],
+                segment,
+                self_ty,
+                GenericArgPosition::Type,
+            )
+            .0
+            .as_slice()
+        });
+
+        let child_args = get_segment(info.child_args_segment_id).map(|(segment, def_id)| {
+            let parent_args = if let Some(parent_args) = parent_args {
+                parent_args
+            } else {
+                if let Some(parent) = self.tcx().opt_parent(def_id)
+                    && matches!(self.tcx().def_kind(parent), DefKind::Trait)
+                {
+                    ty::GenericArgs::identity_for_item(self.tcx(), parent).as_slice()
+                } else {
+                    &[]
+                }
+            };
+
+            // FIXME(fn_delegation): execute this call with silenced dcx, as now warnings are duplicated, remove
+            // diagnostics deduplication in `free-fn-to-trait-infer.rs` and `generics-gen-args-errors.rs`.
+            let args = self
+                .lower_generic_args_of_path(
+                    segment.ident.span,
+                    def_id,
+                    parent_args,
+                    segment,
+                    None,
+                    GenericArgPosition::Value,
+                )
+                .0;
+
+            &args[parent_args.len()..]
+        });
+
+        (parent_args.unwrap_or(&[]), child_args.unwrap_or(&[]))
+    }
+
+    fn lower_delegation_ty(&self, idx: hir::InferDelegationKind<'tcx>) -> Ty<'tcx> {
+        let (parent_args, child_args) = self.get_delegation_user_specified_args();
+
+        let delegation_sig = self.tcx().inherit_sig_for_delegation_item((
+            self.item_def_id(),
+            parent_args,
+            child_args,
+        ));
+
         match idx {
             hir::InferDelegationKind::Input(idx) => delegation_sig[idx],
-            hir::InferDelegationKind::Output => *delegation_sig.last().unwrap(),
+            hir::InferDelegationKind::Output { .. } => *delegation_sig.last().unwrap(),
         }
     }
 

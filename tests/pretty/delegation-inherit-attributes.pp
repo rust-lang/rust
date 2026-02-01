@@ -114,7 +114,7 @@ mod recursive {
 
         #[attr = MustUse {reason: "some reason"}]
         #[attr = Inline(Hint)]
-        fn foo(self: _, arg1: _) -> _ { <X as T>::foo(self + 1, arg1) }
+        fn foo<Self>(self: _, arg1: _) -> _ { <X as T>::foo(self + 1, arg1) }
         #[attr = MustUse {reason: "some reason"}]
         #[attr = Inline(Hint)]
         fn bar(self: _, arg1: _) -> _ { foo(self + 1, arg1) }

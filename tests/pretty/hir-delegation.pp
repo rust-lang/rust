@@ -12,7 +12,7 @@ fn b<C>(e: C) { }
 
 trait G {
     #[attr = Inline(Hint)]
-    fn b(arg0: _) -> _ { b({ }) }
+    fn b<C>(arg0: _) -> _ { b::<C>({ }) }
 }
 
 mod m {

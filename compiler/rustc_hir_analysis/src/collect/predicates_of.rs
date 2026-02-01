@@ -140,7 +140,17 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     if let Some(sig) = node.fn_sig()
         && let Some(sig_id) = sig.decl.opt_delegation_sig_id()
     {
-        return inherit_predicates_for_delegation_item(tcx, def_id, sig_id);
+        let ctx = ItemCtxt::new(tcx, def_id);
+        let ctx = &ctx as &dyn HirTyLowerer<'_>;
+        let (parent_args, child_args) = ctx.get_delegation_user_specified_args();
+
+        return inherit_predicates_for_delegation_item(
+            tcx,
+            def_id,
+            sig_id,
+            parent_args,
+            child_args,
+        );
     }
 
     let mut is_trait = None;
