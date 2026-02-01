@@ -1,7 +1,9 @@
 //! Representation of a float as the significant digits and exponent.
 
-use crate::num::dec2flt::float::RawFloat;
-use crate::num::dec2flt::fpu::set_precision;
+use dec2flt::Lemire;
+use dec2flt::fpu::set_precision;
+
+use crate::num::imp::dec2flt;
 
 const INT_POW10: [u64; 16] = [
     1,
@@ -34,7 +36,7 @@ pub struct Decimal {
 impl Decimal {
     /// Detect if the float can be accurately reconstructed from native floats.
     #[inline]
-    fn can_use_fast_path<F: RawFloat>(&self) -> bool {
+    fn can_use_fast_path<F: Lemire>(&self) -> bool {
         F::MIN_EXPONENT_FAST_PATH <= self.exponent
             && self.exponent <= F::MAX_EXPONENT_DISGUISED_FAST_PATH
             && self.mantissa <= F::MAX_MANTISSA_FAST_PATH
@@ -51,7 +53,7 @@ impl Decimal {
     ///
     /// There is an exception: disguised fast-path cases, where we can shift
     /// powers-of-10 from the exponent to the significant digits.
-    pub fn try_fast_path<F: RawFloat>(&self) -> Option<F> {
+    pub fn try_fast_path<F: Lemire>(&self) -> Option<F> {
         // Here we need to work around <https://github.com/rust-lang/rust/issues/114479>.
         // The fast path crucially depends on arithmetic being rounded to the correct number of bits
         // without any intermediate rounding. On x86 (without SSE or SSE2) this requires the precision

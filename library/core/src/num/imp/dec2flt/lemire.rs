@@ -1,10 +1,9 @@
 //! Implementation of the Eisel-Lemire algorithm.
 
-use crate::num::dec2flt::common::BiasedFp;
-use crate::num::dec2flt::float::RawFloat;
-use crate::num::dec2flt::table::{
-    LARGEST_POWER_OF_FIVE, POWER_OF_FIVE_128, SMALLEST_POWER_OF_FIVE,
-};
+use dec2flt::common::BiasedFp;
+use dec2flt::table::{LARGEST_POWER_OF_FIVE, POWER_OF_FIVE_128, SMALLEST_POWER_OF_FIVE};
+
+use crate::num::imp::{Float, dec2flt};
 
 /// Compute w * 10^q using an extended-precision float representation.
 ///
@@ -24,7 +23,7 @@ use crate::num::dec2flt::table::{
 /// at a Gigabyte per Second" in section 5, "Fast Algorithm", and
 /// section 6, "Exact Numbers And Ties", available online:
 /// <https://arxiv.org/abs/2101.11408.pdf>.
-pub fn compute_float<F: RawFloat>(q: i64, mut w: u64) -> BiasedFp {
+pub fn compute_float<F: Float>(q: i64, mut w: u64) -> BiasedFp {
     let fp_zero = BiasedFp::zero_pow2(0);
     let fp_inf = BiasedFp::zero_pow2(F::INFINITE_POWER);
     let fp_error = BiasedFp::zero_pow2(-1);

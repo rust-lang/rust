@@ -87,148 +87,103 @@
     issue = "none"
 )]
 
-use self::common::BiasedFp;
-use self::float::RawFloat;
-use self::lemire::compute_float;
-use self::parse::{parse_inf_nan, parse_number};
-use self::slow::parse_long_mantissa;
-use crate::error::Error;
-use crate::fmt;
-use crate::str::FromStr;
+use common::BiasedFp;
+use lemire::compute_float;
+use parse::{parse_inf_nan, parse_number};
+use slow::parse_long_mantissa;
+
+use crate::f64;
+use crate::num::ParseFloatError;
+use crate::num::float_parse::FloatErrorKind;
+use crate::num::imp::FloatExt;
 
 mod common;
 pub mod decimal;
 pub mod decimal_seq;
 mod fpu;
-mod slow;
-mod table;
-// float is used in flt2dec, and all are used in unit tests.
-pub mod float;
 pub mod lemire;
 pub mod parse;
+mod slow;
+mod table;
 
-macro_rules! from_str_float_impl {
-    ($t:ty) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl FromStr for $t {
-            type Err = ParseFloatError;
-
-            /// Converts a string in base 10 to a float.
-            /// Accepts an optional decimal exponent.
-            ///
-            /// This function accepts strings such as
-            ///
-            /// * '3.14'
-            /// * '-3.14'
-            /// * '2.5E10', or equivalently, '2.5e10'
-            /// * '2.5E-10'
-            /// * '5.'
-            /// * '.5', or, equivalently, '0.5'
-            /// * '7'
-            /// * '007'
-            /// * 'inf', '-inf', '+infinity', 'NaN'
-            ///
-            /// Note that alphabetical characters are not case-sensitive.
-            ///
-            /// Leading and trailing whitespace represent an error.
-            ///
-            /// # Grammar
-            ///
-            /// All strings that adhere to the following [EBNF] grammar when
-            /// lowercased will result in an [`Ok`] being returned:
-            ///
-            /// ```txt
-            /// Float  ::= Sign? ( 'inf' | 'infinity' | 'nan' | Number )
-            /// Number ::= ( Digit+ |
-            ///              Digit+ '.' Digit* |
-            ///              Digit* '.' Digit+ ) Exp?
-            /// Exp    ::= 'e' Sign? Digit+
-            /// Sign   ::= [+-]
-            /// Digit  ::= [0-9]
-            /// ```
-            ///
-            /// [EBNF]: https://www.w3.org/TR/REC-xml/#sec-notation
-            ///
-            /// # Arguments
-            ///
-            /// * src - A string
-            ///
-            /// # Return value
-            ///
-            /// `Err(ParseFloatError)` if the string did not represent a valid
-            /// number. Otherwise, `Ok(n)` where `n` is the closest
-            /// representable floating-point number to the number represented
-            /// by `src` (following the same rules for rounding as for the
-            /// results of primitive operations).
-            // We add the `#[inline(never)]` attribute, since its content will
-            // be filled with that of `dec2flt`, which has #[inline(always)].
-            // Since `dec2flt` is generic, a normal inline attribute on this function
-            // with `dec2flt` having no attributes results in heavily repeated
-            // generation of `dec2flt`, despite the fact only a maximum of 2
-            // possible instances can ever exist. Adding #[inline(never)] avoids this.
-            #[inline(never)]
-            fn from_str(src: &str) -> Result<Self, ParseFloatError> {
-                dec2flt(src)
-            }
-        }
+/// Extension to `Float` that are necessary for parsing using the Lemire method.
+///
+/// See the parent module's doc comment for why this is necessary.
+///
+/// Not intended for use outside of the `dec2flt` module.
+#[doc(hidden)]
+pub trait Lemire: FloatExt {
+    /// Maximum exponent for a fast path case, or `⌊(SIG_BITS+1)/log2(5)⌋`
+    // assuming FLT_EVAL_METHOD = 0
+    const MAX_EXPONENT_FAST_PATH: i64 = {
+        let log2_5 = f64::consts::LOG2_10 - 1.0;
+        (Self::SIG_TOTAL_BITS as f64 / log2_5) as i64
     };
+
+    /// Minimum exponent for a fast path case, or `-⌊(SIG_BITS+1)/log2(5)⌋`
+    const MIN_EXPONENT_FAST_PATH: i64 = -Self::MAX_EXPONENT_FAST_PATH;
+
+    /// Maximum exponent that can be represented for a disguised-fast path case.
+    /// This is `MAX_EXPONENT_FAST_PATH + ⌊(SIG_BITS+1)/log2(10)⌋`
+    const MAX_EXPONENT_DISGUISED_FAST_PATH: i64 =
+        Self::MAX_EXPONENT_FAST_PATH + (Self::SIG_TOTAL_BITS as f64 / f64::consts::LOG2_10) as i64;
+
+    /// Maximum mantissa for the fast-path (`1 << 53` for f64).
+    const MAX_MANTISSA_FAST_PATH: u64 = 1 << Self::SIG_TOTAL_BITS;
+
+    /// Gets a small power-of-ten for fast-path multiplication.
+    fn pow10_fast_path(exponent: usize) -> Self;
+
+    /// Converts integer into float through an as cast.
+    /// This is only called in the fast-path algorithm, and therefore
+    /// will not lose precision, since the value will always have
+    /// only if the value is <= Self::MAX_MANTISSA_FAST_PATH.
+    fn from_u64(v: u64) -> Self;
 }
 
 #[cfg(target_has_reliable_f16)]
-from_str_float_impl!(f16);
-from_str_float_impl!(f32);
-from_str_float_impl!(f64);
-
-// FIXME(f16): A fallback is used when the backend+target does not support f16 well, in order
-// to avoid ICEs.
-
-#[cfg(not(target_has_reliable_f16))]
-impl FromStr for f16 {
-    type Err = ParseFloatError;
+impl Lemire for f16 {
+    fn pow10_fast_path(exponent: usize) -> Self {
+        #[allow(clippy::use_self)]
+        const TABLE: [f16; 8] = [1e0, 1e1, 1e2, 1e3, 1e4, 0.0, 0.0, 0.];
+        TABLE[exponent & 7]
+    }
 
     #[inline]
-    fn from_str(_src: &str) -> Result<Self, ParseFloatError> {
-        unimplemented!("requires target_has_reliable_f16")
+    fn from_u64(v: u64) -> Self {
+        debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
+        v as _
     }
 }
 
-/// An error which can be returned when parsing a float.
-///
-/// This error is used as the error type for the [`FromStr`] implementation
-/// for [`f32`] and [`f64`].
-///
-/// # Example
-///
-/// ```
-/// use std::str::FromStr;
-///
-/// if let Err(e) = f64::from_str("a.12") {
-///     println!("Failed conversion to f64: {e}");
-/// }
-/// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct ParseFloatError {
-    kind: FloatErrorKind,
+impl Lemire for f32 {
+    fn pow10_fast_path(exponent: usize) -> Self {
+        #[allow(clippy::use_self)]
+        const TABLE: [f32; 16] =
+            [1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 0., 0., 0., 0., 0.];
+        TABLE[exponent & 15]
+    }
+
+    #[inline]
+    fn from_u64(v: u64) -> Self {
+        debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
+        v as _
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum FloatErrorKind {
-    Empty,
-    Invalid,
-}
+impl Lemire for f64 {
+    fn pow10_fast_path(exponent: usize) -> Self {
+        const TABLE: [f64; 32] = [
+            1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15,
+            1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22, 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        ];
+        TABLE[exponent & 31]
+    }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for ParseFloatError {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Display for ParseFloatError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.kind {
-            FloatErrorKind::Empty => "cannot parse float from empty string",
-            FloatErrorKind::Invalid => "invalid float literal",
-        }
-        .fmt(f)
+    #[inline]
+    fn from_u64(v: u64) -> Self {
+        debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
+        v as _
     }
 }
 
@@ -245,7 +200,7 @@ pub fn pfe_invalid() -> ParseFloatError {
 }
 
 /// Converts a `BiasedFp` to the closest machine float type.
-fn biased_fp_to_float<F: RawFloat>(x: BiasedFp) -> F {
+fn biased_fp_to_float<F: FloatExt>(x: BiasedFp) -> F {
     let mut word = x.m;
     word |= (x.p_biased as u64) << F::SIG_BITS;
     F::from_u64_bits(word)
@@ -253,7 +208,7 @@ fn biased_fp_to_float<F: RawFloat>(x: BiasedFp) -> F {
 
 /// Converts a decimal string into a floating point number.
 #[inline(always)] // Will be inlined into a function with `#[inline(never)]`, see above
-pub fn dec2flt<F: RawFloat>(s: &str) -> Result<F, ParseFloatError> {
+pub fn dec2flt<F: Lemire>(s: &str) -> Result<F, ParseFloatError> {
     let mut s = s.as_bytes();
     let Some(&c) = s.first() else { return Err(pfe_empty()) };
     let negative = c == b'-';

@@ -1,8 +1,9 @@
 //! Functions to parse floating-point numbers.
 
-use crate::num::dec2flt::common::{ByteSlice, is_8digits};
-use crate::num::dec2flt::decimal::Decimal;
-use crate::num::dec2flt::float::RawFloat;
+use dec2flt::common::{ByteSlice, is_8digits};
+use dec2flt::decimal::Decimal;
+
+use crate::num::imp::{Float, dec2flt};
 
 const MIN_19DIGIT_INT: u64 = 100_0000_0000_0000_0000;
 
@@ -195,7 +196,7 @@ pub fn parse_number(s: &[u8]) -> Option<Decimal> {
 }
 
 /// Try to parse a special, non-finite float.
-pub(crate) fn parse_inf_nan<F: RawFloat>(s: &[u8], negative: bool) -> Option<F> {
+pub(crate) fn parse_inf_nan<F: Float>(s: &[u8], negative: bool) -> Option<F> {
     // Since a valid string has at most the length 8, we can load
     // all relevant characters into a u64 and work from there.
     // This also generates much better code.

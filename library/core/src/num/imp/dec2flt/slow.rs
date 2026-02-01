@@ -1,8 +1,9 @@
 //! Slow, fallback algorithm for cases the Eisel-Lemire algorithm cannot round.
 
-use crate::num::dec2flt::common::BiasedFp;
-use crate::num::dec2flt::decimal_seq::{DecimalSeq, parse_decimal_seq};
-use crate::num::dec2flt::float::RawFloat;
+use dec2flt::common::BiasedFp;
+use dec2flt::decimal_seq::{DecimalSeq, parse_decimal_seq};
+
+use crate::num::imp::{Float, dec2flt};
 
 /// Parse the significant digits and biased, binary exponent of a float.
 ///
@@ -23,7 +24,7 @@ use crate::num::dec2flt::float::RawFloat;
 ///
 /// The algorithms described here are based on "Processing Long Numbers Quickly",
 /// available here: <https://arxiv.org/pdf/2101.11408.pdf#section.11>.
-pub(crate) fn parse_long_mantissa<F: RawFloat>(s: &[u8]) -> BiasedFp {
+pub(crate) fn parse_long_mantissa<F: Float>(s: &[u8]) -> BiasedFp {
     const MAX_SHIFT: usize = 60;
     const NUM_POWERS: usize = 19;
     const POWERS: [u8; 19] =

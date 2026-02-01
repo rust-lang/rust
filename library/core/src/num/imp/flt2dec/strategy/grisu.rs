@@ -5,9 +5,11 @@
 //! [^1]: Florian Loitsch. 2010. Printing floating-point numbers quickly and
 //!   accurately with integers. SIGPLAN Not. 45, 6 (June 2010), 233-243.
 
+use flt2dec::{Decoded, MAX_SIG_DIGITS, round_up};
+
 use crate::mem::MaybeUninit;
-use crate::num::diy_float::Fp;
-use crate::num::flt2dec::{Decoded, MAX_SIG_DIGITS, round_up};
+use crate::num::imp::diy_float::Fp;
+use crate::num::imp::flt2dec;
 
 // see the comments in `format_shortest_opt` for the rationale.
 #[doc(hidden)]
@@ -455,7 +457,7 @@ pub fn format_shortest<'a>(
     d: &Decoded,
     buf: &'a mut [MaybeUninit<u8>],
 ) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
-    use crate::num::flt2dec::strategy::dragon::format_shortest as fallback;
+    use flt2dec::strategy::dragon::format_shortest as fallback;
     // SAFETY: The borrow checker is not smart enough to let us use `buf`
     // in the second branch, so we launder the lifetime here. But we only re-use
     // `buf` if `format_shortest_opt` returned `None` so this is okay.
@@ -765,7 +767,7 @@ pub fn format_exact<'a>(
     buf: &'a mut [MaybeUninit<u8>],
     limit: i16,
 ) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
-    use crate::num::flt2dec::strategy::dragon::format_exact as fallback;
+    use flt2dec::strategy::dragon::format_exact as fallback;
     // SAFETY: The borrow checker is not smart enough to let us use `buf`
     // in the second branch, so we launder the lifetime here. But we only re-use
     // `buf` if `format_exact_opt` returned `None` so this is okay.

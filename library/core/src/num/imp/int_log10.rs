@@ -96,7 +96,7 @@ const fn u128_impl(mut val: u128) -> u32 {
 macro_rules! define_unsigned_ilog10 {
     ($($ty:ident => $impl_fn:ident,)*) => {$(
         #[inline]
-        pub(super) const fn $ty(val: NonZero<$ty>) -> u32 {
+        pub(in crate::num) const fn $ty(val: NonZero<$ty>) -> u32 {
             let result = $impl_fn(val.get());
 
             // SAFETY: Integer logarithm is monotonic non-decreasing, so the computed `result` cannot
@@ -117,7 +117,7 @@ define_unsigned_ilog10! {
 }
 
 #[inline]
-pub(super) const fn usize(val: NonZero<usize>) -> u32 {
+pub(in crate::num) const fn usize(val: NonZero<usize>) -> u32 {
     #[cfg(target_pointer_width = "16")]
     let impl_fn = u16;
 
@@ -136,7 +136,7 @@ macro_rules! define_signed_ilog10 {
     ($($ty:ident => $impl_fn:ident,)*) => {$(
         // 0 < val <= $ty::MAX
         #[inline]
-        pub(super) const fn $ty(val: $ty) -> Option<u32> {
+        pub(in crate::num) const fn $ty(val: $ty) -> Option<u32> {
             if val > 0 {
                 let result = $impl_fn(val.cast_unsigned());
 
@@ -166,6 +166,6 @@ define_signed_ilog10! {
 /// on every single primitive type.
 #[cold]
 #[track_caller]
-pub(super) const fn panic_for_nonpositive_argument() -> ! {
+pub(in crate::num) const fn panic_for_nonpositive_argument() -> ! {
     panic!("argument of integer logarithm must be positive")
 }

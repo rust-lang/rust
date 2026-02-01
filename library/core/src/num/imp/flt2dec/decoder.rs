@@ -1,7 +1,7 @@
 //! Decodes a floating-point value into individual parts and error ranges.
 
 use crate::num::FpCategory;
-use crate::num::dec2flt::float::RawFloat;
+use crate::num::imp::FloatExt;
 
 /// Decoded unsigned finite value, such that:
 ///
@@ -40,7 +40,7 @@ pub enum FullDecoded {
 }
 
 /// A floating point type which can be `decode`d.
-pub trait DecodableFloat: RawFloat + Copy {
+pub trait DecodableFloat: FloatExt + Copy {
     /// The minimum positive normalized value.
     fn min_pos_norm_value() -> Self;
 }

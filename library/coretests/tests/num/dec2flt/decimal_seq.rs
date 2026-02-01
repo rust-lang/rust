@@ -1,4 +1,4 @@
-use core::num::dec2flt::decimal_seq::{DecimalSeq, parse_decimal_seq};
+use core::num::imp::dec2flt::decimal_seq::{DecimalSeq, parse_decimal_seq};
 
 #[test]
 fn test_trim() {
