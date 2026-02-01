@@ -311,18 +311,19 @@ impl CodegenBackend for LlvmCodegenBackend {
         Generate stack canaries in all functions.
 
     strong
-        Generate stack canaries in a function if it either:
-        - has a local variable of `[T; N]` type, regardless of `T` and `N`
-        - takes the address of a local variable.
+        Generate stack canaries for all functions, unless the compiler
+        can prove these functions can't be the source of a stack
+        buffer overflow (even in the presence of undefined behavior).
 
-          (Note that a local variable being borrowed is not equivalent to its
-          address being taken: e.g. some borrows may be removed by optimization,
-          while by-value argument passing may be implemented with reference to a
-          local stack variable in the ABI.)
+        This provides similar security guarantees to Clang's
+        `-fstack-protector-strong`.
 
-    basic
-        Generate stack canaries in functions with local variables of `[T; N]`
-        type, where `T` is byte-sized and `N` >= 8.
+        The exact rules are unstable and subject to change, but
+        currently, it generates stack protectors for functions that,
+        *post-optimization*, contain LLVM allocas (which
+        include all stack allocations - including fixed-size
+        allocations - that are used in a way that is not completely
+        determined by static control flow).
 
     none
         Do not generate stack canaries.

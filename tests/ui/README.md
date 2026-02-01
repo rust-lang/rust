@@ -1344,7 +1344,7 @@ Stability attributes used internally by the standard library: `#[stable()]` and 
 
 **FIXME**: Contains a single test, should likely be rehomed to `tests/ui/abi`.
 
-## `tests/ui/stack-protector/`: `-Z stack-protector` command line flag
+## `tests/ui/stack-protector/`: `-C stack-protector` command line flag
 
 See [Tracking Issue for stabilizing stack smashing protection (i.e., `-Z stack-protector`) #114903](https://github.com/rust-lang/rust/issues/114903).
 

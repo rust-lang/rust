@@ -869,8 +869,7 @@ mod desc {
     pub(crate) const parse_polonius: &str = "either no value or `legacy` (the default), or `next`";
     pub(crate) const parse_annotate_moves: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc.), or a size limit in bytes";
-    pub(crate) const parse_stack_protector: &str =
-        "one of (`none` (default), `basic`, `strong`, or `all`)";
+    pub(crate) const parse_stack_protector: &str = "one of (`none` (default), `strong`, or `all`)";
     pub(crate) const parse_branch_protection: &str = "a `,` separated combination of `bti`, `gcs`, `pac-ret`, (optionally with `pc`, `b-key`, `leaf` if `pac-ret` is set)";
     pub(crate) const parse_proc_macro_execution_strategy: &str =
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
@@ -1895,9 +1894,12 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_stack_protector(slot: &mut StackProtector, v: Option<&str>) -> bool {
+    pub(crate) fn parse_stack_protector(
+        slot: &mut Option<StackProtector>,
+        v: Option<&str>,
+    ) -> bool {
         match v.and_then(|s| StackProtector::from_str(s).ok()) {
-            Some(ssp) => *slot = ssp,
+            Some(ssp) => *slot = Some(ssp),
             _ => return false,
         }
         true
@@ -2190,6 +2192,9 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::split_debuginfo` instead of this field")]
     split_debuginfo: Option<SplitDebuginfo> = (None, parse_split_debuginfo, [TRACKED],
         "how to handle split-debuginfo, a platform-specific option"),
+    #[rustc_lint_opt_deny_field_access("use `Session::stack_protector` instead of this field")]
+    stack_protector: Option<StackProtector> = (None, parse_stack_protector, [TRACKED],
+        "control stack smashing protection strategy (`rustc --print stack-protector-strategies` for details)"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
     symbol_mangling_version: Option<SymbolManglingVersion> = (None,
@@ -2670,8 +2675,8 @@ written to standard error output)"),
     src_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_src_file_hash, [TRACKED],
         "hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)"),
     #[rustc_lint_opt_deny_field_access("use `Session::stack_protector` instead of this field")]
-    stack_protector: StackProtector = (StackProtector::None, parse_stack_protector, [TRACKED],
-        "control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)"),
+    stack_protector: Option<StackProtector> = (None, parse_stack_protector, [TRACKED],
+        "control stack smashing protection strategy (`rustc --print stack-protector-strategies` for details)"),
     staticlib_allow_rdylib_deps: bool = (false, parse_bool, [TRACKED],
         "allow staticlibs to have rust dylib dependencies"),
     staticlib_prefer_dynamic: bool = (false, parse_bool, [TRACKED],

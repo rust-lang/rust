@@ -295,7 +295,6 @@ fn stackprotector_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll A
         StackProtector::None => return None,
         StackProtector::All => AttributeKind::StackProtectReq,
         StackProtector::Strong => AttributeKind::StackProtectStrong,
-        StackProtector::Basic => AttributeKind::StackProtect,
     };
 
     Some(sspattr.create_attr(cx.llcx))
