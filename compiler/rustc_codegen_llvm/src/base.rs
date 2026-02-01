@@ -99,7 +99,7 @@ pub(crate) fn compile_codegen_unit(
                 .unstable_opts
                 .offload
                 .iter()
-                .any(|o| matches!(o, Offload::Host(_) | Offload::Test));
+                .any(|o| matches!(o, Offload::Host(_) | Offload::Test | Offload::Args));
             if has_host_offload && !cx.sess().target.is_like_gpu {
                 cx.offload_globals.replace(Some(OffloadGlobals::declare(&cx)));
             }
