@@ -48,25 +48,38 @@ macro_rules! define_benches {
 }
 
 define_benches! {
-    fn case00_libcore(s: &str) {
-        libcore(s)
+    fn case00_chars_count(s: &str) {
+        chars_count(s)
     }
 
-    fn case01_filter_count_cont_bytes(s: &str) {
+    fn case01_chars_advance_by(s: &str) {
+        chars_advance_by(s)
+    }
+
+    fn case02_filter_count_cont_bytes(s: &str) {
         filter_count_cont_bytes(s)
     }
 
-    fn case02_iter_increment(s: &str) {
-        iterator_increment(s)
+    fn case03_iter_chars_increment(s: &str) {
+        iter_chars_increment(s)
     }
 
-    fn case03_manual_char_len(s: &str) {
+    fn case04_manual_char_len(s: &str) {
         manual_char_len(s)
     }
 }
 
-fn libcore(s: &str) -> usize {
+fn chars_count(s: &str) -> usize {
     s.chars().count()
+}
+
+fn chars_advance_by(s: &str) -> usize {
+    let mut iter = s.chars();
+    let remaining = match iter.advance_by(usize::MAX) {
+        Ok(()) => 0,
+        Err(remaining) => remaining.get(),
+    };
+    usize::MAX - remaining
 }
 
 #[inline]
@@ -78,7 +91,7 @@ fn filter_count_cont_bytes(s: &str) -> usize {
     s.as_bytes().iter().filter(|&&byte| !utf8_is_cont_byte(byte)).count()
 }
 
-fn iterator_increment(s: &str) -> usize {
+fn iter_chars_increment(s: &str) -> usize {
     let mut c = 0;
     for _ in s.chars() {
         c += 1;
