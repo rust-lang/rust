@@ -17,14 +17,15 @@ extern crate rustc_interface;
 #[macro_use]
 extern crate rustc_public;
 
+use std::convert::TryFrom;
+use std::io::Write;
+use std::ops::ControlFlow;
+
 use rustc_public::mir::alloc::GlobalAlloc;
 use rustc_public::mir::mono::Instance;
 use rustc_public::mir::{Body, ConstOperand, Operand, Rvalue, StatementKind, TerminatorKind};
 use rustc_public::ty::{ConstantKind, MirConst};
 use rustc_public::{CrateDef, CrateItems, ItemKind};
-use std::convert::TryFrom;
-use std::io::Write;
-use std::ops::ControlFlow;
 
 const CRATE_NAME: &str = "input";
 
@@ -37,17 +38,17 @@ fn test_transform() -> ControlFlow<()> {
     let target_fn = *get_item(&items, (ItemKind::Fn, "input::dummy")).unwrap();
     let instance = Instance::try_from(target_fn).unwrap();
     let body = instance.body().unwrap();
-    check_msg(&body, "oops");
+    check_msg(&body, b"oops\xff\0");
 
     let new_msg = "new panic message";
     let new_body = change_panic_msg(body, new_msg);
-    check_msg(&new_body, new_msg);
+    check_msg(&new_body, new_msg.as_bytes());
 
     ControlFlow::Continue(())
 }
 
 /// Check that the body panic message matches the given message.
-fn check_msg(body: &Body, expected: &str) {
+fn check_msg(body: &Body, expected: &[u8]) {
     let msg = body
         .blocks
         .iter()
@@ -81,7 +82,7 @@ fn check_msg(body: &Body, expected: &str) {
                     unreachable!()
                 };
                 let bytes = val.raw_bytes().unwrap();
-                Some(std::str::from_utf8(&bytes).unwrap().to_string())
+                Some(bytes.to_owned())
             }
             _ => None,
         })
