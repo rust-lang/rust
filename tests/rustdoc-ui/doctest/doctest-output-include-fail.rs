@@ -6,5 +6,7 @@
 //@ normalize-stdout: "compilation took \d+\.\d+s" -> "compilation took $$TIME"
 //@ failure-status: 101
 
+#![allow(rustdoc::failed_merged_doctest_compilation)]
+
 // https://github.com/rust-lang/rust/issues/130470
 #![doc = include_str!("doctest-output-include-fail.md")]

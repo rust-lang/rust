@@ -1,0 +1,37 @@
+
+running 1 test
+test $DIR/failed_merged_doctest_compilation-lint.rs - (line 13) ... FAILED
+
+failures:
+
+---- $DIR/failed_merged_doctest_compilation-lint.rs - (line 13) stdout ----
+error: expected `;`, found `}`
+  --> $DIR/failed_merged_doctest_compilation-lint.rs:14:6
+   |
+LL | let x
+   |      ^ help: add `;` here
+LL | } _doctest_main_tests_rustdoc_ui_doctest_failed_merged_doctest_compilation_lint_rs_13_0() }
+   | - unexpected token
+
+error[E0282]: type annotations needed
+  --> $DIR/failed_merged_doctest_compilation-lint.rs:14:5
+   |
+LL | let x
+   |     ^
+   |
+help: consider giving `x` an explicit type
+   |
+LL | let x: /* Type */
+   |      ++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.
+Couldn't compile the test.
+
+failures:
+    $DIR/failed_merged_doctest_compilation-lint.rs - (line 13)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+all doctests ran in $TIME; merged doctests compilation took $TIME
