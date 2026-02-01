@@ -1399,6 +1399,7 @@ symbols! {
         macro_derive,
         macro_escape,
         macro_export,
+        macro_implicit_pub,
         macro_lifetime_matcher,
         macro_literal_matcher,
         macro_metavar_expr,
