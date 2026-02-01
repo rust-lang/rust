@@ -210,7 +210,7 @@ std::process::Termination::report(test::test_main(test_args, tests, None))
             merged_test_code: Some(code),
         };
         let (duration, ret) =
-            run_test(runnable_test, rustdoc_options, self.supports_color, |_: UnusedExterns| {});
+            run_test(runnable_test, rustdoc_options, self.supports_color, &|_: UnusedExterns| {});
         (duration, if let Err(TestFailure::CompileError) = ret { Err(()) } else { Ok(ret.is_ok()) })
     }
 }

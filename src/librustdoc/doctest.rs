@@ -578,7 +578,7 @@ fn run_test(
     doctest: RunnableDocTest,
     rustdoc_options: &RustdocOptions,
     supports_color: bool,
-    report_unused_externs: impl Fn(UnusedExterns),
+    report_unused_externs: &dyn Fn(UnusedExterns),
 ) -> (Duration, Result<(), TestFailure>) {
     let langstr = &doctest.langstr;
     // Make sure we emit well-formed executable names for our target.
@@ -1169,7 +1169,7 @@ fn doctest_run_fn(
         merged_test_code: None,
     };
     let (_, res) =
-        run_test(runnable_test, &rustdoc_options, doctest.supports_color, report_unused_externs);
+        run_test(runnable_test, &rustdoc_options, doctest.supports_color, &report_unused_externs);
 
     if let Err(err) = res {
         match err {
