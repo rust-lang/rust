@@ -17,6 +17,8 @@ pub enum AutoderefKind {
     Builtin,
     /// A type which must dispatch to a `Deref` implementation.
     Overloaded,
+    /// A pinned reference type, such as `Pin<&T>` and `Pin<&mut T>`.
+    Pin,
 }
 struct AutoderefSnapshot<'tcx> {
     at_start: bool,

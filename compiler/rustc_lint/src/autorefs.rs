@@ -173,8 +173,7 @@ fn has_implicit_borrow(Adjustment { kind, .. }: &Adjustment<'_>) -> Option<(Muta
         &Adjust::Borrow(AutoBorrow::Ref(mutbl)) => Some((mutbl.into(), false)),
         Adjust::NeverToAny
         | Adjust::Pointer(..)
-        | Adjust::ReborrowPin(..)
-        | Adjust::Deref(DerefAdjustKind::Builtin)
-        | Adjust::Borrow(AutoBorrow::RawPtr(..)) => None,
+        | Adjust::Deref(DerefAdjustKind::Builtin | DerefAdjustKind::Pin)
+        | Adjust::Borrow(AutoBorrow::RawPtr(..) | AutoBorrow::Pin(..)) => None,
     }
 }
