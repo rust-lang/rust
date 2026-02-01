@@ -428,5 +428,15 @@ pub fn decorate_attribute_lint(
             sugg: suggested.map(|s| lints::UnknownCrateTypesSuggestion { span, snippet: s }),
         }
         .decorate_lint(diag),
+
+        &AttributeLintKind::OnMoveMalformedAttr => lints::OnMoveMalformedAttr.decorate_lint(diag),
+
+        &AttributeLintKind::OnMoveMalformedFormatLiterals { name } => {
+            lints::OnMoveMalformedFormatLiterals { name }.decorate_lint(diag)
+        }
+
+        &AttributeLintKind::OnMoveMalformedAttrExpectedLiteralOrDelimiter => {
+            lints::OnMoveMalformedAttrExpectedLiteralOrDelimiter.decorate_lint(diag)
+        }
     }
 }

@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::ops::Range;
 use std::path::PathBuf;
 
 pub use ReprAttr::*;
@@ -568,6 +569,33 @@ impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute 
     }
 }
 
+#[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic, PrintAttribute)]
+pub struct OnMoveAttrArg {
+    pub symbol: Symbol,
+    pub format_ranges: ThinVec<(usize, usize)>,
+}
+
+impl OnMoveAttrArg {
+    pub fn new(symbol: Symbol, format_ranges: ThinVec<(usize, usize)>) -> Self {
+        Self { symbol, format_ranges }
+    }
+
+    pub fn format_args_with(&self, item_name: &str) -> String {
+        let mut arg = self.symbol.to_string();
+        for fmt_idx in &self.format_ranges {
+            arg.replace_range(Range { start: fmt_idx.0, end: fmt_idx.1 }, item_name);
+        }
+        arg
+    }
+}
+
+#[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic, PrintAttribute)]
+pub struct OnMoveAttribute {
+    pub span: Span,
+    pub message: Option<OnMoveAttrArg>,
+    pub label: Option<OnMoveAttrArg>,
+}
+
 /// How to perform collapse macros debug info
 /// if-ext - if macro from different crate (related to callsite code)
 /// | cmd \ attr    | no  | (unspecified) | external | yes |
@@ -938,6 +966,9 @@ pub enum AttributeKind {
 
     /// Represents `#[non_exhaustive]`
     NonExhaustive(Span),
+
+    /// Represents `#[diagnostic::on_move]`
+    OnMove(Box<OnMoveAttribute>),
 
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
