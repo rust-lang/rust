@@ -1,0 +1,53 @@
+error[E0658]: use of unstable library feature `new_range_api`
+  --> $DIR/new_range_stability.rs:19:5
+   |
+LL | use std::range::legacy;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #125687 <https://github.com/rust-lang/rust/issues/125687> for more information
+   = help: add `#![feature(new_range_api)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `new_range_api`
+  --> $DIR/new_range_stability.rs:23:5
+   |
+LL | use std::range::RangeFrom;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #125687 <https://github.com/rust-lang/rust/issues/125687> for more information
+   = help: add `#![feature(new_range_api)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `new_range_api`
+  --> $DIR/new_range_stability.rs:24:5
+   |
+LL | use std::range::Range;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #125687 <https://github.com/rust-lang/rust/issues/125687> for more information
+   = help: add `#![feature(new_range_api)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `new_range_api`
+  --> $DIR/new_range_stability.rs:25:5
+   |
+LL | use std::range::RangeFromIter;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #125687 <https://github.com/rust-lang/rust/issues/125687> for more information
+   = help: add `#![feature(new_range_api)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `new_range_api`
+  --> $DIR/new_range_stability.rs:26:5
+   |
+LL | use std::range::RangeIter;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #125687 <https://github.com/rust-lang/rust/issues/125687> for more information
+   = help: add `#![feature(new_range_api)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
