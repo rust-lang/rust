@@ -263,13 +263,6 @@
 +     }
 + 
 +     bb11 (cleanup): {
-+         StorageDead(_22);
-+         StorageDead(_19);
-+         StorageDead(_23);
-+         StorageDead(_21);
-+         StorageDead(_18);
-+         StorageDead(_17);
-+         StorageDead(_12);
 +         drop((((*_32) as variant#3).0: ActionPermit<'_, T>)) -> [return: bb12, unwind terminate(cleanup)];
 +     }
 + 
