@@ -28,6 +28,7 @@ pub(crate) fn target() -> Target {
         stack_probes: StackProbeType::Inline,
         panic_strategy: PanicStrategy::Abort,
         default_uwtable: true,
+        supports_xray: true,
         ..Default::default()
     };
     Target {
