@@ -462,7 +462,7 @@ fn expand_format_args<'hir>(
                     let placeholder_span =
                         placeholder_span.unwrap_or(arg.expr.span).with_ctxt(macsp.ctxt());
                     let arg_span = match arg.kind {
-                        FormatArgumentKind::Captured(_) => placeholder_span,
+                        FormatArgumentKind::Captured => placeholder_span,
                         _ => arg.expr.span.with_ctxt(macsp.ctxt()),
                     };
                     let args_ident_expr = ctx.expr_ident(macsp, args_ident, args_hir_id);
