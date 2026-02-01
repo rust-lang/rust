@@ -3039,27 +3039,53 @@ impl<'a> Parser<'a> {
         long_kind: &TokenKind,
         short_kind: &TokenKind,
     ) -> bool {
-        (0..3).all(|i| self.look_ahead(i, |tok| tok == long_kind))
-            && self.look_ahead(3, |tok| tok == short_kind)
+        if long_kind == short_kind {
+            // For conflict marker chars like `%` and `\`.
+            (0..7).all(|i| self.look_ahead(i, |tok| tok == long_kind))
+        } else {
+            // For conflict marker chars like `<` and `|`.
+            (0..3).all(|i| self.look_ahead(i, |tok| tok == long_kind))
+                && self.look_ahead(3, |tok| tok == short_kind || tok == long_kind)
+        }
     }
 
-    fn conflict_marker(&mut self, long_kind: &TokenKind, short_kind: &TokenKind) -> Option<Span> {
+    fn conflict_marker(
+        &mut self,
+        long_kind: &TokenKind,
+        short_kind: &TokenKind,
+        expected: Option<usize>,
+    ) -> Option<(Span, usize)> {
         if self.is_vcs_conflict_marker(long_kind, short_kind) {
             let lo = self.token.span;
-            for _ in 0..4 {
-                self.bump();
+            if self.psess.source_map().span_to_margin(lo) != Some(0) {
+                return None;
             }
-            return Some(lo.to(self.prev_token.span));
+            let mut len = 0;
+            while self.token.kind == *long_kind || self.token.kind == *short_kind {
+                if self.token.kind.break_two_token_op(1).is_some() {
+                    len += 2;
+                } else {
+                    len += 1;
+                }
+                self.bump();
+                if expected == Some(len) {
+                    break;
+                }
+            }
+            if expected.is_some() && expected != Some(len) {
+                return None;
+            }
+            return Some((lo.to(self.prev_token.span), len));
         }
         None
     }
 
     pub(super) fn recover_vcs_conflict_marker(&mut self) {
         // <<<<<<<
-        let Some(start) = self.conflict_marker(&TokenKind::Shl, &TokenKind::Lt) else {
+        let Some((start, len)) = self.conflict_marker(&TokenKind::Shl, &TokenKind::Lt, None) else {
             return;
         };
-        let mut spans = Vec::with_capacity(3);
+        let mut spans = Vec::with_capacity(2);
         spans.push(start);
         // |||||||
         let mut middlediff3 = None;
@@ -3071,13 +3097,19 @@ impl<'a> Parser<'a> {
             if self.token == TokenKind::Eof {
                 break;
             }
-            if let Some(span) = self.conflict_marker(&TokenKind::OrOr, &TokenKind::Or) {
+            if let Some((span, _)) =
+                self.conflict_marker(&TokenKind::OrOr, &TokenKind::Or, Some(len))
+            {
                 middlediff3 = Some(span);
             }
-            if let Some(span) = self.conflict_marker(&TokenKind::EqEq, &TokenKind::Eq) {
+            if let Some((span, _)) =
+                self.conflict_marker(&TokenKind::EqEq, &TokenKind::Eq, Some(len))
+            {
                 middle = Some(span);
             }
-            if let Some(span) = self.conflict_marker(&TokenKind::Shr, &TokenKind::Gt) {
+            if let Some((span, _)) =
+                self.conflict_marker(&TokenKind::Shr, &TokenKind::Gt, Some(len))
+            {
                 spans.push(span);
                 end = Some(span);
                 break;
