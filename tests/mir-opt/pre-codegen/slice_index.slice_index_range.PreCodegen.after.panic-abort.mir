@@ -66,8 +66,8 @@ fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
         StorageDead(_10);
         StorageDead(_9);
         _0 = &(*_12);
-        StorageDead(_12);
         StorageDead(_8);
+        StorageDead(_12);
         return;
     }
 
