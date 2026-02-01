@@ -4,7 +4,9 @@
 //@ ignore-cross-compile (host-only)
 
 use run_make_support::object::read::{Object, ObjectSymbol};
-use run_make_support::{bin_name, dynamic_lib_name, object, rfs, rustc, static_lib_name};
+use run_make_support::{
+    bin_name, dynamic_lib_name, llvm_version, object, rfs, rustc, static_lib_name,
+};
 
 fn main() {
     let staticlib_name = static_lib_name("a_lib");
@@ -35,13 +37,18 @@ fn symbols_check_archive(path: &str) {
             continue; // All compiler-builtins symbols must remain unmangled
         }
 
-        if name.contains("rust_eh_personality") {
-            continue; // Unfortunately LLVM doesn't allow us to mangle this symbol
+        if llvm_version() < (22, 0, 0) && name.contains("rust_eh_personality") {
+            continue; // LLVM before 22 doesn't allow us to mangle this symbol
         }
 
         if name.contains(".llvm.") {
             // Starting in LLVM 21 we get various implementation-detail functions which
             // contain .llvm. that are not a problem.
+            continue;
+        }
+
+        if name.starts_with("DW.ref.") {
+            // Debuginfo-helper symbol used for the personality
             continue;
         }
 
@@ -71,13 +78,18 @@ fn symbols_check(path: &str) {
             continue;
         }
 
-        if name.contains("rust_eh_personality") {
-            continue; // Unfortunately LLVM doesn't allow us to mangle this symbol
+        if llvm_version() < (22, 0, 0) && name.contains("rust_eh_personality") {
+            continue; // LLVM before 22 doesn't allow us to mangle this symbol
         }
 
         if name.contains(".llvm.") {
             // Starting in LLVM 21 we get various implementation-detail functions which
             // contain .llvm. that are not a problem.
+            continue;
+        }
+
+        if name.starts_with("DW.ref.") {
+            // Debuginfo-helper symbol used for the personality
             continue;
         }
 

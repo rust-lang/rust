@@ -78,7 +78,7 @@ fn prepare_lto(
     symbols_below_threshold.push(c"__llvm_profile_counter_bias".to_owned());
 
     // LTO seems to discard this otherwise under certain circumstances.
-    symbols_below_threshold.push(c"rust_eh_personality".to_owned());
+    symbols_below_threshold.push(CString::new(cgcx.rust_eh_personality_symbol.clone()).unwrap());
 
     // If we're performing LTO for the entire crate graph, then for each of our
     // upstream dependencies, find the corresponding rlib and load the bitcode

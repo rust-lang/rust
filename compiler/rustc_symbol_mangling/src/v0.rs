@@ -83,8 +83,9 @@ pub(super) fn mangle<'tcx>(
 
 pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> String {
     match item_name {
-        // rust_eh_personality must not be renamed as LLVM hard-codes the name
-        "rust_eh_personality" => return item_name.to_owned(),
+        "rust_eh_personality" if !tcx.sess.codegen_backend_supports_eh_personality_mangling => {
+            return item_name.to_owned();
+        }
         // Apple availability symbols need to not be mangled to be usable by
         // C/Objective-C code.
         "__isPlatformVersionAtLeast" | "__isOSVersionAtLeast" => return item_name.to_owned(),
