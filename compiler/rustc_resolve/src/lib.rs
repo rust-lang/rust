@@ -2474,6 +2474,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
         self.main_def = Some(MainDefinition { res, is_import, span });
     }
+
+    pub fn encountered_mod_parse_error(&self) -> bool {
+        !self.mods_with_parse_errors.is_empty()
+    }
 }
 
 fn names_to_string(names: impl Iterator<Item = Symbol>) -> String {
