@@ -194,6 +194,7 @@ mod sparc;
 mod spirv;
 mod wasm;
 mod x86;
+mod xtensa;
 
 pub use aarch64::{AArch64InlineAsmReg, AArch64InlineAsmRegClass};
 pub use arm::{ArmInlineAsmReg, ArmInlineAsmRegClass};
@@ -213,6 +214,7 @@ pub use sparc::{SparcInlineAsmReg, SparcInlineAsmRegClass};
 pub use spirv::{SpirVInlineAsmReg, SpirVInlineAsmRegClass};
 pub use wasm::{WasmInlineAsmReg, WasmInlineAsmRegClass};
 pub use x86::{X86InlineAsmReg, X86InlineAsmRegClass};
+pub use xtensa::{XtensaInlineAsmReg, XtensaInlineAsmRegClass};
 
 #[derive(Copy, Clone, Encodable, Decodable, Debug, Eq, PartialEq, Hash)]
 pub enum InlineAsmArch {
@@ -237,6 +239,7 @@ pub enum InlineAsmArch {
     SpirV,
     Wasm32,
     Wasm64,
+    Xtensa,
     Bpf,
     Avr,
     Msp430,
@@ -273,7 +276,8 @@ impl InlineAsmArch {
             Arch::Msp430 => Some(Self::Msp430),
             Arch::M68k => Some(Self::M68k),
             Arch::CSky => Some(Self::CSKY),
-            Arch::AmdGpu | Arch::Xtensa | Arch::Other(_) => None,
+            Arch::Xtensa => Some(Self::Xtensa),
+            Arch::AmdGpu | Arch::Other(_) => None,
         }
     }
 }
@@ -294,6 +298,7 @@ pub enum InlineAsmReg {
     Sparc(SparcInlineAsmReg),
     SpirV(SpirVInlineAsmReg),
     Wasm(WasmInlineAsmReg),
+    Xtensa(XtensaInlineAsmReg),
     Bpf(BpfInlineAsmReg),
     Avr(AvrInlineAsmReg),
     Msp430(Msp430InlineAsmReg),
@@ -316,6 +321,7 @@ impl InlineAsmReg {
             Self::Mips(r) => r.name(),
             Self::S390x(r) => r.name(),
             Self::Sparc(r) => r.name(),
+            Self::Xtensa(r) => r.name(),
             Self::Bpf(r) => r.name(),
             Self::Avr(r) => r.name(),
             Self::Msp430(r) => r.name(),
@@ -337,6 +343,7 @@ impl InlineAsmReg {
             Self::Mips(r) => InlineAsmRegClass::Mips(r.reg_class()),
             Self::S390x(r) => InlineAsmRegClass::S390x(r.reg_class()),
             Self::Sparc(r) => InlineAsmRegClass::Sparc(r.reg_class()),
+            Self::Xtensa(r) => InlineAsmRegClass::Xtensa(r.reg_class()),
             Self::Bpf(r) => InlineAsmRegClass::Bpf(r.reg_class()),
             Self::Avr(r) => InlineAsmRegClass::Avr(r.reg_class()),
             Self::Msp430(r) => InlineAsmRegClass::Msp430(r.reg_class()),
@@ -370,6 +377,7 @@ impl InlineAsmReg {
             InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
                 Self::Mips(MipsInlineAsmReg::parse(name)?)
             }
+            InlineAsmArch::Xtensa => Self::Xtensa(XtensaInlineAsmReg::parse(name)?),
             InlineAsmArch::S390x => Self::S390x(S390xInlineAsmReg::parse(name)?),
             InlineAsmArch::Sparc | InlineAsmArch::Sparc64 => {
                 Self::Sparc(SparcInlineAsmReg::parse(name)?)
@@ -409,6 +417,7 @@ impl InlineAsmReg {
             Self::Sparc(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::Bpf(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::Avr(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::Xtensa(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::Msp430(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::M68k(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::CSKY(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
@@ -435,6 +444,7 @@ impl InlineAsmReg {
             Self::Mips(r) => r.emit(out, arch, modifier),
             Self::S390x(r) => r.emit(out, arch, modifier),
             Self::Sparc(r) => r.emit(out, arch, modifier),
+            Self::Xtensa(r) => r.emit(out, arch, modifier),
             Self::Bpf(r) => r.emit(out, arch, modifier),
             Self::Avr(r) => r.emit(out, arch, modifier),
             Self::Msp430(r) => r.emit(out, arch, modifier),
@@ -456,6 +466,7 @@ impl InlineAsmReg {
             Self::Mips(_) => cb(self),
             Self::S390x(r) => r.overlapping_regs(|r| cb(Self::S390x(r))),
             Self::Sparc(_) => cb(self),
+            Self::Xtensa(_) => cb(self),
             Self::Bpf(r) => r.overlapping_regs(|r| cb(Self::Bpf(r))),
             Self::Avr(r) => r.overlapping_regs(|r| cb(Self::Avr(r))),
             Self::Msp430(_) => cb(self),
@@ -482,6 +493,7 @@ pub enum InlineAsmRegClass {
     Sparc(SparcInlineAsmRegClass),
     SpirV(SpirVInlineAsmRegClass),
     Wasm(WasmInlineAsmRegClass),
+    Xtensa(XtensaInlineAsmRegClass),
     Bpf(BpfInlineAsmRegClass),
     Avr(AvrInlineAsmRegClass),
     Msp430(Msp430InlineAsmRegClass),
@@ -507,6 +519,7 @@ impl InlineAsmRegClass {
             Self::Sparc(r) => r.name(),
             Self::SpirV(r) => r.name(),
             Self::Wasm(r) => r.name(),
+            Self::Xtensa(r) => r.name(),
             Self::Bpf(r) => r.name(),
             Self::Avr(r) => r.name(),
             Self::Msp430(r) => r.name(),
@@ -534,6 +547,7 @@ impl InlineAsmRegClass {
             Self::Sparc(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Sparc),
             Self::SpirV(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::SpirV),
             Self::Wasm(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Wasm),
+            Self::Xtensa(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Xtensa),
             Self::Bpf(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Bpf),
             Self::Avr(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Avr),
             Self::Msp430(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Msp430),
@@ -564,6 +578,7 @@ impl InlineAsmRegClass {
             Self::Sparc(r) => r.suggest_modifier(arch, ty),
             Self::SpirV(r) => r.suggest_modifier(arch, ty),
             Self::Wasm(r) => r.suggest_modifier(arch, ty),
+            Self::Xtensa(r) => r.suggest_modifier(arch, ty),
             Self::Bpf(r) => r.suggest_modifier(arch, ty),
             Self::Avr(r) => r.suggest_modifier(arch, ty),
             Self::Msp430(r) => r.suggest_modifier(arch, ty),
@@ -594,6 +609,7 @@ impl InlineAsmRegClass {
             Self::Sparc(r) => r.default_modifier(arch),
             Self::SpirV(r) => r.default_modifier(arch),
             Self::Wasm(r) => r.default_modifier(arch),
+            Self::Xtensa(r) => r.default_modifier(arch),
             Self::Bpf(r) => r.default_modifier(arch),
             Self::Avr(r) => r.default_modifier(arch),
             Self::Msp430(r) => r.default_modifier(arch),
@@ -627,6 +643,7 @@ impl InlineAsmRegClass {
             Self::Sparc(r) => r.supported_types(arch),
             Self::SpirV(r) => r.supported_types(arch),
             Self::Wasm(r) => r.supported_types(arch),
+            Self::Xtensa(r) => r.supported_types(arch),
             Self::Bpf(r) => r.supported_types(arch),
             Self::Avr(r) => r.supported_types(arch),
             Self::Msp430(r) => r.supported_types(arch),
@@ -669,6 +686,7 @@ impl InlineAsmRegClass {
             }
             InlineAsmArch::Bpf => Self::Bpf(BpfInlineAsmRegClass::parse(name)?),
             InlineAsmArch::Avr => Self::Avr(AvrInlineAsmRegClass::parse(name)?),
+            InlineAsmArch::Xtensa => Self::Xtensa(XtensaInlineAsmRegClass::parse(name)?),
             InlineAsmArch::Msp430 => Self::Msp430(Msp430InlineAsmRegClass::parse(name)?),
             InlineAsmArch::M68k => Self::M68k(M68kInlineAsmRegClass::parse(name)?),
             InlineAsmArch::CSKY => Self::CSKY(CSKYInlineAsmRegClass::parse(name)?),
@@ -692,6 +710,7 @@ impl InlineAsmRegClass {
             Self::Sparc(r) => r.valid_modifiers(arch),
             Self::SpirV(r) => r.valid_modifiers(arch),
             Self::Wasm(r) => r.valid_modifiers(arch),
+            Self::Xtensa(r) => r.valid_modifiers(arch),
             Self::Bpf(r) => r.valid_modifiers(arch),
             Self::Avr(r) => r.valid_modifiers(arch),
             Self::Msp430(r) => r.valid_modifiers(arch),
@@ -891,6 +910,11 @@ pub fn allocatable_registers(
         InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {
             let mut map = wasm::regclass_map();
             wasm::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
+            map
+        }
+        InlineAsmArch::Xtensa => {
+            let mut map = xtensa::regclass_map();
+            xtensa::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::Bpf => {
