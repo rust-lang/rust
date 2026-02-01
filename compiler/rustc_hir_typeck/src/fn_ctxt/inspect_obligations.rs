@@ -36,10 +36,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         match predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
-                self.type_matches_expected_vid(expected_vid, data.self_ty())
+                self.type_matches_expected_vid(data.self_ty(), expected_vid)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
-                self.type_matches_expected_vid(expected_vid, data.projection_term.self_ty())
+                self.type_matches_expected_vid(data.projection_term.self_ty(), expected_vid)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
             | ty::PredicateKind::Subtype(..)
@@ -59,7 +59,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    fn type_matches_expected_vid(&self, expected_vid: ty::TyVid, ty: Ty<'tcx>) -> bool {
+    fn type_matches_expected_vid(&self, ty: Ty<'tcx>, expected_vid: ty::TyVid) -> bool {
         let ty = self.shallow_resolve(ty);
         debug!(?ty);
 
@@ -75,7 +75,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         self_ty: ty::TyVid,
     ) -> PredicateObligations<'tcx> {
-        let obligations = self.fulfillment_cx.borrow().pending_obligations();
+        // We only look at obligations which may reference the self type.
+        // This lookup uses the `sub_root` instead of the inference variable
+        // itself as that's slightly nicer to implement. It shouldn't really
+        // matter.
+        //
+        // This is really impactful when typechecking functions with a lot of
+        // stalled obligations, e.g. in the `wg-grammar` benchmark.
+        let sub_root_var = self.sub_unification_table_root_var(self_ty);
+        let obligations = self
+            .fulfillment_cx
+            .borrow()
+            .pending_obligations_potentially_referencing_sub_root(sub_root_var);
         debug!(?obligations);
         let mut obligations_for_self_ty = PredicateObligations::new();
         for obligation in obligations {
@@ -121,6 +132,18 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'a, 'tcx> {
         // No need to walk into goal subtrees that certainly hold, since they
         // wouldn't then be stalled on an infer var.
         if inspect_goal.result() == Ok(Certainty::Yes) {
+            return;
+        }
+
+        // We don't care about any pending goals which don't actually
+        // use the self type.
+        if !inspect_goal
+            .orig_values()
+            .iter()
+            .filter_map(|arg| arg.as_type())
+            .any(|ty| self.fcx.type_matches_expected_vid(ty, self.self_ty))
+        {
+            debug!(goal = ?inspect_goal.goal(), "goal does not mention self type");
             return;
         }
 
