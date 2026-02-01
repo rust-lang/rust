@@ -222,6 +222,10 @@ where
         }
 
         let ty::ConstKind::Unevaluated(..) = ct.kind() else { return ct.try_super_fold_with(self) };
+        // FIXME: `generic_const_exprs` not implemented in the next solver.
+        if ct.has_non_region_param() {
+            return Ok(ct);
+        }
 
         if ct.has_escaping_bound_vars() {
             let (ct, mapped_regions, mapped_types, mapped_consts) =
@@ -239,6 +243,14 @@ where
         } else {
             Ok(ensure_sufficient_stack(|| self.normalize_alias_term(ct.into()))?.expect_const())
         }
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn try_fold_predicate(
+        &mut self,
+        p: ty::Predicate<'tcx>,
+    ) -> Result<ty::Predicate<'tcx>, Self::Error> {
+        if p.allow_normalization() { p.try_super_fold_with(self) } else { Ok(p) }
     }
 }
 

@@ -1,0 +1,22 @@
+error: inconsistency during normalizing env `Binder { value: TraitPredicate(<<T as Trait>::Assoc as Trait>, polarity:Positive), bound_vars: [] }`, old=Binder { value: TraitPredicate(<T as Trait>, polarity:Positive), bound_vars: [] }, next=None
+  --> $DIR/normalize-param-env-4.rs:16:1
+   |
+LL | / fn foo<T>()
+LL | |
+LL | |
+LL | | where
+LL | |     <T as Trait>::Assoc: Trait,
+   | |_______________________________^
+
+error: inconsistency during normalizing env `Binder { value: TraitPredicate(<<T as Trait>::Assoc as std::marker::MetaSized>, polarity:Positive), bound_vars: [] }`, old=Binder { value: TraitPredicate(<T as std::marker::MetaSized>, polarity:Positive), bound_vars: [] }, next=None
+  --> $DIR/normalize-param-env-4.rs:16:1
+   |
+LL | / fn foo<T>()
+LL | |
+LL | |
+LL | | where
+LL | |     <T as Trait>::Assoc: Trait,
+   | |_______________________________^
+
+error: aborting due to 2 previous errors
+
