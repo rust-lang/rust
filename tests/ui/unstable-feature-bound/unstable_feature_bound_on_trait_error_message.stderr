@@ -1,0 +1,47 @@
+error[E0658]: use of unstable library feature `foo`
+  --> $DIR/unstable_feature_bound_on_trait_error_message.rs:3:1
+   |
+LL | extern crate unstable_feature_bound_on_trait as aux;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(foo)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `foo`
+  --> $DIR/unstable_feature_bound_on_trait_error_message.rs:5:5
+   |
+LL | use aux::Foo;
+   |     ^^^^^^^^
+   |
+   = help: add `#![feature(foo)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `foo`
+  --> $DIR/unstable_feature_bound_on_trait_error_message.rs:10:6
+   |
+LL | impl Foo for Bar {
+   |      ^^^
+   |
+   = help: add `#![feature(foo)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `foo`
+  --> $DIR/unstable_feature_bound_on_trait_error_message.rs:10:6
+   |
+LL | impl Foo for Bar {
+   |      ^^^
+   |
+   = help: add `#![feature(foo)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+note: required by a bound in `Foo`
+  --> $DIR/auxiliary/unstable_feature_bound_on_trait.rs:5:1
+   |
+LL | #[unstable_feature_bound(foo)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Foo`
+LL | #[unstable(feature = "foo", issue = "none" )]
+LL | pub trait Foo {
+   |           --- required by a bound in this trait
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
