@@ -773,10 +773,18 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         }
     }
 
+    pub fn print_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> String {
+        self.print_witness_pat_with_scrut(pat, None)
+    }
+
     /// Prints a [`WitnessPat`] to an owned string, for diagnostic purposes.
     ///
     /// This panics for patterns that don't appear in diagnostics, like float ranges.
-    pub fn print_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> String {
+    pub fn print_witness_pat_with_scrut(
+        &self,
+        pat: &WitnessPat<'p, 'tcx>,
+        scrut: Option<&thir::Expr<'tcx>>,
+    ) -> String {
         let cx = self;
         let print = |p| cx.print_witness_pat(p);
         match pat.ctor() {
@@ -810,6 +818,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     pat.ty().inner(),
                     &enum_info,
                     &subpatterns,
+                    scrut,
                 )
                 .unwrap();
                 s
