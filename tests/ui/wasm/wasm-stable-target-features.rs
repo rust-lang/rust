@@ -17,23 +17,26 @@ fn foo3() {}
 #[target_feature(enable = "extended-const")]
 fn foo4() {}
 
-#[target_feature(enable = "mutable-globals")]
+#[target_feature(enable = "gc")]
 fn foo5() {}
 
-#[target_feature(enable = "nontrapping-fptoint")]
+#[target_feature(enable = "mutable-globals")]
 fn foo6() {}
 
-#[target_feature(enable = "simd128")]
+#[target_feature(enable = "nontrapping-fptoint")]
 fn foo7() {}
 
-#[target_feature(enable = "relaxed-simd")]
+#[target_feature(enable = "simd128")]
 fn foo8() {}
 
-#[target_feature(enable = "sign-ext")]
+#[target_feature(enable = "relaxed-simd")]
 fn foo9() {}
 
-#[target_feature(enable = "tail-call")]
+#[target_feature(enable = "sign-ext")]
 fn foo10() {}
+
+#[target_feature(enable = "tail-call")]
+fn foo11() {}
 
 fn main() {
     foo1();
@@ -46,4 +49,5 @@ fn main() {
     foo8();
     foo9();
     foo10();
+    foo11();
 }
