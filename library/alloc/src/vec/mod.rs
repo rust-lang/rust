@@ -1615,28 +1615,37 @@ impl<T, A: Allocator> Vec<T, A> {
 
     /// Converts the vector into [`Box<[T]>`][owned slice].
     ///
-    /// Before doing the conversion, this method discards excess capacity like [`shrink_to_fit`].
+    /// Before the conversion, this will attempt to shrink the vector's allocation to match its length,
+    /// but the final memory layout depends on the allocator's [memory fitting][memory-fitting] strategy.
+    /// The returned slice will have exactly [`len`] elements, but take note that the underlying allocation
+    /// may still contain unused capacity that is safe to use with sized deallocation methods.
     ///
+    /// When converting back to a vector using `Box<[T]>::into_vec`, the resulting
+    /// vector may retain this extra capacity. For details about allocator behavior,
+    /// see [`Allocator::shrink`] and the [memory fitting] documentation.
+    ///
+    /// [`len`]: Vec::len
     /// [owned slice]: Box
+    /// [memory-fitting]: Allocator#memory-fitting
     /// [`shrink_to_fit`]: Vec::shrink_to_fit
     ///
     /// # Examples
     ///
+    /// Basic conversion:
     /// ```
     /// let v = vec![1, 2, 3];
-    ///
     /// let slice = v.into_boxed_slice();
     /// ```
     ///
-    /// Any excess capacity is removed:
-    ///
+    /// Preserved allocation size when converting back:
     /// ```
     /// let mut vec = Vec::with_capacity(10);
     /// vec.extend([1, 2, 3]);
     ///
-    /// assert!(vec.capacity() >= 10);
     /// let slice = vec.into_boxed_slice();
-    /// assert_eq!(slice.into_vec().capacity(), 3);
+    /// let new_vec = slice.into_vec();
+    /// // The allocator may have kept extra capacity:
+    /// assert!(new_vec.capacity() >= 3);
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
