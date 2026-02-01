@@ -196,6 +196,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-xray",
     "no-auto-check-cfg",
     "no-prefer-dynamic",
+    "non-aux-compile-flags",
     "normalize-stderr",
     "normalize-stderr-32bit",
     "normalize-stderr-64bit",

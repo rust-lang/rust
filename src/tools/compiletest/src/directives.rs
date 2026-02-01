@@ -206,6 +206,8 @@ pub(crate) struct TestProps {
     pub add_minicore: bool,
     /// Add these flags to the build of `minicore`.
     pub minicore_compile_flags: Vec<String>,
+    /// Add these flags to the non-auxiliary build.
+    pub non_aux_compile_flags: Vec<String>,
     /// Whether line annotations are required for the given error kind.
     pub dont_require_annotations: HashSet<ErrorKind>,
     /// Whether pretty printers should be disabled in gdb.
@@ -259,6 +261,7 @@ mod directives {
     pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
     pub const ADD_MINICORE: &'static str = "add-minicore";
     pub const MINICORE_COMPILE_FLAGS: &'static str = "minicore-compile-flags";
+    pub const NON_AUX_COMPILE_FLAGS: &'static str = "non-aux-compile-flags";
     pub const DISABLE_GDB_PRETTY_PRINTERS: &'static str = "disable-gdb-pretty-printers";
     pub const COMPARE_OUTPUT_BY_LINES: &'static str = "compare-output-by-lines";
 }
@@ -316,6 +319,7 @@ impl TestProps {
             no_auto_check_cfg: false,
             add_minicore: false,
             minicore_compile_flags: vec![],
+            non_aux_compile_flags: vec![],
             dont_require_annotations: Default::default(),
             disable_gdb_pretty_printers: false,
             compare_output_by_lines: false,
