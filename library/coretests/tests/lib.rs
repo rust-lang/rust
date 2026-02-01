@@ -120,6 +120,7 @@
 #![feature(type_info)]
 #![feature(uint_bit_width)]
 #![feature(uint_gather_scatter_bits)]
+#![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
