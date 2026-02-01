@@ -3522,33 +3522,10 @@ impl<T, A: Allocator, const N: usize> Vec<[T; N], A> {
 
 impl<T: Clone, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
+    #[inline]
     /// Extend the vector by `n` clones of value.
     fn extend_with(&mut self, n: usize, value: T) {
-        self.reserve(n);
-
-        unsafe {
-            let mut ptr = self.as_mut_ptr().add(self.len());
-            // Use SetLenOnDrop to work around bug where compiler
-            // might not realize the store through `ptr` through self.set_len()
-            // don't alias.
-            let mut local_len = SetLenOnDrop::new(&mut self.len);
-
-            // Write all elements except the last one
-            for _ in 1..n {
-                ptr::write(ptr, value.clone());
-                ptr = ptr.add(1);
-                // Increment the length in every step in case clone() panics
-                local_len.increment_len(1);
-            }
-
-            if n > 0 {
-                // We can write the last element directly without cloning needlessly
-                ptr::write(ptr, value);
-                local_len.increment_len(1);
-            }
-
-            // len set by scope guard
-        }
+        self.extend_trusted(iter::repeat_n(value, n))
     }
 }
 
@@ -3930,16 +3907,29 @@ impl<T, A: Allocator> Vec<T, A> {
                 (low, high)
             );
             self.reserve(additional);
-            unsafe {
-                let ptr = self.as_mut_ptr();
-                let mut local_len = SetLenOnDrop::new(&mut self.len);
-                iterator.for_each(move |element| {
+
+            // Split out so it's generic only on T, not on the iterator (or allocator)
+            #[inline]
+            unsafe fn make_write_element_fn<T>(
+                ptr: *mut T,
+                mut local_len: SetLenOnDrop<'_>,
+            ) -> impl FnMut(T) {
+                move |element| unsafe {
                     ptr::write(ptr.add(local_len.current_len()), element);
                     // Since the loop executes user code which can panic we have to update
                     // the length every step to correctly drop what we've written.
                     // NB can't overflow since we would have had to alloc the address space
                     local_len.increment_len(1);
-                });
+                }
+            }
+
+            let ptr = self.as_mut_ptr();
+            let local_len = SetLenOnDrop::new(&mut self.len);
+
+            // SAFETY: we just allocated enough space and because it's `TrustedLen`
+            // we know it can't run extra times.
+            unsafe {
+                iterator.for_each(make_write_element_fn(ptr, local_len));
             }
         } else {
             // Per TrustedLen contract a `None` upper bound means that the iterator length

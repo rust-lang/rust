@@ -1,3 +1,4 @@
+use crate::clone::{TrivialClone, trivial_clone};
 use crate::fmt;
 use crate::iter::{FusedIterator, TrustedLen, UncheckedIterator};
 use crate::num::NonZero;
@@ -152,6 +153,50 @@ impl<A: Clone> Iterator for RepeatN<A> {
     #[inline]
     fn count(self) -> usize {
         self.len()
+    }
+
+    #[inline]
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        if let Some(inner) = self.inner { SpecFold::spec_fold(inner, init, f) } else { init }
+    }
+}
+
+trait SpecFold: Sized {
+    fn spec_fold<B, F>(inner: RepeatNInner<Self>, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self) -> B;
+}
+
+impl<A: Clone> SpecFold for A {
+    default fn spec_fold<B, F>(inner: RepeatNInner<A>, mut init: B, mut f: F) -> B
+    where
+        F: FnMut(B, Self) -> B,
+    {
+        for _ in 1..inner.count.get() {
+            init = f(init, inner.element.clone());
+        }
+        f(init, inner.element)
+    }
+}
+
+impl<A: TrivialClone> SpecFold for A {
+    fn spec_fold<B, F>(inner: RepeatNInner<A>, mut init: B, mut f: F) -> B
+    where
+        F: FnMut(B, Self) -> B,
+    {
+        let RepeatNInner { element, count } = inner;
+        let mut n = count.get();
+        loop {
+            init = f(init, trivial_clone(&element));
+            n -= 1;
+            if n == 0 {
+                return init;
+            }
+        }
     }
 }
 

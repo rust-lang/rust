@@ -80,6 +80,31 @@ fn test_repeat_with_take_collect() {
 }
 
 #[test]
+fn test_repeat_n_trivial_clone_for_each() {
+    let mut n = 0;
+    repeat_n(123_u32, 10).for_each(|_| n += 1);
+    assert_eq!(n, 10);
+}
+
+#[test]
+fn test_repeat_n_custom_clone_for_each() {
+    #[derive(Copy)]
+    struct CloneCounter<'a>(&'a Cell<u32>);
+    impl Clone for CloneCounter<'_> {
+        fn clone(&self) -> Self {
+            self.0.set(self.0.get() + 1);
+            *self
+        }
+    }
+
+    let clone_count = Cell::new(0);
+    let mut n = 0;
+    repeat_n(CloneCounter(&clone_count), 10).for_each(|_| n += 1);
+    assert_eq!(n, 10);
+    assert_eq!(clone_count.get(), 9);
+}
+
+#[test]
 fn test_successors() {
     let mut powers_of_10 = successors(Some(1_u16), |n| n.checked_mul(10));
     assert_eq!(powers_of_10.by_ref().collect::<Vec<_>>(), &[1, 10, 100, 1_000, 10_000]);
