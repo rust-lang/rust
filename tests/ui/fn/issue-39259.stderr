@@ -17,6 +17,10 @@ LL |     fn call(&self) -> u32 {
    |             ^^^^^ expected 2 parameters, found 1
    |
    = note: `call` from trait: `extern "rust-call" fn(&Self, Args) -> <Self as FnOnce<Args>>::Output`
+help: add the missing 1 parameter from the trait
+   |
+LL |     fn call(&self, args: Args) -> u32 {
+   |                  ++++++++++++
 
 error[E0277]: expected a `FnMut(u32)` closure, found `S`
   --> $DIR/issue-39259.rs:6:25

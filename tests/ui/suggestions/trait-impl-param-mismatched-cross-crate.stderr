@@ -1,0 +1,102 @@
+error[E0050]: method `foo` has 0 parameters but the declaration in trait `foo` has 2
+  --> $DIR/trait-impl-param-mismatched-cross-crate.rs:15:5
+   |
+LL |     fn foo() {}
+   |     ^^^^^^^^ expected 2 parameters, found 0
+   |
+   = note: `foo` from trait: `fn(i32, u32)`
+help: add the missing 2 parameters from the trait
+   |
+LL |     fn foo(a: i32, b: u32) {}
+   |            ++++++++++++++
+
+error[E0050]: method `foo` has 1 parameter but the declaration in trait `foo` has 2
+  --> $DIR/trait-impl-param-mismatched-cross-crate.rs:23:15
+   |
+LL |     fn foo(a: AliasOfI32) {}
+   |               ^^^^^^^^^^ expected 2 parameters, found 1
+   |
+   = note: `foo` from trait: `fn(i32, u32)`
+help: add the missing 1 parameter from the trait
+   |
+LL |     fn foo(a: AliasOfI32, b: u32) {}
+   |                         ++++++++
+
+error[E0050]: method `no_params` has 1 parameter but the declaration in trait `no_params` has 0
+  --> $DIR/trait-impl-param-mismatched-cross-crate.rs:36:21
+   |
+LL |     fn no_params(x: i32) {}
+   |                     ^^^ expected 0 parameters, found 1
+   |
+   = note: `no_params` from trait: `fn()`
+help: remove the extra 1 parameter to match the trait
+   |
+LL -     fn no_params(x: i32) {}
+LL +     fn no_params() {}
+   |
+
+error[E0050]: method `has_self` has 2 parameters but the declaration in trait `has_self` has 1
+  --> $DIR/trait-impl-param-mismatched-cross-crate.rs:39:17
+   |
+LL |     fn has_self(&self, y: i32) {}
+   |                 ^^^^^^^^^^^^^ expected 1 parameter, found 2
+   |
+   = note: `has_self` from trait: `fn(&Self)`
+help: remove the extra 1 parameter to match the trait
+   |
+LL -     fn has_self(&self, y: i32) {}
+LL +     fn has_self(&self) {}
+   |
+
+error[E0050]: method `has_two_self` has 1 parameter but the declaration in trait `has_two_self` has 2
+  --> $DIR/trait-impl-param-mismatched-cross-crate.rs:42:27
+   |
+LL |     fn has_two_self(self: &Self) {}
+   |                           ^^^^^ expected 2 parameters, found 1
+   |
+   = note: `has_two_self` from trait: `fn(&Self, &Self)`
+help: add the missing 1 parameter from the trait
+   |
+LL |     fn has_two_self(self: &Self, other: &Self) {}
+   |                                ++++++++++++++
+
+error[E0050]: method `pattern_types_in_arguments` has 0 parameters but the declaration in trait `pattern_types_in_arguments` has 2
+  --> $DIR/trait-impl-param-mismatched-cross-crate.rs:49:5
+   |
+LL |     fn pattern_types_in_arguments() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 2 parameters, found 0
+   |
+   = note: `pattern_types_in_arguments` from trait: `fn(i32, (i32, i32))`
+help: add the missing 2 parameters from the trait
+   |
+LL |     fn pattern_types_in_arguments(_: i32, _: (i32, i32)) {}
+   |                                   +++++++++++++++++++++
+
+error[E0050]: method `generic_no_params` has 1 parameter but the declaration in trait `generic_no_params` has 0
+  --> $DIR/trait-impl-param-mismatched-cross-crate.rs:56:41
+   |
+LL |     fn generic_no_params<U: Baz<()>>(a: U) {}
+   |                                         ^ expected 0 parameters, found 1
+   |
+   = note: `generic_no_params` from trait: `fn()`
+help: remove the extra 1 parameter to match the trait
+   |
+LL -     fn generic_no_params<U: Baz<()>>(a: U) {}
+LL +     fn generic_no_params<U: Baz<()>>() {}
+   |
+
+error[E0050]: method `generic_one_param` has 0 parameters but the declaration in trait `generic_one_param` has 1
+  --> $DIR/trait-impl-param-mismatched-cross-crate.rs:59:5
+   |
+LL |     fn generic_one_param<U: Baz<()>>() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 parameter, found 0
+   |
+   = note: `generic_one_param` from trait: `fn(U)`
+help: add the missing 1 parameter from the trait
+   |
+LL |     fn generic_one_param<U: Baz<()>>(a: U) {}
+   |                                      ++++
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0050`.

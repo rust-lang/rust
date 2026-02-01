@@ -1,5 +1,6 @@
 use core::ops::ControlFlow;
 use std::borrow::Cow;
+use std::cmp::Ordering;
 use std::iter;
 
 use hir::def_id::{DefId, DefIdMap, LocalDefId};
@@ -19,7 +20,7 @@ use rustc_middle::ty::{
     Upcast,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
@@ -1795,6 +1796,126 @@ fn compare_number_of_method_arguments<'tcx>(
                 impl_number_args
             ),
         );
+
+        // Only emit verbose suggestions when the trait span isn’t local (e.g., cross-crate).
+        if !trait_m.def_id.is_local() {
+            let trait_sig = tcx.fn_sig(trait_m.def_id);
+            let trait_arg_idents = tcx.fn_arg_idents(trait_m.def_id);
+            let sm = tcx.sess.source_map();
+            // Find the span of the space between the parentheses in a method.
+            // fn foo(...) {}
+            //        ^^^
+            let impl_inputs_span = if let (Some(first), Some(last)) =
+                (impl_m_sig.decl.inputs.first(), impl_m_sig.decl.inputs.last())
+            {
+                let arg_idents = tcx.fn_arg_idents(impl_m.def_id);
+                let first_lo = arg_idents
+                    .get(0)
+                    .and_then(|id| id.map(|id| id.span.lo()))
+                    .unwrap_or(first.span.lo());
+                Some(impl_m_sig.span.with_lo(first_lo).with_hi(last.span.hi()))
+            } else {
+                sm.span_to_snippet(impl_m_sig.span).ok().and_then(|s| {
+                    let bytes = s.as_bytes();
+                    let right = bytes.iter().rposition(|&b| b == b')')?;
+                    let mut depth = 0usize;
+                    let mut left = None;
+                    for i in (0..=right).rev() {
+                        match bytes[i] {
+                            b')' => depth += 1,
+                            b'(' => {
+                                depth -= 1;
+                                if depth == 0 {
+                                    left = Some(i);
+                                    break;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    let left = left?;
+                    let lo = impl_m_sig.span.lo() + BytePos((left + 1) as u32);
+                    let hi = impl_m_sig.span.lo() + BytePos(right as u32);
+                    Some(impl_m_sig.span.with_lo(lo).with_hi(hi))
+                })
+            };
+            let suggestion = match trait_number_args.cmp(&impl_number_args) {
+                Ordering::Greater => {
+                    // Span is right before the end parenthesis:
+                    // fn foo(a: i32 ) {}
+                    //              ^
+                    let trait_inputs = trait_sig.skip_binder().inputs().skip_binder();
+                    let missing = trait_inputs
+                        .iter()
+                        .enumerate()
+                        .skip(impl_number_args)
+                        .map(|(idx, ty)| {
+                            let name = trait_arg_idents
+                                .get(idx)
+                                .and_then(|ident| *ident)
+                                .map(|ident| ident.to_string())
+                                .unwrap_or_else(|| "_".to_string());
+                            format!("{name}: {ty}")
+                        })
+                        .collect::<Vec<_>>();
+
+                    if missing.is_empty() {
+                        None
+                    } else {
+                        impl_inputs_span.map(|s| {
+                            let span = if impl_number_args == 0 {
+                                s.shrink_to_lo()
+                            } else {
+                                s.shrink_to_hi()
+                            };
+                            let prefix = if impl_number_args == 0 { "" } else { ", " };
+                            let replacement = format!("{prefix}{}", missing.join(", "));
+                            (
+                                span,
+                                format!(
+                                    "add the missing {} from the trait",
+                                    potentially_plural_count(
+                                        trait_number_args - impl_number_args,
+                                        "parameter"
+                                    )
+                                ),
+                                replacement,
+                            )
+                        })
+                    }
+                }
+                Ordering::Less => impl_inputs_span.and_then(|full| {
+                    // Span of the arguments that there are too many of:
+                    // fn foo(a: i32, b: u32) {}
+                    //              ^^^^^^^^
+                    let lo = if trait_number_args == 0 {
+                        full.lo()
+                    } else {
+                        impl_m_sig
+                            .decl
+                            .inputs
+                            .get(trait_number_args - 1)
+                            .map(|arg| arg.span.hi())?
+                    };
+                    let span = full.with_lo(lo);
+                    Some((
+                        span,
+                        format!(
+                            "remove the extra {} to match the trait",
+                            potentially_plural_count(
+                                impl_number_args - trait_number_args,
+                                "parameter"
+                            )
+                        ),
+                        String::new(),
+                    ))
+                }),
+                Ordering::Equal => unreachable!(),
+            };
+            if let Some((span, msg, replacement)) = suggestion {
+                err.span_suggestion_verbose(span, msg, replacement, Applicability::MaybeIncorrect);
+            }
+        }
 
         return Err(err.emit_unless_delay(delay));
     }

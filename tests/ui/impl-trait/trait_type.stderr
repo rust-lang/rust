@@ -19,6 +19,10 @@ LL |    fn fmt(&self) -> () { }
    |           ^^^^^ expected 2 parameters, found 1
    |
    = note: `fmt` from trait: `fn(&Self, &mut Formatter<'_>) -> Result<(), std::fmt::Error>`
+help: add the missing 1 parameter from the trait
+   |
+LL |    fn fmt(&self, f: &mut Formatter<'_>) -> () { }
+   |                +++++++++++++++++++++++
 
 error[E0186]: method `fmt` has a `&self` declaration in the trait, but not in the impl
   --> $DIR/trait_type.rs:17:4
