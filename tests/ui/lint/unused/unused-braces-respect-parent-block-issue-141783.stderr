@@ -1,0 +1,31 @@
+warning: unnecessary braces around `return` value
+  --> $DIR/unused-braces-respect-parent-block-issue-141783.rs:9:12
+   |
+LL |     return { return };
+   |            ^^      ^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-braces-respect-parent-block-issue-141783.rs:5:8
+   |
+LL | #[warn(unused_braces)]
+   |        ^^^^^^^^^^^^^
+help: remove these braces
+   |
+LL -     return { return };
+LL +     return return;
+   |
+
+warning: unnecessary braces around function argument
+  --> $DIR/unused-braces-respect-parent-block-issue-141783.rs:10:10
+   |
+LL |     if f({ return }) {} else {}
+   |          ^^      ^^
+   |
+help: remove these braces
+   |
+LL -     if f({ return }) {} else {}
+LL +     if f(return) {} else {}
+   |
+
+warning: 2 warnings emitted
+
