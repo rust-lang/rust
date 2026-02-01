@@ -915,6 +915,13 @@ pub(crate) struct BundleNeedsStatic {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_parsing_export_symbols_needs_static)]
+pub(crate) struct ExportSymbolsNeedsStatic {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_parsing_whole_archive_needs_static)]
 pub(crate) struct WholeArchiveNeedsStatic {
     #[primary_span]

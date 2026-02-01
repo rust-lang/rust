@@ -12,10 +12,10 @@ use super::util::parse_single_integer;
 use crate::attributes::cfg::parse_cfg_entry;
 use crate::fluent_generated;
 use crate::session_diagnostics::{
-    AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, ImportNameTypeRaw, ImportNameTypeX86,
-    IncompatibleWasmLink, InvalidLinkModifier, LinkFrameworkApple, LinkOrdinalOutOfRange,
-    LinkRequiresName, MultipleModifiers, NullOnLinkSection, RawDylibNoNul, RawDylibOnlyWindows,
-    WholeArchiveNeedsStatic,
+    AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, ExportSymbolsNeedsStatic,
+    ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink, InvalidLinkModifier,
+    LinkFrameworkApple, LinkOrdinalOutOfRange, LinkRequiresName, MultipleModifiers,
+    NullOnLinkSection, RawDylibNoNul, RawDylibOnlyWindows, WholeArchiveNeedsStatic,
 };
 
 pub(crate) struct LinkNameParser;
@@ -165,6 +165,14 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
                         cx.emit_err(BundleNeedsStatic { span });
                     }
 
+                    (sym::export_symbols, Some(NativeLibKind::Static { export_symbols, .. })) => {
+                        assign_modifier(export_symbols)
+                    }
+
+                    (sym::export_symbols, _) => {
+                        cx.emit_err(ExportSymbolsNeedsStatic { span });
+                    }
+
                     (sym::verbatim, _) => assign_modifier(&mut verbatim),
 
                     (
@@ -190,6 +198,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
                             span,
                             &[
                                 sym::bundle,
+                                sym::export_symbols,
                                 sym::verbatim,
                                 sym::whole_dash_archive,
                                 sym::as_dash_needed,
@@ -285,7 +294,9 @@ impl LinkParser {
         };
 
         let link_kind = match link_kind {
-            kw::Static => NativeLibKind::Static { bundle: None, whole_archive: None },
+            kw::Static => {
+                NativeLibKind::Static { bundle: None, whole_archive: None, export_symbols: None }
+            }
             sym::dylib => NativeLibKind::Dylib { as_needed: None },
             sym::framework => {
                 if !sess.target.is_like_darwin {

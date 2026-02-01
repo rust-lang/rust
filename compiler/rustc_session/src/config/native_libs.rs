@@ -53,7 +53,9 @@ fn parse_native_lib(cx: &ParseNativeLibCx<'_>, value: &str) -> NativeLib {
     let NativeLibParts { kind, modifiers, name, new_name } = split_native_lib_value(value);
 
     let kind = kind.map_or(NativeLibKind::Unspecified, |kind| match kind {
-        "static" => NativeLibKind::Static { bundle: None, whole_archive: None },
+        "static" => {
+            NativeLibKind::Static { bundle: None, whole_archive: None, export_symbols: None }
+        }
         "dylib" => NativeLibKind::Dylib { as_needed: None },
         "framework" => NativeLibKind::Framework { as_needed: None },
         "link-arg" => {
@@ -105,7 +107,7 @@ fn parse_and_apply_modifier(cx: &ParseNativeLibCx<'_>, modifier: &str, native_li
         Some(("-", m)) => (m, false),
         _ => cx.early_dcx.early_fatal(
             "invalid linking modifier syntax, expected '+' or '-' prefix \
-             before one of: bundle, verbatim, whole-archive, as-needed",
+             before one of: bundle, verbatim, whole-archive, as-needed, export-symbols",
         ),
     };
 
@@ -124,6 +126,13 @@ fn parse_and_apply_modifier(cx: &ParseNativeLibCx<'_>, modifier: &str, native_li
         ("bundle", NativeLibKind::Static { bundle, .. }) => assign_modifier(bundle),
         ("bundle", _) => early_dcx
             .early_fatal("linking modifier `bundle` is only compatible with `static` linking kind"),
+
+        ("export-symbols", NativeLibKind::Static { export_symbols, .. }) => {
+            assign_modifier(export_symbols)
+        }
+        ("export-symbols", _) => early_dcx.early_fatal(
+            "linking modifier `export-symbols` is only compatible with `static` linking kind",
+        ),
 
         ("verbatim", _) => assign_modifier(&mut native_lib.verbatim),
 
@@ -151,7 +160,7 @@ fn parse_and_apply_modifier(cx: &ParseNativeLibCx<'_>, modifier: &str, native_li
 
         _ => early_dcx.early_fatal(format!(
             "unknown linking modifier `{modifier}`, expected one \
-             of: bundle, verbatim, whole-archive, as-needed"
+             of: bundle, verbatim, whole-archive, as-needed, export-symbols"
         )),
     }
 }

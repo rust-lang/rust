@@ -53,6 +53,9 @@ attr_parsing_expects_feature_list =
 attr_parsing_expects_features =
     `{$name}` expects feature names
 
+attr_parsing_export_symbols_needs_static =
+    linking modifier `export-symbols` is only compatible with `static` linking kind
+
 attr_parsing_import_name_type_raw =
     import name type can only be used with link kind `raw-dylib`
 
@@ -95,7 +98,7 @@ attr_parsing_invalid_issue_string =
     .neg_overflow = number too small to fit in target type
 
 attr_parsing_invalid_link_modifier =
-    invalid linking modifier syntax, expected '+' or '-' prefix before one of: bundle, verbatim, whole-archive, as-needed
+    invalid linking modifier syntax, expected '+' or '-' prefix before one of: bundle, verbatim, whole-archive, as-needed, export-symbols
 
 attr_parsing_invalid_meta_item = expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found {$descr}
     .remove_neg_sugg = negative numbers are not literals, try removing the `-` sign
