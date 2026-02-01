@@ -600,6 +600,33 @@ impl Step for Rustc {
                 }
             }
 
+            if builder.host_target.triple == "x86_64-unknown-linux-gnu" {
+                let src_dir = builder.sysroot_target_bindir(target_compiler, target);
+                let rust_wild = exe("rust-wild", target_compiler.host);
+                builder.copy_link(
+                    &src_dir.join(&rust_wild),
+                    &dst_dir.join(&rust_wild),
+                    FileType::Executable,
+                );
+                let self_contained_wild_src_dir = src_dir.join("wild-gcc-ld");
+                let self_contained_wild_dst_dir = dst_dir.join("wild-gcc-ld");
+                t!(fs::create_dir(&self_contained_wild_dst_dir));
+                let wild_name = "wild";
+                let exe_name = exe(wild_name, target_compiler.host);
+                builder.copy_link(
+                    &self_contained_wild_src_dir.join(&exe_name),
+                    &self_contained_wild_dst_dir.join(&exe_name),
+                    FileType::Executable,
+                );
+                // Pretend Wild is LD so the compiler can pick it up
+                let exe_name = exe("ld", target_compiler.host);
+                builder.copy_link(
+                    &self_contained_wild_src_dir.join(&exe_name),
+                    &self_contained_wild_dst_dir.join(&exe_name),
+                    FileType::Executable,
+                );
+            }
+
             if builder.config.llvm_enabled(target_compiler.host)
                 && builder.config.llvm_tools_enabled
             {
