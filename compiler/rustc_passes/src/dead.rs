@@ -19,6 +19,7 @@ use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
+use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::DEAD_CODE;
 use rustc_session::lint::{self, LintExpectationId};
 use rustc_span::{Symbol, kw, sym};
@@ -830,22 +831,24 @@ fn maybe_record_as_seed<'tcx>(
 fn create_and_seed_worklist(
     tcx: TyCtxt<'_>,
 ) -> (Vec<(LocalDefId, ComesFromAllowExpect)>, Vec<LocalDefId>) {
-    let effective_visibilities = &tcx.effective_visibilities(());
     let mut unsolved_impl_item = Vec::new();
-    let mut worklist = effective_visibilities
-        .iter()
-        .filter_map(|(&id, effective_vis)| {
-            effective_vis
-                .is_public_at_level(Level::Reachable)
-                .then_some(id)
-                .map(|id| (id, ComesFromAllowExpect::No))
-        })
-        // Seed entry point
-        .chain(
-            tcx.entry_fn(())
-                .and_then(|(def_id, _)| def_id.as_local().map(|id| (id, ComesFromAllowExpect::No))),
-        )
-        .collect::<Vec<_>>();
+    let mut worklist = Vec::new();
+
+    if let Some((def_id, _)) = tcx.entry_fn(())
+        && let Some(local_def_id) = def_id.as_local()
+    {
+        worklist.push((local_def_id, ComesFromAllowExpect::No));
+    }
+
+    if !tcx.sess.opts.unstable_opts.treat_pub_as_pub_crate
+        || !tcx.crate_types().contains(&CrateType::Executable)
+    {
+        for (id, effective_vis) in tcx.effective_visibilities(()).iter() {
+            if effective_vis.is_public_at_level(Level::Reachable) {
+                worklist.push((*id, ComesFromAllowExpect::No));
+            }
+        }
+    }
 
     let crate_items = tcx.hir_crate_items(());
     for id in crate_items.owners() {

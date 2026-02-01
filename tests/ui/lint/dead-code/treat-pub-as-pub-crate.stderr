@@ -1,0 +1,14 @@
+error: function `unused_pub_fn` is never used
+  --> $DIR/treat-pub-as-pub-crate.rs:5:8
+   |
+LL | pub fn unused_pub_fn() {}
+   |        ^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/treat-pub-as-pub-crate.rs:3:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
