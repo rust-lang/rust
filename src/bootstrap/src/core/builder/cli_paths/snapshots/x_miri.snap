@@ -15,6 +15,7 @@ expression: miri
     - Set({miri::library/rustc-std-workspace-core})
     - Set({miri::library/std})
     - Set({miri::library/std_detect})
+    - Set({miri::library/std_detect_tests})
     - Set({miri::library/sysroot})
     - Set({miri::library/test})
     - Set({miri::library/unwind})

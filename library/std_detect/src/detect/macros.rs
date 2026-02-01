@@ -149,7 +149,7 @@ macro_rules! features {
         #[repr(u8)]
         #[unstable(feature = "stdarch_internal", issue = "none")]
         #[cfg($cfg)]
-        pub(crate) enum Feature {
+        pub enum Feature {
             $(
                 $(#[$feature_comment])*
                 $feature,
