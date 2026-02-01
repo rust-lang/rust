@@ -1,64 +1,64 @@
 ---
-source: src/bootstrap/src/core/builder/cli_paths/tests.rs
+source: src/bootstrap/src/core/builder/selectors/tests.rs
 expression: test tests --skip=coverage
 ---
 [Test] test::AssemblyLlvm
     targets: [aarch64-unknown-linux-gnu]
-    - Suite(test::tests/assembly-llvm)
+    - TestSuite(test::tests/assembly-llvm)
 [Test] test::BuildStd
     targets: [aarch64-unknown-linux-gnu]
-    - Suite(test::tests/build-std)
+    - TestSuite(test::tests/build-std)
 [Test] test::CodegenLlvm
     targets: [aarch64-unknown-linux-gnu]
-    - Suite(test::tests/codegen-llvm)
+    - TestSuite(test::tests/codegen-llvm)
 [Test] test::CodegenUnits
     targets: [aarch64-unknown-linux-gnu]
-    - Suite(test::tests/codegen-units)
+    - TestSuite(test::tests/codegen-units)
 [Test] test::CoverageRunRustdoc
     targets: [x86_64-unknown-linux-gnu]
-    - Suite(test::tests/coverage-run-rustdoc)
+    - TestSuite(test::tests/coverage-run-rustdoc)
 [Test] test::Crashes
     targets: [aarch64-unknown-linux-gnu]
-    - Suite(test::tests/crashes)
+    - TestSuite(test::tests/crashes)
 [Test] test::Debuginfo
     targets: [aarch64-unknown-linux-gnu]
-    - Suite(test::tests/debuginfo)
+    - TestSuite(test::tests/debuginfo)
 [Test] test::Incremental
     targets: [aarch64-unknown-linux-gnu]
-    - Suite(test::tests/incremental)
+    - TestSuite(test::tests/incremental)
 [Test] test::MirOpt
     targets: [aarch64-unknown-linux-gnu]
-    - Suite(test::tests/mir-opt)
+    - TestSuite(test::tests/mir-opt)
 [Test] test::Pretty
     targets: [x86_64-unknown-linux-gnu]
-    - Suite(test::tests/pretty)
+    - TestSuite(test::tests/pretty)
 [Test] test::RunMake
     targets: [aarch64-unknown-linux-gnu]
-    - Suite(test::tests/run-make)
+    - TestSuite(test::tests/run-make)
 [Test] test::RunMakeCargo
     targets: [aarch64-unknown-linux-gnu]
-    - Suite(test::tests/run-make-cargo)
+    - TestSuite(test::tests/run-make-cargo)
 [Test] test::RustdocGUI
     targets: [x86_64-unknown-linux-gnu]
-    - Suite(test::tests/rustdoc-gui)
+    - TestSuite(test::tests/rustdoc-gui)
 [Test] test::RustdocHtml
     targets: [x86_64-unknown-linux-gnu]
-    - Suite(test::tests/rustdoc-html)
+    - TestSuite(test::tests/rustdoc-html)
 [Test] test::RustdocJSNotStd
     targets: [x86_64-unknown-linux-gnu]
-    - Suite(test::tests/rustdoc-js)
+    - TestSuite(test::tests/rustdoc-js)
 [Test] test::RustdocJSStd
     targets: [x86_64-unknown-linux-gnu]
-    - Suite(test::tests/rustdoc-js-std)
+    - TestSuite(test::tests/rustdoc-js-std)
 [Test] test::RustdocJson
     targets: [x86_64-unknown-linux-gnu]
-    - Suite(test::tests/rustdoc-json)
+    - TestSuite(test::tests/rustdoc-json)
 [Test] test::RustdocUi
     targets: [x86_64-unknown-linux-gnu]
-    - Suite(test::tests/rustdoc-ui)
+    - TestSuite(test::tests/rustdoc-ui)
 [Test] test::Ui
     targets: [aarch64-unknown-linux-gnu]
-    - Suite(test::tests/ui)
+    - TestSuite(test::tests/ui)
 [Test] test::UiFullDeps
     targets: [x86_64-unknown-linux-gnu]
-    - Suite(test::tests/ui-fulldeps)
+    - TestSuite(test::tests/ui-fulldeps)
