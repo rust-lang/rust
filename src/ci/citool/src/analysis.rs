@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use std::time::Duration;
 
 use build_helper::metrics::{
-    BuildStep, JsonRoot, TestOutcome, TestSuite, TestSuiteMetadata, escape_step_name,
+    BuildStep, DebuggerKind, JsonRoot, TestOutcome, TestSuite, TestSuiteMetadata, escape_step_name,
     format_build_steps,
 };
 
@@ -139,8 +139,36 @@ fn record_test_suites(metrics: &JsonRoot) {
         let table = render_table(aggregated);
         println!("\n# Test results\n");
         println!("{table}");
+        report_debuginfo_statistics(&suites);
     } else {
         eprintln!("No test suites found in metrics");
+    }
+}
+
+fn report_debuginfo_statistics(suites: &[&TestSuite]) {
+    let mut debugger_test_record: HashMap<DebuggerKind, TestSuiteRecord> = HashMap::new();
+    for suite in suites {
+        if let TestSuiteMetadata::Compiletest { .. } = suite.metadata {
+            for test in &suite.tests {
+                if let Some(kind) = DebuggerKind::debuginfo_kind(&test.name) {
+                    let record =
+                        debugger_test_record.entry(kind).or_insert(TestSuiteRecord::default());
+                    match test.outcome {
+                        TestOutcome::Passed => record.passed += 1,
+                        TestOutcome::Ignored { .. } => record.ignored += 1,
+                        TestOutcome::Failed => record.failed += 1,
+                    }
+                }
+            }
+        }
+    }
+
+    println!("DebugInfo Test Statistics");
+    for (kind, record) in debugger_test_record {
+        println!(
+            "{:?}: Passed ✅={}, Failed ❌={}, Ignored 🚫={}",
+            kind, record.passed, record.failed, record.ignored
+        );
     }
 }
 
