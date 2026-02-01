@@ -4,6 +4,7 @@
 //@[assumptions] compile-flags: -Zhigher-ranked-assumptions
 //@[assumptions] known-bug: unknown
 //@[no_assumptions] known-bug: #110338
+#![allow(todo_macro_uses)]
 
 fn assert_send<T: Send>(_: T) {}
 
