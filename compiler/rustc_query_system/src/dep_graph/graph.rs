@@ -1400,7 +1400,7 @@ impl DepNodeColorMap {
         let value = self.values[index].load(Ordering::Acquire);
         // Green is by far the most common case. Check for that first so we can succeed with a
         // single comparison.
-        if value < COMPRESSED_RED {
+        if value <= DepNodeIndex::MAX_AS_U32 {
             DepNodeColor::Green(DepNodeIndex::from_u32(value))
         } else if value == COMPRESSED_RED {
             DepNodeColor::Red
