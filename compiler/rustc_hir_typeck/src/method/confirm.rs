@@ -18,7 +18,8 @@ use rustc_lint::builtin::{
 };
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
+    PointerCoercion,
 };
 use rustc_middle::ty::{
     self, AssocContainer, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt,
@@ -243,12 +244,16 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                             ty::Ref(_, ty, _) => *ty,
                             _ => bug!("Expected a reference type for argument to Pin"),
                         };
+                        adjustments.push(Adjustment {
+                            kind: Adjust::Deref(DerefAdjustKind::Pin),
+                            target: inner_ty,
+                        });
                         Ty::new_pinned_ref(self.tcx, region, inner_ty, mutbl)
                     }
                     _ => bug!("Cannot adjust receiver type for reborrowing pin of {target:?}"),
                 };
-
-                adjustments.push(Adjustment { kind: Adjust::ReborrowPin(mutbl), target });
+                adjustments
+                    .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Pin(mutbl)), target });
             }
             None => {}
         }
