@@ -11,6 +11,7 @@
 #![feature(repr_simd)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(rustc_attrs)]
+#![feature(float_bits_const)]
 #![cfg_attr(f16_enabled, feature(f16))]
 #![cfg_attr(f128_enabled, feature(f128))]
 #![no_builtins]
