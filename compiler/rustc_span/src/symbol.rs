@@ -1428,6 +1428,7 @@ symbols! {
         maxnumf128,
         may_dangle,
         may_unwind,
+        maybe_dangling,
         maybe_uninit,
         maybe_uninit_uninit,
         maybe_uninit_zeroed,
