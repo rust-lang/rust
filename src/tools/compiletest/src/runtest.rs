@@ -1312,7 +1312,7 @@ impl<'test> TestCx<'test> {
             let crate_name = path_to_crate_name(&proc_macro.path);
             add_extern(
                 rustc,
-                None, // `extern_modifiers`
+                proc_macro.extern_modifiers.as_deref(),
                 &crate_name,
                 &proc_macro.path,
                 AuxType::ProcMacro,

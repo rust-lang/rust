@@ -25,3 +25,19 @@ fn test_aux_crate_value_with_modifiers() {
 fn test_aux_crate_value_invalid() {
     parse_aux_crate("foo.rs".to_string());
 }
+
+#[test]
+fn test_proc_macro_value_no_modifiers() {
+    assert_eq!(
+        ProcMacro { extern_modifiers: None, path: "foo.rs".to_string() },
+        parse_proc_macro("foo.rs".to_string())
+    );
+}
+
+#[test]
+fn test_proc_macro_value_with_modifiers() {
+    assert_eq!(
+        ProcMacro { extern_modifiers: Some("noprelude".to_string()), path: "foo.rs".to_string() },
+        parse_proc_macro("noprelude:foo.rs".to_string())
+    );
+}

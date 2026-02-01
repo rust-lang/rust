@@ -26,8 +26,12 @@ pub struct AuxCrate {
 }
 
 /// The value of a `proc-macro` directive.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct ProcMacro {
+    /// Contains `--extern` modifiers, if any. See the tracking issue for more
+    /// info: <https://github.com/rust-lang/rust/issues/98405>
+    /// With `proc-macro: noprelude:bar.rs` this will be `noprelude`.
+    pub extern_modifiers: Option<String>,
     /// With `proc-macro: bar.rs` this will be `bar.rs`.
     pub path: String,
 }
@@ -108,5 +112,17 @@ fn parse_aux_crate(r: String) -> AuxCrate {
 }
 
 fn parse_proc_macro(r: String) -> ProcMacro {
-    ProcMacro { path: r.trim().to_string() }
+    let r = r.trim();
+
+    // Matches:
+    //   path
+    //   modifiers:path
+    let caps = static_regex!(r"^(?:(?<modifiers>[^=]*?):)?(?<path>.*)$")
+        .captures(r)
+        .expect("can never fail");
+
+    let modifiers = caps.name("modifiers").map(|m| m.as_str().to_string());
+    let path = caps["path"].to_string();
+
+    ProcMacro { extern_modifiers: modifiers, path }
 }
