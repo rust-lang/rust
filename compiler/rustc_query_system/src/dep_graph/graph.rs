@@ -872,6 +872,8 @@ impl<D: Deps> DepGraphData<D> {
         // Return None if the dep node didn't exist in the previous session
         let prev_index = self.previous.node_to_index_opt(dep_node)?;
 
+        debug_assert_eq!(self.previous.index_to_node(prev_index), dep_node);
+
         match self.colors.get(prev_index) {
             DepNodeColor::Green(dep_node_index) => Some((prev_index, dep_node_index)),
             DepNodeColor::Red => None,
@@ -880,7 +882,7 @@ impl<D: Deps> DepGraphData<D> {
                 // in the previous compilation session too, so we can try to
                 // mark it as green by recursively marking all of its
                 // dependencies green.
-                self.try_mark_previous_green(qcx, prev_index, dep_node, None)
+                self.try_mark_previous_green(qcx, prev_index, None)
                     .map(|dep_node_index| (prev_index, dep_node_index))
             }
         }
@@ -928,8 +930,7 @@ impl<D: Deps> DepGraphData<D> {
                 dep_dep_node, dep_dep_node.hash,
             );
 
-            let node_index =
-                self.try_mark_previous_green(qcx, parent_dep_node_index, dep_dep_node, Some(frame));
+            let node_index = self.try_mark_previous_green(qcx, parent_dep_node_index, Some(frame));
 
             if node_index.is_some() {
                 debug!("managed to MARK dependency {dep_dep_node:?} as green");
@@ -981,15 +982,15 @@ impl<D: Deps> DepGraphData<D> {
         &self,
         qcx: Qcx,
         prev_dep_node_index: SerializedDepNodeIndex,
-        dep_node: &DepNode,
         frame: Option<&MarkFrame<'_>>,
     ) -> Option<DepNodeIndex> {
         let frame = MarkFrame { index: prev_dep_node_index, parent: frame };
 
         // We never try to mark eval_always nodes as green
-        debug_assert!(!qcx.dep_context().is_eval_always(dep_node.kind));
-
-        debug_assert_eq!(self.previous.index_to_node(prev_dep_node_index), dep_node);
+        debug_assert!(
+            !qcx.dep_context()
+                .is_eval_always(self.previous.index_to_node(prev_dep_node_index).kind)
+        );
 
         let prev_deps = self.previous.edge_targets_from(prev_dep_node_index);
 
@@ -1010,7 +1011,10 @@ impl<D: Deps> DepGraphData<D> {
         // ... and finally storing a "Green" entry in the color map.
         // Multiple threads can all write the same color here
 
-        debug!("successfully marked {dep_node:?} as green");
+        debug!(
+            "successfully marked {:?} as green",
+            self.previous.index_to_node(prev_dep_node_index)
+        );
         Some(dep_node_index)
     }
 }
