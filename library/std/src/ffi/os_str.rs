@@ -1285,7 +1285,8 @@ impl OsStr {
     /// it helps dereferencing other string-like types to string slices,
     /// for example references to `Box<OsStr>` or `Arc<OsStr>`.
     #[inline]
-    #[unstable(feature = "str_as_str", issue = "130366")]
+    #[stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "str_as_str", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_os_str(&self) -> &OsStr {
         self
     }

@@ -37,7 +37,6 @@
 #![feature(thin_box)]
 #![feature(drain_keep_rest)]
 #![feature(local_waker)]
-#![feature(str_as_str)]
 #![feature(strict_provenance_lints)]
 #![feature(string_replace_in_place)]
 #![feature(vec_deque_truncate_front)]
