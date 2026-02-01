@@ -985,7 +985,11 @@ impl char {
     #[doc(hidden)]
     #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
     pub fn is_cased(self) -> bool {
-        if self.is_ascii() { self.is_ascii_alphabetic() } else { unicode::Cased(self) }
+        if self.is_ascii() {
+            self.is_ascii_alphabetic()
+        } else {
+            unicode::Lowercase(self) || unicode::Uppercase(self) || unicode::Lt(self)
+        }
     }
 
     /// Returns `true` if this `char` has the `Case_Ignorable` property.
