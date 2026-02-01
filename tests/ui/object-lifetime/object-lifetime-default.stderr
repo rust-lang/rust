@@ -1,10 +1,10 @@
-error: BaseDefault
+error: Empty
   --> $DIR/object-lifetime-default.rs:5:5
    |
 LL |     T,
    |     ^
 
-error: BaseDefault
+error: Empty
   --> $DIR/object-lifetime-default.rs:11:5
    |
 LL |     T,
@@ -52,5 +52,21 @@ error: Ambiguous
 LL |     U: 'a + 'b,
    |     ^
 
-error: aborting due to 9 previous errors
+error: 'a
+  --> $DIR/object-lifetime-default.rs:52:1
+   |
+LL | / trait H<
+LL | |     'a,
+LL | |     'b,
+LL | |     T: 'b,
+LL | | >: 'a {}
+   | |_____^
+
+error: 'b
+  --> $DIR/object-lifetime-default.rs:55:5
+   |
+LL |     T: 'b,
+   |     ^
+
+error: aborting due to 11 previous errors
 
