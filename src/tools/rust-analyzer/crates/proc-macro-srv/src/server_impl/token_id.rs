@@ -67,8 +67,9 @@ impl server::Server for SpanIdServer<'_> {
         self.tracked_paths.insert(path.into());
     }
 
-    fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span>, ()> {
+    fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span>, String> {
         literal_from_str(s, self.call_site)
+            .map_err(|()| "cannot parse string into literal".to_string())
     }
 
     fn emit_diagnostic(&mut self, _: Diagnostic<Self::Span>) {}
@@ -84,14 +85,9 @@ impl server::Server for SpanIdServer<'_> {
     fn ts_is_empty(&mut self, stream: &Self::TokenStream) -> bool {
         stream.is_empty()
     }
-    fn ts_from_str(&mut self, src: &str) -> Self::TokenStream {
-        Self::TokenStream::from_str(src, self.call_site).unwrap_or_else(|e| {
-            Self::TokenStream::from_str(
-                &format!("compile_error!(\"failed to parse str to token stream: {e}\")"),
-                self.call_site,
-            )
-            .unwrap()
-        })
+    fn ts_from_str(&mut self, src: &str) -> Result<Self::TokenStream, String> {
+        Self::TokenStream::from_str(src, self.call_site)
+            .map_err(|e| format!("failed to parse str to token stream: {e}"))
     }
     fn ts_to_string(&mut self, stream: &Self::TokenStream) -> String {
         stream.to_string()
