@@ -9,7 +9,9 @@
 //! algorithm can be found in "ParseNumberF64 by Simple Decimal Conversion",
 //! available online: <https://nigeltao.github.io/blog/2020/parse-number-f64-simple.html>.
 
-use crate::num::dec2flt::common::{ByteSlice, is_8digits};
+use dec2flt::common::{ByteSlice, is_8digits};
+
+use crate::num::imp::dec2flt;
 
 /// A decimal floating-point number, represented as a sequence of decimal digits.
 #[derive(Clone, Debug, PartialEq)]

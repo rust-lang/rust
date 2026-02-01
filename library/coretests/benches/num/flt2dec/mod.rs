@@ -3,7 +3,7 @@ mod strategy {
     mod grisu;
 }
 
-use core::num::flt2dec::{DecodableFloat, Decoded, FullDecoded, MAX_SIG_DIGITS, decode};
+use core::num::imp::flt2dec::{DecodableFloat, Decoded, FullDecoded, MAX_SIG_DIGITS, decode};
 use std::io::Write;
 
 use test::{Bencher, black_box};

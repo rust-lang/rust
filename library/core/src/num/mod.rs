@@ -27,16 +27,14 @@ macro_rules! sign_dependent_expr {
     };
 }
 
-// All these modules are technically private and only exposed for coretests:
-#[cfg(not(no_fp_fmt_parse))]
-pub mod bignum;
-#[cfg(not(no_fp_fmt_parse))]
-pub mod dec2flt;
-#[cfg(not(no_fp_fmt_parse))]
-pub mod diy_float;
-#[cfg(not(no_fp_fmt_parse))]
-pub mod flt2dec;
-pub mod fmt;
+// These modules are public only for testing.
+#[doc(hidden)]
+#[unstable(
+    feature = "num_internals",
+    reason = "internal routines only exposed for testing",
+    issue = "none"
+)]
+pub mod imp;
 
 #[macro_use]
 mod int_macros; // import int_impl!
@@ -44,12 +42,8 @@ mod int_macros; // import int_impl!
 mod uint_macros; // import uint_impl!
 
 mod error;
-mod int_bits;
-mod int_log10;
-mod int_sqrt;
-pub(crate) mod libm;
+mod float_parse;
 mod nonzero;
-mod overflow_panic;
 mod saturating;
 mod wrapping;
 
@@ -57,15 +51,15 @@ mod wrapping;
 #[doc(hidden)]
 pub mod niche_types;
 
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(no_fp_fmt_parse))]
-pub use dec2flt::ParseFloatError;
 #[stable(feature = "int_error_matching", since = "1.55.0")]
 pub use error::IntErrorKind;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use error::ParseIntError;
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use error::TryFromIntError;
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(no_fp_fmt_parse))]
+pub use float_parse::ParseFloatError;
 #[stable(feature = "generic_nonzero", since = "1.79.0")]
 pub use nonzero::NonZero;
 #[unstable(

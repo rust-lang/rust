@@ -1,10 +1,12 @@
-use core::num::flt2dec::{
+use core::num::imp::flt2dec::{
     DecodableFloat, Decoded, FullDecoded, MAX_SIG_DIGITS, Sign, decode, round_up, to_exact_exp_str,
     to_exact_fixed_str, to_shortest_exp_str, to_shortest_str,
 };
-use core::num::fmt::{Formatted, Part};
+use core::num::imp::fmt::{Formatted, Part};
 use std::mem::MaybeUninit;
 use std::{fmt, str};
+
+use Sign::{Minus, MinusPlus};
 
 use crate::num::{ldexp_f32, ldexp_f64};
 
@@ -562,8 +564,6 @@ pub fn to_shortest_str_test<F>(mut f_: F)
 where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
-    use core::num::flt2dec::Sign::*;
-
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, frac_digits: usize) -> String
     where
         T: DecodableFloat,
@@ -672,8 +672,6 @@ pub fn to_shortest_exp_str_test<F>(mut f_: F)
 where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
-    use core::num::flt2dec::Sign::*;
-
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, exp_bounds: (i16, i16), upper: bool) -> String
     where
         T: DecodableFloat,
@@ -789,8 +787,6 @@ pub fn to_exact_exp_str_test<F>(mut f_: F)
 where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
 {
-    use core::num::flt2dec::Sign::*;
-
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, ndigits: usize, upper: bool) -> String
     where
         T: DecodableFloat,
@@ -1065,8 +1061,6 @@ pub fn to_exact_fixed_str_test<F>(mut f_: F)
 where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
 {
-    use core::num::flt2dec::Sign::*;
-
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, frac_digits: usize) -> String
     where
         T: DecodableFloat,
