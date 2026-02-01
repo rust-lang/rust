@@ -1125,7 +1125,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         .emit()
     }
 
-    fn def_path_str(&self, mut def_id: DefId) -> String {
+    pub(crate) fn def_path_str(&self, mut def_id: DefId) -> String {
         // We can't use `def_path_str` in resolve.
         let mut path = vec![def_id];
         while let Some(parent) = self.tcx.opt_parent(def_id) {

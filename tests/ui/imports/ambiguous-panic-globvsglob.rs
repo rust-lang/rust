@@ -3,7 +3,7 @@
 mod m1 {
     pub use core::prelude::v1::*;
 }
-//@ check-pass
+
 mod m2 {
     pub use std::prelude::v1::*;
 }
@@ -18,6 +18,5 @@ fn foo() {
     panic!();
     //~^ WARN: `panic` is ambiguous [ambiguous_panic_imports]
     //~| WARN: this was previously accepted by the compiler
-    //~| WARN: `panic` is ambiguous [ambiguous_glob_imports]
-    //~| WARN: this was previously accepted by the compiler
+    //~| ERROR: `panic` is ambiguous
 }

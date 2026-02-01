@@ -1,10 +1,9 @@
 // https://github.com/rust-lang/rust/issues/47525
-//@ check-pass
+
 fn main() {
     use a::*;
     x();
-    //~^ WARN `x` is ambiguous
-    //~| WARNING this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~^ ERROR `x` is ambiguous
 }
 
 mod a {

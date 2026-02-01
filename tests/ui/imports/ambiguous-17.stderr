@@ -1,3 +1,23 @@
+error[E0659]: `id` is ambiguous
+  --> $DIR/ambiguous-17.rs:26:5
+   |
+LL |     id();
+   |     ^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `id` could refer to the function imported here
+  --> $DIR/ambiguous-17.rs:4:9
+   |
+LL | pub use evp::*;
+   |         ^^^^^^
+   = help: consider adding an explicit import of `id` to disambiguate
+note: `id` could also refer to the function imported here
+  --> $DIR/ambiguous-17.rs:5:9
+   |
+LL | pub use handwritten::*;
+   |         ^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `id` to disambiguate
+
 warning: ambiguous glob re-exports
   --> $DIR/ambiguous-17.rs:4:9
    |
@@ -8,52 +28,6 @@ LL | pub use handwritten::*;
    |
    = note: `#[warn(ambiguous_glob_reexports)]` on by default
 
-warning: `id` is ambiguous
-  --> $DIR/ambiguous-17.rs:26:5
-   |
-LL |     id();
-   |     ^^ ambiguous name
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
-   = note: ambiguous because of multiple glob imports of a name in the same module
-note: `id` could refer to the function imported here
-  --> $DIR/ambiguous-17.rs:4:9
-   |
-LL | pub use evp::*;
-   |         ^^^^^^
-   = help: consider adding an explicit import of `id` to disambiguate
-note: `id` could also refer to the function imported here
-  --> $DIR/ambiguous-17.rs:5:9
-   |
-LL | pub use handwritten::*;
-   |         ^^^^^^^^^^^^^^
-   = help: consider adding an explicit import of `id` to disambiguate
-   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
+error: aborting due to 1 previous error; 1 warning emitted
 
-warning: 2 warnings emitted
-
-Future incompatibility report: Future breakage diagnostic:
-warning: `id` is ambiguous
-  --> $DIR/ambiguous-17.rs:26:5
-   |
-LL |     id();
-   |     ^^ ambiguous name
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
-   = note: ambiguous because of multiple glob imports of a name in the same module
-note: `id` could refer to the function imported here
-  --> $DIR/ambiguous-17.rs:4:9
-   |
-LL | pub use evp::*;
-   |         ^^^^^^
-   = help: consider adding an explicit import of `id` to disambiguate
-note: `id` could also refer to the function imported here
-  --> $DIR/ambiguous-17.rs:5:9
-   |
-LL | pub use handwritten::*;
-   |         ^^^^^^^^^^^^^^
-   = help: consider adding an explicit import of `id` to disambiguate
-   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
-
+For more information about this error, try `rustc --explain E0659`.

@@ -1,11 +1,9 @@
-warning: `panic` is ambiguous
+error[E0659]: `panic` is ambiguous
   --> $DIR/ambiguous-panic-globvsglob.rs:18:5
    |
 LL |     panic!();
    |     ^^^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `panic` could refer to the macro imported here
   --> $DIR/ambiguous-panic-globvsglob.rs:12:9
@@ -19,7 +17,6 @@ note: `panic` could also refer to the macro imported here
 LL |     use m2::*;
    |         ^^^^^
    = help: consider adding an explicit import of `panic` to disambiguate
-   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: `panic` is ambiguous
   --> $DIR/ambiguous-panic-globvsglob.rs:18:5
@@ -40,29 +37,6 @@ note: `panic` could also refer to a macro from prelude
   --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
    = note: `#[warn(ambiguous_panic_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
-warning: 2 warnings emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
-Future incompatibility report: Future breakage diagnostic:
-warning: `panic` is ambiguous
-  --> $DIR/ambiguous-panic-globvsglob.rs:18:5
-   |
-LL |     panic!();
-   |     ^^^^^ ambiguous name
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
-   = note: ambiguous because of multiple glob imports of a name in the same module
-note: `panic` could refer to the macro imported here
-  --> $DIR/ambiguous-panic-globvsglob.rs:12:9
-   |
-LL |     use m1::*;
-   |         ^^^^^
-   = help: consider adding an explicit import of `panic` to disambiguate
-note: `panic` could also refer to the macro imported here
-  --> $DIR/ambiguous-panic-globvsglob.rs:13:9
-   |
-LL |     use m2::*;
-   |         ^^^^^
-   = help: consider adding an explicit import of `panic` to disambiguate
-   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
-
+For more information about this error, try `rustc --explain E0659`.
