@@ -503,15 +503,12 @@ fn impl_intersection_has_negative_obligation(
     assert_eq!(root_universe, ty::UniverseIndex::ROOT);
 
     let impl1_header = fresh_impl_header(infcx, impl1_def_id, is_of_trait);
-    let param_env =
-        ty::EarlyBinder::bind(tcx.param_env(impl1_def_id)).instantiate(tcx, impl1_header.impl_args);
-
     let impl2_header = fresh_impl_header(infcx, impl2_def_id, is_of_trait);
 
     // Equate the headers to find their intersection (the general type, with infer vars,
     // that may apply both impls).
     let Some(equate_obligations) =
-        equate_impl_headers(infcx, param_env, &impl1_header, &impl2_header)
+        equate_impl_headers(infcx, ty::ParamEnv::empty(), &impl1_header, &impl2_header)
     else {
         return false;
     };
@@ -529,7 +526,10 @@ fn impl_intersection_has_negative_obligation(
         root_universe,
         (impl1_header.impl_args, impl2_header.impl_args),
     );
-    let param_env = infcx.resolve_vars_if_possible(param_env);
+
+    let impl1_header_args = infcx.resolve_vars_if_possible(impl1_header.impl_args);
+    let param_env =
+        ty::EarlyBinder::bind(tcx.param_env(impl1_def_id)).instantiate(tcx, impl1_header_args);
 
     util::elaborate(tcx, tcx.predicates_of(impl2_def_id).instantiate(tcx, impl2_header.impl_args))
         .elaborate_sized()
