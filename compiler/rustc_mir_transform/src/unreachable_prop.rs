@@ -35,7 +35,9 @@ impl crate::MirPass<'_> for UnreachablePropagation {
                 }
                 // Try to remove unreachable targets from the switch.
                 TerminatorKind::SwitchInt { .. } => {
-                    remove_successors_from_switch(tcx, bb, &unreachable_blocks, body, &mut patch)
+                    remove_successors_from_switch(tcx, bb, body, &mut patch, |bb| {
+                        unreachable_blocks.contains(&bb)
+                    })
                 }
                 _ => false,
             };
@@ -60,19 +62,17 @@ impl crate::MirPass<'_> for UnreachablePropagation {
 }
 
 /// Return whether the current terminator is fully unreachable.
-fn remove_successors_from_switch<'tcx>(
+pub(crate) fn remove_successors_from_switch<'tcx>(
     tcx: TyCtxt<'tcx>,
     bb: BasicBlock,
-    unreachable_blocks: &FxHashSet<BasicBlock>,
     body: &Body<'tcx>,
     patch: &mut MirPatch<'tcx>,
+    is_unreachable_block: impl Fn(BasicBlock) -> bool,
 ) -> bool {
     let terminator = body.basic_blocks[bb].terminator();
     let TerminatorKind::SwitchInt { discr, targets } = &terminator.kind else { bug!() };
     let source_info = terminator.source_info;
     let location = body.terminator_loc(bb);
-
-    let is_unreachable = |bb| unreachable_blocks.contains(&bb);
 
     // If there are multiple targets, we want to keep information about reachability for codegen.
     // For example (see tests/codegen-llvm/match-optimizes-away.rs)
@@ -116,10 +116,10 @@ fn remove_successors_from_switch<'tcx>(
     };
 
     let otherwise = targets.otherwise();
-    let otherwise_unreachable = is_unreachable(otherwise);
+    let otherwise_unreachable = is_unreachable_block(otherwise);
 
     let reachable_iter = targets.iter().filter(|&(value, bb)| {
-        let is_unreachable = is_unreachable(bb);
+        let is_unreachable = is_unreachable_block(bb);
         // We remove this target from the switch, so record the inequality using `Assume`.
         if is_unreachable && !otherwise_unreachable {
             add_assumption(BinOp::Ne, value);
