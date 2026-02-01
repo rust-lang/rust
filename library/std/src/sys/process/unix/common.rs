@@ -105,8 +105,9 @@ pub struct Command {
     setsid: bool,
 }
 
-// passed to do_exec() with configuration of what the child stdio should look
-// like
+// passed to do_exec() with configuration of what the child stdio should look like.
+// SAFETY: don't add any fields here that would require allocation or freeing,
+// because of the safety requirements of do_exec().
 #[cfg_attr(target_os = "vita", allow(dead_code))]
 pub struct ChildPipes {
     pub stdin: ChildStdio,

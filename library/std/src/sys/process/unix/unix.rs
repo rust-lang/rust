@@ -268,12 +268,9 @@ impl Command {
     //
     // For this reason, the block of code below should contain 0
     // invocations of either malloc of free (or their related friends).
+    // ChildPipes does not involve any memory allocation or freeing.
     //
-    // As an example of not having malloc/free traffic, we don't close
-    // this file descriptor by dropping the FileDesc (which contains an
-    // allocation). Instead we just close it manually. This will never
-    // have the drop glue anyway because this code never returns (the
-    // child will either exec() or invoke libc::exit)
+    // The FileDesc will be closed because of FD_CLOEXEC flag is set.
     #[cfg(not(any(target_os = "tvos", target_os = "watchos")))]
     unsafe fn do_exec(
         &mut self,
@@ -283,12 +280,15 @@ impl Command {
         use crate::sys::{self, cvt_r};
 
         if let Some(fd) = stdio.stdin.fd() {
+            debug_assert!((libc::fcntl(fd, libc::F_GETFD) & libc::FD_CLOEXEC) != 0);
             cvt_r(|| libc::dup2(fd, libc::STDIN_FILENO))?;
         }
         if let Some(fd) = stdio.stdout.fd() {
+            debug_assert!((libc::fcntl(fd, libc::F_GETFD) & libc::FD_CLOEXEC) != 0);
             cvt_r(|| libc::dup2(fd, libc::STDOUT_FILENO))?;
         }
         if let Some(fd) = stdio.stderr.fd() {
+            debug_assert!((libc::fcntl(fd, libc::F_GETFD) & libc::FD_CLOEXEC) != 0);
             cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO))?;
         }
 
