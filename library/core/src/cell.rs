@@ -689,6 +689,30 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<Cell<U>> for Cell<T> {}
 
+#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> AsRef<[Cell<T>; N]> for Cell<[T; N]> {
+    #[inline(always)]
+    fn as_ref(&self) -> &[Cell<T>; N] {
+        self.as_array_of_cells()
+    }
+}
+
+#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> AsRef<[Cell<T>]> for Cell<[T; N]> {
+    #[inline(always)]
+    fn as_ref(&self) -> &[Cell<T>] {
+        &*self.as_array_of_cells()
+    }
+}
+
+#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T> AsRef<[Cell<T>]> for Cell<[T]> {
+    #[inline(always)]
+    fn as_ref(&self) -> &[Cell<T>] {
+        self.as_slice_of_cells()
+    }
+}
+
 impl<T> Cell<[T]> {
     /// Returns a `&[Cell<T>]` from a `&Cell<[T]>`
     ///
