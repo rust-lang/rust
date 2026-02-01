@@ -29,6 +29,8 @@
 pub mod ffi;
 pub mod fs;
 pub mod io;
+#[unstable(feature = "windows_unix_domain_sockets", issue = "150487")]
+pub mod net;
 pub mod process;
 pub mod raw;
 pub mod thread;
