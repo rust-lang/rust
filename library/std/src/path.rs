@@ -3586,6 +3586,14 @@ impl const AsRef<OsStr> for Path {
     }
 }
 
+#[stable(feature = "cow_path_as_ref_os_str", since = "CURRENT_RUSTC_VERSION")]
+impl AsRef<OsStr> for Cow<'_, Path> {
+    #[inline]
+    fn as_ref(&self) -> &OsStr {
+        self.as_os_str()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Path {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
