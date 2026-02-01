@@ -444,8 +444,7 @@ pub(crate) fn run_global_ctxt(
     krate =
         tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate, &render_options));
 
-    let mut collector =
-        LinkCollector { cx: &mut ctxt, visited_links: visited, ambiguous_links: ambiguous };
+    let mut collector = LinkCollector::new_with(&mut ctxt, visited, ambiguous);
     collector.resolve_ambiguities();
 
     tcx.dcx().abort_if_errors();

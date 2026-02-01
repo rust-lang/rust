@@ -8,6 +8,7 @@ use std::mem;
 use std::ops::Range;
 
 use rustc_ast::util::comments::may_have_doc_links;
+use rustc_ast::{Path, PathSegment, join_path_syms};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, Diag, DiagMessage};
@@ -18,6 +19,8 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
 use rustc_hir::{Attribute, Mutability, Safety};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
+use rustc_parse::lexer::StripTokens;
+use rustc_parse::parser::PathStyle;
 use rustc_resolve::rustdoc::pulldown_cmark::LinkType;
 use rustc_resolve::rustdoc::{
     MalformedGenerics, has_primitive_or_keyword_or_attribute_docs, prepare_to_doc_link_resolution,
@@ -25,8 +28,9 @@ use rustc_resolve::rustdoc::{
 };
 use rustc_session::config::CrateType;
 use rustc_session::lint::Lint;
-use rustc_span::BytePos;
+use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{Ident, Symbol, sym};
+use rustc_span::{BytePos, FileName};
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, info, instrument, trace};
 
@@ -45,11 +49,7 @@ pub(crate) fn collect_intra_doc_links<'a, 'tcx>(
     krate: Crate,
     cx: &'a mut DocContext<'tcx>,
 ) -> (Crate, LinkCollector<'a, 'tcx>) {
-    let mut collector = LinkCollector {
-        cx,
-        visited_links: FxHashMap::default(),
-        ambiguous_links: FxIndexMap::default(),
-    };
+    let mut collector = LinkCollector::new(cx);
     collector.visit_crate(&krate);
     (krate, collector)
 }
@@ -266,6 +266,7 @@ pub(crate) struct LinkCollector<'a, 'tcx> {
     /// codepaths, but we want to distinguish different kinds of error conditions, and this is easy
     /// to do by resolving links as soon as possible.
     pub(crate) ambiguous_links: FxIndexMap<(ItemId, String), Vec<AmbiguousLinks>>,
+    psess: ParseSess,
 }
 
 pub(crate) struct AmbiguousLinks {
@@ -274,69 +275,18 @@ pub(crate) struct AmbiguousLinks {
     resolved: Vec<(Res, Option<UrlFragment>)>,
 }
 
-impl<'tcx> LinkCollector<'_, 'tcx> {
-    /// Given a full link, parse it as an [enum struct variant].
-    ///
-    /// In particular, this will return an error whenever there aren't three
-    /// full path segments left in the link.
-    ///
-    /// [enum struct variant]: rustc_hir::VariantData::Struct
-    fn variant_field<'path>(
-        &self,
-        path_str: &'path str,
-        item_id: DefId,
-        module_id: DefId,
-    ) -> Result<(Res, DefId), UnresolvedPath<'path>> {
-        let tcx = self.cx.tcx;
-        let no_res = || UnresolvedPath {
-            item_id,
-            module_id,
-            partial_res: None,
-            unresolved: path_str.into(),
-        };
+impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
+    pub(crate) fn new(cx: &'a mut DocContext<'tcx>) -> Self {
+        Self::new_with(cx, FxHashMap::default(), FxIndexMap::default())
+    }
 
-        debug!("looking for enum variant {path_str}");
-        let mut split = path_str.rsplitn(3, "::");
-        let variant_field_name = Symbol::intern(split.next().unwrap());
-        // We're not sure this is a variant at all, so use the full string.
-        // If there's no second component, the link looks like `[path]`.
-        // So there's no partial res and we should say the whole link failed to resolve.
-        let variant_name = Symbol::intern(split.next().ok_or_else(no_res)?);
-
-        // If there's no third component, we saw `[a::b]` before and it failed to resolve.
-        // So there's no partial res.
-        let path = split.next().ok_or_else(no_res)?;
-        let ty_res = self.resolve_path(path, TypeNS, item_id, module_id).ok_or_else(no_res)?;
-
-        match ty_res {
-            Res::Def(DefKind::Enum | DefKind::TyAlias, did) => {
-                match tcx.type_of(did).instantiate_identity().kind() {
-                    ty::Adt(def, _) if def.is_enum() => {
-                        if let Some(variant) =
-                            def.variants().iter().find(|v| v.name == variant_name)
-                            && let Some(field) =
-                                variant.fields.iter().find(|f| f.name == variant_field_name)
-                        {
-                            Ok((ty_res, field.did))
-                        } else {
-                            Err(UnresolvedPath {
-                                item_id,
-                                module_id,
-                                partial_res: Some(Res::Def(DefKind::Enum, def.did())),
-                                unresolved: variant_field_name.to_string().into(),
-                            })
-                        }
-                    }
-                    _ => unreachable!(),
-                }
-            }
-            _ => Err(UnresolvedPath {
-                item_id,
-                module_id,
-                partial_res: Some(ty_res),
-                unresolved: variant_name.to_string().into(),
-            }),
-        }
+    pub(crate) fn new_with(
+        cx: &'a mut DocContext<'tcx>,
+        visited_links: FxHashMap<ResolutionInfo, Option<(Res, Option<UrlFragment>)>>,
+        ambiguous_links: FxIndexMap<(ItemId, String), Vec<AmbiguousLinks>>,
+    ) -> Self {
+        let psess = ParseSess::new(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec());
+        Self { cx, visited_links, ambiguous_links, psess }
     }
 
     /// Convenience wrapper around `doc_link_resolutions`.
@@ -409,7 +359,15 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
             });
         }
 
-        // Try looking for methods and associated items.
+        if let Ok(path) = parse_path(&self.psess, path_str) {
+            let candidates =
+                self.resolve_type_relative_path(&path, ns, disambiguator, item_id, module_id);
+            if !candidates.is_empty() {
+                return Ok(candidates.into_iter().map(|(res, did)| (res, Some(did))).collect());
+            }
+        }
+
+        // Try to resolve a primitive's associated item.
         // NB: `path_root` could be empty when resolving in the root namespace (e.g. `::std`).
         let (path_root, item_str) = match path_str.rsplit_once("::") {
             Some(res @ (_path_root, item_str)) if !item_str.is_empty() => res,
@@ -427,39 +385,123 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
             }
         };
         let item_name = Symbol::intern(item_str);
+        let item_ident = Ident::with_dummy_span(item_name);
 
         // FIXME(#83862): this arbitrarily gives precedence to primitives over modules to support
         // links to primitives when `#[rustc_doc_primitive]` is present. It should give an ambiguity
         // error instead and special case *only* modules with `#[rustc_doc_primitive]`, not all
         // primitives.
-        match resolve_primitive(path_root, TypeNS)
-            .or_else(|| self.resolve_path(path_root, TypeNS, item_id, module_id))
-            .map(|ty_res| {
-                resolve_associated_item(tcx, ty_res, item_name, ns, disambiguator, module_id)
-                    .into_iter()
-                    .map(|(res, def_id)| (res, Some(def_id)))
-                    .collect::<Vec<_>>()
-            }) {
+        let res = resolve_primitive(path_root, TypeNS).map(|ty_res| {
+            let Res::Primitive(prim) = ty_res else { unreachable!() };
+            resolve_assoc_on_primitive(tcx, prim, ns, item_ident, module_id)
+                .into_iter()
+                .map(|(res, did)| (res, Some(did)))
+                .collect::<Vec<_>>()
+        });
+        match res {
             Some(r) if !r.is_empty() => Ok(r),
-            _ => {
-                if ns == Namespace::ValueNS {
-                    self.variant_field(path_str, item_id, module_id)
-                        .map(|(res, def_id)| vec![(res, Some(def_id))])
-                } else {
-                    Err(UnresolvedPath {
-                        item_id,
-                        module_id,
-                        partial_res: None,
-                        unresolved: path_root.into(),
-                    })
+            _ => Err(UnresolvedPath {
+                item_id,
+                module_id,
+                partial_res: None,
+                unresolved: path_root.into(),
+            }),
+        }
+    }
+
+    fn resolve_type_relative_path(
+        &self,
+        path: &Path,
+        ns: Namespace,
+        disambiguator: Option<Disambiguator>,
+        item_id: DefId,
+        module_id: DefId,
+    ) -> Vec<(Res, DefId)> {
+        let tcx = self.cx.tcx;
+        let Some((root_res, assoc_segments)) =
+            self.split_type_relative_path(path, item_id, module_id)
+        else {
+            return vec![];
+        };
+        match assoc_segments {
+            [item_segment] => {
+                let item_name = item_segment.ident.name;
+                return resolve_associated_item(
+                    tcx,
+                    root_res,
+                    item_name,
+                    ns,
+                    disambiguator,
+                    module_id,
+                );
+            }
+            [variant_segment, field_segment] => {
+                let variant_name = variant_segment.ident.name;
+                let field_name = field_segment.ident.name;
+                if let Res::Def(DefKind::Enum | DefKind::TyAlias, adt_did) = root_res
+                    && let Some(adt_def) = tcx.type_of(adt_did).instantiate_identity().ty_adt_def()
+                    && let Some(variant_def) =
+                        adt_def.variants().iter().find(|v| v.name == variant_name)
+                {
+                    let variant_did = variant_def.def_id;
+                    // NOTE: we use a dummy span since field_segment has a span from the anonymous
+                    // sourcemap we use to parse intra-doc paths
+                    let field_ident = Ident::with_dummy_span(field_name);
+                    return resolve_variant_field(tcx, root_res, variant_did, field_ident, ns)
+                        .into_iter()
+                        .collect();
                 }
             }
+            _ => {}
         }
+        vec![]
+    }
+
+    fn split_type_relative_path<'path>(
+        &self,
+        path: &'path Path,
+        item_id: DefId,
+        module_id: DefId,
+    ) -> Option<(Res, &'path [PathSegment])> {
+        for first_assoc_index in (1..path.segments.len()).rev() {
+            // FIXME(perf): maybe could use span BytePos's to index the original path_str
+            // if this code here is a perf issue
+            let root_path_str =
+                join_path_syms(path.segments[..first_assoc_index].iter().map(|s| s.ident.name));
+            if let Some(root_res) = self.resolve_path(&root_path_str, TypeNS, item_id, module_id) {
+                return Some((root_res, &path.segments[first_assoc_index..]));
+            }
+        }
+        None
     }
 }
 
 fn full_res(tcx: TyCtxt<'_>, (base, assoc_item): (Res, Option<DefId>)) -> Res {
     assoc_item.map_or(base, |def_id| Res::from_def_id(tcx, def_id))
+}
+
+fn parse_path(psess: &ParseSess, path_str: &str) -> Result<Path, ()> {
+    let file_name = FileName::anon_source_code(path_str);
+    let mut parser = match rustc_parse::new_parser_from_source_str(
+        psess,
+        file_name,
+        path_str.to_owned(),
+        StripTokens::Nothing,
+    ) {
+        Ok(parser) => parser,
+        Err(errs) => {
+            errs.into_iter().for_each(|err| err.cancel());
+            return Err(());
+        }
+    };
+    parser
+        .parse_path(PathStyle::Type)
+        .inspect(|p| {
+            p.segments.iter().for_each(|s| {
+                assert!(s.args.is_none(), "path must have no generics, but has {:?}", s.args)
+            })
+        })
+        .map_err(|err| err.cancel())
 }
 
 /// Given a primitive type, try to resolve an associated item.
@@ -623,6 +665,9 @@ fn resolve_associated_item<'tcx>(
         Res::Def(DefKind::Struct | DefKind::Union | DefKind::Enum, did) => {
             resolve_assoc_on_adt(tcx, did, item_ident, ns, disambiguator, module_id)
         }
+        Res::Def(DefKind::Variant, did) => {
+            resolve_variant_field(tcx, root_res, did, item_ident, ns).into_iter().collect()
+        }
         Res::Def(DefKind::ForeignTy, did) => {
             resolve_assoc_on_simple_type(tcx, did, item_ident, ns, module_id)
         }
@@ -672,6 +717,28 @@ fn resolve_assoc_on_primitive<'tcx>(
     }
 }
 
+fn resolve_variant_field<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    root_res: Res,
+    variant_def_id: DefId,
+    item_ident: Ident,
+    ns: Namespace,
+) -> Option<(Res, DefId)> {
+    if ns != ValueNS {
+        return None;
+    }
+
+    let Res::Def(_, adt_def_id) = root_res else { unreachable!() };
+    let adt_ty = tcx.type_of(adt_def_id).instantiate_identity();
+    let adt_def = adt_ty.ty_adt_def().expect("variant parent must be ADT");
+    let variant_def = adt_def.variant_with_id(variant_def_id);
+    if let Some(def_id) = resolve_field(variant_def, item_ident.name) {
+        Some((root_res, def_id))
+    } else {
+        None
+    }
+}
+
 fn resolve_assoc_on_adt<'tcx>(
     tcx: TyCtxt<'tcx>,
     adt_def_id: DefId,
@@ -696,7 +763,7 @@ fn resolve_assoc_on_adt<'tcx>(
     if let Some(Disambiguator::Kind(DefKind::Field)) = disambiguator
         && (adt_def.is_struct() || adt_def.is_union())
     {
-        return resolve_structfield(adt_def, item_ident.name)
+        return resolve_field(adt_def.non_enum_variant(), item_ident.name)
             .into_iter()
             .map(|did| (root_res, did))
             .collect();
@@ -708,7 +775,7 @@ fn resolve_assoc_on_adt<'tcx>(
     }
 
     if ns == Namespace::ValueNS && (adt_def.is_struct() || adt_def.is_union()) {
-        return resolve_structfield(adt_def, item_ident.name)
+        return resolve_field(adt_def.non_enum_variant(), item_ident.name)
             .into_iter()
             .map(|did| (root_res, did))
             .collect();
@@ -752,14 +819,9 @@ fn resolve_assoc_on_simple_type<'tcx>(
     trait_assoc_items
 }
 
-fn resolve_structfield<'tcx>(adt_def: ty::AdtDef<'tcx>, item_name: Symbol) -> Option<DefId> {
-    debug!("looking for fields named {item_name} for {adt_def:?}");
-    adt_def
-        .non_enum_variant()
-        .fields
-        .iter()
-        .find(|field| field.name == item_name)
-        .map(|field| field.did)
+fn resolve_field<'tcx>(variant_def: &'tcx ty::VariantDef, item_name: Symbol) -> Option<DefId> {
+    debug!("looking for fields named {item_name} for {variant_def:?}");
+    variant_def.fields.iter().find(|field| field.name == item_name).map(|field| field.did)
 }
 
 /// Look to see if a resolved item has an associated item named `item_name`.
