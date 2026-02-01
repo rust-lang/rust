@@ -14,7 +14,9 @@ pub use query::DepGraphQuery;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::DynSync;
 use rustc_session::Session;
-pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
+pub use serialized::{
+    DEP_KIND_UNUSED_BITS, SerializedDepGraph, SerializedDepNodeIndex, unused_dep_kind_bits,
+};
 use tracing::instrument;
 
 use self::graph::{MarkFrame, print_markframe_trace};
@@ -27,7 +29,7 @@ pub trait DepContext: Copy {
     fn with_stable_hashing_context<R>(self, f: impl FnOnce(StableHashingContext<'_>) -> R) -> R;
 
     /// Access the DepGraph.
-    fn dep_graph(&self) -> &DepGraph<Self::Deps>;
+    fn dep_graph(&self) -> &DepGraph;
 
     /// Access the profiler.
     fn profiler(&self) -> &SelfProfilerRef;
@@ -36,6 +38,22 @@ pub trait DepContext: Copy {
     fn sess(&self) -> &Session;
 
     fn dep_kind_vtable(&self, dep_node: DepKind) -> &DepKindVTable<Self>;
+
+    #[inline]
+    fn read_index(self, dep_node_index: DepNodeIndex) {
+        self.dep_graph().read_index::<Self::Deps>(dep_node_index);
+    }
+
+    fn assert_ignored(self) {
+        self.dep_graph().assert_ignored::<Self::Deps>();
+    }
+
+    fn with_ignore<OP, R>(&self, op: OP) -> R
+    where
+        OP: FnOnce() -> R,
+    {
+        Self::Deps::with_deps(TaskDepsRef::Ignore, op)
+    }
 
     #[inline(always)]
     fn fingerprint_style(self, kind: DepKind) -> FingerprintStyle {
@@ -98,24 +116,6 @@ pub trait Deps: DynSync {
     fn read_deps<OP>(op: OP)
     where
         OP: for<'a> FnOnce(TaskDepsRef<'a>);
-
-    fn name(dep_kind: DepKind) -> &'static str;
-
-    /// We use this for most things when incr. comp. is turned off.
-    const DEP_KIND_NULL: DepKind;
-
-    /// We use this to create a forever-red node.
-    const DEP_KIND_RED: DepKind;
-
-    /// We use this to create a side effect node.
-    const DEP_KIND_SIDE_EFFECT: DepKind;
-
-    /// We use this to create the anon node with zero dependencies.
-    const DEP_KIND_ANON_ZERO_DEPS: DepKind;
-
-    /// This is the highest value a `DepKind` can have. It's used during encoding to
-    /// pack information into the unused bits.
-    const DEP_KIND_MAX: u16;
 }
 
 pub trait HasDepContext: Copy {

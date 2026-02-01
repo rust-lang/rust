@@ -5,6 +5,7 @@
 //! paths etc in all kinds of annoying scenarios.
 
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{GenericArgs, Instance, TyCtxt};
 use rustc_span::{Symbol, sym};
@@ -22,7 +23,7 @@ pub fn report_symbol_names(tcx: TyCtxt<'_>) {
         return;
     }
 
-    tcx.dep_graph.with_ignore(|| {
+    tcx.with_ignore(|| {
         let mut symbol_names = SymbolNamesTest { tcx };
         let crate_items = tcx.hir_crate_items(());
 

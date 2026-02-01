@@ -4,7 +4,8 @@ use std::sync::Arc;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::join;
 use rustc_middle::dep_graph::{
-    DepGraph, SerializedDepGraph, WorkProduct, WorkProductId, WorkProductMap,
+    DEP_KIND_VARIANTS, DepContext, DepGraph, DepsType, SerializedDepGraph, WorkProduct,
+    WorkProductId, WorkProductMap,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::Encodable as RustcEncodable;
@@ -27,7 +28,7 @@ use crate::errors;
 /// Trying to execute a query afterwards would attempt to read the result cache we just dropped.
 pub(crate) fn save_dep_graph(tcx: TyCtxt<'_>) {
     debug!("save_dep_graph()");
-    tcx.dep_graph.with_ignore(|| {
+    tcx.with_ignore(|| {
         let sess = tcx.sess;
         if sess.opts.incremental.is_none() {
             return;
@@ -89,7 +90,7 @@ pub fn save_work_product_index(
     }
 
     debug!("save_work_product_index()");
-    dep_graph.assert_ignored();
+    dep_graph.assert_ignored::<DepsType>();
     let path = work_products_path(sess);
     file_format::save_in(sess, path, "work product index", |mut e| {
         encode_work_product_index(&new_work_products, &mut e);
@@ -168,5 +169,5 @@ pub(crate) fn build_dep_graph(
     // First encode the commandline arguments hash
     sess.opts.dep_tracking_hash(false).encode(&mut encoder);
 
-    Some(DepGraph::new(sess, prev_graph, prev_work_products, encoder))
+    Some(DepGraph::new(sess, prev_graph, prev_work_products, encoder, DEP_KIND_VARIANTS as usize))
 }

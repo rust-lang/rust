@@ -5,6 +5,7 @@ use std::fmt::Write;
 
 use rustc_ast_pretty::pprust as pprust_ast;
 use rustc_middle::bug;
+use rustc_middle::dep_graph::DepContext;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_build::thir::print::{thir_flat, thir_tree};
@@ -286,7 +287,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
                 }
                 PpHirMode::Typed => {
                     let annotation = HirTypedAnn { tcx, maybe_typeck_results: Cell::new(None) };
-                    tcx.dep_graph.with_ignore(|| f(&annotation))
+                    tcx.with_ignore(|| f(&annotation))
                 }
             }
         }

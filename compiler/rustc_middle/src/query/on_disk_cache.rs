@@ -11,6 +11,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, LocalDefId, Stab
 use rustc_hir::definitions::DefPathHash;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{Decodable, Encodable};
+use rustc_query_system::dep_graph::DepContext;
 use rustc_query_system::query::QuerySideEffect;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -222,7 +223,7 @@ impl OnDiskCache {
 
     pub fn serialize(&self, tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult {
         // Serializing the `DepGraph` should not modify it.
-        tcx.dep_graph.with_ignore(|| {
+        tcx.with_ignore(|| {
             // Allocate `SourceFileIndex`es.
             let (file_to_file_index, file_index_to_stable_id) = {
                 let files = tcx.sess.source_map().files();

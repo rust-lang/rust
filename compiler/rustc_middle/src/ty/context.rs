@@ -41,7 +41,7 @@ use rustc_hir::limit::Limit;
 use rustc_hir::{self as hir, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
 use rustc_query_system::cache::WithDepNode;
-use rustc_query_system::dep_graph::DepNodeIndex;
+use rustc_query_system::dep_graph::{DepContext, DepNodeIndex};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
@@ -1423,7 +1423,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Can only be fed before queries are run, and is thus exempt from any
     /// incremental issues. Do not use except for the initial query feeding.
     pub fn feed_unit_query(self) -> TyCtxtFeed<'tcx, ()> {
-        self.dep_graph.assert_ignored();
+        self.assert_ignored();
         TyCtxtFeed { tcx: self, key: () }
     }
 
@@ -2161,7 +2161,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // We need to ensure that these side effects are re-run by the incr. comp. engine.
         // Depending on the forever-red node will tell the graph that the calling query
         // needs to be re-evaluated.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        self.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
         let feed = TyCtxtFeed { tcx: self, key: def_id };
         feed.def_kind(def_kind);

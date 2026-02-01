@@ -1,4 +1,5 @@
 use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_query_system::dep_graph::{DEP_KIND_UNUSED_BITS, unused_dep_kind_bits};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Session;
 
@@ -8,7 +9,10 @@ use crate::ty::{self, TyCtxt};
 #[macro_use]
 mod dep_node;
 
-pub use dep_node::{DepKind, DepNode, DepNodeExt, dep_kind_from_label, dep_kinds, label_strs};
+pub use dep_node::{
+    DEP_KIND_NAMES, DEP_KIND_VARIANTS, DepKind, DepNode, DepNodeExt, dep_kind_from_label,
+    dep_kinds, label_strs,
+};
 pub(crate) use dep_node::{make_compile_codegen_unit, make_compile_mono_item, make_metadata};
 pub use rustc_query_system::dep_graph::debug::{DepNodeFilter, EdgeFilter};
 pub use rustc_query_system::dep_graph::{
@@ -16,7 +20,7 @@ pub use rustc_query_system::dep_graph::{
     TaskDepsRef, WorkProduct, WorkProductId, WorkProductMap, hash_result,
 };
 
-pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepsType>;
+pub type DepGraph = rustc_query_system::dep_graph::DepGraph;
 
 pub type DepKindVTable<'tcx> = rustc_query_system::dep_graph::DepKindVTable<TyCtxt<'tcx>>;
 
@@ -43,17 +47,10 @@ impl Deps for DepsType {
             op(icx.task_deps)
         })
     }
-
-    fn name(dep_kind: DepKind) -> &'static str {
-        dep_node::DEP_KIND_NAMES[dep_kind.as_usize()]
-    }
-
-    const DEP_KIND_NULL: DepKind = dep_kinds::Null;
-    const DEP_KIND_RED: DepKind = dep_kinds::Red;
-    const DEP_KIND_SIDE_EFFECT: DepKind = dep_kinds::SideEffect;
-    const DEP_KIND_ANON_ZERO_DEPS: DepKind = dep_kinds::AnonZeroDeps;
-    const DEP_KIND_MAX: u16 = dep_node::DEP_KIND_VARIANTS - 1;
 }
+
+/// Verify that the unused bits for the dep kind matches the hardcoded value in `rustc_query_system`.
+const _: [(); unused_dep_kind_bits(dep_node::DEP_KIND_VARIANTS)] = [(); DEP_KIND_UNUSED_BITS];
 
 impl<'tcx> DepContext for TyCtxt<'tcx> {
     type Deps = DepsType;

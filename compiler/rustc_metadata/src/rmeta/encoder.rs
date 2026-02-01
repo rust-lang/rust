@@ -17,7 +17,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, 
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::find_attr;
 use rustc_hir_pretty::id_to_string;
-use rustc_middle::dep_graph::WorkProductId;
+use rustc_middle::dep_graph::{DepContext, WorkProductId};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
@@ -2420,7 +2420,7 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
 pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     // Since encoding metadata is not in a query, and nothing is cached,
     // there's no need to do dep-graph tracking for any of it.
-    tcx.dep_graph.assert_ignored();
+    tcx.assert_ignored();
 
     // Generate the metadata stub manually, as that is a small file compared to full metadata.
     if let Some(ref_path) = ref_path {

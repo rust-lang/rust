@@ -13,8 +13,8 @@ use rustc_hir::limit::Limit;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{
-    self, DepContext, DepKind, DepKindVTable, DepNode, DepNodeIndex, SerializedDepNodeIndex,
-    dep_kinds,
+    self, DepContext, DepKind, DepKindVTable, DepNode, DepNodeIndex, DepsType,
+    SerializedDepNodeIndex, dep_kinds,
 };
 use rustc_middle::query::Key;
 use rustc_middle::query::on_disk_cache::{
@@ -468,9 +468,9 @@ where
     // The call to `with_query_deserialization` enforces that no new `DepNodes`
     // are created during deserialization. See the docs of that method for more
     // details.
-    let value = tcx
-        .dep_graph
-        .with_query_deserialization(|| on_disk_cache.try_load_query_result(tcx, prev_index));
+    let value = tcx.dep_graph.with_query_deserialization::<DepsType, _, _>(|| {
+        on_disk_cache.try_load_query_result(tcx, prev_index)
+    });
 
     prof_timer.finish_with_query_invocation_id(index.into());
 

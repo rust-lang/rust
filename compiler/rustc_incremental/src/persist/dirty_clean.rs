@@ -26,7 +26,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{
     Attribute, ImplItemKind, ItemKind as HirItem, Node as HirNode, TraitItemKind, intravisit,
 };
-use rustc_middle::dep_graph::{DepNode, DepNodeExt, dep_kind_from_label, label_strs};
+use rustc_middle::dep_graph::{DepContext, DepNode, DepNodeExt, dep_kind_from_label, label_strs};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, Symbol, sym};
@@ -144,7 +144,7 @@ pub(crate) fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
         return;
     }
 
-    tcx.dep_graph.with_ignore(|| {
+    tcx.with_ignore(|| {
         let mut dirty_clean_visitor = DirtyCleanVisitor { tcx, checked_attrs: Default::default() };
 
         let crate_items = tcx.hir_crate_items(());

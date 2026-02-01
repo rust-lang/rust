@@ -279,7 +279,7 @@ where
     match cache.lookup(key) {
         Some((value, index)) => {
             tcx.profiler().query_cache_hit(index.into());
-            tcx.dep_graph().read_index(index);
+            tcx.read_index(index);
             Some(value)
         }
         None => None,
@@ -538,7 +538,7 @@ where
 fn execute_job_incr<'tcx, Q>(
     query: Q,
     qcx: Q::Qcx,
-    dep_graph_data: &DepGraphData<<Q::Qcx as HasDepContext>::Deps>,
+    dep_graph_data: &DepGraphData,
     key: Q::Key,
     mut dep_node_opt: Option<DepNode>,
     job_id: QueryJobId,
@@ -592,7 +592,7 @@ where
 #[inline(always)]
 fn try_load_from_disk_and_cache_in_memory<'tcx, Q>(
     query: Q,
-    dep_graph_data: &DepGraphData<<Q::Qcx as HasDepContext>::Deps>,
+    dep_graph_data: &DepGraphData,
     qcx: Q::Qcx,
     key: &Q::Key,
     dep_node: &DepNode,
@@ -659,7 +659,7 @@ where
     let prof_timer = qcx.dep_context().profiler().query_provider();
 
     // The dep-graph for this computation is already in-place.
-    let result = qcx.dep_context().dep_graph().with_ignore(|| query.compute(qcx, *key));
+    let result = qcx.dep_context().with_ignore(|| query.compute(qcx, *key));
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -688,7 +688,7 @@ where
 #[instrument(skip(tcx, dep_graph_data, result, hash_result, format_value), level = "debug")]
 pub(crate) fn incremental_verify_ich<Tcx, V>(
     tcx: Tcx,
-    dep_graph_data: &DepGraphData<Tcx::Deps>,
+    dep_graph_data: &DepGraphData,
     result: &V,
     prev_index: SerializedDepNodeIndex,
     hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
@@ -794,23 +794,23 @@ where
 
     let dep_node = query.construct_dep_node(*qcx.dep_context(), key);
 
-    let dep_graph = qcx.dep_context().dep_graph();
-    let serialized_dep_node_index = match dep_graph.try_mark_green(qcx, &dep_node) {
-        None => {
-            // A None return from `try_mark_green` means that this is either
-            // a new dep node or that the dep node has already been marked red.
-            // Either way, we can't call `dep_graph.read()` as we don't have the
-            // DepNodeIndex. We must invoke the query itself. The performance cost
-            // this introduces should be negligible as we'll immediately hit the
-            // in-memory cache, or another query down the line will.
-            return (true, Some(dep_node));
-        }
-        Some((serialized_dep_node_index, dep_node_index)) => {
-            dep_graph.read_index(dep_node_index);
-            qcx.dep_context().profiler().query_cache_hit(dep_node_index.into());
-            serialized_dep_node_index
-        }
-    };
+    let serialized_dep_node_index =
+        match qcx.dep_context().dep_graph().try_mark_green(qcx, &dep_node) {
+            None => {
+                // A None return from `try_mark_green` means that this is either
+                // a new dep node or that the dep node has already been marked red.
+                // Either way, we can't call `dep_graph.read()` as we don't have the
+                // DepNodeIndex. We must invoke the query itself. The performance cost
+                // this introduces should be negligible as we'll immediately hit the
+                // in-memory cache, or another query down the line will.
+                return (true, Some(dep_node));
+            }
+            Some((serialized_dep_node_index, dep_node_index)) => {
+                qcx.dep_context().read_index(dep_node_index);
+                qcx.dep_context().profiler().query_cache_hit(dep_node_index.into());
+                serialized_dep_node_index
+            }
+        };
 
     // We do not need the value at all, so do not check the cache.
     if !check_cache {
@@ -863,7 +863,7 @@ where
     let (result, dep_node_index) =
         ensure_sufficient_stack(|| try_execute_query::<Q, true>(query, qcx, span, key, dep_node));
     if let Some(dep_node_index) = dep_node_index {
-        qcx.dep_context().dep_graph().read_index(dep_node_index)
+        qcx.dep_context().read_index(dep_node_index)
     }
     Some(result)
 }

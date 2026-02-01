@@ -42,7 +42,7 @@ use rustc_data_structures::graph::linked_graph::{Direction, INCOMING, NodeIndex,
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::dep_graph::{
-    DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, EdgeFilter, dep_kinds,
+    DepContext, DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, EdgeFilter, dep_kinds,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
@@ -55,7 +55,7 @@ use crate::errors;
 
 #[allow(missing_docs)]
 pub(crate) fn assert_dep_graph(tcx: TyCtxt<'_>) {
-    tcx.dep_graph.with_ignore(|| {
+    tcx.with_ignore(|| {
         if tcx.sess.opts.unstable_opts.dump_dep_graph {
             tcx.dep_graph.with_query(dump_graph);
         }

@@ -30,6 +30,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_middle::dep_graph::DepContext;
 use rustc_middle::mir::mono::CodegenUnitNameBuilder;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -41,7 +42,7 @@ use crate::errors;
 
 #[allow(missing_docs)]
 pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&mut CguReuseTracker)) {
-    tcx.dep_graph.with_ignore(|| {
+    tcx.with_ignore(|| {
         if tcx.sess.opts.incremental.is_none() {
             return;
         }

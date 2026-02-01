@@ -5,6 +5,9 @@ use rustc_hir::{HirId, ItemLocalId, OwnerId};
 pub use rustc_query_system::dep_graph::DepNode;
 use rustc_query_system::dep_graph::FingerprintStyle;
 pub use rustc_query_system::dep_graph::dep_node::DepKind;
+use rustc_query_system::dep_graph::dep_node::{
+    DEP_KIND_ANON_ZERO_DEPS, DEP_KIND_NULL, DEP_KIND_RED, DEP_KIND_SIDE_EFFECT,
+};
 pub(crate) use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
 use rustc_span::Symbol;
 
@@ -47,7 +50,7 @@ macro_rules! define_dep_nodes {
 
         // This checks that the discriminants of the variants have been assigned consecutively
         // from 0 so that they can be used as a dense index.
-        pub(crate) const DEP_KIND_VARIANTS: u16 = {
+        pub const DEP_KIND_VARIANTS: u16 = {
             let deps = &[$(dep_kinds::$variant,)*];
             let mut i = 0;
             while i < deps.len() {
@@ -61,7 +64,7 @@ macro_rules! define_dep_nodes {
 
         /// List containing the name of each dep kind as a static string,
         /// indexable by `DepKind`.
-        pub(crate) const DEP_KIND_NAMES: &[&str] = &[
+        pub const DEP_KIND_NAMES: &[&str] = &[
             $( self::label_strs::$variant, )*
         ];
 
@@ -84,17 +87,26 @@ macro_rules! define_dep_nodes {
 // Create various data structures for each query, and also for a few things
 // that aren't queries.
 rustc_with_all_queries!(define_dep_nodes![
-    /// We use this for most things when incr. comp. is turned off.
+    // Make sure this list matches the BuiltinDepKinds enum.
     [] fn Null() -> (),
-    /// We use this to create a forever-red node.
     [] fn Red() -> (),
     [] fn SideEffect() -> (),
     [] fn AnonZeroDeps() -> (),
+    // End of list.
+
     [] fn TraitSelect() -> (),
     [] fn CompileCodegenUnit() -> (),
     [] fn CompileMonoItem() -> (),
     [] fn Metadata() -> (),
 ]);
+
+const _: () = {
+    // Test that the list matches.
+    assert!(dep_kinds::Null.as_inner() == DEP_KIND_NULL.as_inner());
+    assert!(dep_kinds::Red.as_inner() == DEP_KIND_RED.as_inner());
+    assert!(dep_kinds::SideEffect.as_inner() == DEP_KIND_SIDE_EFFECT.as_inner());
+    assert!(dep_kinds::AnonZeroDeps.as_inner() == DEP_KIND_ANON_ZERO_DEPS.as_inner());
+};
 
 // WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.
 // Be very careful changing this type signature!

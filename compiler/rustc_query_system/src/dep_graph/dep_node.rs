@@ -90,6 +90,27 @@ impl DepKind {
     }
 }
 
+/// This must match the use of the define_dep_nodes! macro.
+#[repr(u16)]
+enum BuiltinDepKinds {
+    /// We use this for most things when incr. comp. is turned off.
+    Null,
+
+    /// We use this to create a forever-red node.
+    Red,
+
+    /// We use this to create a side effect node.
+    SideEffect,
+
+    /// We use this to create the anon node with zero dependencies.
+    AnonZeroDeps,
+}
+
+pub const DEP_KIND_NULL: DepKind = DepKind::new(BuiltinDepKinds::Null as u16);
+pub const DEP_KIND_RED: DepKind = DepKind::new(BuiltinDepKinds::Red as u16);
+pub const DEP_KIND_SIDE_EFFECT: DepKind = DepKind::new(BuiltinDepKinds::SideEffect as u16);
+pub const DEP_KIND_ANON_ZERO_DEPS: DepKind = DepKind::new(BuiltinDepKinds::AnonZeroDeps as u16);
+
 pub fn default_dep_kind_debug(kind: DepKind, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     f.debug_struct("DepKind").field("variant", &kind.variant).finish()
 }
@@ -135,7 +156,8 @@ impl DepNode {
                 && (tcx.sess().opts.unstable_opts.incremental_info
                     || tcx.sess().opts.unstable_opts.query_dep_graph)
             {
-                tcx.dep_graph().register_dep_node_debug_str(dep_node, || arg.to_debug_str(tcx));
+                tcx.dep_graph()
+                    .register_dep_node_debug_str(tcx, dep_node, || arg.to_debug_str(tcx));
             }
         }
 
