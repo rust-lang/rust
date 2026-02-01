@@ -4,6 +4,7 @@
 fn main() {
     assert_eq!(factorial(10), 3_628_800);
     assert_eq!(mutually_recursive_identity(1000), 1000);
+    non_scalar();
 }
 
 fn factorial(n: u32) -> u32 {
@@ -36,4 +37,15 @@ fn mutually_recursive_identity(x: u32) -> u32 {
     }
 
     switch(x, 0)
+}
+
+fn non_scalar() {
+    fn f(x: [usize; 2], i: u32) {
+        if i == 0 {
+            return;
+        }
+        become f(x, i - 1);
+    }
+
+    f([5, 5], 2);
 }

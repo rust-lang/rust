@@ -14,8 +14,8 @@ LL |     let local = 0;
 help: ALLOC was deallocated here:
   --> tests/fail/tail_calls/dangling-local-var.rs:LL:CC
    |
-LL |     f(std::ptr::null());
-   |     ^^^^^^^^^^^^^^^^^^^
+LL |     let _val = unsafe { *x };
+   |         ^^^^
    = note: stack backtrace:
            0: g
                at tests/fail/tail_calls/dangling-local-var.rs:LL:CC

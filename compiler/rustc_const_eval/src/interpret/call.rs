@@ -16,8 +16,8 @@ use tracing::{info, instrument, trace};
 
 use super::{
     CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
-    Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, StackPopInfo, interp_ok,
-    throw_ub, throw_ub_custom, throw_unsup_format,
+    Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, interp_ok, throw_ub,
+    throw_ub_custom, throw_unsup_format,
 };
 use crate::interpret::EnteredTraceSpan;
 use crate::{enter_trace_span, fluent_generated as fluent};
@@ -40,25 +40,22 @@ impl<'tcx, Prov: Provenance> FnArg<'tcx, Prov> {
             FnArg::InPlace(mplace) => &mplace.layout,
         }
     }
-}
 
-impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Make a copy of the given fn_arg. Any `InPlace` are degenerated to copies, no protection of the
     /// original memory occurs.
-    pub fn copy_fn_arg(&self, arg: &FnArg<'tcx, M::Provenance>) -> OpTy<'tcx, M::Provenance> {
-        match arg {
+    pub fn copy_fn_arg(&self) -> OpTy<'tcx, Prov> {
+        match self {
             FnArg::Copy(op) => op.clone(),
             FnArg::InPlace(mplace) => mplace.clone().into(),
         }
     }
+}
 
+impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Make a copy of the given fn_args. Any `InPlace` are degenerated to copies, no protection of the
     /// original memory occurs.
-    pub fn copy_fn_args(
-        &self,
-        args: &[FnArg<'tcx, M::Provenance>],
-    ) -> Vec<OpTy<'tcx, M::Provenance>> {
-        args.iter().map(|fn_arg| self.copy_fn_arg(fn_arg)).collect()
+    pub fn copy_fn_args(args: &[FnArg<'tcx, M::Provenance>]) -> Vec<OpTy<'tcx, M::Provenance>> {
+        args.iter().map(|fn_arg| fn_arg.copy_fn_arg()).collect()
     }
 
     /// Helper function for argument untupling.
@@ -310,7 +307,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // We work with a copy of the argument for now; if this is in-place argument passing, we
         // will later protect the source it comes from. This means the callee cannot observe if we
         // did in-place of by-copy argument passing, except for pointer equality tests.
-        let caller_arg_copy = self.copy_fn_arg(caller_arg);
+        let caller_arg_copy = caller_arg.copy_fn_arg();
         if !already_live {
             let local = callee_arg.as_local().unwrap();
             let meta = caller_arg_copy.meta();
@@ -559,7 +556,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 if let Some(fallback) = M::call_intrinsic(
                     self,
                     instance,
-                    &self.copy_fn_args(args),
+                    &Self::copy_fn_args(args),
                     destination,
                     target,
                     unwind,
@@ -646,7 +643,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // An `InPlace` does nothing here, we keep the original receiver intact. We can't
                 // really pass the argument in-place anyway, and we are constructing a new
                 // `Immediate` receiver.
-                let mut receiver = self.copy_fn_arg(&args[0]);
+                let mut receiver = args[0].copy_fn_arg();
                 let receiver_place = loop {
                     match receiver.layout.ty.kind() {
                         ty::Ref(..) | ty::RawPtr(..) => {
@@ -765,41 +762,50 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         with_caller_location: bool,
     ) -> InterpResult<'tcx> {
         trace!("init_fn_tail_call: {:#?}", fn_val);
-
         // This is the "canonical" implementation of tails calls,
         // a pop of the current stack frame, followed by a normal call
         // which pushes a new stack frame, with the return address from
         // the popped stack frame.
         //
-        // Note that we are using `pop_stack_frame_raw` and not `return_from_current_stack_frame`,
-        // as the latter "executes" the goto to the return block, but we don't want to,
+        // Note that we cannot use `return_from_current_stack_frame`,
+        // as that "executes" the goto to the return block, but we don't want to,
         // only the tail called function should return to the current return block.
-        let StackPopInfo { return_action, return_cont, return_place } =
-            self.pop_stack_frame_raw(false, |_this, _return_place| {
-                // This function's return value is just discarded, the tail-callee will fill in the return place instead.
-                interp_ok(())
-            })?;
 
-        assert_eq!(return_action, ReturnAction::Normal);
-
-        // Take the "stack pop cleanup" info, and use that to initiate the next call.
-        let ReturnContinuation::Goto { ret, unwind } = return_cont else {
-            bug!("can't tailcall as root");
+        // The arguments need to all be copied since the current stack frame will be removed
+        // before the callee even starts executing.
+        // FIXME(explicit_tail_calls,#144855): does this match what codegen does?
+        let args = args.iter().map(|fn_arg| FnArg::Copy(fn_arg.copy_fn_arg())).collect::<Vec<_>>();
+        // Remove the frame from the stack.
+        let frame = self.pop_stack_frame_raw()?;
+        // Remember where this frame would have returned to.
+        let ReturnContinuation::Goto { ret, unwind } = frame.return_cont() else {
+            bug!("can't tailcall as root of the stack");
         };
-
+        // There's no return value to deal with! Instead, we forward the old return place
+        // to the new function.
         // FIXME(explicit_tail_calls):
         //   we should check if both caller&callee can/n't unwind,
         //   see <https://github.com/rust-lang/rust/pull/113128#issuecomment-1614979803>
 
+        // Now push the new stack frame.
         self.init_fn_call(
             fn_val,
             (caller_abi, caller_fn_abi),
-            args,
+            &*args,
             with_caller_location,
-            &return_place,
+            frame.return_place(),
             ret,
             unwind,
-        )
+        )?;
+
+        // Finally, clear the local variables. Has to be done after pushing to support
+        // non-scalar arguments.
+        // FIXME(explicit_tail_calls,#144855): revisit this once codegen supports indirect
+        // arguments, to ensure the semantics are compatible.
+        let return_action = self.cleanup_stack_frame(/* unwinding */ false, frame)?;
+        assert_eq!(return_action, ReturnAction::Normal);
+
+        interp_ok(())
     }
 
     pub(super) fn init_drop_in_place_call(
@@ -894,14 +900,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // local's value out.
         let return_op =
             self.local_to_op(mir::RETURN_PLACE, None).expect("return place should always be live");
-        // Do the actual pop + copy.
-        let stack_pop_info = self.pop_stack_frame_raw(unwinding, |this, return_place| {
-            this.copy_op_allow_transmute(&return_op, return_place)?;
-            trace!("return value: {:?}", this.dump_place(return_place));
-            interp_ok(())
-        })?;
-
-        match stack_pop_info.return_action {
+        // Remove the frame from the stack.
+        let frame = self.pop_stack_frame_raw()?;
+        // Copy the return value and remember the return continuation.
+        if !unwinding {
+            self.copy_op_allow_transmute(&return_op, frame.return_place())?;
+            trace!("return value: {:?}", self.dump_place(frame.return_place()));
+        }
+        let return_cont = frame.return_cont();
+        // Finish popping the stack frame.
+        let return_action = self.cleanup_stack_frame(unwinding, frame)?;
+        // Jump to the next block.
+        match return_action {
             ReturnAction::Normal => {}
             ReturnAction::NoJump => {
                 // The hook already did everything.
@@ -919,7 +929,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Normal return, figure out where to jump.
         if unwinding {
             // Follow the unwind edge.
-            match stack_pop_info.return_cont {
+            match return_cont {
                 ReturnContinuation::Goto { unwind, .. } => {
                     // This must be the very last thing that happens, since it can in fact push a new stack frame.
                     self.unwind_to_block(unwind)
@@ -930,7 +940,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         } else {
             // Follow the normal return edge.
-            match stack_pop_info.return_cont {
+            match return_cont {
                 ReturnContinuation::Goto { ret, .. } => self.return_to_block(ret),
                 ReturnContinuation::Stop { .. } => {
                     assert!(
