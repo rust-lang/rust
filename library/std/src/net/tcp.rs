@@ -253,6 +253,18 @@ impl TcpStream {
     /// data, and options set on one stream will be propagated to the other
     /// stream.
     ///
+    /// # Platform-specific behavior
+    ///
+    /// On Unix, this method uses `F_DUPFD_CLOEXEC` to duplicate the file descriptor
+    /// atomically with the close-on-exec flag set. This means the duplicated socket
+    /// will be automatically closed when calling `exec()`, and thus will not be
+    /// available in child processes created via [`Command`].
+    ///
+    /// On Windows, the duplicated socket is created without the `HANDLE_FLAG_INHERIT`
+    /// flag, so it will similarly not be inherited by child processes.
+    ///
+    /// [`Command`]: crate::process::Command
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -805,6 +817,18 @@ impl TcpListener {
     /// The returned [`TcpListener`] is a reference to the same socket that this
     /// object references. Both handles can be used to accept incoming
     /// connections and options set on one listener will affect the other.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// On Unix, this method uses `F_DUPFD_CLOEXEC` to duplicate the file descriptor
+    /// atomically with the close-on-exec flag set. This means the duplicated socket
+    /// will be automatically closed when calling `exec()`, and thus will not be
+    /// available in child processes created via [`Command`].
+    ///
+    /// On Windows, the duplicated socket is created without the `HANDLE_FLAG_INHERIT`
+    /// flag, so it will similarly not be inherited by child processes.
+    ///
+    /// [`Command`]: crate::process::Command
     ///
     /// # Examples
     ///
