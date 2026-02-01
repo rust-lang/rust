@@ -1188,7 +1188,7 @@ pub trait FnPtr: Copy + Clone {
 /// ```
 /// #![feature(arbitrary_self_types, derive_coerce_pointee)]
 /// use std::marker::CoercePointee;
-/// use std::ops::Deref;
+/// use std::ops::{Deref, Receiver};
 ///
 /// #[derive(CoercePointee)]
 /// #[repr(transparent)]
@@ -1200,8 +1200,12 @@ pub trait FnPtr: Copy + Clone {
 ///         &self.0
 ///     }
 /// }
+/// impl<T: ?Sized> Receiver for MySmartPointer<T> {
+///     type Target = T;
+/// }
 ///
-/// // You can always define this trait. (as long as you have #![feature(arbitrary_self_types)])
+/// // You can define this trait,
+/// // given that you also enable `#![feature(arbitrary_self_types)]`.
 /// trait MyTrait {
 ///     fn func(self: MySmartPointer<Self>);
 /// }

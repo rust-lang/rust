@@ -172,6 +172,7 @@ pub struct CandidateStep<'tcx> {
     /// reachable via Deref when examining what the receiver type can
     /// be converted into by autodereffing.
     pub reachable_via_deref: bool,
+    pub receiver_depth: usize,
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]

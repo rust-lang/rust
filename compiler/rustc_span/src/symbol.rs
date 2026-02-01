@@ -480,6 +480,7 @@ symbols! {
         arbitrary_enum_discriminant,
         arbitrary_self_types,
         arbitrary_self_types_pointers,
+        arbitrary_self_types_split_chains,
         areg,
         args,
         arith_offset,

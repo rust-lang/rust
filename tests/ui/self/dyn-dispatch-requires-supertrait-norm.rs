@@ -3,8 +3,8 @@
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
 
-use std::ops::Deref;
 use std::marker::CoercePointee;
+use std::ops::{Deref, Receiver};
 use std::sync::Arc;
 
 trait MyTrait<T> {}
@@ -18,6 +18,9 @@ impl<T: ?Sized + MyTrait<u8>> Deref for MyArc<T> {
     fn deref(&self) -> &T {
         &self.0
     }
+}
+impl<T: ?Sized + MyTrait<u8>> Receiver for MyArc<T> {
+    type Target = T;
 }
 
 trait Mirror {

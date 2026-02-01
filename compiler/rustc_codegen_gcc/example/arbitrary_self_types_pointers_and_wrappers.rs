@@ -4,10 +4,8 @@
 #![feature(rustc_attrs)]
 #![allow(internal_features)]
 
-use std::{
-    ops::{Deref, CoerceUnsized, DispatchFromDyn},
-    marker::Unsize,
-};
+use std::marker::Unsize;
+use std::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 
 struct Ptr<T: ?Sized>(Box<T>);
 
@@ -17,6 +15,9 @@ impl<T: ?Sized> Deref for Ptr<T> {
     fn deref(&self) -> &T {
         &*self.0
     }
+}
+impl<T: ?Sized> Receiver for Ptr<T> {
+    type Target = T;
 }
 
 impl<T: Unsize<U> + ?Sized, U: ?Sized> CoerceUnsized<Ptr<U>> for Ptr<T> {}
@@ -31,10 +32,12 @@ impl<T: ?Sized> Deref for Wrapper<T> {
         &self.0
     }
 }
+impl<T: ?Sized> Receiver for Wrapper<T> {
+    type Target = T;
+}
 
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<Wrapper<U>> for Wrapper<T> {}
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<Wrapper<U>> for Wrapper<T> {}
-
 
 trait Trait {
     fn ptr_wrapper(self: Ptr<Wrapper<Self>>) -> i32;

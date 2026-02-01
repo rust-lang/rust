@@ -4,17 +4,18 @@
 
 #![feature(arbitrary_self_types)]
 
-use std::ops::Deref;
+use std::ops::{Deref, Receiver};
 
-trait Foo: Deref<Target = dyn Bar> {
-     fn method(self: &dyn Bar) {}
-     //~^ ERROR invalid `self` parameter type: `&dyn Bar`
+trait Foo: Deref<Target = dyn Bar> + Receiver<Target = dyn Bar> {
+    fn method(self: &dyn Bar) {}
+    //~^ ERROR invalid `self` parameter type: `&dyn Bar`
 }
 
 trait Bar {}
 
 fn test(x: &dyn Foo) {
-     x.method();
+    x.method();
+    //~^ ERROR type annotations needed
 }
 
 fn main() {}

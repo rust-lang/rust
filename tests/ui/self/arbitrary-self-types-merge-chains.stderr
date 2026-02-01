@@ -1,0 +1,47 @@
+error[E0658]: `Receiver::Target` diverging from `Deref::Target` is not supported, we look forward to your feedback
+  --> $DIR/arbitrary-self-types-merge-chains.rs:15:1
+   |
+LL | impl Receiver for A {
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #44874 <https://github.com/rust-lang/rust/issues/44874> for more information
+   = help: add `#![feature(arbitrary_self_types_split_chains)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `Deref::Target` does not agree with `Receiver::Target`
+  --> $DIR/arbitrary-self-types-merge-chains.rs:15:1
+   |
+LL | impl Receiver for A {
+   | ^^^^^^^^^^^^^^^^^^^ `Deref::Target` is `u8` but `Receiver::Target` is `u32`
+   |
+note: `#![feature(arbitrary_self_types_merge_chains)]` rejects this kind of divergence
+  --> $DIR/arbitrary-self-types-merge-chains.rs:15:1
+   |
+LL | impl Receiver for A {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error[E0658]: `Receiver::Target` diverging from `Deref::Target` is not supported, we look forward to your feedback
+  --> $DIR/arbitrary-self-types-merge-chains.rs:28:1
+   |
+LL | impl<'a, T> Receiver for B<'a, T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #44874 <https://github.com/rust-lang/rust/issues/44874> for more information
+   = help: add `#![feature(arbitrary_self_types_split_chains)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `Deref::Target` does not agree with `Receiver::Target`
+  --> $DIR/arbitrary-self-types-merge-chains.rs:28:1
+   |
+LL | impl<'a, T> Receiver for B<'a, T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Deref::Target` is `T` but `Receiver::Target` is `Box<T>`
+   |
+note: `#![feature(arbitrary_self_types_merge_chains)]` rejects this kind of divergence
+  --> $DIR/arbitrary-self-types-merge-chains.rs:28:1
+   |
+LL | impl<'a, T> Receiver for B<'a, T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
