@@ -44,7 +44,7 @@ pub fn read_buf(fd: Fd, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
         let mut userbuf = alloc::User::<[u8]>::uninitialized(buf.capacity());
         let len = raw::read(fd, userbuf.as_mut_ptr().cast(), userbuf.len()).from_sgx_result()?;
         userbuf[..len].copy_to_enclave(&mut buf.as_mut()[..len]);
-        buf.advance_unchecked(len);
+        buf.advance(len);
         Ok(())
     }
 }

@@ -243,7 +243,7 @@ impl Socket {
                 }
             }
             _ => {
-                unsafe { buf.advance_unchecked(result as usize) };
+                unsafe { buf.advance(result as usize) };
                 Ok(())
             }
         }
