@@ -68,4 +68,9 @@ where
 {
 }
 
+pub struct Ptr<T: ?Sized>(PhantomData<T>, Box<T>);
+
+impl<'a, T: ?Sized, U: ?Sized> DispatchFromDyn<&'a Ptr<U>> for &'a Ptr<T> {}
+//~^ ERROR the trait `DispatchFromDyn` does not allow dispatch through references
+
 fn main() {}

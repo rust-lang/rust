@@ -1211,6 +1211,14 @@ pub(crate) struct CoerceSamePatKind {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_dispatch_from_dyn_multiple_refs)]
+#[note]
+pub(crate) struct DispatchFromDynMultiRefs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_coerce_unsized_may, code = E0377)]
 pub(crate) struct CoerceSameStruct {
     #[primary_span]
