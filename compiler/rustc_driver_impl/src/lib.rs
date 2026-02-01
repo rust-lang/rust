@@ -20,7 +20,7 @@ use std::fs::{self, File};
 use std::io::{self, IsTerminal, Read, Write};
 use std::panic::{self, PanicHookInfo};
 use std::path::{Path, PathBuf};
-use std::process::{self, Command, Stdio};
+use std::process::{Command, ExitCode, Stdio, Termination};
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
@@ -1382,10 +1382,10 @@ fn parse_crate_attrs<'a>(sess: &'a Session) -> PResult<'a, ast::AttrVec> {
 
 /// Variant of `catch_fatal_errors` for the `interface::Result` return type
 /// that also computes the exit code.
-pub fn catch_with_exit_code(f: impl FnOnce()) -> i32 {
+pub fn catch_with_exit_code<T: Termination>(f: impl FnOnce() -> T) -> ExitCode {
     match catch_fatal_errors(f) {
-        Ok(()) => EXIT_SUCCESS,
-        _ => EXIT_FAILURE,
+        Ok(status) => status.report(),
+        _ => ExitCode::FAILURE,
     }
 }
 
@@ -1670,7 +1670,7 @@ pub fn install_ctrlc_handler() {
     .expect("Unable to install ctrlc handler");
 }
 
-pub fn main() -> ! {
+pub fn main() -> ExitCode {
     let start_time = Instant::now();
     let start_rss = get_resident_set_size();
 
@@ -1690,5 +1690,5 @@ pub fn main() -> ! {
         print_time_passes_entry("total", start_time.elapsed(), start_rss, end_rss, format);
     }
 
-    process::exit(exit_code)
+    exit_code
 }
