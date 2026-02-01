@@ -1405,31 +1405,31 @@ mod prim_f128 {}
 
 #[rustc_doc_primitive = "i8"]
 //
-/// The 8-bit signed integer type.
+/// The 8-bit signed integer type (represented using two's complement).
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i8 {}
 
 #[rustc_doc_primitive = "i16"]
 //
-/// The 16-bit signed integer type.
+/// The 16-bit signed integer type (represented using two's complement).
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i16 {}
 
 #[rustc_doc_primitive = "i32"]
 //
-/// The 32-bit signed integer type.
+/// The 32-bit signed integer type (represented using two's complement).
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i32 {}
 
 #[rustc_doc_primitive = "i64"]
 //
-/// The 64-bit signed integer type.
+/// The 64-bit signed integer type (represented using two's complement).
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i64 {}
 
 #[rustc_doc_primitive = "i128"]
 //
-/// The 128-bit signed integer type.
+/// The 128-bit signed integer type (represented using two's complement).
 ///
 /// # ABI compatibility
 ///
@@ -1479,7 +1479,7 @@ mod prim_u128 {}
 
 #[rustc_doc_primitive = "isize"]
 //
-/// The pointer-sized signed integer type.
+/// The pointer-sized signed integer type (represented using two's complement).
 ///
 /// The size of this primitive is how many bytes it takes to reference any
 /// location in memory. For example, on a 32 bit target, this is 4 bytes
