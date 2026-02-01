@@ -805,17 +805,16 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     unsafe fn sift_down_range(&mut self, pos: usize, end: usize) -> usize {
         // SAFETY: The caller guarantees that pos < end <= self.len().
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
-        let mut child = 2 * hole.pos() + 1;
 
-        // Loop invariant: child == 2 * hole.pos() + 1.
-        while child <= end.saturating_sub(2) {
+        // While the hole has two children (as it is below the parent of `end`)
+        while hole.pos() < (end - 1) / 2 {
+            let mut child = 2 * hole.pos() + 1;
+
             // compare with the greater of the two children
             // SAFETY: child < end - 1 < self.len() and
             //  child + 1 < end <= self.len(), so they're valid indexes.
             //  child == 2 * hole.pos() + 1 != hole.pos() and
             //  child + 1 == 2 * hole.pos() + 2 != hole.pos().
-            // FIXME: 2 * hole.pos() + 1 or 2 * hole.pos() + 2 could overflow
-            //  if T is a ZST
             child += unsafe { hole.get(child) <= hole.get(child + 1) } as usize;
 
             // if we are already in order, stop.
@@ -827,15 +826,21 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
 
             // SAFETY: same as above.
             unsafe { hole.move_to(child) };
-            child = 2 * hole.pos() + 1;
         }
 
-        // SAFETY: && short circuit, which means that in the
-        //  second condition it's already true that child == end - 1 < self.len().
-        if child == end - 1 && hole.element() < unsafe { hole.get(child) } {
-            // SAFETY: child is already proven to be a valid index and
-            //  child == 2 * hole.pos() + 1 != hole.pos().
-            unsafe { hole.move_to(child) };
+        // If the hole has only one child (as it is the parent of `end - 1`)
+        if hole.pos() < end / 2 {
+            let child = 2 * hole.pos() + 1;
+            debug_assert!(child == end - 1);
+
+            // If elements are not in order, move parent
+            // SAFETY: The previous statements imply
+            //  child is a valid index (child < end <= self.len()),
+            //  and child != hole.pos().
+            if hole.element() < unsafe { hole.get(child) } {
+                // SAFETY: same as above
+                unsafe { hole.move_to(child) };
+            }
         }
 
         hole.pos()
@@ -866,26 +871,30 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
 
         // SAFETY: The caller guarantees that pos < self.len().
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
-        let mut child = 2 * hole.pos() + 1;
 
-        // Loop invariant: child == 2 * hole.pos() + 1.
-        while child <= end.saturating_sub(2) {
+        // While the hole has two children (as it is below the parent of `end`)
+        while hole.pos() < (end - 1) / 2 {
+            let mut child = 2 * hole.pos() + 1;
+
             // SAFETY: child < end - 1 < self.len() and
             //  child + 1 < end <= self.len(), so they're valid indexes.
             //  child == 2 * hole.pos() + 1 != hole.pos() and
             //  child + 1 == 2 * hole.pos() + 2 != hole.pos().
-            // FIXME: 2 * hole.pos() + 1 or 2 * hole.pos() + 2 could overflow
-            //  if T is a ZST
             child += unsafe { hole.get(child) <= hole.get(child + 1) } as usize;
 
             // SAFETY: Same as above
             unsafe { hole.move_to(child) };
-            child = 2 * hole.pos() + 1;
         }
 
-        if child == end - 1 {
-            // SAFETY: child == end - 1 < self.len(), so it's a valid index
-            //  and child == 2 * hole.pos() + 1 != hole.pos().
+        // If the hole has only one child (as it is the parent of `end - 1`)
+        if hole.pos() < end / 2 {
+            let child = 2 * hole.pos() + 1;
+            debug_assert!(child == end - 1);
+
+            // If elements are not in order, move parent
+            // SAFETY: The previous statements imply
+            //  child is a valid index (child < end <= self.len()),
+            //  and child != hole.pos().
             unsafe { hole.move_to(child) };
         }
         pos = hole.pos();
