@@ -1810,11 +1810,32 @@ rustc_queries! {
         desc { "computing call ABI of `{}` function pointers", key.value.0 }
     }
 
-    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for
-    /// direct calls to an `fn`.
+    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for direct calls*
+    /// to an `fn`. Indirectly-passed parameters in the returned ABI might not include all possible
+    /// codegen optimization attributes (such as `ReadOnly` or `CapturesNone`), as deducing these
+    /// requires inspection of function bodies that can lead to cycles when performed during typeck.
+    /// Post typeck, you should prefer the optimized ABI returned by `fn_abi_of_instance`.
     ///
-    /// NB: that includes virtual calls, which are represented by "direct calls"
-    /// to an `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
+    /// NB: the ABI returned by this query must not differ from that returned by
+    ///     `fn_abi_of_instance` in any other way.
+    ///
+    /// * that includes virtual calls, which are represented by "direct calls" to an
+    ///   `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
+    query fn_abi_of_instance_no_deduced_attrs(
+        key: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
+    ) -> Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
+        desc { "computing unadjusted call ABI of `{}`", key.value.0 }
+    }
+
+    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for direct calls*
+    /// to an `fn`. Indirectly-passed parameters in the returned ABI will include applicable
+    /// codegen optimization attributes, including `ReadOnly` and `CapturesNone` -- deduction of
+    /// which requires inspection of function bodies that can lead to cycles when performed during
+    /// typeck. During typeck, you should therefore use instead the unoptimized ABI returned by
+    /// `fn_abi_of_instance_no_deduced_attrs`.
+    ///
+    /// * that includes virtual calls, which are represented by "direct calls" to an
+    ///   `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
     query fn_abi_of_instance(
         key: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
     ) -> Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {

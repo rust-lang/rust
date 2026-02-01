@@ -476,7 +476,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let instance = self.resolve(def_id, args)?;
                 (
                     FnVal::Instance(instance),
-                    self.fn_abi_of_instance(instance, extra_args)?,
+                    self.fn_abi_of_instance_no_deduced_attrs(instance, extra_args)?,
                     instance.def.requires_caller_location(*self.tcx),
                 )
             }

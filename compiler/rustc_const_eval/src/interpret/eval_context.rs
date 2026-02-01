@@ -153,16 +153,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// This inherent method takes priority over the trait method with the same name in FnAbiOf,
-    /// and allows wrapping the actual [FnAbiOf::fn_abi_of_instance] with a tracing span.
-    /// See [FnAbiOf::fn_abi_of_instance] for the original documentation.
+    /// and allows wrapping the actual [FnAbiOf::fn_abi_of_instance_no_deduced_attrs] with a tracing span.
+    /// See [FnAbiOf::fn_abi_of_instance_no_deduced_attrs] for the original documentation.
     #[inline(always)]
-    pub fn fn_abi_of_instance(
+    pub fn fn_abi_of_instance_no_deduced_attrs(
         &self,
         instance: ty::Instance<'tcx>,
         extra_args: &'tcx ty::List<Ty<'tcx>>,
     ) -> <Self as FnAbiOfHelpers<'tcx>>::FnAbiOfResult {
         let _trace = enter_trace_span!(M, layouting::fn_abi_of_instance, ?instance, ?extra_args);
-        FnAbiOf::fn_abi_of_instance(self, instance, extra_args)
+        FnAbiOf::fn_abi_of_instance_no_deduced_attrs(self, instance, extra_args)
     }
 }
 

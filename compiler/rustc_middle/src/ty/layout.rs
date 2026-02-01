@@ -1360,11 +1360,56 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
         )
     }
 
-    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for
-    /// direct calls to an `fn`.
+    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for direct calls*
+    /// to an `fn`. Indirectly-passed parameters in the returned ABI might not include all possible
+    /// codegen optimization attributes (such as `ReadOnly` or `CapturesNone`), as deducing these
+    /// requires inspection of function bodies that can lead to cycles when performed during typeck.
+    /// Post typeck, you should prefer the optimized ABI returned by `fn_abi_of_instance`.
     ///
-    /// NB: that includes virtual calls, which are represented by "direct calls"
-    /// to an `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
+    /// NB: the ABI returned by this query must not differ from that returned by
+    ///     `fn_abi_of_instance` in any other way.
+    ///
+    /// * that includes virtual calls, which are represented by "direct calls" to an
+    ///   `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
+    #[inline]
+    #[tracing::instrument(level = "debug", skip(self))]
+    fn fn_abi_of_instance_no_deduced_attrs(
+        &self,
+        instance: ty::Instance<'tcx>,
+        extra_args: &'tcx ty::List<Ty<'tcx>>,
+    ) -> Self::FnAbiOfResult {
+        // FIXME(eddyb) get a better `span` here.
+        let span = self.layout_tcx_at_span();
+        let tcx = self.tcx().at(span);
+
+        MaybeResult::from(
+            tcx.fn_abi_of_instance_no_deduced_attrs(
+                self.typing_env().as_query_input((instance, extra_args)),
+            )
+            .map_err(|err| {
+                // HACK(eddyb) at least for definitions of/calls to `Instance`s,
+                // we can get some kind of span even if one wasn't provided.
+                // However, we don't do this early in order to avoid calling
+                // `def_span` unconditionally (which may have a perf penalty).
+                let span = if !span.is_dummy() { span } else { tcx.def_span(instance.def_id()) };
+                self.handle_fn_abi_err(
+                    *err,
+                    span,
+                    FnAbiRequest::OfInstance { instance, extra_args },
+                )
+            }),
+        )
+    }
+
+    /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for direct calls*
+    /// to an `fn`. Indirectly-passed parameters in the returned ABI will include applicable
+    /// codegen optimization attributes, including `ReadOnly` and `CapturesNone` -- deduction of
+    /// which requires inspection of function bodies that can lead to cycles when performed during
+    /// typeck. During typeck, you should therefore use instead the unoptimized ABI returned by
+    /// `fn_abi_of_instance_no_deduced_attrs`.
+    ///
+    /// * that includes virtual calls, which are represented by "direct calls" to an
+    ///   `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
     #[inline]
     #[tracing::instrument(level = "debug", skip(self))]
     fn fn_abi_of_instance(
