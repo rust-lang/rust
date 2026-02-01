@@ -5,5 +5,6 @@
 #![no_std]
 
 // Verify default arch without ptx-linker involved.
-// CHECK: .target sm_30
+// CHECK: .version 7.0
+// CHECK: .target sm_70
 // CHECK: .address_size 64

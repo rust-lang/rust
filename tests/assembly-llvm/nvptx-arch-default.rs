@@ -8,5 +8,6 @@
 extern crate breakpoint_panic_handler;
 
 // Verify default target arch with ptx-linker.
-// CHECK: .target sm_30
+// CHECK: .version 7.0
+// CHECK: .target sm_70
 // CHECK: .address_size 64
