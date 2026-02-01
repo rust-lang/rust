@@ -382,6 +382,23 @@ codegen_ssa_xcrun_about =
 codegen_ssa_xcrun_command_line_tools_insufficient =
     when compiling for iOS, tvOS, visionOS or watchOS, you need a full installation of Xcode
 
+codegen_ssa_xcrun_cross_download_sdk =
+    the SDK can be downloaded and extracted from https://developer.apple.com/download/all/?q=xcode (requires an Apple ID).
+
+    The full Xcode bundle should contain the SDK in Xcode.app/Contents/Developer/Platforms/{$sdk_name}.platform/Developer/SDKs/{$sdk_name}.sdk{ $sdk_name ->
+        [MacOSX] , but downloading just the "Command Line Tools for Xcode" should also be sufficient to obtain the macOS SDK.
+        *[other] .
+    }
+
+codegen_ssa_xcrun_cross_env_var =
+    pass the path to the SDK using the SDKROOT environment variable
+
+codegen_ssa_xcrun_cross_ill_supported_target =
+    cross-compiling to iOS, tvOS, visionOS or watchOS (in particular the linking step) is ill supported on non-macOS hosts
+
+codegen_ssa_xcrun_cross_linker_not_explicitly_set =
+    you will also need to use a linker capable of linking Mach-O files, consider using the bundled `lld` with `-Clinker=rust-lld`
+
 codegen_ssa_xcrun_failed_invoking = invoking `{$command_formatted}` to find {$sdk_name}.sdk failed: {$error}
 
 codegen_ssa_xcrun_found_developer_dir = found active developer directory at "{$developer_dir}"
