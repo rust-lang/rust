@@ -3226,6 +3226,10 @@ pub(crate) struct DocAliasDuplicated {
 pub(crate) struct DocAutoCfgExpectsHideOrShow;
 
 #[derive(LintDiagnostic)]
+#[diag(lint_ambiguous_derive_helpers)]
+pub(crate) struct AmbiguousDeriveHelpers;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_doc_auto_cfg_hide_show_unexpected_item)]
 pub(crate) struct DocAutoCfgHideShowUnexpectedItem {
     pub attr_name: Symbol,
