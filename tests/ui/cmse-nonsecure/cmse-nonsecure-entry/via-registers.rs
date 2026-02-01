@@ -40,8 +40,14 @@ pub extern "cmse-nonsecure-entry" fn inputs5(_: f64, _: f32, _: f32) {}
 #[no_mangle]
 pub extern "cmse-nonsecure-entry" fn inputs6(_: ReprTransparentStruct<u64>, _: U32Compound) {}
 #[no_mangle]
-#[allow(improper_ctypes_definitions)]
+#[expect(improper_ctypes_definitions)]
 pub extern "cmse-nonsecure-entry" fn inputs7(_: [u32; 4]) {}
+
+// With zero-sized types we can actually have more than 4 arguments.
+#[expect(improper_ctypes_definitions)]
+pub extern "cmse-nonsecure-entry" fn inputs8(_: (), _: (), _: (), _: (), _: ()) {}
+#[expect(improper_ctypes_definitions)]
+pub extern "cmse-nonsecure-entry" fn inputs9(_: (), _: (), _: (), _: (), _: ()) {}
 
 #[no_mangle]
 pub extern "cmse-nonsecure-entry" fn outputs1() -> u32 {
@@ -69,8 +75,8 @@ pub extern "cmse-nonsecure-entry" fn outputs6() -> ReprTransparentStruct<u64> {
     ReprTransparentStruct { _marker1: (), _marker2: (), field: 0xAA, _marker3: () }
 }
 #[no_mangle]
-pub extern "cmse-nonsecure-entry" fn outputs7(
-) -> ReprTransparentStruct<ReprTransparentStruct<u64>> {
+pub extern "cmse-nonsecure-entry" fn outputs7() -> ReprTransparentStruct<ReprTransparentStruct<u64>>
+{
     ReprTransparentStruct {
         _marker1: (),
         _marker2: (),

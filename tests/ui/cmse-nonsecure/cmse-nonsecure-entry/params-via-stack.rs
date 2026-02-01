@@ -24,3 +24,24 @@ pub extern "cmse-nonsecure-entry" fn f4(_: AlignRelevant, _: u32) {} //~ ERROR [
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
 pub extern "cmse-nonsecure-entry" fn f5(_: [u32; 5]) {} //~ ERROR [E0798]
+
+struct Four {
+    a: u32,
+    b: u32,
+    c: u32,
+    d: u32,
+}
+
+struct Five {
+    a: u32,
+    b: u32,
+    c: u32,
+    d: u32,
+    e: u32,
+}
+
+#[no_mangle]
+pub extern "cmse-nonsecure-entry" fn four(_: Four) {}
+
+#[no_mangle]
+pub extern "cmse-nonsecure-entry" fn five(_: Five) {} //~ ERROR [E0798]
