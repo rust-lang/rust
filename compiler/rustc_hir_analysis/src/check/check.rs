@@ -25,6 +25,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
 use rustc_span::source_map::Spanned;
+use rustc_span::sym;
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
@@ -1290,6 +1291,15 @@ fn check_impl_items_against_trait<'tcx>(
             if !is_implemented_here {
                 let full_impl_span = tcx.hir_span_with_body(tcx.local_def_id_to_hir_id(impl_id));
                 match tcx.eval_default_body_stability(trait_item_id, full_impl_span) {
+                    // When the feature `pin_ergonomics` is disabled, we report `Drop::drop` is missing,
+                    // instead of `Drop::drop` is unstable that might be confusing.
+                    EvalResult::Deny { .. }
+                        if !tcx.features().pin_ergonomics()
+                            && tcx.is_lang_item(trait_ref.def_id, hir::LangItem::Drop)
+                            && tcx.item_name(trait_item_id) == sym::drop =>
+                    {
+                        missing_items.push(tcx.associated_item(trait_item_id));
+                    }
                     EvalResult::Deny { feature, reason, issue, .. } => default_body_is_unstable(
                         tcx,
                         full_impl_span,

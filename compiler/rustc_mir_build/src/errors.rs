@@ -532,6 +532,16 @@ pub(crate) struct UnsafeBinderCastRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
+#[derive(Diagnostic)]
+#[diag(mir_build_call_drop_explicitly_requires_unsafe, code = E0133)]
+pub(crate) struct CallDropExplicitlyRequiresUnsafe {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) function: String,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
+}
+
 #[derive(Subdiagnostic)]
 #[label(mir_build_unsafe_not_inherited)]
 pub(crate) struct UnsafeNotInheritedNote {

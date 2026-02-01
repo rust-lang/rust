@@ -116,6 +116,11 @@ hir_analysis_coercion_between_struct_same_note = expected coercion between the s
 
 hir_analysis_coercion_between_struct_single_note = expected a single field to be coerced, none found
 
+hir_analysis_conflict_impl_drop_and_pin_drop = conflicting implementations of `Drop::drop` and `Drop::pin_drop`
+    .drop_label = `drop(&mut self)` implemented here
+    .pin_drop_label = `pin_drop(&pin mut self)` implemented here
+    .suggestion = remove this implementation
+
 hir_analysis_const_bound_for_non_const_trait = `{$modifier}` can only be applied to `const` traits
     .label = can't be applied to `{$trait_name}`
     .note = `{$trait_name}` can't be used with `{$modifier}` because it isn't `const`
@@ -436,6 +441,13 @@ hir_analysis_paren_sugar_attribute = the `#[rustc_paren_sugar]` attribute is a t
 
 hir_analysis_parenthesized_fn_trait_expansion =
     parenthesized trait syntax expands to `{$expanded_type}`
+
+hir_analysis_pin_v2_without_pin_drop =
+    `{$adt_name}` must implement `pin_drop`
+    .note = `{$adt_name}` is marked `#[pin_v2]` here
+    .help = structurally pinned types must keep `Pin`'s safety contract
+    .pin_drop_sugg = implement `pin_drop` instead
+    .remove_pin_v2_sugg = remove the `#[pin_v2]` attribute if it is not intended for structurally pinning
 
 hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is not allowed within types on item signatures for {$kind}
     .label = not allowed in type signatures
