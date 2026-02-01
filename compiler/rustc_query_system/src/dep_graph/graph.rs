@@ -561,12 +561,13 @@ impl<D: Deps> DepGraph<D> {
     /// FIXME: If the code is changed enough for this node to be marked before requiring the
     /// caller's node, we suppose that those changes will be enough to mark this node red and
     /// force a recomputation using the "normal" way.
-    pub fn with_feed_task<Ctxt: DepContext<Deps = D>, R: Debug>(
+    pub fn with_feed_task<Ctxt: DepContext<Deps = D>, R>(
         &self,
         node: DepNode,
         cx: Ctxt,
         result: &R,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+        format_value_fn: fn(&R) -> String,
     ) -> DepNodeIndex {
         if let Some(data) = self.data.as_ref() {
             // The caller query has more dependencies than the node we are creating. We may
@@ -584,7 +585,7 @@ impl<D: Deps> DepGraph<D> {
                         result,
                         prev_index,
                         hash_result,
-                        |value| format!("{value:?}"),
+                        format_value_fn,
                     );
 
                     #[cfg(debug_assertions)]
