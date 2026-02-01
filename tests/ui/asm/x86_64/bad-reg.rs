@@ -1,7 +1,15 @@
+//@ add-minicore
 //@ only-x86_64
-//@ compile-flags: -C target-feature=+avx2
+//@ revisions: stable experimental_reg
+//@ compile-flags: -C target-feature=+avx2,+avx512f
+#![cfg_attr(experimental_reg, feature(asm_experimental_reg))]
 
-use std::arch::asm;
+#![crate_type = "lib"]
+#![feature(no_core)]
+#![no_core]
+
+extern crate minicore;
+use minicore::*;
 
 fn main() {
     let mut foo = 0;
@@ -66,5 +74,23 @@ fn main() {
         asm!("", in("xmm0") foo, out("ymm0") bar);
         //~^ ERROR register `ymm0` conflicts with register `xmm0`
         asm!("", in("xmm0") foo, lateout("ymm0") bar);
+
+        // Passing u128/i128 is currently experimental.
+        let mut xmmword = 0u128;
+
+        asm!("/* {:x} */", in(xmm_reg) xmmword); // requires asm_experimental_reg
+        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
+        asm!("/* {:x} */", out(xmm_reg) xmmword); // requires asm_experimental_reg
+        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
+
+        asm!("/* {:y} */", in(ymm_reg) xmmword); // requires asm_experimental_reg
+        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
+        asm!("/* {:y} */", out(ymm_reg) xmmword); // requires asm_experimental_reg
+        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
+
+        asm!("/* {:z} */", in(zmm_reg) xmmword); // requires asm_experimental_reg
+        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
+        asm!("/* {:z} */", out(zmm_reg) xmmword); // requires asm_experimental_reg
+        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
     }
 }
