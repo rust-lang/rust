@@ -232,10 +232,10 @@ LL |         break (break, break);
    |               ||      |
    |               ||      expected because of this `break`
    |               |expected because of this `break`
-   |               expected `()`, found `(!, !)`
+   |               expected `()`, found `(_, _)`
    |
    = note: expected unit type `()`
-                  found tuple `(!, !)`
+                  found tuple `(_, _)`
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:89:15
