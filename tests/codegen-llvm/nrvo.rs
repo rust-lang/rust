@@ -10,7 +10,7 @@ pub fn nrvo(init: fn(&mut [u8; 4096])) -> [u8; 4096] {
     // CHECK: @llvm.memset
     // FIXME: turn on nrvo then check-not: @llvm.memcpy
     // CHECK: ret
-    // CHECK-EMPTY
+    // CHECK-EMPTY:
     let mut buf = [0; 4096];
     init(&mut buf);
     buf
