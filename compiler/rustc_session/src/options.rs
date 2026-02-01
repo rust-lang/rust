@@ -2276,6 +2276,8 @@ options! {
         "inject the given attribute in the crate"),
     cross_crate_inline_threshold: InliningThreshold = (InliningThreshold::Sometimes(100), parse_inlining_threshold, [TRACKED],
         "threshold to allow cross crate inlining of functions"),
+    cstyle_export_rules: bool = (false, parse_bool, [TRACKED],
+        "global symbols from upstream static libraries will be exported by default"),
     debug_info_for_profiling: bool = (false, parse_bool, [TRACKED],
         "emit discriminators and other data necessary for AutoFDO"),
     debug_info_type_line_numbers: bool = (false, parse_bool, [TRACKED],

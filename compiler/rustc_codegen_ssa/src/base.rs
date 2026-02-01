@@ -889,7 +889,11 @@ impl CrateInfo {
         let crate_types = tcx.crate_types().to_vec();
         let exported_symbols = crate_types
             .iter()
-            .map(|&c| (c, crate::back::linker::exported_symbols(tcx, c)))
+            .map(|&c| (c, if tcx.sess.opts.unstable_opts.cstyle_export_rules {
+                crate::back::linker::exported_symbols_cstyle(tcx, c)
+            } else {
+                crate::back::linker::exported_symbols(tcx, c)
+            }))
             .collect();
         let linked_symbols =
             crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();

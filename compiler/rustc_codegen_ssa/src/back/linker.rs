@@ -862,15 +862,31 @@ impl<'a> Linker for GccLinker<'a> {
             // Write an LD version script
             let res: io::Result<()> = try {
                 let mut f = File::create_buffered(&path)?;
-                writeln!(f, "{{")?;
-                if !symbols.is_empty() {
-                    writeln!(f, "  global:")?;
-                    for (sym, _) in symbols {
-                        debug!("    {sym};");
-                        writeln!(f, "    {sym};")?;
+                if self.sess.opts.unstable_opts.cstyle_export_rules {
+                    writeln!(f, "{{")?;
+                    writeln!(f, "  global:\n    *;\n")?;
+                    if !symbols.is_empty() {
+                        writeln!(f, "  local:")?;
+                        // writeln!(f, "    _ZN*;")?;
+                        // writeln!(f, "    _R*;")?;
+                        for (sym, _) in symbols {
+                            debug!("    {sym};");
+                            writeln!(f, "    {sym};")?;
+                        }
                     }
+                    writeln!(f, "\n}};")?;
+                } else {
+                    writeln!(f, "{{")?;
+                    if !symbols.is_empty() {
+                        writeln!(f, "  global:")?;
+                        for (sym, _) in symbols {
+                            debug!("    {sym};");
+                            writeln!(f, "    {sym};")?;
+                        }
+                    }
+                    writeln!(f, "\n  local:\n    *;\n}};")?;
                 }
-                writeln!(f, "\n  local:\n    *;\n}};")?;
+                
             };
             if let Err(error) = res {
                 self.sess.dcx().emit_fatal(errors::VersionScriptWriteFailure { error });
@@ -1815,6 +1831,38 @@ pub(crate) fn exported_symbols(
         symbols.push((metadata_symbol_name, SymbolExportKind::Data));
     }
 
+    symbols
+}
+
+pub(crate) fn exported_symbols_cstyle(
+    tcx: TyCtxt<'_>,
+    crate_type: CrateType,
+) -> Vec<(String, SymbolExportKind)> {
+    if let Some(ref exports) = tcx.sess.target.override_export_symbols {
+        return exports
+            .iter()
+            .map(|name| {
+                (
+                    name.to_string(),
+                    // FIXME use the correct export kind for this symbol. override_export_symbols
+                    // can't directly specify the SymbolExportKind as it is defined in rustc_middle
+                    // which rustc_target can't depend on.
+                    SymbolExportKind::Text,
+                )
+            })
+            .collect();
+    }
+
+    let mut symbols = Vec::new();
+    let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
+    for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
+        if !info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum) {
+            symbols.push((
+                symbol_export::exporting_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
+                info.kind,
+            ));
+        }
+    });
     symbols
 }
 
