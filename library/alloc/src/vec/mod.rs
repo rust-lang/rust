@@ -174,6 +174,12 @@ use self::spec_extend::SpecExtend;
 #[cfg(not(no_global_oom_handling))]
 mod spec_extend;
 
+#[cfg(not(no_global_oom_handling))]
+use self::spec_extend_elem::SpecExtendElem;
+
+#[cfg(not(no_global_oom_handling))]
+mod spec_extend_elem;
+
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
 ///
 /// # Examples
@@ -3401,7 +3407,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
         let len = self.len();
 
         if new_len > len {
-            self.extend_with(new_len - len, value)
+            self.extend_elem(new_len - len, value)
         } else {
             self.truncate(new_len);
         }
@@ -3522,32 +3528,38 @@ impl<T, A: Allocator, const N: usize> Vec<[T; N], A> {
 
 impl<T: Clone, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
-    /// Extend the vector by `n` clones of value.
-    fn extend_with(&mut self, n: usize, value: T) {
+    #[inline]
+    /// Extend the vector by `n` clones of `value`.
+    ///
+    /// Uses specialization to dispatch to `extend_elem_copy` if possible.
+    fn extend_elem(&mut self, n: usize, value: T) {
+        self.spec_extend_elem(n, value);
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    /// Extend the vector by `n` *copies* of `value`.
+    fn extend_elem_copy(&mut self, n: usize, value: T)
+    where
+        T: Copy,
+    {
         self.reserve(n);
 
+        // SAFETY: We now have space for all the elements, so the pointer math
+        // is all in-bounds. Because `T: Copy`, there's no user code being run
+        // here (no `clone` nor any `drop` in the assignment).
         unsafe {
-            let mut ptr = self.as_mut_ptr().add(self.len());
-            // Use SetLenOnDrop to work around bug where compiler
-            // might not realize the store through `ptr` through self.set_len()
-            // don't alias.
-            let mut local_len = SetLenOnDrop::new(&mut self.len);
-
-            // Write all elements except the last one
-            for _ in 1..n {
-                ptr::write(ptr, value.clone());
-                ptr = ptr.add(1);
-                // Increment the length in every step in case clone() panics
-                local_len.increment_len(1);
+            // Because there's no user code being run here, we can skip it for ZSTs.
+            // That helps tests in debug mode that do things like `vec![(); HUGE]`.
+            // See <https://github.com/rust-lang/rust/pull/118094>
+            if !T::IS_ZST {
+                let ptr = self.as_mut_ptr().add(self.len);
+                for i in 0..n {
+                    *ptr.add(i) = value;
+                }
             }
 
-            if n > 0 {
-                // We can write the last element directly without cloning needlessly
-                ptr::write(ptr, value);
-                local_len.increment_len(1);
-            }
-
-            // len set by scope guard
+            self.len += n;
         }
     }
 }
