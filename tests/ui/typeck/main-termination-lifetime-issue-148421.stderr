@@ -1,0 +1,11 @@
+error: implementation of `IsStatic` is not general enough
+  --> $DIR/issue-148421.rs:15:14
+   |
+LL | fn main() -> Thing { Thing }
+   |              ^^^^^ implementation of `IsStatic` is not general enough
+   |
+   = note: `IsStatic` would have to be implemented for the type `&'0 ()`, for any lifetime `'0`...
+   = note: ...but `IsStatic` is actually implemented for the type `&'1 ()`, for some specific lifetime `'1`
+
+error: aborting due to 1 previous error
+
