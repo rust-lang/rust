@@ -253,7 +253,7 @@ pub(crate) fn target_machine_factory(
 
     let use_emulated_tls = matches!(sess.tls_model(), TlsModel::Emulated);
 
-    let debuginfo_compression = match sess.opts.unstable_opts.debuginfo_compression {
+    let debuginfo_compression = match sess.debuginfo_compression() {
         config::DebugInfoCompression::None => llvm::CompressionKind::None,
         config::DebugInfoCompression::Zlib => {
             if llvm::LLVMRustLLVMHasZlibCompression() {
