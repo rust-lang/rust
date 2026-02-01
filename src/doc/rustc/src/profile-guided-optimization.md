@@ -151,7 +151,7 @@ to use PGO with Rust.
 As an alternative to directly using the compiler for Profile-Guided Optimization,
 you may choose to go with `cargo-pgo`, which has an intuitive command-line API
 and saves you the trouble of doing all the manual work. You can read more about
-it in [their repository][cargo-pgo].
+it in [cargo-pgo repository][cargo-pgo].
 
 [cargo-pgo]: https://github.com/Kobzol/cargo-pgo
 
