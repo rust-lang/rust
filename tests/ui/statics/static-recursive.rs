@@ -1,7 +1,4 @@
-//@ run-pass
-
-static mut S: *const u8 = unsafe { &S as *const *const u8 as *const u8 };
-//~^ WARN shared reference to mutable static [static_mut_refs]
+static mut S: *const u8 = &raw const S as *const u8;
 
 struct StaticDoubleLinked {
     prev: &'static StaticDoubleLinked,
@@ -11,13 +8,13 @@ struct StaticDoubleLinked {
 }
 
 static L1: StaticDoubleLinked = StaticDoubleLinked { prev: &L3, next: &L2, data: 1, head: true };
+//~^ ERROR: cycle detected when evaluating initializer of static `L1`
 static L2: StaticDoubleLinked = StaticDoubleLinked { prev: &L1, next: &L3, data: 2, head: false };
 static L3: StaticDoubleLinked = StaticDoubleLinked { prev: &L2, next: &L1, data: 3, head: false };
 
 pub fn main() {
     unsafe {
         assert_eq!(S, *(S as *const *const u8));
-        //~^ WARN creating a shared reference to mutable static [static_mut_refs]
     }
 
     let mut test_vec = Vec::new();
