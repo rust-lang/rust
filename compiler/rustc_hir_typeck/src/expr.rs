@@ -3837,15 +3837,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         let field_ty = self.field_ty(expr.span, field, args);
 
-                        if self.tcx.features().offset_of_slice() {
-                            self.require_type_has_static_alignment(field_ty, expr.span);
-                        } else {
-                            self.require_type_is_sized(
-                                field_ty,
-                                expr.span,
-                                ObligationCauseCode::Misc,
-                            );
-                        }
+                        self.require_type_has_static_alignment(field_ty, expr.span);
 
                         if field.vis.is_accessible_from(def_scope, self.tcx) {
                             self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
@@ -3866,15 +3858,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         && field.name == sym::integer(index)
                     {
                         if let Some(&field_ty) = tys.get(index) {
-                            if self.tcx.features().offset_of_slice() {
-                                self.require_type_has_static_alignment(field_ty, expr.span);
-                            } else {
-                                self.require_type_is_sized(
-                                    field_ty,
-                                    expr.span,
-                                    ObligationCauseCode::Misc,
-                                );
-                            }
+                            self.require_type_has_static_alignment(field_ty, expr.span);
 
                             field_indices.push((current_container, FIRST_VARIANT, index.into()));
                             current_container = field_ty;

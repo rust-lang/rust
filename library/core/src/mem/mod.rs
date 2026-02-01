@@ -1326,10 +1326,10 @@ impl<T> SizedTypeProperties for T {}
 ///
 /// # Offsets of, and in, dynamically sized types
 ///
-/// The field’s type must be [`Sized`], but it may be located in a [dynamically sized] container.
-/// If the field type is dynamically sized, then you cannot use `offset_of!` (since the field's
-/// alignment, and therefore its offset, may also be dynamic) and must take the offset from an
-/// actual pointer to the container instead.
+/// The field’s type must have a statically known alignment. In other words, it is [`Sized`], a slice,
+/// or some wrapper around a slice. Notably, this is not the case if the field is a trait object.
+/// The alignment of trait objects can be different based on what the underlying type is, which can
+/// affect the offset of the field. Therefore you cannot use `offset_of!`.
 ///
 /// ```
 /// # use core::mem;
@@ -1344,8 +1344,9 @@ impl<T> SizedTypeProperties for T {}
 /// #[repr(C, align(4))]
 /// struct Align4(u32);
 ///
-/// assert_eq!(mem::offset_of!(Struct<dyn Debug>, a), 0); // OK — Sized field
-/// assert_eq!(mem::offset_of!(Struct<Align4>, b), 4); // OK — not DST
+/// assert_eq!(mem::offset_of!(Struct<Align4>, b), 4); // OK — the last field is Sized
+/// assert_eq!(mem::offset_of!(Struct<[u8]>, b), 1); // OK — the last field is a slice
+/// assert_eq!(mem::offset_of!(Struct<dyn Debug>, a), 0); // OK — the struct is unsized, but the field `a` is Sized
 ///
 /// // assert_eq!(mem::offset_of!(Struct<dyn Debug>, b), 1);
 /// // ^^^ error[E0277]: ... cannot be known at compilation time
@@ -1407,7 +1408,6 @@ impl<T> SizedTypeProperties for T {}
 /// The following unstable features expand the functionality of `offset_of!`:
 ///
 /// * [`offset_of_enum`] — allows `enum` variants to be traversed as if they were fields.
-/// * [`offset_of_slice`] — allows getting the offset of a field of type `[T]`.
 ///
 /// # Examples
 ///
@@ -1437,7 +1437,6 @@ impl<T> SizedTypeProperties for T {}
 ///
 /// [dynamically sized]: https://doc.rust-lang.org/reference/dynamically-sized-types.html
 /// [`offset_of_enum`]: https://doc.rust-lang.org/nightly/unstable-book/language-features/offset-of-enum.html
-/// [`offset_of_slice`]: https://doc.rust-lang.org/nightly/unstable-book/language-features/offset-of-slice.html
 #[stable(feature = "offset_of", since = "1.77.0")]
 #[allow_internal_unstable(builtin_syntax, core_intrinsics)]
 pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
