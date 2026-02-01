@@ -388,6 +388,41 @@ fn build_dyn_type_di_node<'ll, 'tcx>(
     }
 }
 
+/// Create debuginfo for pattern types like `pat::pattern_type!(i8 is 1..=2)`.
+/// Pattern types are refinement types that have the same runtime representation
+/// as their underlying type, so we generate debuginfo that represents them
+/// as a typedef to the underlying type with the pattern type's name.
+fn build_pattern_type_di_node<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    inner_ty: Ty<'tcx>,
+    unique_type_id: UniqueTypeId<'tcx>,
+    pattern_ty: Ty<'tcx>,
+) -> DINodeCreationResult<'ll> {
+    debug!("build_pattern_type_di_node: {:?}", pattern_ty);
+
+    // Get the debuginfo for the underlying type
+    let inner_di_node = type_di_node(cx, inner_ty);
+
+    return_if_di_node_created_in_meantime!(cx, unique_type_id);
+
+    // Create a typedef that points to the underlying type but uses the pattern type's name
+    let type_name = compute_debuginfo_type_name(cx.tcx, pattern_ty, false);
+
+    let typedef_di_node = unsafe {
+        llvm::LLVMRustDIBuilderCreateTypedef(
+            DIB(cx),
+            inner_di_node,
+            type_name.as_ptr().cast(),
+            type_name.len(),
+            unknown_file_metadata(cx),
+            UNKNOWN_LINE_NUMBER,
+            NO_SCOPE_METADATA,
+        )
+    };
+
+    DINodeCreationResult { di_node: typedef_di_node, already_stored_in_typemap: false }
+}
+
 /// Create debuginfo for `[T]` and `str`. These are unsized.
 ///
 /// NOTE: We currently emit just emit the debuginfo for the element type here
@@ -479,6 +514,12 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
             AdtKind::Enum => enums::build_enum_type_di_node(cx, unique_type_id, span),
         },
         ty::Tuple(_) => build_tuple_type_di_node(cx, unique_type_id),
+        ty::Pat(inner_ty, _) => {
+            // Issue #145514: Pattern types are refinement types that constrain their inner type.
+            // For debuginfo purposes, we treat them as their underlying type since
+            // they have the same runtime representation.
+            build_pattern_type_di_node(cx, inner_ty, unique_type_id, t)
+        }
         _ => bug!("debuginfo: unexpected type in type_di_node(): {:?}", t),
     };
 
