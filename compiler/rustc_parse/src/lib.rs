@@ -1,7 +1,7 @@
 //! The main parser interface.
 
 // tidy-alphabetical-start
-#![feature(assert_matches)]
+#![cfg_attr(bootstrap, feature(assert_matches))]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
 #![feature(default_field_values)]
