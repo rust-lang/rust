@@ -40,7 +40,6 @@
 #![feature(str_as_str)]
 #![feature(strict_provenance_lints)]
 #![feature(string_replace_in_place)]
-#![feature(vec_deque_truncate_front)]
 #![feature(unique_rc_arc)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(vec_peek_mut)]
