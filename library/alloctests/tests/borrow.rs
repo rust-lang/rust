@@ -58,3 +58,21 @@ fn cow_const() {
     const IS_OWNED: bool = Cow::is_owned(&COW);
     assert!(!IS_OWNED);
 }
+
+#[test]
+fn test_const_deref_cow_str() {
+    // Test Cow<str> - both borrowed and owned variants
+    const COW_STR_BORROWED: Cow<'_, str> = Cow::Borrowed("hello");
+    const COW_STR_OWNED: Cow<'_, str> = Cow::Owned(String::new());
+    const _: &str = &*COW_STR_BORROWED;
+    const _: &str = &*COW_STR_OWNED;
+}
+
+#[test]
+fn test_const_deref_cow_slice() {
+    // Test Cow<[T]> - both borrowed and owned variants
+    const COW_SLICE_BORROWED: Cow<'_, [i32]> = Cow::Borrowed(&[1, 2, 3]);
+    const COW_SLICE_OWNED: Cow<'_, [i32]> = Cow::Owned(Vec::new());
+    const _: &[i32] = &*COW_SLICE_BORROWED;
+    const _: &[i32] = &*COW_SLICE_OWNED;
+}
