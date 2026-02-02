@@ -7,10 +7,9 @@ use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 
 pub(crate) fn opaque_hidden_types(tcx: TyCtxt<'_>) {
-    if !tcx.has_attr(CRATE_DEF_ID, sym::rustc_hidden_type_of_opaques) {
+    if !find_attr!(tcx.get_all_attrs(CRATE_DEF_ID), AttributeKind::RustcHiddenTypeOfOpaques) {
         return;
     }
-
     for id in tcx.hir_crate_items(()).opaques() {
         if let hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, .. }
         | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, .. } =

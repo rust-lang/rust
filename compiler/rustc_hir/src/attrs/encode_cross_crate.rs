@@ -111,6 +111,7 @@ impl AttributeKind {
             RustcDumpVtable(..) => No,
             RustcDynIncompatibleTrait(..) => No,
             RustcHasIncoherentInherentImpls => Yes,
+            RustcHiddenTypeOfOpaques => No,
             RustcLayout(..) => No,
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,

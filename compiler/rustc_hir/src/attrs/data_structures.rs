@@ -1057,6 +1057,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_has_incoherent_inherent_impls]`
     RustcHasIncoherentInherentImpls,
 
+    /// Represents `#[rustc_hidden_type_of_opaques]`
+    RustcHiddenTypeOfOpaques,
+
     /// Represents `#[rustc_layout]`
     RustcLayout(ThinVec<RustcLayoutType>),
 
