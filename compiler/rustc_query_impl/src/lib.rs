@@ -19,7 +19,7 @@ use rustc_middle::query::{
     AsLocalKey, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates, queries,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_query_system::Value;
+use rustc_middle::values::Value;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
