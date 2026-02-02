@@ -690,7 +690,7 @@ impl<T, E> Result<T, E> {
     /// Converts from `Result<T, E>` to [`Option<T>`].
     ///
     /// Converts `self` into an [`Option<T>`], consuming `self`,
-    /// and discarding the error, if any.
+    /// and converting the error to `None`, if any.
     ///
     /// # Examples
     ///
