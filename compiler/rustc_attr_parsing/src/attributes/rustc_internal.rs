@@ -307,6 +307,14 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcHasIncoherentInherentImplsParse
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcHasIncoherentInherentImpls;
 }
 
+pub(crate) struct RustcHiddenTypeOfOpaquesParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcHiddenTypeOfOpaquesParser {
+    const PATH: &[Symbol] = &[sym::rustc_hidden_type_of_opaques];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcHiddenTypeOfOpaques;
+}
 pub(crate) struct RustcNounwindParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNounwindParser {
