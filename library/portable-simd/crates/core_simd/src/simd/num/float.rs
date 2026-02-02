@@ -1,6 +1,6 @@
 use super::sealed::Sealed;
 use crate::simd::{
-    Mask, Select, Simd, SimdCast, SimdElement,
+    LaneCount, Mask, Simd, SimdCast, SimdElement, SupportedLaneCount,
     cmp::{SimdPartialEq, SimdPartialOrd},
 };
 
@@ -240,9 +240,15 @@ pub trait SimdFloat: Copy + Sealed {
 macro_rules! impl_trait {
     { $($ty:ty { bits: $bits_ty:ty, mask: $mask_ty:ty }),* } => {
         $(
-        impl<const N: usize> Sealed for Simd<$ty, N> {}
+        impl<const N: usize> Sealed for Simd<$ty, N>
+        where
+            LaneCount<N>: SupportedLaneCount,
+        {
+        }
 
         impl<const N: usize> SimdFloat for Simd<$ty, N>
+        where
+            LaneCount<N>: SupportedLaneCount,
         {
             type Mask = Mask<<$mask_ty as SimdElement>::Mask, N>;
             type Scalar = $ty;

@@ -16932,6 +16932,7 @@ unsafe extern "C" {
 mod tests {
     use crate::core_arch::assert_eq_const as assert_eq;
     use crate::core_arch::x86::*;
+    use crate::mem::transmute;
     use crate::ptr::{addr_of, addr_of_mut};
     use stdarch_test::simd_test;
 
@@ -17568,72 +17569,72 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    const fn test_mm_load_ph() {
+    const unsafe fn test_mm_load_ph() {
         let a = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
-        let b = unsafe { _mm_load_ph(addr_of!(a).cast()) };
+        let b = _mm_load_ph(addr_of!(a).cast());
         assert_eq_m128h(a, b);
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    const fn test_mm256_load_ph() {
+    const unsafe fn test_mm256_load_ph() {
         let a = _mm256_set_ph(
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
         );
-        let b = unsafe { _mm256_load_ph(addr_of!(a).cast()) };
+        let b = _mm256_load_ph(addr_of!(a).cast());
         assert_eq_m256h(a, b);
     }
 
     #[simd_test(enable = "avx512fp16")]
-    const fn test_mm512_load_ph() {
+    const unsafe fn test_mm512_load_ph() {
         let a = _mm512_set_ph(
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
             17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
             31.0, 32.0,
         );
-        let b = unsafe { _mm512_load_ph(addr_of!(a).cast()) };
+        let b = _mm512_load_ph(addr_of!(a).cast());
         assert_eq_m512h(a, b);
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    const fn test_mm_load_sh() {
+    const unsafe fn test_mm_load_sh() {
         let a = _mm_set_sh(1.0);
-        let b = unsafe { _mm_load_sh(addr_of!(a).cast()) };
+        let b = _mm_load_sh(addr_of!(a).cast());
         assert_eq_m128h(a, b);
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    fn test_mm_mask_load_sh() {
+    unsafe fn test_mm_mask_load_sh() {
         let a = _mm_set_sh(1.0);
         let src = _mm_set_sh(2.);
-        let b = unsafe { _mm_mask_load_sh(src, 1, addr_of!(a).cast()) };
+        let b = _mm_mask_load_sh(src, 1, addr_of!(a).cast());
         assert_eq_m128h(a, b);
-        let b = unsafe { _mm_mask_load_sh(src, 0, addr_of!(a).cast()) };
+        let b = _mm_mask_load_sh(src, 0, addr_of!(a).cast());
         assert_eq_m128h(src, b);
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    fn test_mm_maskz_load_sh() {
+    unsafe fn test_mm_maskz_load_sh() {
         let a = _mm_set_sh(1.0);
-        let b = unsafe { _mm_maskz_load_sh(1, addr_of!(a).cast()) };
+        let b = _mm_maskz_load_sh(1, addr_of!(a).cast());
         assert_eq_m128h(a, b);
-        let b = unsafe { _mm_maskz_load_sh(0, addr_of!(a).cast()) };
+        let b = _mm_maskz_load_sh(0, addr_of!(a).cast());
         assert_eq_m128h(_mm_setzero_ph(), b);
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    const fn test_mm_loadu_ph() {
+    const unsafe fn test_mm_loadu_ph() {
         let array = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-        let r = unsafe { _mm_loadu_ph(array.as_ptr()) };
+        let r = _mm_loadu_ph(array.as_ptr());
         let e = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         assert_eq_m128h(r, e);
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    const fn test_mm256_loadu_ph() {
+    const unsafe fn test_mm256_loadu_ph() {
         let array = [
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
         ];
-        let r = unsafe { _mm256_loadu_ph(array.as_ptr()) };
+        let r = _mm256_loadu_ph(array.as_ptr());
         let e = _mm256_setr_ph(
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
         );
@@ -17641,13 +17642,13 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512fp16")]
-    const fn test_mm512_loadu_ph() {
+    const unsafe fn test_mm512_loadu_ph() {
         let array = [
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
             17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
             31.0, 32.0,
         ];
-        let r = unsafe { _mm512_loadu_ph(array.as_ptr()) };
+        let r = _mm512_loadu_ph(array.as_ptr());
         let e = _mm512_setr_ph(
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
             17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
@@ -17685,99 +17686,81 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    const fn test_mm_store_ph() {
+    const unsafe fn test_mm_store_ph() {
         let a = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let mut b = _mm_setzero_ph();
-        unsafe {
-            _mm_store_ph(addr_of_mut!(b).cast(), a);
-        }
+        _mm_store_ph(addr_of_mut!(b).cast(), a);
         assert_eq_m128h(a, b);
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    const fn test_mm256_store_ph() {
+    const unsafe fn test_mm256_store_ph() {
         let a = _mm256_set_ph(
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
         );
         let mut b = _mm256_setzero_ph();
-        unsafe {
-            _mm256_store_ph(addr_of_mut!(b).cast(), a);
-        }
+        _mm256_store_ph(addr_of_mut!(b).cast(), a);
         assert_eq_m256h(a, b);
     }
 
     #[simd_test(enable = "avx512fp16")]
-    const fn test_mm512_store_ph() {
+    const unsafe fn test_mm512_store_ph() {
         let a = _mm512_set_ph(
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
             17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
             31.0, 32.0,
         );
         let mut b = _mm512_setzero_ph();
-        unsafe {
-            _mm512_store_ph(addr_of_mut!(b).cast(), a);
-        }
+        _mm512_store_ph(addr_of_mut!(b).cast(), a);
         assert_eq_m512h(a, b);
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    const fn test_mm_store_sh() {
+    const unsafe fn test_mm_store_sh() {
         let a = _mm_set_sh(1.0);
         let mut b = _mm_setzero_ph();
-        unsafe {
-            _mm_store_sh(addr_of_mut!(b).cast(), a);
-        }
+        _mm_store_sh(addr_of_mut!(b).cast(), a);
         assert_eq_m128h(a, b);
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    fn test_mm_mask_store_sh() {
+    unsafe fn test_mm_mask_store_sh() {
         let a = _mm_set_sh(1.0);
         let mut b = _mm_setzero_ph();
-        unsafe {
-            _mm_mask_store_sh(addr_of_mut!(b).cast(), 0, a);
-        }
+        _mm_mask_store_sh(addr_of_mut!(b).cast(), 0, a);
         assert_eq_m128h(_mm_setzero_ph(), b);
-        unsafe {
-            _mm_mask_store_sh(addr_of_mut!(b).cast(), 1, a);
-        }
+        _mm_mask_store_sh(addr_of_mut!(b).cast(), 1, a);
         assert_eq_m128h(a, b);
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    const fn test_mm_storeu_ph() {
+    const unsafe fn test_mm_storeu_ph() {
         let a = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let mut array = [0.0; 8];
-        unsafe {
-            _mm_storeu_ph(array.as_mut_ptr(), a);
-        }
-        assert_eq_m128h(a, unsafe { _mm_loadu_ph(array.as_ptr()) });
+        _mm_storeu_ph(array.as_mut_ptr(), a);
+        assert_eq_m128h(a, _mm_loadu_ph(array.as_ptr()));
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
-    const fn test_mm256_storeu_ph() {
+    const unsafe fn test_mm256_storeu_ph() {
         let a = _mm256_set_ph(
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
         );
         let mut array = [0.0; 16];
-        unsafe {
-            _mm256_storeu_ph(array.as_mut_ptr(), a);
-        }
-        assert_eq_m256h(a, unsafe { _mm256_loadu_ph(array.as_ptr()) });
+        _mm256_storeu_ph(array.as_mut_ptr(), a);
+        assert_eq_m256h(a, _mm256_loadu_ph(array.as_ptr()));
     }
 
     #[simd_test(enable = "avx512fp16")]
-    const fn test_mm512_storeu_ph() {
+    const unsafe fn test_mm512_storeu_ph() {
         let a = _mm512_set_ph(
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
             17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0,
             31.0, 32.0,
         );
         let mut array = [0.0; 32];
-        unsafe {
-            _mm512_storeu_ph(array.as_mut_ptr(), a);
-        }
-        assert_eq_m512h(a, unsafe { _mm512_loadu_ph(array.as_ptr()) });
+        _mm512_storeu_ph(array.as_mut_ptr(), a);
+        assert_eq_m512h(a, _mm512_loadu_ph(array.as_ptr()));
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
@@ -24010,16 +23993,16 @@ mod tests {
 
     #[simd_test(enable = "avx512fp16,avx512vl")]
     const fn test_mm256_reduce_mul_ph() {
-        let a = _mm256_set1_ph(1.2);
+        let a = _mm256_set1_ph(2.0);
         let r = _mm256_reduce_mul_ph(a);
-        assert_eq!(r, 18.5);
+        assert_eq!(r, 65536.0);
     }
 
     #[simd_test(enable = "avx512fp16")]
     const fn test_mm512_reduce_mul_ph() {
-        let a = _mm512_set1_ph(1.2);
+        let a = _mm512_set1_ph(2.0);
         let r = _mm512_reduce_mul_ph(a);
-        assert_eq!(r, 342.3);
+        assert_eq!(r, 16777216.0);
     }
 
     #[simd_test(enable = "avx512fp16,avx512vl")]

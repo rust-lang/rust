@@ -20,9 +20,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
 use rustc_lint::builtin::SELF_CONSTRUCTOR_FROM_OUTER_ITEM;
-use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
-};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, GenericArgsRef, GenericParamDefKind, IsIdentity,
     SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, UserArgs,
@@ -268,7 +266,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         debug!("apply_adjustments: adding `{:?}` as diverging type var", a.target);
                     }
                 }
-                Adjust::Deref(DerefAdjustKind::Overloaded(overloaded_deref)) => {
+                Adjust::Deref(Some(overloaded_deref)) => {
                     self.enforce_context_effects(
                         None,
                         expr.span,
@@ -276,7 +274,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx.mk_args(&[expr_ty.into()]),
                     );
                 }
-                Adjust::Deref(DerefAdjustKind::Builtin) => {
+                Adjust::Deref(None) => {
                     // FIXME(const_trait_impl): We *could* enforce `&T: [const] Deref` here.
                 }
                 Adjust::Pointer(_pointer_coercion) => {

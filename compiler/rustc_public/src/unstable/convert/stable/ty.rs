@@ -271,7 +271,7 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::BoundTyKind<'tcx> {
+impl<'tcx> Stable<'tcx> for ty::BoundTyKind {
     type T = crate::ty::BoundTyKind;
 
     fn stable<'cx>(
@@ -290,7 +290,7 @@ impl<'tcx> Stable<'tcx> for ty::BoundTyKind<'tcx> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::BoundRegionKind<'tcx> {
+impl<'tcx> Stable<'tcx> for ty::BoundRegionKind {
     type T = crate::ty::BoundRegionKind;
 
     fn stable<'cx>(
@@ -307,12 +307,12 @@ impl<'tcx> Stable<'tcx> for ty::BoundRegionKind<'tcx> {
                 cx.tcx.item_name(*def_id).to_string(),
             ),
             ty::BoundRegionKind::ClosureEnv => BoundRegionKind::BrEnv,
-            ty::BoundRegionKind::NamedForPrinting(_) => bug!("only used for pretty printing"),
+            ty::BoundRegionKind::NamedAnon(_) => bug!("only used for pretty printing"),
         }
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::BoundVariableKind<'tcx> {
+impl<'tcx> Stable<'tcx> for ty::BoundVariableKind {
     type T = crate::ty::BoundVariableKind;
 
     fn stable<'cx>(
@@ -546,7 +546,7 @@ impl<'tcx> Stable<'tcx> for ty::ParamTy {
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::BoundTy<'tcx> {
+impl<'tcx> Stable<'tcx> for ty::BoundTy {
     type T = crate::ty::BoundTy;
     fn stable<'cx>(
         &self,

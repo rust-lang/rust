@@ -88,7 +88,7 @@ use rustc_index::IndexVec;
 use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_query_system::query::{QueryMode, QueryState};
+use rustc_query_system::query::{QueryMode, QueryStackDeferred, QueryState};
 use rustc_session::Limits;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::cstore::{
@@ -121,6 +121,7 @@ use crate::mir::interpret::{
 use crate::mir::mono::{
     CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions, NormalizationErrorInMono,
 };
+use crate::query::erase::{Erase, erase, restore};
 use crate::query::plumbing::CyclePlaceholder;
 use crate::traits::query::{
     CanonicalAliasGoal, CanonicalDropckOutlivesGoal, CanonicalImpliedOutlivesBoundsGoal,
@@ -265,7 +266,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by `tcx.hir_*` methods.
     /// Avoid calling this query directly.
-    query hir_owner_parent_q(key: hir::OwnerId) -> hir::HirId {
+    query hir_owner_parent(key: hir::OwnerId) -> hir::HirId {
         desc { |tcx| "getting HIR parent of `{}`", tcx.def_path_str(key) }
     }
 
@@ -2115,7 +2116,7 @@ rustc_queries! {
     /// Does lifetime resolution on items. Importantly, we can't resolve
     /// lifetimes directly on things like trait methods, because of trait params.
     /// See `rustc_resolve::late::lifetimes` for details.
-    query resolve_bound_vars(owner_id: hir::OwnerId) -> &'tcx ResolveBoundVars<'tcx> {
+    query resolve_bound_vars(owner_id: hir::OwnerId) -> &'tcx ResolveBoundVars {
         arena_cache
         desc { |tcx| "resolving lifetimes for `{}`", tcx.def_path_str(owner_id) }
     }
@@ -2144,7 +2145,7 @@ rustc_queries! {
         separate_provide_extern
     }
     query late_bound_vars_map(owner_id: hir::OwnerId)
-        -> &'tcx SortedMap<ItemLocalId, Vec<ty::BoundVariableKind<'tcx>>> {
+        -> &'tcx SortedMap<ItemLocalId, Vec<ty::BoundVariableKind>> {
         desc { |tcx| "looking up late bound vars inside `{}`", tcx.def_path_str(owner_id) }
     }
     /// For an opaque type, return the list of (captured lifetime, inner generic param).

@@ -690,15 +690,6 @@ impl IntoDiagArg for CrateType {
     }
 }
 
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
-pub enum RustcLayoutType {
-    Abi,
-    Align,
-    Size,
-    HomogenousAggregate,
-    Debug,
-}
-
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -755,14 +746,30 @@ pub enum AttributeKind {
     // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     Align { align: Align, span: Span },
 
+    /// Represents `#[rustc_allow_const_fn_unstable]`.
+    AllowConstFnUnstable(ThinVec<Symbol>, Span),
+
+    /// Represents `#[rustc_allow_incoherent_impl]`.
+    AllowIncoherentImpl(Span),
+
     /// Represents `#[allow_internal_unsafe]`.
     AllowInternalUnsafe(Span),
 
     /// Represents `#[allow_internal_unstable]`.
     AllowInternalUnstable(ThinVec<(Symbol, Span)>, Span),
 
+    /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
+    AsPtr(Span),
+
     /// Represents `#[automatically_derived]`
     AutomaticallyDerived(Span),
+
+    /// Represents `#[rustc_default_body_unstable]`.
+    BodyStability {
+        stability: DefaultBodyStability,
+        /// Span of the `#[rustc_default_body_unstable(...)]` attribute
+        span: Span,
+    },
 
     /// Represents the trace attribute of `#[cfg_attr]`
     CfgAttrTrace,
@@ -773,6 +780,9 @@ pub enum AttributeKind {
     /// Represents `#[cfi_encoding]`
     CfiEncoding { encoding: Symbol },
 
+    /// Represents `#[rustc_coinductive]`.
+    Coinductive(Span),
+
     /// Represents `#[cold]`.
     Cold(Span),
 
@@ -782,8 +792,25 @@ pub enum AttributeKind {
     /// Represents `#[compiler_builtins]`.
     CompilerBuiltins,
 
+    /// Represents `#[rustc_confusables]`.
+    Confusables {
+        symbols: ThinVec<Symbol>,
+        // FIXME(jdonszelmann): remove when target validation code is moved
+        first_span: Span,
+    },
+
     /// Represents `#[const_continue]`.
     ConstContinue(Span),
+
+    /// Represents `#[rustc_const_stable]` and `#[rustc_const_unstable]`.
+    ConstStability {
+        stability: PartialConstStability,
+        /// Span of the `#[rustc_const_stable(...)]` or `#[rustc_const_unstable(...)]` attribute
+        span: Span,
+    },
+
+    /// Represents `#[rustc_const_stable_indirect]`.
+    ConstStabilityIndirect,
 
     /// Represents `#[coroutine]`.
     Coroutine(Span),
@@ -803,6 +830,9 @@ pub enum AttributeKind {
     /// Represents `#[debugger_visualizer]`.
     DebuggerVisualizer(ThinVec<DebugVisualizer>),
 
+    /// Represents `#[rustc_deny_explicit_impl]`.
+    DenyExplicitImpl(Span),
+
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
     Deprecation { deprecation: Deprecation, span: Span },
 
@@ -817,6 +847,12 @@ pub enum AttributeKind {
     /// Represents specifically [`#[doc = "..."]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     /// i.e. doc comments.
     DocComment { style: AttrStyle, kind: DocFragmentKind, span: Span, comment: Symbol },
+
+    /// Represents `#[rustc_dummy]`.
+    Dummy,
+
+    /// Represents `#[rustc_dyn_incompatible_trait]`.
+    DynIncompatibleTrait(Span),
 
     /// Implementation detail of `#[eii]`
     EiiDeclaration(EiiDecl),
@@ -884,6 +920,9 @@ pub enum AttributeKind {
     /// Represents [`#[macro_export]`](https://doc.rust-lang.org/reference/macros-by-example.html#r-macro.decl.scope.path).
     MacroExport { span: Span, local_inner_macros: bool },
 
+    /// Represents `#[rustc_macro_transparency]`.
+    MacroTransparency(Transparency),
+
     /// Represents `#[macro_use]`.
     MacroUse { span: Span, arguments: MacroUseArgs },
 
@@ -939,11 +978,23 @@ pub enum AttributeKind {
     /// Represents `#[non_exhaustive]`
     NonExhaustive(Span),
 
+    /// Represents `#[rustc_objc_class]`
+    ObjcClass { classname: Symbol, span: Span },
+
+    /// Represents `#[rustc_objc_selector]`
+    ObjcSelector { methname: Symbol, span: Span },
+
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
 
     /// Represents `#[panic_runtime]`
     PanicRuntime,
+
+    /// Represents `#[rustc_paren_sugar]`.
+    ParenSugar(Span),
+
+    /// Represents `#[rustc_pass_by_value]` (used by the `rustc_pass_by_value` lint).
+    PassByValue(Span),
 
     /// Represents `#[patchable_function_entry]`
     PatchableFunctionEntry { prefix: u8, entry: u8 },
@@ -972,6 +1023,9 @@ pub enum AttributeKind {
     /// Represents `#[profiler_runtime]`
     ProfilerRuntime,
 
+    /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
+    PubTransparent(Span),
+
     /// Represents [`#[recursion_limit]`](https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute)
     RecursionLimit { attr_span: Span, limit_span: Span, limit: Limit },
 
@@ -987,54 +1041,14 @@ pub enum AttributeKind {
     /// Represents `#[rustc_allocator_zeroed_variant]`
     RustcAllocatorZeroedVariant { name: Symbol },
 
-    /// Represents `#[rustc_allow_const_fn_unstable]`.
-    RustcAllowConstFnUnstable(ThinVec<Symbol>, Span),
-
-    /// Represents `#[rustc_allow_incoherent_impl]`.
-    RustcAllowIncoherentImpl(Span),
-
-    /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
-    RustcAsPtr(Span),
-
-    /// Represents `#[rustc_default_body_unstable]`.
-    RustcBodyStability {
-        stability: DefaultBodyStability,
-        /// Span of the `#[rustc_default_body_unstable(...)]` attribute
-        span: Span,
-    },
     /// Represents `#[rustc_builtin_macro]`.
     RustcBuiltinMacro { builtin_name: Option<Symbol>, helper_attrs: ThinVec<Symbol>, span: Span },
 
     /// Represents `#[rustc_coherence_is_core]`
     RustcCoherenceIsCore(Span),
 
-    /// Represents `#[rustc_coinductive]`.
-    RustcCoinductive(Span),
-
-    /// Represents `#[rustc_confusables]`.
-    RustcConfusables {
-        symbols: ThinVec<Symbol>,
-        // FIXME(jdonszelmann): remove when target validation code is moved
-        first_span: Span,
-    },
-    /// Represents `#[rustc_const_stable]` and `#[rustc_const_unstable]`.
-    RustcConstStability {
-        stability: PartialConstStability,
-        /// Span of the `#[rustc_const_stable(...)]` or `#[rustc_const_unstable(...)]` attribute
-        span: Span,
-    },
-
-    /// Represents `#[rustc_const_stable_indirect]`.
-    RustcConstStabilityIndirect,
-
     /// Represents `#[rustc_deallocator]`
     RustcDeallocator,
-
-    /// Represents `#[rustc_deny_explicit_impl]`.
-    RustcDenyExplicitImpl(Span),
-
-    /// Represents `#[rustc_dummy]`.
-    RustcDummy,
 
     /// Represents `#[rustc_dump_def_parents]`
     RustcDumpDefParents,
@@ -1051,14 +1065,8 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dump_vtable]`
     RustcDumpVtable(Span),
 
-    /// Represents `#[rustc_dyn_incompatible_trait]`.
-    RustcDynIncompatibleTrait(Span),
-
     /// Represents `#[rustc_has_incoherent_inherent_impls]`
     RustcHasIncoherentInherentImpls,
-
-    /// Represents `#[rustc_layout]`
-    RustcLayout(ThinVec<RustcLayoutType>),
 
     /// Represents `#[rustc_layout_scalar_valid_range_end]`.
     RustcLayoutScalarValidRangeEnd(Box<u128>, Span),
@@ -1081,9 +1089,6 @@ pub enum AttributeKind {
     /// Represents `#[rustc_lint_untracked_query_information]`
     RustcLintUntrackedQueryInformation,
 
-    /// Represents `#[rustc_macro_transparency]`.
-    RustcMacroTransparency(Transparency),
-
     /// Represents `#[rustc_main]`.
     RustcMain,
 
@@ -1096,17 +1101,8 @@ pub enum AttributeKind {
     /// Represents `#[rustc_no_implicit_autorefs]`
     RustcNoImplicitAutorefs,
 
-    /// Represents `#[rustc_non_const_trait_method]`.
-    RustcNonConstTraitMethod,
-
     /// Represents `#[rustc_nounwind]`
     RustcNounwind,
-
-    /// Represents `#[rustc_objc_class]`
-    RustcObjcClass { classname: Symbol, span: Span },
-
-    /// Represents `#[rustc_objc_selector]`
-    RustcObjcSelector { methname: Symbol, span: Span },
 
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
@@ -1114,17 +1110,8 @@ pub enum AttributeKind {
     /// Represents `#[rustc_offload_kernel]`
     RustcOffloadKernel,
 
-    /// Represents `#[rustc_paren_sugar]`.
-    RustcParenSugar(Span),
-
-    /// Represents `#[rustc_pass_by_value]` (used by the `rustc_pass_by_value` lint).
-    RustcPassByValue(Span),
-
     /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
     RustcPassIndirectlyInNonRusticAbis(Span),
-
-    /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
-    RustcPubTransparent(Span),
 
     /// Represents `#[rustc_reallocator]`
     RustcReallocator,
@@ -1142,18 +1129,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_simd_monomorphize_lane_limit = "N"]`.
     RustcSimdMonomorphizeLaneLimit(Limit),
-
-    /// Represents `#[rustc_skip_during_method_dispatch]`.
-    RustcSkipDuringMethodDispatch { array: bool, boxed_slice: bool, span: Span },
-
-    /// Represents `#[rustc_specialization_trait]`.
-    RustcSpecializationTrait(Span),
-
-    /// Represents `#[rustc_std_internal_symbol]`.
-    RustcStdInternalSymbol(Span),
-
-    /// Represents `#[rustc_unsafe_specialization_marker]`.
-    RustcUnsafeSpecializationMarker(Span),
 
     /// Represents `#[rustc_variance]`
     RustcVariance,
@@ -1176,12 +1151,22 @@ pub enum AttributeKind {
     /// Represents `#[should_panic]`
     ShouldPanic { reason: Option<Symbol>, span: Span },
 
+    /// Represents `#[rustc_skip_during_method_dispatch]`.
+    SkipDuringMethodDispatch { array: bool, boxed_slice: bool, span: Span },
+
+    /// Represents `#[rustc_specialization_trait]`.
+    SpecializationTrait(Span),
+
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
     Stability {
         stability: Stability,
         /// Span of the attribute.
         span: Span,
     },
+
+    /// Represents `#[rustc_std_internal_symbol]`.
+    StdInternalSymbol(Span),
+
     /// Represents `#[target_feature(enable = "...")]` and
     /// `#[unsafe(force_target_feature(enable = "...")]`.
     TargetFeature { features: ThinVec<(Symbol, Span)>, attr_span: Span, was_forced: bool },
@@ -1197,6 +1182,9 @@ pub enum AttributeKind {
 
     /// Represents `#[type_length_limit]`
     TypeLengthLimit { attr_span: Span, limit_span: Span, limit: Limit },
+
+    /// Represents `#[rustc_unsafe_specialization_marker]`.
+    UnsafeSpecializationMarker(Span),
 
     /// Represents `#[unstable_feature_bound]`.
     UnstableFeatureBound(ThinVec<(Symbol, Span)>),

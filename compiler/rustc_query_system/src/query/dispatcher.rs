@@ -5,17 +5,12 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_span::ErrorGuaranteed;
 
 use super::QueryStackFrameExtra;
-use crate::dep_graph::{DepKind, DepNode, DepNodeParams, HasDepContext, SerializedDepNodeIndex};
+use crate::dep_graph::{DepKind, DepNode, DepNodeParams, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::{CycleError, CycleErrorHandling, DepNodeIndex, QueryContext, QueryState};
 
 pub type HashResult<V> = Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>;
-
-/// Unambiguous shorthand for `<This::Qcx as HasDepContext>::DepContext`.
-#[expect(type_alias_bounds)]
-type DepContextOf<'tcx, This: QueryDispatcher<'tcx>> =
-    <<This as QueryDispatcher<'tcx>>::Qcx as HasDepContext>::DepContext;
 
 /// Trait that can be used as a vtable for a single query, providing operations
 /// and metadata for that query.
@@ -25,15 +20,12 @@ type DepContextOf<'tcx, This: QueryDispatcher<'tcx>> =
 /// Those types are not visible from this `rustc_query_system` crate.
 ///
 /// "Dispatcher" should be understood as a near-synonym of "vtable".
-pub trait QueryDispatcher<'tcx>: Copy {
+pub trait QueryDispatcher<Qcx: QueryContext>: Copy {
     fn name(self) -> &'static str;
-
-    /// Query context used by this dispatcher, i.e. `rustc_query_impl::QueryCtxt`.
-    type Qcx: QueryContext<'tcx>;
 
     // `Key` and `Value` are `Copy` instead of `Clone` to ensure copying them stays cheap,
     // but it isn't necessary.
-    type Key: DepNodeParams<DepContextOf<'tcx, Self>> + Eq + Hash + Copy + Debug;
+    type Key: DepNodeParams<Qcx::DepContext> + Eq + Hash + Copy + Debug;
     type Value: Copy;
 
     type Cache: QueryCache<Key = Self::Key, Value = Self::Value>;
@@ -41,37 +33,36 @@ pub trait QueryDispatcher<'tcx>: Copy {
     fn format_value(self) -> fn(&Self::Value) -> String;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_state<'a>(self, tcx: Self::Qcx) -> &'a QueryState<'tcx, Self::Key>;
+    fn query_state<'a>(self, tcx: Qcx) -> &'a QueryState<Self::Key, Qcx::QueryInfo>
+    where
+        Qcx: 'a;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_cache<'a>(self, tcx: Self::Qcx) -> &'a Self::Cache;
+    fn query_cache<'a>(self, tcx: Qcx) -> &'a Self::Cache
+    where
+        Qcx: 'a;
 
-    fn will_cache_on_disk_for_key(self, tcx: DepContextOf<'tcx, Self>, key: &Self::Key) -> bool;
+    fn cache_on_disk(self, tcx: Qcx::DepContext, key: &Self::Key) -> bool;
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
-    fn execute_query(self, tcx: DepContextOf<'tcx, Self>, k: Self::Key) -> Self::Value;
+    fn execute_query(self, tcx: Qcx::DepContext, k: Self::Key) -> Self::Value;
 
-    fn compute(self, tcx: Self::Qcx, key: Self::Key) -> Self::Value;
+    fn compute(self, tcx: Qcx, key: Self::Key) -> Self::Value;
 
     fn try_load_from_disk(
         self,
-        tcx: Self::Qcx,
+        tcx: Qcx,
         key: &Self::Key,
         prev_index: SerializedDepNodeIndex,
         index: DepNodeIndex,
     ) -> Option<Self::Value>;
 
-    fn is_loadable_from_disk(
-        self,
-        qcx: Self::Qcx,
-        key: &Self::Key,
-        idx: SerializedDepNodeIndex,
-    ) -> bool;
+    fn loadable_from_disk(self, qcx: Qcx, key: &Self::Key, idx: SerializedDepNodeIndex) -> bool;
 
     /// Synthesize an error value to let compilation continue after a cycle.
     fn value_from_cycle_error(
         self,
-        tcx: DepContextOf<'tcx, Self>,
+        tcx: Qcx::DepContext,
         cycle_error: &CycleError<QueryStackFrameExtra>,
         guar: ErrorGuaranteed,
     ) -> Self::Value;
@@ -86,7 +77,7 @@ pub trait QueryDispatcher<'tcx>: Copy {
     fn hash_result(self) -> HashResult<Self::Value>;
 
     // Just here for convenience and checking that the key matches the kind, don't override this.
-    fn construct_dep_node(self, tcx: DepContextOf<'tcx, Self>, key: &Self::Key) -> DepNode {
+    fn construct_dep_node(self, tcx: Qcx::DepContext, key: &Self::Key) -> DepNode {
         DepNode::construct(tcx, self.dep_kind(), key)
     }
 }

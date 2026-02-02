@@ -854,6 +854,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(push_mut)]
     /// use std::collections::LinkedList;
     ///
     /// let mut dl = LinkedList::from([1, 2, 3]);
@@ -862,7 +863,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// *ptr += 4;
     /// assert_eq!(dl.front().unwrap(), &6);
     /// ```
-    #[stable(feature = "push_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[unstable(feature = "push_mut", issue = "135974")]
     #[must_use = "if you don't need a reference to the value, use `LinkedList::push_front` instead"]
     pub fn push_front_mut(&mut self, elt: T) -> &mut T {
         let mut node =
@@ -925,6 +926,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(push_mut)]
     /// use std::collections::LinkedList;
     ///
     /// let mut dl = LinkedList::from([1, 2, 3]);
@@ -933,7 +935,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// *ptr += 4;
     /// assert_eq!(dl.back().unwrap(), &6);
     /// ```
-    #[stable(feature = "push_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[unstable(feature = "push_mut", issue = "135974")]
     #[must_use = "if you don't need a reference to the value, use `LinkedList::push_back` instead"]
     pub fn push_back_mut(&mut self, elt: T) -> &mut T {
         let mut node =

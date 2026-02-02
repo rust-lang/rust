@@ -3,7 +3,7 @@ use crate::spec::{Arch, Cc, FramePointer, LinkerFlavor, Lld, Target, TargetMetad
 pub(crate) fn target() -> Target {
     let mut base = base::windows_gnullvm::opts();
     base.max_atomic_width = Some(128);
-    base.features = "+v8a,+neon".into();
+    base.features = "+v8a,+neon,+outline-atomics".into();
     base.linker = Some("aarch64-w64-mingw32-clang".into());
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &["-m", "arm64pe"]);
 

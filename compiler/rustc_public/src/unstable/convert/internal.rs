@@ -433,7 +433,7 @@ where
 }
 
 impl RustcInternal for BoundVariableKind {
-    type T<'tcx> = rustc_ty::BoundVariableKind<'tcx>;
+    type T<'tcx> = rustc_ty::BoundVariableKind;
 
     fn internal<'tcx>(
         &self,

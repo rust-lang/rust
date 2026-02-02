@@ -1,7 +1,5 @@
-use core::intrinsics::simd::SimdAlign;
-
 use crate::simd::{
-    Mask, MaskElement,
+    LaneCount, Mask, MaskElement, SupportedLaneCount, Swizzle,
     cmp::SimdPartialOrd,
     num::SimdUint,
     ptr::{SimdConstPtr, SimdMutPtr},
@@ -53,8 +51,6 @@ use crate::simd::{
 /// Thus it is sound to [`transmute`] `Simd<T, N>` to `[T; N]` and should optimize to "zero cost",
 /// but the reverse transmutation may require a copy the compiler cannot simply elide.
 ///
-/// `N` cannot be 0 and may be at most 64. This limit may be increased in the future.
-///
 /// # ABI "Features"
 /// Due to Rust's safety guarantees, `Simd<T, N>` is currently passed and returned via memory,
 /// not SIMD registers, except as an optimization. Using `#[inline]` on functions that accept
@@ -104,13 +100,14 @@ use crate::simd::{
 // avoided, as it will likely become illegal on `#[repr(simd)]` structs in the future. It also
 // causes rustc to emit illegal LLVM IR in some cases.
 #[repr(simd, packed)]
-#[rustc_simd_monomorphize_lane_limit = "64"]
 pub struct Simd<T, const N: usize>([T; N])
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement;
 
 impl<T, const N: usize> Simd<T, N>
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
     /// Number of elements in this vector.
@@ -149,8 +146,30 @@ where
     #[inline]
     #[rustc_const_unstable(feature = "portable_simd", issue = "86656")]
     pub const fn splat(value: T) -> Self {
-        // SAFETY: T is a SimdElement, and the item type of Self.
-        unsafe { core::intrinsics::simd::simd_splat(value) }
+        const fn splat_const<T, const N: usize>(value: T) -> Simd<T, N>
+        where
+            T: SimdElement,
+            LaneCount<N>: SupportedLaneCount,
+        {
+            Simd::from_array([value; N])
+        }
+
+        fn splat_rt<T, const N: usize>(value: T) -> Simd<T, N>
+        where
+            T: SimdElement,
+            LaneCount<N>: SupportedLaneCount,
+        {
+            // This is preferred over `[value; N]`, since it's explicitly a splat:
+            // https://github.com/rust-lang/rust/issues/97804
+            struct Splat;
+            impl<const N: usize> Swizzle<N> for Splat {
+                const INDEX: [usize; N] = [0; N];
+            }
+
+            Splat::swizzle::<T, 1>(Simd::<T, 1>::from([value]))
+        }
+
+        core::intrinsics::const_eval_select((value,), splat_const, splat_rt)
     }
 
     /// Returns an array reference containing the entire SIMD vector.
@@ -176,7 +195,7 @@ where
 
     /// Returns a mutable array reference containing the entire SIMD vector.
     #[inline]
-    pub const fn as_mut_array(&mut self) -> &mut [T; N] {
+    pub fn as_mut_array(&mut self) -> &mut [T; N] {
         // SAFETY: `Simd<T, N>` is just an overaligned `[T; N]` with
         // potential padding at the end, so pointer casting to a
         // `&mut [T; N]` is safe.
@@ -305,7 +324,7 @@ where
     /// ```
     #[inline]
     #[track_caller]
-    pub const fn copy_to_slice(self, slice: &mut [T]) {
+    pub fn copy_to_slice(self, slice: &mut [T]) {
         assert!(
             slice.len() >= Self::LEN,
             "slice length must be at least the number of elements"
@@ -446,7 +465,7 @@ where
     /// value from `or` is passed through.
     ///
     /// # Safety
-    /// Enabled `ptr` elements must be safe to read as if by `core::ptr::read`.
+    /// Enabled `ptr` elements must be safe to read as if by `std::ptr::read`.
     #[must_use]
     #[inline]
     pub unsafe fn load_select_ptr(
@@ -456,11 +475,12 @@ where
     ) -> Self {
         // SAFETY: The safety of reading elements through `ptr` is ensured by the caller.
         unsafe {
-            core::intrinsics::simd::simd_masked_load::<_, _, _, { SimdAlign::Element }>(
-                enable.to_simd(),
-                ptr,
-                or,
-            )
+            core::intrinsics::simd::simd_masked_load::<
+                _,
+                _,
+                _,
+                { core::intrinsics::simd::SimdAlign::Element },
+            >(enable.to_int(), ptr, or)
         }
     }
 
@@ -639,7 +659,7 @@ where
         or: Self,
     ) -> Self {
         // Safety: The caller is responsible for upholding all invariants
-        unsafe { core::intrinsics::simd::simd_gather(or, source, enable.to_simd()) }
+        unsafe { core::intrinsics::simd::simd_gather(or, source, enable.to_int()) }
     }
 
     /// Conditionally write contiguous elements to `slice`. The `enable` mask controls
@@ -711,11 +731,12 @@ where
     pub unsafe fn store_select_ptr(self, ptr: *mut T, enable: Mask<<T as SimdElement>::Mask, N>) {
         // SAFETY: The safety of writing elements through `ptr` is ensured by the caller.
         unsafe {
-            core::intrinsics::simd::simd_masked_store::<_, _, _, { SimdAlign::Element }>(
-                enable.to_simd(),
-                ptr,
-                self,
-            )
+            core::intrinsics::simd::simd_masked_store::<
+                _,
+                _,
+                _,
+                { core::intrinsics::simd::SimdAlign::Element },
+            >(enable.to_int(), ptr, self)
         }
     }
 
@@ -875,14 +896,20 @@ where
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn scatter_select_ptr(self, dest: Simd<*mut T, N>, enable: Mask<isize, N>) {
         // Safety: The caller is responsible for upholding all invariants
-        unsafe { core::intrinsics::simd::simd_scatter(self, dest, enable.to_simd()) }
+        unsafe { core::intrinsics::simd::simd_scatter(self, dest, enable.to_int()) }
     }
 }
 
-impl<T, const N: usize> Copy for Simd<T, N> where T: SimdElement {}
+impl<T, const N: usize> Copy for Simd<T, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+    T: SimdElement,
+{
+}
 
 impl<T, const N: usize> Clone for Simd<T, N>
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
     #[inline]
@@ -893,6 +920,7 @@ where
 
 impl<T, const N: usize> Default for Simd<T, N>
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement + Default,
 {
     #[inline]
@@ -903,6 +931,7 @@ where
 
 impl<T, const N: usize> PartialEq for Simd<T, N>
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement + PartialEq,
 {
     #[inline]
@@ -911,7 +940,7 @@ where
         let mask = unsafe {
             let tfvec: Simd<<T as SimdElement>::Mask, N> =
                 core::intrinsics::simd::simd_eq(*self, *other);
-            Mask::from_simd_unchecked(tfvec)
+            Mask::from_int_unchecked(tfvec)
         };
 
         // Two vectors are equal if all elements are equal when compared elementwise
@@ -925,7 +954,7 @@ where
         let mask = unsafe {
             let tfvec: Simd<<T as SimdElement>::Mask, N> =
                 core::intrinsics::simd::simd_ne(*self, *other);
-            Mask::from_simd_unchecked(tfvec)
+            Mask::from_int_unchecked(tfvec)
         };
 
         // Two vectors are non-equal if any elements are non-equal when compared elementwise
@@ -936,6 +965,7 @@ where
 /// Lexicographic order. For the SIMD elementwise minimum and maximum, use simd_min and simd_max instead.
 impl<T, const N: usize> PartialOrd for Simd<T, N>
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement + PartialOrd,
 {
     #[inline]
@@ -945,11 +975,17 @@ where
     }
 }
 
-impl<T, const N: usize> Eq for Simd<T, N> where T: SimdElement + Eq {}
+impl<T, const N: usize> Eq for Simd<T, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+    T: SimdElement + Eq,
+{
+}
 
 /// Lexicographic order. For the SIMD elementwise minimum and maximum, use simd_min and simd_max instead.
 impl<T, const N: usize> Ord for Simd<T, N>
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement + Ord,
 {
     #[inline]
@@ -961,6 +997,7 @@ where
 
 impl<T, const N: usize> core::hash::Hash for Simd<T, N>
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement + core::hash::Hash,
 {
     #[inline]
@@ -975,6 +1012,7 @@ where
 // array references
 impl<T, const N: usize> AsRef<[T; N]> for Simd<T, N>
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
     #[inline]
@@ -985,6 +1023,7 @@ where
 
 impl<T, const N: usize> AsMut<[T; N]> for Simd<T, N>
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
     #[inline]
@@ -996,6 +1035,7 @@ where
 // slice references
 impl<T, const N: usize> AsRef<[T]> for Simd<T, N>
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
     #[inline]
@@ -1006,6 +1046,7 @@ where
 
 impl<T, const N: usize> AsMut<[T]> for Simd<T, N>
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
     #[inline]
@@ -1017,6 +1058,7 @@ where
 // vector/array conversion
 impl<T, const N: usize> From<[T; N]> for Simd<T, N>
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
     #[inline]
@@ -1027,6 +1069,7 @@ where
 
 impl<T, const N: usize> From<Simd<T, N>> for [T; N]
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
     #[inline]
@@ -1037,6 +1080,7 @@ where
 
 impl<T, const N: usize> TryFrom<&[T]> for Simd<T, N>
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
     type Error = core::array::TryFromSliceError;
@@ -1049,6 +1093,7 @@ where
 
 impl<T, const N: usize> TryFrom<&mut [T]> for Simd<T, N>
 where
+    LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
     type Error = core::array::TryFromSliceError;
@@ -1186,7 +1231,10 @@ where
 }
 
 #[inline]
-fn lane_indices<const N: usize>() -> Simd<usize, N> {
+fn lane_indices<const N: usize>() -> Simd<usize, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+{
     #![allow(clippy::needless_range_loop)]
     let mut index = [0; N];
     for i in 0..N {
@@ -1198,6 +1246,7 @@ fn lane_indices<const N: usize>() -> Simd<usize, N> {
 #[inline]
 fn mask_up_to<M, const N: usize>(len: usize) -> Mask<M, N>
 where
+    LaneCount<N>: SupportedLaneCount,
     M: MaskElement,
 {
     let index = lane_indices::<N>();

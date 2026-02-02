@@ -205,7 +205,7 @@ pub(crate) fn allowed_targets_applied(
     ];
     const IMPL_LIKE: &[Target] =
         &[Target::Impl { of_trait: false }, Target::Impl { of_trait: true }];
-    const ADT_LIKE: &[Target] = &[Target::Struct, Target::Enum, Target::Union];
+    const ADT_LIKE: &[Target] = &[Target::Struct, Target::Enum];
 
     let mut added_fake_targets = Vec::new();
     filter_targets(

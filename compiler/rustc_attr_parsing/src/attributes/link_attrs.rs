@@ -529,7 +529,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for StdInternalSymbolParser {
         Allow(Target::Static),
         Allow(Target::ForeignStatic),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcStdInternalSymbol;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::StdInternalSymbol;
 }
 
 pub(crate) struct LinkOrdinalParser;

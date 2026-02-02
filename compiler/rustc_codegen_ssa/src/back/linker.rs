@@ -1208,23 +1208,10 @@ impl<'a> Linker for EmLinker<'a> {
 
     fn set_output_kind(
         &mut self,
-        output_kind: LinkOutputKind,
+        _output_kind: LinkOutputKind,
         _crate_type: CrateType,
         _out_filename: &Path,
     ) {
-        match output_kind {
-            LinkOutputKind::DynamicNoPicExe | LinkOutputKind::DynamicPicExe => {
-                self.cmd.arg("-sMAIN_MODULE=2");
-            }
-            LinkOutputKind::DynamicDylib | LinkOutputKind::StaticDylib => {
-                self.cmd.arg("-sSIDE_MODULE=2");
-            }
-            // -fno-pie is the default on Emscripten.
-            LinkOutputKind::StaticNoPicExe | LinkOutputKind::StaticPicExe => {}
-            LinkOutputKind::WasiReactorExe => {
-                unreachable!();
-            }
-        }
     }
 
     fn link_dylib_by_name(&mut self, name: &str, _verbatim: bool, _as_needed: bool) {

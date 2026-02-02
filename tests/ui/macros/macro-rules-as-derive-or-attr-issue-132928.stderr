@@ -1,3 +1,12 @@
+error: cannot find derive macro `sample` in this scope
+  --> $DIR/macro-rules-as-derive-or-attr-issue-132928.rs:6:10
+   |
+LL | macro_rules! sample { () => {} }
+   |              ------ `sample` exists, but has no `derive` rules
+...
+LL | #[derive(sample)]
+   |          ^^^^^^
+
 error: cannot find attribute `sample` in this scope
   --> $DIR/macro-rules-as-derive-or-attr-issue-132928.rs:5:3
    |
@@ -15,6 +24,8 @@ LL | macro_rules! sample { () => {} }
 ...
 LL | #[derive(sample)]
    |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: cannot find derive macro `sample` in this scope
   --> $DIR/macro-rules-as-derive-or-attr-issue-132928.rs:6:10
@@ -27,5 +38,5 @@ LL | #[derive(sample)]
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

@@ -172,22 +172,8 @@ impl<T> TypedArena<T> {
         available_bytes >= additional_bytes
     }
 
-    /// Allocates storage for `len >= 1` values in this arena, and returns a
-    /// raw pointer to the first value's storage.
-    ///
-    /// # Safety
-    ///
-    /// Caller must initialize each of the `len` slots to a droppable value
-    /// before the arena is dropped.
-    ///
-    /// In practice, this typically means that the caller must be able to
-    /// raw-copy `len` already-initialized values into the slice without any
-    /// possibility of panicking.
-    ///
-    /// FIXME(Zalathar): This is *very* fragile; perhaps we need a different
-    /// approach to arena-allocating slices of droppable values.
     #[inline]
-    unsafe fn alloc_raw_slice(&self, len: usize) -> *mut T {
+    fn alloc_raw_slice(&self, len: usize) -> *mut T {
         assert!(size_of::<T>() != 0);
         assert!(len != 0);
 
@@ -222,7 +208,7 @@ impl<T> TypedArena<T> {
         &self,
         iter: impl IntoIterator<Item = Result<T, E>>,
     ) -> Result<&mut [T], E> {
-        // Despite the similarity with `DroplessArena`, we cannot reuse their fast case. The reason
+        // Despite the similarlty with `DroplessArena`, we cannot reuse their fast case. The reason
         // is subtle: these arenas are reentrant. In other words, `iter` may very well be holding a
         // reference to `self` and adding elements to the arena during iteration.
         //
@@ -243,15 +229,9 @@ impl<T> TypedArena<T> {
         }
         // Move the content to the arena by copying and then forgetting it.
         let len = vec.len();
-
-        // SAFETY: After allocating raw storage for exactly `len` values, we
-        // must fully initialize the storage without panicking, and we must
-        // also prevent the stale values in the vec from being dropped.
+        let start_ptr = self.alloc_raw_slice(len);
         Ok(unsafe {
-            let start_ptr = self.alloc_raw_slice(len);
-            // Initialize the newly-allocated storage without panicking.
             vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-            // Prevent the stale values in the vec from being dropped.
             vec.set_len(0);
             slice::from_raw_parts_mut(start_ptr, len)
         })
@@ -510,6 +490,19 @@ impl DroplessArena {
         }
     }
 
+    /// Used by `Lift` to check whether this slice is allocated
+    /// in this arena.
+    #[inline]
+    pub fn contains_slice<T>(&self, slice: &[T]) -> bool {
+        for chunk in self.chunks.borrow_mut().iter_mut() {
+            let ptr = slice.as_ptr().cast::<u8>().cast_mut();
+            if chunk.start() <= ptr && chunk.end() >= ptr {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Allocates a string slice that is copied into the `DroplessArena`, returning a
     /// reference to it. Will panic if passed an empty string.
     ///
@@ -591,7 +584,7 @@ impl DroplessArena {
         &self,
         iter: impl IntoIterator<Item = Result<T, E>>,
     ) -> Result<&mut [T], E> {
-        // Despite the similarity with `alloc_from_iter`, we cannot reuse their fast case, as we
+        // Despite the similarlty with `alloc_from_iter`, we cannot reuse their fast case, as we
         // cannot know the minimum length of the iterator in this case.
         assert!(size_of::<T>() != 0);
 

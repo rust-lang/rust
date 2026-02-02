@@ -36,6 +36,8 @@ else
     "${test_builtins[@]}" --features c --release
     "${test_builtins[@]}" --features no-asm
     "${test_builtins[@]}" --features no-asm --release
+    "${test_builtins[@]}" --features no-f16-f128
+    "${test_builtins[@]}" --features no-f16-f128 --release
     "${test_builtins[@]}" --benches
     "${test_builtins[@]}" --benches --release
 
@@ -61,6 +63,8 @@ symcheck+=(-- build-and-check)
 "${symcheck[@]}" "$target" -- -p compiler_builtins --features c --release
 "${symcheck[@]}" "$target" -- -p compiler_builtins --features no-asm
 "${symcheck[@]}" "$target" -- -p compiler_builtins --features no-asm --release
+"${symcheck[@]}" "$target" -- -p compiler_builtins --features no-f16-f128
+"${symcheck[@]}" "$target" -- -p compiler_builtins --features no-f16-f128 --release
 
 run_intrinsics_test() {
     build_args=(--verbose --manifest-path builtins-test-intrinsics/Cargo.toml)

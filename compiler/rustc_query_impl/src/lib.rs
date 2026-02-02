@@ -10,6 +10,7 @@ use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::{self, DepKind, DepKindVTable, DepNodeIndex};
+use rustc_middle::query::erase::{Erase, erase, restore};
 use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
 use rustc_middle::query::plumbing::{QuerySystem, QuerySystemFns, QueryVTable};
 use rustc_middle::query::{
@@ -21,7 +22,7 @@ use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
     CycleError, CycleErrorHandling, HashResult, QueryCache, QueryDispatcher, QueryMap, QueryMode,
-    QueryState, get_query_incr, get_query_non_incr,
+    QueryStackDeferred, QueryState, get_query_incr, get_query_non_incr,
 };
 use rustc_span::{ErrorGuaranteed, Span};
 
@@ -66,11 +67,11 @@ impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDA
 
 // This is `impl QueryDispatcher for SemiDynamicQueryDispatcher`.
 impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool>
-    QueryDispatcher<'tcx> for SemiDynamicQueryDispatcher<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+    QueryDispatcher<QueryCtxt<'tcx>>
+    for SemiDynamicQueryDispatcher<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
 where
     for<'a> C::Key: HashStable<StableHashingContext<'a>>,
 {
-    type Qcx = QueryCtxt<'tcx>;
     type Key = C::Key;
     type Value = C::Value;
     type Cache = C;
@@ -81,12 +82,15 @@ where
     }
 
     #[inline(always)]
-    fn will_cache_on_disk_for_key(self, tcx: TyCtxt<'tcx>, key: &Self::Key) -> bool {
-        self.vtable.will_cache_on_disk_for_key_fn.map_or(false, |f| f(tcx, key))
+    fn cache_on_disk(self, tcx: TyCtxt<'tcx>, key: &Self::Key) -> bool {
+        (self.vtable.cache_on_disk)(tcx, key)
     }
 
     #[inline(always)]
-    fn query_state<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a QueryState<'tcx, Self::Key>
+    fn query_state<'a>(
+        self,
+        qcx: QueryCtxt<'tcx>,
+    ) -> &'a QueryState<Self::Key, QueryStackDeferred<'tcx>>
     where
         QueryCtxt<'tcx>: 'a,
     {
@@ -95,12 +99,15 @@ where
         unsafe {
             &*(&qcx.tcx.query_system.states as *const QueryStates<'tcx>)
                 .byte_add(self.vtable.query_state)
-                .cast::<QueryState<'tcx, Self::Key>>()
+                .cast::<QueryState<Self::Key, QueryStackDeferred<'tcx>>>()
         }
     }
 
     #[inline(always)]
-    fn query_cache<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a Self::Cache {
+    fn query_cache<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a Self::Cache
+    where
+        'tcx: 'a,
+    {
         // Safety:
         // This is just manually doing the subfield referencing through pointer math.
         unsafe {
@@ -128,18 +135,21 @@ where
         prev_index: SerializedDepNodeIndex,
         index: DepNodeIndex,
     ) -> Option<Self::Value> {
-        // `?` will return None immediately for queries that never cache to disk.
-        self.vtable.try_load_from_disk_fn?(qcx.tcx, key, prev_index, index)
+        if self.vtable.can_load_from_disk {
+            (self.vtable.try_load_from_disk)(qcx.tcx, key, prev_index, index)
+        } else {
+            None
+        }
     }
 
     #[inline]
-    fn is_loadable_from_disk(
+    fn loadable_from_disk(
         self,
         qcx: QueryCtxt<'tcx>,
         key: &Self::Key,
         index: SerializedDepNodeIndex,
     ) -> bool {
-        self.vtable.is_loadable_from_disk_fn.map_or(false, |f| f(qcx.tcx, key, index))
+        (self.vtable.loadable_from_disk)(qcx.tcx, key, index)
     }
 
     fn value_from_cycle_error(
@@ -205,14 +215,14 @@ where
 /// on the type `rustc_query_impl::query_impl::$name::QueryType`.
 trait QueryDispatcherUnerased<'tcx> {
     type UnerasedValue;
-    type Dispatcher: QueryDispatcher<'tcx, Qcx = QueryCtxt<'tcx>>;
+    type Dispatcher: QueryDispatcher<QueryCtxt<'tcx>>;
 
     const NAME: &'static &'static str;
 
     fn query_dispatcher(tcx: TyCtxt<'tcx>) -> Self::Dispatcher;
 
     fn restore_val(
-        value: <Self::Dispatcher as QueryDispatcher<'tcx>>::Value,
+        value: <Self::Dispatcher as QueryDispatcher<QueryCtxt<'tcx>>>::Value,
     ) -> Self::UnerasedValue;
 }
 

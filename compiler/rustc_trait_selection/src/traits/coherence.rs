@@ -566,7 +566,7 @@ fn plug_infer_with_placeholders<'tcx>(
                         ty,
                         Ty::new_placeholder(
                             self.infcx.tcx,
-                            ty::PlaceholderType::new(
+                            ty::Placeholder::new(
                                 self.universe,
                                 ty::BoundTy { var: self.next_var(), kind: ty::BoundTyKind::Anon },
                             ),
@@ -592,9 +592,9 @@ fn plug_infer_with_placeholders<'tcx>(
                         ct,
                         ty::Const::new_placeholder(
                             self.infcx.tcx,
-                            ty::PlaceholderConst::new(
+                            ty::Placeholder::new(
                                 self.universe,
-                                ty::BoundConst::new(self.next_var()),
+                                ty::BoundConst { var: self.next_var() },
                             ),
                         ),
                     )
@@ -623,7 +623,7 @@ fn plug_infer_with_placeholders<'tcx>(
                             r,
                             ty::Region::new_placeholder(
                                 self.infcx.tcx,
-                                ty::PlaceholderRegion::new(
+                                ty::Placeholder::new(
                                     self.universe,
                                     ty::BoundRegion {
                                         var: self.next_var(),

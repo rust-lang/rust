@@ -77,14 +77,12 @@ mod tests {
 
     #[simd_test(enable = "fxsr")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
-    fn test_fxsave() {
+    unsafe fn test_fxsave() {
         let mut a = FxsaveArea::new();
         let mut b = FxsaveArea::new();
 
-        unsafe {
-            fxsr::_fxsave(a.ptr());
-            fxsr::_fxrstor(a.ptr());
-            fxsr::_fxsave(b.ptr());
-        }
+        fxsr::_fxsave(a.ptr());
+        fxsr::_fxrstor(a.ptr());
+        fxsr::_fxsave(b.ptr());
     }
 }

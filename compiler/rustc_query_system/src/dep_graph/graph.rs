@@ -519,11 +519,7 @@ impl<D: Deps> DepGraph<D> {
     /// This encodes a diagnostic by creating a node with an unique index and associating
     /// `diagnostic` with it, for use in the next session.
     #[inline]
-    pub fn record_diagnostic<'tcx, Qcx: QueryContext<'tcx>>(
-        &self,
-        qcx: Qcx,
-        diagnostic: &DiagInner,
-    ) {
+    pub fn record_diagnostic<Qcx: QueryContext>(&self, qcx: Qcx, diagnostic: &DiagInner) {
         if let Some(ref data) = self.data {
             D::read_deps(|task_deps| match task_deps {
                 TaskDepsRef::EvalAlways | TaskDepsRef::Ignore => return,
@@ -536,7 +532,7 @@ impl<D: Deps> DepGraph<D> {
     /// This forces a diagnostic node green by running its side effect. `prev_index` would
     /// refer to a node created used `encode_diagnostic` in the previous session.
     #[inline]
-    pub fn force_diagnostic_node<'tcx, Qcx: QueryContext<'tcx>>(
+    pub fn force_diagnostic_node<Qcx: QueryContext>(
         &self,
         qcx: Qcx,
         prev_index: SerializedDepNodeIndex,
@@ -662,7 +658,7 @@ impl<D: Deps> DepGraphData<D> {
     }
 
     #[inline]
-    pub(crate) fn prev_node_of(&self, prev_index: SerializedDepNodeIndex) -> &DepNode {
+    pub(crate) fn prev_node_of(&self, prev_index: SerializedDepNodeIndex) -> DepNode {
         self.previous.index_to_node(prev_index)
     }
 
@@ -673,7 +669,7 @@ impl<D: Deps> DepGraphData<D> {
     /// This encodes a diagnostic by creating a node with an unique index and associating
     /// `diagnostic` with it, for use in the next session.
     #[inline]
-    fn encode_diagnostic<'tcx, Qcx: QueryContext<'tcx>>(
+    fn encode_diagnostic<Qcx: QueryContext>(
         &self,
         qcx: Qcx,
         diagnostic: &DiagInner,
@@ -697,7 +693,7 @@ impl<D: Deps> DepGraphData<D> {
     /// This forces a diagnostic node green by running its side effect. `prev_index` would
     /// refer to a node created used `encode_diagnostic` in the previous session.
     #[inline]
-    fn force_diagnostic_node<'tcx, Qcx: QueryContext<'tcx>>(
+    fn force_diagnostic_node<Qcx: QueryContext>(
         &self,
         qcx: Qcx,
         prev_index: SerializedDepNodeIndex,
@@ -783,7 +779,7 @@ impl<D: Deps> DepGraphData<D> {
         #[cfg(debug_assertions)]
         self.current.record_edge(
             dep_node_index,
-            *self.previous.index_to_node(prev_index),
+            self.previous.index_to_node(prev_index),
             self.previous.fingerprint_by_index(prev_index),
         );
 
@@ -847,7 +843,7 @@ impl<D: Deps> DepGraph<D> {
         DepNodeColor::Unknown
     }
 
-    pub fn try_mark_green<'tcx, Qcx: QueryContext<'tcx, Deps = D>>(
+    pub fn try_mark_green<Qcx: QueryContext<Deps = D>>(
         &self,
         qcx: Qcx,
         dep_node: &DepNode,
@@ -862,7 +858,7 @@ impl<D: Deps> DepGraphData<D> {
     /// A node will have an index, when it's already been marked green, or when we can mark it
     /// green. This function will mark the current task as a reader of the specified node, when
     /// a node index can be found for that node.
-    pub(crate) fn try_mark_green<'tcx, Qcx: QueryContext<'tcx, Deps = D>>(
+    pub(crate) fn try_mark_green<Qcx: QueryContext<Deps = D>>(
         &self,
         qcx: Qcx,
         dep_node: &DepNode,
@@ -872,8 +868,6 @@ impl<D: Deps> DepGraphData<D> {
         // Return None if the dep node didn't exist in the previous session
         let prev_index = self.previous.node_to_index_opt(dep_node)?;
 
-        debug_assert_eq!(self.previous.index_to_node(prev_index), dep_node);
-
         match self.colors.get(prev_index) {
             DepNodeColor::Green(dep_node_index) => Some((prev_index, dep_node_index)),
             DepNodeColor::Red => None,
@@ -882,14 +876,14 @@ impl<D: Deps> DepGraphData<D> {
                 // in the previous compilation session too, so we can try to
                 // mark it as green by recursively marking all of its
                 // dependencies green.
-                self.try_mark_previous_green(qcx, prev_index, None)
+                self.try_mark_previous_green(qcx, prev_index, dep_node, None)
                     .map(|dep_node_index| (prev_index, dep_node_index))
             }
         }
     }
 
     #[instrument(skip(self, qcx, parent_dep_node_index, frame), level = "debug")]
-    fn try_mark_parent_green<'tcx, Qcx: QueryContext<'tcx, Deps = D>>(
+    fn try_mark_parent_green<Qcx: QueryContext<Deps = D>>(
         &self,
         qcx: Qcx,
         parent_dep_node_index: SerializedDepNodeIndex,
@@ -920,7 +914,7 @@ impl<D: Deps> DepGraphData<D> {
             DepNodeColor::Unknown => {}
         }
 
-        let dep_dep_node = get_dep_dep_node();
+        let dep_dep_node = &get_dep_dep_node();
 
         // We don't know the state of this dependency. If it isn't
         // an eval_always node, let's try to mark it green recursively.
@@ -930,7 +924,8 @@ impl<D: Deps> DepGraphData<D> {
                 dep_dep_node, dep_dep_node.hash,
             );
 
-            let node_index = self.try_mark_previous_green(qcx, parent_dep_node_index, Some(frame));
+            let node_index =
+                self.try_mark_previous_green(qcx, parent_dep_node_index, dep_dep_node, Some(frame));
 
             if node_index.is_some() {
                 debug!("managed to MARK dependency {dep_dep_node:?} as green");
@@ -978,19 +973,19 @@ impl<D: Deps> DepGraphData<D> {
 
     /// Try to mark a dep-node which existed in the previous compilation session as green.
     #[instrument(skip(self, qcx, prev_dep_node_index, frame), level = "debug")]
-    fn try_mark_previous_green<'tcx, Qcx: QueryContext<'tcx, Deps = D>>(
+    fn try_mark_previous_green<Qcx: QueryContext<Deps = D>>(
         &self,
         qcx: Qcx,
         prev_dep_node_index: SerializedDepNodeIndex,
+        dep_node: &DepNode,
         frame: Option<&MarkFrame<'_>>,
     ) -> Option<DepNodeIndex> {
         let frame = MarkFrame { index: prev_dep_node_index, parent: frame };
 
         // We never try to mark eval_always nodes as green
-        debug_assert!(
-            !qcx.dep_context()
-                .is_eval_always(self.previous.index_to_node(prev_dep_node_index).kind)
-        );
+        debug_assert!(!qcx.dep_context().is_eval_always(dep_node.kind));
+
+        debug_assert_eq!(self.previous.index_to_node(prev_dep_node_index), *dep_node);
 
         let prev_deps = self.previous.edge_targets_from(prev_dep_node_index);
 
@@ -1011,10 +1006,7 @@ impl<D: Deps> DepGraphData<D> {
         // ... and finally storing a "Green" entry in the color map.
         // Multiple threads can all write the same color here
 
-        debug!(
-            "successfully marked {:?} as green",
-            self.previous.index_to_node(prev_dep_node_index)
-        );
+        debug!("successfully marked {dep_node:?} as green");
         Some(dep_node_index)
     }
 }
@@ -1454,7 +1446,7 @@ fn panic_on_forbidden_read<D: Deps>(data: &DepGraphData<D>, dep_node_index: DepN
     // previous session and has been marked green
     for prev_index in data.colors.values.indices() {
         if data.colors.current(prev_index) == Some(dep_node_index) {
-            dep_node = Some(*data.previous.index_to_node(prev_index));
+            dep_node = Some(data.previous.index_to_node(prev_index));
             break;
         }
     }

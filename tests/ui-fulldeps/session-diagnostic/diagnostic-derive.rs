@@ -80,17 +80,20 @@ struct InvalidNestedStructAttr {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense("foo"), code = E0123, slug = "foo")]
-//~^ ERROR derive(Diagnostic): diagnostic slug not specified
+//~^ ERROR diagnostic slug must be the first argument
+//~| ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr1 {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense = "...", code = E0123, slug = "foo")]
-//~^ ERROR diagnostic slug not specified
+//~^ ERROR unknown argument
+//~| ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr2 {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense = 4, code = E0123, slug = "foo")]
-//~^ ERROR diagnostic slug not specified
+//~^ ERROR unknown argument
+//~| ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr3 {}
 
 #[derive(Diagnostic)]
@@ -110,6 +113,7 @@ struct WrongPlaceField {
 #[diag(no_crate_example, code = E0123)]
 #[diag(no_crate_example, code = E0456)]
 //~^ ERROR specified multiple times
+//~^^ ERROR specified multiple times
 struct DiagSpecifiedTwice {}
 
 #[derive(Diagnostic)]
@@ -539,7 +543,7 @@ struct LabelWithTrailingPath {
 #[diag(no_crate_example, code = E0123)]
 struct LabelWithTrailingNameValue {
     #[label(no_crate_label, foo = "...")]
-    //~^ ERROR no nested attribute expected here
+    //~^ ERROR only `no_span` is a valid nested attribute
     span: Span,
 }
 
@@ -547,7 +551,7 @@ struct LabelWithTrailingNameValue {
 #[diag(no_crate_example, code = E0123)]
 struct LabelWithTrailingList {
     #[label(no_crate_label, foo("..."))]
-    //~^ ERROR no nested attribute expected here
+    //~^ ERROR only `no_span` is a valid nested attribute
     span: Span,
 }
 
@@ -803,7 +807,7 @@ struct SuggestionsInvalidItem {
     sub: Span,
 }
 
-#[derive(Diagnostic)]
+#[derive(Diagnostic)] //~ ERROR cannot find value `__code_34` in this scope
 #[diag(no_crate_example)]
 struct SuggestionsInvalidLiteral {
     #[suggestion(code = 3)]

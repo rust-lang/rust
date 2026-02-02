@@ -10,7 +10,8 @@ use rustc_query_system::query::{QueryCache, QueryMode, try_get_cached};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use crate::dep_graph;
-use crate::query::erase::{self, Erasable, Erased};
+use crate::query::IntoQueryParam;
+use crate::query::erase::{self, Erase, EraseType};
 use crate::ty::TyCtxt;
 
 /// Shared implementation of `tcx.$query(..)` and `tcx.at(span).$query(..)`
@@ -26,6 +27,7 @@ pub(crate) fn query_get_at<'tcx, Cache>(
 where
     Cache: QueryCache,
 {
+    let key = key.into_query_param();
     match try_get_cached(tcx, query_cache, &key) {
         Some(value) => value,
         None => execute_query(tcx, span, key, QueryMode::Get).unwrap(),
@@ -44,6 +46,7 @@ pub(crate) fn query_ensure<'tcx, Cache>(
 ) where
     Cache: QueryCache,
 {
+    let key = key.into_query_param();
     if try_get_cached(tcx, query_cache, &key).is_none() {
         execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache });
     }
@@ -60,14 +63,15 @@ pub(crate) fn query_ensure_error_guaranteed<'tcx, Cache, T>(
     check_cache: bool,
 ) -> Result<(), ErrorGuaranteed>
 where
-    Cache: QueryCache<Value = Erased<Result<T, ErrorGuaranteed>>>,
-    Result<T, ErrorGuaranteed>: Erasable,
+    Cache: QueryCache<Value = Erase<Result<T, ErrorGuaranteed>>>,
+    Result<T, ErrorGuaranteed>: EraseType,
 {
+    let key = key.into_query_param();
     if let Some(res) = try_get_cached(tcx, query_cache, &key) {
-        erase::restore_val(res).map(drop)
+        erase::restore(res).map(drop)
     } else {
         execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache })
-            .map(erase::restore_val)
+            .map(erase::restore)
             .map(|res| res.map(drop))
             // Either we actually executed the query, which means we got a full `Result`,
             // or we can just assume the query succeeded, because it was green in the
@@ -86,17 +90,17 @@ pub(crate) fn query_feed<'tcx, Cache, Value>(
     hasher: Option<fn(&mut StableHashingContext<'_>, &Value) -> Fingerprint>,
     cache: &Cache,
     key: Cache::Key,
-    erased: Erased<Value>,
+    erased: Erase<Value>,
 ) where
-    Cache: QueryCache<Value = Erased<Value>>,
+    Cache: QueryCache<Value = Erase<Value>>,
     Cache::Key: DepNodeParams<TyCtxt<'tcx>>,
-    Value: Erasable + Debug,
+    Value: EraseType + Debug,
 {
-    let value = erase::restore_val::<Value>(erased);
+    let value = erase::restore::<Value>(erased);
 
     match try_get_cached(tcx, cache, &key) {
         Some(old) => {
-            let old = erase::restore_val::<Value>(old);
+            let old = erase::restore::<Value>(old);
             if let Some(hasher) = hasher {
                 let (value_hash, old_hash): (Fingerprint, Fingerprint) = tcx
                     .with_stable_hashing_context(|mut hcx| {

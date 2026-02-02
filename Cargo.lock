@@ -184,9 +184,9 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
 name = "askama"
-version = "0.15.4"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08e1676b346cadfec169374f949d7490fd80a24193d37d2afce0c047cf695e57"
+checksum = "03341eae1125472b0672fbf35cc9aa7b74cd8e0c3d02f02c28a04678f12aaa7a"
 dependencies = [
  "askama_macros",
  "itoa",
@@ -197,9 +197,9 @@ dependencies = [
 
 [[package]]
 name = "askama_derive"
-version = "0.15.4"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7661ff56517787343f376f75db037426facd7c8d3049cef8911f1e75016f3a37"
+checksum = "461bd78f3da90b5e44eee4272cfb1c4832aa3dcdb6c370aedd3eb253d2b9e3ca"
 dependencies = [
  "askama_parser",
  "basic-toml",
@@ -214,18 +214,18 @@ dependencies = [
 
 [[package]]
 name = "askama_macros"
-version = "0.15.4"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "713ee4dbfd1eb719c2dab859465b01fa1d21cb566684614a713a6b7a99a4e47b"
+checksum = "ba49fb22ee3074574b8510abd9495d4f0bb9b8f87e8e45ee31e2cee508f7a8e5"
 dependencies = [
  "askama_derive",
 ]
 
 [[package]]
 name = "askama_parser"
-version = "0.15.4"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d62d674238a526418b30c0def480d5beadb9d8964e7f38d635b03bf639c704c"
+checksum = "7e33eb7484958aaa1f27e9adb556f5d557331cd891bdbb33781bc1f9550b6f6e"
 dependencies = [
  "rustc-hash 2.1.1",
  "serde",
@@ -580,9 +580,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.54"
+version = "4.5.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6e6ff9dcd79cff5cd969a17a545d79e84ab086e444102a591e288a8aa3ce394"
+checksum = "4c26d721170e0295f191a69bd9a1f93efcdb0aff38684b61ab5750468972e5f5"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -600,9 +600,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.54"
+version = "4.5.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa42cf4d2b7a41bc8f663a7cab4031ebafa1bf3875705bfaf8466dc60ab52c00"
+checksum = "75835f0c7bf681bfd05abe44e965760fea999a5286c6eb2d59883634fd02011a"
 dependencies = [
  "anstream",
  "anstyle",
@@ -4354,6 +4354,7 @@ name = "rustc_mir_transform"
 version = "0.0.0"
 dependencies = [
  "either",
+ "hashbrown 0.16.1",
  "itertools",
  "rustc_abi",
  "rustc_arena",
@@ -4564,6 +4565,7 @@ dependencies = [
 name = "rustc_query_system"
 version = "0.0.0"
 dependencies = [
+ "hashbrown 0.16.1",
  "parking_lot",
  "rustc_abi",
  "rustc_ast",
@@ -5621,7 +5623,6 @@ version = "0.1.0"
 dependencies = [
  "build_helper",
  "cargo_metadata 0.21.0",
- "clap",
  "fluent-syntax",
  "globset",
  "ignore",

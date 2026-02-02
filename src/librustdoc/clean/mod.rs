@@ -3178,7 +3178,7 @@ fn clean_assoc_item_constraint<'tcx>(
 }
 
 fn clean_bound_vars<'tcx>(
-    bound_vars: &ty::List<ty::BoundVariableKind<'tcx>>,
+    bound_vars: &ty::List<ty::BoundVariableKind>,
     cx: &mut DocContext<'tcx>,
 ) -> Vec<GenericParamDef> {
     bound_vars

@@ -1,5 +1,5 @@
 use crate::simd::{
-    Mask, Select, Simd,
+    LaneCount, Mask, Simd, SupportedLaneCount,
     cmp::SimdPartialEq,
     ptr::{SimdConstPtr, SimdMutPtr},
 };
@@ -49,37 +49,41 @@ macro_rules! impl_integer {
     { $($integer:ty),* } => {
         $(
         impl<const N: usize> SimdPartialOrd for Simd<$integer, N>
+        where
+            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn simd_lt(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Mask::from_simd_unchecked(core::intrinsics::simd::simd_lt(self, other)) }
+                unsafe { Mask::from_int_unchecked(core::intrinsics::simd::simd_lt(self, other)) }
             }
 
             #[inline]
             fn simd_le(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Mask::from_simd_unchecked(core::intrinsics::simd::simd_le(self, other)) }
+                unsafe { Mask::from_int_unchecked(core::intrinsics::simd::simd_le(self, other)) }
             }
 
             #[inline]
             fn simd_gt(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Mask::from_simd_unchecked(core::intrinsics::simd::simd_gt(self, other)) }
+                unsafe { Mask::from_int_unchecked(core::intrinsics::simd::simd_gt(self, other)) }
             }
 
             #[inline]
             fn simd_ge(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Mask::from_simd_unchecked(core::intrinsics::simd::simd_ge(self, other)) }
+                unsafe { Mask::from_int_unchecked(core::intrinsics::simd::simd_ge(self, other)) }
             }
         }
 
         impl<const N: usize> SimdOrd for Simd<$integer, N>
+        where
+            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn simd_max(self, other: Self) -> Self {
@@ -111,33 +115,35 @@ macro_rules! impl_float {
     { $($float:ty),* } => {
         $(
         impl<const N: usize> SimdPartialOrd for Simd<$float, N>
+        where
+            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn simd_lt(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Mask::from_simd_unchecked(core::intrinsics::simd::simd_lt(self, other)) }
+                unsafe { Mask::from_int_unchecked(core::intrinsics::simd::simd_lt(self, other)) }
             }
 
             #[inline]
             fn simd_le(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Mask::from_simd_unchecked(core::intrinsics::simd::simd_le(self, other)) }
+                unsafe { Mask::from_int_unchecked(core::intrinsics::simd::simd_le(self, other)) }
             }
 
             #[inline]
             fn simd_gt(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Mask::from_simd_unchecked(core::intrinsics::simd::simd_gt(self, other)) }
+                unsafe { Mask::from_int_unchecked(core::intrinsics::simd::simd_gt(self, other)) }
             }
 
             #[inline]
             fn simd_ge(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Mask::from_simd_unchecked(core::intrinsics::simd::simd_ge(self, other)) }
+                unsafe { Mask::from_int_unchecked(core::intrinsics::simd::simd_ge(self, other)) }
             }
         }
         )*
@@ -150,46 +156,50 @@ macro_rules! impl_mask {
     { $($integer:ty),* } => {
         $(
         impl<const N: usize> SimdPartialOrd for Mask<$integer, N>
+        where
+            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn simd_lt(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Self::from_simd_unchecked(core::intrinsics::simd::simd_lt(self.to_simd(), other.to_simd())) }
+                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_lt(self.to_int(), other.to_int())) }
             }
 
             #[inline]
             fn simd_le(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Self::from_simd_unchecked(core::intrinsics::simd::simd_le(self.to_simd(), other.to_simd())) }
+                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_le(self.to_int(), other.to_int())) }
             }
 
             #[inline]
             fn simd_gt(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Self::from_simd_unchecked(core::intrinsics::simd::simd_gt(self.to_simd(), other.to_simd())) }
+                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_gt(self.to_int(), other.to_int())) }
             }
 
             #[inline]
             fn simd_ge(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Self::from_simd_unchecked(core::intrinsics::simd::simd_ge(self.to_simd(), other.to_simd())) }
+                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_ge(self.to_int(), other.to_int())) }
             }
         }
 
         impl<const N: usize> SimdOrd for Mask<$integer, N>
+        where
+            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn simd_max(self, other: Self) -> Self {
-                self.simd_gt(other).select(other, self)
+                self.simd_gt(other).select_mask(other, self)
             }
 
             #[inline]
             fn simd_min(self, other: Self) -> Self {
-                self.simd_lt(other).select(other, self)
+                self.simd_lt(other).select_mask(other, self)
             }
 
             #[inline]
@@ -208,7 +218,10 @@ macro_rules! impl_mask {
 
 impl_mask! { i8, i16, i32, i64, isize }
 
-impl<T, const N: usize> SimdPartialOrd for Simd<*const T, N> {
+impl<T, const N: usize> SimdPartialOrd for Simd<*const T, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+{
     #[inline]
     fn simd_lt(self, other: Self) -> Self::Mask {
         self.addr().simd_lt(other.addr())
@@ -230,7 +243,10 @@ impl<T, const N: usize> SimdPartialOrd for Simd<*const T, N> {
     }
 }
 
-impl<T, const N: usize> SimdOrd for Simd<*const T, N> {
+impl<T, const N: usize> SimdOrd for Simd<*const T, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+{
     #[inline]
     fn simd_max(self, other: Self) -> Self {
         self.simd_lt(other).select(other, self)
@@ -252,7 +268,10 @@ impl<T, const N: usize> SimdOrd for Simd<*const T, N> {
     }
 }
 
-impl<T, const N: usize> SimdPartialOrd for Simd<*mut T, N> {
+impl<T, const N: usize> SimdPartialOrd for Simd<*mut T, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+{
     #[inline]
     fn simd_lt(self, other: Self) -> Self::Mask {
         self.addr().simd_lt(other.addr())
@@ -274,7 +293,10 @@ impl<T, const N: usize> SimdPartialOrd for Simd<*mut T, N> {
     }
 }
 
-impl<T, const N: usize> SimdOrd for Simd<*mut T, N> {
+impl<T, const N: usize> SimdOrd for Simd<*mut T, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+{
     #[inline]
     fn simd_max(self, other: Self) -> Self {
         self.simd_lt(other).select(other, self)

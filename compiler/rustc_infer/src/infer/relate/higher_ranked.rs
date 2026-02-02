@@ -33,13 +33,13 @@ impl<'tcx> InferCtxt<'tcx> {
         let next_universe = self.create_next_universe();
 
         let delegate = FnMutDelegate {
-            regions: &mut |br: ty::BoundRegion<'tcx>| {
+            regions: &mut |br: ty::BoundRegion| {
                 ty::Region::new_placeholder(self.tcx, ty::PlaceholderRegion::new(next_universe, br))
             },
-            types: &mut |bound_ty: ty::BoundTy<'tcx>| {
+            types: &mut |bound_ty: ty::BoundTy| {
                 Ty::new_placeholder(self.tcx, ty::PlaceholderType::new(next_universe, bound_ty))
             },
-            consts: &mut |bound_const: ty::BoundConst<'tcx>| {
+            consts: &mut |bound_const: ty::BoundConst| {
                 ty::Const::new_placeholder(
                     self.tcx,
                     ty::PlaceholderConst::new(next_universe, bound_const),

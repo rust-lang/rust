@@ -1,6 +1,7 @@
 use super::sealed::Sealed;
 use crate::simd::{
-    Mask, Select, Simd, SimdCast, SimdElement, cmp::SimdOrd, cmp::SimdPartialOrd, num::SimdUint,
+    LaneCount, Mask, Simd, SimdCast, SimdElement, SupportedLaneCount, cmp::SimdOrd,
+    cmp::SimdPartialOrd, num::SimdUint,
 };
 
 /// Operations on SIMD vectors of signed integers.
@@ -241,9 +242,16 @@ pub trait SimdInt: Copy + Sealed {
 macro_rules! impl_trait {
     { $($ty:ident ($unsigned:ident)),* } => {
         $(
-        impl<const N: usize> Sealed for Simd<$ty, N> {}
+        impl<const N: usize> Sealed for Simd<$ty, N>
+        where
+            LaneCount<N>: SupportedLaneCount,
+        {
+        }
 
-        impl<const N: usize> SimdInt for Simd<$ty, N> {
+        impl<const N: usize> SimdInt for Simd<$ty, N>
+        where
+            LaneCount<N>: SupportedLaneCount,
+        {
             type Mask = Mask<<$ty as SimdElement>::Mask, N>;
             type Scalar = $ty;
             type Unsigned = Simd<$unsigned, N>;

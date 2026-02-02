@@ -5,6 +5,7 @@ mod alias;
 mod cast;
 mod fmt;
 mod iter;
+mod lane_count;
 mod masks;
 mod ops;
 mod select;
@@ -26,8 +27,8 @@ pub mod simd {
 
     pub use crate::core_simd::alias::*;
     pub use crate::core_simd::cast::*;
+    pub use crate::core_simd::lane_count::{LaneCount, SupportedLaneCount};
     pub use crate::core_simd::masks::*;
-    pub use crate::core_simd::select::*;
     pub use crate::core_simd::swizzle::*;
     pub use crate::core_simd::to_bytes::ToBytes;
     pub use crate::core_simd::vector::*;

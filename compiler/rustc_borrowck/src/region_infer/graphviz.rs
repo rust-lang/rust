@@ -52,7 +52,7 @@ fn render_region_vid<'tcx>(
                 format!(" (for<{}>)", tcx.item_name(def_id))
             }
             ty::BoundRegionKind::ClosureEnv | ty::BoundRegionKind::Anon => " (for<'_>)".to_string(),
-            ty::BoundRegionKind::NamedForPrinting(_) => {
+            ty::BoundRegionKind::NamedAnon(_) => {
                 bug!("only used for pretty printing")
             }
         },

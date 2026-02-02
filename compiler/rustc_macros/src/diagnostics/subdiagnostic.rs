@@ -1,10 +1,9 @@
 #![deny(unused_must_use)]
 
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::parse::ParseStream;
 use syn::spanned::Spanned;
-use syn::{Attribute, Meta, MetaList, Path, Token};
+use syn::{Attribute, Meta, MetaList, Path};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
 use super::utils::SubdiagnosticVariant;
@@ -12,10 +11,10 @@ use crate::diagnostics::error::{
     DiagnosticDeriveError, invalid_attr, span_err, throw_invalid_attr, throw_span_err,
 };
 use crate::diagnostics::utils::{
-    AllowMultipleAlternatives, FieldInfo, FieldInnerTy, FieldMap, SetOnce, SpannedOption,
-    SubdiagnosticKind, build_field_mapping, build_suggestion_code, is_doc_comment, new_code_ident,
-    report_error_if_not_applied_to_applicability, report_error_if_not_applied_to_span,
-    should_generate_arg,
+    AllowMultipleAlternatives, FieldInfo, FieldInnerTy, FieldMap, HasFieldMap, SetOnce,
+    SpannedOption, SubdiagnosticKind, build_field_mapping, build_suggestion_code, is_doc_comment,
+    new_code_ident, report_error_if_not_applied_to_applicability,
+    report_error_if_not_applied_to_span, should_generate_arg,
 };
 
 /// The central struct for constructing the `add_to_diag` method from an annotated struct.
@@ -143,6 +142,12 @@ struct SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     is_enum: bool,
 }
 
+impl<'parent, 'a> HasFieldMap for SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
+    fn get_field_binding(&self, field: &String) -> Option<&TokenStream> {
+        self.fields.get(field)
+    }
+}
+
 /// Provides frequently-needed information about the diagnostic kinds being derived for this type.
 #[derive(Clone, Copy, Debug)]
 struct KindsStatistics {
@@ -182,12 +187,14 @@ impl<'a> FromIterator<&'a SubdiagnosticKind> for KindsStatistics {
 }
 
 impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
-    fn identify_kind(&mut self) -> Result<Vec<(SubdiagnosticKind, Path)>, DiagnosticDeriveError> {
+    fn identify_kind(
+        &mut self,
+    ) -> Result<Vec<(SubdiagnosticKind, Path, bool)>, DiagnosticDeriveError> {
         let mut kind_slugs = vec![];
 
         for attr in self.variant.ast().attrs {
-            let Some(SubdiagnosticVariant { kind, slug }) =
-                SubdiagnosticVariant::from_attr(attr, &self.fields)?
+            let Some(SubdiagnosticVariant { kind, slug, no_span }) =
+                SubdiagnosticVariant::from_attr(attr, self)?
             else {
                 // Some attributes aren't errors - like documentation comments - but also aren't
                 // subdiagnostics.
@@ -206,7 +213,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 );
             };
 
-            kind_slugs.push((kind, slug));
+            kind_slugs.push((kind, slug, no_span));
         }
 
         Ok(kind_slugs)
@@ -430,35 +437,23 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
                 let mut code = None;
 
-                list.parse_args_with(|input: ParseStream<'_>| {
-                    while !input.is_empty() {
-                        let arg_name = input.parse::<Ident>()?;
-                        match arg_name.to_string().as_str() {
-                            "code" => {
-                                let code_field = new_code_ident();
-                                let formatting_init = build_suggestion_code(
-                                    &code_field,
-                                    input,
-                                    &self.fields,
-                                    AllowMultipleAlternatives::No,
-                                )?;
-                                code.set_once(
-                                    (code_field, formatting_init),
-                                    arg_name.span().unwrap(),
-                                );
-                            }
-                            _ => {
-                                span_err(
-                                    arg_name.span().unwrap(),
-                                    "`code` is the only valid nested attribute",
-                                )
-                                .emit();
-                            }
-                        }
-                        if input.is_empty() {
-                            break;
-                        }
-                        input.parse::<Token![,]>()?;
+                list.parse_nested_meta(|nested| {
+                    if nested.path.is_ident("code") {
+                        let code_field = new_code_ident();
+                        let span = nested.path.span().unwrap();
+                        let formatting_init = build_suggestion_code(
+                            &code_field,
+                            nested,
+                            self,
+                            AllowMultipleAlternatives::No,
+                        );
+                        code.set_once((code_field, formatting_init), span);
+                    } else {
+                        span_err(
+                            nested.path.span().unwrap(),
+                            "`code` is the only valid nested attribute",
+                        )
+                        .emit();
                     }
                     Ok(())
                 })?;
@@ -497,7 +492,8 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     pub(crate) fn into_tokens(&mut self) -> Result<TokenStream, DiagnosticDeriveError> {
         let kind_slugs = self.identify_kind()?;
 
-        let kind_stats: KindsStatistics = kind_slugs.iter().map(|(kind, _slug)| kind).collect();
+        let kind_stats: KindsStatistics =
+            kind_slugs.iter().map(|(kind, _slug, _no_span)| kind).collect();
 
         let init = if kind_stats.has_multipart_suggestion {
             quote! { let mut suggestions = Vec::new(); }
@@ -530,13 +526,17 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
         let diag = &self.parent.diag;
         let mut calls = TokenStream::new();
-        for (kind, slug) in kind_slugs {
+        for (kind, slug, no_span) in kind_slugs {
             let message = format_ident!("__message");
             calls.extend(
                 quote! { let #message = #diag.eagerly_translate(crate::fluent_generated::#slug); },
             );
 
-            let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);
+            let name = format_ident!(
+                "{}{}",
+                if span_field.is_some() && !no_span { "span_" } else { "" },
+                kind
+            );
             let call = match kind {
                 SubdiagnosticKind::Suggestion {
                     suggestion_kind,
@@ -588,7 +588,9 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     }
                 }
                 _ => {
-                    if let Some(span) = span_field {
+                    if let Some(span) = span_field
+                        && !no_span
+                    {
                         quote! { #diag.#name(#span, #message); }
                     } else {
                         quote! { #diag.#name(#message); }

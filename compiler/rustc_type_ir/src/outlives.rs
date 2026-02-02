@@ -14,7 +14,7 @@ use crate::{self as ty, Interner};
 pub enum Component<I: Interner> {
     Region(I::Region),
     Param(I::ParamTy),
-    Placeholder(ty::PlaceholderType<I>),
+    Placeholder(I::PlaceholderTy),
     UnresolvedInferenceVariable(ty::InferTy),
 
     // Projections like `T::Foo` are tricky because a constraint like

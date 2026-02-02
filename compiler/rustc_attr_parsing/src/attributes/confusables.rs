@@ -43,7 +43,7 @@ impl<S: Stage> AttributeParser<S> for ConfusablesParser {
             return None;
         }
 
-        Some(AttributeKind::RustcConfusables {
+        Some(AttributeKind::Confusables {
             symbols: self.confusables,
             first_span: self.first_span.unwrap(),
         })

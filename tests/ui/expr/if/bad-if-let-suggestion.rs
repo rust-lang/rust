@@ -1,6 +1,8 @@
 fn a() {
     if let x = 1 && i = 2 {}
-    //~^ ERROR expected expression, found `let` statement
+    //~^ ERROR cannot find value `i` in this scope
+    //~| ERROR mismatched types
+    //~| ERROR expected expression, found `let` statement
 }
 
 fn b() {

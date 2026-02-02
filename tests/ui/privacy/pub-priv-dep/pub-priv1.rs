@@ -74,12 +74,8 @@ pub trait MyPubTrait {
     //~^ ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
 
     fn required_impl_trait() -> impl OtherTrait;
-    //~^ ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
-    //~| ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
 
     fn provided_impl_trait() -> impl OtherTrait { OtherType }
-    //~^ ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
-    //~| ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
 
     fn required_concrete() -> OtherType;
     //~^ ERROR type `OtherType` from private dependency 'priv_dep' in public interface

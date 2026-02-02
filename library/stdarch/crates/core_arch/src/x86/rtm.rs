@@ -120,15 +120,13 @@ mod tests {
     use crate::core_arch::x86::*;
 
     #[simd_test(enable = "rtm")]
-    fn test_xbegin() {
+    unsafe fn test_xbegin() {
         let mut x = 0;
         for _ in 0..10 {
-            let code = unsafe { _xbegin() };
+            let code = _xbegin();
             if code == _XBEGIN_STARTED {
                 x += 1;
-                unsafe {
-                    _xend();
-                }
+                _xend();
                 assert_eq!(x, 1);
                 break;
             }
@@ -137,23 +135,19 @@ mod tests {
     }
 
     #[simd_test(enable = "rtm")]
-    fn test_xabort() {
+    unsafe fn test_xabort() {
         const ABORT_CODE: u32 = 42;
         // aborting outside a transactional region does nothing
-        unsafe {
-            _xabort::<ABORT_CODE>();
-        }
+        _xabort::<ABORT_CODE>();
 
         for _ in 0..10 {
             let mut x = 0;
-            let code = unsafe { _xbegin() };
+            let code = rtm::_xbegin();
             if code == _XBEGIN_STARTED {
                 x += 1;
-                unsafe {
-                    _xabort::<ABORT_CODE>();
-                }
+                rtm::_xabort::<ABORT_CODE>();
             } else if code & _XABORT_EXPLICIT != 0 {
-                let test_abort_code = _xabort_code(code);
+                let test_abort_code = rtm::_xabort_code(code);
                 assert_eq!(test_abort_code, ABORT_CODE);
             }
             assert_eq!(x, 0);
@@ -161,16 +155,14 @@ mod tests {
     }
 
     #[simd_test(enable = "rtm")]
-    fn test_xtest() {
-        assert_eq!(unsafe { _xtest() }, 0);
+    unsafe fn test_xtest() {
+        assert_eq!(_xtest(), 0);
 
         for _ in 0..10 {
-            let code = unsafe { _xbegin() };
+            let code = rtm::_xbegin();
             if code == _XBEGIN_STARTED {
-                let in_tx = unsafe { _xtest() };
-                unsafe {
-                    _xend();
-                }
+                let in_tx = _xtest();
+                rtm::_xend();
 
                 // putting the assert inside the transaction would abort the transaction on fail
                 // without any output/panic/etc

@@ -22,7 +22,6 @@ use rustc_middle::hir::place::ProjectionKind;
 pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::thir::DerefPatBorrowMode;
-use rustc_middle::ty::adjustment::DerefAdjustKind;
 use rustc_middle::ty::{
     self, BorrowKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, adjustment,
 };
@@ -734,14 +733,14 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     self.consume_or_copy(&place_with_id, place_with_id.hir_id);
                 }
 
-                adjustment::Adjust::Deref(DerefAdjustKind::Builtin) => {}
+                adjustment::Adjust::Deref(None) => {}
 
                 // Autoderefs for overloaded Deref calls in fact reference
                 // their receiver. That is, if we have `(*x)` where `x`
                 // is of type `Rc<T>`, then this in fact is equivalent to
                 // `x.deref()`. Since `deref()` is declared with `&self`,
                 // this is an autoref of `x`.
-                adjustment::Adjust::Deref(DerefAdjustKind::Overloaded(deref)) => {
+                adjustment::Adjust::Deref(Some(ref deref)) => {
                     let bk = ty::BorrowKind::from_mutbl(deref.mutbl);
                     self.delegate.borrow_mut().borrow(&place_with_id, place_with_id.hir_id, bk);
                 }
@@ -1273,9 +1272,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     {
         let target = self.cx.resolve_vars_if_possible(adjustment.target);
         match adjustment.kind {
-            adjustment::Adjust::Deref(deref_kind) => {
+            adjustment::Adjust::Deref(overloaded) => {
                 // Equivalent to *expr or something similar.
-                let base = if let DerefAdjustKind::Overloaded(deref) = deref_kind {
+                let base = if let Some(deref) = overloaded {
                     let ref_ty = Ty::new_ref(
                         self.cx.tcx(),
                         self.cx.tcx().lifetimes.re_erased,

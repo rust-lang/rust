@@ -799,12 +799,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ScopeSet::Macro(kind),
                 parent_scope,
                 None,
+                force,
                 None,
                 None,
             );
-            let binding = binding.map_err(|determinacy| {
-                Determinacy::determined(determinacy == Determinacy::Determined || force)
-            });
             if let Err(Determinacy::Undetermined) = binding {
                 return Err(Determinacy::Undetermined);
             }
@@ -960,6 +958,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ScopeSet::Macro(kind),
                 &parent_scope,
                 Some(Finalize::new(ast::CRATE_NODE_ID, ident.span)),
+                true,
                 None,
                 None,
             ) {
@@ -1014,6 +1013,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ScopeSet::Macro(MacroKind::Attr),
                 &parent_scope,
                 Some(Finalize::new(ast::CRATE_NODE_ID, ident.span)),
+                true,
                 None,
                 None,
             );
@@ -1117,6 +1117,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ScopeSet::Macro(MacroKind::Bang),
                 &ParentScope { macro_rules: no_macro_rules, ..*parent_scope },
                 None,
+                false,
                 None,
                 None,
             );

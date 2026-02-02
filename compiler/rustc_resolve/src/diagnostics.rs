@@ -1709,6 +1709,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ScopeSet::All(ns),
                 parent_scope,
                 None,
+                false,
                 None,
                 None,
             ) else {
@@ -2545,6 +2546,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             ScopeSet::All(ns_to_try),
                             parent_scope,
                             None,
+                            false,
                             ignore_decl,
                             ignore_import,
                         )
@@ -2648,6 +2650,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ScopeSet::All(ValueNS),
                 parent_scope,
                 None,
+                false,
                 ignore_decl,
                 ignore_import,
             ) {

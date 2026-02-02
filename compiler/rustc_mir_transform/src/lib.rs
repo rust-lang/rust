@@ -91,32 +91,20 @@ macro_rules! declare_passes {
             )+
         )*
 
-        static PASS_NAMES: LazyLock<FxIndexSet<&str>> = LazyLock::new(|| {
-            let mut set = FxIndexSet::default();
+        static PASS_NAMES: LazyLock<FxIndexSet<&str>> = LazyLock::new(|| [
             // Fake marker pass
-            set.insert("PreCodegen");
+            "PreCodegen",
             $(
                 $(
-                    set.extend(pass_names!($mod_name : $pass_name $( { $($ident),* } )? ));
+                    stringify!($pass_name),
+                    $(
+                        $(
+                            $mod_name::$pass_name::$ident.name(),
+                        )*
+                    )?
                 )+
             )*
-            set
-        });
-    };
-}
-
-macro_rules! pass_names {
-    // pass groups: only pass names inside are considered pass_names
-    ($mod_name:ident : $pass_group:ident { $($pass_name:ident),* $(,)? }) => {
-        [
-            $(
-                $mod_name::$pass_group::$pass_name.name(),
-            )*
-        ]
-    };
-    // lone pass names: stringify the struct or enum name
-    ($mod_name:ident : $pass_name:ident) => {
-        [stringify!($pass_name)]
+        ].into_iter().collect());
     };
 }
 

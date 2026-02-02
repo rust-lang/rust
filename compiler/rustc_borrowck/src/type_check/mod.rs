@@ -775,7 +775,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty::BoundRegionKind::Anon => sym::anon,
                             ty::BoundRegionKind::Named(def_id) => tcx.item_name(def_id),
                             ty::BoundRegionKind::ClosureEnv => sym::env,
-                            ty::BoundRegionKind::NamedForPrinting(_) => {
+                            ty::BoundRegionKind::NamedAnon(_) => {
                                 bug!("only used for pretty printing")
                             }
                         };

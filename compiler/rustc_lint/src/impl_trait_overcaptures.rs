@@ -211,7 +211,7 @@ where
         // When we get into a binder, we need to add its own bound vars to the scope.
         let mut added = vec![];
         for arg in t.bound_vars() {
-            let arg: ty::BoundVariableKind<'tcx> = arg;
+            let arg: ty::BoundVariableKind = arg;
             match arg {
                 ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id))
                 | ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id)) => {

@@ -65,6 +65,21 @@ impl<'tcx> fmt::Debug for ty::adjustment::PatAdjustment<'tcx> {
     }
 }
 
+impl fmt::Debug for ty::BoundRegionKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            ty::BoundRegionKind::Anon => write!(f, "BrAnon"),
+            ty::BoundRegionKind::NamedAnon(name) => {
+                write!(f, "BrNamedAnon({name})")
+            }
+            ty::BoundRegionKind::Named(did) => {
+                write!(f, "BrNamed({did:?})")
+            }
+            ty::BoundRegionKind::ClosureEnv => write!(f, "BrEnv"),
+        }
+    }
+}
+
 impl fmt::Debug for ty::LateParamRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ReLateParam({:?}, {:?})", self.scope, self.kind)
@@ -160,6 +175,15 @@ impl<'tcx> fmt::Debug for ty::Const<'tcx> {
     }
 }
 
+impl fmt::Debug for ty::BoundTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.kind {
+            ty::BoundTyKind::Anon => write!(f, "{:?}", self.var),
+            ty::BoundTyKind::Param(def_id) => write!(f, "{def_id:?}"),
+        }
+    }
+}
+
 impl<'tcx> fmt::Debug for GenericArg<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind() {
@@ -231,8 +255,7 @@ TrivialTypeTraversalImpls! {
     crate::ty::AdtKind,
     crate::ty::AssocItem,
     crate::ty::AssocKind,
-    crate::ty::BoundRegion<'tcx>,
-    crate::ty::BoundTy<'tcx>,
+    crate::ty::BoundRegion,
     crate::ty::ScalarInt,
     crate::ty::UserTypeAnnotationIndex,
     crate::ty::abstract_const::NotConstEvaluatable,
@@ -261,6 +284,7 @@ TrivialTypeTraversalImpls! {
 TrivialTypeTraversalAndLiftImpls! {
     // tidy-alphabetical-start
     crate::mir::RuntimeChecks,
+    crate::ty::BoundTy,
     crate::ty::ParamTy,
     crate::ty::instance::ReifyReason,
     rustc_hir::def_id::DefId,

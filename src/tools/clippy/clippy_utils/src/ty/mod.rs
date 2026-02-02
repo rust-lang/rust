@@ -17,7 +17,7 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::traits::EvaluationResult;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg,
@@ -782,15 +782,15 @@ pub fn is_c_void(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     }
 }
 
-pub fn for_each_top_level_late_bound_region<'cx, B>(
-    ty: Ty<'cx>,
-    f: impl FnMut(BoundRegion<'cx>) -> ControlFlow<B>,
+pub fn for_each_top_level_late_bound_region<B>(
+    ty: Ty<'_>,
+    f: impl FnMut(BoundRegion) -> ControlFlow<B>,
 ) -> ControlFlow<B> {
     struct V<F> {
         index: u32,
         f: F,
     }
-    impl<'tcx, B, F: FnMut(BoundRegion<'tcx>) -> ControlFlow<B>> TypeVisitor<TyCtxt<'tcx>> for V<F> {
+    impl<'tcx, B, F: FnMut(BoundRegion) -> ControlFlow<B>> TypeVisitor<TyCtxt<'tcx>> for V<F> {
         type Result = ControlFlow<B>;
         fn visit_region(&mut self, r: Region<'tcx>) -> Self::Result {
             if let RegionKind::ReBound(BoundVarIndexKind::Bound(idx), bound) = r.kind()
@@ -1345,7 +1345,6 @@ pub fn get_field_idx_by_name(ty: Ty<'_>, name: Symbol) -> Option<usize> {
 pub fn adjust_derefs_manually_drop<'tcx>(adjustments: &'tcx [Adjustment<'tcx>], mut ty: Ty<'tcx>) -> bool {
     adjustments.iter().any(|a| {
         let ty = mem::replace(&mut ty, a.target);
-        matches!(a.kind, Adjust::Deref(DerefAdjustKind::Overloaded(op)) if op.mutbl == Mutability::Mut)
-            && is_manually_drop(ty)
+        matches!(a.kind, Adjust::Deref(Some(op)) if op.mutbl == Mutability::Mut) && is_manually_drop(ty)
     })
 }

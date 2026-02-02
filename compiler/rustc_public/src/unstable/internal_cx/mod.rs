@@ -78,10 +78,7 @@ impl<'tcx> InternalCx<'tcx> for TyCtxt<'tcx> {
     fn mk_bound_variable_kinds_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: ty::CollectAndApply<
-                ty::BoundVariableKind<'tcx>,
-                &'tcx List<ty::BoundVariableKind<'tcx>>,
-            >,
+        T: ty::CollectAndApply<ty::BoundVariableKind, &'tcx List<ty::BoundVariableKind>>,
     {
         TyCtxt::mk_bound_variable_kinds_from_iter(self, iter)
     }

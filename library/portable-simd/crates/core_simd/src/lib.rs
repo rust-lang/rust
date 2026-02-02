@@ -9,8 +9,7 @@
     simd_ffi,
     staged_api,
     prelude_import,
-    ptr_metadata,
-    rustc_attrs
+    ptr_metadata
 )]
 #![cfg_attr(
     all(
@@ -31,6 +30,10 @@
     any(target_arch = "powerpc", target_arch = "powerpc64"),
     feature(stdarch_powerpc)
 )]
+#![cfg_attr(
+    all(target_arch = "x86_64", target_feature = "avx512f"),
+    feature(stdarch_x86_avx512)
+)]
 #![warn(missing_docs, clippy::missing_inline_in_public_items)] // basically all items, really
 #![deny(
     unsafe_op_in_unsafe_fn,
@@ -38,7 +41,7 @@
     clippy::undocumented_unsafe_blocks
 )]
 #![doc(test(attr(deny(warnings))))]
-#![allow(internal_features, clippy::repr_packed_without_abi)]
+#![allow(internal_features)]
 #![unstable(feature = "portable_simd", issue = "86656")]
 //! Portable SIMD module.
 

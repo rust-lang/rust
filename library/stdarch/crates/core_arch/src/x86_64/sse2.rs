@@ -204,12 +204,10 @@ mod tests {
     // Miri cannot support this until it is clear how it fits in the Rust memory model
     // (non-temporal store)
     #[cfg_attr(miri, ignore)]
-    fn test_mm_stream_si64() {
+    unsafe fn test_mm_stream_si64() {
         let a: i64 = 7;
         let mut mem = boxed::Box::<i64>::new(-1);
-        unsafe {
-            _mm_stream_si64(ptr::addr_of_mut!(*mem), a);
-        }
+        _mm_stream_si64(ptr::addr_of_mut!(*mem), a);
         _mm_sfence();
         assert_eq!(a, *mem);
     }
