@@ -165,9 +165,6 @@ jobs:
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
 
-      - name: select Xcode
-        run: src/ci/scripts/select-xcode.sh
-
       - name: install clang
         run: src/ci/scripts/install-clang.sh
 
