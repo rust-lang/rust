@@ -4,13 +4,25 @@
 
 use crate::ffi::c_void;
 use crate::ptr::NonNull;
-use crate::sync::atomic::{Atomic, AtomicBool, AtomicPtr, Ordering};
+use crate::sync::atomic::Ordering;
 
-static SYSTEM_TABLE: Atomic<*mut c_void> = AtomicPtr::new(crate::ptr::null_mut());
-static IMAGE_HANDLE: Atomic<*mut c_void> = AtomicPtr::new(crate::ptr::null_mut());
-// Flag to check if BootServices are still valid.
-// Start with assuming that they are not available
-static BOOT_SERVICES_FLAG: Atomic<bool> = AtomicBool::new(false);
+#[doc(hidden)]
+#[cfg(not(test))]
+pub mod globals {
+    use crate::ffi::c_void;
+    use crate::sync::atomic::{Atomic, AtomicBool, AtomicPtr};
+
+    pub static SYSTEM_TABLE: Atomic<*mut c_void> = AtomicPtr::new(crate::ptr::null_mut());
+    pub static IMAGE_HANDLE: Atomic<*mut c_void> = AtomicPtr::new(crate::ptr::null_mut());
+    // Flag to check if BootServices are still valid.
+    // Start with assuming that they are not available
+    pub static BOOT_SERVICES_FLAG: Atomic<bool> = AtomicBool::new(false);
+}
+
+#[cfg(not(test))]
+use globals::*;
+#[cfg(test)]
+use realstd::os::uefi::env::globals::*;
 
 /// Initializes the global System Table and Image Handle pointers.
 ///
