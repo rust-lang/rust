@@ -1748,100 +1748,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
         debug!(?container);
 
-        // Compute a list of trait object lifetime defaults, one for each type parameter,
-        // per the rules initially given in RFCs 599 and 1156. Example:
-        //
-        // ```rust
-        // struct Foo<'a, T: 'a + ?Sized, U: ?Sized>(&'a T, &'a U);
-        // ```
-        //
-        // If you have `Foo<'x, dyn Bar, dyn Baz>`, we want to elaborate
-        // * `dyn Bar` to `dyn Bar + 'x` (because of the `T: 'a` bound) and
-        // * `dyn Baz` to `dyn Baz + 'static` (because there is no such bound).
-        //
-        // Therefore, we would compute a list like `['x, 'static]`.
-        // Note that the list only includes the lifetimes for type parameters.
-        let object_lifetime_defaults = container.map_or_else(Vec::new, |(def_id, segments)| {
-            let in_body = {
-                let mut scope = self.scope;
-                loop {
-                    match *scope {
-                        Scope::Root { .. } => break false,
-
-                        Scope::Body { .. } => break true,
-
-                        Scope::Binder { s, .. }
-                        | Scope::ObjectLifetimeDefault { s, .. }
-                        | Scope::Opaque { s, .. }
-                        | Scope::Supertrait { s, .. }
-                        | Scope::TraitRefBoundary { s, .. }
-                        | Scope::LateBoundary { s, .. } => {
-                            scope = s;
-                        }
-                    }
-                }
-            };
-
-            let rbv = &self.rbv;
-            let generics = self.tcx.generics_of(def_id);
-
-            let set_to_region = |set: ObjectLifetimeDefault| match set {
-                ObjectLifetimeDefault::Empty => {
-                    if in_body {
-                        None
-                    } else {
-                        Some(ResolvedArg::StaticLifetime)
-                    }
-                }
-                ObjectLifetimeDefault::Static => Some(ResolvedArg::StaticLifetime),
-                ObjectLifetimeDefault::Param(param_def_id) => {
-                    fn param_to_depth_and_index(
-                        generics: &ty::Generics,
-                        tcx: TyCtxt<'_>,
-                        def_id: DefId,
-                    ) -> (usize, usize) {
-                        if let Some(&index) = generics.param_def_id_to_index.get(&def_id) {
-                            let has_self = generics.has_own_self();
-                            (0, index as usize - generics.parent_count - has_self as usize)
-                        } else if let Some(parent) = generics.parent {
-                            let parent = tcx.generics_of(parent);
-                            let (depth, index) = param_to_depth_and_index(parent, tcx, def_id);
-                            (depth + 1, index)
-                        } else {
-                            unreachable!()
-                        }
-                    }
-
-                    let (depth, index) = param_to_depth_and_index(generics, self.tcx, param_def_id);
-                    segments[segments.len() - depth - 1]
-                        .args
-                        .and_then(|args| args.args.get(index))
-                        .and_then(|arg| match arg {
-                            GenericArg::Lifetime(lt) => rbv.defs.get(&lt.hir_id.local_id).copied(),
-                            _ => None,
-                        })
-                }
-                ObjectLifetimeDefault::Ambiguous => None,
-            };
-            generics
-                .own_params
-                .iter()
-                .filter_map(|param| {
-                    match self.tcx.def_kind(param.def_id) {
-                        // Const parameters don't impose any constraints.
-                        //
-                        // We still store a dummy value here to allow generic parameters
-                        // in an arbitrary order.
-                        DefKind::ConstParam => Some(ObjectLifetimeDefault::Empty),
-                        DefKind::TyParam => Some(self.tcx.object_lifetime_default(param.def_id)),
-                        // We may also get a `Trait` or `TraitAlias` because of how generics `Self` parameter
-                        // works. Ignore it because it can't have a meaningful lifetime default.
-                        DefKind::LifetimeParam | DefKind::Trait | DefKind::TraitAlias => None,
-                        dk => bug!("unexpected def_kind {:?}", dk),
-                    }
-                })
-                .map(set_to_region)
-                .collect()
+        let object_lifetime_defaults = container.map_or_else(Vec::new, |(def_id, segs)| {
+            self.compute_object_lifetime_defaults(def_id, segs)
         });
 
         debug!(?object_lifetime_defaults);
@@ -1977,6 +1885,110 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 self.with(scope, |this| this.visit_assoc_item_constraint(constraint));
             }
         }
+    }
+
+    /// Compute a list of trait object lifetime defaults, one for each type parameter,
+    /// per the rules initially given in RFCs [599] and [1156]. Example:
+    ///
+    /// ```
+    /// struct Foo<'a, T: 'a + ?Sized, U: ?Sized>(&'a T, &'a U);
+    /// ```
+    ///
+    /// If you have `Foo<'x, dyn Bar, dyn Baz>`, we want to elaborate
+    /// * `dyn Bar` to `dyn Bar + 'x` (because of the `T: 'a` bound) and
+    /// * `dyn Baz` to `dyn Baz + 'static` (because there is no such bound).
+    ///
+    /// Therefore, we would compute a list like `['x, 'static]`.
+    /// Note that the list only includes the lifetimes for type parameters.
+    ///
+    /// [599]: https://rust-lang.github.io/rfcs/0599-default-object-bound.html
+    /// [1156]: https://rust-lang.github.io/rfcs/1156-adjust-default-object-bounds.html
+    fn compute_object_lifetime_defaults(
+        &self,
+        def_id: DefId,
+        segments: &[hir::PathSegment<'_>],
+    ) -> Vec<Option<ResolvedArg>> {
+        let in_body = {
+            let mut scope = self.scope;
+            loop {
+                match *scope {
+                    Scope::Root { .. } => break false,
+
+                    Scope::Body { .. } => break true,
+
+                    Scope::Binder { s, .. }
+                    | Scope::ObjectLifetimeDefault { s, .. }
+                    | Scope::Opaque { s, .. }
+                    | Scope::Supertrait { s, .. }
+                    | Scope::TraitRefBoundary { s, .. }
+                    | Scope::LateBoundary { s, .. } => {
+                        scope = s;
+                    }
+                }
+            }
+        };
+
+        let rbv = &self.rbv;
+        let generics = self.tcx.generics_of(def_id);
+
+        let set_to_region = |set: ObjectLifetimeDefault| match set {
+            ObjectLifetimeDefault::Empty => {
+                if in_body {
+                    None
+                } else {
+                    Some(ResolvedArg::StaticLifetime)
+                }
+            }
+            ObjectLifetimeDefault::Static => Some(ResolvedArg::StaticLifetime),
+            ObjectLifetimeDefault::Param(param_def_id) => {
+                fn param_to_depth_and_index(
+                    generics: &ty::Generics,
+                    tcx: TyCtxt<'_>,
+                    def_id: DefId,
+                ) -> (usize, usize) {
+                    if let Some(&index) = generics.param_def_id_to_index.get(&def_id) {
+                        let has_self = generics.has_own_self();
+                        (0, index as usize - generics.parent_count - has_self as usize)
+                    } else if let Some(parent) = generics.parent {
+                        let parent = tcx.generics_of(parent);
+                        let (depth, index) = param_to_depth_and_index(parent, tcx, def_id);
+                        (depth + 1, index)
+                    } else {
+                        unreachable!()
+                    }
+                }
+
+                let (depth, index) = param_to_depth_and_index(generics, self.tcx, param_def_id);
+                segments[segments.len() - depth - 1]
+                    .args
+                    .and_then(|args| args.args.get(index))
+                    .and_then(|arg| match arg {
+                        GenericArg::Lifetime(lt) => rbv.defs.get(&lt.hir_id.local_id).copied(),
+                        _ => None,
+                    })
+            }
+            ObjectLifetimeDefault::Ambiguous => None,
+        };
+        generics
+            .own_params
+            .iter()
+            .filter_map(|param| {
+                match self.tcx.def_kind(param.def_id) {
+                    // Const parameters don't impose any constraints.
+                    //
+                    // We still store a dummy value here to allow generic parameters
+                    // in an arbitrary order.
+                    DefKind::ConstParam => Some(ObjectLifetimeDefault::Empty),
+                    DefKind::TyParam => Some(self.tcx.object_lifetime_default(param.def_id)),
+                    // We may also get a `Trait` or `TraitAlias` because the `Self` type parameter
+                    // reuses the `DefId` of the trait (alias).
+                    // Ignore it because it can't have a meaningful lifetime default.
+                    DefKind::LifetimeParam | DefKind::Trait | DefKind::TraitAlias => None,
+                    dk => bug!("unexpected def_kind {:?}", dk),
+                }
+            })
+            .map(set_to_region)
+            .collect()
     }
 
     /// Returns all the late-bound vars that come into scope from supertrait HRTBs, based on the
