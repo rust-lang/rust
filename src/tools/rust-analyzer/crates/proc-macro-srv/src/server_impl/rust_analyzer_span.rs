@@ -189,13 +189,9 @@ impl server::Server for RaSpanServer<'_> {
         if first.anchor != second.anchor {
             return self.callback.as_mut()?.span_join(first, second);
         }
-        // Differing context, we can't merge these so prefer the one that's root
+        // Differing context, we can't merge these
         if first.ctx != second.ctx {
-            if first.ctx.is_root() {
-                return Some(second);
-            } else if second.ctx.is_root() {
-                return Some(first);
-            }
+            return Some(first);
         }
         Some(Span {
             range: first.range.cover(second.range),
