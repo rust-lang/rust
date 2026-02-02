@@ -70,9 +70,9 @@ impl<'tcx> QueryStackFrame<QueryStackDeferred<'tcx>> {
         Self { info, def_id, dep_kind, hash, def_id_for_ty_in_cycle }
     }
 
-    fn lift<Qcx: QueryContext<'tcx>>(&self, qcx: Qcx) -> QueryStackFrame<QueryStackFrameExtra> {
+    fn lift(&self) -> QueryStackFrame<QueryStackFrameExtra> {
         QueryStackFrame {
-            info: qcx.lift_query_info(&self.info),
+            info: self.info.extract(),
             dep_kind: self.dep_kind,
             hash: self.hash,
             def_id: self.def_id,
@@ -168,8 +168,6 @@ pub trait QueryContext<'tcx>: HasDepContext {
 
     fn collect_active_jobs(self, require_complete: bool) -> Result<QueryMap<'tcx>, QueryMap<'tcx>>;
 
-    fn lift_query_info(self, info: &QueryStackDeferred<'tcx>) -> QueryStackFrameExtra;
-
     /// Load a side effect associated to the node in the previous session.
     fn load_side_effect(
         self,
@@ -183,6 +181,4 @@ pub trait QueryContext<'tcx>: HasDepContext {
     /// new query job while it executes.
     fn start_query<R>(self, token: QueryJobId, depth_limit: bool, compute: impl FnOnce() -> R)
     -> R;
-
-    fn depth_limit_error(self, job: QueryJobId);
 }

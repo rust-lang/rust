@@ -48,6 +48,23 @@ impl<'tcx> QueryCtxt<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> Self {
         QueryCtxt { tcx }
     }
+
+    fn depth_limit_error(self, job: QueryJobId) {
+        let query_map = self.collect_active_jobs(true).expect("failed to collect active queries");
+        let (info, depth) = job.find_dep_kind_root(query_map);
+
+        let suggested_limit = match self.tcx.recursion_limit() {
+            Limit(0) => Limit(2),
+            limit => limit * 2,
+        };
+
+        self.tcx.sess.dcx().emit_fatal(QueryOverflow {
+            span: info.job.span,
+            note: QueryOverflowNote { desc: info.frame.info.extract().description, depth },
+            suggested_limit,
+            crate_name: self.tcx.crate_name(LOCAL_CRATE),
+        });
+    }
 }
 
 impl<'tcx> HasDepContext for QueryCtxt<'tcx> {
@@ -104,13 +121,6 @@ impl<'tcx> QueryContext<'tcx> for QueryCtxt<'tcx> {
         if complete { Ok(jobs) } else { Err(jobs) }
     }
 
-    fn lift_query_info(
-        self,
-        info: &QueryStackDeferred<'tcx>,
-    ) -> rustc_query_system::query::QueryStackFrameExtra {
-        info.extract()
-    }
-
     // Interactions with on_disk_cache
     fn load_side_effect(
         self,
@@ -161,26 +171,6 @@ impl<'tcx> QueryContext<'tcx> for QueryCtxt<'tcx> {
             // Use the `ImplicitCtxt` while we execute the query.
             tls::enter_context(&new_icx, compute)
         })
-    }
-
-    fn depth_limit_error(self, job: QueryJobId) {
-        let query_map = self.collect_active_jobs(true).expect("failed to collect active queries");
-        let (info, depth) = job.find_dep_kind_root(query_map);
-
-        let suggested_limit = match self.tcx.recursion_limit() {
-            Limit(0) => Limit(2),
-            limit => limit * 2,
-        };
-
-        self.tcx.sess.dcx().emit_fatal(QueryOverflow {
-            span: info.job.span,
-            note: QueryOverflowNote {
-                desc: self.lift_query_info(&info.query.info).description,
-                depth,
-            },
-            suggested_limit,
-            crate_name: self.tcx.crate_name(LOCAL_CRATE),
-        });
     }
 }
 
@@ -742,14 +732,14 @@ macro_rules! define_queries {
                 qmap: &mut QueryMap<'tcx>,
                 require_complete: bool,
             ) -> Option<()> {
-                let make_query = |tcx, key| {
+                let make_frame = |tcx, key| {
                     let kind = rustc_middle::dep_graph::dep_kinds::$name;
                     let name = stringify!($name);
                     $crate::plumbing::create_query_frame(tcx, rustc_middle::query::descs::$name, key, kind, name)
                 };
                 let res = tcx.query_system.states.$name.collect_active_jobs(
                     tcx,
-                    make_query,
+                    make_frame,
                     qmap,
                     require_complete,
                 );

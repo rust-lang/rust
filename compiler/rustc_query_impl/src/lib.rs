@@ -94,10 +94,7 @@ where
     }
 
     #[inline(always)]
-    fn query_state<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a QueryState<'tcx, Self::Key>
-    where
-        QueryCtxt<'tcx>: 'a,
-    {
+    fn query_state(self, qcx: QueryCtxt<'tcx>) -> &'tcx QueryState<'tcx, Self::Key> {
         // Safety:
         // This is just manually doing the subfield referencing through pointer math.
         unsafe {
@@ -108,7 +105,7 @@ where
     }
 
     #[inline(always)]
-    fn query_cache<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a Self::Cache {
+    fn query_cache(self, qcx: QueryCtxt<'tcx>) -> &'tcx Self::Cache {
         // Safety:
         // This is just manually doing the subfield referencing through pointer math.
         unsafe {
@@ -224,12 +221,12 @@ trait QueryDispatcherUnerased<'tcx> {
     ) -> Self::UnerasedValue;
 }
 
-pub fn query_system<'a>(
+pub fn query_system<'tcx>(
     local_providers: Providers,
     extern_providers: ExternProviders,
     on_disk_cache: Option<OnDiskCache>,
     incremental: bool,
-) -> QuerySystem<'a> {
+) -> QuerySystem<'tcx> {
     QuerySystem {
         states: Default::default(),
         arenas: Default::default(),
