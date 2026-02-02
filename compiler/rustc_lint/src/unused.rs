@@ -63,6 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
 enum UnusedDelimsCtx {
     FunctionArg,
     MethodArg,
+    MethodReceiver,
     AssignedValue,
     AssignedValueLetElse,
     IfCond,
@@ -85,6 +86,7 @@ impl From<UnusedDelimsCtx> for &'static str {
         match ctx {
             UnusedDelimsCtx::FunctionArg => "function argument",
             UnusedDelimsCtx::MethodArg => "method argument",
+            UnusedDelimsCtx::MethodReceiver => "method receiver",
             UnusedDelimsCtx::AssignedValue | UnusedDelimsCtx::AssignedValueLetElse => {
                 "assigned value"
             }
@@ -147,6 +149,16 @@ trait UnusedDelimLint {
                 ast::ExprKind::Binary(op, ..) if op.node.is_lazy() => return true,
                 _ if classify::expr_trailing_brace(inner).is_some() => return true,
                 _ => {}
+            }
+        }
+
+        // For method receivers, only lint simple path expressions like `(x).method()`.
+        // Keep parens for all other cases to avoid false positives with complex expressions
+        // like `(1..10).sum()`, `(*ptr).method()`, `({ block }).method()`, etc.
+        // Only lint simple variable names like `(x).method()`
+        if ctx == UnusedDelimsCtx::MethodReceiver {
+            if !matches!(inner.kind, ast::ExprKind::Path(None, _)) {
+                return true;
             }
         }
 
@@ -417,13 +429,15 @@ trait UnusedDelimLint {
             }
             // either function/method call, or something this lint doesn't care about
             ref call_or_other => {
-                let (args_to_check, ctx) = match *call_or_other {
-                    Call(_, ref args) => (&args[..], UnusedDelimsCtx::FunctionArg),
-                    MethodCall(ref call) => (&call.args[..], UnusedDelimsCtx::MethodArg),
+                let (args_to_check, ctx, receiver) = match *call_or_other {
+                    Call(_, ref args) => (&args[..], UnusedDelimsCtx::FunctionArg, None),
+                    MethodCall(ref call) => {
+                        (&call.args[..], UnusedDelimsCtx::MethodArg, Some(&call.receiver))
+                    }
                     Closure(ref closure)
                         if matches!(closure.fn_decl.output, FnRetTy::Default(_)) =>
                     {
-                        (&[closure.body.clone()][..], UnusedDelimsCtx::ClosureBody)
+                        (&[closure.body.clone()][..], UnusedDelimsCtx::ClosureBody, None)
                     }
                     // actual catch-all arm
                     _ => {
@@ -439,6 +453,17 @@ trait UnusedDelimLint {
                 }
                 for arg in args_to_check {
                     self.check_unused_delims_expr(cx, arg, ctx, false, None, None, false);
+                }
+                if let Some(recv) = receiver {
+                    self.check_unused_delims_expr(
+                        cx,
+                        recv,
+                        UnusedDelimsCtx::MethodReceiver,
+                        false,
+                        None,
+                        None,
+                        false,
+                    );
                 }
                 return;
             }
@@ -1025,6 +1050,7 @@ impl UnusedDelimLint for UnusedBraces {
                 if let [stmt] = inner.stmts.as_slice()
                     && let ast::StmtKind::Expr(ref expr) = stmt.kind
                     && !Self::is_expr_delims_necessary(expr, ctx, followed_by_block)
+                    && ctx != UnusedDelimsCtx::MethodReceiver
                     && (ctx != UnusedDelimsCtx::AnonConst
                         || (matches!(expr.kind, ast::ExprKind::Lit(_))
                             && !expr.span.from_expansion()))
