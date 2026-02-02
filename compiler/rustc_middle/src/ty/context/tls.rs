@@ -4,7 +4,7 @@ use rustc_data_structures::sync;
 
 use super::{GlobalCtxt, TyCtxt};
 use crate::dep_graph::TaskDepsRef;
-use crate::query::plumbing::QueryJobId;
+use crate::query::system::QueryJobId;
 
 /// This is the implicit state of rustc. It contains the current
 /// `TyCtxt` and query. It is updated when creating a local interner or

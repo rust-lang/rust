@@ -21,7 +21,7 @@ type DepContextOf<'tcx, This: QueryDispatcher<'tcx>> =
 /// and metadata for that query.
 ///
 /// Implemented by `rustc_query_impl::SemiDynamicQueryDispatcher`, which
-/// mostly delegates to `rustc_middle::query::plumbing::QueryVTable`.
+/// mostly delegates to `rustc_middle::query::system::QueryVTable`.
 /// Those types are not visible from this `rustc_query_system` crate.
 ///
 /// "Dispatcher" should be understood as a near-synonym of "vtable".

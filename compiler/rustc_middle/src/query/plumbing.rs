@@ -76,7 +76,7 @@ macro_rules! separate_provide_extern_default {
         ()
     };
     ([(separate_provide_extern) $($rest:tt)*][$name:ident]) => {
-        |_, key| $crate::query::plumbing::default_extern_query(stringify!($name), &key)
+        |_, key| $crate::query::system::default_extern_query(stringify!($name), &key)
     };
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
         separate_provide_extern_default!([$($modifiers)*][$($args)*])
@@ -262,7 +262,7 @@ macro_rules! define_callbacks {
         /// ("Per" just makes this pluralized name more visually distinct.)
         pub struct PerQueryVTables<'tcx> {
             $(
-                pub $name: ::rustc_middle::query::plumbing::QueryVTable<'tcx, queries::$name::Storage<'tcx>>,
+                pub $name: ::rustc_middle::query::system::QueryVTable<'tcx, queries::$name::Storage<'tcx>>,
             )*
         }
 
@@ -287,7 +287,7 @@ macro_rules! define_callbacks {
         impl Default for Providers {
             fn default() -> Self {
                 Providers {
-                    $($name: |_, key| $crate::query::plumbing::default_query(stringify!($name), &key)),*
+                    $($name: |_, key| $crate::query::system::default_query(stringify!($name), &key)),*
                 }
             }
         }
