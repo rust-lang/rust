@@ -148,6 +148,7 @@ pub mod erase;
 pub(crate) mod inner;
 mod keys;
 pub mod on_disk_cache;
+pub mod system;
 #[macro_use]
 pub mod plumbing;
 
