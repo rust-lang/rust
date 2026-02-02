@@ -1,0 +1,19 @@
+error: unnecessary parentheses around method receiver
+  --> $DIR/unused-parens-method-receiver-issue-151985.rs:13:5
+   |
+LL |     (x).method();
+   |     ^ ^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-parens-method-receiver-issue-151985.rs:3:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     (x).method();
+LL +     x.method();
+   |
+
+error: aborting due to 1 previous error
+

@@ -336,7 +336,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                         id,
                         mode,
                         next_place,
-                        (slice).into(),
+                        slice.into(),
                         current,
                         current_else,
                     )?;

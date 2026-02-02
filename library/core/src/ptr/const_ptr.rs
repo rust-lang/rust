@@ -27,7 +27,7 @@ impl<T: PointeeSized> *const T {
             @capture { ptr: *const u8 } -> bool:
             // This use of `const_raw_ptr_comparison` has been explicitly blessed by t-lang.
             if const #[rustc_allow_const_fn_unstable(const_raw_ptr_comparison)] {
-                match (ptr).guaranteed_eq(null_mut()) {
+                match ptr.guaranteed_eq(null_mut()) {
                     Some(res) => res,
                     // To remain maximally conservative, we stop execution when we don't
                     // know whether the pointer is null or not.

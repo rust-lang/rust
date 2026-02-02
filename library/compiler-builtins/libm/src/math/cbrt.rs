@@ -194,7 +194,7 @@ pub fn cbrt_round(x: f64, round: Round) -> FpResult<f64> {
         let mut cvt4: u64 = y1.to_bits();
         cvt4 = (cvt4 + (164 << 15)) & 0xffffffffffff0000u64;
 
-        if ((f64::from_bits(cvt4) - y1) - dy).abs() < hf64!("0x1p-60") || (zz).abs() == 1.0 {
+        if ((f64::from_bits(cvt4) - y1) - dy).abs() < hf64!("0x1p-60") || zz.abs() == 1.0 {
             cvt3 = (cvt3 + (1u64 << 15)) & 0xffffffffffff0000u64;
         }
     }
