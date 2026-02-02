@@ -272,11 +272,16 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             });
         }
 
+        debug!("region param in borrowck is {:?}", var_values);
+
         // Collect the normalized fn sig to var_values too
         let var_values = var_values
             .iter()
             .chain(normalized_inputs_and_output.iter().map(|ty| GenericArg::from(*ty)))
             .collect();
+
+        debug!("sig tys in borrowck is {:?}", normalized_inputs_and_output);
+        debug!("var value in borrowck is {:?}", var_values);
 
         // Compute implied bound
         // TODO: might move this somewhere else later
@@ -372,31 +377,6 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         known_type_outlives_obligations.push(outlives);
     }
 
-<<<<<<< HEAD
-    /// Compute and add any implied bounds that come from a given type.
-    #[instrument(level = "debug", skip(self))]
-    fn add_implied_bounds(
-        &mut self,
-        ty: Ty<'tcx>,
-        span: Span,
-    ) -> Option<&'tcx QueryRegionConstraints<'tcx>> {
-        let TypeOpOutput { output: bounds, constraints, .. } = self
-            .infcx
-            .param_env
-            .and(type_op::ImpliedOutlivesBounds { ty })
-            .fully_perform(self.infcx, self.infcx.root_def_id, span)
-            .map_err(|_: ErrorGuaranteed| debug!("failed to compute implied bounds {:?}", ty))
-            .ok()?;
-        debug!(?bounds, ?constraints);
-        // Because of #109628, we may have unexpected placeholders. Ignore them!
-        // FIXME(#109628): panic in this case once the issue is fixed.
-        let bounds = bounds.into_iter().filter(|bound| !bound.has_placeholders());
-        self.add_outlives_bounds(bounds);
-        constraints
-    }
-
-=======
->>>>>>> 7379983f23e (Strip implied bound computation from borrowck)
     /// Registers the `OutlivesBound` items from `outlives_bounds` in
     /// the outlives relation as well as the region-bound pairs
     /// listing.
