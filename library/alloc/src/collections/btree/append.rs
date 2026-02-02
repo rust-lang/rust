@@ -33,6 +33,36 @@ impl<K, V> Root<K, V> {
         self.bulk_push(iter, length, alloc)
     }
 
+    /// Appends all key-value pairs from the union of two ascending iterators,
+    /// incrementing a `length` variable along the way. The latter makes it
+    /// easier for the caller to avoid a leak when a drop handler panicks.
+    ///
+    /// If both iterators produce the same key, this method constructs a pair using the
+    /// key from the left iterator and calls on a function `f` to return a value given
+    /// the conflicting key and value from left and right iterators.
+    ///
+    /// If you want the tree to end up in a strictly ascending order, like for
+    /// a `BTreeMap`, both iterators should produce keys in strictly ascending
+    /// order, each greater than all keys in the tree, including any keys
+    /// already in the tree upon entry.
+    pub(super) fn append_from_sorted_iters_with<I, A: Allocator + Clone>(
+        &mut self,
+        left: I,
+        right: I,
+        length: &mut usize,
+        alloc: A,
+        f: impl FnMut(&K, V, V) -> V,
+    ) where
+        K: Ord,
+        I: Iterator<Item = (K, V)> + FusedIterator,
+    {
+        // We prepare to merge `left` and `right` into a sorted sequence in linear time.
+        let iter = MergeIterWith { inner: MergeIterInner::new(left, right), f };
+
+        // Meanwhile, we build a tree from the sorted sequence in linear time.
+        self.bulk_push(iter, length, alloc)
+    }
+
     /// Pushes all key-value pairs to the end of the tree, incrementing a
     /// `length` variable along the way. The latter makes it easier for the
     /// caller to avoid a leak when the iterator panicks.
@@ -109,6 +139,36 @@ where
         let (a_next, b_next) = self.0.nexts(|a: &(K, V), b: &(K, V)| K::cmp(&a.0, &b.0));
         match (a_next, b_next) {
             (Some((a_k, _)), Some((_, b_v))) => Some((a_k, b_v)),
+            (Some(a), None) => Some(a),
+            (None, Some(b)) => Some(b),
+            (None, None) => None,
+        }
+    }
+}
+
+/// An iterator for merging two sorted sequences into one with
+/// a callback function to return a value on conflicting keys
+struct MergeIterWith<F, K, V, I: Iterator<Item = (K, V)>> {
+    inner: MergeIterInner<I>,
+    f: F,
+}
+
+impl<F, K: Ord, V, I> Iterator for MergeIterWith<F, K, V, I>
+where
+    F: FnMut(&K, V, V) -> V,
+    I: Iterator<Item = (K, V)> + FusedIterator,
+{
+    type Item = (K, V);
+
+    /// If two keys are equal, returns the key from the left and uses `f` to return
+    /// a value
+    fn next(&mut self) -> Option<(K, V)> {
+        let (a_next, b_next) = self.inner.nexts(|a: &(K, V), b: &(K, V)| K::cmp(&a.0, &b.0));
+        match (a_next, b_next) {
+            (Some((a_k, a_v)), Some((_, b_v))) => Some({
+                let next_val = self.f.call_mut((&a_k, a_v, b_v));
+                (a_k, next_val)
+            }),
             (Some(a), None) => Some(a),
             (None, Some(b)) => Some(b),
             (None, None) => None,
