@@ -11,7 +11,7 @@ use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::{self, DepKind, DepKindVTable, DepNodeIndex};
 use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
-use rustc_middle::query::plumbing::{QuerySystem, QuerySystemFns, QueryVTable};
+use rustc_middle::query::system::{QuerySystem, QuerySystemFns, QueryVTable};
 use rustc_middle::query::{
     AsLocalKey, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates, queries,
 };

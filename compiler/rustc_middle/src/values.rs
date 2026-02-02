@@ -13,7 +13,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::dep_graph::dep_kinds;
-use crate::query::plumbing::CyclePlaceholder;
+use crate::query::system::CyclePlaceholder;
 use crate::ty::{self, Representability, Ty, TyCtxt};
 
 impl<'tcx> Value<TyCtxt<'tcx>> for Ty<'_> {

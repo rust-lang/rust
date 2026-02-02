@@ -67,7 +67,7 @@ use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
-use crate::query::plumbing::QuerySystem;
+use crate::query::system::QuerySystem;
 use crate::query::{IntoQueryParam, LocalCrate, Providers, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
@@ -1990,7 +1990,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn needs_crate_hash(self) -> bool {
         // Why is the crate hash needed for these configurations?
         // - debug_assertions: for the "fingerprint the result" check in
-        //   `rustc_query_system::query::plumbing::execute_job`.
+        //   `rustc_query_system::query::execution::execute_job`.
         // - incremental: for query lookups.
         // - needs_metadata: for putting into crate metadata.
         // - instrument_coverage: for putting into coverage data (see

@@ -15,7 +15,7 @@ use rustc_span::{DUMMY_SP, Span};
 use super::{QueryStackDeferred, QueryStackFrameExtra};
 use crate::dep_graph::DepContext;
 use crate::error::CycleStack;
-use crate::query::plumbing::CycleError;
+use crate::query::execution::CycleError;
 use crate::query::{QueryContext, QueryStackFrame};
 
 /// Represents a span and a query key.
