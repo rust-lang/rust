@@ -10,6 +10,7 @@ use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrPath, HirId};
+use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::lint::{Lint, LintId};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
@@ -383,7 +384,7 @@ impl Stage for Late {
     }
 
     fn should_emit(&self) -> ShouldEmit {
-        ShouldEmit::ErrorsAndLints { recover: true }
+        ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed }
     }
 }
 
@@ -770,10 +771,10 @@ pub enum ShouldEmit {
     ErrorsAndLints {
         /// Whether [`ArgParser`] will attempt to recover from errors.
         ///
-        /// If true, it will attempt to recover from bad input (like an invalid literal). Setting
-        /// this to false will instead return early, and not raise errors except at the top level
-        /// (in [`ArgParser::from_attr_args`]).
-        recover: bool,
+        /// Whether it is allowed to recover from bad input (like an invalid literal). Setting
+        /// this to `Forbidden` will instead return early, and not raise errors except at the top
+        /// level (in [`ArgParser::from_attr_args`]).
+        recovery: Recovery,
     },
     /// The operation will *not* emit errors and lints.
     ///

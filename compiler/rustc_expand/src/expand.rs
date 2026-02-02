@@ -26,7 +26,7 @@ use rustc_hir::def::MacroKinds;
 use rustc_hir::limit::Limit;
 use rustc_parse::parser::{
     AllowConstBlockItems, AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser,
-    RecoverColon, RecoverComma, token_descr,
+    RecoverColon, RecoverComma, Recovery, token_descr,
 };
 use rustc_session::Session;
 use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
@@ -2170,7 +2170,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 call.span(),
                 self.cx.current_expansion.lint_node_id,
                 Some(self.cx.ecfg.features),
-                ShouldEmit::ErrorsAndLints { recover: true },
+                ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             );
 
             let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
@@ -2220,7 +2220,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             // Target doesn't matter for `cfg` parsing.
             Target::Crate,
             self.cfg().features,
-            ShouldEmit::ErrorsAndLints { recover: true },
+            ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             parse_cfg,
             &CFG_TEMPLATE,
         ) else {

@@ -20,6 +20,7 @@ use rustc_feature::{
     UNSTABLE_LANG_FEATURES,
 };
 use rustc_hir::Target;
+use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
 use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
@@ -395,7 +396,9 @@ impl<'a> StripUnconfigured<'a> {
     fn in_cfg(&self, attrs: &[Attribute]) -> bool {
         attrs.iter().all(|attr| {
             !is_cfg(attr)
-                || self.cfg_true(attr, ShouldEmit::ErrorsAndLints { recover: true }).as_bool()
+                || self
+                    .cfg_true(attr, ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed })
+                    .as_bool()
         })
     }
 

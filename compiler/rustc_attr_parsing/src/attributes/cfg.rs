@@ -10,7 +10,7 @@ use rustc_feature::{
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrPath, RustcVersion, Target};
-use rustc_parse::parser::{ForceCollect, Parser};
+use rustc_parse::parser::{ForceCollect, Parser, Recovery};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
@@ -360,8 +360,10 @@ fn parse_cfg_attr_internal<'a>(
 ) -> PResult<'a, (CfgEntry, Vec<(ast::AttrItem, Span)>)> {
     // Parse cfg predicate
     let pred_start = parser.token.span;
-    let meta =
-        MetaItemOrLitParser::parse_single(parser, ShouldEmit::ErrorsAndLints { recover: true })?;
+    let meta = MetaItemOrLitParser::parse_single(
+        parser,
+        ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+    )?;
     let pred_span = pred_start.with_hi(parser.token.span.hi());
 
     let cfg_predicate = AttributeParser::parse_single_args(
@@ -376,7 +378,7 @@ fn parse_cfg_attr_internal<'a>(
         CRATE_NODE_ID,
         Target::Crate,
         features,
-        ShouldEmit::ErrorsAndLints { recover: true },
+        ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
         &meta,
         parse_cfg_entry,
         &CFG_ATTR_TEMPLATE,

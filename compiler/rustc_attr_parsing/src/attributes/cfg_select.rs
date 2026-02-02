@@ -5,7 +5,7 @@ use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::{AttrPath, Target};
 use rustc_parse::exp;
-use rustc_parse::parser::Parser;
+use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::Session;
 use rustc_span::{ErrorGuaranteed, Span, sym};
 
@@ -78,9 +78,11 @@ pub fn parse_cfg_select(
                 }
             }
         } else {
-            let meta =
-                MetaItemOrLitParser::parse_single(p, ShouldEmit::ErrorsAndLints { recover: true })
-                    .map_err(|diag| diag.emit())?;
+            let meta = MetaItemOrLitParser::parse_single(
+                p,
+                ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+            )
+            .map_err(|diag| diag.emit())?;
             let cfg_span = meta.span();
             let cfg = AttributeParser::parse_single_args(
                 sess,
@@ -95,7 +97,7 @@ pub fn parse_cfg_select(
                 // Doesn't matter what the target actually is here.
                 Target::Crate,
                 features,
-                ShouldEmit::ErrorsAndLints { recover: true },
+                ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
                 &meta,
                 parse_cfg_entry,
                 &AttributeTemplate::default(),
