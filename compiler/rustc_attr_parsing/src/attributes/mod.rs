@@ -39,6 +39,7 @@ pub(crate) mod confusables;
 pub(crate) mod crate_level;
 pub(crate) mod debugger;
 pub(crate) mod deprecation;
+pub(crate) mod diagnostic;
 pub(crate) mod do_not_recommend;
 pub(crate) mod doc;
 pub(crate) mod dummy;

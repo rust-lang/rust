@@ -80,6 +80,7 @@
 #![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(decl_macro)]
 #![feature(iter_intersperse)]
+#![feature(try_blocks)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 

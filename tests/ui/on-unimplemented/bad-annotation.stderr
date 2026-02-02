@@ -11,12 +11,6 @@ LL | #[rustc_on_unimplemented = "message"]
 LL | #[rustc_on_unimplemented(/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...")]
    |                         ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-error[E0230]: cannot find parameter C on this trait
-  --> $DIR/bad-annotation.rs:19:90
-   |
-LL | #[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{C}>`"]
-   |                                                                                          ^
-
 error[E0231]: positional format arguments are not allowed here
   --> $DIR/bad-annotation.rs:23:90
    |
@@ -137,7 +131,7 @@ error[E0232]: invalid name in `on`-clause
 LL | #[rustc_on_unimplemented(on(abc = "y", message = "y"))]
    |                             ^^^ expected one of `cause`, `from_desugaring`, `Self` or any generic parameter of the trait, not `abc`
 
-error: aborting due to 20 previous errors
+error: aborting due to 19 previous errors
 
-Some errors have detailed explanations: E0230, E0231, E0232.
-For more information about an error, try `rustc --explain E0230`.
+Some errors have detailed explanations: E0231, E0232.
+For more information about an error, try `rustc --explain E0231`.
