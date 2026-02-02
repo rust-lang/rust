@@ -50,9 +50,9 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
     ) -> Self {
         let err = Ty::new_error(tcx, guar);
 
-        let arity = if let Some(frame) = cycle_error.cycle.get(0)
-            && frame.query.dep_kind == dep_kinds::fn_sig
-            && let Some(def_id) = frame.query.def_id
+        let arity = if let Some(info) = cycle_error.cycle.get(0)
+            && info.frame.dep_kind == dep_kinds::fn_sig
+            && let Some(def_id) = info.frame.def_id
             && let Some(node) = tcx.hir_get_if_local(def_id)
             && let Some(sig) = node.fn_sig()
         {
@@ -85,10 +85,10 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
         let mut item_and_field_ids = Vec::new();
         let mut representable_ids = FxHashSet::default();
         for info in &cycle_error.cycle {
-            if info.query.dep_kind == dep_kinds::representability
-                && let Some(field_id) = info.query.def_id
+            if info.frame.dep_kind == dep_kinds::representability
+                && let Some(field_id) = info.frame.def_id
                 && let Some(field_id) = field_id.as_local()
-                && let Some(DefKind::Field) = info.query.info.def_kind
+                && let Some(DefKind::Field) = info.frame.info.def_kind
             {
                 let parent_id = tcx.parent(field_id.to_def_id());
                 let item_id = match tcx.def_kind(parent_id) {
@@ -99,8 +99,8 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
             }
         }
         for info in &cycle_error.cycle {
-            if info.query.dep_kind == dep_kinds::representability_adt_ty
-                && let Some(def_id) = info.query.def_id_for_ty_in_cycle
+            if info.frame.dep_kind == dep_kinds::representability_adt_ty
+                && let Some(def_id) = info.frame.def_id_for_ty_in_cycle
                 && let Some(def_id) = def_id.as_local()
                 && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)
             {
@@ -141,9 +141,9 @@ impl<'tcx> Value<TyCtxt<'tcx>> for &[ty::Variance] {
         search_for_cycle_permutation(
             &cycle_error.cycle,
             |cycle| {
-                if let Some(frame) = cycle.get(0)
-                    && frame.query.dep_kind == dep_kinds::variances_of
-                    && let Some(def_id) = frame.query.def_id
+                if let Some(info) = cycle.get(0)
+                    && info.frame.dep_kind == dep_kinds::variances_of
+                    && let Some(def_id) = info.frame.def_id
                 {
                     let n = tcx.generics_of(def_id).own_params.len();
                     ControlFlow::Break(vec![ty::Bivariant; n].leak())
@@ -189,8 +189,8 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
         let diag = search_for_cycle_permutation(
             &cycle_error.cycle,
             |cycle| {
-                if cycle[0].query.dep_kind == dep_kinds::layout_of
-                    && let Some(def_id) = cycle[0].query.def_id_for_ty_in_cycle
+                if cycle[0].frame.dep_kind == dep_kinds::layout_of
+                    && let Some(def_id) = cycle[0].frame.def_id_for_ty_in_cycle
                     && let Some(def_id) = def_id.as_local()
                     && let def_kind = tcx.def_kind(def_id)
                     && matches!(def_kind, DefKind::Closure)
@@ -213,18 +213,18 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
                         tcx.def_kind_descr_article(def_kind, def_id.to_def_id()),
                         tcx.def_kind_descr(def_kind, def_id.to_def_id()),
                     );
-                    for (i, frame) in cycle.iter().enumerate() {
-                        if frame.query.dep_kind != dep_kinds::layout_of {
+                    for (i, info) in cycle.iter().enumerate() {
+                        if info.frame.dep_kind != dep_kinds::layout_of {
                             continue;
                         }
-                        let Some(frame_def_id) = frame.query.def_id_for_ty_in_cycle else {
+                        let Some(frame_def_id) = info.frame.def_id_for_ty_in_cycle else {
                             continue;
                         };
                         let Some(frame_coroutine_kind) = tcx.coroutine_kind(frame_def_id) else {
                             continue;
                         };
                         let frame_span =
-                            frame.query.info.default_span(cycle[(i + 1) % cycle.len()].span);
+                            info.frame.info.default_span(cycle[(i + 1) % cycle.len()].span);
                         if frame_span.is_dummy() {
                             continue;
                         }
