@@ -38,6 +38,8 @@ pub use crate::plumbing::{QueryCtxt, query_key_hash_verify_all};
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;
 
+mod error;
+
 #[derive(ConstParamTy)] // Allow this struct to be used for const-generic values.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct QueryFlags {

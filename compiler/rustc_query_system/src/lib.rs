@@ -10,5 +10,3 @@ pub mod dep_graph;
 mod error;
 pub mod ich;
 pub mod query;
-
-pub use error::{QueryOverflow, QueryOverflowNote};
