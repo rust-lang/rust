@@ -708,14 +708,18 @@ macro_rules! define_queries {
                 data: PhantomData<&'tcx ()>
             }
 
+            const FLAGS: QueryFlags = QueryFlags {
+                is_anon: is_anon!([$($modifiers)*]),
+                is_depth_limit: depth_limit!([$($modifiers)*]),
+                is_feedable: feedable!([$($modifiers)*]),
+            };
+
             impl<'tcx> QueryDispatcherUnerased<'tcx> for QueryType<'tcx> {
                 type UnerasedValue = queries::$name::Value<'tcx>;
                 type Dispatcher = SemiDynamicQueryDispatcher<
                     'tcx,
                     queries::$name::Storage<'tcx>,
-                    { is_anon!([$($modifiers)*]) },
-                    { depth_limit!([$($modifiers)*]) },
-                    { feedable!([$($modifiers)*]) },
+                    FLAGS,
                 >;
 
                 const NAME: &'static &'static str = &stringify!($name);
