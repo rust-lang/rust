@@ -1256,7 +1256,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(btreemap_append_with)]
+    /// #![feature(btree_append_with)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
