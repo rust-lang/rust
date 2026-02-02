@@ -1256,6 +1256,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(btreemap_append_with)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
@@ -1282,7 +1283,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(a[&4], "e");
     /// assert_eq!(a[&5], "f");
     /// ```
-    #[unstable(feature = "btree_append_with", issue = "147700")]
+    #[unstable(feature = "btree_append_with", issue = "147700")] // FIXME: Change issue # to track #
     pub fn append_with(&mut self, other: &mut Self, conflict: impl FnMut(&K, V, V) -> V)
     where
         K: Ord,

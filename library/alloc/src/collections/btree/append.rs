@@ -161,12 +161,12 @@ where
     type Item = (K, V);
 
     /// If two keys are equal, returns the key from the left and uses `f` to return
-    /// a value
+    /// a value given knowledge of conflicting key and values from left and right
     fn next(&mut self) -> Option<(K, V)> {
         let (a_next, b_next) = self.inner.nexts(|a: &(K, V), b: &(K, V)| K::cmp(&a.0, &b.0));
         match (a_next, b_next) {
             (Some((a_k, a_v)), Some((_, b_v))) => Some({
-                let next_val = self.f.call_mut((&a_k, a_v, b_v));
+                let next_val = (self.f)(&a_k, a_v, b_v);
                 (a_k, next_val)
             }),
             (Some(a), None) => Some(a),
