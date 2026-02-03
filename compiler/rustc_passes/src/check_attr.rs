@@ -67,6 +67,13 @@ struct DiagnosticOnConstOnlyForTraitImpls {
     item_span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(passes_diagnostic_diagnostic_on_const_only_for_non_const_trait_impls)]
+struct DiagnosticOnConstOnlyForNonConstTraitImpls {
+    #[label]
+    item_span: Span,
+}
+
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
@@ -630,7 +637,16 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if target == (Target::Impl { of_trait: true }) {
             match item.unwrap() {
                 ItemLike::Item(it) => match it.expect_impl().constness {
-                    Constness::Const => {}
+                    Constness::Const => {
+                        let item_span = self.tcx.hir_span(hir_id);
+                        self.tcx.emit_node_span_lint(
+                            MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+                            hir_id,
+                            attr_span,
+                            DiagnosticOnConstOnlyForNonConstTraitImpls { item_span },
+                        );
+                        return;
+                    }
                     Constness::NotConst => return,
                 },
                 ItemLike::ForeignItem => {}

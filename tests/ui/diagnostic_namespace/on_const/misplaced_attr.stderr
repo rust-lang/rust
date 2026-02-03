@@ -13,14 +13,14 @@ note: the lint level is defined here
 LL | #![deny(misplaced_diagnostic_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `#[diagnostic::on_const]` can only be applied to trait impls
+error: `#[diagnostic::on_const]` can only be applied to non-const trait impls
   --> $DIR/misplaced_attr.rs:8:1
    |
 LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | impl const PartialEq for Foo {
-   | ---------------------------- not a trait impl
+   | ---------------------------- this is a const trait impl
 
 error: `#[diagnostic::on_const]` can only be applied to trait impls
   --> $DIR/misplaced_attr.rs:16:1
