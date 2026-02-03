@@ -108,15 +108,12 @@ use crate::session_diagnostics::{
     RLinkWrongFileType, RlinkCorruptFile, RlinkNotAFile, RlinkUnableToRead, UnstableFeatureUsage,
 };
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
-
 pub fn default_translator() -> Translator {
     Translator::with_fallback_bundle(DEFAULT_LOCALE_RESOURCES.to_vec(), false)
 }
 
 pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     // tidy-alphabetical-start
-    crate::DEFAULT_LOCALE_RESOURCE,
     rustc_ast_lowering::DEFAULT_LOCALE_RESOURCE,
     rustc_ast_passes::DEFAULT_LOCALE_RESOURCE,
     rustc_attr_parsing::DEFAULT_LOCALE_RESOURCE,
