@@ -3,10 +3,17 @@
 //! large and hard to navigate.
 
 use std::collections::BTreeSet;
+use std::convert::Infallible;
 use std::fmt::{self, Debug, Write};
+use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 
-use crate::core::builder::{Builder, Kind, RunConfig, Step, StepDescription};
+use build_helper::util::fail;
+
+use crate::core::builder::{
+    Builder, Kind, MakeOrEnsure, RunConfig, Step, StepDescription, SupportedConfig,
+    pretty_step_name,
+};
 use crate::core::config::DryRun;
 use crate::{Build, Crate, t};
 
@@ -138,7 +145,7 @@ pub(crate) fn match_paths_to_steps_and_run(
     if paths.is_empty() || builder.config.include_default_paths {
         for StepExtra { desc, should_run } in &steps {
             if (desc.is_default_step_fn)(builder) {
-                desc.maybe_run(builder, should_run.paths.iter().cloned().collect());
+                desc.maybe_run(builder, should_run.paths.iter().cloned().collect(), false);
             }
         }
     }
@@ -182,7 +189,7 @@ pub(crate) fn match_paths_to_steps_and_run(
     paths.retain(|path| {
         for StepExtra { desc, should_run } in &steps {
             if let Some(suite) = should_run.is_suite_path(path) {
-                desc.maybe_run(builder, vec![suite.clone()]);
+                desc.maybe_run(builder, vec![suite.clone()], true);
                 return false;
             }
         }
@@ -229,7 +236,7 @@ pub(crate) fn match_paths_to_steps_and_run(
     // Handle all PathSets.
     for StepToRun { sort_index: _, desc, pathsets } in steps_to_run {
         if !pathsets.is_empty() {
-            desc.maybe_run(builder, pathsets);
+            desc.maybe_run(builder, pathsets, true);
         }
     }
 
@@ -440,19 +447,62 @@ impl StepSelectors {
     }
 }
 
+pub fn check_step_supported<S, O>(
+    config: SupportedConfig<'_, S>,
+    explicit: bool,
+    name: &str,
+    is_supported: fn(SupportedConfig<'_, S>) -> Result<(), Unsupported<O>>,
+) -> ControlFlow<Option<O>> {
+    let builder = config.builder;
+
+    match is_supported(config) {
+        Ok(()) => ControlFlow::Continue(()),
+        _ if !explicit => ControlFlow::Break(None),
+        Err(Unsupported::Skip(why, output)) => {
+            let msg = format!(
+                "WARNING: {name} is not necessary in this build configuration and will be ignored: {why}"
+            );
+            builder.info(&msg);
+            ControlFlow::Break(Some(output))
+        }
+        Err(Unsupported::Warn(why)) => {
+            let msg =
+                format!("WARNING: {name} is not supported in this build configuration: {why}");
+            builder.info(&msg);
+            ControlFlow::Continue(())
+        }
+        Err(Unsupported::Fatal(why)) => {
+            fail(&format!("ERROR: {name} cannot be run in this build configuration: {why}"));
+        }
+    }
+}
+
+impl<'a> SupportedConfig<'a, Infallible> {
+    fn expect_run<S>(self) -> SupportedConfig<'a, S> {
+        let extra = match self.extra {
+            MakeOrEnsure::Run(run) => MakeOrEnsure::Run(run),
+            MakeOrEnsure::Step(&_) => unreachable!(),
+        };
+        SupportedConfig { builder: self.builder, extra }
+    }
+}
+
 impl StepDescription {
     pub(crate) fn from<S: Step>(kind: Kind) -> StepDescription {
         StepDescription {
             is_host: S::IS_HOST,
             should_run: S::should_run,
             is_default_step_fn: S::is_default_step,
+            is_supported: |config| {
+                S::is_supported(config.expect_run()).map_err(|e| e.discard_output())
+            },
             make_run: S::make_run,
-            name: std::any::type_name::<S>(),
+            name: pretty_step_name::<S>(),
             kind,
         }
     }
 
-    fn maybe_run(&self, builder: &Builder<'_>, mut pathsets: Vec<StepSelectors>) {
+    fn maybe_run(&self, builder: &Builder<'_>, mut pathsets: Vec<StepSelectors>, explicit: bool) {
         pathsets.retain(|set| !self.is_excluded(builder, set));
 
         if pathsets.is_empty() {
@@ -471,7 +521,10 @@ impl StepDescription {
 
         for target in targets {
             let run = RunConfig { builder, paths: pathsets.clone(), target: *target };
-            (self.make_run)(run);
+            let config = SupportedConfig { builder: run.builder, extra: MakeOrEnsure::Run(&run) };
+            if check_step_supported(config, explicit, &self.name, self.is_supported).is_continue() {
+                (self.make_run)(run);
+            }
         }
     }
 
@@ -635,6 +688,34 @@ impl<'a> ShouldRun<'a> {
             }
         }
         sets
+    }
+}
+
+pub enum Unsupported<Output = ()> {
+    Skip(String, Output),
+    Warn(String),
+    Fatal(String),
+}
+
+impl<O: Default> Unsupported<O> {
+    pub fn skip(msg: impl Into<String>) -> Result<(), Self> {
+        Err(Self::Skip(msg.into(), O::default()))
+    }
+}
+impl<O> Unsupported<O> {
+    pub fn warn(msg: impl Into<String>) -> Result<(), Self> {
+        Err(Self::Warn(msg.into()))
+    }
+
+    fn discard_output(self) -> Unsupported<()> {
+        match self {
+            Self::Skip(why, _) => Unsupported::Skip(why, ()),
+            Self::Warn(why) => Unsupported::Warn(why),
+            Self::Fatal(why) => Unsupported::Fatal(why),
+        }
+    }
+    pub fn fatal(msg: impl Into<String>) -> Result<(), Self> {
+        Err(Self::Fatal(msg.into()))
     }
 }
 

@@ -1,5 +1,6 @@
 use std::any::{Any, type_name};
 use std::cell::{Cell, RefCell};
+use std::convert::Infallible;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Deref;
@@ -9,7 +10,7 @@ use std::time::{Duration, Instant};
 use std::{env, fs};
 
 use clap::ValueEnum;
-pub use selectors::{Alias, ShouldRun, StepSelectors, crate_description};
+pub use selectors::{Alias, ShouldRun, StepSelectors, Unsupported, check_step_supported, crate_description};
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
@@ -78,9 +79,22 @@ struct StepDescription {
     is_host: bool,
     should_run: fn(ShouldRun<'_>) -> ShouldRun<'_>,
     is_default_step_fn: fn(&Builder<'_>) -> bool,
+    is_supported: fn(SupportedConfig<'_, Infallible>) -> Result<(), Unsupported<()>>,
     make_run: fn(RunConfig<'_>),
-    name: &'static str,
+    name: String,
     kind: Kind,
+}
+
+pub struct SupportedConfig<'a, S> {
+    pub builder: &'a Builder<'a>,
+    pub extra: MakeOrEnsure<'a, S>,
+}
+
+pub enum MakeOrEnsure<'a, S> {
+    /// Passed to `is_supported` in `ensure()`, when we have the full Step available.
+    Step(&'a S),
+    /// Passed to `is_supported` in `make_run`, when we only have a `RunConfig` available.
+    Run(&'a RunConfig<'a>),
 }
 
 impl Deref for Builder<'_> {
@@ -137,6 +151,10 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// consider memoizing its outcome via a field in the builder.
     fn is_default_step(_builder: &Builder<'_>) -> bool {
         false
+    }
+
+    fn is_supported(_config: SupportedConfig<'_, Self>) -> Result<(), Unsupported<Self::Output>> {
+        Ok(())
     }
 
     /// Primary function to implement `Step` logic.
@@ -1184,7 +1202,17 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
                 span.entered()
             };
 
-            let out = step.clone().run(self);
+            let config = SupportedConfig { builder: self, extra: MakeOrEnsure::Step(&step) };
+            let unsupported =
+                check_step_supported(config, true, &pretty_step_name::<S>(), S::is_supported);
+            let out = if let Some(skip) = unsupported.break_value() {
+                // Steps can request to be skipped from `make_run` by passing us a dummy
+                // Output.
+                skip.unwrap()
+            } else {
+                step.clone().run(self)
+            };
+
             let dur = start.elapsed();
             let deps = self.time_spent_on_dependencies.replace(parent + dur);
             (out, dur.saturating_sub(deps))
