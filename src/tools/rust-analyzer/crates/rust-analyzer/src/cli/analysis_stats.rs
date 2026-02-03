@@ -91,6 +91,7 @@ impl flags::AnalysisStats {
                 }
             },
             prefill_caches: false,
+            proc_macro_processes: 1,
         };
 
         let build_scripts_time = if self.disable_build_scripts {

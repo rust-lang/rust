@@ -207,7 +207,7 @@ impl LineIndex {
     }
 }
 
-/// This is adapted from the rustc_span crate, https://github.com/rust-lang/rust/blob/de59844c98f7925242a798a72c59dc3610dd0e2c/compiler/rustc_span/src/analyze_source_file.rs
+/// This is adapted from the rustc_span crate, <https://github.com/rust-lang/rust/blob/de59844c98f7925242a798a72c59dc3610dd0e2c/compiler/rustc_span/src/analyze_source_file.rs>
 fn analyze_source_file(src: &str) -> (Vec<TextSize>, IntMap<u32, Box<[WideChar]>>) {
     assert!(src.len() < !0u32 as usize);
     let mut lines = vec![];

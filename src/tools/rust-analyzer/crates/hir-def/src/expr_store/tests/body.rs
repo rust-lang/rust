@@ -659,3 +659,21 @@ fn main() {
         }"#]]
     .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
 }
+
+#[test]
+fn async_fn_weird_param_patterns() {
+    let (db, body, def) = lower(
+        r#"
+async fn main(&self, param1: i32, ref mut param2: i32, _: i32, param4 @ _: i32, 123: i32) {}
+"#,
+    );
+
+    expect![[r#"
+        fn main(self, param1, mut param2, mut <ra@gennew>0, param4 @ _, mut <ra@gennew>1) async {
+            let ref mut param2 = param2;
+            let _ = <ra@gennew>0;
+            let 123 = <ra@gennew>1;
+            {}
+        }"#]]
+    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+}

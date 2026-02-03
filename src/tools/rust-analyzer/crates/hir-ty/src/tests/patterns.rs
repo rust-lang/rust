@@ -13,11 +13,11 @@ fn infer_pattern() {
             let a = z;
             let (c, d) = (1, "hello");
 
-            for (e, f) in some_iter {
+            for (e, f) in [(0, 1)] {
                 let g = e;
             }
 
-            if let [val] = opt {
+            if let [val] = [y] {
                 let h = val;
             }
 
@@ -33,7 +33,7 @@ fn infer_pattern() {
         "#,
         expect![[r#"
             8..9 'x': &'? i32
-            17..400 '{     ...o_x; }': ()
+            17..399 '{     ...o_x; }': ()
             27..28 'y': &'? i32
             31..32 'x': &'? i32
             42..44 '&z': &'? i32
@@ -47,58 +47,62 @@ fn infer_pattern() {
             82..94 '(1, "hello")': (i32, &'? str)
             83..84 '1': i32
             86..93 '"hello"': &'static str
-            101..151 'for (e...     }': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
-            101..151 'for (e...     }': <{unknown} as IntoIterator>::IntoIter
-            101..151 'for (e...     }': !
-            101..151 'for (e...     }': {unknown}
-            101..151 'for (e...     }': &'? mut {unknown}
-            101..151 'for (e...     }': fn next<{unknown}>(&'? mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
-            101..151 'for (e...     }': Option<<{unknown} as Iterator>::Item>
-            101..151 'for (e...     }': ()
-            101..151 'for (e...     }': ()
-            101..151 'for (e...     }': ()
-            101..151 'for (e...     }': ()
-            105..111 '(e, f)': ({unknown}, {unknown})
-            106..107 'e': {unknown}
-            109..110 'f': {unknown}
-            115..124 'some_iter': {unknown}
-            125..151 '{     ...     }': ()
-            139..140 'g': {unknown}
-            143..144 'e': {unknown}
-            157..204 'if let...     }': ()
-            160..175 'let [val] = opt': bool
-            164..169 '[val]': [{unknown}]
-            165..168 'val': {unknown}
-            172..175 'opt': [{unknown}]
-            176..204 '{     ...     }': ()
-            190..191 'h': {unknown}
-            194..197 'val': {unknown}
-            210..236 'if let...rue {}': ()
-            213..233 'let x ... &true': bool
-            217..225 'x @ true': &'? bool
-            221..225 'true': bool
-            221..225 'true': bool
-            228..233 '&true': &'? bool
-            229..233 'true': bool
-            234..236 '{}': ()
-            246..252 'lambda': impl Fn(u64, u64, i32) -> i32
-            255..287 '|a: u6...b; c }': impl Fn(u64, u64, i32) -> i32
-            256..257 'a': u64
-            264..265 'b': u64
-            267..268 'c': i32
-            275..287 '{ a + b; c }': i32
-            277..278 'a': u64
-            277..282 'a + b': u64
-            281..282 'b': u64
-            284..285 'c': i32
-            298..310 'ref ref_to_x': &'? &'? i32
-            313..314 'x': &'? i32
-            324..333 'mut mut_x': &'? i32
-            336..337 'x': &'? i32
-            347..367 'ref mu...f_to_x': &'? mut &'? i32
-            370..371 'x': &'? i32
-            381..382 'k': &'? mut &'? i32
-            385..397 'mut_ref_to_x': &'? mut &'? i32
+            101..150 'for (e...     }': fn into_iter<[(i32, i32); 1]>([(i32, i32); 1]) -> <[(i32, i32); 1] as IntoIterator>::IntoIter
+            101..150 'for (e...     }': IntoIter<(i32, i32), 1>
+            101..150 'for (e...     }': !
+            101..150 'for (e...     }': IntoIter<(i32, i32), 1>
+            101..150 'for (e...     }': &'? mut IntoIter<(i32, i32), 1>
+            101..150 'for (e...     }': fn next<IntoIter<(i32, i32), 1>>(&'? mut IntoIter<(i32, i32), 1>) -> Option<<IntoIter<(i32, i32), 1> as Iterator>::Item>
+            101..150 'for (e...     }': Option<(i32, i32)>
+            101..150 'for (e...     }': ()
+            101..150 'for (e...     }': ()
+            101..150 'for (e...     }': ()
+            101..150 'for (e...     }': ()
+            105..111 '(e, f)': (i32, i32)
+            106..107 'e': i32
+            109..110 'f': i32
+            115..123 '[(0, 1)]': [(i32, i32); 1]
+            116..122 '(0, 1)': (i32, i32)
+            117..118 '0': i32
+            120..121 '1': i32
+            124..150 '{     ...     }': ()
+            138..139 'g': i32
+            142..143 'e': i32
+            156..203 'if let...     }': ()
+            159..174 'let [val] = [y]': bool
+            163..168 '[val]': [&'? i32; 1]
+            164..167 'val': &'? i32
+            171..174 '[y]': [&'? i32; 1]
+            172..173 'y': &'? i32
+            175..203 '{     ...     }': ()
+            189..190 'h': &'? i32
+            193..196 'val': &'? i32
+            209..235 'if let...rue {}': ()
+            212..232 'let x ... &true': bool
+            216..224 'x @ true': &'? bool
+            220..224 'true': bool
+            220..224 'true': bool
+            227..232 '&true': &'? bool
+            228..232 'true': bool
+            233..235 '{}': ()
+            245..251 'lambda': impl Fn(u64, u64, i32) -> i32
+            254..286 '|a: u6...b; c }': impl Fn(u64, u64, i32) -> i32
+            255..256 'a': u64
+            263..264 'b': u64
+            266..267 'c': i32
+            274..286 '{ a + b; c }': i32
+            276..277 'a': u64
+            276..281 'a + b': u64
+            280..281 'b': u64
+            283..284 'c': i32
+            297..309 'ref ref_to_x': &'? &'? i32
+            312..313 'x': &'? i32
+            323..332 'mut mut_x': &'? i32
+            335..336 'x': &'? i32
+            346..366 'ref mu...f_to_x': &'? mut &'? i32
+            369..370 'x': &'? i32
+            380..381 'k': &'? mut &'? i32
+            384..396 'mut_ref_to_x': &'? mut &'? i32
         "#]],
     );
 }
@@ -380,7 +384,7 @@ fn infer_pattern_match_string_literal() {
 fn infer_pattern_match_byte_string_literal() {
     check_infer_with_mismatches(
         r#"
-        //- minicore: index
+        //- minicore: index, range
         struct S;
         impl<T, const N: usize> core::ops::Index<S> for [T; N] {
             type Output = [u8];
@@ -395,7 +399,7 @@ fn infer_pattern_match_byte_string_literal() {
         "#,
         expect![[r#"
             105..109 'self': &'? [T; N]
-            111..116 'index': {unknown}
+            111..116 'index': RangeFull
             157..180 '{     ...     }': &'? [u8]
             167..174 'loop {}': !
             172..174 '{}': ()

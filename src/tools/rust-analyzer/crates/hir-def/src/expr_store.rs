@@ -32,7 +32,7 @@ use crate::{
     expr_store::path::Path,
     hir::{
         Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, Label, LabelId, Pat,
-        PatId, RecordFieldPat, Statement,
+        PatId, RecordFieldPat, RecordSpread, Statement,
     },
     nameres::{DefMap, block_def_map},
     type_ref::{LifetimeRef, LifetimeRefId, PathId, TypeRef, TypeRefId},
@@ -474,8 +474,8 @@ impl ExpressionStore {
         match expr_only.binding_owners.get(&binding) {
             Some(it) => {
                 // We assign expression ids in a way that outer closures will receive
-                // a lower id
-                it.into_raw() < relative_to.into_raw()
+                // a higher id (allocated after their body is collected)
+                it.into_raw() > relative_to.into_raw()
             }
             None => true,
         }
@@ -575,8 +575,8 @@ impl ExpressionStore {
                 for field in fields.iter() {
                     f(field.expr);
                 }
-                if let &Some(expr) = spread {
-                    f(expr);
+                if let RecordSpread::Expr(expr) = spread {
+                    f(*expr);
                 }
             }
             Expr::Closure { body, .. } => {
@@ -706,8 +706,8 @@ impl ExpressionStore {
                 for field in fields.iter() {
                     f(field.expr);
                 }
-                if let &Some(expr) = spread {
-                    f(expr);
+                if let RecordSpread::Expr(expr) = spread {
+                    f(*expr);
                 }
             }
             Expr::Closure { body, .. } => {

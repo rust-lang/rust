@@ -87,10 +87,10 @@
 
 use either::Either;
 use hir_def::{
-    AdtId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
-    ExternCrateId, FieldId, FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId,
-    Lookup, MacroId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
-    UseId, VariantId,
+    AdtId, BlockId, BuiltinDeriveImplId, ConstId, ConstParamId, DefWithBodyId, EnumId,
+    EnumVariantId, ExternBlockId, ExternCrateId, FieldId, FunctionId, GenericDefId, GenericParamId,
+    ImplId, LifetimeParamId, Lookup, MacroId, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
+    TypeParamId, UnionId, UseId, VariantId,
     dyn_map::{
         DynMap,
         keys::{self, Key},
@@ -394,7 +394,7 @@ impl SourceToDefCtx<'_, '_> {
         &mut self,
         item: InFile<&ast::Adt>,
         src: InFile<ast::Attr>,
-    ) -> Option<(AttrId, MacroCallId, &[Option<MacroCallId>])> {
+    ) -> Option<(AttrId, MacroCallId, &[Option<Either<MacroCallId, BuiltinDeriveImplId>>])> {
         let map = self.dyn_map(item)?;
         map[keys::DERIVE_MACRO_CALL]
             .get(&AstPtr::new(&src.value))
@@ -409,8 +409,11 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn derive_macro_calls<'slf>(
         &'slf mut self,
         adt: InFile<&ast::Adt>,
-    ) -> Option<impl Iterator<Item = (AttrId, MacroCallId, &'slf [Option<MacroCallId>])> + use<'slf>>
-    {
+    ) -> Option<
+        impl Iterator<
+            Item = (AttrId, MacroCallId, &'slf [Option<Either<MacroCallId, BuiltinDeriveImplId>>]),
+        > + use<'slf>,
+    > {
         self.dyn_map(adt).as_ref().map(|&map| {
             let dyn_map = &map[keys::DERIVE_MACRO_CALL];
             adt.value

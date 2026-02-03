@@ -1,6 +1,6 @@
 //! "Recursive" Syntax highlighting for code in doctests and fixtures.
 
-use hir::{EditionedFileId, HirFileId, InFile, Semantics};
+use hir::{EditionedFileId, HirFileId, InFile, Semantics, db::HirDatabase};
 use ide_db::{
     SymbolKind, defs::Definition, documentation::Documentation, range_mapper::RangeMapper,
     rust_doc::is_rust_fence,
@@ -109,7 +109,7 @@ pub(super) fn doc_comment(
         .for_each(|(range, def)| {
             hl.add(HlRange {
                 range,
-                highlight: module_def_to_hl_tag(def)
+                highlight: module_def_to_hl_tag(sema.db, def)
                     | HlMod::Documentation
                     | HlMod::Injected
                     | HlMod::IntraDocLink,
@@ -200,11 +200,11 @@ pub(super) fn doc_comment(
     }
 }
 
-fn module_def_to_hl_tag(def: Definition) -> HlTag {
+fn module_def_to_hl_tag(db: &dyn HirDatabase, def: Definition) -> HlTag {
     let symbol = match def {
-        Definition::Module(_) | Definition::Crate(_) | Definition::ExternCrateDecl(_) => {
-            SymbolKind::Module
-        }
+        Definition::Crate(_) | Definition::ExternCrateDecl(_) => SymbolKind::CrateRoot,
+        Definition::Module(m) if m.is_crate_root(db) => SymbolKind::CrateRoot,
+        Definition::Module(_) => SymbolKind::Module,
         Definition::Function(_) => SymbolKind::Function,
         Definition::Adt(hir::Adt::Struct(_)) => SymbolKind::Struct,
         Definition::Adt(hir::Adt::Enum(_)) => SymbolKind::Enum,

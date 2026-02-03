@@ -31,6 +31,7 @@ libc.workspace = true
 
 [dev-dependencies]
 expect-test.workspace = true
+line-index.workspace = true
 
 # used as proc macro test targets
 proc-macro-test.path = "./proc-macro-test"

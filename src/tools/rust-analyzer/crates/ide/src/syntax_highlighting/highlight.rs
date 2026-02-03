@@ -399,7 +399,7 @@ fn highlight_name_ref(
             highlight_def(sema, krate, field_ref.into(), edition, true)
         }
         NameRefClass::ExternCrateShorthand { decl, krate: resolved_krate } => {
-            let mut h = HlTag::Symbol(SymbolKind::Module).into();
+            let mut h = HlTag::Symbol(SymbolKind::CrateRoot).into();
 
             if krate.as_ref().is_some_and(|krate| resolved_krate != *krate) {
                 h |= HlMod::Library;
@@ -417,7 +417,6 @@ fn highlight_name_ref(
             if is_deprecated {
                 h |= HlMod::Deprecated;
             }
-            h |= HlMod::CrateRoot;
             h
         }
     };
@@ -495,16 +494,15 @@ pub(super) fn highlight_def(
             (Highlight::new(HlTag::Symbol(SymbolKind::Field)), Some(field.attrs(sema.db)))
         }
         Definition::TupleField(_) => (Highlight::new(HlTag::Symbol(SymbolKind::Field)), None),
-        Definition::Crate(krate) => (
-            Highlight::new(HlTag::Symbol(SymbolKind::Module)) | HlMod::CrateRoot,
-            Some(krate.attrs(sema.db)),
-        ),
+        Definition::Crate(krate) => {
+            (Highlight::new(HlTag::Symbol(SymbolKind::CrateRoot)), Some(krate.attrs(sema.db)))
+        }
         Definition::Module(module) => {
-            let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
-            if module.is_crate_root(db) {
-                h |= HlMod::CrateRoot;
-            }
-
+            let h = Highlight::new(HlTag::Symbol(if module.is_crate_root(db) {
+                SymbolKind::CrateRoot
+            } else {
+                SymbolKind::Module
+            }));
             (h, Some(module.attrs(sema.db)))
         }
         Definition::Function(func) => {
@@ -662,8 +660,7 @@ pub(super) fn highlight_def(
             (h, None)
         }
         Definition::ExternCrateDecl(extern_crate) => {
-            let mut highlight =
-                Highlight::new(HlTag::Symbol(SymbolKind::Module)) | HlMod::CrateRoot;
+            let mut highlight = Highlight::new(HlTag::Symbol(SymbolKind::CrateRoot));
             if extern_crate.alias(db).is_none() {
                 highlight |= HlMod::Library;
             }
@@ -805,6 +802,7 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
         TYPE_PARAM => SymbolKind::TypeParam,
         RECORD_FIELD => SymbolKind::Field,
         MODULE => SymbolKind::Module,
+        EXTERN_CRATE => SymbolKind::CrateRoot,
         FN => SymbolKind::Function,
         CONST => SymbolKind::Const,
         STATIC => SymbolKind::Static,
@@ -835,7 +833,7 @@ fn highlight_name_ref_by_syntax(
     };
 
     match parent.kind() {
-        EXTERN_CRATE => HlTag::Symbol(SymbolKind::Module) | HlMod::CrateRoot,
+        EXTERN_CRATE => HlTag::Symbol(SymbolKind::CrateRoot).into(),
         METHOD_CALL_EXPR => ast::MethodCallExpr::cast(parent)
             .and_then(|it| highlight_method_call(sema, krate, &it, is_unsafe_node))
             .unwrap_or_else(|| SymbolKind::Method.into()),

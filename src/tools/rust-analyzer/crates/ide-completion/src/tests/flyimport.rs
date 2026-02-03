@@ -1976,3 +1976,51 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn trait_method_import_across_multiple_crates() {
+    let fixture = r#"
+        //- /lib.rs crate:test-trait
+        pub trait TestTrait {
+            fn test_function(&self) -> u32;
+        }
+
+        //- /lib.rs crate:test-implementation deps:test-trait
+        pub struct TestStruct(pub usize);
+
+        impl test_trait::TestTrait for TestStruct {
+            fn test_function(&self) -> u32 {
+                1
+            }
+        }
+
+        //- /main.rs crate:main deps:test-implementation,test-trait
+        use test_implementation::TestStruct;
+
+        fn main() {
+            let test = TestStruct(42);
+            test.test_f$0
+        }
+    "#;
+
+    check(
+        fixture,
+        expect![[r#"
+            me test_function() (use test_trait::TestTrait) fn(&self) -> u32
+        "#]],
+    );
+
+    check_edit(
+        "test_function",
+        fixture,
+        r#"
+use test_implementation::TestStruct;
+use test_trait::TestTrait;
+
+fn main() {
+    let test = TestStruct(42);
+    test.test_function()$0
+}
+"#,
+    );
+}

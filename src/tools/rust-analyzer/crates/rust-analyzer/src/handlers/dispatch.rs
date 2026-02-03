@@ -101,7 +101,7 @@ impl RequestDispatcher<'_> {
     }
 
     /// Dispatches a non-latency-sensitive request onto the thread pool. When the VFS is marked not
-    /// ready this will return a default constructed [`R::Result`].
+    /// ready this will return a default constructed `R::Result`.
     pub(crate) fn on<const ALLOW_RETRYING: bool, R>(
         &mut self,
         f: fn(GlobalStateSnapshot, R::Params) -> anyhow::Result<R::Result>,
@@ -128,7 +128,7 @@ impl RequestDispatcher<'_> {
     }
 
     /// Dispatches a non-latency-sensitive request onto the thread pool. When the VFS is marked not
-    /// ready this will return a `default` constructed [`R::Result`].
+    /// ready this will return a `default` constructed `R::Result`.
     pub(crate) fn on_with_vfs_default<R>(
         &mut self,
         f: fn(GlobalStateSnapshot, R::Params) -> anyhow::Result<R::Result>,
@@ -176,7 +176,7 @@ impl RequestDispatcher<'_> {
     }
 
     /// Dispatches a latency-sensitive request onto the thread pool. When the VFS is marked not
-    /// ready this will return a default constructed [`R::Result`].
+    /// ready this will return a default constructed `R::Result`.
     pub(crate) fn on_latency_sensitive<const ALLOW_RETRYING: bool, R>(
         &mut self,
         f: fn(GlobalStateSnapshot, R::Params) -> anyhow::Result<R::Result>,

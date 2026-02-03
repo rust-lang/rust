@@ -41,7 +41,8 @@ use crate::{
         AdtIdWrapper, AnyImplId, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
         CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, GeneralConstIdWrapper, OpaqueTypeKey,
         RegionAssumptions, SimplifiedType, SolverContext, SolverDefIds, TraitIdWrapper,
-        TypeAliasIdWrapper, UnevaluatedConst, util::explicit_item_bounds,
+        TypeAliasIdWrapper, UnevaluatedConst,
+        util::{explicit_item_bounds, explicit_item_self_bounds},
     },
 };
 
@@ -1421,7 +1422,7 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        explicit_item_bounds(self, def_id)
+        explicit_item_self_bounds(self, def_id)
             .map_bound(|bounds| elaborate(self, bounds).filter_only_self())
     }
 
@@ -1500,7 +1501,7 @@ impl<'db> Interner for DbInterner<'db> {
             }
         }
 
-        predicates_of(self.db, def_id).explicit_predicates().map_bound(|predicates| {
+        predicates_of(self.db, def_id).explicit_implied_predicates().map_bound(|predicates| {
             predicates
                 .iter()
                 .copied()

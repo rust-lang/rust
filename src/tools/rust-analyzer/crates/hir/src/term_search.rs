@@ -172,7 +172,7 @@ impl<'db> LookupTable<'db> {
     /// Insert new type trees for type
     ///
     /// Note that the types have to be the same, unification is not enough as unification is not
-    /// transitive. For example Vec<i32> and FxHashSet<i32> both unify with Iterator<Item = i32>,
+    /// transitive. For example `Vec<i32>` and `FxHashSet<i32>` both unify with `Iterator<Item = i32>`,
     /// but they clearly do not unify themselves.
     fn insert(&mut self, ty: Type<'db>, exprs: impl Iterator<Item = Expr<'db>>) {
         match self.data.get_mut(&ty) {

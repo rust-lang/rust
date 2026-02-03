@@ -101,7 +101,9 @@ impl DeclarativeMacroExpander {
                         match &*value {
                             "transparent" => ControlFlow::Break(Transparency::Transparent),
                             // "semitransparent" is for old rustc versions.
-                            "semiopaque" | "semitransparent" => ControlFlow::Break(Transparency::SemiOpaque),
+                            "semiopaque" | "semitransparent" => {
+                                ControlFlow::Break(Transparency::SemiOpaque)
+                            }
                             "opaque" => ControlFlow::Break(Transparency::Opaque),
                             _ => ControlFlow::Continue(()),
                         }

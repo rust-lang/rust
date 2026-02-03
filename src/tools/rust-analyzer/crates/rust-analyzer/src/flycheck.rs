@@ -14,6 +14,7 @@ use ide_db::FxHashSet;
 use itertools::Itertools;
 use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
 use project_model::TargetDirectoryConfig;
+use project_model::project_json;
 use rustc_hash::FxHashMap;
 use serde::Deserialize as _;
 use serde_derive::Deserialize;
@@ -21,6 +22,7 @@ use serde_derive::Deserialize;
 pub(crate) use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
 };
+use toolchain::DISPLAY_COMMAND_IGNORE_ENVS;
 use toolchain::Tool;
 use triomphe::Arc;
 
@@ -36,8 +38,11 @@ pub(crate) enum InvocationStrategy {
     PerWorkspace,
 }
 
+/// Data needed to construct a `cargo` command invocation, e.g. for flycheck or running a test.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct CargoOptions {
+    /// The cargo subcommand to run, e.g. "check" or "clippy"
+    pub(crate) subcommand: String,
     pub(crate) target_tuples: Vec<String>,
     pub(crate) all_targets: bool,
     pub(crate) set_test: bool,
@@ -89,13 +94,36 @@ impl CargoOptions {
     }
 }
 
+/// The flycheck config from a rust-project.json file or discoverConfig JSON output.
+#[derive(Debug, Default)]
+pub(crate) struct FlycheckConfigJson {
+    /// The template with [project_json::RunnableKind::Flycheck]
+    pub single_template: Option<project_json::Runnable>,
+}
+
+impl FlycheckConfigJson {
+    pub(crate) fn any_configured(&self) -> bool {
+        // self.workspace_template.is_some() ||
+        self.single_template.is_some()
+    }
+}
+
+/// The flycheck config from rust-analyzer's own configuration.
+///
+/// We rely on this when rust-project.json does not specify a flycheck runnable
+///
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum FlycheckConfig {
-    CargoCommand {
-        command: String,
-        options: CargoOptions,
+    /// Automatically use rust-project.json's flycheck runnable or just use cargo (the common case)
+    ///
+    /// We can't have a variant for ProjectJson because that is configured on the fly during
+    /// discoverConfig. We only know what we can read at config time.
+    Automatic {
+        /// If we do use cargo, how to build the check command
+        cargo_options: CargoOptions,
         ansi_color_output: bool,
     },
+    /// check_overrideCommand. This overrides both cargo and rust-project.json's flycheck runnable.
     CustomCommand {
         command: String,
         args: Vec<String>,
@@ -107,7 +135,7 @@ pub(crate) enum FlycheckConfig {
 impl FlycheckConfig {
     pub(crate) fn invocation_strategy(&self) -> InvocationStrategy {
         match self {
-            FlycheckConfig::CargoCommand { .. } => InvocationStrategy::PerWorkspace,
+            FlycheckConfig::Automatic { .. } => InvocationStrategy::PerWorkspace,
             FlycheckConfig::CustomCommand { invocation_strategy, .. } => {
                 invocation_strategy.clone()
             }
@@ -118,7 +146,9 @@ impl FlycheckConfig {
 impl fmt::Display for FlycheckConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FlycheckConfig::CargoCommand { command, .. } => write!(f, "cargo {command}"),
+            FlycheckConfig::Automatic { cargo_options, .. } => {
+                write!(f, "cargo {}", cargo_options.subcommand)
+            }
             FlycheckConfig::CustomCommand { command, args, .. } => {
                 // Don't show `my_custom_check --foo $saved_file` literally to the user, as it
                 // looks like we've forgotten to substitute $saved_file.
@@ -128,7 +158,7 @@ impl fmt::Display for FlycheckConfig {
                 // in the IDE (e.g. in the VS Code status bar).
                 let display_args = args
                     .iter()
-                    .map(|arg| if arg == SAVED_FILE_PLACEHOLDER { "..." } else { arg })
+                    .map(|arg| if arg == SAVED_FILE_PLACEHOLDER_DOLLAR { "..." } else { arg })
                     .collect::<Vec<_>>();
 
                 write!(f, "{command} {}", display_args.join(" "))
@@ -156,6 +186,7 @@ impl FlycheckHandle {
         generation: Arc<AtomicUsize>,
         sender: Sender<FlycheckMessage>,
         config: FlycheckConfig,
+        config_json: FlycheckConfigJson,
         sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
         manifest_path: Option<AbsPathBuf>,
@@ -166,6 +197,7 @@ impl FlycheckHandle {
             generation.load(Ordering::Relaxed),
             sender,
             config,
+            config_json,
             sysroot_root,
             workspace_root,
             manifest_path,
@@ -195,16 +227,17 @@ impl FlycheckHandle {
     /// Schedule a re-start of the cargo check worker to do a package wide check.
     pub(crate) fn restart_for_package(
         &self,
-        package: Arc<PackageId>,
+        package: PackageSpecifier,
         target: Option<Target>,
-        workspace_deps: Option<FxHashSet<Arc<PackageId>>>,
+        workspace_deps: Option<FxHashSet<PackageSpecifier>>,
+        saved_file: Option<AbsPathBuf>,
     ) {
         let generation = self.generation.fetch_add(1, Ordering::Relaxed) + 1;
         self.sender
             .send(StateChange::Restart {
                 generation,
                 scope: FlycheckScope::Package { package, workspace_deps },
-                saved_file: None,
+                saved_file,
                 target,
             })
             .unwrap();
@@ -233,7 +266,7 @@ pub(crate) enum ClearDiagnosticsKind {
 #[derive(Debug)]
 pub(crate) enum ClearScope {
     Workspace,
-    Package(Arc<PackageId>),
+    Package(PackageSpecifier),
 }
 
 pub(crate) enum FlycheckMessage {
@@ -243,7 +276,7 @@ pub(crate) enum FlycheckMessage {
         generation: DiagnosticsGeneration,
         workspace_root: Arc<AbsPathBuf>,
         diagnostic: Diagnostic,
-        package_id: Option<Arc<PackageId>>,
+        package_id: Option<PackageSpecifier>,
     },
 
     /// Request clearing all outdated diagnostics.
@@ -286,16 +319,56 @@ impl fmt::Debug for FlycheckMessage {
 
 #[derive(Debug)]
 pub(crate) enum Progress {
-    DidStart,
+    DidStart {
+        /// The user sees this in VSCode, etc. May be a shortened version of the command we actually
+        /// executed, otherwise it is way too long.
+        user_facing_command: String,
+    },
     DidCheckCrate(String),
     DidFinish(io::Result<()>),
     DidCancel,
     DidFailToRestart(String),
 }
 
+#[derive(Debug, Clone)]
 enum FlycheckScope {
     Workspace,
-    Package { package: Arc<PackageId>, workspace_deps: Option<FxHashSet<Arc<PackageId>>> },
+    Package {
+        // Either a cargo package or a $label in rust-project.check.overrideCommand
+        package: PackageSpecifier,
+        workspace_deps: Option<FxHashSet<PackageSpecifier>>,
+    },
+}
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+pub(crate) enum PackageSpecifier {
+    Cargo {
+        /// The one in Cargo.toml, assumed to work with `cargo check -p {}` etc
+        package_id: Arc<PackageId>,
+    },
+    BuildInfo {
+        /// If a `build` field is present in rust-project.json, its label field
+        label: String,
+    },
+}
+
+impl PackageSpecifier {
+    pub(crate) fn as_str(&self) -> &str {
+        match self {
+            Self::Cargo { package_id } => &package_id.repr,
+            Self::BuildInfo { label } => label,
+        }
+    }
+}
+
+#[derive(Debug)]
+enum FlycheckCommandOrigin {
+    /// Regular cargo invocation
+    Cargo,
+    /// Configured via check_overrideCommand
+    CheckOverrideCommand,
+    /// From a runnable with [project_json::RunnableKind::Flycheck]
+    ProjectJsonRunnable,
 }
 
 enum StateChange {
@@ -316,6 +389,8 @@ struct FlycheckActor {
     generation: DiagnosticsGeneration,
     sender: Sender<FlycheckMessage>,
     config: FlycheckConfig,
+    config_json: FlycheckConfigJson,
+
     manifest_path: Option<AbsPathBuf>,
     ws_target_dir: Option<Utf8PathBuf>,
     /// Either the workspace root of the workspace we are flychecking,
@@ -331,7 +406,7 @@ struct FlycheckActor {
     command_handle: Option<CommandHandle<CargoCheckMessage>>,
     /// The receiver side of the channel mentioned above.
     command_receiver: Option<Receiver<CargoCheckMessage>>,
-    diagnostics_cleared_for: FxHashSet<Arc<PackageId>>,
+    diagnostics_cleared_for: FxHashSet<PackageSpecifier>,
     diagnostics_received: DiagnosticsReceived,
 }
 
@@ -348,7 +423,66 @@ enum Event {
     CheckEvent(Option<CargoCheckMessage>),
 }
 
-pub(crate) const SAVED_FILE_PLACEHOLDER: &str = "$saved_file";
+/// This is stable behaviour. Don't change.
+const SAVED_FILE_PLACEHOLDER_DOLLAR: &str = "$saved_file";
+const LABEL_INLINE: &str = "{label}";
+const SAVED_FILE_INLINE: &str = "{saved_file}";
+
+struct Substitutions<'a> {
+    label: Option<&'a str>,
+    saved_file: Option<&'a str>,
+}
+
+impl<'a> Substitutions<'a> {
+    /// If you have a runnable, and it has {label} in it somewhere, treat it as a template that
+    /// may be unsatisfied if you do not provide a label to substitute into it. Returns None in
+    /// that situation. Otherwise performs the requested substitutions.
+    ///
+    /// Same for {saved_file}.
+    ///
+    #[allow(clippy::disallowed_types)] /* generic parameter allows for FxHashMap */
+    fn substitute<H>(
+        self,
+        template: &project_json::Runnable,
+        extra_env: &std::collections::HashMap<String, Option<String>, H>,
+    ) -> Option<Command> {
+        let mut cmd = toolchain::command(&template.program, &template.cwd, extra_env);
+        for arg in &template.args {
+            if let Some(ix) = arg.find(LABEL_INLINE) {
+                if let Some(label) = self.label {
+                    let mut arg = arg.to_string();
+                    arg.replace_range(ix..ix + LABEL_INLINE.len(), label);
+                    cmd.arg(arg);
+                    continue;
+                } else {
+                    return None;
+                }
+            }
+            if let Some(ix) = arg.find(SAVED_FILE_INLINE) {
+                if let Some(saved_file) = self.saved_file {
+                    let mut arg = arg.to_string();
+                    arg.replace_range(ix..ix + SAVED_FILE_INLINE.len(), saved_file);
+                    cmd.arg(arg);
+                    continue;
+                } else {
+                    return None;
+                }
+            }
+            // Legacy syntax: full argument match
+            if arg == SAVED_FILE_PLACEHOLDER_DOLLAR {
+                if let Some(saved_file) = self.saved_file {
+                    cmd.arg(saved_file);
+                    continue;
+                } else {
+                    return None;
+                }
+            }
+            cmd.arg(arg);
+        }
+        cmd.current_dir(&template.cwd);
+        Some(cmd)
+    }
+}
 
 impl FlycheckActor {
     fn new(
@@ -356,6 +490,7 @@ impl FlycheckActor {
         generation: DiagnosticsGeneration,
         sender: Sender<FlycheckMessage>,
         config: FlycheckConfig,
+        config_json: FlycheckConfigJson,
         sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
         manifest_path: Option<AbsPathBuf>,
@@ -367,6 +502,7 @@ impl FlycheckActor {
             generation,
             sender,
             config,
+            config_json,
             sysroot_root,
             root: Arc::new(workspace_root),
             scope: FlycheckScope::Workspace,
@@ -418,27 +554,39 @@ impl FlycheckActor {
                     }
 
                     let command = self.check_command(&scope, saved_file.as_deref(), target);
-                    self.scope = scope;
+                    self.scope = scope.clone();
                     self.generation = generation;
 
-                    let Some(command) = command else {
+                    let Some((command, origin)) = command else {
+                        tracing::debug!(?scope, "failed to build flycheck command");
                         continue;
                     };
 
-                    let formatted_command = format!("{command:?}");
+                    let debug_command = format!("{command:?}");
+                    let user_facing_command = match origin {
+                        // Don't show all the --format=json-with-blah-blah args, just the simple
+                        // version
+                        FlycheckCommandOrigin::Cargo => self.config.to_string(),
+                        // show them the full command but pretty printed. advanced user
+                        FlycheckCommandOrigin::ProjectJsonRunnable
+                        | FlycheckCommandOrigin::CheckOverrideCommand => display_command(
+                            &command,
+                            Some(std::path::Path::new(self.root.as_path())),
+                        ),
+                    };
 
-                    tracing::debug!(?command, "will restart flycheck");
+                    tracing::debug!(?origin, ?command, "will restart flycheck");
                     let (sender, receiver) = unbounded();
                     match CommandHandle::spawn(
                         command,
                         CargoCheckParser,
                         sender,
                         match &self.config {
-                            FlycheckConfig::CargoCommand { options, .. } => {
+                            FlycheckConfig::Automatic { cargo_options, .. } => {
                                 let ws_target_dir =
                                     self.ws_target_dir.as_ref().map(Utf8PathBuf::as_path);
                                 let target_dir =
-                                    options.target_dir_config.target_dir(ws_target_dir);
+                                    cargo_options.target_dir_config.target_dir(ws_target_dir);
 
                                 // If `"rust-analyzer.cargo.targetDir": null`, we should use
                                 // workspace's target dir instead of hard-coded fallback.
@@ -464,14 +612,14 @@ impl FlycheckActor {
                         },
                     ) {
                         Ok(command_handle) => {
-                            tracing::debug!(command = formatted_command, "did restart flycheck");
+                            tracing::debug!(?origin, command = %debug_command, "did restart flycheck");
                             self.command_handle = Some(command_handle);
                             self.command_receiver = Some(receiver);
-                            self.report_progress(Progress::DidStart);
+                            self.report_progress(Progress::DidStart { user_facing_command });
                         }
                         Err(error) => {
                             self.report_progress(Progress::DidFailToRestart(format!(
-                                "Failed to run the following command: {formatted_command} error={error}"
+                                "Failed to run the following command: {debug_command} origin={origin:?} error={error}"
                             )));
                         }
                     }
@@ -564,7 +712,10 @@ impl FlycheckActor {
                             msg.target.kind.iter().format_with(", ", |kind, f| f(&kind)),
                         )));
                         let package_id = Arc::new(msg.package_id);
-                        if self.diagnostics_cleared_for.insert(package_id.clone()) {
+                        if self
+                            .diagnostics_cleared_for
+                            .insert(PackageSpecifier::Cargo { package_id: package_id.clone() })
+                        {
                             tracing::trace!(
                                 flycheck_id = self.id,
                                 package_id = package_id.repr,
@@ -572,7 +723,9 @@ impl FlycheckActor {
                             );
                             self.send(FlycheckMessage::ClearDiagnostics {
                                 id: self.id,
-                                kind: ClearDiagnosticsKind::All(ClearScope::Package(package_id)),
+                                kind: ClearDiagnosticsKind::All(ClearScope::Package(
+                                    PackageSpecifier::Cargo { package_id },
+                                )),
                             });
                         }
                     }
@@ -580,7 +733,7 @@ impl FlycheckActor {
                         tracing::trace!(
                             flycheck_id = self.id,
                             message = diagnostic.message,
-                            package_id = package_id.as_ref().map(|it| &it.repr),
+                            package_id = package_id.as_ref().map(|it| it.as_str()),
                             "diagnostic received"
                         );
                         if self.diagnostics_received == DiagnosticsReceived::No {
@@ -590,7 +743,7 @@ impl FlycheckActor {
                             if self.diagnostics_cleared_for.insert(package_id.clone()) {
                                 tracing::trace!(
                                     flycheck_id = self.id,
-                                    package_id = package_id.repr,
+                                    package_id = package_id.as_str(),
                                     "clearing diagnostics"
                                 );
                                 self.send(FlycheckMessage::ClearDiagnostics {
@@ -642,6 +795,29 @@ impl FlycheckActor {
         self.diagnostics_received = DiagnosticsReceived::No;
     }
 
+    fn explicit_check_command(
+        &self,
+        scope: &FlycheckScope,
+        saved_file: Option<&AbsPath>,
+    ) -> Option<Command> {
+        let label = match scope {
+            // We could add a runnable like "RunnableKind::FlycheckWorkspace". But generally
+            // if you're not running cargo, it's because your workspace is too big to check
+            // all at once. You can always use `check_overrideCommand` with no {label}.
+            FlycheckScope::Workspace => return None,
+            FlycheckScope::Package { package: PackageSpecifier::BuildInfo { label }, .. } => {
+                label.as_str()
+            }
+            FlycheckScope::Package {
+                package: PackageSpecifier::Cargo { package_id: label },
+                ..
+            } => &label.repr,
+        };
+        let template = self.config_json.single_template.as_ref()?;
+        let subs = Substitutions { label: Some(label), saved_file: saved_file.map(|x| x.as_str()) };
+        subs.substitute(template, &FxHashMap::default())
+    }
+
     /// Construct a `Command` object for checking the user's code. If the user
     /// has specified a custom command with placeholders that we cannot fill,
     /// return None.
@@ -650,23 +826,49 @@ impl FlycheckActor {
         scope: &FlycheckScope,
         saved_file: Option<&AbsPath>,
         target: Option<Target>,
-    ) -> Option<Command> {
+    ) -> Option<(Command, FlycheckCommandOrigin)> {
         match &self.config {
-            FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
+            FlycheckConfig::Automatic { cargo_options, ansi_color_output } => {
+                // Only use the rust-project.json's flycheck config when no check_overrideCommand
+                // is configured. In the FlycheckConcig::CustomCommand branch we will still do
+                // label substitution, but on the overrideCommand instead.
+                //
+                // There needs to be SOME way to override what your discoverConfig tool says,
+                // because to change the flycheck runnable there you may have to literally
+                // recompile the tool.
+                if self.config_json.any_configured() {
+                    // Completely handle according to rust-project.json.
+                    // We don't consider this to be "using cargo" so we will not apply any of the
+                    // CargoOptions to the command.
+                    let cmd = self.explicit_check_command(scope, saved_file)?;
+                    return Some((cmd, FlycheckCommandOrigin::ProjectJsonRunnable));
+                }
+
                 let mut cmd =
-                    toolchain::command(Tool::Cargo.path(), &*self.root, &options.extra_env);
+                    toolchain::command(Tool::Cargo.path(), &*self.root, &cargo_options.extra_env);
                 if let Some(sysroot_root) = &self.sysroot_root
-                    && !options.extra_env.contains_key("RUSTUP_TOOLCHAIN")
+                    && !cargo_options.extra_env.contains_key("RUSTUP_TOOLCHAIN")
                     && std::env::var_os("RUSTUP_TOOLCHAIN").is_none()
                 {
                     cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
                 }
                 cmd.env("CARGO_LOG", "cargo::core::compiler::fingerprint=info");
-                cmd.arg(command);
+                cmd.arg(&cargo_options.subcommand);
 
                 match scope {
                     FlycheckScope::Workspace => cmd.arg("--workspace"),
-                    FlycheckScope::Package { package, .. } => cmd.arg("-p").arg(&package.repr),
+                    FlycheckScope::Package {
+                        package: PackageSpecifier::Cargo { package_id },
+                        ..
+                    } => cmd.arg("-p").arg(&package_id.repr),
+                    FlycheckScope::Package {
+                        package: PackageSpecifier::BuildInfo { .. }, ..
+                    } => {
+                        // No way to flycheck this single package. All we have is a build label.
+                        // There's no way to really say whether this build label happens to be
+                        // a cargo canonical name, so we won't try.
+                        return None;
+                    }
                 };
 
                 if let Some(tgt) = target {
@@ -695,12 +897,12 @@ impl FlycheckActor {
 
                 cmd.arg("--keep-going");
 
-                options.apply_on_command(
+                cargo_options.apply_on_command(
                     &mut cmd,
                     self.ws_target_dir.as_ref().map(Utf8PathBuf::as_path),
                 );
-                cmd.args(&options.extra_args);
-                Some(cmd)
+                cmd.args(&cargo_options.extra_args);
+                Some((cmd, FlycheckCommandOrigin::Cargo))
             }
             FlycheckConfig::CustomCommand { command, args, extra_env, invocation_strategy } => {
                 let root = match invocation_strategy {
@@ -710,31 +912,25 @@ impl FlycheckActor {
                         &*self.root
                     }
                 };
-                let mut cmd = toolchain::command(command, root, extra_env);
+                let runnable = project_json::Runnable {
+                    program: command.clone(),
+                    cwd: Utf8Path::to_owned(root.as_ref()),
+                    args: args.clone(),
+                    kind: project_json::RunnableKind::Flycheck,
+                };
 
-                // If the custom command has a $saved_file placeholder, and
-                // we're saving a file, replace the placeholder in the arguments.
-                if let Some(saved_file) = saved_file {
-                    for arg in args {
-                        if arg == SAVED_FILE_PLACEHOLDER {
-                            cmd.arg(saved_file);
-                        } else {
-                            cmd.arg(arg);
-                        }
-                    }
-                } else {
-                    for arg in args {
-                        if arg == SAVED_FILE_PLACEHOLDER {
-                            // The custom command has a $saved_file placeholder,
-                            // but we had an IDE event that wasn't a file save. Do nothing.
-                            return None;
-                        }
+                let label = match scope {
+                    FlycheckScope::Workspace => None,
+                    // We support substituting both build labels (e.g. buck, bazel) and cargo package ids.
+                    // With cargo package ids, you get `cargo check -p path+file:///path/to/rust-analyzer/crates/hir#0.0.0`.
+                    // That does work!
+                    FlycheckScope::Package { package, .. } => Some(package.as_str()),
+                };
 
-                        cmd.arg(arg);
-                    }
-                }
+                let subs = Substitutions { label, saved_file: saved_file.map(|x| x.as_str()) };
+                let cmd = subs.substitute(&runnable, extra_env)?;
 
-                Some(cmd)
+                Some((cmd, FlycheckCommandOrigin::CheckOverrideCommand))
             }
         }
     }
@@ -748,7 +944,7 @@ impl FlycheckActor {
 #[allow(clippy::large_enum_variant)]
 enum CargoCheckMessage {
     CompilerArtifact(cargo_metadata::Artifact),
-    Diagnostic { diagnostic: Diagnostic, package_id: Option<Arc<PackageId>> },
+    Diagnostic { diagnostic: Diagnostic, package_id: Option<PackageSpecifier> },
 }
 
 struct CargoCheckParser;
@@ -767,7 +963,9 @@ impl JsonLinesParser<CargoCheckMessage> for CargoCheckParser {
                     cargo_metadata::Message::CompilerMessage(msg) => {
                         Some(CargoCheckMessage::Diagnostic {
                             diagnostic: msg.message,
-                            package_id: Some(Arc::new(msg.package_id)),
+                            package_id: Some(PackageSpecifier::Cargo {
+                                package_id: Arc::new(msg.package_id),
+                            }),
                         })
                     }
                     _ => None,
@@ -793,4 +991,182 @@ impl JsonLinesParser<CargoCheckMessage> for CargoCheckParser {
 enum JsonMessage {
     Cargo(cargo_metadata::Message),
     Rustc(Diagnostic),
+}
+
+/// Not good enough to execute in a shell, but good enough to show the user without all the noisy
+/// quotes
+///
+/// Pass implicit_cwd if there is one regarded as the obvious by the user, so we can skip showing it.
+/// Compactness is the aim of the game, the output typically gets truncated quite a lot.
+fn display_command(c: &Command, implicit_cwd: Option<&std::path::Path>) -> String {
+    let mut o = String::new();
+    use std::fmt::Write;
+    let lossy = std::ffi::OsStr::to_string_lossy;
+    if let Some(dir) = c.get_current_dir() {
+        if Some(dir) == implicit_cwd.map(std::path::Path::new) {
+            // pass
+        } else if dir.to_string_lossy().contains(" ") {
+            write!(o, "cd {:?} && ", dir).unwrap();
+        } else {
+            write!(o, "cd {} && ", dir.display()).unwrap();
+        }
+    }
+    for (env, val) in c.get_envs() {
+        let (env, val) = (lossy(env), val.map(lossy).unwrap_or(std::borrow::Cow::Borrowed("")));
+        if DISPLAY_COMMAND_IGNORE_ENVS.contains(&env.as_ref()) {
+            continue;
+        }
+        if env.contains(" ") {
+            write!(o, "\"{}={}\" ", env, val).unwrap();
+        } else if val.contains(" ") {
+            write!(o, "{}=\"{}\" ", env, val).unwrap();
+        } else {
+            write!(o, "{}={} ", env, val).unwrap();
+        }
+    }
+    let prog = lossy(c.get_program());
+    if prog.contains(" ") {
+        write!(o, "{:?}", prog).unwrap();
+    } else {
+        write!(o, "{}", prog).unwrap();
+    }
+    for arg in c.get_args() {
+        let arg = lossy(arg);
+        if arg.contains(" ") {
+            write!(o, " \"{}\"", arg).unwrap();
+        } else {
+            write!(o, " {}", arg).unwrap();
+        }
+    }
+    o
+}
+
+#[cfg(test)]
+mod tests {
+    use ide_db::FxHashMap;
+    use itertools::Itertools;
+    use paths::Utf8Path;
+    use project_model::project_json;
+
+    use crate::flycheck::Substitutions;
+    use crate::flycheck::display_command;
+
+    #[test]
+    fn test_substitutions() {
+        let label = ":label";
+        let saved_file = "file.rs";
+
+        // Runnable says it needs both; you need both.
+        assert_eq!(test_substitute(None, None, "{label} {saved_file}").as_deref(), None);
+        assert_eq!(test_substitute(Some(label), None, "{label} {saved_file}").as_deref(), None);
+        assert_eq!(
+            test_substitute(None, Some(saved_file), "{label} {saved_file}").as_deref(),
+            None
+        );
+        assert_eq!(
+            test_substitute(Some(label), Some(saved_file), "{label} {saved_file}").as_deref(),
+            Some("build :label file.rs")
+        );
+
+        // Only need label? only need label.
+        assert_eq!(test_substitute(None, None, "{label}").as_deref(), None);
+        assert_eq!(test_substitute(Some(label), None, "{label}").as_deref(), Some("build :label"),);
+        assert_eq!(test_substitute(None, Some(saved_file), "{label}").as_deref(), None,);
+        assert_eq!(
+            test_substitute(Some(label), Some(saved_file), "{label}").as_deref(),
+            Some("build :label"),
+        );
+
+        // Only need saved_file
+        assert_eq!(test_substitute(None, None, "{saved_file}").as_deref(), None);
+        assert_eq!(test_substitute(Some(label), None, "{saved_file}").as_deref(), None);
+        assert_eq!(
+            test_substitute(None, Some(saved_file), "{saved_file}").as_deref(),
+            Some("build file.rs")
+        );
+        assert_eq!(
+            test_substitute(Some(label), Some(saved_file), "{saved_file}").as_deref(),
+            Some("build file.rs")
+        );
+
+        // Need neither
+        assert_eq!(test_substitute(None, None, "xxx").as_deref(), Some("build xxx"));
+        assert_eq!(test_substitute(Some(label), None, "xxx").as_deref(), Some("build xxx"));
+        assert_eq!(test_substitute(None, Some(saved_file), "xxx").as_deref(), Some("build xxx"));
+        assert_eq!(
+            test_substitute(Some(label), Some(saved_file), "xxx").as_deref(),
+            Some("build xxx")
+        );
+
+        // {label} mid-argument substitution
+        assert_eq!(
+            test_substitute(Some(label), None, "--label={label}").as_deref(),
+            Some("build --label=:label")
+        );
+
+        // {saved_file} mid-argument substitution
+        assert_eq!(
+            test_substitute(None, Some(saved_file), "--saved={saved_file}").as_deref(),
+            Some("build --saved=file.rs")
+        );
+
+        // $saved_file legacy support (no mid-argument substitution, we never supported that)
+        assert_eq!(
+            test_substitute(None, Some(saved_file), "$saved_file").as_deref(),
+            Some("build file.rs")
+        );
+
+        fn test_substitute(
+            label: Option<&str>,
+            saved_file: Option<&str>,
+            args: &str,
+        ) -> Option<String> {
+            Substitutions { label, saved_file }
+                .substitute(
+                    &project_json::Runnable {
+                        program: "build".to_owned(),
+                        args: Vec::from_iter(args.split_whitespace().map(ToOwned::to_owned)),
+                        cwd: Utf8Path::new("/path").to_owned(),
+                        kind: project_json::RunnableKind::Flycheck,
+                    },
+                    &FxHashMap::default(),
+                )
+                .map(|command| {
+                    command.get_args().map(|x| x.to_string_lossy()).collect_vec().join(" ")
+                })
+                .map(|args| format!("build {}", args))
+        }
+    }
+
+    #[test]
+    fn test_display_command() {
+        use std::path::Path;
+        let workdir = Path::new("workdir");
+        let mut cmd = toolchain::command("command", workdir, &FxHashMap::default());
+        assert_eq!(display_command(cmd.arg("--arg"), Some(workdir)), "command --arg");
+        assert_eq!(
+            display_command(cmd.arg("spaced arg"), Some(workdir)),
+            "command --arg \"spaced arg\""
+        );
+        assert_eq!(
+            display_command(cmd.env("ENVIRON", "yeah"), Some(workdir)),
+            "ENVIRON=yeah command --arg \"spaced arg\""
+        );
+        assert_eq!(
+            display_command(cmd.env("OTHER", "spaced env"), Some(workdir)),
+            "ENVIRON=yeah OTHER=\"spaced env\" command --arg \"spaced arg\""
+        );
+        assert_eq!(
+            display_command(cmd.current_dir("/tmp"), Some(workdir)),
+            "cd /tmp && ENVIRON=yeah OTHER=\"spaced env\" command --arg \"spaced arg\""
+        );
+        assert_eq!(
+            display_command(cmd.current_dir("/tmp and/thing"), Some(workdir)),
+            "cd \"/tmp and/thing\" && ENVIRON=yeah OTHER=\"spaced env\" command --arg \"spaced arg\""
+        );
+        assert_eq!(
+            display_command(cmd.current_dir("/tmp and/thing"), Some(Path::new("/tmp and/thing"))),
+            "ENVIRON=yeah OTHER=\"spaced env\" command --arg \"spaced arg\""
+        );
+    }
 }

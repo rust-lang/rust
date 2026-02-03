@@ -135,7 +135,7 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
 fn deref_in_let() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 fn main() {
     let a = &mut true;
     let closure = || { let b = *a; };
@@ -149,7 +149,7 @@ fn main() {
 fn deref_then_ref_pattern() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 fn main() {
     let a = &mut true;
     let closure = || { let &mut ref b = a; };
@@ -159,7 +159,7 @@ fn main() {
     );
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 fn main() {
     let a = &mut true;
     let closure = || { let &mut ref mut b = a; };
@@ -173,7 +173,7 @@ fn main() {
 fn unique_borrow() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 fn main() {
     let a = &mut true;
     let closure = || { *a = false; };
@@ -187,7 +187,7 @@ fn main() {
 fn deref_ref_mut() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 fn main() {
     let a = &mut true;
     let closure = || { let ref mut b = *a; };
@@ -201,7 +201,7 @@ fn main() {
 fn let_else_not_consuming() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 fn main() {
     let a = &mut true;
     let closure = || { let _ = *a else { return; }; };
@@ -215,7 +215,7 @@ fn main() {
 fn consume() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 struct NonCopy;
 fn main() {
     let a = NonCopy;
@@ -230,7 +230,7 @@ fn main() {
 fn ref_to_upvar() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 struct NonCopy;
 fn main() {
     let mut a = NonCopy;
@@ -248,7 +248,7 @@ fn main() {
 fn field() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 struct Foo { a: i32, b: i32 }
 fn main() {
     let a = Foo { a: 0, b: 0 };
@@ -263,7 +263,7 @@ fn main() {
 fn fields_different_mode() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 struct NonCopy;
 struct Foo { a: i32, b: i32, c: NonCopy, d: bool }
 fn main() {
@@ -286,7 +286,7 @@ fn main() {
 fn autoref() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 struct Foo;
 impl Foo {
     fn imm(&self) {}
@@ -308,7 +308,7 @@ fn main() {
 fn captures_priority() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 struct NonCopy;
 fn main() {
     let mut a = &mut true;
@@ -336,7 +336,7 @@ fn main() {
 fn let_underscore() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 fn main() {
     let mut a = true;
     let closure = || { let _ = a; };
@@ -350,7 +350,7 @@ fn main() {
 fn match_wildcard() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 struct NonCopy;
 fn main() {
     let mut a = NonCopy;
@@ -375,7 +375,7 @@ fn main() {
 fn multiple_bindings() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 fn main() {
     let mut a = false;
     let mut closure = || { let (b | b) = a; };
@@ -389,7 +389,7 @@ fn main() {
 fn multiple_usages() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 fn main() {
     let mut a = false;
     let mut closure = || {
@@ -410,7 +410,7 @@ fn main() {
 fn ref_then_deref() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 fn main() {
     let mut a = false;
     let mut closure = || { let b = *&mut a; };
@@ -424,7 +424,7 @@ fn main() {
 fn ref_of_ref() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 fn main() {
     let mut a = &false;
     let closure = || { let b = &a; };
@@ -446,7 +446,7 @@ fn main() {
 fn multiple_capture_usages() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 struct A { a: i32, b: bool }
 fn main() {
     let mut a = A { a: 123, b: false };
@@ -465,7 +465,7 @@ fn main() {
 fn let_binding_is_a_ref_capture_in_ref_binding() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 struct S;
 fn main() {
     let mut s = S;
@@ -489,7 +489,7 @@ fn main() {
 fn let_binding_is_a_value_capture_in_binding() {
     check_closure_captures(
         r#"
-//- minicore:copy, option
+//- minicore:copy, fn, option
 struct Box(i32);
 fn main() {
     let b = Some(Box(0));
@@ -508,7 +508,7 @@ fn main() {
 fn alias_needs_to_be_normalized() {
     check_closure_captures(
         r#"
-//- minicore:copy
+//- minicore:copy, fn
 trait Trait {
     type Associated;
 }
@@ -526,5 +526,43 @@ fn main() {
 }
 "#,
         expect!["220..257;174..175;245..250 ByRef(Shared) c.b.x &'? i32"],
+    );
+}
+
+#[test]
+fn nested_ref_captures_from_outer() {
+    check_closure_captures(
+        r#"
+//- minicore:copy, fn
+fn f() {
+    let a = 1;
+    let a_closure = || {
+        let b_closure = || {
+            { a };
+        };
+    };
+}
+"#,
+        expect![[r#"
+            44..113;17..18;92..93 ByRef(Shared) a &'? i32
+            73..106;17..18;92..93 ByRef(Shared) a &'? i32"#]],
+    );
+}
+
+#[test]
+fn nested_ref_captures() {
+    check_closure_captures(
+        r#"
+//- minicore:copy, fn
+fn f() {
+    let a_closure = || {
+        let b = 2;
+        let b_closure = || {
+            { b };
+        };
+    };
+}
+"#,
+        expect!["77..110;46..47;96..97 ByRef(Shared) b &'? i32"],
     );
 }

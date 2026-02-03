@@ -3,7 +3,8 @@
 use cfg::CfgExpr;
 use either::Either;
 use hir_def::{
-    AssocItemId, AttrDefId, FieldId, LifetimeParamId, ModuleDefId, TypeOrConstParamId,
+    AssocItemId, AttrDefId, FieldId, GenericDefId, ItemContainerId, LifetimeParamId, ModuleDefId,
+    TraitId, TypeOrConstParamId,
     attrs::{AttrFlags, Docs, IsInnerDoc},
     expr_store::path::Path,
     item_scope::ItemInNs,
@@ -22,6 +23,7 @@ use hir_ty::{
     next_solver::{DbInterner, TypingMode, infer::DbInternerInferExt},
 };
 use intern::Symbol;
+use stdx::never;
 
 use crate::{
     Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, ExternCrateDecl,
@@ -357,13 +359,46 @@ fn resolve_assoc_or_field(
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
     let path = Path::from_known_path_with_no_generic(path);
-    // FIXME: This does not handle `Self` on trait definitions, which we should resolve to the
-    // trait itself.
     let base_def = resolver.resolve_path_in_type_ns_fully(db, &path)?;
 
+    let handle_trait = |id: TraitId| {
+        // Doc paths in this context may only resolve to an item of this trait
+        // (i.e. no items of its supertraits), so we need to handle them here
+        // independently of others.
+        id.trait_items(db).items.iter().find(|it| it.0 == name).map(|(_, assoc_id)| {
+            let def = match *assoc_id {
+                AssocItemId::FunctionId(it) => ModuleDef::Function(it.into()),
+                AssocItemId::ConstId(it) => ModuleDef::Const(it.into()),
+                AssocItemId::TypeAliasId(it) => ModuleDef::TypeAlias(it.into()),
+            };
+            DocLinkDef::ModuleDef(def)
+        })
+    };
     let ty = match base_def {
         TypeNs::SelfType(id) => Impl::from(id).self_ty(db),
-        TypeNs::GenericParam(_) => {
+        TypeNs::GenericParam(param) => {
+            let generic_params = db.generic_params(param.parent());
+            if generic_params[param.local_id()].is_trait_self() {
+                // `Self::assoc` in traits should refer to the trait itself.
+                let parent_trait = |container| match container {
+                    ItemContainerId::TraitId(trait_) => handle_trait(trait_),
+                    _ => {
+                        never!("container {container:?} should be a trait");
+                        None
+                    }
+                };
+                return match param.parent() {
+                    GenericDefId::TraitId(trait_) => handle_trait(trait_),
+                    GenericDefId::ConstId(it) => parent_trait(it.loc(db).container),
+                    GenericDefId::FunctionId(it) => parent_trait(it.loc(db).container),
+                    GenericDefId::TypeAliasId(it) => parent_trait(it.loc(db).container),
+                    _ => {
+                        never!("type param {param:?} should belong to a trait");
+                        None
+                    }
+                };
+            }
+
             // Even if this generic parameter has some trait bounds, rustdoc doesn't
             // resolve `name` to trait items.
             return None;
@@ -384,19 +419,7 @@ fn resolve_assoc_or_field(
             alias.ty(db)
         }
         TypeNs::BuiltinType(id) => BuiltinType::from(id).ty(db),
-        TypeNs::TraitId(id) => {
-            // Doc paths in this context may only resolve to an item of this trait
-            // (i.e. no items of its supertraits), so we need to handle them here
-            // independently of others.
-            return id.trait_items(db).items.iter().find(|it| it.0 == name).map(|(_, assoc_id)| {
-                let def = match *assoc_id {
-                    AssocItemId::FunctionId(it) => ModuleDef::Function(it.into()),
-                    AssocItemId::ConstId(it) => ModuleDef::Const(it.into()),
-                    AssocItemId::TypeAliasId(it) => ModuleDef::TypeAlias(it.into()),
-                };
-                DocLinkDef::ModuleDef(def)
-            });
-        }
+        TypeNs::TraitId(id) => return handle_trait(id),
         TypeNs::ModuleId(_) => {
             return None;
         }
@@ -414,7 +437,14 @@ fn resolve_assoc_or_field(
     let variant_def = match ty.as_adt()? {
         Adt::Struct(it) => it.into(),
         Adt::Union(it) => it.into(),
-        Adt::Enum(_) => return None,
+        Adt::Enum(enum_) => {
+            // Can happen on `Self::Variant` (otherwise would be fully resolved by the resolver).
+            return enum_
+                .id
+                .enum_variants(db)
+                .variant(&name)
+                .map(|variant| DocLinkDef::ModuleDef(ModuleDef::Variant(variant.into())));
+        }
     };
     resolve_field(db, variant_def, name, ns)
 }

@@ -12,7 +12,7 @@ use intern::{Symbol, sym};
 use la_arena::{Arena, Idx};
 use rustc_abi::{IntegerType, ReprOptions};
 use syntax::{
-    NodeOrToken, SyntaxNodePtr, T,
+    AstNode, NodeOrToken, SyntaxNodePtr, T,
     ast::{self, HasGenericParams, HasName, HasVisibility, IsString},
 };
 use thin_vec::ThinVec;
@@ -754,6 +754,7 @@ pub struct FieldData {
     pub type_ref: TypeRefId,
     pub visibility: RawVisibility,
     pub is_unsafe: bool,
+    pub default_value: Option<ExprId>,
 }
 
 pub type LocalFieldId = Idx<FieldData>;
@@ -903,7 +904,14 @@ fn lower_fields<Field: ast::HasAttrs + ast::HasVisibility>(
                     .filter_map(NodeOrToken::into_token)
                     .any(|token| token.kind() == T![unsafe]);
                 let name = field_name(idx, &field);
-                arena.alloc(FieldData { name, type_ref, visibility, is_unsafe });
+
+                // Check if field has default value (only for record fields)
+                let default_value = ast::RecordField::cast(field.syntax().clone())
+                    .and_then(|rf| rf.eq_token().is_some().then_some(rf.expr()))
+                    .flatten()
+                    .map(|expr| col.collect_expr_opt(Some(expr)));
+
+                arena.alloc(FieldData { name, type_ref, visibility, is_unsafe, default_value });
                 idx += 1;
             }
             Err(cfg) => {

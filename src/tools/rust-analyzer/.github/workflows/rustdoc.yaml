@@ -24,7 +24,7 @@ jobs:
       run: rustup update --no-self-update stable
 
     - name: Build Documentation
-      run: cargo doc --all --no-deps
+      run: cargo doc --all --no-deps --document-private-items
 
     - name: Deploy Docs
       uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e # v4.0.0

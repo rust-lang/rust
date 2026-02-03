@@ -184,6 +184,35 @@ const FOO: $0 = Foo(2);
 }
 
 #[test]
+fn inferred_type_static() {
+    check_with_base_items(
+        r#"
+struct Foo<T>(T);
+static FOO: $0 = Foo(2);
+"#,
+        expect![[r#"
+            en Enum                    Enum
+            ma makro!(…) macro_rules! makro
+            md module
+            st Foo<…>        Foo<{unknown}>
+            st Record                Record
+            st Tuple                  Tuple
+            st Unit                    Unit
+            tt Trait
+            un Union                  Union
+            bt u32                      u32
+            it Foo<i32>
+            kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
+            kw self::
+        "#]],
+    );
+}
+
+#[test]
 fn inferred_type_closure_param() {
     check_with_base_items(
         r#"

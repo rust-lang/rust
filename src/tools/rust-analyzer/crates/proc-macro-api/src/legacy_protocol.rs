@@ -18,8 +18,6 @@ use crate::{
         flat::serialize_span_data_index_map,
     },
     process::ProcMacroServerProcess,
-    transport::codec::Codec,
-    transport::codec::{json::JsonProtocol, postcard::PostcardProtocol},
     version,
 };
 
@@ -77,6 +75,7 @@ pub(crate) fn find_proc_macros(
 
 pub(crate) fn expand(
     proc_macro: &ProcMacro,
+    process: &ProcMacroServerProcess,
     subtree: tt::SubtreeView<'_>,
     attr: Option<tt::SubtreeView<'_>>,
     env: Vec<(String, String)>,
@@ -85,7 +84,7 @@ pub(crate) fn expand(
     mixed_site: Span,
     current_dir: String,
 ) -> Result<Result<tt::TopSubtree, String>, crate::ServerError> {
-    let version = proc_macro.process.version();
+    let version = process.version();
     let mut span_data_table = SpanDataIndexMap::default();
     let def_site = span_data_table.insert_full(def_site).0;
     let call_site = span_data_table.insert_full(call_site).0;
@@ -102,7 +101,7 @@ pub(crate) fn expand(
                 call_site,
                 mixed_site,
             },
-            span_data_table: if proc_macro.process.rust_analyzer_spans() {
+            span_data_table: if process.rust_analyzer_spans() {
                 serialize_span_data_index_map(&span_data_table)
             } else {
                 Vec::new()
@@ -113,7 +112,7 @@ pub(crate) fn expand(
         current_dir: Some(current_dir),
     };
 
-    let response = send_task(&proc_macro.process, Request::ExpandMacro(Box::new(task)))?;
+    let response = send_task(process, Request::ExpandMacro(Box::new(task)))?;
 
     match response {
         Response::ExpandMacro(it) => Ok(it
@@ -148,25 +147,21 @@ fn send_task(srv: &ProcMacroServerProcess, req: Request) -> Result<Response, Ser
         return Err(server_error.clone());
     }
 
-    if srv.use_postcard() {
-        srv.send_task::<_, _, PostcardProtocol>(send_request::<PostcardProtocol>, req)
-    } else {
-        srv.send_task::<_, _, JsonProtocol>(send_request::<JsonProtocol>, req)
-    }
+    srv.send_task_legacy::<_, _>(send_request, req)
 }
 
 /// Sends a request to the server and reads the response.
-fn send_request<P: Codec>(
+fn send_request(
     mut writer: &mut dyn Write,
     mut reader: &mut dyn BufRead,
     req: Request,
-    buf: &mut P::Buf,
+    buf: &mut String,
 ) -> Result<Option<Response>, ServerError> {
-    req.write::<_, P>(&mut writer).map_err(|err| ServerError {
+    req.write(&mut writer).map_err(|err| ServerError {
         message: "failed to write request".into(),
         io: Some(Arc::new(err)),
     })?;
-    let res = Response::read::<_, P>(&mut reader, buf).map_err(|err| ServerError {
+    let res = Response::read(&mut reader, buf).map_err(|err| ServerError {
         message: "failed to read response".into(),
         io: Some(Arc::new(err)),
     })?;

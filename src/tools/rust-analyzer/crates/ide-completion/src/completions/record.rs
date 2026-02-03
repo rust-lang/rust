@@ -36,7 +36,7 @@ pub(crate) fn complete_record_pattern_fields(
                     true => return,
                 }
             }
-            _ => ctx.sema.record_pattern_missing_fields(record_pat),
+            _ => ctx.sema.record_pattern_matched_fields(record_pat),
         };
         complete_fields(acc, ctx, missing_fields);
     }
@@ -69,14 +69,14 @@ pub(crate) fn complete_record_expr_fields(
             }
         }
         _ => {
-            let missing_fields = ctx.sema.record_literal_missing_fields(record_expr);
+            let suggest_fields = ctx.sema.record_literal_matched_fields(record_expr);
             let update_exists = record_expr
                 .record_expr_field_list()
                 .is_some_and(|list| list.dotdot_token().is_some());
 
-            if !missing_fields.is_empty() && !update_exists {
+            if !suggest_fields.is_empty() && !update_exists {
                 cov_mark::hit!(functional_update_field);
-                add_default_update(acc, ctx, ty);
+                add_default_update(acc, ctx, ty.as_ref());
             }
             if dot_prefix {
                 cov_mark::hit!(functional_update_one_dot);
@@ -90,7 +90,7 @@ pub(crate) fn complete_record_expr_fields(
                 item.add_to(acc, ctx.db);
                 return;
             }
-            missing_fields
+            suggest_fields
         }
     };
     complete_fields(acc, ctx, missing_fields);
@@ -99,11 +99,11 @@ pub(crate) fn complete_record_expr_fields(
 pub(crate) fn add_default_update(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    ty: Option<hir::TypeInfo<'_>>,
+    ty: Option<&hir::TypeInfo<'_>>,
 ) {
     let default_trait = ctx.famous_defs().core_default_Default();
     let impls_default_trait = default_trait
-        .zip(ty.as_ref())
+        .zip(ty)
         .is_some_and(|(default_trait, ty)| ty.original.impls_trait(ctx.db, default_trait, &[]));
     if impls_default_trait {
         // FIXME: This should make use of scope_def like completions so we get all the other goodies

@@ -58,6 +58,7 @@
 //!     pin:
 //!     pointee: copy, send, sync, ord, hash, unpin, phantom_data
 //!     range:
+//!     new_range:
 //!     receiver: deref
 //!     result:
 //!     send: sized
@@ -175,7 +176,9 @@ pub mod marker {
 
     // region:clone
     impl<T: PointeeSized> Clone for PhantomData<T> {
-        fn clone(&self) -> Self { Self }
+        fn clone(&self) -> Self {
+            Self
+        }
     }
     // endregion:clone
 
@@ -1128,6 +1131,32 @@ pub mod ops {
     // endregion:dispatch_from_dyn
 }
 
+// region:new_range
+pub mod range {
+    #[lang = "RangeCopy"]
+    pub struct Range<Idx> {
+        pub start: Idx,
+        pub end: Idx,
+    }
+
+    #[lang = "RangeFromCopy"]
+    pub struct RangeFrom<Idx> {
+        pub start: Idx,
+    }
+
+    #[lang = "RangeInclusiveCopy"]
+    pub struct RangeInclusive<Idx> {
+        pub start: Idx,
+        pub end: Idx,
+    }
+
+    #[lang = "RangeToInclusiveCopy"]
+    pub struct RangeToInclusive<Idx> {
+        pub end: Idx,
+    }
+}
+// endregion:new_range
+
 // region:eq
 pub mod cmp {
     use crate::marker::PointeeSized;
@@ -1144,7 +1173,9 @@ pub mod cmp {
 
     // region:builtin_impls
     impl PartialEq for () {
-        fn eq(&self, other: &()) -> bool { true }
+        fn eq(&self, other: &()) -> bool {
+            true
+        }
     }
     // endregion:builtin_impls
 
@@ -1567,10 +1598,7 @@ pub mod pin {
     }
     // endregion:dispatch_from_dyn
     // region:coerce_unsized
-    impl<Ptr, U> crate::ops::CoerceUnsized<Pin<U>> for Pin<Ptr> where
-        Ptr: crate::ops::CoerceUnsized<U>
-    {
-    }
+    impl<Ptr, U> crate::ops::CoerceUnsized<Pin<U>> for Pin<Ptr> where Ptr: crate::ops::CoerceUnsized<U> {}
     // endregion:coerce_unsized
 }
 // endregion:pin
@@ -1792,9 +1820,9 @@ pub mod iter {
                 fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
             }
         }
-        pub use self::collect::{IntoIterator, FromIterator};
+        pub use self::collect::{FromIterator, IntoIterator};
     }
-    pub use self::traits::{IntoIterator, FromIterator, Iterator};
+    pub use self::traits::{FromIterator, IntoIterator, Iterator};
 }
 // endregion:iterator
 
@@ -1878,6 +1906,10 @@ mod arch {
     }
     #[rustc_builtin_macro]
     pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
+        /* compiler built-in */
+    }
+    #[rustc_builtin_macro]
+    pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?) {
         /* compiler built-in */
     }
 }
@@ -2087,30 +2119,30 @@ macro_rules! column {
 pub mod prelude {
     pub mod v1 {
         pub use crate::{
-            clone::Clone,                            // :clone
-            cmp::{Eq, PartialEq},                    // :eq
-            cmp::{Ord, PartialOrd},                  // :ord
-            convert::AsMut,                          // :as_mut
-            convert::AsRef,                          // :as_ref
-            convert::{From, Into, TryFrom, TryInto}, // :from
-            default::Default,                        // :default
-            iter::{IntoIterator, Iterator, FromIterator}, // :iterator
-            macros::builtin::{derive, derive_const}, // :derive
-            marker::Copy,                            // :copy
-            marker::Send,                            // :send
-            marker::Sized,                           // :sized
-            marker::Sync,                            // :sync
-            mem::drop,                               // :drop
-            mem::size_of,                            // :size_of
-            ops::Drop,                               // :drop
-            ops::{AsyncFn, AsyncFnMut, AsyncFnOnce}, // :async_fn
-            ops::{Fn, FnMut, FnOnce},                // :fn
-            option::Option::{self, None, Some},      // :option
-            panic,                                   // :panic
-            result::Result::{self, Err, Ok},         // :result
-            str::FromStr,                            // :str
-            fmt::derive::Debug,                      // :fmt, derive
-            hash::derive::Hash,                      // :hash, derive
+            clone::Clone,                                 // :clone
+            cmp::{Eq, PartialEq},                         // :eq
+            cmp::{Ord, PartialOrd},                       // :ord
+            convert::AsMut,                               // :as_mut
+            convert::AsRef,                               // :as_ref
+            convert::{From, Into, TryFrom, TryInto},      // :from
+            default::Default,                             // :default
+            fmt::derive::Debug,                           // :fmt, derive
+            hash::derive::Hash,                           // :hash, derive
+            iter::{FromIterator, IntoIterator, Iterator}, // :iterator
+            macros::builtin::{derive, derive_const},      // :derive
+            marker::Copy,                                 // :copy
+            marker::Send,                                 // :send
+            marker::Sized,                                // :sized
+            marker::Sync,                                 // :sync
+            mem::drop,                                    // :drop
+            mem::size_of,                                 // :size_of
+            ops::Drop,                                    // :drop
+            ops::{AsyncFn, AsyncFnMut, AsyncFnOnce},      // :async_fn
+            ops::{Fn, FnMut, FnOnce},                     // :fn
+            option::Option::{self, None, Some},           // :option
+            panic,                                        // :panic
+            result::Result::{self, Err, Ok},              // :result
+            str::FromStr,                                 // :str
         };
     }
 

@@ -86,7 +86,14 @@ pub(crate) fn toggle_macro_delimiter(acc: &mut Assists, ctx: &AssistContext<'_>)
                 }
                 MacroDelims::LCur | MacroDelims::RCur => {
                     editor.replace(ltoken, make.token(T!['[']));
-                    editor.replace(rtoken, make.token(T![']']));
+                    if semicolon.is_some() || !needs_semicolon(token_tree) {
+                        editor.replace(rtoken, make.token(T![']']));
+                    } else {
+                        editor.replace_with_many(
+                            rtoken,
+                            vec![make.token(T![']']).into(), make.token(T![;]).into()],
+                        );
+                    }
                 }
             }
             editor.add_mappings(make.finish_with_mappings());
@@ -101,6 +108,30 @@ fn macro_semicolon(makro: &ast::MacroCall) -> Option<SyntaxToken> {
         let expr_stmt = ast::ExprStmt::cast(macro_expr.syntax().parent()?)?;
         expr_stmt.semicolon_token()
     })
+}
+
+fn needs_semicolon(tt: ast::TokenTree) -> bool {
+    (|| {
+        let call = ast::MacroCall::cast(tt.syntax().parent()?)?;
+        let container = call.syntax().parent()?;
+        let kind = container.kind();
+
+        if call.semicolon_token().is_some() {
+            return Some(false);
+        }
+
+        Some(
+            ast::ItemList::can_cast(kind)
+                || ast::SourceFile::can_cast(kind)
+                || ast::AssocItemList::can_cast(kind)
+                || ast::ExternItemList::can_cast(kind)
+                || ast::MacroItems::can_cast(kind)
+                || ast::MacroExpr::can_cast(kind)
+                    && ast::ExprStmt::cast(container.parent()?)
+                        .is_some_and(|it| it.semicolon_token().is_none()),
+        )
+    })()
+    .unwrap_or(false)
 }
 
 #[cfg(test)]
@@ -161,7 +192,7 @@ macro_rules! sth {
     () => {};
 }
 
-sth!$0{ };
+sth!$0{ }
             "#,
             r#"
 macro_rules! sth {
@@ -170,7 +201,117 @@ macro_rules! sth {
 
 sth![ ];
             "#,
-        )
+        );
+
+        check_assist(
+            toggle_macro_delimiter,
+            r#"
+macro_rules! sth {
+    () => {};
+}
+
+fn foo() -> i32 {
+    sth!$0{ }
+    2
+}
+            "#,
+            r#"
+macro_rules! sth {
+    () => {};
+}
+
+fn foo() -> i32 {
+    sth![ ];
+    2
+}
+            "#,
+        );
+
+        check_assist(
+            toggle_macro_delimiter,
+            r#"
+macro_rules! sth {
+    () => {2};
+}
+
+fn foo() {
+    sth!$0{ };
+}
+            "#,
+            r#"
+macro_rules! sth {
+    () => {2};
+}
+
+fn foo() {
+    sth![ ];
+}
+            "#,
+        );
+
+        check_assist(
+            toggle_macro_delimiter,
+            r#"
+macro_rules! sth {
+    () => {2};
+}
+
+fn foo() -> i32 {
+    sth!$0{ }
+}
+            "#,
+            r#"
+macro_rules! sth {
+    () => {2};
+}
+
+fn foo() -> i32 {
+    sth![ ]
+}
+            "#,
+        );
+
+        check_assist(
+            toggle_macro_delimiter,
+            r#"
+macro_rules! sth {
+    () => {};
+}
+impl () {
+    sth!$0{}
+}
+            "#,
+            r#"
+macro_rules! sth {
+    () => {};
+}
+impl () {
+    sth![];
+}
+            "#,
+        );
+
+        check_assist(
+            toggle_macro_delimiter,
+            r#"
+macro_rules! sth {
+    () => {2};
+}
+
+fn foo() -> i32 {
+    bar(sth!$0{ })
+}
+            "#,
+            r#"
+macro_rules! sth {
+    () => {2};
+}
+
+fn foo() -> i32 {
+    bar(sth![ ])
+}
+            "#,
+        );
     }
 
     #[test]
@@ -204,7 +345,7 @@ mod abc {
         () => {};
     }
 
-    sth!$0{ };
+    sth!$0{ }
 }
             "#,
             r#"
