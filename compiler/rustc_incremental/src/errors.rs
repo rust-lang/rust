@@ -4,7 +4,7 @@ use rustc_macros::Diagnostic;
 use rustc_span::{Ident, Span, Symbol};
 
 #[derive(Diagnostic)]
-#[diag(incremental_unrecognized_depnode)]
+#[diag("unrecognized `DepNode` variant: {$name}")]
 pub(crate) struct UnrecognizedDepNode {
     #[primary_span]
     pub span: Span,
@@ -12,28 +12,28 @@ pub(crate) struct UnrecognizedDepNode {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_missing_depnode)]
+#[diag("missing `DepNode` variant")]
 pub(crate) struct MissingDepNode {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_missing_if_this_changed)]
+#[diag("no `#[rustc_if_this_changed]` annotation detected")]
 pub(crate) struct MissingIfThisChanged {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_ok)]
+#[diag("OK")]
 pub(crate) struct Ok {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_no_path)]
+#[diag("no path from `{$source}` to `{$target}`")]
 pub(crate) struct NoPath {
     #[primary_span]
     pub span: Span,
@@ -42,7 +42,7 @@ pub(crate) struct NoPath {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_assertion_auto)]
+#[diag("`except` specified DepNodes that can not be affected for \"{$name}\": \"{$e}\"")]
 pub(crate) struct AssertionAuto<'a> {
     #[primary_span]
     pub span: Span,
@@ -51,7 +51,7 @@ pub(crate) struct AssertionAuto<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_undefined_clean_dirty_assertions_item)]
+#[diag("clean/dirty auto-assertions not yet defined for Node::Item.node={$kind}")]
 pub(crate) struct UndefinedCleanDirtyItem {
     #[primary_span]
     pub span: Span,
@@ -59,7 +59,7 @@ pub(crate) struct UndefinedCleanDirtyItem {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_undefined_clean_dirty_assertions)]
+#[diag("clean/dirty auto-assertions not yet defined for {$kind}")]
 pub(crate) struct UndefinedCleanDirty {
     #[primary_span]
     pub span: Span,
@@ -67,7 +67,7 @@ pub(crate) struct UndefinedCleanDirty {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_repeated_depnode_label)]
+#[diag("dep-node label `{$label}` is repeated")]
 pub(crate) struct RepeatedDepNodeLabel<'a> {
     #[primary_span]
     pub span: Span,
@@ -75,7 +75,7 @@ pub(crate) struct RepeatedDepNodeLabel<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_unrecognized_depnode_label)]
+#[diag("dep-node label `{$label}` not recognized")]
 pub(crate) struct UnrecognizedDepNodeLabel<'a> {
     #[primary_span]
     pub span: Span,
@@ -83,7 +83,7 @@ pub(crate) struct UnrecognizedDepNodeLabel<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_not_dirty)]
+#[diag("`{$dep_node_str}` should be dirty but is not")]
 pub(crate) struct NotDirty<'a> {
     #[primary_span]
     pub span: Span,
@@ -91,7 +91,7 @@ pub(crate) struct NotDirty<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_not_clean)]
+#[diag("`{$dep_node_str}` should be clean but is not")]
 pub(crate) struct NotClean<'a> {
     #[primary_span]
     pub span: Span,
@@ -99,7 +99,7 @@ pub(crate) struct NotClean<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_not_loaded)]
+#[diag("`{$dep_node_str}` should have been loaded from disk but it was not")]
 pub(crate) struct NotLoaded<'a> {
     #[primary_span]
     pub span: Span,
@@ -107,21 +107,21 @@ pub(crate) struct NotLoaded<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_unknown_rustc_clean_argument)]
+#[diag("unknown `rustc_clean` argument")]
 pub(crate) struct UnknownRustcCleanArgument {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_no_cfg)]
+#[diag("no cfg attribute")]
 pub(crate) struct NoCfg {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_associated_value_expected_for)]
+#[diag("associated value expected for `{$ident}`")]
 pub(crate) struct AssociatedValueExpectedFor {
     #[primary_span]
     pub span: Span,
@@ -129,21 +129,21 @@ pub(crate) struct AssociatedValueExpectedFor {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_associated_value_expected)]
+#[diag("expected an associated value")]
 pub(crate) struct AssociatedValueExpected {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_unchecked_clean)]
+#[diag("found unchecked `#[rustc_clean]` attribute")]
 pub(crate) struct UncheckedClean {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_delete_old)]
+#[diag("unable to delete old {$name} at `{$path}`: {$err}")]
 pub(crate) struct DeleteOld<'a> {
     pub name: &'a str,
     pub path: PathBuf,
@@ -151,7 +151,7 @@ pub(crate) struct DeleteOld<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_create_new)]
+#[diag("failed to create {$name} at `{$path}`: {$err}")]
 pub(crate) struct CreateNew<'a> {
     pub name: &'a str,
     pub path: PathBuf,
@@ -159,7 +159,7 @@ pub(crate) struct CreateNew<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_write_new)]
+#[diag("failed to write {$name} to `{$path}`: {$err}")]
 pub(crate) struct WriteNew<'a> {
     pub name: &'a str,
     pub path: PathBuf,
@@ -167,14 +167,14 @@ pub(crate) struct WriteNew<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_canonicalize_path)]
+#[diag("incremental compilation: error canonicalizing path `{$path}`: {$err}")]
 pub(crate) struct CanonicalizePath {
     pub path: PathBuf,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_create_incr_comp_dir)]
+#[diag("could not create incremental compilation {$tag} directory `{$path}`: {$err}")]
 pub(crate) struct CreateIncrCompDir<'a> {
     pub tag: &'a str,
     pub path: &'a Path,
@@ -182,96 +182,112 @@ pub(crate) struct CreateIncrCompDir<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_create_lock)]
+#[diag("incremental compilation: could not create session directory lock file: {$lock_err}")]
 pub(crate) struct CreateLock<'a> {
     pub lock_err: std::io::Error,
     pub session_dir: &'a Path,
-    #[note(incremental_lock_unsupported)]
+    #[note(
+        "the filesystem for the incremental path at {$session_dir} does not appear to support locking, consider changing the incremental path to a filesystem that supports locking or disable incremental compilation"
+    )]
     pub is_unsupported_lock: bool,
-    #[help(incremental_cargo_help_1)]
-    #[help(incremental_cargo_help_2)]
+    #[help(
+        "incremental compilation can be disabled by setting the environment variable CARGO_INCREMENTAL=0 (see https://doc.rust-lang.org/cargo/reference/profiles.html#incremental)"
+    )]
+    #[help(
+        "the entire build directory can be changed to a different filesystem by setting the environment variable CARGO_TARGET_DIR to a different path (see https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir)"
+    )]
     pub is_cargo: bool,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_delete_lock)]
+#[diag("error deleting lock file for incremental compilation session directory `{$path}`: {$err}")]
 pub(crate) struct DeleteLock<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_hard_link_failed)]
+#[diag(
+    "hard linking files in the incremental compilation cache failed. copying files instead. consider moving the cache directory to a file system which supports hard linking in session dir `{$path}`"
+)]
 pub(crate) struct HardLinkFailed<'a> {
     pub path: &'a Path,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_delete_partial)]
+#[diag("failed to delete partly initialized session dir `{$path}`: {$err}")]
 pub(crate) struct DeletePartial<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_delete_full)]
+#[diag("error deleting incremental compilation session directory `{$path}`: {$err}")]
 pub(crate) struct DeleteFull<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_finalize)]
+#[diag("error finalizing incremental compilation session directory `{$path}`: {$err}")]
 pub(crate) struct Finalize<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_invalid_gc_failed)]
+#[diag(
+    "failed to garbage collect invalid incremental compilation session directory `{$path}`: {$err}"
+)]
 pub(crate) struct InvalidGcFailed<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_finalized_gc_failed)]
+#[diag(
+    "failed to garbage collect finalized incremental compilation session directory `{$path}`: {$err}"
+)]
 pub(crate) struct FinalizedGcFailed<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_session_gc_failed)]
+#[diag("failed to garbage collect incremental compilation session directory `{$path}`: {$err}")]
 pub(crate) struct SessionGcFailed<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_assert_not_loaded)]
+#[diag("we asserted that the incremental cache should not be loaded, but it was loaded")]
 pub(crate) struct AssertNotLoaded;
 
 #[derive(Diagnostic)]
-#[diag(incremental_assert_loaded)]
+#[diag(
+    "we asserted that an existing incremental cache directory should be successfully loaded, but it was not"
+)]
 pub(crate) struct AssertLoaded;
 
 #[derive(Diagnostic)]
-#[diag(incremental_delete_incompatible)]
+#[diag(
+    "failed to delete invalidated or incompatible incremental compilation session directory contents `{$path}`: {$err}"
+)]
 pub(crate) struct DeleteIncompatible {
     pub path: PathBuf,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_load_dep_graph)]
+#[diag("could not load dep-graph from `{$path}`: {$err}")]
 pub(crate) struct LoadDepGraph {
     pub path: PathBuf,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_move_dep_graph)]
+#[diag("failed to move dependency graph from `{$from}` to `{$to}`: {$err}")]
 pub(crate) struct MoveDepGraph<'a> {
     pub from: &'a Path,
     pub to: &'a Path,
@@ -279,14 +295,14 @@ pub(crate) struct MoveDepGraph<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_create_dep_graph)]
+#[diag("failed to create dependency graph at `{$path}`: {$err}")]
 pub(crate) struct CreateDepGraph<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_copy_workproduct_to_cache)]
+#[diag("error copying object file `{$from}` to incremental directory as `{$to}`: {$err}")]
 pub(crate) struct CopyWorkProductToCache<'a> {
     pub from: &'a Path,
     pub to: &'a Path,
@@ -294,14 +310,16 @@ pub(crate) struct CopyWorkProductToCache<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_delete_workproduct)]
+#[diag("file-system error deleting outdated file `{$path}`: {$err}")]
 pub(crate) struct DeleteWorkProduct<'a> {
     pub path: &'a Path,
     pub err: std::io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_corrupt_file)]
+#[diag(
+    "corrupt incremental compilation artifact found at `{$path}`. This file will automatically be ignored and deleted. If you see this message repeatedly or can provoke it without manually manipulating the compiler's artifacts, please file an issue. The incremental compilation system relies on hardlinks and filesystem locks behaving correctly, and may not deal well with OS crashes, so whatever information you can provide about your filesystem or other state may be very relevant."
+)]
 pub(crate) struct CorruptFile<'a> {
     pub path: &'a Path,
 }

@@ -23,7 +23,6 @@ rustc_feature = { path = "../rustc_feature" }
 rustc_hir_analysis = { path = "../rustc_hir_analysis" }
 rustc_hir_pretty = { path = "../rustc_hir_pretty" }
 rustc_hir_typeck = { path = "../rustc_hir_typeck" }
-rustc_incremental = { path = "../rustc_incremental" }
 rustc_index = { path = "../rustc_index" }
 rustc_interface = { path = "../rustc_interface" }
 rustc_lexer = { path = "../rustc_lexer" }

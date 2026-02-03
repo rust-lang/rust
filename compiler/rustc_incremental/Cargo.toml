@@ -9,7 +9,6 @@ rand = "0.9.0"
 rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
-rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_fs_util = { path = "../rustc_fs_util" }
 rustc_graphviz = { path = "../rustc_graphviz" }
 rustc_hashes = { path = "../rustc_hashes" }
