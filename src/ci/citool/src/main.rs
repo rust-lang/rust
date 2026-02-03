@@ -17,7 +17,7 @@ use clap::Parser;
 use jobs::JobDatabase;
 use serde_yaml::Value;
 
-use crate::analysis::{output_largest_duration_changes, output_test_diffs};
+use crate::analysis::{output_largest_job_duration_changes, output_test_diffs};
 use crate::cpu_usage::load_cpu_usage;
 use crate::datadog::upload_datadog_metric;
 use crate::github::JobInfoResolver;
@@ -205,7 +205,7 @@ And then open `test-dashboard/index.html` in your browser to see an overview of 
         );
     });
 
-    output_largest_duration_changes(&metrics, &mut job_info_resolver);
+    output_largest_job_duration_changes(&metrics, &mut job_info_resolver);
 
     Ok(())
 }
