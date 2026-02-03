@@ -19,7 +19,7 @@ pub use self::job::{
     report_cycle,
 };
 pub use self::plumbing::*;
-use crate::dep_graph::{DepKind, DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
+use crate::dep_graph::{DepContext, DepKind, DepNodeIndex, Deps, SerializedDepNodeIndex};
 
 mod caches;
 mod dispatcher;
@@ -156,7 +156,12 @@ pub enum QuerySideEffect {
     Diagnostic(DiagInner),
 }
 
-pub trait QueryContext<'tcx>: HasDepContext {
+pub trait QueryContext<'tcx>: Copy {
+    type Deps: Deps;
+    type DepContext: DepContext<Deps = Self::Deps>;
+
+    fn dep_context(&self) -> &Self::DepContext;
+
     /// Gets a jobserver reference which is used to release then acquire
     /// a token while waiting on a query.
     fn jobserver_proxy(&self) -> &Proxy;

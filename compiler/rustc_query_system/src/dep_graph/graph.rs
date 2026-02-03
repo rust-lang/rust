@@ -23,7 +23,7 @@ use {super::debug::EdgeFilter, std::env};
 
 use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
-use super::{DepContext, DepKind, DepNode, Deps, HasDepContext, WorkProductId};
+use super::{DepContext, DepKind, DepNode, Deps, WorkProductId};
 use crate::dep_graph::edges::EdgesVec;
 use crate::ich::StableHashingContext;
 use crate::query::{QueryContext, QuerySideEffect};
@@ -260,7 +260,7 @@ impl<D: Deps> DepGraph<D> {
     }
 
     #[inline(always)]
-    pub fn with_task<Ctxt: HasDepContext<Deps = D>, A: Debug, R>(
+    pub fn with_task<Ctxt: DepContext<Deps = D>, A: Debug, R>(
         &self,
         key: DepNode,
         cx: Ctxt,
@@ -269,7 +269,7 @@ impl<D: Deps> DepGraph<D> {
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
         match self.data() {
-            Some(data) => data.with_task(key, cx, arg, task, hash_result),
+            Some(data) => data.with_task(key, cx, cx, arg, task, hash_result),
             None => (task(cx, arg), self.next_virtual_depnode_index()),
         }
     }
@@ -323,12 +323,13 @@ impl<D: Deps> DepGraphData<D> {
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html
     #[inline(always)]
-    pub(crate) fn with_task<Ctxt: HasDepContext<Deps = D>, A: Debug, R>(
+    pub(crate) fn with_task<Ctxt: DepContext<Deps = D>, A: Debug, C: Copy, R>(
         &self,
         key: DepNode,
         cx: Ctxt,
+        task_context: C,
         arg: A,
-        task: fn(Ctxt, A) -> R,
+        task: fn(C, A) -> R,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
         // If the following assertion triggers, it can have two reasons:
@@ -344,8 +345,8 @@ impl<D: Deps> DepGraphData<D> {
             )
         });
 
-        let with_deps = |task_deps| D::with_deps(task_deps, || task(cx, arg));
-        let (result, edges) = if cx.dep_context().is_eval_always(key.kind) {
+        let with_deps = |task_deps| D::with_deps(task_deps, || task(task_context, arg));
+        let (result, edges) = if cx.is_eval_always(key.kind) {
             (with_deps(TaskDepsRef::EvalAlways), EdgesVec::new())
         } else {
             let task_deps = Lock::new(TaskDeps::new(
@@ -356,8 +357,7 @@ impl<D: Deps> DepGraphData<D> {
             (with_deps(TaskDepsRef::Allow(&task_deps)), task_deps.into_inner().reads)
         };
 
-        let dcx = cx.dep_context();
-        let dep_node_index = self.hash_result_and_alloc_node(dcx, key, edges, &result, hash_result);
+        let dep_node_index = self.hash_result_and_alloc_node(cx, key, edges, &result, hash_result);
 
         (result, dep_node_index)
     }
@@ -444,7 +444,7 @@ impl<D: Deps> DepGraphData<D> {
     /// Intern the new `DepNode` with the dependencies up-to-now.
     fn hash_result_and_alloc_node<Ctxt: DepContext<Deps = D>, R>(
         &self,
-        cx: &Ctxt,
+        cx: Ctxt,
         node: DepNode,
         edges: EdgesVec,
         result: &R,
@@ -612,7 +612,7 @@ impl<D: Deps> DepGraph<D> {
                 }
             });
 
-            data.hash_result_and_alloc_node(&cx, node, edges, result, hash_result)
+            data.hash_result_and_alloc_node(cx, node, edges, result, hash_result)
         } else {
             // Incremental compilation is turned off. We just execute the task
             // without tracking. We still provide a dep-node index that uniquely

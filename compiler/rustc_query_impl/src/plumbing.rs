@@ -24,7 +24,7 @@ use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::print::with_reduced_queries;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
+use rustc_query_system::dep_graph::DepNodeParams;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
     QueryCache, QueryContext, QueryDispatcher, QueryJobId, QueryMap, QuerySideEffect,
@@ -67,7 +67,7 @@ impl<'tcx> QueryCtxt<'tcx> {
     }
 }
 
-impl<'tcx> HasDepContext for QueryCtxt<'tcx> {
+impl<'tcx> QueryContext<'tcx> for QueryCtxt<'tcx> {
     type Deps = rustc_middle::dep_graph::DepsType;
     type DepContext = TyCtxt<'tcx>;
 
@@ -75,9 +75,7 @@ impl<'tcx> HasDepContext for QueryCtxt<'tcx> {
     fn dep_context(&self) -> &Self::DepContext {
         &self.tcx
     }
-}
 
-impl<'tcx> QueryContext<'tcx> for QueryCtxt<'tcx> {
     #[inline]
     fn jobserver_proxy(&self) -> &Proxy {
         &self.tcx.jobserver_proxy
