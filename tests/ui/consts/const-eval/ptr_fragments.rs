@@ -70,6 +70,7 @@ const _PARTIAL_OVERWRITE: () = {
 #[allow(dead_code)]
 #[cfg(not(target_arch = "s390x"))] // u128 is less aligned on s390x, removing the padding
 fn fragment_in_dst_padding_gets_overwritten() {
+    // We can't use `repr(align)` here as that would make this not a `ScalarPair` any more.
     #[repr(C)]
     struct Pair {
         x: u128,
