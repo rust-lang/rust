@@ -149,6 +149,7 @@ mod keys;
 pub mod on_disk_cache;
 #[macro_use]
 pub mod plumbing;
+pub mod values;
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
