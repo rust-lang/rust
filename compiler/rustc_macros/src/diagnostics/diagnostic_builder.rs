@@ -456,7 +456,7 @@ impl DiagnosticDeriveVariantBuilder {
                     applicability.set_once(quote! { #static_applicability }, span);
                 }
 
-                let message = slug.diag_message(variant);
+                let message = slug.diag_message(Some(variant));
                 let applicability = applicability
                     .value()
                     .unwrap_or_else(|| quote! { rustc_errors::Applicability::Unspecified });
@@ -487,7 +487,7 @@ impl DiagnosticDeriveVariantBuilder {
         variant: &VariantInfo<'_>,
     ) -> TokenStream {
         let fn_name = format_ident!("span_{}", kind);
-        let message = message.diag_message(variant);
+        let message = message.diag_message(Some(variant));
         quote! {
             diag.#fn_name(
                 #field_binding,
@@ -504,7 +504,7 @@ impl DiagnosticDeriveVariantBuilder {
         message: Message,
         variant: &VariantInfo<'_>,
     ) -> TokenStream {
-        let message = message.diag_message(variant);
+        let message = message.diag_message(Some(variant));
         quote! {
             diag.#kind(#message);
         }

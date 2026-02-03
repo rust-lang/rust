@@ -137,7 +137,6 @@ pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     rustc_passes::DEFAULT_LOCALE_RESOURCE,
     rustc_pattern_analysis::DEFAULT_LOCALE_RESOURCE,
     rustc_privacy::DEFAULT_LOCALE_RESOURCE,
-    rustc_query_system::DEFAULT_LOCALE_RESOURCE,
     rustc_resolve::DEFAULT_LOCALE_RESOURCE,
     rustc_session::DEFAULT_LOCALE_RESOURCE,
     rustc_trait_selection::DEFAULT_LOCALE_RESOURCE,
