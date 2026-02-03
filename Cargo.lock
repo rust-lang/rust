@@ -3794,7 +3794,6 @@ dependencies = [
  "rustc_hir_typeck",
  "rustc_incremental",
  "rustc_index",
- "rustc_infer",
  "rustc_interface",
  "rustc_lexer",
  "rustc_lint",
@@ -4092,7 +4091,6 @@ version = "0.0.0"
 dependencies = [
  "rustc_data_structures",
  "rustc_errors",
- "rustc_fluent_macro",
  "rustc_hir",
  "rustc_index",
  "rustc_macros",

@@ -26,7 +26,6 @@ rustc_hir_pretty = { path = "../rustc_hir_pretty" }
 rustc_hir_typeck = { path = "../rustc_hir_typeck" }
 rustc_incremental = { path = "../rustc_incremental" }
 rustc_index = { path = "../rustc_index" }
-rustc_infer = { path = "../rustc_infer" }
 rustc_interface = { path = "../rustc_interface" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_lint = { path = "../rustc_lint" }
