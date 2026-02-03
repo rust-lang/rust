@@ -602,7 +602,12 @@ impl<'tcx, D: OutlivesHandlingDelegate<'tcx>> TypeOutlivesOpCtxt<'_, 'tcx, D> {
         region: ty::Region<'tcx>,
         alias_ty: ty::AliasTy<'tcx>,
     ) {
-        // An optimization for a common case with opaque types.
+        // Optimization: If an alias doesn't have any arguments then it always
+        // outlives `'static` via the OutlivesProjectionComponent rule.
+        //
+        // This can only happen with opaque types, e.g. `fn foo() -> impl Sized`. Other
+        // kinds of aliases either always have parameters (the self type in projections)
+        // or can be normalized e.g. free and inherent associated type aliases.
         if alias_ty.args.is_empty() {
             return;
         }
@@ -726,14 +731,20 @@ impl<'tcx, D: OutlivesHandlingDelegate<'tcx>> TypeOutlivesOpCtxt<'_, 'tcx, D> {
                     } else {
                         ty::Invariant
                     };
-                    if variance == ty::Invariant {
-                        self.delegate.push_sub_region_constraint(
-                            origin.clone(),
-                            region,
-                            lt,
-                            constraint,
-                        );
+
+                    if variance == ty::Bivariant {
+                        return;
                     }
+
+                    // This method is only called for the args of type aliases which are
+                    // never covariant or contravariant.
+                    assert_eq!(variance, ty::Invariant);
+                    self.delegate.push_sub_region_constraint(
+                        origin.clone(),
+                        region,
+                        lt,
+                        constraint,
+                    );
                 }
                 GenericArgKind::Type(ty) => {
                     require_type_outlives(self, origin.clone(), ty, region, constraint);
