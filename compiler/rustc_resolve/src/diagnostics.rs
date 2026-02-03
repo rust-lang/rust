@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 use std::ops::ControlFlow;
 
 use itertools::Itertools as _;
@@ -1205,6 +1206,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Scope::ModuleGlobs(..) => {
                     // Already handled in `ModuleNonGlobs`.
                 }
+                Scope::NamespacedCrates(..) => {}
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
                         |(name, binding)| {
@@ -1735,8 +1737,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Res::Def(DefKind::Macro(kinds), _) => {
                     format!("{} {}", kinds.article(), kinds.descr())
                 }
-                Res::ToolMod => {
-                    // Don't confuse the user with tool modules.
+                Res::ToolMod | Res::VirtualMod(..) => {
+                    // Don't confuse the user with tool modules or virtual modules.
                     continue;
                 }
                 Res::Def(DefKind::Trait, _) if macro_kind == MacroKind::Derive => {
@@ -1967,6 +1969,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         true
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn decl_description(&self, b: Decl<'_>, ident: Ident, scope: Scope<'_>) -> String {
         let res = b.res();
         if b.span.is_dummy() || !self.tcx.sess.source_map().is_span_accessible(b.span) {
@@ -1975,6 +1978,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Scope::ExternPreludeFlags
                     if self.tcx.sess.opts.externs.get(ident.as_str()).is_some() =>
                 {
+                    ("", " passed with `--extern`")
+                }
+                Scope::ExternPreludeFlags if matches!(res, Res::VirtualMod(..)) => {
                     ("", " passed with `--extern`")
                 }
                 _ => {

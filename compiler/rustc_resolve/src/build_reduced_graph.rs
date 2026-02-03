@@ -326,6 +326,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 _,
             )
             | Res::PrimTy(..)
+            | Res::VirtualMod(..)
             | Res::ToolMod => define_extern(TypeNS),
             Res::Def(
                 DefKind::Fn

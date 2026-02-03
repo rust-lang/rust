@@ -26,7 +26,7 @@ use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingKey, CmResolver, Decl, DeclKind,
     Determinacy, Finalize, IdentKey, ImportKind, LateDecl, Module, ModuleKind, ModuleOrUniformRoot,
     ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet,
-    Segment, Stage, Used, errors,
+    Segment, Stage, Symbol, Used, errors,
 };
 
 #[derive(Copy, Clone)]
@@ -109,26 +109,40 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let (ns, macro_kind) = match scope_set {
             ScopeSet::All(ns)
             | ScopeSet::Module(ns, _)
-            | ScopeSet::ModuleAndExternPrelude(ns, _) => (ns, None),
+            | ScopeSet::ModuleAndExternPrelude(ns, _)
+            | ScopeSet::NamespacedCrate(ns, _) => (ns, None),
             ScopeSet::ExternPrelude => (TypeNS, None),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind)),
         };
         let module = match scope_set {
             // Start with the specified module.
-            ScopeSet::Module(_, module) | ScopeSet::ModuleAndExternPrelude(_, module) => module,
+            ScopeSet::Module(_, module) | ScopeSet::ModuleAndExternPrelude(_, module) => {
+                Some(module)
+            }
+            ScopeSet::NamespacedCrate(_, _) => None,
             // Jump out of trait or enum modules, they do not act as scopes.
-            _ => parent_scope.module.nearest_item_scope(),
+            _ => Some(parent_scope.module.nearest_item_scope()),
         };
         let module_only = matches!(scope_set, ScopeSet::Module(..));
         let module_and_extern_prelude = matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..));
         let extern_prelude = matches!(scope_set, ScopeSet::ExternPrelude);
+        let namespace_crate_only = matches!(scope_set, ScopeSet::NamespacedCrate(..));
         let mut scope = match ns {
-            _ if module_only || module_and_extern_prelude => Scope::ModuleNonGlobs(module, None),
+            _ if module_only || module_and_extern_prelude => {
+                Scope::ModuleNonGlobs(module.unwrap(), None)
+            }
+            _ if namespace_crate_only => {
+                let ScopeSet::NamespacedCrate(_, root_name) = scope_set else {
+                    unreachable!();
+                };
+
+                Scope::NamespacedCrates(root_name)
+            }
             _ if extern_prelude => Scope::ExternPreludeItems,
-            TypeNS | ValueNS => Scope::ModuleNonGlobs(module, None),
+            TypeNS | ValueNS => Scope::ModuleNonGlobs(module.unwrap(), None),
             MacroNS => Scope::DeriveHelpers(parent_scope.expansion),
         };
-        let mut use_prelude = !module.no_implicit_prelude;
+        let mut use_prelude = module.map(|m| !m.no_implicit_prelude).unwrap_or_else(|| true);
 
         loop {
             let visit = match scope {
@@ -151,7 +165,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                     true
                 }
-                Scope::ModuleNonGlobs(..) | Scope::ModuleGlobs(..) => true,
+                Scope::ModuleNonGlobs(..)
+                | Scope::ModuleGlobs(..)
+                | Scope::NamespacedCrates(..) => true,
                 Scope::MacroUsePrelude => use_prelude || orig_ident_span.is_rust_2015(),
                 Scope::BuiltinAttrs => true,
                 Scope::ExternPreludeItems | Scope::ExternPreludeFlags => {
@@ -192,7 +208,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     MacroRulesScope::Invocation(invoc_id) => {
                         Scope::MacroRules(self.invocation_parent_scopes[&invoc_id].macro_rules)
                     }
-                    MacroRulesScope::Empty => Scope::ModuleNonGlobs(module, None),
+                    MacroRulesScope::Empty => Scope::ModuleNonGlobs(module.unwrap(), None),
                 },
                 Scope::ModuleNonGlobs(module, lint_id) => Scope::ModuleGlobs(module, lint_id),
                 Scope::ModuleGlobs(..) if module_only => break,
@@ -218,6 +234,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             }
                         }
                     }
+                }
+                Scope::NamespacedCrates(..) => {
+                    assert!(namespace_crate_only);
+                    break;
                 }
                 Scope::MacroUsePrelude => Scope::StdLibPrelude,
                 Scope::BuiltinAttrs => break, // nowhere else to search
@@ -386,7 +406,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     /// Resolve an identifier in the specified set of scopes.
-    #[instrument(level = "debug", skip(self))]
     pub(crate) fn resolve_ident_in_scope_set<'r>(
         self: CmResolver<'r, 'ra, 'tcx>,
         orig_ident: Ident,
@@ -425,7 +444,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let (ns, macro_kind) = match scope_set {
             ScopeSet::All(ns)
             | ScopeSet::Module(ns, _)
-            | ScopeSet::ModuleAndExternPrelude(ns, _) => (ns, None),
+            | ScopeSet::ModuleAndExternPrelude(ns, _)
+            | ScopeSet::NamespacedCrate(ns, _) => (ns, None),
             ScopeSet::ExternPrelude => (TypeNS, None),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind)),
         };
@@ -684,6 +704,32 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                     Err(ControlFlow::Continue(determinacy)) => Err(determinacy),
                     Err(ControlFlow::Break(..)) => return binding,
+                }
+            }
+            Scope::NamespacedCrates(sym) => {
+                let try_find_namespaced_crate = |root_name: &Symbol| {
+                    self.namespaced_crate_names
+                        .get(root_name.as_str())
+                        .into_iter()
+                        .flatten()
+                        .find(|s| s.split("::").nth(1) == Some(ident.name.as_str()))
+                };
+
+                let ns_crate_cand = try_find_namespaced_crate(&sym);
+                match ns_crate_cand {
+                    Some(ns_cand) => {
+                        let ns_ident = IdentKey::with_root_ctxt(Symbol::intern(ns_cand));
+
+                        match self.extern_prelude_get_flag(
+                            ns_ident,
+                            orig_ident_span,
+                            finalize.is_some(),
+                        ) {
+                            Some(decl) => Ok(decl),
+                            None => Err(Determinacy::Determined),
+                        }
+                    }
+                    None => Err(Determinacy::Determined),
                 }
             }
             Scope::MacroUsePrelude => match self.macro_use_prelude.get(&ident.name).cloned() {
@@ -976,6 +1022,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ignore_import,
                 )
             }
+            ModuleOrUniformRoot::VirtualNamespacedCrate(sym) => self.resolve_ident_in_scope_set(
+                ident,
+                ScopeSet::NamespacedCrate(ns, sym),
+                parent_scope,
+                finalize,
+                ignore_decl,
+                ignore_import,
+            ),
             ModuleOrUniformRoot::ModuleAndExternPrelude(module) => self.resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::ModuleAndExternPrelude(ns, module),
@@ -1962,7 +2016,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
 
                     let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(res);
-                    if let Some(def_id) = binding.res().module_like_def_id() {
+                    if let Res::VirtualMod(sym) = binding.res() {
+                        module = Some(ModuleOrUniformRoot::VirtualNamespacedCrate(sym));
+                        record_segment_res(self.reborrow(), finalize, res, id);
+                    } else if let Some(def_id) = binding.res().module_like_def_id() {
                         if self.mods_with_parse_errors.contains(&def_id) {
                             module_had_parse_errors = true;
                         }
