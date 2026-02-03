@@ -1204,6 +1204,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Scope::ModuleGlobs(..) => {
                     // Already handled in `ModuleNonGlobs`.
                 }
+                Scope::NamespacedCrates(..) => {}
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
                         |(name, binding)| {

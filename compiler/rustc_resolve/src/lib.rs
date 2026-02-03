@@ -131,6 +131,8 @@ enum Scope<'ra> {
     /// The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
     /// lint if it should be reported.
     ModuleGlobs(Module<'ra>, Option<NodeId>),
+    // Crate names of the form `foo::bar`.
+    NamespacedCrates(Module<'ra>, Option<NodeId>),
     /// Names introduced by `#[macro_use]` attributes on `extern crate` items.
     MacroUsePrelude,
     /// Built-in attributes.
@@ -1388,6 +1390,8 @@ pub struct Resolver<'ra, 'tcx> {
 
     // Extern crates with names of the form `foo::bar`
     namespaced_crate_names: FxHashMap<&'tcx str, Vec<&'tcx str>>,
+
+    def_id_to_namespaced_crate_names: CacheRefCell<FxHashMap<DefId, Symbol>>,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1748,6 +1752,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             doc_link_traits_in_scope: Default::default(),
             current_crate_outer_attr_insert_span,
             namespaced_crate_names,
+            def_id_to_namespaced_crate_names: Default::default(),
             ..
         };
 
@@ -1994,6 +1999,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 Scope::ModuleGlobs(..) => {
                     // Already handled in `ModuleNonGlobs` (but see #144993).
+                }
+                Scope::NamespacedCrates(..) => {
+                    // not sure what to do here
                 }
                 Scope::StdLibPrelude => {
                     if let Some(module) = this.prelude {
@@ -2359,7 +2367,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)
                     };
                     crate_id.map(|crate_id| {
-                        let res = Res::Def(DefKind::Mod, crate_id.as_def_id());
+                        let def_id = crate_id.as_def_id();
+                        let res = Res::Def(DefKind::Mod, def_id);
+                        self.try_add_def_id_for_namespaced_crate(def_id, ident);
                         self.arenas.new_pub_def_decl(res, DUMMY_SP, LocalExpnId::ROOT)
                     })
                 }
@@ -2398,7 +2408,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .collect();
         let Ok(segments) = segments else { return None };
 
-        match self.cm().maybe_resolve_path(&segments, Some(ns), &parent_scope, None) {
+        let path_result = self.cm().maybe_resolve_path(&segments, Some(ns), &parent_scope, None);
+        match path_result {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => Some(module.res().unwrap()),
             PathResult::NonModule(path_res) => {
                 path_res.full_res().filter(|res| !matches!(res, Res::Def(DefKind::Ctor(..), _)))
@@ -2406,7 +2417,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             PathResult::Module(ModuleOrUniformRoot::ExternPrelude) | PathResult::Failed { .. } => {
                 None
             }
-            PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
+            PathResult::Module(..) | PathResult::Indeterminate => {
+                panic!("got invalid path_result: {:?}", path_result)
+            }
         }
     }
 
@@ -2521,6 +2534,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.record_use(ident, name_binding, Used::Other);
         }
         self.main_def = Some(MainDefinition { res, is_import, span });
+    }
+
+    fn try_add_def_id_for_namespaced_crate(&self, def_id: DefId, ident: IdentKey) {
+        let crate_name = ident.name;
+        if self.namespaced_crate_names.contains_key(crate_name.as_str()) {
+            self.def_id_to_namespaced_crate_names.borrow_mut().insert(def_id, crate_name);
+        }
     }
 }
 
