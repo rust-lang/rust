@@ -116,7 +116,6 @@ pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     // tidy-alphabetical-start
     rustc_ast_lowering::DEFAULT_LOCALE_RESOURCE,
     rustc_ast_passes::DEFAULT_LOCALE_RESOURCE,
-    rustc_attr_parsing::DEFAULT_LOCALE_RESOURCE,
     rustc_borrowck::DEFAULT_LOCALE_RESOURCE,
     rustc_builtin_macros::DEFAULT_LOCALE_RESOURCE,
     rustc_codegen_ssa::DEFAULT_LOCALE_RESOURCE,
