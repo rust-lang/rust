@@ -200,6 +200,14 @@ fn typeck_with_inspect<'tcx>(
         let wf_code = ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id)));
         fcx.register_wf_obligation(expected_type.into(), body.value.span, wf_code);
 
+        if let hir::Node::AnonConst(_) = node {
+            fcx.require_type_is_sized(
+                expected_type,
+                body.value.span,
+                ObligationCauseCode::SizedConstOrStatic,
+            );
+        }
+
         fcx.check_expr_coercible_to_type(body.value, expected_type, None);
 
         fcx.write_ty(id, expected_type);
