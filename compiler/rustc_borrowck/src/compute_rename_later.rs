@@ -11,6 +11,10 @@ use rustc_middle::ty::TyCtxt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::query::type_op::implied_outlives_bounds::compute_implied_outlives_bounds_inner;
 use crate::debug;
+use crate::fold_regions;
+use crate::ty;
+use crate::RegionVariableOrigin;
+use crate::NllRegionVariableOrigin;
 
 use crate::hir::def::DefKind;
 use crate::ty::solve::NoSolution;
@@ -52,6 +56,12 @@ fn compute_outlives_bounds_rename<'tcx>(
     let mut norm_sig_tys: Vec<Ty<'_>> = vec![];
 
     for ty in unnormalized_input_output_tys {
+        // Replace erased region with existential variables.
+
+        let ty = fold_regions(tcx, ty, |re, _dbi| match re.kind() {
+            ty::ReErased => infcx.next_region_var(RegionVariableOrigin::Nll(NllRegionVariableOrigin::Existential{name: None})),
+            _ => re,
+        });
         // We add implied bounds from both the unnormalized and normalized ty.
         // See issue #87748
 
@@ -116,6 +126,12 @@ fn compute_outlives_bounds_rename<'tcx>(
     //   the types of the locals corresponding to the inputs and outputs of the item. (#136547)
     if matches!(tcx.def_kind(defining_ty_def_id), DefKind::AssocFn | DefKind::AssocConst) {
         for &(ty, _) in tcx.assumed_wf_types(tcx.local_parent(defining_ty_def_id)) {
+
+            let ty = fold_regions(tcx, ty, |re, _dbi| match re.kind() {
+                ty::ReErased => infcx.next_region_var(RegionVariableOrigin::Nll(NllRegionVariableOrigin::Existential{name: None})),
+                _ => re,
+            });
+
             let Ok(norm_ty) =
                 ocx.deeply_normalize(&ObligationCause::dummy_with_span(span), param_env, ty)
             else {
