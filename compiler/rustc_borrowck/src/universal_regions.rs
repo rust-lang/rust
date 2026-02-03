@@ -471,7 +471,6 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let first_extern_index = self.infcx.num_region_vars();
 
         let defining_ty = self.defining_ty();
-        let _ = defining_ty_non_nll(&self.infcx.infcx, self.mir_def);
         debug!("build: defining_ty={:?}", defining_ty);
 
         let mut indices = self.compute_indices(fr_static, defining_ty);

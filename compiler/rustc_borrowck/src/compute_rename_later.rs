@@ -10,11 +10,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::query::type_op::implied_outlives_bounds::compute_implied_outlives_bounds_inner;
-use crate::debug;
-use crate::fold_regions;
-use crate::ty;
-use crate::RegionVariableOrigin;
-use crate::NllRegionVariableOrigin;
 
 use crate::hir::def::DefKind;
 use crate::ty::solve::NoSolution;
@@ -23,7 +18,7 @@ use crate::universal_regions::{
     compute_inputs_and_output_non_nll, defining_ty_non_nll,
     for_each_late_bound_region_in_recursive_scope,
 };
-use crate::{LocalDefId, ParamEnv, Ty, TypingMode};
+use crate::{LocalDefId, ParamEnv, RegionVariableOrigin, Ty, TypingMode, fold_regions, ty};
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers { compute_outlives_bounds_rename, ..*p };
@@ -42,45 +37,36 @@ fn compute_outlives_bounds_rename<'tcx>(
     let defining_ty = defining_ty_non_nll(&infcx, mir_def);
     let defining_ty_def_id = defining_ty.def_id().expect_local();
 
-    debug!("mir def here is {:?}", mir_def);
-
     let unnormalized_input_output_tys =
         compute_inputs_and_output_non_nll(&infcx, mir_def, defining_ty);
     let unnormalized_input_output_tys = tcx
         .liberate_late_bound_regions(defining_ty_def_id.to_def_id(), unnormalized_input_output_tys);
-
-    debug!("unnormalized input output tys is {:?}", unnormalized_input_output_tys);
 
     let span = tcx.def_span(defining_ty_def_id);
     let mut outlives_bounds: Vec<OutlivesBound<'tcx>> = vec![];
     let mut norm_sig_tys: Vec<Ty<'_>> = vec![];
 
     for ty in unnormalized_input_output_tys {
-        // Replace erased region with existential variables.
-
+        // Replace erased regions with existential variables.
         let ty = fold_regions(tcx, ty, |re, _dbi| match re.kind() {
-            ty::ReErased => infcx.next_region_var(RegionVariableOrigin::Nll(NllRegionVariableOrigin::Existential{name: None})),
+            ty::ReErased => infcx.next_region_var(RegionVariableOrigin::Misc(span)),
             _ => re,
         });
+
         // We add implied bounds from both the unnormalized and normalized ty.
         // See issue #87748
-
-        debug!("in the ty loop, current ty is {:?}", ty);
-
-        // TODO: Should the test fail outlive bound computation? visit this later
-        if let Ok(bounds) = compute_implied_outlives_bounds_inner(&ocx, param_env, ty, span, false) {
-            debug!("there is solution for the first implied bound computation");
+        if let Ok(bounds) = compute_implied_outlives_bounds_inner(&ocx, param_env, ty, span, false)
+        {
             outlives_bounds.extend(bounds);
         }
 
-        let Ok(norm_ty) = ocx
-            .deeply_normalize(&ObligationCause::dummy_with_span(span), param_env, ty) else {
-                // TODO: this is a hack here, for some reason, the input ty deeply normalized failed.
-                norm_sig_tys.push(ty);
-                continue;
+        let Ok(norm_ty) =
+            ocx.deeply_normalize(&ObligationCause::dummy_with_span(span), param_env, ty)
+        else {
+            // Even if deeply normalize returns no solution, we still need to store the ty for canonicalization later.
+            norm_sig_tys.push(ty);
+            continue;
         };
-        
-        debug!("there is solution for the first norm ty");
 
         // Currently `implied_outlives_bounds` will normalize the provided
         // `Ty`, despite this it's still important to normalize the ty ourselves
@@ -105,10 +91,10 @@ fn compute_outlives_bounds_rename<'tcx>(
         // Both &Self::Bar and &() are WF
         if ty != norm_ty {
             if let Ok(bounds) =
-                compute_implied_outlives_bounds_inner(&ocx, param_env, norm_ty, span, false) {
-                    debug!("there is solution for second outlive bound computation");
-                    outlives_bounds.extend(bounds);
-                }
+                compute_implied_outlives_bounds_inner(&ocx, param_env, norm_ty, span, false)
+            {
+                outlives_bounds.extend(bounds);
+            }
         }
 
         norm_sig_tys.push(norm_ty);
@@ -126,9 +112,9 @@ fn compute_outlives_bounds_rename<'tcx>(
     //   the types of the locals corresponding to the inputs and outputs of the item. (#136547)
     if matches!(tcx.def_kind(defining_ty_def_id), DefKind::AssocFn | DefKind::AssocConst) {
         for &(ty, _) in tcx.assumed_wf_types(tcx.local_parent(defining_ty_def_id)) {
-
+            // Replace erased regions with fresh region variables.
             let ty = fold_regions(tcx, ty, |re, _dbi| match re.kind() {
-                ty::ReErased => infcx.next_region_var(RegionVariableOrigin::Nll(NllRegionVariableOrigin::Existential{name: None})),
+                ty::ReErased => infcx.next_region_var(RegionVariableOrigin::Misc(span)),
                 _ => re,
             });
 
@@ -141,9 +127,10 @@ fn compute_outlives_bounds_rename<'tcx>(
             // We currently add implied bounds from the normalized ty only.
             // This is more conservative and matches wfcheck behavior.
             if let Ok(bounds) =
-                compute_implied_outlives_bounds_inner(&ocx, param_env, norm_ty, span, false) {
-                    outlives_bounds.extend(bounds);
-                }
+                compute_implied_outlives_bounds_inner(&ocx, param_env, norm_ty, span, false)
+            {
+                outlives_bounds.extend(bounds);
+            }
         }
     }
 
@@ -159,16 +146,10 @@ fn compute_outlives_bounds_rename<'tcx>(
         });
     }
 
-    debug!("region param in query is {:?}", region_params);
-    debug!("sig tys in query is {:?}", norm_sig_tys);
-
-    // TODO: not super happy with constantly chaining, take a look at this again later.
-    // TODO: maybe try to return Ty instead of GenericArg
+    // TODO: not happy with constantly chaining here, take a look at this again later.
     let var_value = tcx.mk_args_from_iter(
         region_params.iter().chain(norm_sig_tys.iter().map(|ty| GenericArg::from(*ty))),
     );
-
-    debug!("var value in query is {:?}", var_value);
 
     let var_values: CanonicalVarValues<TyCtxt<'_>> =
         CanonicalVarValues { var_values: tcx.mk_args(var_value) };

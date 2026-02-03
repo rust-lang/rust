@@ -50,8 +50,6 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, EntryStates, Results, ResultsVisitor, visit_results};
 use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
-//use rustc_trait_selection::traits::query::type_op;
-//use rustc_trait_selection::infer::canonical::OriginalQueryValues;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 

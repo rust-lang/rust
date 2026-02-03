@@ -290,18 +290,17 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         let original_query_value = OriginalQueryValues { var_values, universe_map };
 
         let instantiate_res = self.infcx.instantiate_nll_query_response_and_region_obligations(
-                &ObligationCause::dummy_with_span(span),
-                param_env,
-                &original_query_value,
-                canonical_result,
-                &mut output_query_region_constraints,
-            );
+            &ObligationCause::dummy_with_span(span),
+            param_env,
+            &original_query_value,
+            canonical_result,
+            &mut output_query_region_constraints,
+        );
 
         let bounds = match instantiate_res {
             Ok(InferOk { value: bounds, obligations: _ }) => bounds,
             Err(_) => vec![],
         };
-
 
         // Add the outlives bound and constraints.
         // Because of #109628, we may have unexpected placeholders. Ignore them!
@@ -310,11 +309,6 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         self.add_outlives_bounds(bounds);
 
         if !output_query_region_constraints.is_empty() {
-            // FIXME(higher_ranked_auto): Should we register assumptions here?
-            // We otherwise would get spurious errors if normalizing an implied
-            // outlives bound required proving some higher-ranked coroutine obl.
-
-            // TODO: copy the comment above from somewhere, figure out if that makes sense.
             constraints.push(&output_query_region_constraints);
         };
 
