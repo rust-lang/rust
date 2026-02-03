@@ -50,7 +50,9 @@ impl<'tcx> QueryCtxt<'tcx> {
     }
 
     fn depth_limit_error(self, job: QueryJobId) {
-        let query_map = self.collect_active_jobs(true).expect("failed to collect active queries");
+        let query_map = self
+            .collect_active_jobs_from_all_queries(true)
+            .expect("failed to collect active queries");
         let (info, depth) = job.find_dep_kind_root(query_map);
 
         let suggested_limit = match self.tcx.recursion_limit() {
@@ -98,7 +100,7 @@ impl<'tcx> QueryContext<'tcx> for QueryCtxt<'tcx> {
         tls::with_related_context(self.tcx, |icx| icx.query)
     }
 
-    /// Returns a map of currently active query jobs.
+    /// Returns a map of currently active query jobs, collected from all queries.
     ///
     /// If `require_complete` is `true`, this function locks all shards of the
     /// query results to produce a complete map, which always returns `Ok`.
@@ -108,12 +110,15 @@ impl<'tcx> QueryContext<'tcx> for QueryCtxt<'tcx> {
     /// Prefer passing `false` to `require_complete` to avoid potential deadlocks,
     /// especially when called from within a deadlock handler, unless a
     /// complete map is needed and no deadlock is possible at this call site.
-    fn collect_active_jobs(self, require_complete: bool) -> Result<QueryMap<'tcx>, QueryMap<'tcx>> {
+    fn collect_active_jobs_from_all_queries(
+        self,
+        require_complete: bool,
+    ) -> Result<QueryMap<'tcx>, QueryMap<'tcx>> {
         let mut jobs = QueryMap::default();
         let mut complete = true;
 
-        for collect in super::COLLECT_ACTIVE_JOBS.iter() {
-            if collect(self.tcx, &mut jobs, require_complete).is_none() {
+        for gather_fn in crate::PER_QUERY_GATHER_ACTIVE_JOBS_FNS.iter() {
+            if gather_fn(self.tcx, &mut jobs, require_complete).is_none() {
                 complete = false;
             }
         }
@@ -731,7 +736,10 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn collect_active_jobs<'tcx>(
+            /// Internal per-query plumbing for collecting the set of active jobs for this query.
+            ///
+            /// Should only be called through `PER_QUERY_GATHER_ACTIVE_JOBS_FNS`.
+            pub(crate) fn gather_active_jobs<'tcx>(
                 tcx: TyCtxt<'tcx>,
                 qmap: &mut QueryMap<'tcx>,
                 require_complete: bool,
@@ -741,12 +749,15 @@ macro_rules! define_queries {
                     let name = stringify!($name);
                     $crate::plumbing::create_query_frame(tcx, rustc_middle::query::descs::$name, key, kind, name)
                 };
-                let res = tcx.query_system.states.$name.collect_active_jobs(
+
+                // Call `gather_active_jobs_inner` to do the actual work.
+                let res = tcx.query_system.states.$name.gather_active_jobs_inner(
                     tcx,
                     make_frame,
                     qmap,
                     require_complete,
                 );
+
                 // this can be called during unwinding, and the function has a `try_`-prefix, so
                 // don't `unwrap()` here, just manually check for `None` and do best-effort error
                 // reporting.
@@ -816,10 +827,17 @@ macro_rules! define_queries {
 
         // These arrays are used for iteration and can't be indexed by `DepKind`.
 
-        const COLLECT_ACTIVE_JOBS: &[
-            for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap<'tcx>, bool) -> Option<()>
-        ] =
-            &[$(query_impl::$name::collect_active_jobs),*];
+        /// Used by `collect_active_jobs_from_all_queries` to iterate over all
+        /// queries, and gather the active jobs for each query.
+        ///
+        /// (We arbitrarily use the word "gather" when collecting the jobs for
+        /// each individual query, so that we have distinct function names to
+        /// grep for.)
+        const PER_QUERY_GATHER_ACTIVE_JOBS_FNS: &[
+            for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap<'tcx>, require_complete: bool) -> Option<()>
+        ] = &[
+            $(query_impl::$name::gather_active_jobs),*
+        ];
 
         const ALLOC_SELF_PROFILE_QUERY_STRINGS: &[
             for<'tcx> fn(TyCtxt<'tcx>, &mut QueryKeyStringCache)

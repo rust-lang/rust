@@ -32,6 +32,8 @@ impl<'tcx> QueryInfo<QueryStackDeferred<'tcx>> {
     }
 }
 
+/// Map from query job IDs to job information collected by
+/// [`QueryContext::collect_active_jobs_from_all_queries`].
 pub type QueryMap<'tcx> = FxHashMap<QueryJobId, QueryJobInfo<'tcx>>;
 
 /// A value uniquely identifying an active query job.
@@ -613,7 +615,7 @@ pub fn print_query_stack<'tcx, Qcx: QueryContext<'tcx>>(
     let mut count_total = 0;
 
     // Make use of a partial query map if we fail to take locks collecting active queries.
-    let query_map = match qcx.collect_active_jobs(false) {
+    let query_map = match qcx.collect_active_jobs_from_all_queries(false) {
         Ok(query_map) => query_map,
         Err(query_map) => query_map,
     };

@@ -11,7 +11,6 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::hash_table::{self, Entry, HashTable};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::LockGuard;
 use rustc_data_structures::{outline, sync};
 use rustc_errors::{Diag, FatalError, StashKey};
 use rustc_span::{DUMMY_SP, Span};
@@ -79,7 +78,10 @@ where
         self.active.lock_shards().all(|shard| shard.is_empty())
     }
 
-    pub fn collect_active_jobs<Qcx: Copy>(
+    /// Internal plumbing for collecting the set of active jobs for this query.
+    ///
+    /// Should only be called from `gather_active_jobs`.
+    pub fn gather_active_jobs_inner<Qcx: Copy>(
         &self,
         qcx: Qcx,
         make_frame: fn(Qcx, K) -> QueryStackFrame<QueryStackDeferred<'tcx>>,
@@ -88,23 +90,26 @@ where
     ) -> Option<()> {
         let mut active = Vec::new();
 
-        let mut collect = |iter: LockGuard<'_, HashTable<(K, ActiveKeyStatus<'tcx>)>>| {
-            for (k, v) in iter.iter() {
+        // Helper to gather active jobs from a single shard.
+        let mut gather_shard_jobs = |shard: &HashTable<(K, ActiveKeyStatus<'tcx>)>| {
+            for (k, v) in shard.iter() {
                 if let ActiveKeyStatus::Started(ref job) = *v {
                     active.push((*k, job.clone()));
                 }
             }
         };
 
+        // Lock shards and gather jobs from each shard.
         if require_complete {
             for shard in self.active.lock_shards() {
-                collect(shard);
+                gather_shard_jobs(&shard);
             }
         } else {
             // We use try_lock_shards here since we are called from the
             // deadlock handler, and this shouldn't be locked.
             for shard in self.active.try_lock_shards() {
-                collect(shard?);
+                let shard = shard?;
+                gather_shard_jobs(&shard);
             }
         }
 
@@ -294,7 +299,10 @@ where
 {
     // Ensure there was no errors collecting all active jobs.
     // We need the complete map to ensure we find a cycle to break.
-    let query_map = qcx.collect_active_jobs(false).ok().expect("failed to collect active queries");
+    let query_map = qcx
+        .collect_active_jobs_from_all_queries(false)
+        .ok()
+        .expect("failed to collect active queries");
 
     let error = try_execute.find_cycle_in_stack(query_map, &qcx.current_query_job(), span);
     (mk_cycle(query, qcx, error.lift()), None)

@@ -254,7 +254,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                                     || {
                                         // Ensure there were no errors collecting all active jobs.
                                         // We need the complete map to ensure we find a cycle to break.
-                                        QueryCtxt::new(tcx).collect_active_jobs(false).expect(
+                                        QueryCtxt::new(tcx).collect_active_jobs_from_all_queries(false).expect(
                                             "failed to collect active queries in deadlock handler",
                                         )
                                     },

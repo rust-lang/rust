@@ -166,7 +166,10 @@ pub trait QueryContext<'tcx>: HasDepContext {
     /// Get the query information from the TLS context.
     fn current_query_job(self) -> Option<QueryJobId>;
 
-    fn collect_active_jobs(self, require_complete: bool) -> Result<QueryMap<'tcx>, QueryMap<'tcx>>;
+    fn collect_active_jobs_from_all_queries(
+        self,
+        require_complete: bool,
+    ) -> Result<QueryMap<'tcx>, QueryMap<'tcx>>;
 
     /// Load a side effect associated to the node in the previous session.
     fn load_side_effect(
