@@ -1112,6 +1112,7 @@ impl<'ra> DeclData<'ra> {
     }
 }
 
+#[derive(Debug)]
 struct ExternPreludeEntry<'ra> {
     /// Name declaration from an `extern crate` item.
     /// The boolean flag is true is `item_decl` is non-redundant, happens either when
@@ -1384,6 +1385,9 @@ pub struct Resolver<'ra, 'tcx> {
     // that were encountered during resolution. These names are used to generate item names
     // for APITs, so we don't want to leak details of resolution into these names.
     impl_trait_names: FxHashMap<NodeId, Symbol> = default::fx_hash_map(),
+
+    // Extern crates with names of the form `foo::bar`
+    namespaced_crate_names: FxHashMap<&'tcx str, Vec<&'tcx str>>,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1613,6 +1617,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut invocation_parents = FxHashMap::default();
         invocation_parents.insert(LocalExpnId::ROOT, InvocationParent::ROOT);
 
+        let namespaced_crate_names: FxHashMap<&str, Vec<&str>> = tcx
+            .sess
+            .opts
+            .externs
+            .iter()
+            .filter(|(name, _)| is_namespaced_crate(name))
+            .map(|(name, _)| {
+                let main_crate_name = name
+                    .split("::")
+                    .nth(0)
+                    .expect(&format!("namespaced crate name has unexpected form {}", name));
+                (main_crate_name, name.as_str())
+            })
+            .fold(FxHashMap::default(), |mut acc_map, (main_name, full_name)| {
+                acc_map.entry(main_name).or_insert_with(Vec::new).push(full_name);
+                acc_map
+            });
+
         let mut extern_prelude: FxIndexMap<_, _> = tcx
             .sess
             .opts
@@ -1625,13 +1647,29 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     && let name = Symbol::intern(name)
                     && name.can_be_raw()
                 {
-                    let ident = IdentKey::with_root_ctxt(name);
+                    let ident = if is_namespaced_crate(name.as_str()) {
+                        let crate_name_base = name
+                            .as_str()
+                            .split("::")
+                            .nth(0)
+                            .expect("namespaced crate name should contain '::'");
+
+                        if !namespaced_crate_names.contains_key(crate_name_base) {
+                            panic!("{} should be in `namespaced_crates`", name);
+                        }
+
+                        IdentKey::with_root_ctxt(Symbol::intern(crate_name_base))
+                    } else {
+                        IdentKey::with_root_ctxt(name)
+                    };
+
                     Some((ident, ExternPreludeEntry::flag()))
                 } else {
                     None
                 }
             })
             .collect();
+        debug!(?extern_prelude);
 
         if !attr::contains_name(attrs, sym::no_core) {
             let ident = IdentKey::with_root_ctxt(sym::core);
@@ -1709,6 +1747,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
             current_crate_outer_attr_insert_span,
+            namespaced_crate_names,
             ..
         };
 
@@ -2483,6 +2522,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
         self.main_def = Some(MainDefinition { res, is_import, span });
     }
+}
+
+pub(crate) fn is_namespaced_crate(crate_name: &str) -> bool {
+    crate_name.contains("::")
 }
 
 fn names_to_string(names: impl Iterator<Item = Symbol>) -> String {
