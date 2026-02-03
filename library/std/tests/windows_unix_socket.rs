@@ -1,4 +1,5 @@
 #![cfg(windows)]
+#![cfg(not(miri))] // no socket support in Miri
 #![feature(windows_unix_domain_sockets)]
 // Now only test windows_unix_domain_sockets feature
 // in the future, will test both unix and windows uds
