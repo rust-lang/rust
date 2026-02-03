@@ -75,6 +75,20 @@ fn test_core_symbols() {
         .stderr_contains("from_utf8");
 }
 
+#[test]
+fn test_visible_symbols() {
+    let t = TestTarget::from_env();
+    if t.is_windows() {
+        eprintln!("windows does not have visibility, skipping");
+        return;
+    }
+    let dir = tempdir().unwrap();
+    let lib_out = dir.path().join("libfoo.rlib");
+    t.rustc_build(&input_dir().join("good_lib.rs"), &lib_out, |cmd| cmd);
+    let assert = t.symcheck_exe().arg(&lib_out).assert();
+    assert.failure().stderr_contains("found 1 visible symbols"); // good is visible.
+}
+
 mod exe_stack {
     use super::*;
 
@@ -95,7 +109,7 @@ mod exe_stack {
         let objs = t.cc_build().file(src).out_dir(&dir).compile_intermediates();
         let [obj] = objs.as_slice() else { panic!() };
 
-        let assert = t.symcheck_exe().arg(obj).assert();
+        let assert = t.symcheck_exe().arg(obj).arg("--no-visibility").assert();
 
         if t.is_ppc64be() || t.no_os() || t.binary_obj_format() != BinaryFormat::Elf {
             // Ppc64be doesn't emit `.note.GNU-stack`, not relevant without an OS, and non-elf
@@ -127,7 +141,7 @@ mod exe_stack {
             .compile_intermediates();
         let [obj] = objs.as_slice() else { panic!() };
 
-        let assert = t.symcheck_exe().arg(obj).assert();
+        let assert = t.symcheck_exe().arg(obj).arg("--no-visibility").assert();
 
         if t.is_ppc64be() || t.no_os() {
             // Ppc64be doesn't emit `.note.GNU-stack`, not relevant without an OS.
@@ -179,7 +193,11 @@ fn test_good_lib() {
     let dir = tempdir().unwrap();
     let lib_out = dir.path().join("libfoo.rlib");
     t.rustc_build(&input_dir().join("good_lib.rs"), &lib_out, |cmd| cmd);
-    let assert = t.symcheck_exe().arg(&lib_out).assert();
+    let assert = t
+        .symcheck_exe()
+        .arg(&lib_out)
+        .arg("--no-visibility")
+        .assert();
     assert.success();
 }
 
@@ -199,7 +217,7 @@ fn test_good_bin() {
     t.set_bin_out_path(&mut cmd, &out);
     run(cmd.arg(input_dir().join("good_bin.c")));
 
-    let assert = t.symcheck_exe().arg(&out).assert();
+    let assert = t.symcheck_exe().arg(&out).arg("--no-visibility").assert();
     assert.success();
 }
 
