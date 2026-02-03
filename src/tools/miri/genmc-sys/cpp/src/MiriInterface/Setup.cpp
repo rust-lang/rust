@@ -113,6 +113,9 @@ static auto to_genmc_verbosity_level(const LogLevel log_level) -> VerbosityLevel
     // value written by the skipped thread.
     conf->replayCompletedThreads = true;
 
+    // Don't emit labels for non-atomics in the graph for more efficient exploration
+    conf->emitNALabels = false;
+
     // FIXME(genmc): implement symmetry reduction.
     ERROR_ON(
         params.do_symmetry_reduction,

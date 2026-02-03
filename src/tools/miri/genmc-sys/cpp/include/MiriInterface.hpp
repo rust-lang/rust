@@ -87,13 +87,15 @@ struct MiriGenmcShim : private GenMCDriver {
 
     /**** Memory access handling ****/
 
-    [[nodiscard]] LoadResult handle_load(
+    [[nodiscard]] LoadResult handle_atomic_load(
         ThreadId thread_id,
         uint64_t address,
         uint64_t size,
         MemOrdering ord,
         GenmcScalar old_val
     );
+    [[nodiscard]] LoadResult
+    handle_non_atomic_load(ThreadId thread_id, uint64_t address, uint64_t size);
     [[nodiscard]] ReadModifyWriteResult handle_read_modify_write(
         ThreadId thread_id,
         uint64_t address,
@@ -114,7 +116,7 @@ struct MiriGenmcShim : private GenMCDriver {
         MemOrdering fail_load_ordering,
         bool can_fail_spuriously
     );
-    [[nodiscard]] StoreResult handle_store(
+    [[nodiscard]] StoreResult handle_atomic_store(
         ThreadId thread_id,
         uint64_t address,
         uint64_t size,
@@ -122,12 +124,14 @@ struct MiriGenmcShim : private GenMCDriver {
         GenmcScalar old_val,
         MemOrdering ord
     );
+    [[nodiscard]] StoreResult
+    handle_non_atomic_store(ThreadId thread_id, uint64_t address, uint64_t size);
 
     void handle_fence(ThreadId thread_id, MemOrdering ord);
 
     /**** Memory (de)allocation ****/
 
-    auto handle_malloc(ThreadId thread_id, uint64_t size, uint64_t alignment) -> uint64_t;
+    auto handle_malloc(ThreadId thread_id, uint64_t size, uint64_t alignment) -> MallocResult;
 
     /** Returns null on success, or an error string if an error occurs. */
     auto handle_free(ThreadId thread_id, uint64_t address) -> std::unique_ptr<std::string>;
@@ -214,29 +218,6 @@ struct MiriGenmcShim : private GenMCDriver {
         ERROR_ON(tid >= threads_action_.size(), "ThreadId out of bounds");
         threads_action_[tid].event.index += count;
     }
-    /** Decrement the event index in the given thread by `count`. */
-    inline void dec_pos(ThreadId tid, unsigned int count) {
-        ERROR_ON(tid >= threads_action_.size(), "ThreadId out of bounds");
-        threads_action_[tid].event.index -= count;
-    }
-
-    /**
-     * Helper function for loads that need to reset the event counter when no value is returned.
-     * Same syntax as `GenMCDriver::handleLoad`, but this takes a thread id instead of an Event.
-     * Automatically calls `inc_pos` and `dec_pos` where needed for the given thread.
-     */
-    template <EventLabel::EventLabelKind k, typename... Ts>
-    auto handle_load_reset_if_none(ThreadId tid, std::optional<SVal> old_val, Ts&&... params)
-        -> HandleResult<SVal> {
-        const auto pos = inc_pos(tid, 1);
-        const auto ret =
-            GenMCDriver::handleLoad<k>(nullptr, pos, old_val, std::forward<Ts>(params)...);
-        // If we didn't get a value, we have to reset the index of the current thread.
-        if (!std::holds_alternative<SVal>(ret)) {
-            dec_pos(tid, 1);
-        }
-        return ret;
-    }
 
     /**
      * GenMC uses the term `Action` to refer to a struct of:
@@ -301,7 +282,6 @@ inline LoadResult no_value() {
     return LoadResult {
         .invalid = false,
         .error = std::unique_ptr<std::string>(nullptr),
-        .has_value = false,
         .read_value = GenmcScalarExt::uninit(),
     };
 }
@@ -309,22 +289,17 @@ inline LoadResult no_value() {
 inline LoadResult from_value(SVal read_value) {
     return LoadResult { .invalid = false,
                         .error = std::unique_ptr<std::string>(nullptr),
-                        .has_value = true,
                         .read_value = GenmcScalarExt::from_sval(read_value) };
 }
 
 inline LoadResult from_error(std::unique_ptr<std::string> error) {
     return LoadResult { .invalid = false,
                         .error = std::move(error),
-                        .has_value = false,
                         .read_value = GenmcScalarExt::uninit() };
 }
 
 inline LoadResult from_invalid() {
-    return LoadResult { .invalid = true,
-                        .error = nullptr,
-                        .has_value = false,
-                        .read_value = GenmcScalarExt::uninit() };
+    return LoadResult { .invalid = true, .error = nullptr, .read_value = GenmcScalarExt::uninit() };
 }
 
 } // namespace LoadResultExt

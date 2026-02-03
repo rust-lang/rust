@@ -216,8 +216,6 @@ mod ffi {
         invalid: bool,
         /// If not null, contains the error encountered during the handling of the load.
         error: UniquePtr<CxxString>,
-        /// Indicates whether a value was read or not.
-        has_value: bool,
         /// The value that was read. Should not be used if `has_value` is `false`.
         read_value: GenmcScalar,
     }
@@ -404,13 +402,19 @@ mod ffi {
         /***** Functions for handling events encountered during program execution. *****/
 
         /**** Memory access handling ****/
-        fn handle_load(
+        fn handle_atomic_load(
             self: Pin<&mut MiriGenmcShim>,
             thread_id: i32,
             address: u64,
             size: u64,
             memory_ordering: MemOrdering,
             old_value: GenmcScalar,
+        ) -> LoadResult;
+        fn handle_non_atomic_load(
+            self: Pin<&mut MiriGenmcShim>,
+            thread_id: i32,
+            address: u64,
+            size: u64,
         ) -> LoadResult;
         fn handle_read_modify_write(
             self: Pin<&mut MiriGenmcShim>,
@@ -434,7 +438,7 @@ mod ffi {
             fail_load_ordering: MemOrdering,
             can_fail_spuriously: bool,
         ) -> CompareExchangeResult;
-        fn handle_store(
+        fn handle_atomic_store(
             self: Pin<&mut MiriGenmcShim>,
             thread_id: i32,
             address: u64,
@@ -442,6 +446,12 @@ mod ffi {
             value: GenmcScalar,
             old_value: GenmcScalar,
             memory_ordering: MemOrdering,
+        ) -> StoreResult;
+        fn handle_non_atomic_store(
+            self: Pin<&mut MiriGenmcShim>,
+            thread_id: i32,
+            address: u64,
+            size: u64,
         ) -> StoreResult;
         fn handle_fence(
             self: Pin<&mut MiriGenmcShim>,
@@ -455,7 +465,7 @@ mod ffi {
             thread_id: i32,
             size: u64,
             alignment: u64,
-        ) -> u64;
+        ) -> MallocResult;
         /// Returns true if an error was found.
         fn handle_free(
             self: Pin<&mut MiriGenmcShim>,
