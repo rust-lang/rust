@@ -14,13 +14,18 @@ pub(crate) enum Message {
 }
 
 impl Message {
-    pub(crate) fn diag_message(&self, variant: &VariantInfo<'_>) -> TokenStream {
+    /// Get the diagnostic message for this diagnostic
+    /// The passed `variant` is used to check whether all variables in the message are used.
+    /// For subdiagnostics, we cannot check this.
+    pub(crate) fn diag_message(&self, variant: Option<&VariantInfo<'_>>) -> TokenStream {
         match self {
             Message::Slug(slug) => {
                 quote! { crate::fluent_generated::#slug }
             }
             Message::Inline(message_span, message) => {
-                verify_fluent_message(*message_span, &message, variant);
+                if let Some(variant) = variant {
+                    verify_fluent_message(*message_span, &message, variant);
+                }
                 quote! { rustc_errors::DiagMessage::Inline(std::borrow::Cow::Borrowed(#message)) }
             }
         }

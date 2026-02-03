@@ -31,7 +31,7 @@ impl<'a> DiagnosticDerive<'a> {
                 return DiagnosticDeriveError::ErrorHandled.to_compile_error();
             };
             messages.borrow_mut().push(message.clone());
-            let message = message.diag_message(variant);
+            let message = message.diag_message(Some(variant));
 
             let init = quote! {
                 let mut diag = rustc_errors::Diag::new(
@@ -97,7 +97,7 @@ impl<'a> LintDiagnosticDerive<'a> {
                 return DiagnosticDeriveError::ErrorHandled.to_compile_error();
             };
             messages.borrow_mut().push(message.clone());
-            let message = message.diag_message(variant);
+            let message = message.diag_message(Some(variant));
             let primary_message = quote! {
                 diag.primary_message(#message);
             };
