@@ -3,7 +3,7 @@ use std::convert::identity;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, ast, token};
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::{Applicability, PResult, inline_fluent};
 use rustc_feature::{
     AttrSuggestionStyle, AttributeTemplate, Features, GatedCfg, find_gated_cfg, template,
 };
@@ -25,7 +25,7 @@ use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, CfgAttrBadDelim, MetaBadDelimSugg,
     ParsedDescription,
 };
-use crate::{AttributeParser, fluent_generated, parse_version, session_diagnostics};
+use crate::{AttributeParser, parse_version, session_diagnostics};
 
 pub const CFG_TEMPLATE: AttributeTemplate = template!(
     List: &["predicate"],
@@ -141,7 +141,7 @@ fn parse_cfg_entry_target<S: Stage>(
             cx.sess(),
             sym::cfg_target_compact,
             meta_span,
-            fluent_generated::attr_parsing_unstable_cfg_target_compact,
+            inline_fluent!("compact `cfg(target(..))` is experimental and subject to change"),
         )
         .emit();
     }

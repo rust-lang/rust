@@ -1,3 +1,4 @@
+use rustc_errors::inline_fluent;
 use rustc_feature::Features;
 use rustc_hir::attrs::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
 use rustc_hir::attrs::*;
@@ -10,7 +11,6 @@ use rustc_target::spec::{Arch, BinaryFormat};
 use super::prelude::*;
 use super::util::parse_single_integer;
 use crate::attributes::cfg::parse_cfg_entry;
-use crate::fluent_generated;
 use crate::session_diagnostics::{
     AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, ImportNameTypeRaw, ImportNameTypeX86,
     IncompatibleWasmLink, InvalidLinkModifier, LinkFrameworkApple, LinkOrdinalOutOfRange,
@@ -305,7 +305,7 @@ impl LinkParser {
                         sess,
                         sym::raw_dylib_elf,
                         nv.value_span,
-                        fluent_generated::attr_parsing_raw_dylib_elf_unstable,
+                        inline_fluent!("link kind `raw-dylib` is unstable on ELF platforms"),
                     )
                     .emit();
                 } else {
@@ -320,7 +320,7 @@ impl LinkParser {
                         sess,
                         sym::link_arg_attribute,
                         nv.value_span,
-                        fluent_generated::attr_parsing_link_arg_unstable,
+                        inline_fluent!("link kind `link-arg` is unstable"),
                     )
                     .emit();
                 }
@@ -385,13 +385,8 @@ impl LinkParser {
             return true;
         };
         if !features.link_cfg() {
-            feature_err(
-                sess,
-                sym::link_cfg,
-                item.span(),
-                fluent_generated::attr_parsing_link_cfg_unstable,
-            )
-            .emit();
+            feature_err(sess, sym::link_cfg, item.span(), inline_fluent!("link cfg is unstable"))
+                .emit();
         }
         *cfg = parse_cfg_entry(cx, link_cfg).ok();
         true
