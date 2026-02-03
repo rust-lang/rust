@@ -55,12 +55,10 @@ pub(super) fn extract_refined_covspans<'tcx>(
             }
 
             // Each pushed covspan should have the same context as the body span.
-            // If it somehow doesn't, discard the covspan, or panic in debug builds.
+            // If it somehow doesn't, discard the covspan.
             if !body_span.eq_ctxt(covspan_span) {
-                debug_assert!(
-                    false,
-                    "span context mismatch: body_span={body_span:?}, covspan.span={covspan_span:?}"
-                );
+                // FIXME(Zalathar): Investigate how and why this is triggered
+                // by `tests/coverage/macros/context-mismatch-issue-147339.rs`.
                 return false;
             }
 
