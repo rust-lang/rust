@@ -272,38 +272,36 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             });
         }
 
-        debug!("region param in borrowck is {:?}", var_values);
-
-        // Collect the normalized fn sig to var_values too
+        // Add the normalized fn_sig to var_values too
         let var_values = var_values
             .iter()
             .chain(normalized_inputs_and_output.iter().map(|ty| GenericArg::from(*ty)))
             .collect();
 
-        debug!("sig tys in borrowck is {:?}", normalized_inputs_and_output);
-        debug!("var value in borrowck is {:?}", var_values);
-
-        // Compute implied bound
-        // TODO: might move this somewhere else later
-        let Ok(canonical_result) = tcx.compute_outlives_bounds_rename(self.def) else { todo!() };
+        let Ok(canonical_result) = tcx.compute_outlives_bounds_rename(self.def) else {
+            // see what will hit this case and think about this later
+            todo!();
+        };
 
         // Instantiate query result
         let mut output_query_region_constraints = QueryRegionConstraints::default();
         let mut universe_map = SmallVec::default();
         universe_map.push(ty::UniverseIndex::ROOT);
         let original_query_value = OriginalQueryValues { var_values, universe_map };
-        // TODO: we don't need to use obligations?
-        let Ok(InferOk { value: bounds, obligations: _ }) =
-            self.infcx.instantiate_nll_query_response_and_region_obligations(
+
+        let instantiate_res = self.infcx.instantiate_nll_query_response_and_region_obligations(
                 &ObligationCause::dummy_with_span(span),
                 param_env,
                 &original_query_value,
                 canonical_result,
                 &mut output_query_region_constraints,
-            )
-        else {
-            todo!()
+            );
+
+        let bounds = match instantiate_res {
+            Ok(InferOk { value: bounds, obligations: _ }) => bounds,
+            Err(_) => vec![],
         };
+
 
         // Add the outlives bound and constraints.
         // Because of #109628, we may have unexpected placeholders. Ignore them!
