@@ -38,31 +38,6 @@ impl From<ty::ConstVid> for TermVid {
 }
 
 impl<'tcx> InferCtxt<'tcx> {
-    fn check_generalized_alias_normalizes_to_tyvar<R: PredicateEmittingRelation<Self>>(
-        &self,
-        relation: &mut R,
-        source_ty: Ty<'tcx>,
-    ) -> Option<Ty<'tcx>> {
-        if !self.next_trait_solver()
-            || matches!(relation.structurally_relate_aliases(), StructurallyRelateAliases::Yes)
-        {
-            return None;
-        }
-
-        // If we get an alias
-        let ty::Alias(_, alias) = source_ty.kind() else {
-            return None;
-        };
-
-        if alias.has_escaping_bound_vars() {
-            return None;
-        }
-
-        let normalized_alias = relation.try_eagerly_normalize_alias(*alias);
-
-        normalized_alias.is_ty_var().then_some(normalized_alias)
-    }
-
     /// The idea is that we should ensure that the type variable `target_vid`
     /// is equal to, a subtype of, or a supertype of `source_ty`.
     ///
@@ -86,31 +61,53 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> RelateResult<'tcx, ()> {
         debug_assert!(self.inner.borrow_mut().type_variables().probe(target_vid).is_unknown());
 
-        let generalized_ty =
-            match self.check_generalized_alias_normalizes_to_tyvar(relation, source_ty) {
-                Some(tyvar) => tyvar,
-                None => {
-                    // Generalize `source_ty` depending on the current variance. As an example, assume
-                    // `?target <: &'x ?1`, where `'x` is some free region and `?1` is an inference
-                    // variable.
-                    //
-                    // Then the `generalized_ty` would be `&'?2 ?3`, where `'?2` and `?3` are fresh
-                    // region/type inference variables.
-                    //
-                    // We then relate `generalized_ty <: source_ty`, adding constraints like `'x: '?2` and
-                    // `?1 <: ?3`.
-                    let generalizer = self.generalize(
-                        relation.span(),
-                        relation.structurally_relate_aliases(),
-                        target_vid,
-                        instantiation_variance,
-                        source_ty,
-                        &mut |alias| relation.try_eagerly_normalize_alias(alias),
-                    )?;
+        let generalized_ty = if self.next_trait_solver()
+            && matches!(relation.structurally_relate_aliases(), StructurallyRelateAliases::No)
+            && let ty::Alias(_, alias) = source_ty.kind()
+        {
+            let normalized_alias = relation.try_eagerly_normalize_alias(*alias);
 
-                    generalizer.value_may_be_infer
-                }
-            };
+            if normalized_alias.is_ty_var() {
+                normalized_alias
+            } else {
+                let Generalization { value_may_be_infer: generalized_ty } = self.generalize(
+                    relation.span(),
+                    GeneralizerState::ShallowStructurallyRelateAliases,
+                    target_vid,
+                    instantiation_variance,
+                    normalized_alias,
+                    &mut |alias| relation.try_eagerly_normalize_alias(alias),
+                )?;
+
+                // The only way to get a tyvar back is if the outermost type is an alias.
+                // However, here, though we know it *is* an alias, we initialize the generalizer
+                // with `ShallowStructurallyRelateAliases` so we treat the outermost alias as rigid,
+                // ensuring this is never a tyvar.
+                assert!(!generalized_ty.is_ty_var());
+
+                generalized_ty
+            }
+        } else {
+            // Generalize `source_ty` depending on the current variance. As an example, assume
+            // `?target <: &'x ?1`, where `'x` is some free region and `?1` is an inference
+            // variable.
+            //
+            // Then the `generalized_ty` would be `&'?2 ?3`, where `'?2` and `?3` are fresh
+            // region/type inference variables.
+            //
+            // We then relate `generalized_ty <: source_ty`, adding constraints like `'x: '?2` and
+            // `?1 <: ?3`.
+            let Generalization { value_may_be_infer: generalized_ty } = self.generalize(
+                relation.span(),
+                relation.structurally_relate_aliases().into(),
+                target_vid,
+                instantiation_variance,
+                source_ty,
+                &mut |alias| relation.try_eagerly_normalize_alias(alias),
+            )?;
+
+            generalized_ty
+        };
 
         // Finally, relate `generalized_ty` to `source_ty`, as described in previous comment.
         //
@@ -239,7 +236,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // constants and generic expressions are not yet handled correctly.
         let Generalization { value_may_be_infer: generalized_ct } = self.generalize(
             relation.span(),
-            relation.structurally_relate_aliases(),
+            relation.structurally_relate_aliases().into(),
             target_vid,
             ty::Invariant,
             source_ct,
@@ -279,7 +276,7 @@ impl<'tcx> InferCtxt<'tcx> {
     fn generalize<T: Into<Term<'tcx>> + Relate<TyCtxt<'tcx>>>(
         &self,
         span: Span,
-        structurally_relate_aliases: StructurallyRelateAliases,
+        initial_state: GeneralizerState,
         target_vid: impl Into<TermVid>,
         ambient_variance: ty::Variance,
         source_term: T,
@@ -303,10 +300,7 @@ impl<'tcx> InferCtxt<'tcx> {
             for_universe,
             root_term: source_term.into(),
             ambient_variance,
-            state: match structurally_relate_aliases {
-                StructurallyRelateAliases::No => GeneralizerState::Default,
-                StructurallyRelateAliases::Yes => GeneralizerState::StructurallyRelateAliases,
-            },
+            state: initial_state,
             cache: Default::default(),
             normalize,
         };
@@ -363,6 +357,15 @@ enum GeneralizerState {
     /// Only one layer
     ShallowStructurallyRelateAliases,
     StructurallyRelateAliases,
+}
+
+impl From<StructurallyRelateAliases> for GeneralizerState {
+    fn from(structurally_relate_aliases: StructurallyRelateAliases) -> Self {
+        match structurally_relate_aliases {
+            StructurallyRelateAliases::No => GeneralizerState::Default,
+            StructurallyRelateAliases::Yes => GeneralizerState::StructurallyRelateAliases,
+        }
+    }
 }
 
 /// The "generalizer" is used when handling inference variables.
