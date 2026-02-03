@@ -144,6 +144,27 @@ impl CodegenBackendKind {
         }
     }
 
+    pub fn supports_target(&self, target: TargetSelection) -> bool {
+        match self {
+            CodegenBackendKind::Llvm | CodegenBackendKind::Custom(_) => true,
+            CodegenBackendKind::Gcc => target.contains("linux") && target.contains("x86_64"),
+            CodegenBackendKind::Cranelift => {
+                if target.contains("linux") {
+                    target.contains("x86_64")
+                        || target.contains("aarch64")
+                        || target.contains("s390x")
+                        || target.contains("riscv64gc")
+                } else if target.contains("darwin") {
+                    target.contains("x86_64") || target.contains("aarch64")
+                } else if target.is_windows() {
+                    target.contains("x86_64")
+                } else {
+                    false
+                }
+            }
+        }
+    }
+
     /// Name of the codegen backend's crate, e.g. `rustc_codegen_cranelift`.
     pub fn crate_name(&self) -> String {
         format!("rustc_codegen_{}", self.name())

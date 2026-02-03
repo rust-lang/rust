@@ -22,9 +22,9 @@ use tracing::span;
 use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair};
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
-use crate::core::builder;
 use crate::core::builder::{
-    Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
+    self, Builder, Cargo, Kind, MakeOrEnsure, RunConfig, ShouldRun, Step, StepMetadata,
+    SupportedConfig, Unsupported, crate_description,
 };
 use crate::core::config::toml::target::DefaultLinuxLinkerOverride;
 use crate::core::config::{
@@ -901,6 +901,22 @@ impl Step for StartupObjects {
         });
     }
 
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported<Self::Output>> {
+        let target = match config.extra {
+            MakeOrEnsure::Run(run) => run.target,
+            MakeOrEnsure::Step(this) => this.target,
+        };
+        // Even though no longer necessary on x86_64, they are kept for now to
+        // avoid potential issues in downstream crates.
+        if target.is_windows_gnu() {
+            Ok(())
+        } else {
+            Unsupported::skip(
+                "outside windows-gnu platforms, startup objects are handled by the platform C compiler",
+            )
+        }
+    }
+
     /// Builds and prepare startup objects like rsbegin.o and rsend.o
     ///
     /// These are primarily used on Windows right now for linking executables/dlls.
@@ -910,11 +926,6 @@ impl Step for StartupObjects {
     fn run(self, builder: &Builder<'_>) -> Vec<(PathBuf, DependencyType)> {
         let for_compiler = self.compiler;
         let target = self.target;
-        // Even though no longer necessary on x86_64, they are kept for now to
-        // avoid potential issues in downstream crates.
-        if !target.is_windows_gnu() {
-            return vec![];
-        }
 
         let mut target_deps = vec![];
 
@@ -1024,6 +1035,8 @@ impl Step for Rustc {
     fn make_run(run: RunConfig<'_>) {
         // If only `compiler` was passed, do not run this step.
         // Instead the `Assemble` step will take care of compiling Rustc.
+        // NOTE: this doesn't use `is_supported` because the fact that `Rustc` is different
+        // from `Assemble` is an implementation detail.
         if run.builder.paths == vec![PathBuf::from("compiler")] {
             return;
         }

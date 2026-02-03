@@ -18,7 +18,9 @@ use build_helper::exit;
 use build_helper::git::PathFreshness;
 
 use crate::core::build_steps::llvm;
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, StepMetadata};
+use crate::core::builder::{
+    Builder, MakeOrEnsure, RunConfig, ShouldRun, Step, StepMetadata, SupportedConfig, Unsupported,
+};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
@@ -1351,17 +1353,21 @@ impl Step for Sanitizers {
         run.alias("sanitizers")
     }
 
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported<Self::Output>> {
+        let compiler_rt_dir = config.builder.src.join("src/llvm-project/compiler-rt");
+        if !compiler_rt_dir.exists() {
+            Unsupported::skip("need llvm/compiler-rt checked out on disk to build sanitizers")
+        } else {
+            Ok(())
+        }
+    }
+
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Sanitizers { target: run.target });
     }
 
     /// Builds sanitizer runtime libraries.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let compiler_rt_dir = builder.src.join("src/llvm-project/compiler-rt");
-        if !compiler_rt_dir.exists() {
-            return Vec::new();
-        }
-
         let out_dir = builder.native_dir(self.target).join("sanitizers");
         let runtimes = supported_sanitizers(&out_dir, self.target, &builder.config.channel);
 
@@ -1398,6 +1404,7 @@ impl Step for Sanitizers {
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
 
+        let compiler_rt_dir = builder.src.join("src/llvm-project/compiler-rt");
         let mut cfg = cmake::Config::new(&compiler_rt_dir);
         cfg.profile("Release");
         cfg.define("CMAKE_C_COMPILER_TARGET", self.target.triple);
@@ -1545,10 +1552,20 @@ impl Step for CrtBeginEnd {
         run.path("src/llvm-project/compiler-rt/lib/crt")
     }
 
-    fn make_run(run: RunConfig<'_>) {
-        if run.target.needs_crt_begin_end() {
-            run.builder.ensure(CrtBeginEnd { target: run.target });
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported<Self::Output>> {
+        let target = match config.extra {
+            MakeOrEnsure::Run(run) => run.target,
+            MakeOrEnsure::Step(this) => this.target,
+        };
+        if !target.needs_crt_begin_end() {
+            Unsupported::skip("no self-contained C runtime necessary for this target")
+        } else {
+            Ok(())
         }
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CrtBeginEnd { target: run.target });
     }
 
     /// Build crtbegin.o/crtend.o for musl target.

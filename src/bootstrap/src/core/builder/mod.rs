@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use std::{env, fs};
 
 use clap::ValueEnum;
-pub use selectors::{Alias, ShouldRun, StepSelectors, Unsupported, check_step_supported, crate_description};
+pub use selectors::{Alias, ShouldRun, StepSelectors, Unsupported, crate_description};
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
@@ -21,6 +21,7 @@ use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
 };
+use crate::core::builder::selectors::check_step_supported;
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::Subcommand;
 use crate::utils::build_stamp::BuildStamp;

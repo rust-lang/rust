@@ -12,8 +12,6 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::{env, fs, iter};
 
-use build_helper::exit;
-
 use crate::core::build_steps::compile::{ArtifactKeepMode, Std, run_cargo};
 use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
 use crate::core::build_steps::gcc::{Gcc, GccTargetPair, add_cg_gcc_cargo_flags};
@@ -28,8 +26,8 @@ use crate::core::build_steps::tool::{
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, dist, llvm};
 use crate::core::builder::{
-    self, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, StepMetadata,
-    crate_description,
+    self, Alias, Builder, Compiler, Kind, MakeOrEnsure, RunConfig, ShouldRun, Step, StepMetadata,
+    SupportedConfig, Unsupported, crate_description,
 };
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{Subcommand, get_completion, top_level_help};
@@ -38,7 +36,7 @@ use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
     self, LldThreads, add_dylib_path, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var,
-    linker_args, linker_flags, t, target_supports_cranelift_backend, up_to_date,
+    linker_args, linker_flags, t, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{CLang, CodegenBackendKind, DocTests, GitRepo, Mode, StepSelectors, envify};
@@ -132,6 +130,24 @@ impl Step for Linkcheck {
         builder.config.docs
     }
 
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported<Self::Output>> {
+        let hosts = &config.builder.hosts;
+        let targets = &config.builder.targets;
+
+        // if we have different hosts and targets, some things may be built for
+        // the host (e.g. rustc) and others for the target (e.g. std). The
+        // documentation built for each will contain broken links to
+        // docs built for the other platform (e.g. rustc linking to cargo)
+        if (hosts != targets) && !hosts.is_empty() && !targets.is_empty() {
+            return Unsupported::fatal(
+                "Linkcheck currently does not support builds with different hosts and targets.
+You can skip linkcheck with --skip src/tools/linkchecker",
+            );
+        }
+
+        Ok(())
+    }
+
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Linkcheck { host: run.target });
     }
@@ -142,19 +158,6 @@ impl Step for Linkcheck {
     /// documentation to ensure we don't have a bunch of dead ones.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
-        let hosts = &builder.hosts;
-        let targets = &builder.targets;
-
-        // if we have different hosts and targets, some things may be built for
-        // the host (e.g. rustc) and others for the target (e.g. std). The
-        // documentation built for each will contain broken links to
-        // docs built for the other platform (e.g. rustc linking to cargo)
-        if (hosts != targets) && !hosts.is_empty() && !targets.is_empty() {
-            panic!(
-                "Linkcheck currently does not support builds with different hosts and targets.
-You can skip linkcheck with --skip src/tools/linkchecker"
-            );
-        }
 
         builder.info(&format!("Linkcheck ({host})"));
 
@@ -218,8 +221,14 @@ impl Step for HtmlCheck {
         run.path("src/tools/html-checker")
     }
 
-    fn is_default_step(builder: &Builder<'_>) -> bool {
-        check_if_tidy_is_installed(builder)
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported> {
+        if !check_if_tidy_is_installed(config.builder) {
+            let mut msg = "`tidy` is missing".to_owned();
+            msg += "You need the HTML tidy tool https://www.html-tidy.org/, this tool is *not* part of the rust project and needs to be installed separately, for example via your package manager.";
+            Unsupported::fatal(msg)
+        } else {
+            Ok(())
+        }
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -227,13 +236,6 @@ impl Step for HtmlCheck {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        if !check_if_tidy_is_installed(builder) {
-            eprintln!("not running HTML-check tool because `tidy` is missing");
-            eprintln!(
-                "You need the HTML tidy tool https://www.html-tidy.org/, this tool is *not* part of the rust project and needs to be installed separately, for example via your package manager."
-            );
-            panic!("Cannot run html-check tests");
-        }
         // Ensure that a few different kinds of documentation are available.
         builder.run_default_doc_steps();
         builder.ensure(crate::core::build_steps::doc::Rustc::for_stage(
@@ -271,13 +273,17 @@ impl Step for Cargotest {
         run.path("src/tools/cargotest")
     }
 
-    fn make_run(run: RunConfig<'_>) {
+    fn is_supported(run: SupportedConfig<'_, Self>) -> Result<(), Unsupported> {
         if run.builder.top_stage == 0 {
-            eprintln!(
-                "ERROR: running cargotest with stage 0 is currently unsupported. Use at least stage 1."
-            );
-            exit!(1);
+            Unsupported::fatal(
+                "running cargotest with stage 0 is currently unsupported. Use at least stage 1.",
+            )
+        } else {
+            Ok(())
         }
+    }
+
+    fn make_run(run: RunConfig<'_>) {
         // We want to build cargo stage N (where N == top_stage), and rustc stage N,
         // and test both of these together.
         // So we need to get a build compiler stage N-1 to build the stage N components.
@@ -653,6 +659,10 @@ impl Miri {
     }
 }
 
+fn disallow_stage0(builder: &Builder<'_>) -> Result<(), Unsupported> {
+    if builder.top_stage == 0 { Unsupported::fatal("cannot be tested at stage 0") } else { Ok(()) }
+}
+
 impl Step for Miri {
     type Output = ();
 
@@ -664,15 +674,15 @@ impl Step for Miri {
         run.builder.ensure(Miri { target: run.target });
     }
 
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported> {
+        disallow_stage0(config.builder)
+    }
+
     /// Runs `cargo test` for miri.
     fn run(self, builder: &Builder<'_>) {
         let host = builder.build.host_target;
         let target = self.target;
         let stage = builder.top_stage;
-        if stage == 0 {
-            eprintln!("miri cannot be tested at stage 0");
-            std::process::exit(1);
-        }
 
         // This compiler runs on the host, we'll just use it for the target.
         let compilers = RustcPrivateCompilers::new(builder, stage, host);
@@ -776,15 +786,15 @@ impl Step for CargoMiri {
         run.builder.ensure(CargoMiri { target: run.target });
     }
 
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported> {
+        disallow_stage0(config.builder)
+    }
+
     /// Tests `cargo miri test`.
     fn run(self, builder: &Builder<'_>) {
         let host = builder.build.host_target;
         let target = self.target;
         let stage = builder.top_stage;
-        if stage == 0 {
-            eprintln!("cargo-miri cannot be tested at stage 0");
-            std::process::exit(1);
-        }
 
         // This compiler runs on the host, we'll just use it for the target.
         let build_compiler = builder.compiler(stage, host);
@@ -843,23 +853,26 @@ impl Step for CompiletestTest {
         run.builder.ensure(CompiletestTest { host: run.target });
     }
 
-    /// Runs `cargo test` for compiletest.
-    fn run(self, builder: &Builder<'_>) {
-        let host = self.host;
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported> {
+        let builder = config.builder;
 
         // Now that compiletest uses only stable Rust, building it always uses
         // the stage 0 compiler. However, some of its unit tests need to be able
         // to query information from an in-tree compiler, so we treat `--stage`
         // as selecting the stage of that secondary compiler.
-
         if builder.top_stage == 0 && !builder.config.compiletest_allow_stage0 {
-            eprintln!("\
+            Unsupported::fatal("\
 ERROR: `--stage 0` causes compiletest to query information from the stage0 (precompiled) compiler, instead of the in-tree compiler, which can cause some tests to fail inappropriately
 NOTE: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `--set build.compiletest-allow-stage0=true`."
-            );
-            crate::exit!(1);
+            )
+        } else {
+            Ok(())
         }
+    }
 
+    /// Runs `cargo test` for compiletest.
+    fn run(self, builder: &Builder<'_>) {
+        let host = self.host;
         let bootstrap_compiler = builder.compiler(0, host);
         let staged_compiler = builder.compiler(builder.top_stage, host);
 
@@ -1059,8 +1072,12 @@ impl Step for RustdocJSStd {
         run.suite_path("tests/rustdoc-js-std")
     }
 
-    fn is_default_step(builder: &Builder<'_>) -> bool {
-        builder.config.nodejs.is_some()
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported<Self::Output>> {
+        if config.builder.config.nodejs.is_none() {
+            return Unsupported::fatal("need nodejs to run rustdoc-js-std tests");
+        }
+
+        Ok(())
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1071,8 +1088,7 @@ impl Step for RustdocJSStd {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let nodejs =
-            builder.config.nodejs.as_ref().expect("need nodejs to run rustdoc-js-std tests");
+        let nodejs = builder.config.nodejs.as_ref().unwrap();
         let mut command = command(nodejs);
         command
             .arg(builder.src.join("src/tools/rustdoc-js/tester.js"))
@@ -1837,20 +1853,25 @@ impl Step for Compiletest {
         run.never()
     }
 
-    fn run(self, builder: &Builder<'_>) {
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported> {
+        let builder = config.builder;
+
         if builder.doc_tests == DocTests::Only {
-            return;
+            return Unsupported::skip("compiletest suites are ignored when passed --doc");
         }
 
         if builder.top_stage == 0 && !builder.config.compiletest_allow_stage0 {
-            eprintln!("\
+            return Unsupported::fatal("\
 ERROR: `--stage 0` runs compiletest on the stage0 (precompiled) compiler, not your local changes, and will almost always cause tests to fail
 HELP: to test the compiler or standard library, omit the stage or explicitly use `--stage 1` instead
 NOTE: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `--set build.compiletest-allow-stage0=true`."
             );
-            crate::exit!(1);
         }
 
+        Ok(())
+    }
+
+    fn run(self, builder: &Builder<'_>) {
         let mut test_compiler = self.test_compiler;
         let target = self.target;
         let mode = self.mode;
@@ -3025,6 +3046,15 @@ impl Step for Crate {
         true
     }
 
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported> {
+        let builder = config.builder;
+        if builder.kind == Kind::Miri {
+            disallow_stage0(builder)?;
+        }
+
+        Ok(())
+    }
+
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
         let host = run.build_triple();
@@ -3056,11 +3086,6 @@ impl Step for Crate {
         builder.ensure(Std::new(build_compiler, build_compiler.host).force_recompile(true));
 
         let mut cargo = if builder.kind == Kind::Miri {
-            if builder.top_stage == 0 {
-                eprintln!("ERROR: `x.py miri` requires stage 1 or higher");
-                std::process::exit(1);
-            }
-
             // Build `cargo miri test` command
             // (Implicitly prepares target sysroot)
             let mut cargo = builder::Cargo::new(
@@ -3324,12 +3349,22 @@ impl Step for RemoteCopyLibs {
         run.never()
     }
 
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported<Self::Output>> {
+        let target = match config.extra {
+            MakeOrEnsure::Run(run) => run.target,
+            MakeOrEnsure::Step(this) => this.target,
+        };
+
+        if !config.builder.remote_tested(target) {
+            Unsupported::skip(format!("{target} doesn't use remote testing"))?;
+        }
+
+        Ok(())
+    }
+
     fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.build_compiler;
         let target = self.target;
-        if !builder.remote_tested(target) {
-            return;
-        }
 
         builder.std(build_compiler, target);
 
@@ -3503,10 +3538,16 @@ impl Step for BootstrapPy {
         run.builder.ensure(BootstrapPy)
     }
 
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported> {
+        if config.builder.config.python.is_none() {
+            Unsupported::fatal("python is required for running bootstrap tests")
+        } else {
+            Ok(())
+        }
+    }
+
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let mut check_bootstrap = command(
-            builder.config.python.as_ref().expect("python is required for running bootstrap tests"),
-        );
+        let mut check_bootstrap = command(builder.config.python.as_ref().unwrap());
         check_bootstrap
             .args(["-m", "unittest", "bootstrap_test.py"])
             // Forward command-line args after `--` to unittest, for filtering etc.
@@ -3652,17 +3693,15 @@ impl Step for LintDocs {
         run.path("src/tools/lint-docs")
     }
 
-    fn is_default_step(builder: &Builder<'_>) -> bool {
-        // Lint docs tests might not work with stage 1, so do not run this test by default in
-        // `x test` below stage 2.
-        builder.top_stage >= 2
+    fn is_supported(run: SupportedConfig<'_, Self>) -> Result<(), Unsupported> {
+        if run.builder.top_stage < 2 {
+            Unsupported::warn("lint-docs tests might not work below stage 2")
+        } else {
+            Ok(())
+        }
     }
 
     fn make_run(run: RunConfig<'_>) {
-        if run.builder.top_stage < 2 {
-            eprintln!("WARNING: lint-docs tests might not work below stage 2");
-        }
-
         run.builder.ensure(LintDocs {
             build_compiler: prepare_doc_compiler(
                 run.builder,
@@ -3805,6 +3844,34 @@ impl Step for TestHelpers {
     }
 }
 
+fn codegen_backend_supported(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    backend: CodegenBackendKind,
+) -> Result<(), Unsupported> {
+    if builder.doc_tests == DocTests::Only {
+        return Unsupported::skip("custom codegen backends not supported for doctests");
+    }
+
+    if builder.download_rustc() {
+        return Unsupported::skip("CI rustc uses the default codegen backend");
+    }
+
+    if !backend.supports_target(target) {
+        return Unsupported::skip(format!("target not supported by {}", backend.name()));
+    }
+
+    if builder.remote_tested(target) {
+        return Unsupported::skip("custom codegen backends not supported for remote testing");
+    }
+
+    if !builder.config.enabled_codegen_backends(target).contains(&backend) {
+        return Unsupported::skip(format!("{} not in rust.codegen-backends", backend.name()));
+    }
+
+    Ok(())
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CodegenCranelift {
     compilers: RustcPrivateCompilers,
@@ -3823,38 +3890,18 @@ impl Step for CodegenCranelift {
         true
     }
 
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported> {
+        let target = match config.extra {
+            MakeOrEnsure::Run(run) => run.target,
+            MakeOrEnsure::Step(this) => this.target,
+        };
+        codegen_backend_supported(config.builder, target, CodegenBackendKind::Cranelift)
+    }
+
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
         let host = run.build_triple();
         let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, host);
-
-        if builder.doc_tests == DocTests::Only {
-            return;
-        }
-
-        if builder.download_rustc() {
-            builder.info("CI rustc uses the default codegen backend. skipping");
-            return;
-        }
-
-        if !target_supports_cranelift_backend(run.target) {
-            builder.info("target not supported by rustc_codegen_cranelift. skipping");
-            return;
-        }
-
-        if builder.remote_tested(run.target) {
-            builder.info("remote testing is not supported by rustc_codegen_cranelift. skipping");
-            return;
-        }
-
-        if !builder
-            .config
-            .enabled_codegen_backends(run.target)
-            .contains(&CodegenBackendKind::Cranelift)
-        {
-            builder.info("cranelift not in rust.codegen-backends. skipping");
-            return;
-        }
 
         builder.ensure(CodegenCranelift { compilers, target: run.target });
     }
@@ -3944,38 +3991,18 @@ impl Step for CodegenGCC {
         true
     }
 
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported> {
+        let target = match config.extra {
+            MakeOrEnsure::Run(run) => run.target,
+            MakeOrEnsure::Step(this) => this.target,
+        };
+        codegen_backend_supported(config.builder, target, CodegenBackendKind::Gcc)
+    }
+
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
         let host = run.build_triple();
         let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, host);
-
-        if builder.doc_tests == DocTests::Only {
-            return;
-        }
-
-        if builder.download_rustc() {
-            builder.info("CI rustc uses the default codegen backend. skipping");
-            return;
-        }
-
-        let triple = run.target.triple;
-        let target_supported =
-            if triple.contains("linux") { triple.contains("x86_64") } else { false };
-        if !target_supported {
-            builder.info("target not supported by rustc_codegen_gcc. skipping");
-            return;
-        }
-
-        if builder.remote_tested(run.target) {
-            builder.info("remote testing is not supported by rustc_codegen_gcc. skipping");
-            return;
-        }
-
-        if !builder.config.enabled_codegen_backends(run.target).contains(&CodegenBackendKind::Gcc) {
-            builder.info("gcc not in rust.codegen-backends. skipping");
-            return;
-        }
-
         builder.ensure(CodegenGCC { compilers, target: run.target });
     }
 
@@ -4144,15 +4171,19 @@ impl Step for CollectLicenseMetadata {
         run.builder.ensure(CollectLicenseMetadata);
     }
 
-    fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let Some(reuse) = &builder.config.reuse else {
-            panic!("REUSE is required to collect the license metadata");
-        };
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported<Self::Output>> {
+        if config.builder.config.reuse.is_none() {
+            Unsupported::fatal("REUSE is required to collect the license metadata")
+        } else {
+            Ok(())
+        }
+    }
 
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
         let dest = builder.src.join("license-metadata.json");
 
         let mut cmd = builder.tool_cmd(Tool::CollectLicenseMetadata);
-        cmd.env("REUSE_EXE", reuse);
+        cmd.env("REUSE_EXE", builder.config.reuse.as_ref().unwrap());
         cmd.env("DEST", &dest);
         cmd.env("ONLY_CHECK", "1");
         cmd.run(builder);

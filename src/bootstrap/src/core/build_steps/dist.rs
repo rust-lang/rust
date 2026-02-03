@@ -29,14 +29,15 @@ use crate::core::build_steps::tool::{
 };
 use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor};
 use crate::core::build_steps::{compile, llvm};
-use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
+use crate::core::builder::{
+    Builder, Kind, MakeOrEnsure, RunConfig, ShouldRun, Step, StepMetadata, SupportedConfig,
+    Unsupported,
+};
 use crate::core::config::{GccCiMode, TargetSelection};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::channel::{self, Info};
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{
-    exe, is_dylib, move_file, t, target_supports_cranelift_backend, timeit,
-};
+use crate::utils::helpers::{exe, is_dylib, move_file, t, timeit};
 use crate::utils::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::{CodegenBackendKind, Compiler, DependencyType, FileType, LLVM_TOOLS, Mode, trace};
 
@@ -432,12 +433,20 @@ impl Step for Mingw {
         run.builder.ensure(Mingw { target: run.target });
     }
 
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported<Self::Output>> {
+        let target = match config.extra {
+            MakeOrEnsure::Run(run) => run.target,
+            MakeOrEnsure::Step(this) => this.target,
+        };
+        if !target.contains("pc-windows-gnu") || !config.builder.config.dist_include_mingw_linker {
+            Unsupported::skip("not a windows-gnu and `dist.include_mingw_linker` not enabled")
+        } else {
+            Ok(())
+        }
+    }
+
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let target = self.target;
-        if !target.contains("pc-windows-gnu") || !builder.config.dist_include_mingw_linker {
-            return None;
-        }
-
         let mut tarball = Tarball::new(builder, "rust-mingw", &target.triple);
         tarball.set_product_name("Rust MinGW");
 
@@ -1571,14 +1580,18 @@ impl Step for Miri {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported<Self::Output>> {
         // This prevents miri from being built for "dist" or "install"
         // on the stable/beta channels. It is a nightly-only tool and should
         // not be included.
-        if !builder.build.unstable_features() {
-            return None;
+        if !config.builder.unstable_features() {
+            Unsupported::skip("miri is nightly-only and is not shipped on beta or stable")
+        } else {
+            Ok(())
         }
+    }
 
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let miri = builder.ensure(tool::Miri::from_compilers(self.compilers));
         let cargomiri = builder.ensure(tool::CargoMiri::from_compilers(self.compilers));
 
@@ -1637,7 +1650,7 @@ impl Step for CraneliftCodegenBackend {
         }
 
         let target = self.target;
-        if !target_supports_cranelift_backend(target) {
+        if !CodegenBackendKind::Cranelift.supports_target(target) {
             builder.info("target not supported by rustc_codegen_cranelift. skipping");
             return None;
         }

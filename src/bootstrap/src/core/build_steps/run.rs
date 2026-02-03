@@ -5,7 +5,6 @@
 
 use std::path::PathBuf;
 
-use build_helper::exit;
 use build_helper::git::get_git_untracked_files;
 use clap_complete::{Generator, shells};
 
@@ -13,7 +12,9 @@ use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::{self, RustcPrivateCompilers, SourceType, Tool};
 use crate::core::build_steps::vendor::{Vendor, default_paths_to_vendor};
-use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
+use crate::core::builder::{
+    Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata, SupportedConfig, Unsupported,
+};
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{get_completion, top_level_help};
 use crate::utils::exec::command;
@@ -118,6 +119,18 @@ pub struct Miri {
     target: TargetSelection,
 }
 
+impl Miri {
+    // `x run` uses stage 0 by default, but miri does not work well with stage 0.
+    // Change the stage to 1 if it's not set explicitly.
+    fn stage(builder: &Builder<'_>) -> u32 {
+        if builder.config.is_explicit_stage() || builder.top_stage >= 1 {
+            builder.top_stage
+        } else {
+            1
+        }
+    }
+}
+
 impl Step for Miri {
     type Output = ();
 
@@ -125,22 +138,18 @@ impl Step for Miri {
         run.path("src/tools/miri")
     }
 
+    fn is_supported(run: SupportedConfig<'_, Self>) -> Result<(), Unsupported> {
+        if Self::stage(run.builder) == 0 {
+            Unsupported::fatal("miri cannot be run at stage 0")
+        } else {
+            Ok(())
+        }
+    }
+
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
 
-        // `x run` uses stage 0 by default, but miri does not work well with stage 0.
-        // Change the stage to 1 if it's not set explicitly.
-        let stage = if builder.config.is_explicit_stage() || builder.top_stage >= 1 {
-            builder.top_stage
-        } else {
-            1
-        };
-
-        if stage == 0 {
-            eprintln!("ERROR: miri cannot be run at stage 0");
-            exit!(1);
-        }
-
+        let stage = Self::stage(builder);
         // Miri always runs on the host, because it can interpret code for any target
         let compilers = RustcPrivateCompilers::new(builder, stage, builder.host_target);
 
@@ -204,11 +213,15 @@ impl Step for CollectLicenseMetadata {
         run.builder.ensure(CollectLicenseMetadata);
     }
 
-    fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let Some(reuse) = &builder.config.reuse else {
-            panic!("REUSE is required to collect the license metadata");
-        };
+    fn is_supported(run: SupportedConfig<'_, Self>) -> Result<(), Unsupported<Self::Output>> {
+        if run.builder.config.reuse.is_none() {
+            Unsupported::fatal("REUSE is required to collect the license metadata")
+        } else {
+            Ok(())
+        }
+    }
 
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
         let dest = builder.src.join("license-metadata.json");
 
         if !builder.config.dry_run() {
@@ -222,7 +235,7 @@ impl Step for CollectLicenseMetadata {
         }
 
         let mut cmd = builder.tool_cmd(Tool::CollectLicenseMetadata);
-        cmd.env("REUSE_EXE", reuse);
+        cmd.env("REUSE_EXE", builder.config.reuse.as_ref().unwrap());
         cmd.env("DEST", &dest);
         cmd.run(builder);
 
