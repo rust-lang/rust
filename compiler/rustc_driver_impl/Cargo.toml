@@ -32,7 +32,6 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_mir_build = { path = "../rustc_mir_build" }
-rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
 rustc_mir_transform = { path = "../rustc_mir_transform" }
 rustc_monomorphize = { path = "../rustc_monomorphize" }
 rustc_parse = { path = "../rustc_parse" }

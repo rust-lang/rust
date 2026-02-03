@@ -2,39 +2,39 @@ use rustc_macros::Diagnostic;
 use rustc_span::Span;
 
 #[derive(Diagnostic)]
-#[diag(mir_dataflow_stop_after_dataflow_ended_compilation)]
+#[diag("stop_after_dataflow ended compilation")]
 pub(crate) struct StopAfterDataFlowEndedCompilation;
 
 #[derive(Diagnostic)]
-#[diag(mir_dataflow_peek_must_be_place_or_ref_place)]
+#[diag("rustc_peek: argument expression must be either `place` or `&place`")]
 pub(crate) struct PeekMustBePlaceOrRefPlace {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_dataflow_peek_must_be_not_temporary)]
+#[diag("dataflow::sanity_check cannot feed a non-temp to rustc_peek")]
 pub(crate) struct PeekMustBeNotTemporary {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_dataflow_peek_bit_not_set)]
+#[diag("rustc_peek: bit not set")]
 pub(crate) struct PeekBitNotSet {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_dataflow_peek_argument_not_a_local)]
+#[diag("rustc_peek: argument was not a local")]
 pub(crate) struct PeekArgumentNotALocal {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_dataflow_peek_argument_untracked)]
+#[diag("rustc_peek: argument untracked")]
 pub(crate) struct PeekArgumentUntracked {
     #[primary_span]
     pub span: Span,
