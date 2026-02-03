@@ -40,7 +40,6 @@ rustc_mir_transform = { path = "../rustc_mir_transform" }
 rustc_monomorphize = { path = "../rustc_monomorphize" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_passes = { path = "../rustc_passes" }
-rustc_pattern_analysis = { path = "../rustc_pattern_analysis" }
 rustc_privacy = { path = "../rustc_privacy" }
 rustc_public = { path = "../rustc_public", features = ["rustc_internal"] }
 rustc_query_system = { path = "../rustc_query_system" }
