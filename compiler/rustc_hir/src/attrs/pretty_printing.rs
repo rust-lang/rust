@@ -1,5 +1,6 @@
 use std::num::NonZero;
 use std::ops::Deref;
+use std::path::PathBuf;
 
 use rustc_abi::Align;
 use rustc_ast::attr::data_structures::CfgEntry;
@@ -96,7 +97,15 @@ impl<T: PrintAttribute> PrintAttribute for FxIndexMap<T, Span> {
         p.word("]");
     }
 }
+impl PrintAttribute for PathBuf {
+    fn should_render(&self) -> bool {
+        true
+    }
 
+    fn print_attribute(&self, p: &mut Printer) {
+        p.word(self.display().to_string());
+    }
+}
 macro_rules! print_skip {
     ($($t: ty),* $(,)?) => {$(
         impl PrintAttribute for $t {
