@@ -122,6 +122,7 @@ impl AttributeKind {
             RustcLintUntrackedQueryInformation => Yes,
             RustcMacroTransparency(..) => Yes,
             RustcMain => No,
+            RustcMir(..) => Yes,
             RustcMustImplementOneOf { .. } => No,
             RustcNeverReturnsNullPointer => Yes,
             RustcNoImplicitAutorefs => Yes,

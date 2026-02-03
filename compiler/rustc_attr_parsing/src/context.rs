@@ -81,7 +81,7 @@ use crate::attributes::rustc_internal::{
     RustcLayoutScalarValidRangeEndParser, RustcLayoutScalarValidRangeStartParser,
     RustcLegacyConstGenericsParser, RustcLintOptDenyFieldAccessParser, RustcLintOptTyParser,
     RustcLintQueryInstabilityParser, RustcLintUntrackedQueryInformationParser, RustcMainParser,
-    RustcMustImplementOneOfParser, RustcNeverReturnsNullPointerParser,
+    RustcMirParser, RustcMustImplementOneOfParser, RustcNeverReturnsNullPointerParser,
     RustcNoImplicitAutorefsParser, RustcNonConstTraitMethodParser, RustcNounwindParser,
     RustcObjectLifetimeDefaultParser, RustcOffloadKernelParser, RustcScalableVectorParser,
     RustcSimdMonomorphizeLaneLimitParser,
@@ -202,6 +202,7 @@ attribute_parsers!(
         Combine<LinkParser>,
         Combine<ReprParser>,
         Combine<RustcLayoutParser>,
+        Combine<RustcMirParser>,
         Combine<TargetFeatureParser>,
         Combine<UnstableFeatureBoundParser>,
         // tidy-alphabetical-end
@@ -515,6 +516,11 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
                 }),
             },
         )
+    }
+
+    /// Error that a filename string literal was expected.
+    pub(crate) fn expected_filename_literal(&self, span: Span) {
+        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedFilenameLiteral);
     }
 
     pub(crate) fn expected_integer_literal(&self, span: Span) -> ErrorGuaranteed {

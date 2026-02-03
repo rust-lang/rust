@@ -524,6 +524,7 @@ pub(crate) enum AttributeParseErrorReason<'a> {
     ExpectedStringLiteral {
         byte_string: Option<Span>,
     },
+    ExpectedFilenameLiteral,
     ExpectedIntegerLiteral,
     ExpectedIntegerLiteralInRange {
         lower_bound: isize,
@@ -596,6 +597,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                 } else {
                     diag.span_label(self.span, "expected a string literal here");
                 }
+            }
+            AttributeParseErrorReason::ExpectedFilenameLiteral => {
+                diag.span_label(self.span, "expected a filename string literal here");
             }
             AttributeParseErrorReason::ExpectedIntegerLiteral => {
                 diag.span_label(self.span, "expected an integer literal here");
