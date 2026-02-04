@@ -2497,6 +2497,16 @@ rustc_queries! {
         desc { "computing implied outlives bounds for `{}` (hack disabled = {:?})", key.0.canonical.value.value.ty, key.1 }
     }
 
+
+    query compute_outlives_bounds_rename(
+        mir_def: LocalDefId
+    ) -> Result<
+        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
+        NoSolution,
+   > {
+        desc { "rename later" }
+    }
+
     /// Do not call this query directly:
     /// invoke `DropckOutlives::new(dropped_ty)).fully_perform(typeck.infcx)` instead.
     query dropck_outlives(

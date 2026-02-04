@@ -19,7 +19,8 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{
     Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
 };
-use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
+use rustc_span::def_id::CRATE_DEF_ID;
+pub use rustc_span::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
