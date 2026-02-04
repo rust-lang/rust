@@ -69,6 +69,7 @@ mod pass_by_value;
 mod passes;
 mod precedence;
 mod ptr_nulls;
+mod receiver;
 mod redundant_semicolon;
 mod reference_casting;
 mod shadowed_into_iter;
@@ -139,6 +140,8 @@ pub use rustc_errors::BufferedEarlyLint;
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec};
 
+use crate::receiver::InherentMethodOnReceiver;
+
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
@@ -204,6 +207,7 @@ late_lint_methods!(
             LetUnderscore: LetUnderscore,
             InvalidReferenceCasting: InvalidReferenceCasting,
             ImplicitAutorefs: ImplicitAutorefs,
+            InherentMethodOnReceiver: InherentMethodOnReceiver,
             // Depends on referenced function signatures in expressions
             UnusedResults: UnusedResults,
             UnitBindings: UnitBindings,
