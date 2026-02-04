@@ -1,5 +1,7 @@
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee, LintDiagnostic, Subdiagnostic};
+use rustc_errors::{
+    Applicability, Diag, EmissionGuarantee, LintDiagnostic, Subdiagnostic, inline_fluent,
+};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::query::Key;
@@ -7,8 +9,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{self, Lint};
 use rustc_span::def_id::DefId;
 use rustc_span::{Ident, Span, Symbol};
-
-use crate::fluent_generated as fluent;
 
 /// Emit diagnostic for calls to `#[inline(always)]`-annotated functions with a
 /// `#[target_feature]` attribute where the caller enables a different set of target features.
@@ -51,22 +51,22 @@ pub(crate) fn emit_inline_always_target_feature_diagnostic<'a, 'tcx>(
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_transform_unconditional_recursion)]
-#[help]
+#[diag("function cannot return without recursing")]
+#[help("a `loop` may express intention better if this is on purpose")]
 pub(crate) struct UnconditionalRecursion {
-    #[label]
+    #[label("cannot return without recursing")]
     pub(crate) span: Span,
-    #[label(mir_transform_unconditional_recursion_call_site_label)]
+    #[label("recursive call site")]
     pub(crate) call_sites: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_transform_force_inline_attr)]
-#[note]
+#[diag("`{$callee}` is incompatible with `#[rustc_force_inline]`")]
+#[note("incompatible due to: {$reason}")]
 pub(crate) struct InvalidForceInline {
     #[primary_span]
     pub attr_span: Span,
-    #[label(mir_transform_callee)]
+    #[label("`{$callee}` defined here")]
     pub callee_span: Span,
     pub callee: String,
     pub reason: &'static str,
@@ -74,28 +74,39 @@ pub(crate) struct InvalidForceInline {
 
 #[derive(LintDiagnostic)]
 pub(crate) enum ConstMutate {
-    #[diag(mir_transform_const_modify)]
-    #[note]
+    #[diag("attempting to modify a `const` item")]
+    #[note(
+        "each usage of a `const` item creates a new temporary; the original `const` item will not be modified"
+    )]
     Modify {
-        #[note(mir_transform_const_defined_here)]
+        #[note("`const` item defined here")]
         konst: Span,
     },
-    #[diag(mir_transform_const_mut_borrow)]
-    #[note]
-    #[note(mir_transform_note2)]
+    #[diag("taking a mutable reference to a `const` item")]
+    #[note("each usage of a `const` item creates a new temporary")]
+    #[note("the mutable reference will refer to this temporary, not the original `const` item")]
     MutBorrow {
-        #[note(mir_transform_note3)]
+        #[note("mutable reference created due to call to this method")]
         method_call: Option<Span>,
-        #[note(mir_transform_const_defined_here)]
+        #[note("`const` item defined here")]
         konst: Span,
     },
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_transform_unaligned_packed_ref, code = E0793)]
-#[note]
-#[note(mir_transform_note_ub)]
-#[help]
+#[diag("reference to field of packed {$ty_descr} is unaligned", code = E0793)]
+#[note(
+    "this {$ty_descr} is {$align ->
+        [one] {\"\"}
+        *[other] {\"at most \"}
+    }{$align}-byte aligned, but the type of this field may require higher alignment"
+)]
+#[note(
+    "creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)"
+)]
+#[help(
+    "copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)"
+)]
 pub(crate) struct UnalignedPackedRef {
     #[primary_span]
     pub span: Span,
@@ -104,7 +115,7 @@ pub(crate) struct UnalignedPackedRef {
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_transform_unknown_pass_name)]
+#[diag("MIR pass `{$name}` is unknown and will be ignored")]
 pub(crate) struct UnknownPassName<'a> {
     pub(crate) name: &'a str,
 }
@@ -123,8 +134,12 @@ pub(crate) enum AssertLintKind {
 impl<'a, P: std::fmt::Debug> LintDiagnostic<'a, ()> for AssertLint<P> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         diag.primary_message(match self.lint_kind {
-            AssertLintKind::ArithmeticOverflow => fluent::mir_transform_arithmetic_overflow,
-            AssertLintKind::UnconditionalPanic => fluent::mir_transform_operation_will_panic,
+            AssertLintKind::ArithmeticOverflow => {
+                inline_fluent!("this arithmetic operation will overflow")
+            }
+            AssertLintKind::UnconditionalPanic => {
+                inline_fluent!("this operation will panic at runtime")
+            }
         });
         let label = self.assert_kind.diagnostic_message();
         self.assert_kind.add_args(&mut |name, value| {
@@ -144,39 +159,53 @@ impl AssertLintKind {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_transform_asm_unwind_call)]
+#[diag("call to inline assembly that may unwind")]
 pub(crate) struct AsmUnwindCall {
-    #[label(mir_transform_asm_unwind_call)]
+    #[label("call to inline assembly that may unwind")]
     pub span: Span,
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_transform_ffi_unwind_call)]
+#[diag(
+    "call to {$foreign ->
+        [true] foreign function
+        *[false] function pointer
+    } with FFI-unwind ABI"
+)]
 pub(crate) struct FfiUnwindCall {
-    #[label(mir_transform_ffi_unwind_call)]
+    #[label(
+        "call to {$foreign ->
+            [true] foreign function
+            *[false] function pointer
+        } with FFI-unwind ABI"
+    )]
     pub span: Span,
     pub foreign: bool,
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_transform_fn_item_ref)]
+#[diag("taking a reference to a function item does not give a function pointer")]
 pub(crate) struct FnItemRef {
-    #[suggestion(code = "{sugg}", applicability = "unspecified")]
+    #[suggestion(
+        "cast `{$ident}` to obtain a function pointer",
+        code = "{sugg}",
+        applicability = "unspecified"
+    )]
     pub span: Span,
     pub sugg: String,
     pub ident: Ident,
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_transform_unused_capture_maybe_capture_ref)]
-#[help]
+#[diag("value captured by `{$name}` is never read")]
+#[help("did you mean to capture by reference instead?")]
 pub(crate) struct UnusedCaptureMaybeCaptureRef {
     pub name: Symbol,
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_transform_unused_var_assigned_only)]
-#[note]
+#[diag("variable `{$name}` is assigned to, but never used")]
+#[note("consider using `_{$name}` instead")]
 pub(crate) struct UnusedVarAssignedOnly {
     pub name: Symbol,
     #[subdiagnostic]
@@ -184,17 +213,20 @@ pub(crate) struct UnusedVarAssignedOnly {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_transform_unused_assign)]
+#[diag("value assigned to `{$name}` is never read")]
 pub(crate) struct UnusedAssign {
     pub name: Symbol,
     #[subdiagnostic]
     pub suggestion: Option<UnusedAssignSuggestion>,
-    #[help]
+    #[help("maybe it is overwritten before being read?")]
     pub help: bool,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(mir_transform_unused_assign_suggestion, applicability = "maybe-incorrect")]
+#[multipart_suggestion(
+    "you might have meant to mutate the pointed at value being passed in, instead of changing the reference in the local binding",
+    applicability = "maybe-incorrect"
+)]
 pub(crate) struct UnusedAssignSuggestion {
     pub pre: &'static str,
     #[suggestion_part(code = "{pre}mut ")]
@@ -208,14 +240,14 @@ pub(crate) struct UnusedAssignSuggestion {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_transform_unused_assign_passed)]
-#[help]
+#[diag("value passed to `{$name}` is never read")]
+#[help("maybe it is overwritten before being read?")]
 pub(crate) struct UnusedAssignPassed {
     pub name: Symbol,
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_transform_unused_variable)]
+#[diag("unused variable: `{$name}`")]
 pub(crate) struct UnusedVariable {
     pub name: Symbol,
     #[subdiagnostic]
@@ -226,10 +258,7 @@ pub(crate) struct UnusedVariable {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum UnusedVariableSugg {
-    #[multipart_suggestion(
-        mir_transform_unused_variable_try_ignore,
-        applicability = "machine-applicable"
-    )]
+    #[multipart_suggestion("try ignoring the field", applicability = "machine-applicable")]
     TryIgnore {
         #[suggestion_part(code = "{name}: _")]
         shorthands: Vec<Span>,
@@ -239,7 +268,7 @@ pub(crate) enum UnusedVariableSugg {
     },
 
     #[multipart_suggestion(
-        mir_transform_unused_var_underscore,
+        "if this is intentional, prefix it with an underscore",
         applicability = "machine-applicable"
     )]
     TryPrefix {
@@ -250,7 +279,7 @@ pub(crate) enum UnusedVariableSugg {
         typo: Option<PatternTypo>,
     },
 
-    #[help(mir_transform_unused_variable_args_in_macro)]
+    #[help("`{$name}` is captured in macro and introduced a unused variable")]
     NoSugg {
         #[primary_span]
         span: Span,
@@ -266,10 +295,12 @@ impl Subdiagnostic for UnusedVariableStringInterp {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.span_label(
             self.lit,
-            crate::fluent_generated::mir_transform_maybe_string_interpolation,
+            inline_fluent!(
+                "you might have meant to use string interpolation in this string literal"
+            ),
         );
         diag.multipart_suggestion(
-            crate::fluent_generated::mir_transform_string_interpolation_only_works,
+            inline_fluent!("string interpolation only works in `format!` invocations"),
             vec![
                 (self.lit.shrink_to_lo(), String::from("format!(")),
                 (self.lit.shrink_to_hi(), String::from(")")),
@@ -281,7 +312,7 @@ impl Subdiagnostic for UnusedVariableStringInterp {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    mir_transform_unused_variable_typo,
+    "you might have meant to pattern match on the similarly named {$kind} `{$item_name}`",
     style = "verbose",
     applicability = "maybe-incorrect"
 )]
@@ -306,12 +337,17 @@ pub(crate) struct MustNotSupend<'a, 'tcx> {
 // Needed for def_path_str
 impl<'a> LintDiagnostic<'a, ()> for MustNotSupend<'_, '_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::Diag<'a, ()>) {
-        diag.primary_message(fluent::mir_transform_must_not_suspend);
-        diag.span_label(self.yield_sp, fluent::_subdiag::label);
+        diag.primary_message(inline_fluent!(
+            "{$pre}`{$def_path}`{$post} held across a suspend point, but should not be"
+        ));
+        diag.span_label(
+            self.yield_sp,
+            inline_fluent!("the value is held across this suspend point"),
+        );
         if let Some(reason) = self.reason {
             diag.subdiagnostic(reason);
         }
-        diag.span_help(self.src_sp, fluent::_subdiag::help);
+        diag.span_help(self.src_sp, inline_fluent!("consider using a block (`{\"{ ... }\"}`) to shrink the value's scope, ending before the suspend point"));
         diag.arg("pre", self.pre);
         diag.arg("def_path", self.tcx.def_path_str(self.def_id));
         diag.arg("post", self.post);
@@ -319,7 +355,7 @@ impl<'a> LintDiagnostic<'a, ()> for MustNotSupend<'_, '_> {
 }
 
 #[derive(Subdiagnostic)]
-#[note(mir_transform_note)]
+#[note("{$reason}")]
 pub(crate) struct MustNotSuspendReason {
     #[primary_span]
     pub span: Span,
@@ -327,17 +363,17 @@ pub(crate) struct MustNotSuspendReason {
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_transform_force_inline)]
-#[note]
+#[diag("`{$callee}` could not be inlined into `{$caller}` but is required to be inlined")]
+#[note("could not be inlined due to: {$reason}")]
 pub(crate) struct ForceInlineFailure {
-    #[label(mir_transform_caller)]
+    #[label("within `{$caller}`...")]
     pub caller_span: Span,
-    #[label(mir_transform_callee)]
+    #[label("`{$callee}` defined here")]
     pub callee_span: Span,
-    #[label(mir_transform_attr)]
+    #[label("annotation here")]
     pub attr_span: Span,
     #[primary_span]
-    #[label(mir_transform_call)]
+    #[label("...`{$callee}` called here")]
     pub call_span: Span,
     pub callee: String,
     pub caller: String,
@@ -347,7 +383,7 @@ pub(crate) struct ForceInlineFailure {
 }
 
 #[derive(Subdiagnostic)]
-#[note(mir_transform_force_inline_justification)]
+#[note("`{$callee}` is required to be inlined to: {$sym}")]
 pub(crate) struct ForceInlineJustification {
     pub sym: Symbol,
 }
