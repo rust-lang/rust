@@ -791,17 +791,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 );
             }
 
-            adjustment::AutoBorrow::RawPtr(m) => {
-                debug!("walk_autoref: expr.hir_id={} base_place={:?}", expr.hir_id, base_place);
-
-                self.delegate.borrow_mut().borrow(
-                    base_place,
-                    base_place.hir_id,
-                    ty::BorrowKind::from_mutbl(m),
-                );
-            }
-
-            adjustment::AutoBorrow::Pin(m) => {
+            adjustment::AutoBorrow::RawPtr(m) | adjustment::AutoBorrow::Pin(m) => {
                 debug!("walk_autoref: expr.hir_id={} base_place={:?}", expr.hir_id, base_place);
 
                 self.delegate.borrow_mut().borrow(

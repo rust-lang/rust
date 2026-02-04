@@ -270,21 +270,17 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             ty::Ref(r_b, _, mutbl_b) => {
                 if self.tcx.features().pin_ergonomics()
-                    && a.pinned_ty().is_some_and(|ty| ty.is_ref())
-                    && let Ok(coerce) = self.commit_if_ok(|_| self.coerce_maybe_pinned_ref(a, b))
+                    && let Ok(pin_coerce) =
+                        self.commit_if_ok(|_| self.coerce_pin_ref_to_ref(a, b, mutbl_b))
                 {
-                    return Ok(coerce);
+                    return Ok(pin_coerce);
                 }
                 return self.coerce_to_ref(a, b, r_b, mutbl_b);
             }
-            ty::Adt(pin, _)
-                if self.tcx.features().pin_ergonomics()
-                    && self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) =>
+            _ if self.tcx.features().pin_ergonomics()
+                && let Some((_, ty::Pinnedness::Pinned, mut_b, _)) = b.maybe_pinned_ref() =>
             {
-                if a.is_ref() && b.pinned_ty().is_some_and(|ty| ty.is_ref()) {
-                    return self.coerce_maybe_pinned_ref(a, b);
-                }
-                let pin_coerce = self.commit_if_ok(|_| self.coerce_to_pin_ref(a, b));
+                let pin_coerce = self.commit_if_ok(|_| self.coerce_to_pin_ref(a, b, mut_b));
                 if pin_coerce.is_ok() {
                     return pin_coerce;
                 }
@@ -799,116 +795,102 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         Ok(())
     }
 
-    /// Applies reborrowing for `Pin`
+    /// Create an obligation for `ty: Unpin`.
+    fn unpin_obligation(&self, ty: Ty<'tcx>) -> PredicateObligation<'tcx> {
+        let pred = ty::TraitRef::new(
+            self.tcx,
+            self.tcx.require_lang_item(hir::LangItem::Unpin, self.cause.span),
+            [ty],
+        );
+        PredicateObligation::new(self.tcx, self.cause.clone(), self.param_env, pred)
+    }
+
+    /// Coerces from a pinned reference to a normal reference.
+    #[instrument(skip(self), level = "trace")]
+    fn coerce_pin_ref_to_ref(
+        &self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        mut_b: hir::Mutability,
+    ) -> CoerceResult<'tcx> {
+        debug_assert!(self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
+        debug_assert!(self.tcx.features().pin_ergonomics());
+
+        let Some((a_ty, ty::Pinnedness::Pinned, mut_a, r_a)) = a.maybe_pinned_ref() else {
+            debug!("not fitting pinned ref to ref coercion (`{:?}` -> `{:?}`)", a, b);
+            return Err(TypeError::Mismatch);
+        };
+
+        coerce_mutbls(mut_a, mut_b)?;
+
+        let a = Ty::new_ref(self.tcx, r_a, a_ty, mut_b);
+        let mut coerce = self.unify_and(
+            a,
+            b,
+            [Adjustment { kind: Adjust::Deref(DerefAdjustKind::Pin), target: a_ty }],
+            Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::new(mut_b, self.allow_two_phase))),
+            ForceLeakCheck::No,
+        )?;
+        coerce.obligations.push(self.unpin_obligation(a_ty));
+        Ok(coerce)
+    }
+
+    /// Applies reborrowing and auto-borrowing that results to `Pin<&T>` or `Pin<&mut T>`:
     ///
-    /// We currently only support reborrowing `Pin<&mut T>` as `Pin<&mut T>`. This is accomplished
-    /// by inserting a call to `Pin::as_mut` during MIR building.
+    /// Currently we only support the following coercions:
+    /// - Reborrowing `Pin<&mut T>` -> `Pin<&mut T>`
+    /// - Reborrowing `Pin<&T>` -> `Pin<&T>`
+    /// - Auto-borrowing `&mut T` -> `Pin<&mut T>` where `T: Unpin`
+    /// - Auto-borrowing `&mut T` -> `Pin<&T>` where `T: Unpin`
+    /// - Auto-borrowing `&T` -> `Pin<&T>` where `T: Unpin`
     ///
     /// In the future we might want to support other reborrowing coercions, such as:
-    /// - `Pin<&mut T>` as `Pin<&T>`
-    /// - `Pin<&T>` as `Pin<&T>`
     /// - `Pin<Box<T>>` as `Pin<&T>`
     /// - `Pin<Box<T>>` as `Pin<&mut T>`
     #[instrument(skip(self), level = "trace")]
-    fn coerce_to_pin_ref(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+    fn coerce_to_pin_ref(
+        &self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        mut_b: hir::Mutability,
+    ) -> CoerceResult<'tcx> {
         debug_assert!(self.shallow_resolve(a) == a);
         debug_assert!(self.shallow_resolve(b) == b);
+        debug_assert!(self.tcx.features().pin_ergonomics());
 
-        // We need to make sure the two types are compatible for coercion.
-        // Then we will build a ReborrowPin adjustment and return that as an InferOk.
-
-        // Right now we can only reborrow if this is a `Pin<&mut T>`.
-        let extract_pin_mut = |ty: Ty<'tcx>| {
-            // Get the T out of Pin<T>
-            let (pin, ty) = match ty.kind() {
-                ty::Adt(pin, args) if self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) => {
-                    (*pin, args[0].expect_ty())
-                }
-                _ => {
-                    debug!("can't reborrow {:?} as pinned", ty);
-                    return Err(TypeError::Mismatch);
-                }
-            };
-            // Make sure the T is something we understand (just `&mut U` for now)
-            match ty.kind() {
-                ty::Ref(region, ty, mutbl) => Ok((pin, *region, *ty, *mutbl)),
-                _ => {
-                    debug!("can't reborrow pin of inner type {:?}", ty);
-                    Err(TypeError::Mismatch)
-                }
+        // We need to deref the reference first before we reborrow it to a pinned reference.
+        let (deref, a_ty, mut_a, r_a, unpin_obligation) = match a.maybe_pinned_ref() {
+            // no `Unpin` required when reborrowing a pinned reference to a pinned reference
+            Some((a_ty, ty::Pinnedness::Pinned, mut_a, r_a)) => {
+                (DerefAdjustKind::Pin, a_ty, mut_a, r_a, None)
+            }
+            // `Unpin` required when reborrowing a non-pinned reference to a pinned reference
+            Some((a_ty, ty::Pinnedness::Not, mut_a, r_a)) => {
+                (DerefAdjustKind::Builtin, a_ty, mut_a, r_a, Some(self.unpin_obligation(a_ty)))
+            }
+            None => {
+                debug!("can't reborrow {:?} as pinned", a);
+                return Err(TypeError::Mismatch);
             }
         };
-
-        let (pin, a_region, a_ty, mut_a) = extract_pin_mut(a)?;
-        let (_, _, _b_ty, mut_b) = extract_pin_mut(b)?;
 
         coerce_mutbls(mut_a, mut_b)?;
 
         // update a with b's mutability since we'll be coercing mutability
-        let a = Ty::new_adt(
-            self.tcx,
-            pin,
-            self.tcx.mk_args(&[Ty::new_ref(self.tcx, a_region, a_ty, mut_b).into()]),
-        );
+        let a = Ty::new_pinned_ref(self.tcx, r_a, a_ty, mut_b);
 
         // To complete the reborrow, we need to make sure we can unify the inner types, and if so we
         // add the adjustments.
-        self.unify_and(a, b, [], Adjust::ReborrowPin(mut_b), ForceLeakCheck::No)
-    }
-
-    /// Coerce pinned reference to regular reference or vice versa
-    ///
-    /// - `Pin<&mut T>` <-> `&mut T` when `T: Unpin`
-    /// - `Pin<&T>` <-> `&T` when `T: Unpin`
-    /// - `Pin<&mut T>` <-> `Pin<&T>` when `T: Unpin`
-    #[instrument(skip(self), level = "trace")]
-    fn coerce_maybe_pinned_ref(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
-        let span = self.cause.span;
-        let Some((a_ty, a_pinnedness, a_mutbl, a_region)) = a.maybe_pinned_ref() else {
-            span_bug!(span, "expect pinned reference or reference, found {:?}", a);
-        };
-        let Some((_b_ty, b_pinnedness, b_mutbl, _b_region)) = b.maybe_pinned_ref() else {
-            span_bug!(span, "expect pinned reference or reference, found {:?}", b);
-        };
-        use ty::Pinnedness::*;
-        if a_pinnedness == b_pinnedness {
-            span_bug!(span, "expect different pinnedness, found {:?} and {:?}", a, b);
-        }
-
-        coerce_mutbls(a_mutbl, b_mutbl)?;
-
-        let (deref, borrow) = match (a_pinnedness, b_pinnedness) {
-            (Not, Not) | (Pinned, Pinned) => {
-                span_bug!(span, "expect different pinnedness, found {:?} and {:?}", a, b)
-            }
-            (Pinned, Not) => {
-                let mutbl = AutoBorrowMutability::new(b_mutbl, AllowTwoPhase::Yes);
-                (DerefAdjustKind::Pin, AutoBorrow::Ref(mutbl))
-            }
-            (Not, Pinned) => (DerefAdjustKind::Builtin, AutoBorrow::Pin(b_mutbl)),
-        };
         let mut coerce = self.unify_and(
-            // update a with b's pinnedness and mutability since we'll be coercing pinnedness and mutability
-            match b_pinnedness {
-                Pinned => Ty::new_pinned_ref(self.tcx, a_region, a_ty, b_mutbl),
-                Not => Ty::new_ref(self.tcx, a_region, a_ty, b_mutbl),
-            },
+            a,
             b,
             [Adjustment { kind: Adjust::Deref(deref), target: a_ty }],
-            Adjust::Borrow(borrow),
+            Adjust::Borrow(AutoBorrow::Pin(mut_b)),
             ForceLeakCheck::No,
         )?;
 
-        // Create an obligation for `a_ty: Unpin`.
-        let cause =
-            self.cause(self.cause.span, ObligationCauseCode::Coercion { source: a, target: b });
-        let pred = ty::TraitRef::new(
-            self.tcx,
-            self.tcx.require_lang_item(hir::LangItem::Unpin, self.cause.span),
-            [a_ty],
-        );
-        let obligation = Obligation::new(self.tcx, cause, self.fcx.param_env, pred);
-        coerce.obligations.push(obligation);
+        coerce.obligations.extend(unpin_obligation);
         Ok(coerce)
     }
 
