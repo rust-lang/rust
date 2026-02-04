@@ -4268,7 +4268,6 @@ dependencies = [
  "rustc_error_messages",
  "rustc_errors",
  "rustc_feature",
- "rustc_fluent_macro",
  "rustc_graphviz",
  "rustc_hashes",
  "rustc_hir",

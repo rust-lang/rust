@@ -9,6 +9,7 @@ use rustc_abi::{
 use rustc_error_messages::DiagMessage;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
+    inline_fluent,
 };
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
@@ -268,18 +269,25 @@ impl<'tcx> LayoutError<'tcx> {
     pub fn diagnostic_message(&self) -> DiagMessage {
         use LayoutError::*;
 
-        use crate::fluent_generated::*;
         match self {
-            Unknown(_) => middle_layout_unknown,
-            SizeOverflow(_) => middle_layout_size_overflow,
-            InvalidSimd { kind: SimdLayoutError::TooManyLanes(_), .. } => {
-                middle_layout_simd_too_many
+            Unknown(_) => inline_fluent!("the type `{$ty}` has an unknown layout"),
+            SizeOverflow(_) => {
+                inline_fluent!("values of the type `{$ty}` are too big for the target architecture")
             }
-            InvalidSimd { kind: SimdLayoutError::ZeroLength, .. } => middle_layout_simd_zero_length,
-            TooGeneric(_) => middle_layout_too_generic,
-            NormalizationFailure(_, _) => middle_layout_normalization_failure,
-            Cycle(_) => middle_layout_cycle,
-            ReferencesError(_) => middle_layout_references_error,
+            InvalidSimd { kind: SimdLayoutError::TooManyLanes(_), .. } => {
+                inline_fluent!(
+                    "the SIMD type `{$ty}` has more elements than the limit {$max_lanes}"
+                )
+            }
+            InvalidSimd { kind: SimdLayoutError::ZeroLength, .. } => {
+                inline_fluent!("the SIMD type `{$ty}` has zero elements")
+            }
+            TooGeneric(_) => inline_fluent!("the type `{$ty}` does not have a fixed layout"),
+            NormalizationFailure(_, _) => inline_fluent!(
+                "unable to determine layout for `{$ty}` because `{$failure_ty}` cannot be normalized"
+            ),
+            Cycle(_) => inline_fluent!("a cycle occurred during layout computation"),
+            ReferencesError(_) => inline_fluent!("the type has an unknown layout"),
         }
     }
 
