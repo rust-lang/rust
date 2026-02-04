@@ -190,3 +190,12 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAbiParser {
         Some(AttributeKind::RustcAbi { attr_span: cx.attr_span, kind })
     }
 }
+
+pub(crate) struct RustcDelayedBugFromInsideQueryParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcDelayedBugFromInsideQueryParser {
+    const PATH: &[Symbol] = &[sym::rustc_delayed_bug_from_inside_query];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDelayedBugFromInsideQuery;
+}
