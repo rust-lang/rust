@@ -120,7 +120,7 @@ impl<T, A: Allocator> Drain<'_, T, A> {
 
         for idx in range_start..range_end {
             if let Some(new_item) = replace_with.next() {
-                let index = deque.to_physical_idx(idx);
+                let index = deque.to_wrapped_index(idx);
                 unsafe { deque.buffer_write(index, new_item) };
                 deque.len += 1;
                 self.drain_len -= 1;
@@ -144,8 +144,8 @@ impl<T, A: Allocator> Drain<'_, T, A> {
         let new_tail_start = tail_start + additional;
         unsafe {
             deque.wrap_copy(
-                deque.to_physical_idx(tail_start),
-                deque.to_physical_idx(new_tail_start),
+                deque.to_wrapped_index(tail_start),
+                deque.to_wrapped_index(new_tail_start),
                 self.tail_len,
             );
         }
