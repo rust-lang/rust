@@ -45,7 +45,7 @@ impl<'a> Iterator for SplitPaths<'a> {
 
         let mut in_progress = Vec::new();
         let mut in_quote = false;
-        for b in self.data.by_ref() {
+        for b in self.data.by_ref().skip_while(|&b| b == ';' as u16) {
             if b == '"' as u16 {
                 in_quote = !in_quote;
             } else if b == ';' as u16 && !in_quote {
