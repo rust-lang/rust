@@ -4,17 +4,17 @@ use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_generic_type_with_parentheses, code = E0214)]
+#[diag("parenthesized type parameters may only be used with a `Fn` trait", code = E0214)]
 pub(crate) struct GenericTypeWithParentheses {
     #[primary_span]
-    #[label]
+    #[label("only `Fn` traits may use parentheses")]
     pub span: Span,
     #[subdiagnostic]
     pub sub: Option<UseAngleBrackets>,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(ast_lowering_use_angle_brackets, applicability = "maybe-incorrect")]
+#[multipart_suggestion("use angle brackets instead", applicability = "maybe-incorrect")]
 pub(crate) struct UseAngleBrackets {
     #[suggestion_part(code = "<")]
     pub open_param: Span,
@@ -23,11 +23,11 @@ pub(crate) struct UseAngleBrackets {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_invalid_abi, code = E0703)]
-#[note]
+#[diag("invalid ABI: found `{$abi}`", code = E0703)]
+#[note("invoke `{$command}` for a full list of supported calling conventions")]
 pub(crate) struct InvalidAbi {
     #[primary_span]
-    #[label]
+    #[label("invalid ABI")]
     pub span: Span,
     pub abi: Symbol,
     pub command: String,
@@ -36,16 +36,16 @@ pub(crate) struct InvalidAbi {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_default_field_in_tuple)]
+#[diag("default fields are not supported in tuple structs")]
 pub(crate) struct TupleStructWithDefault {
     #[primary_span]
-    #[label]
+    #[label("default fields are only supported on structs")]
     pub span: Span,
 }
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    ast_lowering_invalid_abi_suggestion,
+    "there's a similarly named valid ABI `{$suggestion}`",
     code = "\"{suggestion}\"",
     applicability = "maybe-incorrect",
     style = "verbose"
@@ -57,7 +57,7 @@ pub(crate) struct InvalidAbiSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_assoc_ty_parentheses)]
+#[diag("parenthesized generic arguments cannot be used in associated type constraints")]
 pub(crate) struct AssocTyParentheses {
     #[primary_span]
     pub span: Span,
@@ -67,12 +67,12 @@ pub(crate) struct AssocTyParentheses {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum AssocTyParenthesesSub {
-    #[multipart_suggestion(ast_lowering_remove_parentheses)]
+    #[multipart_suggestion("remove these parentheses")]
     Empty {
         #[suggestion_part(code = "")]
         parentheses_span: Span,
     },
-    #[multipart_suggestion(ast_lowering_use_angle_brackets)]
+    #[multipart_suggestion("use angle brackets instead")]
     NotEmpty {
         #[suggestion_part(code = "<")]
         open_param: Span,
@@ -82,8 +82,8 @@ pub(crate) enum AssocTyParenthesesSub {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_misplaced_impl_trait, code = E0562)]
-#[note]
+#[diag("`impl Trait` is not allowed in {$position}", code = E0562)]
+#[note("`impl Trait` is only allowed in arguments and return types of functions and methods")]
 pub(crate) struct MisplacedImplTrait<'a> {
     #[primary_span]
     pub span: Span,
@@ -91,97 +91,106 @@ pub(crate) struct MisplacedImplTrait<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_assoc_ty_binding_in_dyn)]
+#[diag("associated type bounds are not allowed in `dyn` types")]
 pub(crate) struct MisplacedAssocTyBinding {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " = impl", applicability = "maybe-incorrect", style = "verbose")]
+    #[suggestion(
+        "use `impl Trait` to introduce a type instead",
+        code = " = impl",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
     pub suggestion: Option<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_underscore_expr_lhs_assign)]
+#[diag("in expressions, `_` can only be used on the left-hand side of an assignment")]
 pub(crate) struct UnderscoreExprLhsAssign {
     #[primary_span]
-    #[label]
+    #[label("`_` not allowed here")]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_await_only_in_async_fn_and_blocks, code = E0728)]
+#[diag("`await` is only allowed inside `async` functions and blocks", code = E0728)]
 pub(crate) struct AwaitOnlyInAsyncFnAndBlocks {
     #[primary_span]
-    #[label]
+    #[label("only allowed inside `async` functions and blocks")]
     pub await_kw_span: Span,
-    #[label(ast_lowering_this_not_async)]
+    #[label("this is not `async`")]
     pub item_span: Option<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_coroutine_too_many_parameters, code = E0628)]
+#[diag("too many parameters for a coroutine (expected 0 or 1 parameters)", code = E0628)]
 pub(crate) struct CoroutineTooManyParameters {
     #[primary_span]
     pub fn_decl_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_closure_cannot_be_static, code = E0697)]
+#[diag("closures cannot be static", code = E0697)]
 pub(crate) struct ClosureCannotBeStatic {
     #[primary_span]
     pub fn_decl_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_functional_record_update_destructuring_assignment)]
+#[diag("functional record updates are not allowed in destructuring assignments")]
 pub(crate) struct FunctionalRecordUpdateDestructuringAssignment {
     #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable")]
+    #[suggestion(
+        "consider removing the trailing pattern",
+        code = "",
+        applicability = "machine-applicable"
+    )]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_async_coroutines_not_supported, code = E0727)]
+#[diag("`async` coroutines are not yet supported", code = E0727)]
 pub(crate) struct AsyncCoroutinesNotSupported {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_inline_asm_unsupported_target, code = E0472)]
+#[diag("inline assembly is unsupported on this target", code = E0472)]
 pub(crate) struct InlineAsmUnsupportedTarget {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_att_syntax_only_x86)]
+#[diag("the `att_syntax` option is only supported on x86")]
 pub(crate) struct AttSyntaxOnlyX86 {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_abi_specified_multiple_times)]
+#[diag("`{$prev_name}` ABI specified multiple times")]
 pub(crate) struct AbiSpecifiedMultipleTimes {
     #[primary_span]
     pub abi_span: Span,
     pub prev_name: Symbol,
-    #[label]
+    #[label("previously specified here")]
     pub prev_span: Span,
-    #[note]
+    #[note("these ABIs are equivalent on the current target")]
     pub equivalent: bool,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_clobber_abi_not_supported)]
+#[diag("`clobber_abi` is not supported on this target")]
 pub(crate) struct ClobberAbiNotSupported {
     #[primary_span]
     pub abi_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[note]
-#[diag(ast_lowering_invalid_abi_clobber_abi)]
+#[note("the following ABIs are supported on this target: {$supported_abis}")]
+#[diag("invalid ABI for `clobber_abi`")]
 pub(crate) struct InvalidAbiClobberAbi {
     #[primary_span]
     pub abi_span: Span,
@@ -189,7 +198,7 @@ pub(crate) struct InvalidAbiClobberAbi {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_invalid_register)]
+#[diag("invalid register `{$reg}`: {$error}")]
 pub(crate) struct InvalidRegister<'a> {
     #[primary_span]
     pub op_span: Span,
@@ -198,8 +207,10 @@ pub(crate) struct InvalidRegister<'a> {
 }
 
 #[derive(Diagnostic)]
-#[note]
-#[diag(ast_lowering_invalid_register_class)]
+#[note(
+    "the following register classes are supported on this target: {$supported_register_classes}"
+)]
+#[diag("invalid register class `{$reg_class}`: unknown register class")]
 pub(crate) struct InvalidRegisterClass {
     #[primary_span]
     pub op_span: Span,
@@ -208,12 +219,12 @@ pub(crate) struct InvalidRegisterClass {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_invalid_asm_template_modifier_reg_class)]
+#[diag("invalid asm template modifier for this register class")]
 pub(crate) struct InvalidAsmTemplateModifierRegClass {
     #[primary_span]
-    #[label(ast_lowering_template_modifier)]
+    #[label("template modifier")]
     pub placeholder_span: Span,
-    #[label(ast_lowering_argument)]
+    #[label("argument")]
     pub op_span: Span,
     #[subdiagnostic]
     pub sub: InvalidAsmTemplateModifierRegClassSub,
@@ -221,44 +232,48 @@ pub(crate) struct InvalidAsmTemplateModifierRegClass {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum InvalidAsmTemplateModifierRegClassSub {
-    #[note(ast_lowering_support_modifiers)]
+    #[note(
+        "the `{$class_name}` register class supports the following template modifiers: {$modifiers}"
+    )]
     SupportModifier { class_name: Symbol, modifiers: String },
-    #[note(ast_lowering_does_not_support_modifiers)]
+    #[note("the `{$class_name}` register class does not support template modifiers")]
     DoesNotSupportModifier { class_name: Symbol },
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_invalid_asm_template_modifier_const)]
+#[diag("asm template modifiers are not allowed for `const` arguments")]
 pub(crate) struct InvalidAsmTemplateModifierConst {
     #[primary_span]
-    #[label(ast_lowering_template_modifier)]
+    #[label("template modifier")]
     pub placeholder_span: Span,
-    #[label(ast_lowering_argument)]
+    #[label("argument")]
     pub op_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_invalid_asm_template_modifier_sym)]
+#[diag("asm template modifiers are not allowed for `sym` arguments")]
 pub(crate) struct InvalidAsmTemplateModifierSym {
     #[primary_span]
-    #[label(ast_lowering_template_modifier)]
+    #[label("template modifier")]
     pub placeholder_span: Span,
-    #[label(ast_lowering_argument)]
+    #[label("argument")]
     pub op_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_invalid_asm_template_modifier_label)]
+#[diag("asm template modifiers are not allowed for `label` arguments")]
 pub(crate) struct InvalidAsmTemplateModifierLabel {
     #[primary_span]
-    #[label(ast_lowering_template_modifier)]
+    #[label("template modifier")]
     pub placeholder_span: Span,
-    #[label(ast_lowering_argument)]
+    #[label("argument")]
     pub op_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_register_class_only_clobber)]
+#[diag(
+    "register class `{$reg_class_name}` can only be used as a clobber, not as an input or output"
+)]
 pub(crate) struct RegisterClassOnlyClobber {
     #[primary_span]
     pub op_span: Span,
@@ -266,7 +281,7 @@ pub(crate) struct RegisterClassOnlyClobber {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_register_class_only_clobber_stable)]
+#[diag("register class `{$reg_class_name}` can only be used as a clobber in stable")]
 pub(crate) struct RegisterClassOnlyClobberStable {
     #[primary_span]
     pub op_span: Span,
@@ -274,27 +289,27 @@ pub(crate) struct RegisterClassOnlyClobberStable {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_register_conflict)]
+#[diag("register `{$reg1_name}` conflicts with register `{$reg2_name}`")]
 pub(crate) struct RegisterConflict<'a> {
     #[primary_span]
-    #[label(ast_lowering_register1)]
+    #[label("register `{$reg1_name}`")]
     pub op_span1: Span,
-    #[label(ast_lowering_register2)]
+    #[label("register `{$reg2_name}`")]
     pub op_span2: Span,
     pub reg1_name: &'a str,
     pub reg2_name: &'a str,
-    #[help]
+    #[help("use `lateout` instead of `out` to avoid conflict")]
     pub in_out: Option<Span>,
 }
 
 #[derive(Diagnostic)]
-#[help]
-#[diag(ast_lowering_sub_tuple_binding)]
+#[help("remove this and bind each tuple field independently")]
+#[diag("`{$ident_name} @` is not allowed in a {$ctx}")]
 pub(crate) struct SubTupleBinding<'a> {
     #[primary_span]
-    #[label]
+    #[label("this is only allowed in slice patterns")]
     #[suggestion(
-        ast_lowering_sub_tuple_binding_suggestion,
+        "if you don't need to use the contents of {$ident}, discard the tuple's remaining fields",
         style = "verbose",
         code = "..",
         applicability = "maybe-incorrect"
@@ -306,63 +321,67 @@ pub(crate) struct SubTupleBinding<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_extra_double_dot)]
+#[diag("`..` can only be used once per {$ctx} pattern")]
 pub(crate) struct ExtraDoubleDot<'a> {
     #[primary_span]
-    #[label]
+    #[label("can only be used once per {$ctx} pattern")]
     pub span: Span,
-    #[label(ast_lowering_previously_used_here)]
+    #[label("previously used here")]
     pub prev_span: Span,
     pub ctx: &'a str,
 }
 
 #[derive(Diagnostic)]
-#[note]
-#[diag(ast_lowering_misplaced_double_dot)]
+#[note("only allowed in tuple, tuple struct, and slice patterns")]
+#[diag("`..` patterns are not allowed here")]
 pub(crate) struct MisplacedDoubleDot {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_match_arm_with_no_body)]
+#[diag("`match` arm with no body")]
 pub(crate) struct MatchArmWithNoBody {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " => todo!(),", applicability = "has-placeholders")]
+    #[suggestion(
+        "add a body after the pattern",
+        code = " => todo!(),",
+        applicability = "has-placeholders"
+    )]
     pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_never_pattern_with_body)]
+#[diag("a never pattern is always unreachable")]
 pub(crate) struct NeverPatternWithBody {
     #[primary_span]
-    #[label]
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    #[label("this will never be executed")]
+    #[suggestion("remove this expression", code = "", applicability = "maybe-incorrect")]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_never_pattern_with_guard)]
+#[diag("a guard on a never pattern will never be run")]
 pub(crate) struct NeverPatternWithGuard {
     #[primary_span]
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    #[suggestion("remove this guard", code = "", applicability = "maybe-incorrect")]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_arbitrary_expression_in_pattern)]
+#[diag("arbitrary expressions aren't allowed in patterns")]
 pub(crate) struct ArbitraryExpressionInPattern {
     #[primary_span]
     pub span: Span,
-    #[note(ast_lowering_pattern_from_macro_note)]
+    #[note("the `expr` fragment specifier forces the metavariable's content to be an expression")]
     pub pattern_from_macro_note: bool,
-    #[help(ast_lowering_const_block_in_pattern_help)]
+    #[help("use a named `const`-item or an `if`-guard (`x if x == const {\"{ ... }\"}`) instead")]
     pub const_block_in_pattern_help: bool,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_inclusive_range_with_no_end)]
+#[diag("inclusive range with no end")]
 pub(crate) struct InclusiveRangeWithNoEnd {
     #[primary_span]
     pub span: Span,
@@ -370,7 +389,7 @@ pub(crate) struct InclusiveRangeWithNoEnd {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    ast_lowering_bad_return_type_notation_output_suggestion,
+    "use the right argument notation and remove the return type",
     applicability = "machine-applicable",
     style = "verbose"
 )]
@@ -384,26 +403,36 @@ pub(crate) struct RTNSuggestion {
 
 #[derive(Diagnostic)]
 pub(crate) enum BadReturnTypeNotation {
-    #[diag(ast_lowering_bad_return_type_notation_inputs)]
+    #[diag("argument types not allowed with return type notation")]
     Inputs {
         #[primary_span]
-        #[suggestion(code = "(..)", applicability = "machine-applicable", style = "verbose")]
+        #[suggestion(
+            "remove the input types",
+            code = "(..)",
+            applicability = "machine-applicable",
+            style = "verbose"
+        )]
         span: Span,
     },
-    #[diag(ast_lowering_bad_return_type_notation_output)]
+    #[diag("return type not allowed with return type notation")]
     Output {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         suggestion: RTNSuggestion,
     },
-    #[diag(ast_lowering_bad_return_type_notation_needs_dots)]
+    #[diag("return type notation arguments must be elided with `..`")]
     NeedsDots {
         #[primary_span]
-        #[suggestion(code = "(..)", applicability = "machine-applicable", style = "verbose")]
+        #[suggestion(
+            "use the correct syntax by adding `..` to the arguments",
+            code = "(..)",
+            applicability = "machine-applicable",
+            style = "verbose"
+        )]
         span: Span,
     },
-    #[diag(ast_lowering_bad_return_type_notation_position)]
+    #[diag("return type notation not allowed in this position yet")]
     Position {
         #[primary_span]
         span: Span,
@@ -411,14 +440,14 @@ pub(crate) enum BadReturnTypeNotation {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_generic_param_default_in_binder)]
+#[diag("defaults for generic parameters are not allowed in `for<...>` binders")]
 pub(crate) struct GenericParamDefaultInBinder {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_async_bound_not_on_trait)]
+#[diag("`async` bound modifier only allowed on trait, not `{$descr}`")]
 pub(crate) struct AsyncBoundNotOnTrait {
     #[primary_span]
     pub span: Span,
@@ -426,30 +455,37 @@ pub(crate) struct AsyncBoundNotOnTrait {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_async_bound_only_for_fn_traits)]
+#[diag("`async` bound modifier only allowed on `Fn`/`FnMut`/`FnOnce` traits")]
 pub(crate) struct AsyncBoundOnlyForFnTraits {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_no_precise_captures_on_apit)]
+#[diag("`use<...>` precise capturing syntax not allowed in argument-position `impl Trait`")]
 pub(crate) struct NoPreciseCapturesOnApit {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_yield_in_closure)]
+#[diag("`yield` can only be used in `#[coroutine]` closures, or `gen` blocks")]
 pub(crate) struct YieldInClosure {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = "#[coroutine] ", applicability = "maybe-incorrect", style = "verbose")]
+    #[suggestion(
+        "use `#[coroutine]` to make this closure a coroutine",
+        code = "#[coroutine] ",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
     pub suggestion: Option<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_invalid_legacy_const_generic_arg)]
+#[diag(
+    "invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items"
+)]
 pub(crate) struct InvalidLegacyConstGenericArg {
     #[primary_span]
     pub span: Span,
@@ -459,7 +495,7 @@ pub(crate) struct InvalidLegacyConstGenericArg {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    ast_lowering_invalid_legacy_const_generic_arg_suggestion,
+    "try using a const generic argument instead",
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct UseConstGenericArg {
@@ -472,21 +508,21 @@ pub(crate) struct UseConstGenericArg {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_union_default_field_values)]
+#[diag("unions cannot have default field values")]
 pub(crate) struct UnionWithDefault {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_delegation_unresolved_callee)]
+#[diag("failed to resolve delegation callee")]
 pub(crate) struct UnresolvedDelegationCallee {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_delegation_cycle_in_signature_resolution)]
+#[diag("encountered a cycle during delegation signature resolution")]
 pub(crate) struct CycleInDelegationSignatureResolution {
     #[primary_span]
     pub span: Span,
