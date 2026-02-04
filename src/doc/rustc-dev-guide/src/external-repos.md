@@ -1,4 +1,4 @@
-# Using External Repositories
+# Using external repositories
 
 The `rust-lang/rust` git repository depends on several other repos in the `rust-lang` organization.
 There are three main ways we use dependencies:
@@ -12,7 +12,7 @@ As a general rule:
   changes
 - Use submodules for tools that are independent of the compiler
 
-## External Dependencies (subtrees)
+## External dependencies (subtrees)
 
 The following external projects are managed using some form of a `subtree`:
 
@@ -153,7 +153,7 @@ Now you're done, the `src/tools/clippy` directory behaves as if Clippy were
 part of the rustc monorepo, so no one but you (or others that synchronize
 subtrees) actually needs to use `git subtree`.
 
-## External Dependencies (submodules)
+## External dependencies (submodules)
 
 Building Rust will also use external git repositories tracked using [git submodules].
 The complete list may be found in the [`.gitmodules`] file.

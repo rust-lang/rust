@@ -86,6 +86,17 @@ pub fn extract_trivial_expression(block_expr: &ast::BlockExpr) -> Option<ast::Ex
     None
 }
 
+pub(crate) fn wrap_block(expr: &ast::Expr) -> ast::BlockExpr {
+    if let ast::Expr::BlockExpr(block) = expr
+        && let Some(first) = block.syntax().first_token()
+        && first.kind() == T!['{']
+    {
+        block.reset_indent()
+    } else {
+        make::block_expr(None, Some(expr.reset_indent().indent(1.into())))
+    }
+}
+
 /// This is a method with a heuristics to support test methods annotated with custom test annotations, such as
 /// `#[test_case(...)]`, `#[tokio::test]` and similar.
 /// Also a regular `#[test]` annotation is supported.

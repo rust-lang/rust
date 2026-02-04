@@ -1,6 +1,5 @@
 //@compile-flags: -Zmiri-deterministic-concurrency
 // A case that is not covered by `mixed_size_read_write`.
-#![feature(ptr_as_ref_unchecked)]
 
 use std::sync::atomic::*;
 use std::thread;

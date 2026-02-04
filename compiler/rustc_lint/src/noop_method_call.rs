@@ -1,7 +1,7 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_middle::ty;
-use rustc_middle::ty::adjustment::Adjust;
+use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
@@ -114,7 +114,10 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
 
         // If there is any user defined auto-deref step, then we don't want to warn.
         // https://github.com/rust-lang/rust-clippy/issues/9272
-        if arg_adjustments.iter().any(|adj| matches!(adj.kind, Adjust::Deref(Some(_)))) {
+        if arg_adjustments
+            .iter()
+            .any(|adj| matches!(adj.kind, Adjust::Deref(DerefAdjustKind::Overloaded(_))))
+        {
             return;
         }
 

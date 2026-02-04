@@ -2807,7 +2807,7 @@ macro_rules! uint_impl {
         /// assert_eq!((sum1, sum0), (9, 6));
         /// ```
         #[stable(feature = "unsigned_bigint_helpers", since = "1.91.0")]
-        #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[rustc_const_unstable(feature = "const_unsigned_bigint_helpers", issue = "152015")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2899,7 +2899,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!((diff1, diff0), (3, ", stringify!($SelfT), "::MAX));")]
         /// ```
         #[stable(feature = "unsigned_bigint_helpers", since = "1.91.0")]
-        #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[rustc_const_unstable(feature = "const_unsigned_bigint_helpers", issue = "152015")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3011,14 +3011,14 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
+        /// #![feature(widening_mul)]
         #[doc = concat!("assert_eq!(5_", stringify!($SelfT), ".widening_mul(7), (35, 0));")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.widening_mul(", stringify!($SelfT), "::MAX), (1, ", stringify!($SelfT), "::MAX - 1));")]
         /// ```
         ///
         /// Compared to other `*_mul` methods:
         /// ```
-        /// #![feature(bigint_helper_methods)]
+        /// #![feature(widening_mul)]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::widening_mul(1 << ", stringify!($BITS_MINUS_ONE), ", 6), (0, 3));")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::overflowing_mul(1 << ", stringify!($BITS_MINUS_ONE), ", 6), (0, true));")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::wrapping_mul(1 << ", stringify!($BITS_MINUS_ONE), ", 6), 0);")]
@@ -3028,12 +3028,12 @@ macro_rules! uint_impl {
         /// Please note that this example is shared among integer types, which is why `u32` is used.
         ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
+        /// #![feature(widening_mul)]
         /// assert_eq!(5u32.widening_mul(2), (10, 0));
         /// assert_eq!(1_000_000_000u32.widening_mul(10), (1410065408, 2));
         /// ```
-        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
-        #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[unstable(feature = "widening_mul", issue = "152016")]
+        #[rustc_const_unstable(feature = "widening_mul", issue = "152016")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3072,7 +3072,7 @@ macro_rules! uint_impl {
         /// implementing it for wider-than-native types.
         ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
+        /// #![feature(const_unsigned_bigint_helpers)]
         /// fn scalar_mul_eq(little_endian_digits: &mut Vec<u16>, multiplicand: u16) {
         ///     let mut carry = 0;
         ///     for d in little_endian_digits.iter_mut() {
@@ -3097,7 +3097,7 @@ macro_rules! uint_impl {
         /// except that it gives the value of the overflow instead of just whether one happened:
         ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
+        /// #![feature(const_unsigned_bigint_helpers)]
         /// let r = u8::carrying_mul(7, 13, 0);
         /// assert_eq!((r.0, r.1 != 0), u8::overflowing_mul(7, 13));
         /// let r = u8::carrying_mul(13, 42, 0);
@@ -3109,14 +3109,14 @@ macro_rules! uint_impl {
         /// [`wrapping_add`](Self::wrapping_add) methods:
         ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
+        /// #![feature(const_unsigned_bigint_helpers)]
         /// assert_eq!(
         ///     789_u16.carrying_mul(456, 123).0,
         ///     789_u16.wrapping_mul(456).wrapping_add(123),
         /// );
         /// ```
         #[stable(feature = "unsigned_bigint_helpers", since = "1.91.0")]
-        #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[rustc_const_unstable(feature = "const_unsigned_bigint_helpers", issue = "152015")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3182,7 +3182,7 @@ macro_rules! uint_impl {
         /// );
         /// ```
         #[stable(feature = "unsigned_bigint_helpers", since = "1.91.0")]
-        #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[rustc_const_unstable(feature = "const_unsigned_bigint_helpers", issue = "152015")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

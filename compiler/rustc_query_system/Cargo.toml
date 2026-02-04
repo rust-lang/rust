@@ -11,7 +11,6 @@ rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_feature = { path = "../rustc_feature" }
-rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_hashes = { path = "../rustc_hashes" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
@@ -23,8 +22,3 @@ rustc_thread_pool = { path = "../rustc_thread_pool" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tracing = "0.1"
 # tidy-alphabetical-end
-
-[dependencies.hashbrown]
-version = "0.16.1"
-default-features = false
-features = ["nightly"] # for may_dangle

@@ -4,8 +4,8 @@ use rustc_infer::infer::InferOk;
 use rustc_infer::traits::{Obligation, ObligationCauseCode};
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, OverloadedDeref,
-    PointerCoercion,
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
+    OverloadedDeref, PointerCoercion,
 };
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, sym};
@@ -298,7 +298,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.typeck_results.borrow_mut().adjustments_mut().remove(expr.hir_id);
             if let Some(mut adjustments) = previous_adjustments {
                 for adjustment in &mut adjustments {
-                    if let Adjust::Deref(Some(ref mut deref)) = adjustment.kind
+                    if let Adjust::Deref(DerefAdjustKind::Overloaded(ref mut deref)) =
+                        adjustment.kind
                         && let Some(ok) = self.try_mutable_overloaded_place_op(
                             expr.span,
                             source,

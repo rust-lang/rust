@@ -19,7 +19,7 @@ use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_middle::ty::adjustment::Adjust;
+use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_span::Symbol;
 use std::{cmp, ops};
 
@@ -132,7 +132,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 .typeck_results()
                 .expr_adjustments(e)
                 .iter()
-                .any(|adj| matches!(adj.kind, Adjust::Deref(Some(_))))
+                .any(|adj| matches!(adj.kind, Adjust::Deref(DerefAdjustKind::Overloaded(_))))
             {
                 self.eagerness |= NoChange;
                 return;
@@ -211,12 +211,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
 
                 // Custom `Deref` impl might have side effects
                 ExprKind::Unary(UnOp::Deref, e)
-                    if self
-                        .cx
-                        .typeck_results()
-                        .expr_ty(e)
-                        .builtin_deref(true)
-                        .is_none() =>
+                    if self.cx.typeck_results().expr_ty(e).builtin_deref(true).is_none() =>
                 {
                     self.eagerness |= NoChange;
                 },

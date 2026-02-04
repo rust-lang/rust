@@ -274,3 +274,12 @@ impl<S: Stage> NoArgsAttributeParser<S> for NoBuiltinsParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoBuiltins;
 }
+
+pub(crate) struct RustcPreserveUbChecksParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcPreserveUbChecksParser {
+    const PATH: &[Symbol] = &[sym::rustc_preserve_ub_checks];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPreserveUbChecks;
+}

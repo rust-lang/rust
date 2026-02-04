@@ -290,19 +290,23 @@ impl ConstAndTypeMap {
 ///          ^ alias generic params
 ///    let a: A<100>;
 ///            ^ instance generic args
-///    ```
 ///
 ///    generic['a] = '_ due to omission
 ///    generic[N] = 100 due to the instance arg
 ///    generic[T] = u64 due to the default param
+///    ```
 ///
 /// 2. Copy the concrete type and substitute in each found mapping:
 ///
+///    ```ignore
 ///    &'_ [u64; 100]
+///    ```
 ///
 /// 3. Remove wildcard lifetimes entirely:
 ///
+///    ```ignore
 ///    &[u64; 100]
+///    ```
 fn create_replacement(
     lifetime_map: &LifetimeMap,
     const_and_type_map: &ConstAndTypeMap,

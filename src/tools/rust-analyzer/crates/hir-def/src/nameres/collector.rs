@@ -3,7 +3,7 @@
 //! `DefCollector::collect` contains the fixed-point iteration loop which
 //! resolves imports and expands macros.
 
-use std::{iter, mem};
+use std::{iter, mem, ops::Range};
 
 use base_db::{BuiltDependency, Crate, CrateOrigin, LangCrateOrigin};
 use cfg::{CfgAtom, CfgExpr, CfgOptions};
@@ -226,6 +226,7 @@ struct DeferredBuiltinDerive {
     container: ItemContainerId,
     derive_attr_id: AttrId,
     derive_index: u32,
+    helpers_range: Range<usize>,
 }
 
 /// Walks the tree of module recursively
@@ -1354,7 +1355,7 @@ impl<'db> DefCollector<'db> {
                     if let Ok((macro_id, def_id, call_id)) = id {
                         self.def_map.modules[directive.module_id].scope.set_derive_macro_invoc(
                             ast_id.ast_id,
-                            call_id,
+                            Either::Left(call_id),
                             *derive_attr,
                             *derive_pos,
                         );
@@ -1369,7 +1370,7 @@ impl<'db> DefCollector<'db> {
                                     .extend(izip!(
                                         helpers.iter().cloned(),
                                         iter::repeat(macro_id),
-                                        iter::repeat(call_id),
+                                        iter::repeat(Either::Left(call_id)),
                                     ));
                             }
                         }
@@ -1492,6 +1493,8 @@ impl<'db> DefCollector<'db> {
                                         Interned::new(path),
                                     );
 
+                                    derive_call_ids.push(None);
+
                                     // Try to resolve the derive immediately. If we succeed, we can also use the fast path
                                     // for builtin derives. If not, we cannot use it, as it can cause the ADT to become
                                     // interned while the derive is still unresolved, which will cause it to get forgotten.
@@ -1506,23 +1509,42 @@ impl<'db> DefCollector<'db> {
                                         call_id,
                                     );
 
+                                    let ast_id_without_path = ast_id.ast_id;
+                                    let directive = MacroDirective {
+                                        module_id: directive.module_id,
+                                        depth: directive.depth + 1,
+                                        kind: MacroDirectiveKind::Derive {
+                                            ast_id,
+                                            derive_attr: *attr_id,
+                                            derive_pos: idx,
+                                            ctxt: call_site.ctx,
+                                            derive_macro_id: call_id,
+                                        },
+                                        container: directive.container,
+                                    };
+
                                     if let Ok((macro_id, def_id, call_id)) = id {
-                                        derive_call_ids.push(Some(call_id));
+                                        let (mut helpers_start, mut helpers_end) = (0, 0);
                                         // Record its helper attributes.
                                         if def_id.krate != self.def_map.krate {
                                             let def_map = crate_def_map(self.db, def_id.krate);
                                             if let Some(helpers) =
                                                 def_map.data.exported_derives.get(&macro_id)
                                             {
-                                                self.def_map
+                                                let derive_helpers = self
+                                                    .def_map
                                                     .derive_helpers_in_scope
-                                                    .entry(ast_id.ast_id.map(|it| it.upcast()))
-                                                    .or_default()
-                                                    .extend(izip!(
-                                                        helpers.iter().cloned(),
-                                                        iter::repeat(macro_id),
-                                                        iter::repeat(call_id),
-                                                    ));
+                                                    .entry(
+                                                        ast_id_without_path.map(|it| it.upcast()),
+                                                    )
+                                                    .or_default();
+                                                helpers_start = derive_helpers.len();
+                                                derive_helpers.extend(izip!(
+                                                    helpers.iter().cloned(),
+                                                    iter::repeat(macro_id),
+                                                    iter::repeat(Either::Left(call_id)),
+                                                ));
+                                                helpers_end = derive_helpers.len();
                                             }
                                         }
 
@@ -1531,7 +1553,7 @@ impl<'db> DefCollector<'db> {
                                                 def_id.kind
                                         {
                                             self.deferred_builtin_derives
-                                                .entry(ast_id.ast_id.upcast())
+                                                .entry(ast_id_without_path.upcast())
                                                 .or_default()
                                                 .push(DeferredBuiltinDerive {
                                                     call_id,
@@ -1541,24 +1563,15 @@ impl<'db> DefCollector<'db> {
                                                     depth: directive.depth,
                                                     derive_attr_id: *attr_id,
                                                     derive_index: idx as u32,
+                                                    helpers_range: helpers_start..helpers_end,
                                                 });
                                         } else {
-                                            push_resolved(&mut resolved, directive, call_id);
+                                            push_resolved(&mut resolved, &directive, call_id);
+                                            *derive_call_ids.last_mut().unwrap() =
+                                                Some(Either::Left(call_id));
                                         }
                                     } else {
-                                        derive_call_ids.push(None);
-                                        self.unresolved_macros.push(MacroDirective {
-                                            module_id: directive.module_id,
-                                            depth: directive.depth + 1,
-                                            kind: MacroDirectiveKind::Derive {
-                                                ast_id,
-                                                derive_attr: *attr_id,
-                                                derive_pos: idx,
-                                                ctxt: call_site.ctx,
-                                                derive_macro_id: call_id,
-                                            },
-                                            container: directive.container,
-                                        });
+                                        self.unresolved_macros.push(directive);
                                     }
                                 }
 
@@ -1858,9 +1871,8 @@ impl ModCollector<'_, '_> {
              ast_id: FileAstId<ast::Adt>,
              id: AdtId,
              def_map: &mut DefMap| {
-                let Some(deferred_derives) =
-                    deferred_derives.remove(&InFile::new(file_id, ast_id.upcast()))
-                else {
+                let ast_id = InFile::new(file_id, ast_id.upcast());
+                let Some(deferred_derives) = deferred_derives.remove(&ast_id.upcast()) else {
                     return;
                 };
                 let module = &mut def_map.modules[module_id];
@@ -1876,6 +1888,22 @@ impl ModCollector<'_, '_> {
                             },
                         );
                         module.scope.define_builtin_derive_impl(impl_id);
+                        module.scope.set_derive_macro_invoc(
+                            ast_id,
+                            Either::Right(impl_id),
+                            deferred_derive.derive_attr_id,
+                            deferred_derive.derive_index as usize,
+                        );
+                        // Change its helper attributes to the new id.
+                        if let Some(derive_helpers) =
+                            def_map.derive_helpers_in_scope.get_mut(&ast_id.map(|it| it.upcast()))
+                        {
+                            for (_, _, call_id) in
+                                &mut derive_helpers[deferred_derive.helpers_range.clone()]
+                            {
+                                *call_id = Either::Right(impl_id);
+                            }
+                        }
                     });
                 }
             };

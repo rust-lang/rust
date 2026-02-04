@@ -4,7 +4,6 @@
 //@ compile-flags: -C llvm-args=-x86-asm-syntax=intel
 
 #![no_std]
-#![feature(bigint_helper_methods)]
 
 // This checks that the `carrying_add` and `borrowing_sub` implementation successfully chain,
 // to catch issues like <https://github.com/rust-lang/rust/issues/85532#issuecomment-2495119815>

@@ -2522,7 +2522,7 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
+        /// #![feature(signed_bigint_helpers)]
         /// // Only the most significant word is signed.
         /// //
         #[doc = concat!("//   10  MAX    (a = 10 × 2^", stringify!($BITS), " + 2^", stringify!($BITS), " - 1)")]
@@ -2544,7 +2544,7 @@ macro_rules! int_impl {
         ///
         /// assert_eq!((sum1, sum0), (6, 8));
         /// ```
-        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[unstable(feature = "signed_bigint_helpers", issue = "151989")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2625,7 +2625,7 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
+        /// #![feature(signed_bigint_helpers)]
         /// // Only the most significant word is signed.
         /// //
         #[doc = concat!("//    6    8    (a = 6 × 2^", stringify!($BITS), " + 8)")]
@@ -2647,7 +2647,7 @@ macro_rules! int_impl {
         ///
         #[doc = concat!("assert_eq!((diff1, diff0), (10, ", stringify!($UnsignedT), "::MAX));")]
         /// ```
-        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[unstable(feature = "signed_bigint_helpers", issue = "151989")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2717,12 +2717,12 @@ macro_rules! int_impl {
         /// Please note that this example is shared among integer types, which is why `i32` is used.
         ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
+        /// #![feature(widening_mul)]
         /// assert_eq!(5i32.widening_mul(-2), (4294967286, -1));
         /// assert_eq!(1_000_000_000i32.widening_mul(-10), (2884901888, -3));
         /// ```
-        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
-        #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[unstable(feature = "widening_mul", issue = "152016")]
+        #[rustc_const_unstable(feature = "widening_mul", issue = "152016")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2747,7 +2747,7 @@ macro_rules! int_impl {
         /// Please note that this example is shared among integer types, which is why `i32` is used.
         ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
+        /// #![feature(signed_bigint_helpers)]
         /// assert_eq!(5i32.carrying_mul(-2, 0), (4294967286, -1));
         /// assert_eq!(5i32.carrying_mul(-2, 10), (0, 0));
         /// assert_eq!(1_000_000_000i32.carrying_mul(-10, 0), (2884901888, -3));
@@ -2757,8 +2757,8 @@ macro_rules! int_impl {
             "(", stringify!($SelfT), "::MAX.unsigned_abs() + 1, ", stringify!($SelfT), "::MAX / 2));"
         )]
         /// ```
-        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
-        #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[unstable(feature = "signed_bigint_helpers", issue = "151989")]
+        #[rustc_const_unstable(feature = "signed_bigint_helpers", issue = "151989")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2784,7 +2784,7 @@ macro_rules! int_impl {
         /// Please note that this example is shared among integer types, which is why `i32` is used.
         ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
+        /// #![feature(signed_bigint_helpers)]
         /// assert_eq!(5i32.carrying_mul_add(-2, 0, 0), (4294967286, -1));
         /// assert_eq!(5i32.carrying_mul_add(-2, 10, 10), (10, 0));
         /// assert_eq!(1_000_000_000i32.carrying_mul_add(-10, 0, 0), (2884901888, -3));
@@ -2794,8 +2794,8 @@ macro_rules! int_impl {
             "(", stringify!($UnsignedT), "::MAX, ", stringify!($SelfT), "::MAX / 2));"
         )]
         /// ```
-        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
-        #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[unstable(feature = "signed_bigint_helpers", issue = "151989")]
+        #[rustc_const_unstable(feature = "signed_bigint_helpers", issue = "151989")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

@@ -277,8 +277,7 @@ the debugger currently being used:
   gdb is in a range (inclusive)
 - `min-lldb-version: 310` — ignores the test if the version of lldb is below the given version
 - `rust-lldb` — ignores the test if lldb is not contain the Rust plugin.
-  NOTE: The "Rust" version of LLDB doesn't exist anymore, so this will always be
-  ignored.
+  NOTE: The "Rust" version of LLDB doesn't exist anymore, so this will always be ignored.
   This should probably be removed.
 
 By passing the `--debugger` option to compiletest, you can specify a single debugger to run tests with.
@@ -570,9 +569,7 @@ Instrumented binaries need to be linked against the LLVM profiler runtime, so
 is enabled in `bootstrap.toml`:
 
 ```toml
-# bootstrap.toml
-[build]
-profiler = true
+build.profiler = true
 ```
 
 This also means that they typically don't run in PR CI jobs, though they do run

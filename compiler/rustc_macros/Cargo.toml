@@ -8,6 +8,8 @@ proc-macro = true
 
 [dependencies]
 # tidy-alphabetical-start
+fluent-bundle = "0.16"
+fluent-syntax = "0.12"
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "2.0.9", features = ["full"] }

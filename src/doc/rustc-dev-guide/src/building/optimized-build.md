@@ -2,20 +2,20 @@
 
 There are multiple additional build configuration options and techniques that can be used to compile a
 build of `rustc` that is as optimized as possible (for example when building `rustc` for a Linux
-distribution). The status of these configuration options for various Rust targets is tracked [here].
+distribution).
+The status of these configuration options for various Rust targets is tracked [here].
 This page describes how you can use these approaches when building `rustc` yourself.
 
 [here]: https://github.com/rust-lang/rust/issues/103595
 
 ## Link-time optimization
 
-Link-time optimization is a powerful compiler technique that can increase program performance. To
-enable (Thin-)LTO when building `rustc`, set the `rust.lto` config option to `"thin"`
+Link-time optimization is a powerful compiler technique that can increase program performance.
+To enable (Thin-)LTO when building `rustc`, set the `rust.lto` config option to `"thin"`
 in `bootstrap.toml`:
 
 ```toml
-[rust]
-lto = "thin"
+rust.lto = "thin"
 ```
 
 > Note that LTO for `rustc` is currently supported and tested only for
@@ -30,13 +30,12 @@ Enabling LTO on Linux has [produced] speed-ups by up to 10%.
 
 ## Memory allocator
 
-Using a different memory allocator for `rustc` can provide significant performance benefits. If you
-want to enable the `jemalloc` allocator, you can set the `rust.jemalloc` option to `true`
+Using a different memory allocator for `rustc` can provide significant performance benefits.
+If you want to enable the `jemalloc` allocator, you can set the `rust.jemalloc` option to `true`
 in `bootstrap.toml`:
 
 ```toml
-[rust]
-jemalloc = true
+rust.jemalloc = true
 ```
 
 > Note that this option is currently only supported for Linux and macOS targets.
@@ -48,17 +47,16 @@ You can modify the number of codegen units for `rustc` and `libstd` in `bootstra
 following options:
 
 ```toml
-[rust]
-codegen-units = 1
-codegen-units-std = 1
+rust.codegen-units = 1
+rust.codegen-units-std = 1
 ```
 
 ## Instruction set
 
 By default, `rustc` is compiled for a generic (and conservative) instruction set architecture
-(depending on the selected target), to make it support as many CPUs as possible. If you want to
-compile `rustc` for a specific instruction set architecture, you can set the `target_cpu` compiler
-option in `RUSTFLAGS`:
+(depending on the selected target), to make it support as many CPUs as possible.
+If you want to compile `rustc` for a specific instruction set architecture,
+you can set the `target_cpu` compiler option in `RUSTFLAGS`:
 
 ```bash
 RUSTFLAGS="-C target_cpu=x86-64-v3" ./x build ...
@@ -68,22 +66,23 @@ If you also want to compile LLVM for a specific instruction set, you can set `ll
 in `bootstrap.toml`:
 
 ```toml
-[llvm]
-cxxflags = "-march=x86-64-v3"
-cflags = "-march=x86-64-v3"
+llvm.cxxflags = "-march=x86-64-v3"
+llvm.cflags = "-march=x86-64-v3"
 ```
 
 ## Profile-guided optimization
 
 Applying profile-guided optimizations (or more generally, feedback-directed optimizations) can
-produce a large increase to `rustc` performance, by up to 15% ([1], [2]). However, these techniques
+produce a large increase to `rustc` performance, by up to 15% ([1], [2]).
+However, these techniques
 are not simply enabled by a configuration option, but rather they require a complex build workflow
 that compiles `rustc` multiple times and profiles it on selected benchmarks.
 
 There is a tool called `opt-dist` that is used to optimize `rustc` with [PGO] (profile-guided
-optimizations) and [BOLT] (a post-link binary optimizer) for builds distributed to end users. You
-can examine the tool, which is located in `src/tools/opt-dist`, and build a custom PGO build
-workflow based on it, or try to use it directly. Note that the tool is currently quite hardcoded to
+optimizations) and [BOLT] (a post-link binary optimizer) for builds distributed to end users.
+You can examine the tool, which is located in `src/tools/opt-dist`, and build a custom PGO build
+workflow based on it, or try to use it directly.
+Note that the tool is currently quite hardcoded to
 the way we use it in Rust's continuous integration workflows, and it might require some custom
 changes to make it work in a different environment.
 
@@ -97,9 +96,9 @@ changes to make it work in a different environment.
 To use the tool, you will need to provide some external dependencies:
 
 - A Python3 interpreter (for executing `x.py`).
-- Compiled LLVM toolchain, with the `llvm-profdata` binary. Optionally, if you want to use BOLT,
-  the `llvm-bolt` and
-  `merge-fdata` binaries have to be available in the toolchain.
+- Compiled LLVM toolchain, with the `llvm-profdata` binary.
+  Optionally, if you want to use BOLT,
+  the `llvm-bolt` and `merge-fdata` binaries have to be available in the toolchain.
 
 These dependencies are provided to `opt-dist` by an implementation of the [`Environment`] struct.
 It specifies directories where will the PGO/BOLT pipeline take place, and also external dependencies
@@ -108,9 +107,8 @@ like Python or LLVM.
 Here is an example of how can `opt-dist` be used locally (outside of CI):
 
 1. Enable metrics in your `bootstrap.toml` file, because `opt-dist` expects it to be enabled:
-    ```toml
-   [build]
-   metrics = true
+   ```toml
+   build.metrics = true
    ```
 2. Build the tool with the following command:
     ```bash

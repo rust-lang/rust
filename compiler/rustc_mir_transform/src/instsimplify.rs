@@ -1,8 +1,8 @@
 //! Performs various peephole optimizations.
 
 use rustc_abi::ExternAbi;
-use rustc_ast::attr;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{LangItem, find_attr};
 use rustc_middle::bug;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
@@ -31,7 +31,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let preserve_ub_checks =
-            attr::contains_name(tcx.hir_krate_attrs(), sym::rustc_preserve_ub_checks);
+            find_attr!(tcx.hir_krate_attrs(), AttributeKind::RustcPreserveUbChecks);
         if !preserve_ub_checks {
             SimplifyUbCheck { tcx }.visit_body(body);
         }

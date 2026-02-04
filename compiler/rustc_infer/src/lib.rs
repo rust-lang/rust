@@ -22,5 +22,3 @@
 mod errors;
 pub mod infer;
 pub mod traits;
-
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

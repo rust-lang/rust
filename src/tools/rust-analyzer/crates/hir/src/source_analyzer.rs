@@ -17,7 +17,7 @@ use hir_def::{
         path::Path,
         scope::{ExprScopes, ScopeId},
     },
-    hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
+    hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat, PatId},
     lang_item::LangItems,
     nameres::MacroSubNs,
     resolver::{HasResolver, Resolver, TypeNs, ValueNs, resolver_for_scope},
@@ -44,6 +44,7 @@ use hir_ty::{
 };
 use intern::sym;
 use itertools::Itertools;
+use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     AliasTyKind,
     inherent::{AdtDef, IntoKind, Ty as _},
@@ -531,18 +532,12 @@ impl<'db> SourceAnalyzer<'db> {
         db: &'db dyn HirDatabase,
         range_pat: &ast::RangePat,
     ) -> Option<StructId> {
-        let path: ModPath = match (range_pat.op_kind()?, range_pat.start(), range_pat.end()) {
-            (RangeOp::Exclusive, None, Some(_)) => path![core::ops::RangeTo],
-            (RangeOp::Exclusive, Some(_), None) => path![core::ops::RangeFrom],
-            (RangeOp::Exclusive, Some(_), Some(_)) => path![core::ops::Range],
-            (RangeOp::Inclusive, None, Some(_)) => path![core::ops::RangeToInclusive],
-            (RangeOp::Inclusive, Some(_), Some(_)) => path![core::ops::RangeInclusive],
-
-            (RangeOp::Exclusive, None, None) => return None,
-            (RangeOp::Inclusive, None, None) => return None,
-            (RangeOp::Inclusive, Some(_), None) => return None,
-        };
-        self.resolver.resolve_known_struct(db, &path)
+        self.resolve_range_struct(
+            db,
+            range_pat.op_kind()?,
+            range_pat.start().is_some(),
+            range_pat.end().is_some(),
+        )
     }
 
     pub(crate) fn resolve_range_expr(
@@ -550,19 +545,59 @@ impl<'db> SourceAnalyzer<'db> {
         db: &'db dyn HirDatabase,
         range_expr: &ast::RangeExpr,
     ) -> Option<StructId> {
-        let path: ModPath = match (range_expr.op_kind()?, range_expr.start(), range_expr.end()) {
-            (RangeOp::Exclusive, None, None) => path![core::ops::RangeFull],
-            (RangeOp::Exclusive, None, Some(_)) => path![core::ops::RangeTo],
-            (RangeOp::Exclusive, Some(_), None) => path![core::ops::RangeFrom],
-            (RangeOp::Exclusive, Some(_), Some(_)) => path![core::ops::Range],
-            (RangeOp::Inclusive, None, Some(_)) => path![core::ops::RangeToInclusive],
-            (RangeOp::Inclusive, Some(_), Some(_)) => path![core::ops::RangeInclusive],
+        self.resolve_range_struct(
+            db,
+            range_expr.op_kind()?,
+            range_expr.start().is_some(),
+            range_expr.end().is_some(),
+        )
+    }
 
+    fn resolve_range_struct(
+        &self,
+        db: &'db dyn HirDatabase,
+        op_kind: RangeOp,
+        has_start: bool,
+        has_end: bool,
+    ) -> Option<StructId> {
+        let has_new_range =
+            self.resolver.top_level_def_map().is_unstable_feature_enabled(&sym::new_range);
+        let lang_items = self.lang_items(db);
+        match (op_kind, has_start, has_end) {
+            (RangeOp::Exclusive, false, false) => lang_items.RangeFull,
+            (RangeOp::Exclusive, false, true) => lang_items.RangeTo,
+            (RangeOp::Exclusive, true, false) => {
+                if has_new_range {
+                    lang_items.RangeFromCopy
+                } else {
+                    lang_items.RangeFrom
+                }
+            }
+            (RangeOp::Exclusive, true, true) => {
+                if has_new_range {
+                    lang_items.RangeCopy
+                } else {
+                    lang_items.Range
+                }
+            }
+            (RangeOp::Inclusive, false, true) => {
+                if has_new_range {
+                    lang_items.RangeToInclusiveCopy
+                } else {
+                    lang_items.RangeToInclusive
+                }
+            }
+            (RangeOp::Inclusive, true, true) => {
+                if has_new_range {
+                    lang_items.RangeInclusiveCopy
+                } else {
+                    lang_items.RangeInclusiveStruct
+                }
+            }
             // [E0586] inclusive ranges must be bounded at the end
-            (RangeOp::Inclusive, None, None) => return None,
-            (RangeOp::Inclusive, Some(_), None) => return None,
-        };
-        self.resolver.resolve_known_struct(db, &path)
+            (RangeOp::Inclusive, false, false) => None,
+            (RangeOp::Inclusive, true, false) => None,
+        }
     }
 
     pub(crate) fn resolve_await_to_poll(
@@ -1241,18 +1276,28 @@ impl<'db> SourceAnalyzer<'db> {
         let body = self.store()?;
         let infer = self.infer()?;
 
-        let expr_id = self.expr_id(literal.clone().into())?;
-        let substs = infer.expr_or_pat_ty(expr_id).as_adt()?.1;
-
-        let (variant, missing_fields, _exhaustive) = match expr_id {
-            ExprOrPatId::ExprId(expr_id) => {
-                record_literal_missing_fields(db, infer, expr_id, &body[expr_id])?
-            }
-            ExprOrPatId::PatId(pat_id) => {
-                record_pattern_missing_fields(db, infer, pat_id, &body[pat_id])?
-            }
-        };
+        let expr_id = self.expr_id(literal.clone().into())?.as_expr()?;
+        let substs = infer.expr_ty(expr_id).as_adt()?.1;
+        let (variant, missing_fields) =
+            record_literal_missing_fields(db, infer, expr_id, &body[expr_id])?;
         let res = self.missing_fields(db, substs, variant, missing_fields);
+        Some(res)
+    }
+
+    pub(crate) fn record_literal_matched_fields(
+        &self,
+        db: &'db dyn HirDatabase,
+        literal: &ast::RecordExpr,
+    ) -> Option<Vec<(Field, Type<'db>)>> {
+        let body = self.store()?;
+        let infer = self.infer()?;
+
+        let expr_id = self.expr_id(literal.clone().into())?.as_expr()?;
+        let substs = infer.expr_ty(expr_id).as_adt()?.1;
+        let (variant, matched_fields) =
+            record_literal_matched_fields(db, infer, expr_id, &body[expr_id])?;
+
+        let res = self.missing_fields(db, substs, variant, matched_fields);
         Some(res)
     }
 
@@ -1267,9 +1312,26 @@ impl<'db> SourceAnalyzer<'db> {
         let pat_id = self.pat_id(&pattern.clone().into())?.as_pat()?;
         let substs = infer.pat_ty(pat_id).as_adt()?.1;
 
-        let (variant, missing_fields, _exhaustive) =
+        let (variant, missing_fields) =
             record_pattern_missing_fields(db, infer, pat_id, &body[pat_id])?;
         let res = self.missing_fields(db, substs, variant, missing_fields);
+        Some(res)
+    }
+
+    pub(crate) fn record_pattern_matched_fields(
+        &self,
+        db: &'db dyn HirDatabase,
+        pattern: &ast::RecordPat,
+    ) -> Option<Vec<(Field, Type<'db>)>> {
+        let body = self.store()?;
+        let infer = self.infer()?;
+
+        let pat_id = self.pat_id(&pattern.clone().into())?.as_pat()?;
+        let substs = infer.pat_ty(pat_id).as_adt()?.1;
+
+        let (variant, matched_fields) =
+            record_pattern_matched_fields(db, infer, pat_id, &body[pat_id])?;
+        let res = self.missing_fields(db, substs, variant, matched_fields);
         Some(res)
     }
 
@@ -1809,4 +1871,68 @@ pub(crate) fn name_hygiene(db: &dyn HirDatabase, name: InFile<&SyntaxNode>) -> H
     let span_map = db.expansion_span_map(macro_file);
     let ctx = span_map.span_at(name.value.text_range().start()).ctx;
     HygieneId::new(ctx.opaque_and_semiopaque(db))
+}
+
+fn record_literal_matched_fields(
+    db: &dyn HirDatabase,
+    infer: &InferenceResult,
+    id: ExprId,
+    expr: &Expr,
+) -> Option<(VariantId, Vec<LocalFieldId>)> {
+    let (fields, _spread) = match expr {
+        Expr::RecordLit { fields, spread, .. } => (fields, spread),
+        _ => return None,
+    };
+
+    let variant_def = infer.variant_resolution_for_expr(id)?;
+    if let VariantId::UnionId(_) = variant_def {
+        return None;
+    }
+
+    let variant_data = variant_def.fields(db);
+
+    let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
+    // suggest fields if:
+    // - not in code
+    let matched_fields: Vec<LocalFieldId> = variant_data
+        .fields()
+        .iter()
+        .filter_map(|(f, d)| (!specified_fields.contains(&d.name)).then_some(f))
+        .collect();
+    if matched_fields.is_empty() {
+        return None;
+    }
+    Some((variant_def, matched_fields))
+}
+
+fn record_pattern_matched_fields(
+    db: &dyn HirDatabase,
+    infer: &InferenceResult,
+    id: PatId,
+    pat: &Pat,
+) -> Option<(VariantId, Vec<LocalFieldId>)> {
+    let (fields, _ellipsis) = match pat {
+        Pat::Record { path: _, args, ellipsis } => (args, *ellipsis),
+        _ => return None,
+    };
+
+    let variant_def = infer.variant_resolution_for_pat(id)?;
+    if let VariantId::UnionId(_) = variant_def {
+        return None;
+    }
+
+    let variant_data = variant_def.fields(db);
+
+    let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
+    // suggest fields if:
+    // - not in code
+    let matched_fields: Vec<LocalFieldId> = variant_data
+        .fields()
+        .iter()
+        .filter_map(|(f, d)| if !specified_fields.contains(&d.name) { Some(f) } else { None })
+        .collect();
+    if matched_fields.is_empty() {
+        return None;
+    }
+    Some((variant_def, matched_fields))
 }

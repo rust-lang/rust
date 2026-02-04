@@ -15,6 +15,7 @@ use crate::next_solver::{
     infer::{
         InferCtxt, InferOk, InferResult,
         canonical::{QueryRegionConstraints, QueryResponse, canonicalizer::OriginalQueryValues},
+        opaque_types::table::OpaqueTypeStorageEntries,
         traits::{ObligationCause, PredicateObligations},
     },
 };
@@ -194,6 +195,7 @@ impl<'db> InferCtxt<'db> {
         &self,
         inference_vars: CanonicalVarValues<'db>,
         answer: T,
+        prev_entries: OpaqueTypeStorageEntries,
     ) -> Canonical<'db, QueryResponse<'db, T>>
     where
         T: TypeFoldable<DbInterner<'db>>,
@@ -209,7 +211,7 @@ impl<'db> InferCtxt<'db> {
             .inner
             .borrow_mut()
             .opaque_type_storage
-            .iter_opaque_types()
+            .opaque_types_added_since(prev_entries)
             .map(|(k, v)| (k, v.ty))
             .collect();
 

@@ -231,7 +231,12 @@ pub(crate) fn run_in_thread_pool_with_globals<
                 .name("rustc query cycle handler".to_string())
                 .spawn(move || {
                     let on_panic = defer(|| {
-                        eprintln!("internal compiler error: query cycle handler thread panicked, aborting process");
+                        // Split this long string so that it doesn't cause rustfmt to
+                        // give up on the entire builder expression.
+                        // <https://github.com/rust-lang/rustfmt/issues/3863>
+                        const MESSAGE: &str = "\
+internal compiler error: query cycle handler thread panicked, aborting process";
+                        eprintln!("{MESSAGE}");
                         // We need to abort here as we failed to resolve the deadlock,
                         // otherwise the compiler could just hang,
                         process::abort();
@@ -244,11 +249,16 @@ pub(crate) fn run_in_thread_pool_with_globals<
                             tls::with(|tcx| {
                                 // Accessing session globals is sound as they outlive `GlobalCtxt`.
                                 // They are needed to hash query keys containing spans or symbols.
-                                let query_map = rustc_span::set_session_globals_then(unsafe { &*(session_globals as *const SessionGlobals) }, || {
-                                    // Ensure there was no errors collecting all active jobs.
-                                    // We need the complete map to ensure we find a cycle to break.
-                                    QueryCtxt::new(tcx).collect_active_jobs(false).expect("failed to collect active queries in deadlock handler")
-                                });
+                                let query_map = rustc_span::set_session_globals_then(
+                                    unsafe { &*(session_globals as *const SessionGlobals) },
+                                    || {
+                                        // Ensure there were no errors collecting all active jobs.
+                                        // We need the complete map to ensure we find a cycle to break.
+                                        QueryCtxt::new(tcx).collect_active_jobs_from_all_queries(false).expect(
+                                            "failed to collect active queries in deadlock handler",
+                                        )
+                                    },
+                                );
                                 break_query_cycles(query_map, &registry);
                             })
                         })

@@ -103,6 +103,16 @@ pub mod consts {
     // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_3: f16 = 0.577350269189625764509148780501957456_f16;
 
+    /// sqrt(5)
+    #[unstable(feature = "more_float_constants", issue = "146939")]
+    // Also, #[unstable(feature = "f16", issue = "116909")]
+    pub const SQRT_5: f16 = 2.23606797749978969640917366873127623_f16;
+
+    /// 1/sqrt(5)
+    #[unstable(feature = "more_float_constants", issue = "146939")]
+    // Also, #[unstable(feature = "f16", issue = "116909")]
+    pub const FRAC_1_SQRT_5: f16 = 0.44721359549995793928183473374625524_f16;
+
     /// Euler's number (e)
     #[unstable(feature = "f16", issue = "116909")]
     pub const E: f16 = 2.71828182845904523536028747135266250_f16;
@@ -137,6 +147,11 @@ impl f16 {
     /// The radix or base of the internal representation of `f16`.
     #[unstable(feature = "f16", issue = "116909")]
     pub const RADIX: u32 = 2;
+
+    /// The size of this float type in bits.
+    // #[unstable(feature = "f16", issue = "116909")]
+    #[unstable(feature = "float_bits_const", issue = "151073")]
+    pub const BITS: u32 = 16;
 
     /// Number of significant digits in base 2.
     ///

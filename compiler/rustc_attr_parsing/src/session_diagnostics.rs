@@ -11,10 +11,8 @@ use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::TargetTuple;
 
-use crate::fluent_generated as fluent;
-
 #[derive(Diagnostic)]
-#[diag(attr_parsing_invalid_predicate, code = E0537)]
+#[diag("invalid predicate `{$predicate}`", code = E0537)]
 pub(crate) struct InvalidPredicate {
     #[primary_span]
     pub span: Span,
@@ -23,7 +21,7 @@ pub(crate) struct InvalidPredicate {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_doc_alias_empty)]
+#[diag("{$attr_str} attribute cannot have empty value")]
 pub(crate) struct DocAliasEmpty<'a> {
     #[primary_span]
     pub span: Span,
@@ -31,7 +29,7 @@ pub(crate) struct DocAliasEmpty<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_doc_alias_bad_char)]
+#[diag("{$char_} character isn't allowed in {$attr_str}")]
 pub(crate) struct DocAliasBadChar<'a> {
     #[primary_span]
     pub span: Span,
@@ -40,7 +38,7 @@ pub(crate) struct DocAliasBadChar<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_doc_alias_start_end)]
+#[diag("{$attr_str} cannot start or end with ' '")]
 pub(crate) struct DocAliasStartEnd<'a> {
     #[primary_span]
     pub span: Span,
@@ -48,7 +46,7 @@ pub(crate) struct DocAliasStartEnd<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_doc_attr_not_crate_level)]
+#[diag("`#![doc({$attr_name} = \"...\")]` isn't allowed as a crate-level attribute")]
 pub(crate) struct DocAttrNotCrateLevel {
     #[primary_span]
     pub span: Span,
@@ -56,8 +54,8 @@ pub(crate) struct DocAttrNotCrateLevel {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_doc_keyword_not_keyword)]
-#[help]
+#[diag("nonexistent keyword `{$keyword}` used in `#[doc(keyword = \"...\")]`")]
+#[help("only existing keywords are allowed in core/std")]
 pub(crate) struct DocKeywordNotKeyword {
     #[primary_span]
     pub span: Span,
@@ -65,8 +63,8 @@ pub(crate) struct DocKeywordNotKeyword {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_doc_attribute_not_attribute)]
-#[help]
+#[diag("nonexistent builtin attribute `{$attribute}` used in `#[doc(attribute = \"...\")]`")]
+#[help("only existing builtin attributes are allowed in core/std")]
 pub(crate) struct DocAttributeNotAttribute {
     #[primary_span]
     pub span: Span,
@@ -74,28 +72,28 @@ pub(crate) struct DocAttributeNotAttribute {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_missing_since, code = E0542)]
+#[diag("missing 'since'", code = E0542)]
 pub(crate) struct MissingSince {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_missing_note, code = E0543)]
+#[diag("missing 'note'", code = E0543)]
 pub(crate) struct MissingNote {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_multiple_stability_levels, code = E0544)]
+#[diag("multiple stability levels", code = E0544)]
 pub(crate) struct MultipleStabilityLevels {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_invalid_issue_string, code = E0545)]
+#[diag("`issue` must be a non-zero numeric string or \"none\"", code = E0545)]
 pub(crate) struct InvalidIssueString {
     #[primary_span]
     pub span: Span,
@@ -108,31 +106,31 @@ pub(crate) struct InvalidIssueString {
 // translatable.
 #[derive(Subdiagnostic)]
 pub(crate) enum InvalidIssueStringCause {
-    #[label(attr_parsing_must_not_be_zero)]
+    #[label("`issue` must not be \"0\", use \"none\" instead")]
     MustNotBeZero {
         #[primary_span]
         span: Span,
     },
 
-    #[label(attr_parsing_empty)]
+    #[label("cannot parse integer from empty string")]
     Empty {
         #[primary_span]
         span: Span,
     },
 
-    #[label(attr_parsing_invalid_digit)]
+    #[label("invalid digit found in string")]
     InvalidDigit {
         #[primary_span]
         span: Span,
     },
 
-    #[label(attr_parsing_pos_overflow)]
+    #[label("number too large to fit in target type")]
     PosOverflow {
         #[primary_span]
         span: Span,
     },
 
-    #[label(attr_parsing_neg_overflow)]
+    #[label("number too small to fit in target type")]
     NegOverflow {
         #[primary_span]
         span: Span,
@@ -153,21 +151,21 @@ impl InvalidIssueStringCause {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_missing_feature, code = E0546)]
+#[diag("missing 'feature'", code = E0546)]
 pub(crate) struct MissingFeature {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_non_ident_feature, code = E0546)]
+#[diag("'feature' is not an identifier", code = E0546)]
 pub(crate) struct NonIdentFeature {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_missing_issue, code = E0547)]
+#[diag("missing 'issue'", code = E0547)]
 pub(crate) struct MissingIssue {
     #[primary_span]
     pub span: Span,
@@ -176,20 +174,20 @@ pub(crate) struct MissingIssue {
 // FIXME: Why is this the same error code as `InvalidReprHintNoParen` and `InvalidReprHintNoValue`?
 // It is more similar to `IncorrectReprFormatGeneric`.
 #[derive(Diagnostic)]
-#[diag(attr_parsing_incorrect_repr_format_packed_one_or_zero_arg, code = E0552)]
+#[diag("incorrect `repr(packed)` attribute format: `packed` takes exactly one parenthesized argument, or no parentheses at all", code = E0552)]
 pub(crate) struct IncorrectReprFormatPackedOneOrZeroArg {
     #[primary_span]
     pub span: Span,
 }
 #[derive(Diagnostic)]
-#[diag(attr_parsing_incorrect_repr_format_packed_expect_integer, code = E0552)]
+#[diag("incorrect `repr(packed)` attribute format: `packed` expects a literal integer as argument", code = E0552)]
 pub(crate) struct IncorrectReprFormatPackedExpectInteger {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_invalid_repr_hint_no_paren, code = E0552)]
+#[diag("invalid representation hint: `{$name}` does not take a parenthesized argument list", code = E0552)]
 pub(crate) struct InvalidReprHintNoParen {
     #[primary_span]
     pub span: Span,
@@ -198,7 +196,7 @@ pub(crate) struct InvalidReprHintNoParen {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_invalid_repr_hint_no_value, code = E0552)]
+#[diag("invalid representation hint: `{$name}` does not take a value", code = E0552)]
 pub(crate) struct InvalidReprHintNoValue {
     #[primary_span]
     pub span: Span,
@@ -207,15 +205,19 @@ pub(crate) struct InvalidReprHintNoValue {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_invalid_repr_align_need_arg, code = E0589)]
+#[diag("invalid `repr(align)` attribute: `align` needs an argument", code = E0589)]
 pub(crate) struct InvalidReprAlignNeedArg {
     #[primary_span]
-    #[suggestion(code = "align(...)", applicability = "has-placeholders")]
+    #[suggestion(
+        "supply an argument here",
+        code = "align(...)",
+        applicability = "has-placeholders"
+    )]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_invalid_repr_generic, code = E0589)]
+#[diag("invalid `repr({$repr_arg})` attribute: {$error_part}", code = E0589)]
 pub(crate) struct InvalidReprGeneric<'a> {
     #[primary_span]
     pub span: Span,
@@ -225,21 +227,21 @@ pub(crate) struct InvalidReprGeneric<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_incorrect_repr_format_align_one_arg, code = E0693)]
+#[diag("incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses", code = E0693)]
 pub(crate) struct IncorrectReprFormatAlignOneArg {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_incorrect_repr_format_expect_literal_integer, code = E0693)]
+#[diag("incorrect `repr(align)` attribute format: `align` expects a literal integer as argument", code = E0693)]
 pub(crate) struct IncorrectReprFormatExpectInteger {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_incorrect_repr_format_generic, code = E0693)]
+#[diag("incorrect `repr({$repr_arg})` attribute format", code = E0693)]
 pub(crate) struct IncorrectReprFormatGeneric {
     #[primary_span]
     pub span: Span,
@@ -253,7 +255,7 @@ pub(crate) struct IncorrectReprFormatGeneric {
 #[derive(Subdiagnostic)]
 pub(crate) enum IncorrectReprFormatGenericCause {
     #[suggestion(
-        attr_parsing_suggestion,
+        "use parentheses instead",
         code = "{name}({value})",
         applicability = "machine-applicable"
     )]
@@ -269,7 +271,7 @@ pub(crate) enum IncorrectReprFormatGenericCause {
     },
 
     #[suggestion(
-        attr_parsing_suggestion,
+        "use parentheses instead",
         code = "{name}({value})",
         applicability = "machine-applicable"
     )]
@@ -298,48 +300,48 @@ impl IncorrectReprFormatGenericCause {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_rustc_promotable_pairing, code = E0717)]
+#[diag("`rustc_promotable` attribute must be paired with either a `rustc_const_unstable` or a `rustc_const_stable` attribute", code = E0717)]
 pub(crate) struct RustcPromotablePairing {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_rustc_allowed_unstable_pairing, code = E0789)]
+#[diag("`rustc_allowed_through_unstable_modules` attribute must be paired with a `stable` attribute", code = E0789)]
 pub(crate) struct RustcAllowedUnstablePairing {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_deprecated_item_suggestion)]
+#[diag("suggestions on deprecated items are unstable")]
 pub(crate) struct DeprecatedItemSuggestion {
     #[primary_span]
     pub span: Span,
 
-    #[help]
+    #[help("add `#![feature(deprecated_suggestion)]` to the crate root")]
     pub is_nightly: bool,
 
-    #[note]
+    #[note("see #94785 for more details")]
     pub details: (),
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_expected_single_version_literal)]
+#[diag("expected single version literal")]
 pub(crate) struct ExpectedSingleVersionLiteral {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_expected_version_literal)]
+#[diag("expected a version literal")]
 pub(crate) struct ExpectedVersionLiteral {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_expects_feature_list)]
+#[diag("`{$name}` expects a list of feature names")]
 pub(crate) struct ExpectsFeatureList {
     #[primary_span]
     pub span: Span,
@@ -348,7 +350,7 @@ pub(crate) struct ExpectsFeatureList {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_expects_features)]
+#[diag("`{$name}` expects feature names")]
 pub(crate) struct ExpectsFeatures {
     #[primary_span]
     pub span: Span,
@@ -357,21 +359,21 @@ pub(crate) struct ExpectsFeatures {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_invalid_since)]
+#[diag("'since' must be a Rust version number, such as \"1.31.0\"")]
 pub(crate) struct InvalidSince {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_soft_no_args)]
+#[diag("`soft` should not have any arguments")]
 pub(crate) struct SoftNoArgs {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_unknown_version_literal)]
+#[diag("unknown version literal format, assuming it refers to a future version")]
 pub(crate) struct UnknownVersionLiteral {
     #[primary_span]
     pub span: Span,
@@ -379,78 +381,83 @@ pub(crate) struct UnknownVersionLiteral {
 
 // FIXME(jdonszelmann) duplicated from `rustc_passes`, remove once `check_attr` is integrated.
 #[derive(Diagnostic)]
-#[diag(attr_parsing_unused_multiple)]
+#[diag("multiple `{$name}` attributes")]
 pub(crate) struct UnusedMultiple {
     #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable")]
+    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
     pub this: Span,
-    #[note]
+    #[note("attribute also specified here")]
     pub other: Span,
     pub name: Symbol,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_null_on_export, code = E0648)]
+#[diag("`export_name` may not contain null characters", code = E0648)]
 pub(crate) struct NullOnExport {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_null_on_link_section, code = E0648)]
+#[diag("`link_section` may not contain null characters", code = E0648)]
 pub(crate) struct NullOnLinkSection {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_null_on_objc_class)]
+#[diag("`objc::class!` may not contain null characters")]
 pub(crate) struct NullOnObjcClass {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_null_on_objc_selector)]
+#[diag("`objc::selector!` may not contain null characters")]
 pub(crate) struct NullOnObjcSelector {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_objc_class_expected_string_literal)]
+#[diag("`objc::class!` expected a string literal")]
 pub(crate) struct ObjcClassExpectedStringLiteral {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_objc_selector_expected_string_literal)]
+#[diag("`objc::selector!` expected a string literal")]
 pub(crate) struct ObjcSelectorExpectedStringLiteral {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_stability_outside_std, code = E0734)]
+#[diag("stability attributes may not be used outside of the standard library", code = E0734)]
 pub(crate) struct StabilityOutsideStd {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_empty_confusables)]
+#[diag("expected at least one confusable name")]
 pub(crate) struct EmptyConfusables {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[help]
-#[diag(attr_parsing_invalid_target)]
+#[help("`#[{$name}]` can {$only}be applied to {$applied}")]
+#[diag("`#[{$name}]` attribute cannot be used on {$target}")]
 pub(crate) struct InvalidTarget {
     #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
+    #[suggestion(
+        "remove the attribute",
+        code = "",
+        applicability = "machine-applicable",
+        style = "tool-only"
+    )]
     pub span: Span,
     pub name: AttrPath,
     pub target: &'static str,
@@ -459,7 +466,7 @@ pub(crate) struct InvalidTarget {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_invalid_alignment_value, code = E0589)]
+#[diag("invalid alignment value: {$error_part}", code = E0589)]
 pub(crate) struct InvalidAlignmentValue {
     #[primary_span]
     pub span: Span,
@@ -467,43 +474,49 @@ pub(crate) struct InvalidAlignmentValue {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_repr_ident, code = E0565)]
+#[diag("meta item in `repr` must be an identifier", code = E0565)]
 pub(crate) struct ReprIdent {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_unrecognized_repr_hint, code = E0552)]
-#[help]
-#[note]
+#[diag("unrecognized representation hint", code = E0552)]
+#[help(
+    "valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`"
+)]
+#[note(
+    "for more information, visit <https://doc.rust-lang.org/reference/type-layout.html?highlight=repr#representations>"
+)]
 pub(crate) struct UnrecognizedReprHint {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_unstable_feature_bound_incompatible_stability)]
-#[help]
+#[diag("item annotated with `#[unstable_feature_bound]` should not be stable")]
+#[help(
+    "if this item is meant to be stable, do not use any functions annotated with `#[unstable_feature_bound]`. Otherwise, mark this item as unstable with `#[unstable]`"
+)]
 pub(crate) struct UnstableFeatureBoundIncompatibleStability {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_naked_functions_incompatible_attribute, code = E0736)]
+#[diag("attribute incompatible with `#[unsafe(naked)]`", code = E0736)]
 pub(crate) struct NakedFunctionIncompatibleAttribute {
     #[primary_span]
-    #[label]
+    #[label("the `{$attr}` attribute is incompatible with `#[unsafe(naked)]`")]
     pub span: Span,
-    #[label(attr_parsing_naked_attribute)]
+    #[label("function marked with `#[unsafe(naked)]` here")]
     pub naked_span: Span,
     pub attr: String,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_link_ordinal_out_of_range)]
-#[note]
+#[diag("ordinal value in `link_ordinal` is too large: `{$ordinal}`")]
+#[note("the value may not exceed `u16::MAX`")]
 pub(crate) struct LinkOrdinalOutOfRange {
     #[primary_span]
     pub span: Span,
@@ -511,8 +524,8 @@ pub(crate) struct LinkOrdinalOutOfRange {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_rustc_scalable_vector_count_out_of_range)]
-#[note]
+#[diag("element count in `rustc_scalable_vector` is too large: `{$n}`")]
+#[note("the value may not exceed `u16::MAX`")]
 pub(crate) struct RustcScalableVectorCountOutOfRange {
     #[primary_span]
     pub span: Span,
@@ -524,6 +537,7 @@ pub(crate) enum AttributeParseErrorReason<'a> {
     ExpectedStringLiteral {
         byte_string: Option<Span>,
     },
+    ExpectedFilenameLiteral,
     ExpectedIntegerLiteral,
     ExpectedIntegerLiteralInRange {
         lower_bound: isize,
@@ -586,7 +600,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                 if let Some(start_point_span) = byte_string {
                     diag.span_suggestion(
                         start_point_span,
-                        fluent::attr_parsing_unsupported_literal_suggestion,
+                        "consider removing the prefix",
                         "",
                         Applicability::MaybeIncorrect,
                     );
@@ -596,6 +610,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                 } else {
                     diag.span_label(self.span, "expected a string literal here");
                 }
+            }
+            AttributeParseErrorReason::ExpectedFilenameLiteral => {
+                diag.span_label(self.span, "expected a filename string literal here");
             }
             AttributeParseErrorReason::ExpectedIntegerLiteral => {
                 diag.span_label(self.span, "expected an integer literal here");
@@ -751,30 +768,27 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_invalid_attr_unsafe)]
-#[note]
+#[diag("`{$name}` is not an unsafe attribute")]
+#[note("extraneous unsafe is not allowed in attributes")]
 pub(crate) struct InvalidAttrUnsafe {
     #[primary_span]
-    #[label]
+    #[label("this is not an unsafe attribute")]
     pub span: Span,
     pub name: AttrPath,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_unsafe_attr_outside_unsafe)]
+#[diag("unsafe attribute used without unsafe")]
 pub(crate) struct UnsafeAttrOutsideUnsafe {
     #[primary_span]
-    #[label]
+    #[label("usage of unsafe attribute")]
     pub span: Span,
     #[subdiagnostic]
     pub suggestion: Option<UnsafeAttrOutsideUnsafeSuggestion>,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    attr_parsing_unsafe_attr_outside_unsafe_suggestion,
-    applicability = "machine-applicable"
-)]
+#[multipart_suggestion("wrap the attribute in `unsafe(...)`", applicability = "machine-applicable")]
 pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
     #[suggestion_part(code = "unsafe(")]
     pub left: Span,
@@ -783,7 +797,7 @@ pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_meta_bad_delim)]
+#[diag("wrong meta list delimiters")]
 pub(crate) struct MetaBadDelim {
     #[primary_span]
     pub span: Span,
@@ -793,7 +807,7 @@ pub(crate) struct MetaBadDelim {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    attr_parsing_meta_bad_delim_suggestion,
+    "the delimiters should be `(` and `)`",
     applicability = "machine-applicable"
 )]
 pub(crate) struct MetaBadDelimSugg {
@@ -804,7 +818,7 @@ pub(crate) struct MetaBadDelimSugg {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_invalid_meta_item)]
+#[diag("expected a literal (`1u8`, `1.0f32`, `\"string\"`, etc.) here, found {$descr}")]
 pub(crate) struct InvalidMetaItem {
     #[primary_span]
     pub span: Span,
@@ -813,12 +827,15 @@ pub(crate) struct InvalidMetaItem {
     pub quote_ident_sugg: Option<InvalidMetaItemQuoteIdentSugg>,
     #[subdiagnostic]
     pub remove_neg_sugg: Option<InvalidMetaItemRemoveNegSugg>,
-    #[label]
+    #[label("{$descr}s are not allowed here")]
     pub label: Option<Span>,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(attr_parsing_quote_ident_sugg, applicability = "machine-applicable")]
+#[multipart_suggestion(
+    "surround the identifier with quotation marks to make it into a string literal",
+    applicability = "machine-applicable"
+)]
 pub(crate) struct InvalidMetaItemQuoteIdentSugg {
     #[suggestion_part(code = "\"")]
     pub before: Span,
@@ -827,73 +844,80 @@ pub(crate) struct InvalidMetaItemQuoteIdentSugg {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(attr_parsing_remove_neg_sugg, applicability = "machine-applicable")]
+#[multipart_suggestion(
+    "negative numbers are not literals, try removing the `-` sign",
+    applicability = "machine-applicable"
+)]
 pub(crate) struct InvalidMetaItemRemoveNegSugg {
     #[suggestion_part(code = "")]
     pub negative_sign: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_suffixed_literal_in_attribute)]
-#[help]
+#[diag("suffixed literals are not allowed in attributes")]
+#[help(
+    "instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)"
+)]
 pub(crate) struct SuffixedLiteralInAttribute {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_empty_link_name, code = E0454)]
+#[diag("link name must not be empty", code = E0454)]
 pub(crate) struct EmptyLinkName {
     #[primary_span]
-    #[label]
+    #[label("empty link name")]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_link_framework_apple, code = E0455)]
+#[diag("link kind `framework` is only supported on Apple targets", code = E0455)]
 pub(crate) struct LinkFrameworkApple {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_incompatible_wasm_link)]
+#[diag("`wasm_import_module` is incompatible with other arguments in `#[link]` attributes")]
 pub(crate) struct IncompatibleWasmLink {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_link_requires_name, code = E0459)]
+#[diag("`#[link]` attribute requires a `name = \"string\"` argument", code = E0459)]
 pub(crate) struct LinkRequiresName {
     #[primary_span]
-    #[label]
+    #[label("missing `name` argument")]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_raw_dylib_no_nul)]
+#[diag("link name must not contain NUL characters if link kind is `raw-dylib`")]
 pub(crate) struct RawDylibNoNul {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_raw_dylib_only_windows, code = E0455)]
+#[diag("link kind `raw-dylib` is only supported on Windows targets", code = E0455)]
 pub(crate) struct RawDylibOnlyWindows {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_invalid_link_modifier)]
+#[diag(
+    "invalid linking modifier syntax, expected '+' or '-' prefix before one of: bundle, verbatim, whole-archive, as-needed"
+)]
 pub(crate) struct InvalidLinkModifier {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_multiple_modifiers)]
+#[diag("multiple `{$modifier}` modifiers in a single `modifiers` argument")]
 pub(crate) struct MultipleModifiers {
     #[primary_span]
     pub span: Span,
@@ -901,52 +925,54 @@ pub(crate) struct MultipleModifiers {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_import_name_type_x86)]
+#[diag("import name type is only supported on x86")]
 pub(crate) struct ImportNameTypeX86 {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_bundle_needs_static)]
+#[diag("linking modifier `bundle` is only compatible with `static` linking kind")]
 pub(crate) struct BundleNeedsStatic {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_whole_archive_needs_static)]
+#[diag("linking modifier `whole-archive` is only compatible with `static` linking kind")]
 pub(crate) struct WholeArchiveNeedsStatic {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_as_needed_compatibility)]
+#[diag(
+    "linking modifier `as-needed` is only compatible with `dylib`, `framework` and `raw-dylib` linking kinds"
+)]
 pub(crate) struct AsNeededCompatibility {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_import_name_type_raw)]
+#[diag("import name type can only be used with link kind `raw-dylib`")]
 pub(crate) struct ImportNameTypeRaw {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_limit_invalid)]
+#[diag("`limit` must be a non-negative integer")]
 pub(crate) struct LimitInvalid<'a> {
     #[primary_span]
     pub span: Span,
-    #[label]
+    #[label("{$error_str}")]
     pub value_span: Span,
     pub error_str: &'a str,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_cfg_attr_bad_delim)]
+#[diag("wrong `cfg_attr` delimiters")]
 pub(crate) struct CfgAttrBadDelim {
     #[primary_span]
     pub span: Span,
@@ -955,14 +981,16 @@ pub(crate) struct CfgAttrBadDelim {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_doc_alias_malformed)]
+#[diag(
+    "doc alias attribute expects a string `#[doc(alias = \"a\")]` or a list of strings `#[doc(alias(\"a\", \"b\"))]`"
+)]
 pub(crate) struct DocAliasMalformed {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_unsupported_instruction_set)]
+#[diag("target `{$current_target}` does not support `#[instruction_set({$instruction_set}::*)]`")]
 pub(crate) struct UnsupportedInstructionSet<'a> {
     #[primary_span]
     pub span: Span,

@@ -52,7 +52,7 @@ impl<T> TaskPool<T> {
 /// `DeferredTaskQueue` holds deferred tasks.
 ///
 /// These are tasks that must be run after
-/// [`GlobalState::process_changes`] has been called.
+/// `GlobalState::process_changes` has been called.
 pub(crate) struct DeferredTaskQueue {
     pub(crate) sender: crossbeam_channel::Sender<DeferredTask>,
     pub(crate) receiver: crossbeam_channel::Receiver<DeferredTask>,

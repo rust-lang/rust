@@ -194,8 +194,8 @@ pub fn output_test_diffs(
     report_test_diffs(aggregated_test_diffs, job_metrics, job_info_resolver);
 }
 
-/// Prints the ten largest differences in bootstrap durations.
-pub fn output_largest_duration_changes(
+/// Prints the ten largest differences in job durations.
+pub fn output_largest_job_duration_changes(
     job_metrics: &HashMap<JobName, JobMetrics>,
     job_info_resolver: &mut JobInfoResolver,
 ) {
@@ -237,11 +237,11 @@ pub fn output_largest_duration_changes(
     println!("# Job duration changes");
     for (index, entry) in changes.into_iter().take(10).enumerate() {
         println!(
-            "{}. {}: {:.1}s -> {:.1}s ({:+.1}%)",
+            "{}. {}: {} -> {} ({:+.1}%)",
             index + 1,
             format_job_link(job_info_resolver, job_metrics, entry.job),
-            entry.before.as_secs_f64(),
-            entry.after.as_secs_f64(),
+            format_duration(entry.before),
+            format_duration(entry.after),
             entry.change
         );
     }
@@ -254,6 +254,27 @@ that executed the job, system noise, invalidated caches, etc. The table above is
 mostly for t-infra members, for simpler debugging of potential CI slow-downs."#
         );
     });
+}
+
+fn format_duration(duration: Duration) -> String {
+    let total_secs = duration.as_secs();
+    let hours = total_secs / 3600;
+    let minutes = (total_secs % 3600) / 60;
+    let seconds = total_secs % 60;
+
+    let mut res = String::new();
+
+    if hours > 0 {
+        res.push_str(&format!("{hours}h "));
+    }
+    if minutes > 0 {
+        res.push_str(&format!("{minutes}m "));
+    }
+    if hours == 0 && seconds > 0 {
+        res.push_str(&format!("{seconds}s"));
+    }
+
+    res.trim().to_string()
 }
 
 #[derive(Default)]

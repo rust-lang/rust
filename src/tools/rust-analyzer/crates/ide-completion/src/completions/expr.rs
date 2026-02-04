@@ -340,7 +340,7 @@ pub(crate) fn complete_expr_path(
                             let missing_fields =
                                 ctx.sema.record_literal_missing_fields(record_expr);
                             if !missing_fields.is_empty() {
-                                add_default_update(acc, ctx, ty);
+                                add_default_update(acc, ctx, ty.as_ref());
                             }
                         }
                     };

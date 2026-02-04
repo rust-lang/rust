@@ -6,16 +6,15 @@
 [codegen]: ./codegen.md
 
 This section is about debugging compiler bugs in code generation (e.g. why the
-compiler generated some piece of code or crashed in LLVM).  LLVM is a big
-project on its own that probably needs to have its own debugging document (not
-that I could find one). But here are some tips that are important in a rustc
-context:
+compiler generated some piece of code or crashed in LLVM).
+LLVM is a big project that probably needs to have its own debugging document,
+but following are some tips that are important in a rustc context.
 
 ### Minimize the example
 
 As a general rule, compilers generate lots of information from analyzing code.
-Thus, a useful first step is usually to find a minimal example. One way to do
-this is to
+Thus, a useful first step is usually to find a minimal example.
+One way to do this is to
 
 1. create a new crate that reproduces the issue (e.g. adding whatever crate is
 at fault as a dependency, and using it from there)
@@ -35,14 +34,13 @@ For more discussion on methodology for steps 2 and 3 above, there is an
 
 The official compilers (including nightlies) have LLVM assertions disabled,
 which means that LLVM assertion failures can show up as compiler crashes (not
-ICEs but "real" crashes) and other sorts of weird behavior. If you are
-encountering these, it is a good idea to try using a compiler with LLVM
+ICEs but "real" crashes) and other sorts of weird behavior.
+If you are encountering these, it is a good idea to try using a compiler with LLVM
 assertions enabled - either an "alt" nightly or a compiler you build yourself
-by setting `[llvm] assertions=true` in your bootstrap.toml - and see whether
-anything turns up.
+by setting `llvm.assertions = true` in your bootstrap.toml - and see whether anything turns up.
 
-The rustc build process builds the LLVM tools into
-`./build/<host-triple>/llvm/bin`. They can be called directly.
+The rustc build process builds the LLVM tools into `build/host/llvm/bin`.
+They can be called directly.
 These tools include:
  * [`llc`], which compiles bitcode (`.bc` files) to executable code; this can be used to
    replicate LLVM backend bugs.
@@ -55,9 +53,10 @@ These tools include:
 [`bugpoint`]: https://llvm.org/docs/Bugpoint.html
 
 By default, the Rust build system does not check for changes to the LLVM source code or
-its build configuration settings. So, if you need to rebuild the LLVM that is linked
+its build configuration settings.
+So, if you need to rebuild the LLVM that is linked
 into `rustc`, first delete the file `.llvm-stamp`, which should be located
-in `build/<host-triple>/llvm/`.
+in `build/host/llvm/`.
 
 The default rustc compilation pipeline has multiple codegen units, which is
 hard to replicate manually and means that LLVM is called multiple times in
@@ -66,26 +65,27 @@ disappear), passing `-C codegen-units=1` to rustc will make debugging easier.
 
 ### Get your hands on raw LLVM input
 
-For rustc to generate LLVM IR, you need to pass the `--emit=llvm-ir` flag. If
-you are building via cargo, use the `RUSTFLAGS` environment variable (e.g.
-`RUSTFLAGS='--emit=llvm-ir'`). This causes rustc to spit out LLVM IR into the
-target directory.
+For rustc to generate LLVM IR, you need to pass the `--emit=llvm-ir` flag.
+If you are building via cargo,
+use the `RUSTFLAGS` environment variable (e.g. `RUSTFLAGS='--emit=llvm-ir'`).
+This causes rustc to spit out LLVM IR into the target directory.
 
-`cargo llvm-ir [options] path` spits out the LLVM IR for a particular function
-at `path`. (`cargo install cargo-asm` installs `cargo asm` and `cargo
-llvm-ir`). `--build-type=debug` emits code for debug builds. There are also
-other useful options. Also, debug info in LLVM IR can clutter the output a lot:
+`cargo llvm-ir [options] path` spits out the LLVM IR for a particular function at `path`.
+(`cargo install cargo-asm` installs `cargo asm` and `cargo llvm-ir`).
+`--build-type=debug` emits code for debug builds.
+There are also other useful options.
+Also, debug info in LLVM IR can clutter the output a lot:
 `RUSTFLAGS="-C debuginfo=0"` is really useful.
 
 `RUSTFLAGS="-C save-temps"` outputs LLVM bitcode at
-different stages during compilation, which is sometimes useful. The output LLVM
-bitcode will be in `.bc` files in the compiler's output directory, set via the
+different stages during compilation, which is sometimes useful.
+The output LLVM bitcode will be in `.bc` files in the compiler's output directory, set via the
 `--out-dir DIR` argument to `rustc`.
 
  * If you are hitting an assertion failure or segmentation fault from the LLVM
    backend when invoking `rustc` itself, it is a good idea to try passing each
-   of these `.bc` files to the `llc` command, and see if you get the same
-   failure. (LLVM developers often prefer a bug reduced to a `.bc` file over one
+   of these `.bc` files to the `llc` command, and see if you get the same failure.
+   (LLVM developers often prefer a bug reduced to a `.bc` file over one
    that uses a Rust crate for its minimized reproduction.)
 
  * To get human readable versions of the LLVM bitcode, one just needs to convert
@@ -100,7 +100,7 @@ you should:
 ```bash
 $ rustc +local my-file.rs --emit=llvm-ir -O -C no-prepopulate-passes \
     -C codegen-units=1
-$ OPT=./build/$TRIPLE/llvm/bin/opt
+$ OPT=build/$TRIPLE/llvm/bin/opt
 $ $OPT -S -O2 < my-file.ll > my
 ```
 
@@ -112,8 +112,8 @@ llvm-args='-filter-print-funcs=EXACT_FUNCTION_NAME` (e.g.  `-C
 llvm-args='-filter-print-funcs=_ZN11collections3str21_$LT$impl$u20$str$GT$\
 7replace17hbe10ea2e7c809b0bE'`).
 
-That produces a lot of output into standard error, so you'll want to pipe that
-to some file. Also, if you are using neither `-filter-print-funcs` nor `-C
+That produces a lot of output into standard error, so you'll want to pipe that to some file.
+Also, if you are using neither `-filter-print-funcs` nor `-C
 codegen-units=1`, then, because the multiple codegen units run in parallel, the
 printouts will mix together and you won't be able to read anything.
 
@@ -125,8 +125,8 @@ printouts will mix together and you won't be able to read anything.
 
  * Within LLVM itself, calling `F.getParent()->dump()` at the beginning of
    `SafeStackLegacyPass::runOnFunction` will dump the whole module, which
-   may provide better basis for reproduction. (However, you
-   should be able to get that same dump from the `.bc` files dumped by
+   may provide better basis for reproduction.
+   (However, you should be able to get that same dump from the `.bc` files dumped by
    `-C save-temps`.)
 
 If you want just the IR for a specific function (say, you want to see why it
@@ -145,29 +145,29 @@ $ ./build/$TRIPLE/llvm/bin/llvm-extract \
 
 If you are seeing incorrect behavior due to an optimization pass, a very handy
 LLVM option is `-opt-bisect-limit`, which takes an integer denoting the index
-value of the highest pass to run.  Index values for taken passes are stable
+value of the highest pass to run.
+Index values for taken passes are stable
 from run to run; by coupling this with software that automates bisecting the
-search space based on the resulting program, an errant pass can be quickly
-determined.  When an `-opt-bisect-limit` is specified, all runs are displayed
+search space based on the resulting program, an errant pass can be quickly determined.
+When an `-opt-bisect-limit` is specified, all runs are displayed
 to standard error, along with their index and output indicating if the
 pass was run or skipped.  Setting the limit to an index of -1 (e.g.,
 `RUSTFLAGS="-C llvm-args=-opt-bisect-limit=-1"`) will show all passes and
 their corresponding index values.
 
 If you want to play with the optimization pipeline, you can use the [`opt`] tool
-from `./build/<host-triple>/llvm/bin/` with the LLVM IR emitted by rustc.
+from `./build/host/llvm/bin/` with the LLVM IR emitted by rustc.
 
 When investigating the implementation of LLVM itself, you should be
 aware of its [internal debug infrastructure][llvm-debug].
 This is provided in LLVM Debug builds, which you enable for rustc
 LLVM builds by changing this setting in the bootstrap.toml:
 ```
-[llvm]
 # Indicates whether the LLVM assertions are enabled or not
-assertions = true
+llvm.assertions = true
 
 # Indicates whether the LLVM build is a Release or Debug build
-optimize = false
+llvm.optimize = false
 ```
 The quick summary is:
  * Setting `assertions=true` enables coarse-grain debug messaging.
@@ -190,8 +190,8 @@ specifically the `#t-compiler/wg-llvm` channel.
 ### Compiler options to know and love
 
 The `-C help` and `-Z help` compiler switches will list out a variety
-of interesting options you may find useful. Here are a few of the most
-common that pertain to LLVM development (some of them are employed in the
+of interesting options you may find useful.
+Here are a few of the most common that pertain to LLVM development (some of them are employed in the
 tutorial above):
 
 - The `--emit llvm-ir` option emits a `<filename>.ll` file with LLVM IR in textual format
@@ -201,7 +201,8 @@ tutorial above):
   e.g. `-C llvm-args=-print-before-all` to print IR before every LLVM
   pass.
 - The `-C no-prepopulate-passes` will avoid pre-populate the LLVM pass
-  manager with a list of passes.  This will allow you to view the LLVM
+  manager with a list of passes.
+  This will allow you to view the LLVM
   IR that rustc generates, not the LLVM IR after optimizations.
 - The `-C passes=val` option allows you to supply a space separated list of extra LLVM passes to run
 - The `-C save-temps` option saves all temporary output files during compilation
@@ -211,18 +212,17 @@ tutorial above):
 - The `-Z no-parallel-backend` will disable parallel compilation of distinct compilation units
 - The `-Z llvm-time-trace` option will output a Chrome profiler compatible JSON file
   which contains details and timings for LLVM passes.
-- The `-C llvm-args=-opt-bisect-limit=<index>` option allows for bisecting LLVM
-  optimizations.
+- The `-C llvm-args=-opt-bisect-limit=<index>` option allows for bisecting LLVM optimizations.
 
 ### Filing LLVM bug reports
 
 When filing an LLVM bug report, you will probably want some sort of minimal
-working example that demonstrates the problem. The Godbolt compiler explorer is
-really helpful for this.
+working example that demonstrates the problem.
+The Godbolt compiler explorer is really helpful for this.
 
 1. Once you have some LLVM IR for the problematic code (see above), you can
-create a minimal working example with Godbolt. Go to
-[llvm.godbolt.org](https://llvm.godbolt.org).
+create a minimal working example with Godbolt.
+Go to [llvm.godbolt.org](https://llvm.godbolt.org).
 
 2. Choose `LLVM-IR` as programming language.
 
@@ -230,8 +230,7 @@ create a minimal working example with Godbolt. Go to
     - There are some useful flags: `-mattr` enables target features, `-march=`
       selects the target, `-mcpu=` selects the CPU, etc.
     - Commands like `llc -march=help` output all architectures available, which
-      is useful because sometimes the Rust arch names and the LLVM names do not
-      match.
+      is useful because sometimes the Rust arch names and the LLVM names do not match.
     - If you have compiled rustc yourself somewhere, in the target directory
       you have binaries for `llc`, `opt`, etc.
 
@@ -239,7 +238,8 @@ create a minimal working example with Godbolt. Go to
    optimizations transform it.
 
 5. Once you have a godbolt link demonstrating the issue, it is pretty easy to
-   fill in an LLVM bug. Just visit their [github issues page][llvm-issues].
+   fill in an LLVM bug.
+   Just visit their [github issues page][llvm-issues].
 
 [llvm-issues]: https://github.com/llvm/llvm-project/issues
 
@@ -251,8 +251,8 @@ gotten the fix yet (or perhaps you are familiar enough with LLVM to fix it yours
 
 In that case, we can sometimes opt to port the fix for the bug
 directly to our own LLVM fork, so that rustc can use it more easily.
-Our fork of LLVM is maintained in [rust-lang/llvm-project]. Once
-you've landed the fix there, you'll also need to land a PR modifying
+Our fork of LLVM is maintained in [rust-lang/llvm-project].
+Once you've landed the fix there, you'll also need to land a PR modifying
 our submodule commits -- ask around on Zulip for help.
 
 [rust-lang/llvm-project]: https://github.com/rust-lang/llvm-project/

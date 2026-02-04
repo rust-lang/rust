@@ -16,7 +16,7 @@ Before generating the llvm-ir, keep in mind two techniques that can help ensure 
 ## 1) Generate an llvm-ir reproducer
 
 ```sh
-RUSTFLAGS="-Z autodiff=Enable,PrintModbefore" cargo +enzyme build --release &> out.ll 
+RUSTFLAGS="-Z autodiff=Enable,PrintModBefore" cargo +enzyme build --release &> out.ll 
 ```
 
 This also captures a few warnings and info messages above and below your module. open out.ll and remove every line above `; moduleid = <somehash>`. Now look at the end of the file and remove everything that's not part of llvm-ir, i.e. remove errors and warnings. The last line of your llvm-ir should now start with `!<somenumber> = `, i.e. `!40831 = !{i32 0, i32 1037508, i32 1037538, i32 1037559}` or `!43760 = !dilocation(line: 297, column: 5, scope: !43746)`.

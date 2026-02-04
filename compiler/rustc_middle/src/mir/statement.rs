@@ -441,6 +441,8 @@ impl<'tcx> Place<'tcx> {
     where
         D: ?Sized + HasLocalDecls<'tcx>,
     {
+        // If there's a field projection element in `projection`, we *could* skip everything
+        // before that, but on 2026-01-31 a perf experiment showed no benefit from doing so.
         PlaceTy::from_ty(local_decls.local_decls()[local].ty).multi_projection_ty(tcx, projection)
     }
 

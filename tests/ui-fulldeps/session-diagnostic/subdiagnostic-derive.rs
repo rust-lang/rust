@@ -94,15 +94,6 @@ struct G {
 }
 
 #[derive(Subdiagnostic)]
-#[label("...")]
-//~^ ERROR expected identifier
-struct H {
-    #[primary_span]
-    span: Span,
-    var: String,
-}
-
-#[derive(Subdiagnostic)]
 #[label(slug = 4)]
 //~^ ERROR no nested attribute expected here
 //~| ERROR diagnostic slug must be first argument

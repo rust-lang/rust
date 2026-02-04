@@ -1,0 +1,9 @@
+error[E0271]: type mismatch resolving `Foo == ()`
+  --> $DIR/opaque-alias-relate-issue-151331.rs:7:18
+   |
+LL | fn make_foo() -> Foo {}
+   |                  ^^^ types differ
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

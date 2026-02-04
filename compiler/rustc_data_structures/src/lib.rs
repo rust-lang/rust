@@ -49,6 +49,10 @@ pub use std::{assert_matches, debug_assert_matches};
 
 pub use atomic_ref::AtomicRef;
 pub use ena::{snapshot_vec, undo_log, unify};
+// Re-export `hashbrown::hash_table`, because it's part of our API
+// (via `ShardedHashMap`), and because it lets other compiler crates use the
+// lower-level `HashTable` API without a tricky `hashbrown` dependency.
+pub use hashbrown::hash_table;
 pub use rustc_index::static_assert_size;
 // Re-export some data-structure crates which are part of our public API.
 pub use {either, indexmap, smallvec, thin_vec};

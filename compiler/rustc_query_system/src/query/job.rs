@@ -23,18 +23,17 @@ use crate::query::{QueryContext, QueryStackFrame};
 pub struct QueryInfo<I> {
     /// The span corresponding to the reason for which this query was required.
     pub span: Span,
-    pub query: QueryStackFrame<I>,
+    pub frame: QueryStackFrame<I>,
 }
 
 impl<'tcx> QueryInfo<QueryStackDeferred<'tcx>> {
-    pub(crate) fn lift<Qcx: QueryContext<'tcx>>(
-        &self,
-        qcx: Qcx,
-    ) -> QueryInfo<QueryStackFrameExtra> {
-        QueryInfo { span: self.span, query: self.query.lift(qcx) }
+    pub(crate) fn lift(&self) -> QueryInfo<QueryStackFrameExtra> {
+        QueryInfo { span: self.span, frame: self.frame.lift() }
     }
 }
 
+/// Map from query job IDs to job information collected by
+/// [`QueryContext::collect_active_jobs_from_all_queries`].
 pub type QueryMap<'tcx> = FxHashMap<QueryJobId, QueryJobInfo<'tcx>>;
 
 /// A value uniquely identifying an active query job.
@@ -42,8 +41,8 @@ pub type QueryMap<'tcx> = FxHashMap<QueryJobId, QueryJobInfo<'tcx>>;
 pub struct QueryJobId(pub NonZero<u64>);
 
 impl QueryJobId {
-    fn query<'a, 'tcx>(self, map: &'a QueryMap<'tcx>) -> QueryStackFrame<QueryStackDeferred<'tcx>> {
-        map.get(&self).unwrap().query.clone()
+    fn frame<'a, 'tcx>(self, map: &'a QueryMap<'tcx>) -> QueryStackFrame<QueryStackDeferred<'tcx>> {
+        map.get(&self).unwrap().frame.clone()
     }
 
     fn span<'a, 'tcx>(self, map: &'a QueryMap<'tcx>) -> Span {
@@ -61,7 +60,7 @@ impl QueryJobId {
 
 #[derive(Clone, Debug)]
 pub struct QueryJobInfo<'tcx> {
-    pub query: QueryStackFrame<QueryStackDeferred<'tcx>>,
+    pub frame: QueryStackFrame<QueryStackDeferred<'tcx>>,
     pub job: QueryJob<'tcx>,
 }
 
@@ -125,7 +124,7 @@ impl QueryJobId {
 
         while let Some(job) = current_job {
             let info = query_map.get(&job).unwrap();
-            cycle.push(QueryInfo { span: info.job.span, query: info.query.clone() });
+            cycle.push(QueryInfo { span: info.job.span, frame: info.frame.clone() });
 
             if job == *self {
                 cycle.reverse();
@@ -140,7 +139,7 @@ impl QueryJobId {
                     .job
                     .parent
                     .as_ref()
-                    .map(|parent| (info.job.span, parent.query(&query_map)));
+                    .map(|parent| (info.job.span, parent.frame(&query_map)));
                 return CycleError { usage, cycle };
             }
 
@@ -158,13 +157,13 @@ impl QueryJobId {
     ) -> (QueryJobInfo<'tcx>, usize) {
         let mut depth = 1;
         let info = query_map.get(&self).unwrap();
-        let dep_kind = info.query.dep_kind;
+        let dep_kind = info.frame.dep_kind;
         let mut current_id = info.job.parent;
         let mut last_layout = (info.clone(), depth);
 
         while let Some(id) = current_id {
             let info = query_map.get(&id).unwrap();
-            if info.query.dep_kind == dep_kind {
+            if info.frame.dep_kind == dep_kind {
                 depth += 1;
                 last_layout = (info.clone(), depth);
             }
@@ -389,7 +388,7 @@ where
         .iter()
         .min_by_key(|v| {
             let (span, query) = f(v);
-            let hash = query.query(query_map).hash;
+            let hash = query.frame(query_map).hash;
             // Prefer entry points which have valid spans for nicer error messages
             // We add an integer to the tuple ensuring that entry points
             // with valid spans are picked first
@@ -473,14 +472,14 @@ fn remove_cycle<'tcx>(
             stack.rotate_left(pos);
         }
 
-        let usage = usage.as_ref().map(|(span, query)| (*span, query.query(query_map)));
+        let usage = usage.as_ref().map(|(span, query)| (*span, query.frame(query_map)));
 
         // Create the cycle error
         let error = CycleError {
             usage,
             cycle: stack
                 .iter()
-                .map(|&(s, ref q)| QueryInfo { span: s, query: q.query(query_map) })
+                .map(|&(s, ref q)| QueryInfo { span: s, frame: q.frame(query_map) })
                 .collect(),
         };
 
@@ -559,7 +558,7 @@ pub fn report_cycle<'a>(
 ) -> Diag<'a> {
     assert!(!stack.is_empty());
 
-    let span = stack[0].query.info.default_span(stack[1 % stack.len()].span);
+    let span = stack[0].frame.info.default_span(stack[1 % stack.len()].span);
 
     let mut cycle_stack = Vec::new();
 
@@ -567,9 +566,9 @@ pub fn report_cycle<'a>(
     let stack_count = if stack.len() == 1 { StackCount::Single } else { StackCount::Multiple };
 
     for i in 1..stack.len() {
-        let query = &stack[i].query;
-        let span = query.info.default_span(stack[(i + 1) % stack.len()].span);
-        cycle_stack.push(CycleStack { span, desc: query.info.description.to_owned() });
+        let frame = &stack[i].frame;
+        let span = frame.info.default_span(stack[(i + 1) % stack.len()].span);
+        cycle_stack.push(CycleStack { span, desc: frame.info.description.to_owned() });
     }
 
     let mut cycle_usage = None;
@@ -581,9 +580,9 @@ pub fn report_cycle<'a>(
     }
 
     let alias =
-        if stack.iter().all(|entry| matches!(entry.query.info.def_kind, Some(DefKind::TyAlias))) {
+        if stack.iter().all(|entry| matches!(entry.frame.info.def_kind, Some(DefKind::TyAlias))) {
             Some(crate::error::Alias::Ty)
-        } else if stack.iter().all(|entry| entry.query.info.def_kind == Some(DefKind::TraitAlias)) {
+        } else if stack.iter().all(|entry| entry.frame.info.def_kind == Some(DefKind::TraitAlias)) {
             Some(crate::error::Alias::Trait)
         } else {
             None
@@ -592,7 +591,7 @@ pub fn report_cycle<'a>(
     let cycle_diag = crate::error::Cycle {
         span,
         cycle_stack,
-        stack_bottom: stack[0].query.info.description.to_owned(),
+        stack_bottom: stack[0].frame.info.description.to_owned(),
         alias,
         cycle_usage,
         stack_count,
@@ -616,7 +615,7 @@ pub fn print_query_stack<'tcx, Qcx: QueryContext<'tcx>>(
     let mut count_total = 0;
 
     // Make use of a partial query map if we fail to take locks collecting active queries.
-    let query_map = match qcx.collect_active_jobs(false) {
+    let query_map = match qcx.collect_active_jobs_from_all_queries(false) {
         Ok(query_map) => query_map,
         Err(query_map) => query_map,
     };
@@ -628,12 +627,12 @@ pub fn print_query_stack<'tcx, Qcx: QueryContext<'tcx>>(
         let Some(query_info) = query_map.get(&query) else {
             break;
         };
-        let query_extra = qcx.lift_query_info(&query_info.query.info);
+        let query_extra = query_info.frame.info.extract();
         if Some(count_printed) < limit_frames || limit_frames.is_none() {
             // Only print to stderr as many stack frames as `num_frames` when present.
             dcx.struct_failure_note(format!(
                 "#{} [{:?}] {}",
-                count_printed, query_info.query.dep_kind, query_extra.description
+                count_printed, query_info.frame.dep_kind, query_extra.description
             ))
             .with_span(query_info.job.span)
             .emit();
@@ -645,7 +644,7 @@ pub fn print_query_stack<'tcx, Qcx: QueryContext<'tcx>>(
                 file,
                 "#{} [{}] {}",
                 count_total,
-                qcx.dep_context().dep_kind_vtable(query_info.query.dep_kind).name,
+                qcx.dep_context().dep_kind_vtable(query_info.frame.dep_kind).name,
                 query_extra.description
             );
         }

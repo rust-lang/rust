@@ -34,8 +34,6 @@ pub mod rustc_peek;
 mod un_derefer;
 pub mod value_analysis;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
-
 pub struct MoveDataTypingEnv<'tcx> {
     pub move_data: MoveData<'tcx>,
     pub typing_env: ty::TypingEnv<'tcx>,

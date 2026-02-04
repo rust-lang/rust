@@ -51,12 +51,12 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
     struct HirWfCheck<'tcx> {
         tcx: TyCtxt<'tcx>,
         predicate: ty::Predicate<'tcx>,
-        cause: Option<ObligationCause<'tcx>>,
-        cause_depth: usize,
+        cause: Option<ObligationCause<'tcx>> = None,
+        cause_depth: usize = 0,
         icx: ItemCtxt<'tcx>,
         def_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
-        depth: usize,
+        depth: usize = 0,
     }
 
     impl<'tcx> Visitor<'tcx> for HirWfCheck<'tcx> {
@@ -124,16 +124,8 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
         }
     }
 
-    let mut visitor = HirWfCheck {
-        tcx,
-        predicate,
-        cause: None,
-        cause_depth: 0,
-        icx,
-        def_id,
-        param_env: tcx.param_env(def_id.to_def_id()),
-        depth: 0,
-    };
+    let param_env = tcx.param_env(def_id.to_def_id());
+    let mut visitor = HirWfCheck { tcx, predicate, icx, def_id, param_env, .. };
 
     // Get the starting `hir::Ty` using our `WellFormedLoc`.
     // We will walk 'into' this type to try to find

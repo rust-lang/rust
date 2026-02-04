@@ -39,8 +39,7 @@ like the standard library (std) or the compiler (rustc).
   To create it by default with `x doc`, modify `bootstrap.toml`:
 
   ```toml
-  [build]
-  compiler-docs = true
+  build.compiler-docs = true
   ```
 
   Note that when enabled,

@@ -74,8 +74,7 @@ RUSTC_LOG=[typeck]
 The query arguments are included as a tracing field which means that you can
 filter on the debug display of the arguments.
 For example, the `typeck` query has an argument `key: LocalDefId` of what is being checked.
-You can use a regex to match on that `LocalDefId` to log type checking for a specific
-function:
+You can use a regex to match on that `LocalDefId` to log type checking for a specific function:
 
 ```
 RUSTC_LOG=[typeck{key=.*name_of_item.*}]
@@ -194,7 +193,7 @@ calls to `debug!` and `trace!` are only included in the program if
 `rust.debug-logging=true` is turned on in bootstrap.toml (it is
 turned off by default), so if you don't see `DEBUG` logs, especially
 if you run the compiler with `RUSTC_LOG=rustc rustc some.rs` and only see
-`INFO` logs, make sure that `debug-logging=true` is turned on in your bootstrap.toml.
+`INFO` logs, make sure that `rust.debug-logging=true` is turned on in your bootstrap.toml.
 
 ## Logging etiquette and conventions
 

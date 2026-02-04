@@ -3,11 +3,13 @@ use std::env;
 use std::error::Report;
 use std::sync::Arc;
 
+use rustc_error_messages::langid;
 pub use rustc_error_messages::{FluentArgs, LazyFallbackBundle};
 use tracing::{debug, trace};
 
 use crate::error::{TranslateError, TranslateErrorKind};
-use crate::{DiagArg, DiagMessage, FluentBundle, Style};
+use crate::fluent_bundle::FluentResource;
+use crate::{DiagArg, DiagMessage, FluentBundle, Style, fluent_bundle};
 
 /// Convert diagnostic arguments (a rustc internal type that exists to implement
 /// `Encodable`/`Decodable`) into `FluentArgs` which is necessary to perform translation.
@@ -79,6 +81,28 @@ impl Translator {
                 return Ok(Cow::Borrowed(msg));
             }
             DiagMessage::FluentIdentifier(identifier, attr) => (identifier, attr),
+            // This translates an inline fluent diagnostic message
+            // It does this by creating a new `FluentBundle` with only one message,
+            // and then translating using this bundle.
+            DiagMessage::Inline(msg) => {
+                const GENERATED_MSG_ID: &str = "generated_msg";
+                let resource =
+                    FluentResource::try_new(format!("{GENERATED_MSG_ID} = {msg}\n")).unwrap();
+                let mut bundle = fluent_bundle::FluentBundle::new(vec![langid!("en-US")]);
+                bundle.set_use_isolating(false);
+                bundle.add_resource(resource).unwrap();
+                let message = bundle.get_message(GENERATED_MSG_ID).unwrap();
+                let value = message.value().unwrap();
+
+                let mut errs = vec![];
+                let translated = bundle.format_pattern(value, Some(args), &mut errs).to_string();
+                debug!(?translated, ?errs);
+                return if errs.is_empty() {
+                    Ok(Cow::Owned(translated))
+                } else {
+                    Err(TranslateError::fluent(&Cow::Borrowed(GENERATED_MSG_ID), args, errs))
+                };
+            }
         };
         let translate_with_bundle =
             |bundle: &'a FluentBundle| -> Result<Cow<'_, str>, TranslateError<'_>> {
@@ -141,4 +165,15 @@ impl Translator {
             }
         }
     }
+}
+
+/// This macro creates a translatable `DiagMessage` from a literal string.
+/// It should be used in places where a translatable message is needed, but struct diagnostics are undesired.
+///
+/// This is a macro because in the future we may want to globally register these messages.
+#[macro_export]
+macro_rules! inline_fluent {
+    ($inline: literal) => {
+        rustc_errors::DiagMessage::Inline(std::borrow::Cow::Borrowed($inline))
+    };
 }

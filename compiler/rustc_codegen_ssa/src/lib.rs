@@ -24,7 +24,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::attrs::{CfgEntry, NativeLibKind, WindowsSubsystemKind};
 use rustc_hir::def_id::CrateNum;
-use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::lint::LevelAndSource;
@@ -175,7 +175,12 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Clone, Debug, Encodable, Decodable, HashStable)]
+// This is the same as `rustc_session::cstore::NativeLib`, except:
+// - (important) the `foreign_module` field is missing, because it contains a `DefId`, which can't
+//   be encoded with `FileEncoder`.
+// - (less important) the `verbatim` field is a `bool` rather than an `Option<bool>`, because here
+//   we can treat `false` and `absent` the same.
+#[derive(Clone, Debug, Encodable, Decodable)]
 pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Symbol,

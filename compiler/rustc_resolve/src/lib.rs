@@ -8,6 +8,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(ptr_as_ref_unchecked))]
 #![feature(arbitrary_self_types)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
@@ -18,7 +19,6 @@
 #![feature(default_field_values)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
-#![feature(ptr_as_ref_unchecked)]
 #![feature(rustc_attrs)]
 #![feature(trim_prefix_suffix)]
 #![recursion_limit = "256"]
@@ -576,6 +576,12 @@ impl IdentKey {
     }
 
     #[inline]
+    fn new_adjusted(ident: Ident, expn_id: ExpnId) -> (IdentKey, Option<ExpnId>) {
+        let (ctxt, def) = Macros20NormalizedSyntaxContext::new_adjusted(ident.span.ctxt(), expn_id);
+        (IdentKey { name: ident.name, ctxt }, def)
+    }
+
+    #[inline]
     fn with_root_ctxt(name: Symbol) -> Self {
         let ctxt = Macros20NormalizedSyntaxContext::new_unchecked(SyntaxContext::root());
         IdentKey { name, ctxt }
@@ -963,6 +969,7 @@ enum AmbiguityWarning {
 
 struct AmbiguityError<'ra> {
     kind: AmbiguityKind,
+    ambig_vis: Option<(Visibility, Visibility)>,
     ident: Ident,
     b1: Decl<'ra>,
     b2: Decl<'ra>,
@@ -1923,7 +1930,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         current_trait: Option<Module<'ra>>,
         parent_scope: &ParentScope<'ra>,
-        ctxt: Span,
+        sp: Span,
         assoc_item: Option<(Symbol, Namespace)>,
     ) -> Vec<TraitCandidate> {
         let mut found_traits = Vec::new();
@@ -1940,7 +1947,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         let scope_set = ScopeSet::All(TypeNS);
-        self.cm().visit_scopes(scope_set, parent_scope, ctxt, None, |mut this, scope, _, _| {
+        let ctxt = Macros20NormalizedSyntaxContext::new(sp.ctxt());
+        self.cm().visit_scopes(scope_set, parent_scope, ctxt, sp, None, |mut this, scope, _, _| {
             match scope {
                 Scope::ModuleNonGlobs(module, _) => {
                     this.get_mut().traits_in_module(module, assoc_item, &mut found_traits);
@@ -2080,6 +2088,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if let Some(b2) = used_decl.ambiguity.get() {
             let ambiguity_error = AmbiguityError {
                 kind: AmbiguityKind::GlobVsGlob,
+                ambig_vis: None,
                 ident,
                 b1: used_decl,
                 b2,
@@ -2549,6 +2558,8 @@ struct Finalize {
     used: Used = Used::Other,
     /// Finalizing early or late resolution.
     stage: Stage = Stage::Early,
+    /// Nominal visibility of the import item, in case we are resolving an import's final segment.
+    import_vis: Option<Visibility> = None,
 }
 
 impl Finalize {
@@ -2723,7 +2734,7 @@ mod ref_mut {
 }
 
 mod hygiene {
-    use rustc_span::SyntaxContext;
+    use rustc_span::{ExpnId, SyntaxContext};
 
     /// A newtype around `SyntaxContext` that can only keep contexts produced by
     /// [SyntaxContext::normalize_to_macros_2_0].
@@ -2734,6 +2745,15 @@ mod hygiene {
         #[inline]
         pub(crate) fn new(ctxt: SyntaxContext) -> Macros20NormalizedSyntaxContext {
             Macros20NormalizedSyntaxContext(ctxt.normalize_to_macros_2_0())
+        }
+
+        #[inline]
+        pub(crate) fn new_adjusted(
+            mut ctxt: SyntaxContext,
+            expn_id: ExpnId,
+        ) -> (Macros20NormalizedSyntaxContext, Option<ExpnId>) {
+            let def = ctxt.normalize_to_macros_2_0_and_adjust(expn_id);
+            (Macros20NormalizedSyntaxContext(ctxt), def)
         }
 
         #[inline]

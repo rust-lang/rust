@@ -12,7 +12,7 @@ use rustc_hir::{
 };
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, DerefAdjustKind};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericArgsRef, InferConst, IsSuggestable, Term, TermKind,
@@ -615,7 +615,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // first adjustment was not a builtin deref.
                     let adjustment = match typeck_results.expr_adjustments(receiver) {
                         [
-                            Adjustment { kind: Adjust::Deref(None), target: _ },
+                            Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), target: _ },
                             ..,
                             Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), target: _ },
                         ] => "",

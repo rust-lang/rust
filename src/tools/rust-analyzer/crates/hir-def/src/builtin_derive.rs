@@ -8,7 +8,8 @@ use intern::{Symbol, sym};
 use tt::TextRange;
 
 use crate::{
-    AdtId, BuiltinDeriveImplId, BuiltinDeriveImplLoc, FunctionId, HasModule, db::DefDatabase,
+    AdtId, BuiltinDeriveImplId, BuiltinDeriveImplLoc, FunctionId, HasModule, MacroId,
+    db::DefDatabase, lang_item::LangItems,
 };
 
 macro_rules! declare_enum {
@@ -85,6 +86,25 @@ declare_enum!(
     CoerceUnsized => [],
     DispatchFromDyn => [],
 );
+
+impl BuiltinDeriveImplTrait {
+    pub fn derive_macro(self, lang_items: &LangItems) -> Option<MacroId> {
+        match self {
+            BuiltinDeriveImplTrait::Copy => lang_items.CopyDerive,
+            BuiltinDeriveImplTrait::Clone => lang_items.CloneDerive,
+            BuiltinDeriveImplTrait::Default => lang_items.DefaultDerive,
+            BuiltinDeriveImplTrait::Debug => lang_items.DebugDerive,
+            BuiltinDeriveImplTrait::Hash => lang_items.HashDerive,
+            BuiltinDeriveImplTrait::Ord => lang_items.OrdDerive,
+            BuiltinDeriveImplTrait::PartialOrd => lang_items.PartialOrdDerive,
+            BuiltinDeriveImplTrait::Eq => lang_items.EqDerive,
+            BuiltinDeriveImplTrait::PartialEq => lang_items.PartialEqDerive,
+            BuiltinDeriveImplTrait::CoerceUnsized | BuiltinDeriveImplTrait::DispatchFromDyn => {
+                lang_items.CoercePointeeDerive
+            }
+        }
+    }
+}
 
 impl BuiltinDeriveImplMethod {
     pub fn trait_method(

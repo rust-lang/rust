@@ -471,7 +471,76 @@ fn foo() {
             244..246 '_x': {unknown}
             249..257 'to_bytes': fn to_bytes() -> [u8; _]
             249..259 'to_bytes()': [u8; _]
-            249..268 'to_byt..._vec()': {unknown}
+            249..268 'to_byt..._vec()': Vec<<[u8; _] as Foo>::Item>
+        "#]],
+    );
+}
+
+#[test]
+fn regression_21315() {
+    check_infer(
+        r#"
+struct Consts;
+impl Consts { const MAX: usize = 0; }
+
+struct Between<const M: usize, const N: usize, T>(T);
+
+impl<const M: usize, T> Between<M, { Consts::MAX }, T> {
+    fn sep_once(self, _sep: &str, _other: Self) -> Self {
+        self
+    }
+}
+
+trait Parser: Sized {
+    fn at_least<const M: usize>(self) -> Between<M, { Consts::MAX }, Self> {
+        Between(self)
+    }
+    fn at_most<const N: usize>(self) -> Between<0, N, Self> {
+        Between(self)
+    }
+}
+
+impl Parser for char {}
+
+fn test_at_least() {
+    let num = '9'.at_least::<1>();
+    let _ver = num.sep_once(".", num);
+}
+
+fn test_at_most() {
+    let num = '9'.at_most::<1>();
+}
+    "#,
+        expect![[r#"
+            48..49 '0': usize
+            182..186 'self': Between<M, _, T>
+            188..192 '_sep': &'? str
+            200..206 '_other': Between<M, _, T>
+            222..242 '{     ...     }': Between<M, _, T>
+            232..236 'self': Between<M, _, T>
+            300..304 'self': Self
+            343..372 '{     ...     }': Between<M, _, Self>
+            353..360 'Between': fn Between<M, _, Self>(Self) -> Between<M, _, Self>
+            353..366 'Between(self)': Between<M, _, Self>
+            361..365 'self': Self
+            404..408 'self': Self
+            433..462 '{     ...     }': Between<0, N, Self>
+            443..450 'Between': fn Between<0, N, Self>(Self) -> Between<0, N, Self>
+            443..456 'Between(self)': Between<0, N, Self>
+            451..455 'self': Self
+            510..587 '{     ...um); }': ()
+            520..523 'num': Between<1, _, char>
+            526..529 ''9'': char
+            526..545 ''9'.at...:<1>()': Between<1, _, char>
+            555..559 '_ver': Between<1, _, char>
+            562..565 'num': Between<1, _, char>
+            562..584 'num.se..., num)': Between<1, _, char>
+            575..578 '"."': &'static str
+            580..583 'num': Between<1, _, char>
+            607..644 '{     ...>(); }': ()
+            617..620 'num': Between<0, 1, char>
+            623..626 ''9'': char
+            623..641 ''9'.at...:<1>()': Between<0, 1, char>
         "#]],
     );
 }
@@ -747,6 +816,66 @@ fn main() {
             699..707 'join_all': fn join_all<FilterMap<Foo<i32>, impl FnMut(i32) -> Option<impl Future<Output = ()>>>>(FilterMap<Foo<i32>, impl FnMut(i32) -> Option<impl Future<Output = ()>>>) -> JoinAll<<FilterMap<Foo<i32>, impl FnMut(i32) -> Option<impl Future<Output = ()>>> as IntoIterator>::Item>
             699..710 'join_all(x)': JoinAll<impl Future<Output = ()>>
             708..709 'x': FilterMap<Foo<i32>, impl FnMut(i32) -> Option<impl Future<Output = ()>>>
+        "#]],
+    );
+}
+
+#[test]
+fn regression_19339() {
+    check_infer(
+        r#"
+trait Bar {
+    type Baz;
+
+    fn baz(&self) -> Self::Baz;
+}
+
+trait Foo {
+    type Bar;
+
+    fn bar(&self) -> Self::Bar;
+}
+
+trait FooFactory {
+    type Output: Foo<Bar: Bar<Baz = u8>>;
+
+    fn foo(&self) -> Self::Output;
+
+    fn foo_rpit(&self) -> impl Foo<Bar: Bar<Baz = u8>>;
+}
+
+fn test1(foo: impl Foo<Bar: Bar<Baz = u8>>) {
+    let baz = foo.bar().baz();
+}
+
+fn test2<T: FooFactory>(factory: T) {
+    let baz = factory.foo().bar().baz();
+    let baz = factory.foo_rpit().bar().baz();
+}
+"#,
+        expect![[r#"
+            39..43 'self': &'? Self
+            101..105 'self': &'? Self
+            198..202 'self': &'? Self
+            239..243 'self': &'? Self
+            290..293 'foo': impl Foo + ?Sized
+            325..359 '{     ...z(); }': ()
+            335..338 'baz': u8
+            341..344 'foo': impl Foo + ?Sized
+            341..350 'foo.bar()': impl Bar
+            341..356 'foo.bar().baz()': u8
+            385..392 'factory': T
+            397..487 '{     ...z(); }': ()
+            407..410 'baz': u8
+            413..420 'factory': T
+            413..426 'factory.foo()': <T as FooFactory>::Output
+            413..432 'factor....bar()': <<T as FooFactory>::Output as Foo>::Bar
+            413..438 'factor....baz()': u8
+            448..451 'baz': u8
+            454..461 'factory': T
+            454..472 'factor...rpit()': impl Foo + Bar<Baz = u8> + ?Sized
+            454..478 'factor....bar()': <impl Foo + Bar<Baz = u8> + ?Sized as Foo>::Bar
+            454..484 'factor....baz()': u8
         "#]],
     );
 }

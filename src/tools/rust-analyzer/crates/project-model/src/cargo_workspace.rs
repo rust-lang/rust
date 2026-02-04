@@ -640,7 +640,7 @@ impl FetchMetadata {
     /// Builds a command to fetch metadata for the given `cargo_toml` manifest.
     ///
     /// Performs a lightweight pre-fetch using the `--no-deps` option,
-    /// available via [`FetchMetadata::no_deps_metadata`], to gather basic
+    /// available via `FetchMetadata::no_deps_metadata`, to gather basic
     /// information such as the `target-dir`.
     ///
     /// The provided sysroot is used to set the `RUSTUP_TOOLCHAIN`

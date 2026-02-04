@@ -1,0 +1,28 @@
+   LL|       |//@ edition: 2024
+   LL|       |
+   LL|       |// These nested macro expansions were found to cause span refinement to produce
+   LL|       |// spans with a context that doesn't match the function body span, triggering
+   LL|       |// a defensive check that discards the span.
+   LL|       |//
+   LL|       |// Reported in <https://github.com/rust-lang/rust/issues/147339>.
+   LL|       |
+   LL|       |macro_rules! foo {
+   LL|       |    ($($m:ident $($f:ident $v:tt)+),*) => {
+   LL|       |        $($(macro_rules! $f { () => { $v } })+)*
+   LL|      0|        $(macro_rules! $m { () => { $(fn $f() -> i32 { $v })+ } })*
+  ------------------
+  | Unexecuted instantiation: context_mismatch_issue_147339::a
+  ------------------
+  | Unexecuted instantiation: context_mismatch_issue_147339::b
+  ------------------
+  | Unexecuted instantiation: context_mismatch_issue_147339::c
+  ------------------
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|       |foo!(m a 1 b 2, n c 3);
+   LL|       |m!();
+   LL|       |n!();
+   LL|       |
+   LL|      1|fn main() {}
+

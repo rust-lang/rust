@@ -14,7 +14,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::{self, AssignOp, BinOp, BorrowKind, UnOp};
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCoercion,
+    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind, PointerCoercion,
 };
 use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InlineConstArgs, InlineConstArgsParts, ScalarInt, Ty, UpvarArgs,
@@ -140,11 +140,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
             }
             Adjust::NeverToAny if adjustment.target.is_never() => return expr,
             Adjust::NeverToAny => ExprKind::NeverToAny { source: self.thir.exprs.push(expr) },
-            Adjust::Deref(None) => {
+            Adjust::Deref(DerefAdjustKind::Builtin) => {
                 adjust_span(&mut expr);
                 ExprKind::Deref { arg: self.thir.exprs.push(expr) }
             }
-            Adjust::Deref(Some(deref)) => {
+            Adjust::Deref(DerefAdjustKind::Overloaded(deref)) => {
                 // We don't need to do call adjust_span here since
                 // deref coercions always start with a built-in deref.
                 let call_def_id = deref.method_call(self.tcx);

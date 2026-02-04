@@ -7,12 +7,10 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 
-use hashbrown::HashTable;
-use hashbrown::hash_table::Entry;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::hash_table::{self, Entry, HashTable};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::LockGuard;
 use rustc_data_structures::{outline, sync};
 use rustc_errors::{Diag, FatalError, StashKey};
 use rustc_span::{DUMMY_SP, Span};
@@ -34,13 +32,24 @@ fn equivalent_key<K: Eq, V>(k: &K) -> impl Fn(&(K, V)) -> bool + '_ {
     move |x| x.0 == *k
 }
 
+/// For a particular query, keeps track of "active" keys, i.e. keys whose
+/// evaluation has started but has not yet finished successfully.
+///
+/// (Successful query evaluation for a key is represented by an entry in the
+/// query's in-memory cache.)
 pub struct QueryState<'tcx, K> {
-    active: Sharded<hashbrown::HashTable<(K, QueryResult<'tcx>)>>,
+    active: Sharded<hash_table::HashTable<(K, ActiveKeyStatus<'tcx>)>>,
 }
 
-/// Indicates the state of a query for a given key in a query map.
-enum QueryResult<'tcx> {
-    /// An already executing query. The query job can be used to await for its completion.
+/// For a particular query and key, tracks the status of a query evaluation
+/// that has started, but has not yet finished successfully.
+///
+/// (Successful query evaluation for a key is represented by an entry in the
+/// query's in-memory cache.)
+enum ActiveKeyStatus<'tcx> {
+    /// Some thread is already evaluating the query for this key.
+    ///
+    /// The enclosed [`QueryJob`] can be used to wait for it to finish.
     Started(QueryJob<'tcx>),
 
     /// The query panicked. Queries trying to wait on this will raise a fatal error which will
@@ -48,8 +57,9 @@ enum QueryResult<'tcx> {
     Poisoned,
 }
 
-impl<'tcx> QueryResult<'tcx> {
-    /// Unwraps the query job expecting that it has started.
+impl<'tcx> ActiveKeyStatus<'tcx> {
+    /// Obtains the enclosed [`QueryJob`], or panics if this query evaluation
+    /// was poisoned by a panic.
     fn expect_job(self) -> QueryJob<'tcx> {
         match self {
             Self::Started(job) => job,
@@ -68,40 +78,46 @@ where
         self.active.lock_shards().all(|shard| shard.is_empty())
     }
 
-    pub fn collect_active_jobs<Qcx: Copy>(
+    /// Internal plumbing for collecting the set of active jobs for this query.
+    ///
+    /// Should only be called from `gather_active_jobs`.
+    pub fn gather_active_jobs_inner<Qcx: Copy>(
         &self,
         qcx: Qcx,
-        make_query: fn(Qcx, K) -> QueryStackFrame<QueryStackDeferred<'tcx>>,
+        make_frame: fn(Qcx, K) -> QueryStackFrame<QueryStackDeferred<'tcx>>,
         jobs: &mut QueryMap<'tcx>,
         require_complete: bool,
     ) -> Option<()> {
         let mut active = Vec::new();
 
-        let mut collect = |iter: LockGuard<'_, HashTable<(K, QueryResult<'tcx>)>>| {
-            for (k, v) in iter.iter() {
-                if let QueryResult::Started(ref job) = *v {
+        // Helper to gather active jobs from a single shard.
+        let mut gather_shard_jobs = |shard: &HashTable<(K, ActiveKeyStatus<'tcx>)>| {
+            for (k, v) in shard.iter() {
+                if let ActiveKeyStatus::Started(ref job) = *v {
                     active.push((*k, job.clone()));
                 }
             }
         };
 
+        // Lock shards and gather jobs from each shard.
         if require_complete {
             for shard in self.active.lock_shards() {
-                collect(shard);
+                gather_shard_jobs(&shard);
             }
         } else {
             // We use try_lock_shards here since we are called from the
             // deadlock handler, and this shouldn't be locked.
             for shard in self.active.try_lock_shards() {
-                collect(shard?);
+                let shard = shard?;
+                gather_shard_jobs(&shard);
             }
         }
 
-        // Call `make_query` while we're not holding a `self.active` lock as `make_query` may call
+        // Call `make_frame` while we're not holding a `self.active` lock as `make_frame` may call
         // queries leading to a deadlock.
         for (key, job) in active {
-            let query = make_query(qcx, key);
-            jobs.insert(job.id, QueryJobInfo { query, job });
+            let frame = make_frame(qcx, key);
+            jobs.insert(job.id, QueryJobInfo { frame, job });
         }
 
         Some(())
@@ -116,11 +132,11 @@ impl<'tcx, K> Default for QueryState<'tcx, K> {
 
 /// A type representing the responsibility to execute the job in the `job` field.
 /// This will poison the relevant query if dropped.
-struct JobOwner<'a, 'tcx, K>
+struct JobOwner<'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
-    state: &'a QueryState<'tcx, K>,
+    state: &'tcx QueryState<'tcx, K>,
     key: K,
 }
 
@@ -159,7 +175,7 @@ where
         }
         CycleErrorHandling::Stash => {
             let guar = if let Some(root) = cycle_error.cycle.first()
-                && let Some(span) = root.query.info.span
+                && let Some(span) = root.frame.info.span
             {
                 error.stash(span, StashKey::Cycle).unwrap()
             } else {
@@ -170,7 +186,7 @@ where
     }
 }
 
-impl<'a, 'tcx, K> JobOwner<'a, 'tcx, K>
+impl<'tcx, K> JobOwner<'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
@@ -207,7 +223,7 @@ where
     }
 }
 
-impl<'a, 'tcx, K> Drop for JobOwner<'a, 'tcx, K>
+impl<'tcx, K> Drop for JobOwner<'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
@@ -223,7 +239,7 @@ where
                 Err(_) => panic!(),
                 Ok(occupied) => {
                     let ((key, value), vacant) = occupied.remove();
-                    vacant.insert((key, QueryResult::Poisoned));
+                    vacant.insert((key, ActiveKeyStatus::Poisoned));
                     value.expect_job()
                 }
             }
@@ -242,10 +258,10 @@ pub struct CycleError<I = QueryStackFrameExtra> {
 }
 
 impl<'tcx> CycleError<QueryStackDeferred<'tcx>> {
-    fn lift<Qcx: QueryContext<'tcx>>(&self, qcx: Qcx) -> CycleError<QueryStackFrameExtra> {
+    fn lift(&self) -> CycleError<QueryStackFrameExtra> {
         CycleError {
-            usage: self.usage.as_ref().map(|(span, frame)| (*span, frame.lift(qcx))),
-            cycle: self.cycle.iter().map(|info| info.lift(qcx)).collect(),
+            usage: self.usage.as_ref().map(|(span, frame)| (*span, frame.lift())),
+            cycle: self.cycle.iter().map(|info| info.lift()).collect(),
         }
     }
 }
@@ -283,10 +299,13 @@ where
 {
     // Ensure there was no errors collecting all active jobs.
     // We need the complete map to ensure we find a cycle to break.
-    let query_map = qcx.collect_active_jobs(false).ok().expect("failed to collect active queries");
+    let query_map = qcx
+        .collect_active_jobs_from_all_queries(false)
+        .ok()
+        .expect("failed to collect active queries");
 
     let error = try_execute.find_cycle_in_stack(query_map, &qcx.current_query_job(), span);
-    (mk_cycle(query, qcx, error.lift(qcx)), None)
+    (mk_cycle(query, qcx, error.lift()), None)
 }
 
 #[inline(always)]
@@ -320,7 +339,7 @@ where
                     let shard = query.query_state(qcx).active.lock_shard_by_hash(key_hash);
                     match shard.find(key_hash, equivalent_key(&key)) {
                         // The query we waited on panicked. Continue unwinding here.
-                        Some((_, QueryResult::Poisoned)) => FatalError.raise(),
+                        Some((_, ActiveKeyStatus::Poisoned)) => FatalError.raise(),
                         _ => panic!(
                             "query '{}' result must be in the cache or the query must be poisoned after a wait",
                             query.name()
@@ -334,7 +353,7 @@ where
 
             (v, Some(index))
         }
-        Err(cycle) => (mk_cycle(query, qcx, cycle.lift(qcx)), None),
+        Err(cycle) => (mk_cycle(query, qcx, cycle.lift()), None),
     }
 }
 
@@ -374,7 +393,7 @@ where
             // state map.
             let id = qcx.next_job_id();
             let job = QueryJob::new(id, span, current_job_id);
-            entry.insert((key, QueryResult::Started(job)));
+            entry.insert((key, ActiveKeyStatus::Started(job)));
 
             // Drop the lock before we start executing the query
             drop(state_lock);
@@ -383,7 +402,7 @@ where
         }
         Entry::Occupied(mut entry) => {
             match &mut entry.get_mut().1 {
-                QueryResult::Started(job) => {
+                ActiveKeyStatus::Started(job) => {
                     if sync::is_dyn_thread_safe() {
                         // Get the latch out
                         let latch = job.latch();
@@ -401,7 +420,7 @@ where
                     // so we just return the error.
                     cycle_error(query, qcx, id, span)
                 }
-                QueryResult::Poisoned => FatalError.raise(),
+                ActiveKeyStatus::Poisoned => FatalError.raise(),
             }
         }
     }
@@ -411,7 +430,7 @@ where
 fn execute_job<'tcx, Q, const INCR: bool>(
     query: Q,
     qcx: Q::Qcx,
-    state: &QueryState<'tcx, Q::Key>,
+    state: &'tcx QueryState<'tcx, Q::Key>,
     key: Q::Key,
     key_hash: u64,
     id: QueryJobId,

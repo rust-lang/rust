@@ -1,26 +1,27 @@
 # Debugging the compiler
 
-This chapter contains a few tips to debug the compiler. These tips aim to be
-useful no matter what you are working on.  Some of the other chapters have
+This chapter contains a few tips to debug the compiler.
+These tips aim to be useful no matter what you are working on.
+Some of the other chapters have
 advice about specific parts of the compiler (e.g. the [Queries Debugging and
 Testing chapter](./incrcomp-debugging.html) or the [LLVM Debugging
 chapter](./backend/debugging.md)).
 
 ## Configuring the compiler
 
-By default, rustc is built without most debug information. To enable debug info,
-set `debug = true` in your bootstrap.toml.
+By default, rustc is built without most debug information.
+To enable debug info,
+set `rust.debug = true` in your bootstrap.toml.
 
-Setting `debug = true` turns on many different debug options (e.g., `debug-assertions`,
+Setting `rust.debug = true` turns on many different debug options (e.g., `debug-assertions`,
 `debug-logging`, etc.) which can be individually tweaked if you want to, but many people
-simply set `debug = true`.
+simply set `rust.debug = true`.
 
 If you want to use GDB to debug rustc, please set `bootstrap.toml` with options:
 
 ```toml
-[rust]
-debug = true
-debuginfo-level = 2
+rust.debug = true
+rust.debuginfo-level = 2
 ```
 
 > NOTE:
@@ -36,8 +37,7 @@ This requires at least GDB v10.2,
 otherwise you need to disable new symbol-mangling-version in `bootstrap.toml`.
 
 ```toml
-[rust]
-new-symbol-mangling = false
+rust.new-symbol-mangling = false
 ```
 
 > See the comments in `bootstrap.example.toml` for more info.
@@ -47,16 +47,16 @@ You will need to rebuild the compiler after changing any configuration option.
 ## Suppressing the ICE file
 
 By default, if rustc encounters an Internal Compiler Error (ICE) it will dump the ICE contents to an
-ICE file within the current working directory named `rustc-ice-<timestamp>-<pid>.txt`. If this is
-not desirable, you can prevent the ICE file from being created with `RUSTC_ICE=0`.
+ICE file within the current working directory named `rustc-ice-<timestamp>-<pid>.txt`.
+If this is not desirable, you can prevent the ICE file from being created with `RUSTC_ICE=0`.
 
 ## Getting a backtrace
 [getting-a-backtrace]: #getting-a-backtrace
 
 When you have an ICE (panic in the compiler), you can set
-`RUST_BACKTRACE=1` to get the stack trace of the `panic!` like in
-normal Rust programs. IIRC backtraces **don't work** on MinGW,
-sorry. If you have trouble or the backtraces are full of `unknown`,
+`RUST_BACKTRACE=1` to get the stack trace of the `panic!` like in normal Rust programs.
+IIRC backtraces **don't work** on MinGW, sorry.
+If you have trouble or the backtraces are full of `unknown`,
 you might want to find some way to use Linux, Mac, or MSVC on Windows.
 
 In the default configuration (without `debug` set to `true`), you don't have line numbers
@@ -100,9 +100,10 @@ stack backtrace:
 
 ## `-Z` flags
 
-The compiler has a bunch of `-Z *` flags. These are unstable flags that are only
-enabled on nightly. Many of them are useful for debugging. To get a full listing
-of `-Z` flags, use `-Z help`.
+The compiler has a bunch of `-Z *` flags.
+These are unstable flags that are only enabled on nightly.
+Many of them are useful for debugging.
+To get a full listing of `-Z` flags, use `-Z help`.
 
 One useful flag is `-Z verbose-internals`, which generally enables printing more
 info that could be useful for debugging.
@@ -114,7 +115,8 @@ Right below you can find elaborate explainers on a selected few.
 
 If you want to get a backtrace to the point where the compiler emits an
 error message, you can pass the `-Z treat-err-as-bug=n`, which will make
-the compiler panic on the `nth` error. If you leave off `=n`, the compiler will
+the compiler panic on the `nth` error.
+If you leave off `=n`, the compiler will
 assume `1` for `n` and thus panic on the first error it encounters.
 
 For example:
@@ -190,13 +192,12 @@ Cool, now I have a backtrace for the error!
 
 The `-Z eagerly-emit-delayed-bugs` option makes it easy to debug delayed bugs.
 It turns them into normal errors, i.e. makes them visible. This can be used in
-combination with `-Z treat-err-as-bug` to stop at a particular delayed bug and
-get a backtrace.
+combination with `-Z treat-err-as-bug` to stop at a particular delayed bug and get a backtrace.
 
 ### Getting the error creation location
 
-`-Z track-diagnostics` can help figure out where errors are emitted. It uses `#[track_caller]`
-for this and prints its location alongside the error:
+`-Z track-diagnostics` can help figure out where errors are emitted.
+It uses `#[track_caller]` for this and prints its location alongside the error:
 
 ```
 $ RUST_BACKTRACE=1 rustc +stage1 error.rs -Z track-diagnostics
@@ -238,11 +239,11 @@ For details see [the guide section on tracing](./tracing.md)
 ## Narrowing (Bisecting) Regressions
 
 The [cargo-bisect-rustc][bisect] tool can be used as a quick and easy way to
-find exactly which PR caused a change in `rustc` behavior. It automatically
-downloads `rustc` PR artifacts and tests them against a project you provide
-until it finds the regression. You can then look at the PR to get more context
-on *why* it was changed.  See [this tutorial][bisect-tutorial] on how to use
-it.
+find exactly which PR caused a change in `rustc` behavior.
+It automatically downloads `rustc` PR artifacts and tests them against a project you provide
+until it finds the regression.
+You can then look at the PR to get more context on *why* it was changed.
+ See [this tutorial][bisect-tutorial] on how to use it.
 
 [bisect]: https://github.com/rust-lang/cargo-bisect-rustc
 [bisect-tutorial]: https://rust-lang.github.io/cargo-bisect-rustc/tutorial.html
@@ -252,8 +253,9 @@ it.
 The [rustup-toolchain-install-master][rtim] tool by kennytm can be used to
 download the artifacts produced by Rust's CI for a specific SHA1 -- this
 basically corresponds to the successful landing of some PR -- and then sets
-them up for your local use. This also works for artifacts produced by `@bors
-try`. This is helpful when you want to examine the resulting build of a PR
+them up for your local use.
+This also works for artifacts produced by `@bors try`.
+This is helpful when you want to examine the resulting build of a PR
 without doing the build yourself.
 
 [rtim]: https://github.com/kennytm/rustup-toolchain-install-master
@@ -261,10 +263,12 @@ without doing the build yourself.
 ## `#[rustc_*]` TEST attributes
 
 The compiler defines a whole lot of internal (perma-unstable) attributes some of which are useful
-for debugging by dumping extra compiler-internal information. These are prefixed with `rustc_` and
+for debugging by dumping extra compiler-internal information.
+These are prefixed with `rustc_` and
 are gated behind the internal feature `rustc_attrs` (enabled via e.g. `#![feature(rustc_attrs)]`).
 
-For a complete and up to date list, see [`builtin_attrs`]. More specifically, the ones marked `TEST`.
+For a complete and up to date list, see [`builtin_attrs`].
+More specifically, the ones marked `TEST`.
 Here are some notable ones:
 
 | Attribute | Description |
@@ -313,7 +317,8 @@ $ firefox maybe_init_suffix.pdf # Or your favorite pdf viewer
 ### Debugging type layouts
 
 The internal attribute `#[rustc_layout]` can be used to dump the [`Layout`] of
-the type it is attached to. For example:
+the type it is attached to.
+For example:
 
 ```rust
 #![feature(rustc_attrs)]

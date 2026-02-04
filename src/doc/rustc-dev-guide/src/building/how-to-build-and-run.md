@@ -4,22 +4,25 @@
 
 For `profile = "library"` users, or users who use `download-rustc = true | "if-unchanged"`, please be advised that
 the `./x test library/std` flow where `download-rustc` is active (i.e. no compiler changes) is currently broken.
-This is tracked in <https://github.com/rust-lang/rust/issues/142505>. Only the `./x test` flow is affected in this
+This is tracked in <https://github.com/rust-lang/rust/issues/142505>.
+Only the `./x test` flow is affected in this
 case, `./x {check,build} library/std` should still work.
 
-In the short-term, you may need to disable `download-rustc` for `./x test library/std`. This can be done either by:
+In the short-term, you may need to disable `download-rustc` for `./x test library/std`.
+This can be done either by:
 
 1. `./x test library/std --set rust.download-rustc=false`
-2. Or set `rust.download-rustc=false` in `bootstrap.toml`.
+2. Or set `rust.download-rustc = false` in `bootstrap.toml`.
 
-Unfortunately that will require building the stage 1 compiler. The bootstrap team is working on this, but
+Unfortunately that will require building the stage 1 compiler.
+The bootstrap team is working on this, but
 implementing a maintainable fix is taking some time.
 
 </div>
 
 
-The compiler is built using a tool called `x.py`. You will need to
-have Python installed to run it.
+The compiler is built using a tool called `x.py`.
+You will need to have Python installed to run it.
 
 ## Quick Start
 
@@ -28,7 +31,8 @@ For a less in-depth quick-start of getting the compiler running, see [quickstart
 
 ## Get the source code
 
-The main repository is [`rust-lang/rust`][repo]. This contains the compiler,
+The main repository is [`rust-lang/rust`][repo].
+This contains the compiler,
 the standard library (including `core`, `alloc`, `test`, `proc_macro`, etc),
 and a bunch of tools (e.g. `rustdoc`, the bootstrapping infrastructure, etc).
 
@@ -86,8 +90,8 @@ cd rust
 
 ## What is `x.py`?
 
-`x.py` is the build tool for the `rust` repository. It can build docs, run tests, and compile the
-compiler and standard library.
+`x.py` is the build tool for the `rust` repository.
+It can build docs, run tests, and build the compiler and standard library.
 
 This chapter focuses on the basics to be productive, but
 if you want to learn more about `x.py`, [read this chapter][bootstrap].
@@ -103,11 +107,13 @@ Also, using `x` rather than `x.py` is recommended as:
 
 (You can find the platform related scripts around the `x.py`, like `x.ps1`)
 
-Notice that this is not absolute. For instance, using Nushell in VSCode on Win10,
-typing `x` or `./x` still opens `x.py` in an editor rather than invoking the program. :)
+Notice that this is not absolute.
+For instance, using Nushell in VSCode on Win10,
+typing `x` or `./x` still opens `x.py` in an editor rather than invoking the program.
+:)
 
-In the rest of this guide, we use `x` rather than `x.py` directly. The following
-command:
+In the rest of this guide, we use `x` rather than `x.py` directly.
+The following command:
 
 ```bash
 ./x check
@@ -164,9 +170,10 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 #### Running `x.py` slightly more conveniently
 
-There is a binary that wraps `x.py` called `x` in `src/tools/x`. All it does is
-run `x.py`, but it can be installed system-wide and run from any subdirectory
-of a checkout. It also looks up the appropriate version of `python` to use.
+There is a binary that wraps `x.py` called `x` in `src/tools/x`.
+All it does is run `x.py`, but it can be installed system-wide and run from any subdirectory
+of a checkout.
+It also looks up the appropriate version of `python` to use.
 
 You can install it with `cargo install --path src/tools/x`.
 
@@ -177,18 +184,20 @@ shell to run the platform related scripts.
 
 ## Create a `bootstrap.toml`
 
-To start, run `./x setup` and select the `compiler` defaults. This will do some initialization
-and create a `bootstrap.toml` for you with reasonable defaults. If you use a different default (which
+To start, run `./x setup` and select the `compiler` defaults.
+This will do some initialization and create a `bootstrap.toml` for you with reasonable defaults.
+If you use a different default (which
 you'll likely want to do if you want to contribute to an area of rust other than the compiler, such
 as rustdoc), make sure to read information about that default (located in `src/bootstrap/defaults`)
 as the build process may be different for other defaults.
 
-Alternatively, you can write `bootstrap.toml` by hand. See `bootstrap.example.toml` for all the available
-settings and explanations of them. See `src/bootstrap/defaults` for common settings to change.
+Alternatively, you can write `bootstrap.toml` by hand.
+See `bootstrap.example.toml` for all the available settings and what they do.
+See `src/bootstrap/defaults` for common settings to change.
 
 If you have already built `rustc` and you change settings related to LLVM, then you may have to
-execute `./x clean --all` for subsequent configuration changes to take effect. Note that `./x
-clean` will not cause a rebuild of LLVM.
+execute `./x clean --all` for subsequent configuration changes to take effect.
+Note that `./x clean` will not cause a rebuild of LLVM.
 
 ## Common `x` commands
 
@@ -202,28 +211,28 @@ working on `rustc`, `std`, `rustdoc`, and other tools.
 | `./x test`  | Runs all tests                                                                                               |
 | `./x fmt`   | Formats all code                                                                                             |
 
-As written, these commands are reasonable starting points. However, there are
-additional options and arguments for each of them that are worth learning for
-serious development work. In particular, `./x build` and `./x test`
-provide many ways to compile or test a subset of the code, which can save a lot
-of time.
+As written, these commands are reasonable starting points.
+However, there are additional options and arguments for each of them that are worth learning for
+serious development work.
+In particular, `./x build` and `./x test`
+provide many ways to compile or test a subset of the code, which can save a lot of time.
 
 Also, note that `x` supports all kinds of path suffixes for `compiler`, `library`,
-and `src/tools` directories. So, you can simply run `x test tidy` instead of
-`x test src/tools/tidy`. Or, `x build std` instead of `x build library/std`.
+and `src/tools` directories.
+So, you can simply run `x test tidy` instead of `x test src/tools/tidy`.
+Or, `x build std` instead of `x build library/std`.
 
 [rust-analyzer]: suggested.html#configuring-rust-analyzer-for-rustc
 
-See the chapters on
-[testing](../tests/running.md) and [rustdoc](../rustdoc.md) for more details.
+See the chapters on [testing](../tests/running.md) and [rustdoc](../rustdoc.md) for more details.
 
 ### Building the compiler
 
 Note that building will require a relatively large amount of storage space.
 You may want to have upwards of 10 or 15 gigabytes available to build the compiler.
 
-Once you've created a `bootstrap.toml`, you are now ready to run
-`x`. There are a lot of options here, but let's start with what is
+Once you've created a `bootstrap.toml`, you are now ready to run `x`.
+There are a lot of options here, but let's start with what is
 probably the best "go to" command for building a local compiler:
 
 ```console
@@ -236,8 +245,7 @@ What this command does is:
 - Assemble a working stage1 sysroot, containing the stage1 compiler and stage1 standard libraries.
 
 This final product (stage1 compiler + libs built using that compiler)
-is what you need to build other Rust programs (unless you use `#![no_std]` or
-`#![no_core]`).
+is what you need to build other Rust programs (unless you use `#![no_std]` or `#![no_core]`).
 
 You will probably find that building the stage1 `std` is a bottleneck for you,
 but fear not, there is a (hacky) workaround...
@@ -245,12 +253,12 @@ see [the section on avoiding rebuilds for std][keep-stage].
 
 [keep-stage]: ./suggested.md#faster-rebuilds-with---keep-stage-std
 
-Sometimes you don't need a full build. When doing some kind of
-"type-based refactoring", like renaming a method, or changing the
+Sometimes you don't need a full build.
+When doing some kind of "type-based refactoring", like renaming a method, or changing the
 signature of some function, you can use `./x check` instead for a much faster build.
 
-Note that this whole command just gives you a subset of the full `rustc`
-build. The **full** `rustc` build (what you get with `./x build
+Note that this whole command just gives you a subset of the full `rustc` build.
+The **full** `rustc` build (what you get with `./x build
 --stage 2 rustc`) has quite a few more steps:
 
 - Build `rustc` with the stage1 compiler.
@@ -262,8 +270,8 @@ You almost never need to do this.
 ### Build specific components
 
 If you are working on the standard library, you probably don't need to build
-every other default component. Instead, you can build a specific component by
-providing its name, like this:
+every other default component.
+Instead, you can build a specific component by providing its name, like this:
 
 ```bash
 ./x build --stage 1 library
@@ -275,12 +283,13 @@ default).
 ## Creating a rustup toolchain
 
 Once you have successfully built `rustc`, you will have created a bunch
-of files in your `build` directory. In order to actually run the
-resulting `rustc`, we recommend creating rustup toolchains. The first
-command listed below creates the stage1 toolchain, which was built in the
-steps above, with the name `stage1`. The second command creates the stage2 
-toolchain using the stage1 compiler. This will be needed in the future 
-if running the entire test suite, but will not be built in this page. 
+of files in your `build` directory.
+In order to actually run the resulting `rustc`, we recommend creating rustup toolchains.
+The first command listed below creates the stage1 toolchain, which was built in the
+steps above, with the name `stage1`.
+The second command creates the stage2 toolchain using the stage1 compiler.
+This will be needed in the future
+if running the entire test suite, but will not be built in this page.
 Building stage2 is done with the same `./x build` command as for stage1,
 specifying that the stage is 2 instead.
 
@@ -289,8 +298,8 @@ rustup toolchain link stage1 build/host/stage1
 rustup toolchain link stage2 build/host/stage2
 ```
 
-Now you can run the `rustc` you built with via the toolchain. If you run with 
-`-vV`, you should see a version number ending in `-dev`, indicating a build from
+Now you can run the `rustc` you built with via the toolchain.
+If you run with `-vV`, you should see a version number ending in `-dev`, indicating a build from
 your local environment:
 
 ```bash
@@ -308,15 +317,19 @@ The rustup toolchain points to the specified toolchain compiled in your `build` 
 so the rustup toolchain will be updated whenever `x build` or `x test` are run for
 that toolchain/stage.
 
-**Note:** the toolchain we've built does not include `cargo`.  In this case, `rustup` will
+**Note:** the toolchain we've built does not include `cargo`.
+ In this case, `rustup` will
 fall back to using `cargo` from the installed `nightly`, `beta`, or `stable` toolchain
-(in that order).  If you need to use unstable `cargo` flags, be sure to run
-`rustup install nightly` if you haven't already.  See the
+(in that order).
+ If you need to use unstable `cargo` flags, be sure to run
+`rustup install nightly` if you haven't already.
+ See the
 [rustup documentation on custom toolchains](https://rust-lang.github.io/rustup/concepts/toolchains.html#custom-toolchains).
 
 **Note:** rust-analyzer and IntelliJ Rust plugin use a component called
-`rust-analyzer-proc-macro-srv` to work with proc macros. If you intend to use a
-custom toolchain for a project (e.g. via `rustup override set stage1`) you may
+`rust-analyzer-proc-macro-srv` to work with proc macros.
+If you intend to use a
+custom toolchain for a project (e.g. via `rustup override set stage1`), you may
 want to build this component:
 
 ```bash
@@ -342,8 +355,7 @@ If you want to always build for other targets without needing to pass flags to `
 you can configure this in the `[build]` section of your `bootstrap.toml` like so:
 
 ```toml
-[build]
-target = ["x86_64-unknown-linux-gnu", "wasm32-wasip1"]
+build.target = ["x86_64-unknown-linux-gnu", "wasm32-wasip1"]
 ```
 
 Note that building for some targets requires having external dependencies installed
@@ -369,16 +381,14 @@ cargo +stage1 build --target wasm32-wasip1
 
 ## Other `x` commands
 
-Here are a few other useful `x` commands. We'll cover some of them in detail
-in other sections:
+Here are a few other useful `x` commands.
+We'll cover some of them in detail in other sections:
 
 - Building things:
   - `./x build` – builds everything using the stage 1 compiler,
     not just up to `std`
-  - `./x build --stage 2` – builds everything with the stage 2 compiler including
-    `rustdoc`
-- Running tests (see the [section on running tests](../tests/running.html) for
-  more details):
+  - `./x build --stage 2` – builds everything with the stage 2 compiler including `rustdoc`
+- Running tests (see the [section on running tests](../tests/running.html) for more details):
   - `./x test library/std` – runs the unit tests and integration tests from `std`
   - `./x test tests/ui` – runs the `ui` test suite
   - `./x test tests/ui/const-generics` - runs all the tests in
@@ -390,8 +400,8 @@ in other sections:
 
 Sometimes you need to start fresh, but this is normally not the case.
 If you need to run this then bootstrap is most likely not acting right and
-you should file a bug as to what is going wrong. If you do need to clean
-everything up then you only need to run one command!
+you should file a bug as to what is going wrong.
+If you do need to clean everything up then you only need to run one command!
 
 ```bash
 ./x clean
@@ -403,15 +413,17 @@ a long time even on fast computers.
 ## Remarks on disk space
 
 Building the compiler (especially if beyond stage 1) can require significant amounts of free disk
-space, possibly around 100GB. This is compounded if you have a separate build directory for
+space, possibly around 100GB.
+This is compounded if you have a separate build directory for
 rust-analyzer (e.g. `build-rust-analyzer`). This is easy to hit with dev-desktops which have a [set
 disk
 quota](https://github.com/rust-lang/simpleinfra/blob/8a59e4faeb75a09b072671c74a7cb70160ebef50/ansible/roles/dev-desktop/defaults/main.yml#L7)
-for each user, but this also applies to local development as well. Occasionally, you may need to:
+for each user, but this also applies to local development as well.
+Occasionally, you may need to:
 
 - Remove `build/` directory.
 - Remove `build-rust-analyzer/` directory (if you have a separate rust-analyzer build directory).
-- Uninstall unnecessary toolchains if you use `cargo-bisect-rustc`. You can check which toolchains
-  are installed with `rustup toolchain list`.
+- Uninstall unnecessary toolchains if you use `cargo-bisect-rustc`.
+  You can check which toolchains are installed with `rustup toolchain list`.
 
 [^1]: issue[#1707](https://github.com/rust-lang/rustc-dev-guide/issues/1707)

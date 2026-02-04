@@ -239,7 +239,7 @@ impl<T: PointeeSized> *const T {
     /// let ptr: *const u8 = &10u8 as *const u8;
     ///
     /// unsafe {
-    ///     let val_back = &*ptr;
+    ///     let val_back = ptr.as_ref_unchecked();
     ///     assert_eq!(val_back, &10);
     /// }
     /// ```
@@ -259,6 +259,7 @@ impl<T: PointeeSized> *const T {
     ///
     /// [`is_null`]: #method.is_null
     /// [`as_uninit_ref`]: #method.as_uninit_ref
+    /// [`as_ref_unchecked`]: #method.as_ref_unchecked
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[rustc_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
     #[inline]
@@ -283,15 +284,14 @@ impl<T: PointeeSized> *const T {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_as_ref_unchecked)]
     /// let ptr: *const u8 = &10u8 as *const u8;
     ///
     /// unsafe {
     ///     assert_eq!(ptr.as_ref_unchecked(), &10);
     /// }
     /// ```
-    // FIXME: mention it in the docs for `as_ref` and `as_uninit_ref` once stabilized.
-    #[unstable(feature = "ptr_as_ref_unchecked", issue = "122034")]
+    #[stable(feature = "ptr_as_ref_unchecked", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_as_ref_unchecked", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_ref_unchecked<'a>(self) -> &'a T {

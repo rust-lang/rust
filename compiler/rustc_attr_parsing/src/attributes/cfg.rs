@@ -3,14 +3,14 @@ use std::convert::identity;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, ast, token};
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::{Applicability, PResult, inline_fluent};
 use rustc_feature::{
     AttrSuggestionStyle, AttributeTemplate, Features, GatedCfg, find_gated_cfg, template,
 };
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrPath, RustcVersion, Target};
-use rustc_parse::parser::{ForceCollect, Parser};
+use rustc_parse::parser::{ForceCollect, Parser, Recovery};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
@@ -25,7 +25,7 @@ use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, CfgAttrBadDelim, MetaBadDelimSugg,
     ParsedDescription,
 };
-use crate::{AttributeParser, fluent_generated, parse_version, session_diagnostics};
+use crate::{AttributeParser, parse_version, session_diagnostics};
 
 pub const CFG_TEMPLATE: AttributeTemplate = template!(
     List: &["predicate"],
@@ -141,7 +141,7 @@ fn parse_cfg_entry_target<S: Stage>(
             cx.sess(),
             sym::cfg_target_compact,
             meta_span,
-            fluent_generated::attr_parsing_unstable_cfg_target_compact,
+            inline_fluent!("compact `cfg(target(..))` is experimental and subject to change"),
         )
         .emit();
     }
@@ -360,8 +360,10 @@ fn parse_cfg_attr_internal<'a>(
 ) -> PResult<'a, (CfgEntry, Vec<(ast::AttrItem, Span)>)> {
     // Parse cfg predicate
     let pred_start = parser.token.span;
-    let meta =
-        MetaItemOrLitParser::parse_single(parser, ShouldEmit::ErrorsAndLints { recover: true })?;
+    let meta = MetaItemOrLitParser::parse_single(
+        parser,
+        ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+    )?;
     let pred_span = pred_start.with_hi(parser.token.span.hi());
 
     let cfg_predicate = AttributeParser::parse_single_args(
@@ -376,7 +378,7 @@ fn parse_cfg_attr_internal<'a>(
         CRATE_NODE_ID,
         Target::Crate,
         features,
-        ShouldEmit::ErrorsAndLints { recover: true },
+        ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
         &meta,
         parse_cfg_entry,
         &CFG_ATTR_TEMPLATE,

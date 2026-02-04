@@ -87,6 +87,10 @@ passes_deprecated_annotation_has_no_effect =
 passes_deprecated_attribute =
     deprecated attribute must be paired with either stable or unstable attribute
 
+passes_diagnostic_diagnostic_on_const_only_for_non_const_trait_impls =
+    `#[diagnostic::on_const]` can only be applied to non-const trait impls
+    .label = this is a const trait impl
+
 passes_diagnostic_diagnostic_on_const_only_for_trait_impls =
     `#[diagnostic::on_const]` can only be applied to trait impls
     .label = not a trait impl

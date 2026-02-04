@@ -33,7 +33,6 @@
     f16,
     aarch64_unstable_target_feature,
     target_feature_inline_always,
-    bigint_helper_methods,
     funnel_shifts,
     avx10_target_feature,
     const_trait_impl,

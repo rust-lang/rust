@@ -97,7 +97,6 @@
 // tidy-alphabetical-start
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
-#![feature(bigint_helper_methods)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(cfg_select)]
@@ -107,6 +106,7 @@
 #![feature(const_destruct)]
 #![feature(const_eval_select)]
 #![feature(const_select_unpredictable)]
+#![feature(const_unsigned_bigint_helpers)]
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
 #![feature(disjoint_bitor)]
@@ -120,6 +120,7 @@
 #![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
 #![feature(set_ptr_value)]
+#![feature(signed_bigint_helpers)]
 #![feature(slice_ptr_get)]
 #![feature(str_internals)]
 #![feature(str_split_inclusive_remainder)]
@@ -129,6 +130,7 @@
 #![feature(unsafe_pinned)]
 #![feature(utf16_extra)]
 #![feature(variant_count)]
+#![feature(widening_mul)]
 // tidy-alphabetical-end
 //
 // Language features:

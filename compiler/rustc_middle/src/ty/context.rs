@@ -3470,10 +3470,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn intrinsic(self, def_id: impl IntoQueryParam<DefId> + Copy) -> Option<ty::IntrinsicDef> {
         match self.def_kind(def_id) {
-            DefKind::Fn | DefKind::AssocFn => {}
-            _ => return None,
+            DefKind::Fn | DefKind::AssocFn => self.intrinsic_raw(def_id),
+            _ => None,
         }
-        self.intrinsic_raw(def_id)
     }
 
     pub fn next_trait_solver_globally(self) -> bool {

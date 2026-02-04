@@ -111,7 +111,7 @@
   
       bb3: {
 -         _22 = handle_alloc_error(move _18) -> unwind unreachable;
-+         _22 = handle_alloc_error(const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }}) -> unwind unreachable;
++         _22 = handle_alloc_error(const Layout {{ size: 0_usize, align: std::ptr::Alignment {{ _inner_repr_trick: std::ptr::alignment::AlignmentEnum::_Align1Shl0 }} }}) -> unwind unreachable;
       }
   
       bb4: {
@@ -190,12 +190,12 @@
           StorageLive(_24);
 -         _24 = copy _17 as std::ptr::Alignment (Transmute);
 -         _18 = Layout { size: copy _16, align: move _24 };
-+         _24 = const std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0);
-+         _18 = const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }};
++         _24 = const std::ptr::Alignment {{ _inner_repr_trick: std::ptr::alignment::AlignmentEnum::_Align1Shl0 }};
++         _18 = const Layout {{ size: 0_usize, align: std::ptr::Alignment {{ _inner_repr_trick: std::ptr::alignment::AlignmentEnum::_Align1Shl0 }} }};
           StorageDead(_24);
           StorageLive(_19);
 -         _19 = std::alloc::Global::alloc_impl_runtime(copy _18, const false) -> [return: bb7, unwind unreachable];
-+         _19 = std::alloc::Global::alloc_impl_runtime(const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }}, const false) -> [return: bb7, unwind unreachable];
++         _19 = std::alloc::Global::alloc_impl_runtime(const Layout {{ size: 0_usize, align: std::ptr::Alignment {{ _inner_repr_trick: std::ptr::alignment::AlignmentEnum::_Align1Shl0 }} }}, const false) -> [return: bb7, unwind unreachable];
       }
   
       bb7: {

@@ -4,7 +4,7 @@ use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::{self, ExistentialPredicate, Ty};
 use rustc_span::{Span, sym};
@@ -58,7 +58,7 @@ pub(super) fn check(cx: &LateContext<'_>, receiver: &Expr<'_>, call_span: Span) 
             |diag| {
                 let derefs = recv_adjusts
                     .iter()
-                    .filter(|adj| matches!(adj.kind, Adjust::Deref(None)))
+                    .filter(|adj| matches!(adj.kind, Adjust::Deref(DerefAdjustKind::Builtin)))
                     .count();
 
                 diag.note(

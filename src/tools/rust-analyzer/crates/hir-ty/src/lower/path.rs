@@ -32,7 +32,8 @@ use crate::{
     db::HirDatabase,
     generics::{Generics, generics},
     lower::{
-        LifetimeElisionKind, PathDiagnosticCallbackData, named_associated_type_shorthand_candidates,
+        GenericPredicateSource, LifetimeElisionKind, PathDiagnosticCallbackData,
+        named_associated_type_shorthand_candidates,
     },
     next_solver::{
         Binder, Clause, Const, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs, Predicate,
@@ -598,7 +599,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         explicit_self_ty: Option<Ty<'db>>,
         lowering_assoc_type_generics: bool,
     ) -> GenericArgs<'db> {
-        let old_lifetime_elision = self.ctx.lifetime_elision.clone();
+        let old_lifetime_elision = self.ctx.lifetime_elision;
 
         if let Some(args) = self.current_or_prev_segment.args_and_bindings
             && args.parenthesized != GenericArgsParentheses::No
@@ -639,7 +640,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             explicit_self_ty,
             PathGenericsSource::Segment(self.current_segment_u32()),
             lowering_assoc_type_generics,
-            self.ctx.lifetime_elision.clone(),
+            self.ctx.lifetime_elision,
         );
         self.ctx.lifetime_elision = old_lifetime_elision;
         result
@@ -853,7 +854,8 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
     pub(super) fn assoc_type_bindings_from_type_bound<'c>(
         mut self,
         trait_ref: TraitRef<'db>,
-    ) -> Option<impl Iterator<Item = Clause<'db>> + use<'a, 'b, 'c, 'db>> {
+    ) -> Option<impl Iterator<Item = (Clause<'db>, GenericPredicateSource)> + use<'a, 'b, 'c, 'db>>
+    {
         let interner = self.ctx.interner;
         self.current_or_prev_segment.args_and_bindings.map(|args_and_bindings| {
             args_and_bindings.bindings.iter().enumerate().flat_map(move |(binding_idx, binding)| {
@@ -882,7 +884,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 assoc_type: binding_idx as u32,
                             },
                             false,
-                            this.ctx.lifetime_elision.clone(),
+                            this.ctx.lifetime_elision,
                         )
                     });
                 let args = GenericArgs::new_from_iter(
@@ -900,7 +902,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                             // `Fn()`-style generics are elided like functions. This is `Output` (we lower to it in hir-def).
                             LifetimeElisionKind::for_fn_ret(self.ctx.interner)
                         } else {
-                            self.ctx.lifetime_elision.clone()
+                            self.ctx.lifetime_elision
                         };
                     self.with_lifetime_elision(lifetime_elision, |this| {
                         match (&this.ctx.store[type_ref], this.ctx.impl_trait_mode.mode) {
@@ -921,21 +923,29 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                         ),
                                     )),
                                 ));
-                                predicates.push(pred);
+                                predicates.push((pred, GenericPredicateSource::SelfOnly));
                             }
                         }
                     })
                 }
                 for bound in binding.bounds.iter() {
-                    predicates.extend(self.ctx.lower_type_bound(
-                        bound,
-                        Ty::new_alias(
-                            self.ctx.interner,
-                            AliasTyKind::Projection,
-                            AliasTy::new_from_args(self.ctx.interner, associated_ty.into(), args),
-                        ),
-                        false,
-                    ));
+                    predicates.extend(
+                        self.ctx
+                            .lower_type_bound(
+                                bound,
+                                Ty::new_alias(
+                                    self.ctx.interner,
+                                    AliasTyKind::Projection,
+                                    AliasTy::new_from_args(
+                                        self.ctx.interner,
+                                        associated_ty.into(),
+                                        args,
+                                    ),
+                                ),
+                                false,
+                            )
+                            .map(|(pred, _)| (pred, GenericPredicateSource::AssocTyBound)),
+                    );
                 }
                 predicates
             })

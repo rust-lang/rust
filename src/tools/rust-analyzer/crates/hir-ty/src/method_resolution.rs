@@ -206,11 +206,11 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
     }
 }
 
-/// Used by [FnCtxt::lookup_method_for_operator] with `-Znext-solver`.
+/// Used by `FnCtxt::lookup_method_for_operator` with `-Znext-solver`.
 ///
 /// With `AsRigid` we error on `impl Opaque: NotInItemBounds` while
 /// `AsInfer` just treats it as ambiguous and succeeds. This is necessary
-/// as we want [FnCtxt::check_expr_call] to treat not-yet-defined opaque
+/// as we want `FnCtxt::check_expr_call` to treat not-yet-defined opaque
 /// types as rigid to support `impl Deref<Target = impl FnOnce()>` and
 /// `Box<impl FnOnce()>`.
 ///

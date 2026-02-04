@@ -2,9 +2,12 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![feature(adt_const_params)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
 // tidy-alphabetical-end
+
+use std::marker::ConstParamTy;
 
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::AtomicU64;
@@ -35,29 +38,34 @@ pub use crate::plumbing::{QueryCtxt, query_key_hash_verify_all};
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;
 
+#[derive(ConstParamTy)] // Allow this struct to be used for const-generic values.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct QueryFlags {
+    /// True if this query has the `anon` modifier.
+    is_anon: bool,
+    /// True if this query has the `depth_limit` modifier.
+    is_depth_limit: bool,
+    /// True if this query has the `feedable` modifier.
+    is_feedable: bool,
+}
+
 /// Combines a [`QueryVTable`] with some additional compile-time booleans
 /// to implement [`QueryDispatcher`], for use by code in [`rustc_query_system`].
 ///
 /// Baking these boolean flags into the type gives a modest but measurable
 /// improvement to compiler perf and compiler code size; see
 /// <https://github.com/rust-lang/rust/pull/151633>.
-struct SemiDynamicQueryDispatcher<
-    'tcx,
-    C: QueryCache,
-    const ANON: bool,
-    const DEPTH_LIMIT: bool,
-    const FEEDABLE: bool,
-> {
+struct SemiDynamicQueryDispatcher<'tcx, C: QueryCache, const FLAGS: QueryFlags> {
     vtable: &'tcx QueryVTable<'tcx, C>,
 }
 
 // Manually implement Copy/Clone, because deriving would put trait bounds on the cache type.
-impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool> Copy
-    for SemiDynamicQueryDispatcher<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> Copy
+    for SemiDynamicQueryDispatcher<'tcx, C, FLAGS>
 {
 }
-impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool> Clone
-    for SemiDynamicQueryDispatcher<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> Clone
+    for SemiDynamicQueryDispatcher<'tcx, C, FLAGS>
 {
     fn clone(&self) -> Self {
         *self
@@ -65,8 +73,8 @@ impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDA
 }
 
 // This is `impl QueryDispatcher for SemiDynamicQueryDispatcher`.
-impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool>
-    QueryDispatcher<'tcx> for SemiDynamicQueryDispatcher<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> QueryDispatcher<'tcx>
+    for SemiDynamicQueryDispatcher<'tcx, C, FLAGS>
 where
     for<'a> C::Key: HashStable<StableHashingContext<'a>>,
 {
@@ -86,10 +94,7 @@ where
     }
 
     #[inline(always)]
-    fn query_state<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a QueryState<'tcx, Self::Key>
-    where
-        QueryCtxt<'tcx>: 'a,
-    {
+    fn query_state(self, qcx: QueryCtxt<'tcx>) -> &'tcx QueryState<'tcx, Self::Key> {
         // Safety:
         // This is just manually doing the subfield referencing through pointer math.
         unsafe {
@@ -100,7 +105,7 @@ where
     }
 
     #[inline(always)]
-    fn query_cache<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a Self::Cache {
+    fn query_cache(self, qcx: QueryCtxt<'tcx>) -> &'tcx Self::Cache {
         // Safety:
         // This is just manually doing the subfield referencing through pointer math.
         unsafe {
@@ -158,7 +163,7 @@ where
 
     #[inline(always)]
     fn anon(self) -> bool {
-        ANON
+        FLAGS.is_anon
     }
 
     #[inline(always)]
@@ -168,12 +173,12 @@ where
 
     #[inline(always)]
     fn depth_limit(self) -> bool {
-        DEPTH_LIMIT
+        FLAGS.is_depth_limit
     }
 
     #[inline(always)]
     fn feedable(self) -> bool {
-        FEEDABLE
+        FLAGS.is_feedable
     }
 
     #[inline(always)]
@@ -216,12 +221,12 @@ trait QueryDispatcherUnerased<'tcx> {
     ) -> Self::UnerasedValue;
 }
 
-pub fn query_system<'a>(
+pub fn query_system<'tcx>(
     local_providers: Providers,
     extern_providers: ExternProviders,
     on_disk_cache: Option<OnDiskCache>,
     incremental: bool,
-) -> QuerySystem<'a> {
+) -> QuerySystem<'tcx> {
     QuerySystem {
         states: Default::default(),
         arenas: Default::default(),

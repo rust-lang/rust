@@ -2,16 +2,17 @@
 
 ## The `HostEffect` predicate
 
-[`HostEffectPredicate`]s are a kind of predicate from `~const Tr` or `const Tr`
-bounds. It has a trait reference, and a `constness` which could be `Maybe` or
-`Const` depending on the bound. Because `~const Tr`, or rather `Maybe` bounds
+[`HostEffectPredicate`]s are a kind of predicate from `~const Tr` or `const Tr` bounds.
+It has a trait reference, and a `constness` which could be `Maybe` or
+`Const` depending on the bound.
+Because `~const Tr`, or rather `Maybe` bounds
 apply differently based on whichever contexts they are in, they have different
-behavior than normal bounds. Where normal trait bounds on a function such as
+behavior than normal bounds.
+Where normal trait bounds on a function such as
 `T: Tr` are collected within the [`predicates_of`] query to be proven when a
 function is called and to be assumed within the function, bounds such as
 `T: ~const Tr` will behave as a normal trait bound and add `T: Tr` to the result
-from `predicates_of`, but also adds a `HostEffectPredicate` to the
-[`const_conditions`] query.
+from `predicates_of`, but also adds a `HostEffectPredicate` to the [`const_conditions`] query.
 
 On the other hand, `T: const Tr` bounds do not change meaning across contexts,
 therefore they will result in `HostEffect(T: Tr, const)` being added to
@@ -23,17 +24,17 @@ therefore they will result in `HostEffect(T: Tr, const)` being added to
 
 ## The `const_conditions` query
 
-`predicates_of` represents a set of predicates that need to be proven to use an
-item. For example, to use `foo` in the example below:
+`predicates_of` represents a set of predicates that need to be proven to use an item.
+For example, to use `foo` in the example below:
 
 ```rust
 fn foo<T>() where T: Default {}
 ```
 
-We must be able to prove that `T` implements `Default`. In a similar vein,
+We must be able to prove that `T` implements `Default`.
+In a similar vein,
 `const_conditions` represents a set of predicates that need to be proven to use
-an item *in const contexts*. If we adjust the example above to use `const` trait
-bounds:
+an item *in const contexts*. If we adjust the example above to use `const` trait bounds:
 
 ```rust
 const fn foo<T>() where T: ~const Default {}
@@ -45,13 +46,13 @@ prove that `T` has a const implementation of `Default`.
 
 ## Enforcement of `const_conditions`
 
-`const_conditions` are currently checked in various places. 
+`const_conditions` are currently checked in various places.
 
 Every call in HIR from a const context (which includes `const fn` and `const`
 items) will check that `const_conditions` of the function we are calling hold.
-This is done in [`FnCtxt::enforce_context_effects`]. Note that we don't check
-if the function is only referred to but not called, as the following code needs
-to compile:
+This is done in [`FnCtxt::enforce_context_effects`].
+Note that we don't check
+if the function is only referred to but not called, as the following code needs to compile:
 
 ```rust
 const fn hi<T: ~const Default>() -> T {
@@ -61,8 +62,8 @@ const X: fn() -> u32 = hi::<u32>;
 ```
 
 For a trait `impl` to be well-formed, we must be able to prove the
-`const_conditions` of the trait from the `impl`'s environment. This is checked
-in [`wfcheck::check_impl`].
+`const_conditions` of the trait from the `impl`'s environment.
+This is checked in [`wfcheck::check_impl`].
 
 Here's an example:
 
@@ -77,10 +78,11 @@ impl const Foo for () {}
 ```
 
 Methods of trait impls must not have stricter bounds than the method of the
-trait that they are implementing. To check that the methods are compatible, a
+trait that they are implementing.
+To check that the methods are compatible, a
 hybrid environment is constructed with the predicates of the `impl` plus the
-predicates of the trait method, and we attempt to prove the predicates of the
-impl method. We do the same for `const_conditions`:
+predicates of the trait method, and we attempt to prove the predicates of the impl method.
+We do the same for `const_conditions`:
 
 ```rust
 const trait Foo {
@@ -95,10 +97,10 @@ impl<T: ~const Clone> Foo for Vec<T> {
 }
 ```
 
-These checks are done in [`compare_method_predicate_entailment`]. A similar
-function that does the same check for associated types is called
-[`compare_type_predicate_entailment`]. Both of these need to consider
-`const_conditions` when in const contexts.
+These checks are done in [`compare_method_predicate_entailment`].
+A similar function that does the same check for associated types is called
+[`compare_type_predicate_entailment`].
+Both of these need to consider `const_conditions` when in const contexts.
 
 In MIR, as part of const checking, `const_conditions` of items that are called
 are revalidated again in [`Checker::revalidate_conditional_constness`].
@@ -111,7 +113,9 @@ are revalidated again in [`Checker::revalidate_conditional_constness`].
 
 ## `explicit_implied_const_bounds` on associated types and traits
 
-Bounds on associated types, opaque types, and supertraits such as
+Bounds on associated types, opaque types, and supertraits such as the following
+have their bounds represented differently:
+
 ```rust
 trait Foo: ~const PartialEq {
     type X: ~const PartialEq;
@@ -122,11 +126,11 @@ fn foo() -> impl ~const PartialEq {
 }
 ```
 
-Have their bounds represented differently. Unlike `const_conditions` which need
-to be proved for callers, and can be assumed inside the definition (e.g. trait
+Unlike `const_conditions`, which need to be proved for callers,
+and can be assumed inside the definition (e.g. trait
 bounds on functions), these bounds need to be proved at definition (at the impl,
-or when returning the opaque) but can be assumed for callers. The non-const
-equivalent of these bounds are called [`explicit_item_bounds`].
+or when returning the opaque) but can be assumed for callers.
+The non-const equivalent of these bounds are called [`explicit_item_bounds`].
 
 These bounds are checked in [`compare_impl_item::check_type_bounds`] for HIR
 typeck, [`evaluate_host_effect_from_item_bounds`] in the old solver and
@@ -139,18 +143,16 @@ typeck, [`evaluate_host_effect_from_item_bounds`] in the old solver and
 
 ## Proving `HostEffectPredicate`s
 
-`HostEffectPredicate`s are implemented both in the [old solver] and the [new
-trait solver]. In general, we can prove a `HostEffect` predicate when either of
-these conditions are met:
+`HostEffectPredicate`s are implemented both in the [old solver] and the [new trait solver].
+In general, we can prove a `HostEffect` predicate when either of these conditions are met:
 
 * The predicate can be assumed from caller bounds;
 * The type has a `const` `impl` for the trait, *and* that const conditions on
-the impl holds, *and* that the `explicit_implied_const_bounds` on the trait
-holds; or
-* The type has a built-in implementation for the trait in const contexts. For
-example, `Fn` may be implemented by function items if their const conditions
-are satisfied, or `Destruct` is implemented in const contexts if the type can
-be dropped at compile time.
+  the impl holds, *and* that the `explicit_implied_const_bounds` on the trait holds; or
+* The type has a built-in implementation for the trait in const contexts.
+  For example, `Fn` may be implemented by function items if their const conditions
+  are satisfied, or `Destruct` is implemented in const contexts if the type can
+  be dropped at compile time.
 
 [old solver]: https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_trait_selection/traits/effects.rs.html
 [new trait solver]: https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_next_trait_solver/solve/effect_goals.rs.html
@@ -161,10 +163,11 @@ To be expanded later.
 
 ### The `#[rustc_non_const_trait_method]` attribute
 
-This is intended for internal (standard library) usage only. With this attribute
-applied to a trait method, the compiler will not check the default body of this
-method for ability to run in compile time. Users of the trait will also not be
-allowed to use this trait method in const contexts. This attribute is primarily
+This is intended for internal (standard library) usage only.
+With this attribute applied to a trait method, the compiler will not check the default body of this
+method for ability to run in compile time.
+Users of the trait will also not be allowed to use this trait method in const contexts.
+This attribute is primarily
 used for constifying large traits such as `Iterator` without having to make all
 its methods `const` at the same time.
 

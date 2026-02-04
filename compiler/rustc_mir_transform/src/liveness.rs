@@ -1243,9 +1243,12 @@ struct TransferFunction<'a, 'tcx> {
 impl<'tcx> Visitor<'tcx> for TransferFunction<'_, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match statement.kind {
-            // `ForLet(None)` fake read erroneously marks the just-assigned local as live.
-            // This defeats the purpose of the analysis for `let` bindings.
-            StatementKind::FakeRead(box (FakeReadCause::ForLet(None), _)) => return,
+            // `ForLet(None)` and `ForGuardBinding` fake reads erroneously mark the just-assigned
+            // locals as live. This defeats the purpose of the analysis for such bindings.
+            StatementKind::FakeRead(box (
+                FakeReadCause::ForLet(None) | FakeReadCause::ForGuardBinding,
+                _,
+            )) => return,
             // Handle self-assignment by restricting the read/write they do.
             StatementKind::Assign(box (ref dest, ref rvalue))
                 if self.self_assignment.contains(&location) =>

@@ -1,6 +1,7 @@
 mod diagnostic;
 mod diagnostic_builder;
 mod error;
+mod message;
 mod subdiagnostic;
 mod utils;
 

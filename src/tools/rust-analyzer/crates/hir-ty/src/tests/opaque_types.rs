@@ -1,5 +1,7 @@
 use expect_test::expect;
 
+use crate::tests::check_infer;
+
 use super::{check_infer_with_mismatches, check_no_mismatches, check_types};
 
 #[test]
@@ -174,5 +176,39 @@ fn main() {
     is_send(foo());
 }
         "#,
+    );
+}
+
+#[test]
+fn regression_21455() {
+    check_infer(
+        r#"
+//- minicore: copy
+
+struct Vec<T>(T);
+impl<T> Vec<T> {
+    pub fn new() -> Self { loop {} }
+}
+
+pub struct Miku {}
+
+impl Miku {
+    pub fn all_paths_to(&self) -> impl Copy {
+        Miku {
+            full_paths: Vec::new(),
+        }
+    }
+}
+    "#,
+        expect![[r#"
+            61..72 '{ loop {} }': Vec<T>
+            63..70 'loop {}': !
+            68..70 '{}': ()
+            133..137 'self': &'? Miku
+            152..220 '{     ...     }': Miku
+            162..214 'Miku {...     }': Miku
+            193..201 'Vec::new': fn new<{unknown}>() -> Vec<{unknown}>
+            193..203 'Vec::new()': Vec<{unknown}>
+        "#]],
     );
 }

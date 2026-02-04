@@ -703,6 +703,7 @@ fn list_test_macros() {
         fn_like_mk_idents [Bang]
         fn_like_span_join [Bang]
         fn_like_span_ops [Bang]
+        fn_like_span_line_column [Bang]
         attr_noop [Attr]
         attr_panic [Attr]
         attr_error [Attr]
@@ -711,4 +712,18 @@ fn list_test_macros() {
         DerivePanic [CustomDerive]
         DeriveError [CustomDerive]"#]]
     .assert_eq(&res);
+}
+
+#[test]
+fn test_fn_like_span_line_column() {
+    assert_expand_with_callback(
+        "fn_like_span_line_column",
+        // Input text with known position: "hello" starts at offset 1 (line 2, column 1 in 1-based)
+        "
+hello",
+        expect![[r#"
+            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer 2
+            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer 1
+        "#]],
+    );
 }

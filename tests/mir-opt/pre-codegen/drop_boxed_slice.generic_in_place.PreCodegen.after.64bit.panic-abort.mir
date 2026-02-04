@@ -8,9 +8,8 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
             let _2: std::ptr::NonNull<[T]>;
             let mut _3: *mut [T];
             let mut _4: *const [T];
-            let _11: ();
+            let _10: ();
             scope 3 {
-                let _8: std::ptr::alignment::AlignmentEnum;
                 scope 4 {
                     scope 17 (inlined Layout::size) {
                     }
@@ -27,17 +26,21 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                     scope 23 (inlined <std::alloc::Global as Allocator>::deallocate) {
                         scope 24 (inlined std::alloc::Global::deallocate_impl) {
                             scope 25 (inlined std::alloc::Global::deallocate_impl_runtime) {
-                                let mut _9: *mut u8;
+                                let mut _8: *mut u8;
                                 scope 26 (inlined Layout::size) {
                                 }
                                 scope 27 (inlined NonNull::<u8>::as_ptr) {
                                 }
                                 scope 28 (inlined std::alloc::dealloc) {
-                                    let mut _10: usize;
+                                    let mut _9: usize;
                                     scope 29 (inlined Layout::size) {
                                     }
                                     scope 30 (inlined Layout::align) {
                                         scope 31 (inlined std::ptr::Alignment::as_usize) {
+                                            scope 32 (inlined std::ptr::Alignment::as_nonzero) {
+                                            }
+                                            scope 33 (inlined NonZero::<usize>::get) {
+                                            }
                                         }
                                     }
                                 }
@@ -82,7 +85,6 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
         StorageLive(_4);
         _3 = copy _2 as *mut [T] (Transmute);
         _4 = copy _2 as *const [T] (Transmute);
-        StorageLive(_7);
         _5 = std::intrinsics::size_of_val::<[T]>(move _4) -> [return: bb1, unwind unreachable];
     }
 
@@ -91,23 +93,21 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
         _6 = const <T as std::mem::SizedTypeProperties>::ALIGN;
         _7 = copy _6 as std::ptr::Alignment (Transmute);
         StorageDead(_6);
-        _8 = copy (_7.0: std::ptr::alignment::AlignmentEnum);
-        StorageDead(_7);
         StorageDead(_4);
         switchInt(copy _5) -> [0: bb4, otherwise: bb2];
     }
 
     bb2: {
+        StorageLive(_8);
+        _8 = copy _3 as *mut u8 (PtrToPtr);
         StorageLive(_9);
-        _9 = copy _3 as *mut u8 (PtrToPtr);
-        StorageLive(_10);
-        _10 = discriminant(_8);
-        _11 = alloc::alloc::__rust_dealloc(move _9, move _5, move _10) -> [return: bb3, unwind unreachable];
+        _9 = copy _7 as usize (Transmute);
+        _10 = alloc::alloc::__rust_dealloc(move _8, move _5, move _9) -> [return: bb3, unwind unreachable];
     }
 
     bb3: {
-        StorageDead(_10);
         StorageDead(_9);
+        StorageDead(_8);
         goto -> bb4;
     }
 

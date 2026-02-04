@@ -224,6 +224,10 @@ hir_analysis_impl_not_marked_default = `{$ident}` specializes an item from a par
 hir_analysis_impl_not_marked_default_err = `{$ident}` specializes an item from a parent `impl`, but that item is not marked `default`
     .note = parent implementation is in crate `{$cname}`
 
+hir_analysis_impl_unpin_for_pin_projected_type = explicit impls for the `Unpin` trait are not permitted for structurally pinned types
+    .label = impl of `Unpin` not allowed
+    .help = `{$adt_name}` is structurally pinned because it is marked as `#[pin_v2]`
+
 hir_analysis_inherent_dyn = cannot define inherent `impl` for a dyn auto trait
     .label = impl requires at least one non-auto trait
     .note = define and implement a new trait or type instead

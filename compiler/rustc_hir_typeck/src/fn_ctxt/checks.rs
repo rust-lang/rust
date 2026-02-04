@@ -2647,7 +2647,15 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
                 // To suggest a multipart suggestion when encountering `foo(1, "")` where the def
                 // was `fn foo(())`.
                 let (_, expected_ty) = self.formal_and_expected_inputs[expected_idx];
-                suggestions.push((*arg_span, self.ty_to_snippet(expected_ty, expected_idx)));
+                // Check if the new suggestion would overlap with any existing suggestion.
+                // This can happen when we have both removal suggestions (which may include
+                // adjacent commas) and type replacement suggestions for the same span.
+                let dominated = suggestions
+                    .iter()
+                    .any(|(span, _)| span.contains(*arg_span) || arg_span.overlaps(*span));
+                if !dominated {
+                    suggestions.push((*arg_span, self.ty_to_snippet(expected_ty, expected_idx)));
+                }
             }
         }
     }

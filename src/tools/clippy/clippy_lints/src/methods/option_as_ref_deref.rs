@@ -58,7 +58,7 @@ pub(super) fn check(
                             .iter()
                             .map(|x| &x.kind)
                             .collect::<Box<[_]>>()
-                        && let [ty::adjustment::Adjust::Deref(None), ty::adjustment::Adjust::Borrow(_)] = *adj
+                        && let [ty::adjustment::Adjust::Deref(ty::adjustment::DerefAdjustKind::Builtin), ty::adjustment::Adjust::Borrow(_)] = *adj
                         && let method_did = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id).unwrap()
                         && let Some(method_name) = cx.tcx.get_diagnostic_name(method_did)
                     {

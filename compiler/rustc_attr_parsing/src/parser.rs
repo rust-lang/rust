@@ -15,7 +15,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, PResult};
 use rustc_hir::{self as hir, AttrPath};
 use rustc_parse::exp;
-use rustc_parse::parser::{ForceCollect, Parser, PathStyle, token_descr};
+use rustc_parse::parser::{ForceCollect, Parser, PathStyle, Recovery, token_descr};
 use rustc_session::errors::create_lit_error;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -121,7 +121,7 @@ impl ArgParser {
                         &args.tokens,
                         args.dspan.entire(),
                         psess,
-                        ShouldEmit::ErrorsAndLints { recover: false },
+                        ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden },
                     ) {
                         Ok(p) => return Some(ArgParser::List(p)),
                         Err(e) => {
@@ -373,7 +373,10 @@ fn expr_to_lit<'sess>(
             }
             Err(err) => {
                 let err = create_lit_error(psess, err, token_lit, expr.span);
-                if matches!(should_emit, ShouldEmit::ErrorsAndLints { recover: false }) {
+                if matches!(
+                    should_emit,
+                    ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden }
+                ) {
                     Err(err)
                 } else {
                     let lit = MetaItemLit {
@@ -431,7 +434,10 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         if !lit.kind.is_unsuffixed() {
             // Emit error and continue, we can still parse the attribute as if the suffix isn't there
             let err = self.parser.dcx().create_err(SuffixedLiteralInAttribute { span: lit.span });
-            if matches!(self.should_emit, ShouldEmit::ErrorsAndLints { recover: false }) {
+            if matches!(
+                self.should_emit,
+                ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden }
+            ) {
                 return Err(err);
             } else {
                 self.should_emit.emit_err(err)
@@ -569,6 +575,10 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         should_emit: ShouldEmit,
     ) -> PResult<'sess, MetaItemListParser> {
         let mut parser = Parser::new(psess, tokens, None);
+        if let ShouldEmit::ErrorsAndLints { recovery } = should_emit {
+            parser = parser.recovery(recovery);
+        }
+
         let mut this = MetaItemListParserContext { parser: &mut parser, should_emit };
 
         // Presumably, the majority of the time there will only be one attr.

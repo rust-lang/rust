@@ -68,6 +68,7 @@ pub(crate) struct ProjectJsonTargetSpec {
     pub(crate) label: String,
     pub(crate) target_kind: TargetKind,
     pub(crate) shell_runnables: Vec<Runnable>,
+    pub(crate) project_root: AbsPathBuf,
 }
 
 impl ProjectJsonTargetSpec {
@@ -76,7 +77,16 @@ impl ProjectJsonTargetSpec {
             RunnableKind::Bin => {
                 for runnable in &self.shell_runnables {
                     if matches!(runnable.kind, project_model::project_json::RunnableKind::Run) {
-                        return Some(runnable.clone());
+                        let mut runnable = runnable.clone();
+
+                        let replaced_args: Vec<_> = runnable
+                            .args
+                            .iter()
+                            .map(|arg| arg.replace("{label}", &self.label))
+                            .collect();
+                        runnable.args = replaced_args;
+
+                        return Some(runnable);
                     }
                 }
 

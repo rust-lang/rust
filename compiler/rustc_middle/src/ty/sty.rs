@@ -1336,25 +1336,17 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    pub fn pinned_ref(self) -> Option<(Ty<'tcx>, ty::Mutability)> {
-        if let Adt(def, args) = self.kind()
-            && def.is_pin()
-            && let &ty::Ref(_, ty, mutbl) = args.type_at(0).kind()
-        {
-            return Some((ty, mutbl));
-        }
-        None
-    }
-
-    pub fn maybe_pinned_ref(self) -> Option<(Ty<'tcx>, ty::Pinnedness, ty::Mutability)> {
-        match *self.kind() {
+    pub fn maybe_pinned_ref(
+        self,
+    ) -> Option<(Ty<'tcx>, ty::Pinnedness, ty::Mutability, Region<'tcx>)> {
+        match self.kind() {
             Adt(def, args)
                 if def.is_pin()
-                    && let ty::Ref(_, ty, mutbl) = *args.type_at(0).kind() =>
+                    && let &ty::Ref(region, ty, mutbl) = args.type_at(0).kind() =>
             {
-                Some((ty, ty::Pinnedness::Pinned, mutbl))
+                Some((ty, ty::Pinnedness::Pinned, mutbl, region))
             }
-            ty::Ref(_, ty, mutbl) => Some((ty, ty::Pinnedness::Not, mutbl)),
+            &Ref(region, ty, mutbl) => Some((ty, ty::Pinnedness::Not, mutbl, region)),
             _ => None,
         }
     }

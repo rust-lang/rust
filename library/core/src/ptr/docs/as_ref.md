@@ -1,6 +1,7 @@
 Returns `None` if the pointer is null, or else returns a shared reference to
 the value wrapped in `Some`. If the value may be uninitialized, [`as_uninit_ref`]
-must be used instead.
+must be used instead. If the value is known to be non-null, [`as_ref_unchecked`]
+can be used instead.
 
 # Safety
 
@@ -14,6 +15,5 @@ determined to be null or not. See [`is_null`] for more information.
 
 # Null-unchecked version
 
-If you are sure the pointer can never be null and are looking for some kind of
-`as_ref_unchecked` that returns the `&T` instead of `Option<&T>`, know that you can
-dereference the pointer directly.
+If you are sure the pointer can never be null, you can use `as_ref_unchecked` which returns
+`&mut T` instead of `Option<&mut T>`.

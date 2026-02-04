@@ -423,6 +423,10 @@ macro_rules! __known_path {
     (core::ops::RangeTo) => {};
     (core::ops::RangeToInclusive) => {};
     (core::ops::RangeInclusive) => {};
+    (core::range::Range) => {};
+    (core::range::RangeFrom) => {};
+    (core::range::RangeInclusive) => {};
+    (core::range::RangeToInclusive) => {};
     (core::future::Future) => {};
     (core::future::IntoFuture) => {};
     (core::fmt::Debug) => {};

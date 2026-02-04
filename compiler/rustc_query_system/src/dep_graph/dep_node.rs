@@ -237,8 +237,9 @@ pub struct DepKindVTable<Tcx: DepContext> {
     /// cached within one compiler invocation.
     pub is_eval_always: bool,
 
-    /// Whether the query key can be recovered from the hashed fingerprint.
-    /// See [DepNodeParams] trait for the behaviour of each key type.
+    /// Indicates whether and how the query key can be recovered from its hashed fingerprint.
+    ///
+    /// The [`DepNodeParams`] trait determines the fingerprint style for each key type.
     pub fingerprint_style: FingerprintStyle,
 
     /// The red/green evaluation system will try to mark a specific DepNode in the

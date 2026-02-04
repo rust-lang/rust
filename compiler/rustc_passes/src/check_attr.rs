@@ -67,6 +67,13 @@ struct DiagnosticOnConstOnlyForTraitImpls {
     item_span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(passes_diagnostic_diagnostic_on_const_only_for_non_const_trait_impls)]
+struct DiagnosticOnConstOnlyForNonConstTraitImpls {
+    #[label]
+    item_span: Span,
+}
+
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
@@ -299,6 +306,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDumpVtable(..)
                     | AttributeKind::RustcDynIncompatibleTrait(..)
                     | AttributeKind::RustcHasIncoherentInherentImpls
+                    | AttributeKind::RustcHiddenTypeOfOpaques
                     | AttributeKind::RustcLayout(..)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
                     | AttributeKind::RustcLayoutScalarValidRangeStart(..)
@@ -308,6 +316,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcLintUntrackedQueryInformation
                     | AttributeKind::RustcMacroTransparency(_)
                     | AttributeKind::RustcMain
+                    | AttributeKind::RustcMir(_)
                     | AttributeKind::RustcNeverReturnsNullPointer
                     | AttributeKind::RustcNoImplicitAutorefs
                     | AttributeKind::RustcNonConstTraitMethod
@@ -318,6 +327,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcParenSugar(..)
                     | AttributeKind::RustcPassByValue (..)
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
+                    | AttributeKind::RustcPreserveUbChecks
                     | AttributeKind::RustcReallocator
                     | AttributeKind::RustcScalableVector { .. }
                     | AttributeKind::RustcShouldNotBeCalledOnConstItems(..)
@@ -390,7 +400,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_capture_analysis
                             | sym::rustc_regions
                             | sym::rustc_strict_coherence
-                            | sym::rustc_hidden_type_of_opaques
                             | sym::rustc_mir
                             | sym::rustc_effective_visibility
                             | sym::rustc_outlives
@@ -406,8 +415,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::register_tool
                             | sym::rustc_no_implicit_bounds
                             | sym::test_runner
-                            | sym::reexport_test_harness_main
-                            | sym::rustc_preserve_ub_checks,
+                            | sym::reexport_test_harness_main,
                             ..
                         ] => {}
                         [name, rest@..] => {
@@ -629,7 +637,16 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if target == (Target::Impl { of_trait: true }) {
             match item.unwrap() {
                 ItemLike::Item(it) => match it.expect_impl().constness {
-                    Constness::Const => {}
+                    Constness::Const => {
+                        let item_span = self.tcx.hir_span(hir_id);
+                        self.tcx.emit_node_span_lint(
+                            MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+                            hir_id,
+                            attr_span,
+                            DiagnosticOnConstOnlyForNonConstTraitImpls { item_span },
+                        );
+                        return;
+                    }
                     Constness::NotConst => return,
                 },
                 ItemLike::ForeignItem => {}

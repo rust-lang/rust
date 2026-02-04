@@ -9,7 +9,7 @@ trait Bar {}
 trait Baz {}
 trait Boo {}
 
-#[diagnostic::do_not_recommend(not_accepted)]
+#[diagnostic::do_not_recommend(if, crate, do yeet, false, dyn, abstract, gen, not_accepted)]
 //~^ WARNING `#[diagnostic::do_not_recommend]` does not expect any arguments
 impl<T> Foo for T where T: Send {}
 

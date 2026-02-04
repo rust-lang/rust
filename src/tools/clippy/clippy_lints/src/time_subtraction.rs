@@ -85,7 +85,7 @@ impl LateLintPass<'_> for UncheckedTimeSubtraction {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         let (lhs, rhs) = match expr.kind {
             ExprKind::Binary(op, lhs, rhs) if matches!(op.node, BinOpKind::Sub,) => (lhs, rhs),
-            ExprKind::MethodCall(fn_name, lhs, [rhs], _) if cx.ty_based_def(expr).is_diag_item(cx, sym::sub) => {
+            ExprKind::MethodCall(_, lhs, [rhs], _) if cx.ty_based_def(expr).is_diag_item(cx, sym::sub) => {
                 (lhs, rhs)
             },
             _ => return,

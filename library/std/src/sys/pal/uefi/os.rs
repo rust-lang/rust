@@ -5,9 +5,12 @@ use super::{helpers, unsupported_err};
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::os::uefi;
+use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 use crate::path::{self, PathBuf};
 use crate::ptr::NonNull;
 use crate::{fmt, io};
+
+const PATHS_SEP: u16 = b';' as u16;
 
 pub fn getcwd() -> io::Result<PathBuf> {
     match helpers::open_shell() {
@@ -54,17 +57,34 @@ impl<'a> Iterator for SplitPaths<'a> {
 #[derive(Debug)]
 pub struct JoinPathsError;
 
-pub fn join_paths<I, T>(_paths: I) -> Result<OsString, JoinPathsError>
+// UEFI Shell Path variable is defined in Section 3.6.1
+// [UEFI Shell Specification](https://uefi.org/sites/default/files/resources/UEFI_Shell_2_2.pdf).
+pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
 where
     I: Iterator<Item = T>,
     T: AsRef<OsStr>,
 {
-    Err(JoinPathsError)
+    let mut joined = Vec::new();
+
+    for (i, path) in paths.enumerate() {
+        if i > 0 {
+            joined.push(PATHS_SEP)
+        }
+
+        let v = path.as_ref().encode_wide().collect::<Vec<u16>>();
+        if v.contains(&PATHS_SEP) {
+            return Err(JoinPathsError);
+        }
+
+        joined.extend_from_slice(&v);
+    }
+
+    Ok(OsString::from_wide(&joined))
 }
 
 impl fmt::Display for JoinPathsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        "not supported on this platform yet".fmt(f)
+        "path segment contains `;`".fmt(f)
     }
 }
 

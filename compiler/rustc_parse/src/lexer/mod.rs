@@ -623,7 +623,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             self.dcx().emit_err(errors::FrontmatterInvalidInfostring { span });
         }
 
-        let last_line_start = real_s.rfind('\n').map_or(0, |i| i + 1);
+        let last_line_start = real_s.rfind('\n').map_or(line_end, |i| i + 1);
 
         let content = &real_s[line_end..last_line_start];
         if let Some(cr_offset) = content.find('\r') {

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.5 - 2026-01-08
 - Optimise `SmolStr::clone` 4-5x speedup inline, 0.5x heap (slow down).
 
 ## 0.3.4 - 2025-10-23

@@ -42,29 +42,28 @@ For custom-built toolchains or environments not using rustup, additional configu
 
 #### Troubleshooting Steps
 
-1. **Check LLVM installation**: Verify LLVM is installed and accessible
-2. **Configure library paths**: You may need to set environment variables:
-   ```text
+1. Verify LLVM is installed and accessible
+2. Ensure that library paths are set:
+   ```sh
    export LD_LIBRARY_PATH=/path/to/llvm/lib:$LD_LIBRARY_PATH
    ```
-3. **Check version compatibility**: Ensure your LLVM version is compatible with your Rust toolchain
+3. Ensure your LLVM version is compatible with your Rust toolchain
 
-### Configuring `rust-analyzer` for Out-of-Tree Projects
+### Configuring `rust-analyzer` for out-of-tree projects
 
 When developing out-of-tree projects that use `rustc_private` crates, you can configure `rust-analyzer` to recognize these crates.
 
 #### Configuration Steps
 
-1. **Set rust-analyzer configuration**
-   Configure `rust-analyzer.rustc.source` to `"discover"` in your editor settings.  
+1. Configure `rust-analyzer.rustc.source` to `"discover"` in your editor settings.  
    For VS Code, add to `rust_analyzer_settings.json`:
    ```json
    {
        "rust-analyzer.rustc.source": "discover"
    }
    ```
-2. **Add metadata to Cargo.toml**  
-   Add the following to the `Cargo.toml` of every crate that uses `rustc_private`:
+
+2. Add the following to the `Cargo.toml` of every crate that uses `rustc_private`:
    ```toml
    [package.metadata.rust-analyzer]
    rustc_private = true
@@ -74,4 +73,6 @@ This configuration allows `rust-analyzer` to properly recognize and provide IDE 
 
 ### Additional Resources
 
-- [GitHub Issue #137421](https://github.com/rust-lang/rust/issues/137421): Explains that `rustc_private` linker failures often occur because `llvm-tools` is not installed
+- [GitHub Issue #137421] explains that `rustc_private` linker failures often occur because `llvm-tools` is not installed
+
+[GitHub Issue #137421]: https://github.com/rust-lang/rust/issues/137421
