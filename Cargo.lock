@@ -3873,7 +3873,6 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
- "rustc_fluent_macro",
  "rustc_hir",
  "rustc_lexer",
  "rustc_lint_defs",

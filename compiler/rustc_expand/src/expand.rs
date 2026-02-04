@@ -19,7 +19,7 @@ use rustc_attr_parsing::{
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::PResult;
+use rustc_errors::{PResult, inline_fluent};
 use rustc_feature::Features;
 use rustc_hir::Target;
 use rustc_hir::def::MacroKinds;
@@ -42,7 +42,6 @@ use crate::errors::{
     RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported, UnsupportedKeyValue,
     WrongFragmentKind,
 };
-use crate::fluent_generated;
 use crate::mbe::diagnostics::annotate_err_with_kind;
 use crate::module::{
     DirOwnership, ParsedExternalMod, mod_dir_path, mod_file_path_from_attr, parse_external_mod,
@@ -1052,7 +1051,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             self.sess,
                             sym::proc_macro_hygiene,
                             item.span,
-                            fluent_generated::expand_file_modules_in_proc_macro_input_are_unstable,
+                            inline_fluent!("file modules in proc macro input are unstable"),
                         )
                         .emit();
                     }
