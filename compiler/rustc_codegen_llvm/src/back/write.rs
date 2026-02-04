@@ -38,7 +38,7 @@ use crate::builder::SBuilder;
 use crate::builder::gpu_offload::scalar_width;
 use crate::common::AsCCharPtr;
 use crate::errors::{
-    CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
+    CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnsupportedCompression,
     WithLlvmError, WriteBytecode,
 };
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
@@ -259,7 +259,7 @@ pub(crate) fn target_machine_factory(
             if llvm::LLVMRustLLVMHasZlibCompression() {
                 llvm::CompressionKind::Zlib
             } else {
-                sess.dcx().emit_warn(UnknownCompression { algorithm: "zlib" });
+                sess.dcx().emit_warn(UnsupportedCompression { algorithm: "zlib" });
                 llvm::CompressionKind::None
             }
         }
@@ -267,7 +267,7 @@ pub(crate) fn target_machine_factory(
             if llvm::LLVMRustLLVMHasZstdCompression() {
                 llvm::CompressionKind::Zstd
             } else {
-                sess.dcx().emit_warn(UnknownCompression { algorithm: "zstd" });
+                sess.dcx().emit_warn(UnsupportedCompression { algorithm: "zstd" });
                 llvm::CompressionKind::None
             }
         }
