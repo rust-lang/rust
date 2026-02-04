@@ -909,7 +909,7 @@ pub(crate) struct RawDylibOnlyWindows {
 
 #[derive(Diagnostic)]
 #[diag(
-    "invalid linking modifier syntax, expected '+' or '-' prefix before one of: bundle, verbatim, whole-archive, as-needed"
+    "invalid linking modifier syntax, expected '+' or '-' prefix before one of: bundle, verbatim, whole-archive, as-needed, export-symbols"
 )]
 pub(crate) struct InvalidLinkModifier {
     #[primary_span]
@@ -934,6 +934,13 @@ pub(crate) struct ImportNameTypeX86 {
 #[derive(Diagnostic)]
 #[diag("linking modifier `bundle` is only compatible with `static` linking kind")]
 pub(crate) struct BundleNeedsStatic {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("linking modifier `export-symbols` is only compatible with `static` linking kind")]
+pub(crate) struct ExportSymbolsNeedsStatic {
     #[primary_span]
     pub span: Span,
 }
