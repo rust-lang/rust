@@ -7,11 +7,13 @@
 #[allow(unused_imports)]
 use io::{Read, Write};
 
+#[allow(unused_imports)]
 use super::platform::fs::MetadataExt as _;
 // Used for `File::read` on intra-doc links
 use crate::ffi::OsStr;
 use crate::fs::{self, OpenOptions, Permissions};
 use crate::io::BorrowedCursor;
+#[cfg(not(target_os = "qurt"))]
 use crate::os::unix::io::{AsFd, AsRawFd};
 use crate::path::Path;
 use crate::sealed::Sealed;
@@ -1118,6 +1120,7 @@ impl DirBuilderExt for fs::DirBuilder {
 ///     Ok(())
 /// }
 /// ```
+#[cfg(not(target_os = "qurt"))]
 #[stable(feature = "unix_chown", since = "1.73.0")]
 pub fn chown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
     sys::fs::chown(dir.as_ref(), uid.unwrap_or(u32::MAX), gid.unwrap_or(u32::MAX))
@@ -1138,6 +1141,7 @@ pub fn chown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io::
 ///     Ok(())
 /// }
 /// ```
+#[cfg(not(target_os = "qurt"))]
 #[stable(feature = "unix_chown", since = "1.73.0")]
 pub fn fchown<F: AsFd>(fd: F, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
     sys::fs::fchown(fd.as_fd().as_raw_fd(), uid.unwrap_or(u32::MAX), gid.unwrap_or(u32::MAX))
@@ -1158,6 +1162,7 @@ pub fn fchown<F: AsFd>(fd: F, uid: Option<u32>, gid: Option<u32>) -> io::Result<
 ///     Ok(())
 /// }
 /// ```
+#[cfg(not(target_os = "qurt"))]
 #[stable(feature = "unix_chown", since = "1.73.0")]
 pub fn lchown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
     sys::fs::lchown(dir.as_ref(), uid.unwrap_or(u32::MAX), gid.unwrap_or(u32::MAX))
@@ -1184,6 +1189,7 @@ pub fn lchown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io:
 /// ```
 #[stable(feature = "unix_chroot", since = "1.56.0")]
 #[cfg(not(target_os = "fuchsia"))]
+#[cfg(not(target_os = "qurt"))]
 pub fn chroot<P: AsRef<Path>>(dir: P) -> io::Result<()> {
     sys::fs::chroot(dir.as_ref())
 }
@@ -1220,6 +1226,7 @@ pub fn chroot<P: AsRef<Path>>(dir: P) -> io::Result<()> {
 /// # }
 /// ```
 #[unstable(feature = "unix_mkfifo", issue = "139324")]
+#[cfg(not(target_os = "qurt"))]
 pub fn mkfifo<P: AsRef<Path>>(path: P, permissions: Permissions) -> io::Result<()> {
     sys::fs::mkfifo(path.as_ref(), permissions.mode())
 }

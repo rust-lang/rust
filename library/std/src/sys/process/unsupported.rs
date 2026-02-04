@@ -5,7 +5,7 @@ use crate::num::NonZero;
 use crate::path::Path;
 use crate::process::StdioPipes;
 use crate::sys::fs::File;
-use crate::sys::unsupported;
+use crate::sys::unsupported::unsupported;
 use crate::{fmt, io};
 
 ////////////////////////////////////////////////////////////////////////////////

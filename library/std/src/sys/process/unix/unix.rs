@@ -405,7 +405,7 @@ impl Command {
             *sys::env::environ() = envp.as_ptr();
         }
 
-        libc::execvp(self.get_program_cstr().as_ptr(), self.get_argv().as_ptr());
+        libc::execvp(self.get_program_cstr().as_ptr(), self.get_argv().as_ptr() as *const *mut _);
         Err(io::Error::last_os_error())
     }
 

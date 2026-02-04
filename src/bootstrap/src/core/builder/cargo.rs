@@ -299,6 +299,7 @@ impl Cargo {
                 && !target.contains("cygwin")
                 && !target.contains("aix")
                 && !target.contains("xous")
+                && !target.contains("qurt")
             {
                 self.rustflags.arg("-Clink-args=-Wl,-z,origin");
                 Some(format!("-Wl,-rpath,$ORIGIN/../{libdir}"))

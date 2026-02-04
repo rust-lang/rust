@@ -5,6 +5,9 @@ use libc::c_char;
 pub use super::common::Env;
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::io;
+#[cfg(target_os = "qurt")]
+use crate::os::qurt::prelude::*;
+#[cfg(not(target_os = "qurt"))]
 use crate::os::unix::prelude::*;
 use crate::sync::{PoisonError, RwLock};
 use crate::sys::cvt;

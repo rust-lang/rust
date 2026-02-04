@@ -217,7 +217,8 @@ fn replace_stdio_fd(this: BorrowedFd<'_>, other: OwnedFd) -> io::Result<()> {
             target_arch = "wasm32",
             target_os = "hermit",
             target_os = "trusty",
-            target_os = "motor"
+            target_os = "motor",
+            target_os = "qurt"
         )) => {
             cvt(unsafe {libc::dup2(other.as_raw_fd(), this.as_raw_fd())}).map(|_| ())
         }

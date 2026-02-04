@@ -3,7 +3,10 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
 #[cfg(any(
-    all(target_family = "unix", not(any(target_os = "espidf", target_os = "vita"))),
+    all(
+        target_family = "unix",
+        not(any(target_os = "espidf", target_os = "vita", target_os = "qurt"))
+    ),
     target_family = "windows",
     target_os = "hermit",
     target_os = "motor",
@@ -15,7 +18,7 @@ mod common;
 
 cfg_select! {
     any(
-        all(target_family = "unix", not(any(target_os = "espidf", target_os = "vita"))),
+        all(target_family = "unix", not(any(target_os = "espidf", target_os = "vita", target_os = "qurt"))),
         target_os = "hermit",
     ) => {
         mod unix;

@@ -1,5 +1,5 @@
 cfg_select! {
-    target_family = "unix" => {
+    all(target_family = "unix", not(target_os = "qurt")) => {
         mod unix;
         use unix as imp;
     }
@@ -39,7 +39,8 @@ pub use imp::{
             target_os = "espidf",
             target_os = "horizon",
             target_os = "vita",
-            target_os = "nuttx"
+            target_os = "nuttx",
+            target_os = "qurt"
         ))
     ),
     target_os = "windows",
@@ -77,7 +78,8 @@ pub fn output(cmd: &mut Command) -> crate::io::Result<(ExitStatus, Vec<u8>, Vec<
             target_os = "espidf",
             target_os = "horizon",
             target_os = "vita",
-            target_os = "nuttx"
+            target_os = "nuttx",
+            target_os = "qurt"
         ))
     ),
     target_os = "windows",

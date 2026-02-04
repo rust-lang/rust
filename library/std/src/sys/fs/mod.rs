@@ -6,14 +6,14 @@ use crate::path::{Path, PathBuf};
 pub mod common;
 
 cfg_select! {
-    any(target_family = "unix", target_os = "wasi") => {
+    any(target_family = "unix", target_os = "wasi", target_os = "qurt") => {
         mod unix;
         use unix as imp;
-        #[cfg(not(target_os = "wasi"))]
+        #[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
         pub use unix::{chown, fchown, lchown, mkfifo};
-        #[cfg(not(any(target_os = "fuchsia", target_os = "wasi")))]
+        #[cfg(not(any(target_os = "fuchsia", target_os = "wasi", target_os = "qurt")))]
         pub use unix::chroot;
-        #[cfg(not(target_os = "wasi"))]
+        #[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
         pub(crate) use unix::debug_assert_fd_is_open;
         #[cfg(any(target_os = "linux", target_os = "android"))]
         pub(super) use unix::CachedFileMetadata;
@@ -52,7 +52,12 @@ cfg_select! {
 }
 
 // FIXME: Replace this with platform-specific path conversion functions.
-#[cfg(not(any(target_family = "unix", target_os = "windows", target_os = "wasi")))]
+#[cfg(not(any(
+    target_family = "unix",
+    target_os = "windows",
+    target_os = "wasi",
+    target_os = "qurt"
+)))]
 #[inline]
 pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&Path) -> io::Result<T>) -> io::Result<T> {
     f(path)
@@ -124,11 +129,15 @@ pub fn set_permissions(path: &Path, perm: FilePermissions) -> io::Result<()> {
 pub fn set_permissions_nofollow(path: &Path, perm: crate::fs::Permissions) -> io::Result<()> {
     use crate::fs::OpenOptions;
 
+    #[cfg_attr(
+        any(target_os = "espidf", target_os = "horizon", target_os = "qurt"),
+        allow(unused_mut)
+    )]
     let mut options = OpenOptions::new();
 
-    // ESP-IDF and Horizon do not support O_NOFOLLOW, so we skip setting it.
+    // ESP-IDF, Horizon, and QuRT do not support O_NOFOLLOW, so we skip setting it.
     // Their filesystems do not have symbolic links, so no special handling is required.
-    #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
+    #[cfg(not(any(target_os = "espidf", target_os = "horizon", target_os = "qurt")))]
     {
         use crate::os::unix::fs::OpenOptionsExt;
         options.custom_flags(libc::O_NOFOLLOW);
