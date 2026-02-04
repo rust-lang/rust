@@ -30,11 +30,11 @@ use rustc_query_system::query::{
     QueryCache, QueryContext, QueryDispatcher, QueryJobId, QueryMap, QuerySideEffect,
     QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra, force_query,
 };
-use rustc_query_system::{QueryOverflow, QueryOverflowNote};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::def_id::LOCAL_CRATE;
 
 use crate::QueryDispatcherUnerased;
+use crate::error::{QueryOverflow, QueryOverflowNote};
 
 /// Implements [`QueryContext`] for use by [`rustc_query_system`], since that
 /// crate does not have direct access to [`TyCtxt`].

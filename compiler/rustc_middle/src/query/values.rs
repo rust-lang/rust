@@ -7,7 +7,6 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_query_system::Value;
 use rustc_query_system::query::{CycleError, report_cycle};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span};
@@ -16,7 +15,27 @@ use crate::dep_graph::dep_kinds;
 use crate::query::plumbing::CyclePlaceholder;
 use crate::ty::{self, Representability, Ty, TyCtxt};
 
-impl<'tcx> Value<TyCtxt<'tcx>> for Ty<'_> {
+pub trait Value<'tcx>: Sized {
+    fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle_error: &CycleError, guar: ErrorGuaranteed)
+    -> Self;
+}
+
+impl<'tcx, T> Value<'tcx> for T {
+    default fn from_cycle_error(
+        tcx: TyCtxt<'tcx>,
+        cycle_error: &CycleError,
+        _guar: ErrorGuaranteed,
+    ) -> T {
+        tcx.sess.dcx().abort_if_errors();
+        bug!(
+            "<{} as Value>::from_cycle_error called without errors: {:#?}",
+            std::any::type_name::<T>(),
+            cycle_error.cycle,
+        );
+    }
+}
+
+impl<'tcx> Value<'tcx> for Ty<'_> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &CycleError, guar: ErrorGuaranteed) -> Self {
         // SAFETY: This is never called when `Self` is not `Ty<'tcx>`.
         // FIXME: Represent the above fact in the trait system somehow.
@@ -24,13 +43,13 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Ty<'_> {
     }
 }
 
-impl<'tcx> Value<TyCtxt<'tcx>> for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
+impl<'tcx> Value<'tcx> for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
     fn from_cycle_error(_tcx: TyCtxt<'tcx>, _: &CycleError, guar: ErrorGuaranteed) -> Self {
         Err(CyclePlaceholder(guar))
     }
 }
 
-impl<'tcx> Value<TyCtxt<'tcx>> for ty::SymbolName<'_> {
+impl<'tcx> Value<'tcx> for ty::SymbolName<'_> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &CycleError, _guar: ErrorGuaranteed) -> Self {
         // SAFETY: This is never called when `Self` is not `SymbolName<'tcx>`.
         // FIXME: Represent the above fact in the trait system somehow.
@@ -42,7 +61,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::SymbolName<'_> {
     }
 }
 
-impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
+impl<'tcx> Value<'tcx> for ty::Binder<'_, ty::FnSig<'_>> {
     fn from_cycle_error(
         tcx: TyCtxt<'tcx>,
         cycle_error: &CycleError,
@@ -76,7 +95,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
     }
 }
 
-impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
+impl<'tcx> Value<'tcx> for Representability {
     fn from_cycle_error(
         tcx: TyCtxt<'tcx>,
         cycle_error: &CycleError,
@@ -112,7 +131,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
     }
 }
 
-impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<'_, Ty<'_>> {
+impl<'tcx> Value<'tcx> for ty::EarlyBinder<'_, Ty<'_>> {
     fn from_cycle_error(
         tcx: TyCtxt<'tcx>,
         cycle_error: &CycleError,
@@ -122,7 +141,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<'_, Ty<'_>> {
     }
 }
 
-impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<'_, ty::Binder<'_, ty::FnSig<'_>>> {
+impl<'tcx> Value<'tcx> for ty::EarlyBinder<'_, ty::Binder<'_, ty::FnSig<'_>>> {
     fn from_cycle_error(
         tcx: TyCtxt<'tcx>,
         cycle_error: &CycleError,
@@ -132,7 +151,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<'_, ty::Binder<'_, ty::FnSig<
     }
 }
 
-impl<'tcx> Value<TyCtxt<'tcx>> for &[ty::Variance] {
+impl<'tcx> Value<'tcx> for &[ty::Variance] {
     fn from_cycle_error(
         tcx: TyCtxt<'tcx>,
         cycle_error: &CycleError,
@@ -180,7 +199,7 @@ fn search_for_cycle_permutation<Q, T>(
     otherwise()
 }
 
-impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>> {
+impl<'tcx, T> Value<'tcx> for Result<T, &'_ ty::layout::LayoutError<'_>> {
     fn from_cycle_error(
         tcx: TyCtxt<'tcx>,
         cycle_error: &CycleError,
@@ -273,7 +292,7 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
 
 // item_and_field_ids should form a cycle where each field contains the
 // type in the next element in the list
-pub fn recursive_type_error(
+fn recursive_type_error(
     tcx: TyCtxt<'_>,
     mut item_and_field_ids: Vec<(LocalDefId, LocalDefId)>,
     representable_ids: &FxHashSet<LocalDefId>,

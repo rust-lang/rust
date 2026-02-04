@@ -23,13 +23,6 @@ impl<Key, Value> Default for Cache<Key, Value> {
     }
 }
 
-impl<Key, Value> Cache<Key, Value> {
-    /// Actually frees the underlying memory in contrast to what stdlib containers do on `clear`
-    pub fn clear(&self) {
-        *self.hashmap.borrow_mut() = Default::default();
-    }
-}
-
 impl<Key: Eq + Hash, Value: Clone> Cache<Key, Value> {
     pub fn get<Tcx: DepContext>(&self, key: &Key, tcx: Tcx) -> Option<Value> {
         Some(self.hashmap.borrow().get(key)?.get(tcx))
