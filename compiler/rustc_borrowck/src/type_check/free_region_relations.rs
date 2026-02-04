@@ -306,6 +306,10 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         // Because of #109628, we may have unexpected placeholders. Ignore them!
         // FIXME(#109628): panic in this case once the issue is fixed.
         let bounds = bounds.into_iter().filter(|bound| !bound.has_placeholders());
+
+        // FIXME: let it fail early to see which test fails under this.
+        self.see_if_bounds_contain_non_universals(bounds.clone());
+
         self.add_outlives_bounds(bounds);
 
         if !output_query_region_constraints.is_empty() {
@@ -395,6 +399,35 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 OutlivesBound::RegionSubAlias(r_a, alias_b) => {
                     self.region_bound_pairs
                         .insert(ty::OutlivesPredicate(GenericKind::Alias(alias_b), r_a));
+                }
+            }
+        }
+    }
+
+    // FIXME: remove this later, for debug purpose
+    fn see_if_bounds_contain_non_universals<I>(&mut self, outlives_bounds: I)
+    where
+        I: IntoIterator<Item = OutlivesBound<'tcx>>,
+    {
+        for outlives_bound in outlives_bounds {
+            match outlives_bound {
+                OutlivesBound::RegionSubRegion(r1, r2) => {
+                    let r1 = self.universal_regions.to_region_vid(r1);
+                    let r2 = self.universal_regions.to_region_vid(r2);
+
+                    assert!(self.universal_regions.is_universal_region(r1));
+                    assert!(self.universal_regions.is_universal_region(r2));
+                }
+
+                OutlivesBound::RegionSubParam(r_a, _param_b) => {
+                    let r1 = self.universal_regions.to_region_vid(r_a);
+                    assert!(self.universal_regions.is_universal_region(r1));
+                }
+
+                OutlivesBound::RegionSubAlias(r_a, _alias_b) => {
+                    // FIXME remove later? should always return universal vid?
+                    let r1 = self.universal_regions.to_region_vid(r_a);
+                    assert!(self.universal_regions.is_universal_region(r1));
                 }
             }
         }

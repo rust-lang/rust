@@ -58,7 +58,8 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
     // Inside mir borrowck, each computation starts with an empty list.
     assert!(
         ocx.infcx.inner.borrow().region_obligations().is_empty(),
-        "compute_implied_outlives_bounds assumes region obligations are empty before starting"
+        "compute_implied_outlives_bounds assumes region obligations are empty before starting {:?}",
+        ocx.infcx.inner.borrow().region_obligations()
     );
 
     // FIXME: This doesn't seem right. All call sites already normalize `ty`:

@@ -47,7 +47,7 @@ fn compute_outlives_bounds_rename<'tcx>(
     let mut norm_sig_tys: Vec<Ty<'_>> = vec![];
 
     for ty in unnormalized_input_output_tys {
-        // Replace erased regions with existential variables.
+        // Replace erased regions with fresh region variables.
         let ty = fold_regions(tcx, ty, |re, _dbi| match re.kind() {
             ty::ReErased => infcx.next_region_var(RegionVariableOrigin::Misc(span)),
             _ => re,
@@ -133,12 +133,12 @@ fn compute_outlives_bounds_rename<'tcx>(
             }
         }
     }
-
     // Get early and late bound params.
     let typeck_root_def_id = tcx.typeck_root_def_id(mir_def.to_def_id());
     let mut region_params = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
 
     // Collect late bound region for closure, coroutine, or inline-const.
+    // TODO: remove this?
     if mir_def.to_def_id() != typeck_root_def_id {
         for_each_late_bound_region_in_recursive_scope(tcx, tcx.local_parent(mir_def), |r| {
             // FIXME: is there a better way of doing this?
