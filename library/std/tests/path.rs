@@ -9,9 +9,9 @@ use std::ffi::OsStr;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::mem::MaybeUninit;
 use std::path::*;
+use std::ptr;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::{env, ptr};
 
 #[allow(unknown_lints, unused_macro_rules)]
 macro_rules! t (
