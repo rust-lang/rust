@@ -113,3 +113,30 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcVarianceOfOpaquesParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcVarianceOfOpaques;
 }
+
+pub(crate) struct ReexportTestHarnessMainParser;
+
+impl<S: Stage> SingleAttributeParser<S> for ReexportTestHarnessMainParser {
+    const PATH: &[Symbol] = &[sym::reexport_test_harness_main];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(nv) = args.name_value() else {
+            cx.expected_name_value(
+                args.span().unwrap_or(cx.inner_span),
+                Some(sym::reexport_test_harness_main),
+            );
+            return None;
+        };
+
+        let Some(name) = nv.value_as_str() else {
+            cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+            return None;
+        };
+
+        Some(AttributeKind::ReexportTestHarnessMain(name))
+    }
+}

@@ -467,26 +467,26 @@ mod no_implicit_prelude {
 
 #[reexport_test_harness_main = "2900"]
 //~^ WARN crate-level attribute should be
-//~| HELP add a `!`
 mod reexport_test_harness_main {
+//~^ NOTE this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![reexport_test_harness_main="2900"] }
-    //~^ WARN crate-level attribute should be
+    //~^ WARN the `#![reexport_test_harness_main]` attribute can only be used at the crate root
 
     #[reexport_test_harness_main = "2900"] fn f() { }
     //~^ WARN crate-level attribute should be
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this function
 
     #[reexport_test_harness_main = "2900"] struct S;
     //~^ WARN crate-level attribute should be
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this struct
 
     #[reexport_test_harness_main = "2900"] type T = S;
     //~^ WARN crate-level attribute should be
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this type alias
 
     #[reexport_test_harness_main = "2900"] impl S { }
     //~^ WARN crate-level attribute should be
-    //~| HELP add a `!`
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 // Cannot feed "2700" to `#[macro_escape]` without signaling an error.

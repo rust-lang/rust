@@ -284,6 +284,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Pointee(..)
                     | AttributeKind::ProfilerRuntime
                     | AttributeKind::RecursionLimit { .. }
+                    | AttributeKind::ReexportTestHarnessMain(..)
                     // handled below this loop and elsewhere
                     | AttributeKind::Repr { .. }
                     | AttributeKind::RustcAllocator
@@ -414,8 +415,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::feature
                             | sym::register_tool
                             | sym::rustc_no_implicit_bounds
-                            | sym::test_runner
-                            | sym::reexport_test_harness_main,
+                            | sym::test_runner,
                             ..
                         ] => {}
                         [name, rest@..] => {

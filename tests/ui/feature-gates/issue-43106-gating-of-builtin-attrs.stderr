@@ -186,22 +186,6 @@ warning: unknown lint: `x5100`
 LL |     #[deny(x5100)] impl S { }
    |            ^^^^^
 
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:468:1
-   |
-LL | #[reexport_test_harness_main = "2900"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: the lint level is defined here
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:36:9
-   |
-LL | #![warn(unused_attributes, unknown_lints)]
-   |         ^^^^^^^^^^^^^^^^^
-help: add a `!`
-   |
-LL | #![reexport_test_harness_main = "2900"]
-   |  +
-
 warning: attribute should be applied to an `extern` block with non-Rust ABI
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:710:1
    |
@@ -217,6 +201,11 @@ LL | | }
    | |_- not an `extern` block
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+note: the lint level is defined here
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:36:9
+   |
+LL | #![warn(unused_attributes, unknown_lints)]
+   |         ^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:860:1
@@ -244,56 +233,6 @@ LL | #![feature(rust1)]
    |            ^^^^^
    |
    = note: `#[warn(stable_features)]` on by default
-
-warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:472:17
-   |
-LL |     mod inner { #![reexport_test_harness_main="2900"] }
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:475:5
-   |
-LL |     #[reexport_test_harness_main = "2900"] fn f() { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![reexport_test_harness_main = "2900"] fn f() { }
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:479:5
-   |
-LL |     #[reexport_test_harness_main = "2900"] struct S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![reexport_test_harness_main = "2900"] struct S;
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:483:5
-   |
-LL |     #[reexport_test_harness_main = "2900"] type T = S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![reexport_test_harness_main = "2900"] type T = S;
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:487:5
-   |
-LL |     #[reexport_test_harness_main = "2900"] impl S { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![reexport_test_harness_main = "2900"] impl S { }
-   |      +
 
 warning: attribute should be applied to an `extern` block with non-Rust ABI
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:716:17
@@ -770,6 +709,76 @@ LL |     #[no_implicit_prelude] impl S { }
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![reexport_test_harness_main]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:468:1
+   |
+LL | #[reexport_test_harness_main = "2900"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this attribute does not have an `!`, which means it is applied to this module
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:470:1
+   |
+LL | / mod reexport_test_harness_main {
+LL | |
+LL | |     mod inner { #![reexport_test_harness_main="2900"] }
+...  |
+LL | | }
+   | |_^
+
+warning: the `#![reexport_test_harness_main]` attribute can only be used at the crate root
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:472:17
+   |
+LL |     mod inner { #![reexport_test_harness_main="2900"] }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![reexport_test_harness_main]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:475:5
+   |
+LL |     #[reexport_test_harness_main = "2900"] fn f() { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this attribute does not have an `!`, which means it is applied to this function
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:475:44
+   |
+LL |     #[reexport_test_harness_main = "2900"] fn f() { }
+   |                                            ^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![reexport_test_harness_main]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:479:5
+   |
+LL |     #[reexport_test_harness_main = "2900"] struct S;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this attribute does not have an `!`, which means it is applied to this struct
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:479:44
+   |
+LL |     #[reexport_test_harness_main = "2900"] struct S;
+   |                                            ^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![reexport_test_harness_main]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:483:5
+   |
+LL |     #[reexport_test_harness_main = "2900"] type T = S;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this attribute does not have an `!`, which means it is applied to this type alias
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:483:44
+   |
+LL |     #[reexport_test_harness_main = "2900"] type T = S;
+   |                                            ^^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![reexport_test_harness_main]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:487:5
+   |
+LL |     #[reexport_test_harness_main = "2900"] impl S { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this attribute does not have an `!`, which means it is applied to this implementation block
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:487:44
+   |
+LL |     #[reexport_test_harness_main = "2900"] impl S { }
+   |                                            ^^^^^^^^^^
 
 warning: `#[macro_escape]` attribute cannot be used on functions
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:500:5
