@@ -571,6 +571,29 @@ impl fmt::Debug for ChildStderr {
 /// let hello_2 = echo_hello.output().expect("failed to execute process");
 /// ```
 ///
+/// Note that arguments and other settings are not reset when an execution
+/// method is called, so if you add flags like `--version` to probe
+/// availability, those flags remain and affect subsequent executions.
+/// Prefer creating a fresh `Command` for the actual invocation:
+///
+/// ```no_run
+/// use std::process::Command;
+///
+/// fn build_runner() -> Option<Command> {
+///     // Probe for availability with a throwaway builder.
+///     let ok = Command::new("mytool").arg("--version").status().ok()?.success();
+///     if !ok {
+///         return None;
+///     }
+///
+///     // Return a fresh command for actual use.
+///     let mut cmd = Command::new("mytool");
+///     cmd.arg("build");
+///     Some(cmd)
+/// }
+/// # fn main() { let _ = build_runner(); }
+/// ```
+///
 /// Similarly, you can call builder methods after spawning a process and then
 /// spawn a new process with the modified settings.
 ///
