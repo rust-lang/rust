@@ -647,7 +647,7 @@ macro_rules! define_queries {
                     query_state: std::mem::offset_of!(QueryStates<'tcx>, $name),
                     query_cache: std::mem::offset_of!(QueryCaches<'tcx>, $name),
                     will_cache_on_disk_for_key_fn: should_ever_cache_on_disk!([$($modifiers)*] {
-                        Some(::rustc_middle::query::cached::$name)
+                        Some(queries::cached::$name)
                     } {
                         None
                     }),
@@ -671,7 +671,7 @@ macro_rules! define_queries {
                     try_load_from_disk_fn: should_ever_cache_on_disk!([$($modifiers)*] {
                         Some(|tcx, key, prev_index, index| {
                             // Check the `cache_on_disk_if` condition for this key.
-                            if !::rustc_middle::query::cached::$name(tcx, key) {
+                            if !queries::cached::$name(tcx, key) {
                                 return None;
                             }
 
@@ -686,7 +686,7 @@ macro_rules! define_queries {
                     }),
                     is_loadable_from_disk_fn: should_ever_cache_on_disk!([$($modifiers)*] {
                         Some(|tcx, key, index| -> bool {
-                            ::rustc_middle::query::cached::$name(tcx, key) &&
+                            ::rustc_middle::queries::cached::$name(tcx, key) &&
                                 $crate::plumbing::loadable_from_disk(tcx, index)
                         })
                     } {
@@ -746,7 +746,7 @@ macro_rules! define_queries {
                 let make_frame = |tcx, key| {
                     let kind = rustc_middle::dep_graph::dep_kinds::$name;
                     let name = stringify!($name);
-                    $crate::plumbing::create_query_frame(tcx, rustc_middle::query::descs::$name, key, kind, name)
+                    $crate::plumbing::create_query_frame(tcx, queries::descs::$name, key, kind, name)
                 };
 
                 // Call `gather_active_jobs_inner` to do the actual work.
@@ -816,8 +816,8 @@ macro_rules! define_queries {
             }
         }
 
-        pub fn make_query_vtables<'tcx>() -> ::rustc_middle::query::PerQueryVTables<'tcx> {
-            ::rustc_middle::query::PerQueryVTables {
+        pub fn make_query_vtables<'tcx>() -> queries::PerQueryVTables<'tcx> {
+            queries::PerQueryVTables {
                 $(
                     $name: query_impl::$name::make_query_vtable(),
                 )*
