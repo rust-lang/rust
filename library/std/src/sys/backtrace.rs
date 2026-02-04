@@ -197,12 +197,17 @@ pub fn output_filename(
     cwd: Option<&PathBuf>,
 ) -> fmt::Result {
     let file: Cow<'_, Path> = match bows {
-        #[cfg(unix)]
+        #[cfg(all(unix, not(target_os = "qurt")))]
         BytesOrWideString::Bytes(bytes) => {
             use crate::os::unix::prelude::*;
             Path::new(crate::ffi::OsStr::from_bytes(bytes)).into()
         }
-        #[cfg(not(unix))]
+        #[cfg(target_os = "qurt")]
+        BytesOrWideString::Bytes(bytes) => {
+            use crate::os::qurt::prelude::*;
+            Path::new(crate::ffi::OsStr::from_bytes(bytes)).into()
+        }
+        #[cfg(not(any(unix, target_os = "qurt")))]
         BytesOrWideString::Bytes(bytes) => {
             Path::new(crate::str::from_utf8(bytes).unwrap_or("<unknown>")).into()
         }
