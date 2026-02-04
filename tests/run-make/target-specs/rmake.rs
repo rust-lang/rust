@@ -20,9 +20,16 @@ fn main() {
         .target("my-incomplete-platform.json")
         .run_fail()
         .assert_stderr_contains("missing field `llvm-target`");
-    let test_platform = rustc()
+    let _ = rustc()
         .input("foo.rs")
         .target("my-x86_64-unknown-linux-gnu-platform")
+        .crate_type("lib")
+        .emit("asm")
+        .run_fail()
+        .assert_stderr_contains("custom targets are unstable and require `-Zunstable-options`");
+    let _ = rustc()
+        .input("foo.rs")
+        .target("my-awesome-platform.json")
         .crate_type("lib")
         .emit("asm")
         .run_fail()
