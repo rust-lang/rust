@@ -467,7 +467,7 @@ fn parse_source(
     let filename = FileName::anon_source_code(&wrapped_source);
 
     let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
-    let translator = rustc_driver::default_translator();
+    let translator = rustc_interface::interface::default_translator();
     let supports_color = match get_stderr_color_choice(ColorConfig::Auto, &std::io::stderr()) {
         ColorChoice::Auto => unreachable!(),
         ColorChoice::AlwaysAnsi | ColorChoice::Always => true,

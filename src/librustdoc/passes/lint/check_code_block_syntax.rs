@@ -35,7 +35,7 @@ fn check_rust_syntax(
     code_block: RustCodeBlock,
 ) {
     let buffer = Arc::new(Lock::new(Buffer::default()));
-    let translator = rustc_driver::default_translator();
+    let translator = rustc_interface::interface::default_translator();
     let emitter = BufferEmitter { buffer: Arc::clone(&buffer), translator };
 
     let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));

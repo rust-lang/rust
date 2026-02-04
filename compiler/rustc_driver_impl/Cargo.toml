@@ -29,7 +29,6 @@ rustc_middle = { path = "../rustc_middle" }
 rustc_mir_build = { path = "../rustc_mir_build" }
 rustc_mir_transform = { path = "../rustc_mir_transform" }
 rustc_parse = { path = "../rustc_parse" }
-rustc_passes = { path = "../rustc_passes" }
 rustc_public = { path = "../rustc_public", features = ["rustc_internal"] }
 rustc_resolve = { path = "../rustc_resolve" }
 rustc_session = { path = "../rustc_session" }

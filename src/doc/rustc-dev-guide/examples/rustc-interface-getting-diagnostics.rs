@@ -66,7 +66,6 @@ fn main() {
         output_dir: None,
         output_file: None,
         file_loader: None,
-        locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES.to_owned(),
         lint_caps: rustc_hash::FxHashMap::default(),
         psess_created: Some(Box::new(|parse_sess| {
             parse_sess.dcx().set_emitter(Box::new(DebugEmitter {

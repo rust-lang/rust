@@ -3789,7 +3789,6 @@ dependencies = [
  "rustc_mir_build",
  "rustc_mir_transform",
  "rustc_parse",
- "rustc_passes",
  "rustc_public",
  "rustc_resolve",
  "rustc_session",

@@ -7,6 +7,7 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::jobserver::{self, Proxy};
 use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_errors::translation::Translator;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 use rustc_lint::LintStore;
 use rustc_middle::ty;
@@ -315,6 +316,20 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
     check_cfg
 }
 
+pub fn default_translator() -> Translator {
+    Translator::with_fallback_bundle(DEFAULT_LOCALE_RESOURCES.to_vec(), false)
+}
+
+static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
+    // tidy-alphabetical-start
+    rustc_const_eval::DEFAULT_LOCALE_RESOURCE,
+    rustc_lint::DEFAULT_LOCALE_RESOURCE,
+    rustc_mir_build::DEFAULT_LOCALE_RESOURCE,
+    rustc_parse::DEFAULT_LOCALE_RESOURCE,
+    rustc_passes::DEFAULT_LOCALE_RESOURCE,
+    // tidy-alphabetical-end
+];
+
 /// The compiler configuration
 pub struct Config {
     /// Command line options
@@ -334,9 +349,6 @@ pub struct Config {
     /// bjorn3 for "hooking rust-analyzer's VFS into rustc at some point for
     /// running rustc without having to save". (See #102759.)
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
-    /// The list of fluent resources, used for lints declared with
-    /// [`Diagnostic`](rustc_errors::Diagnostic) and [`LintDiagnostic`](rustc_errors::LintDiagnostic).
-    pub locale_resources: Vec<&'static str>,
 
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
@@ -460,7 +472,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                     temps_dir,
                 },
                 bundle,
-                config.locale_resources,
+                DEFAULT_LOCALE_RESOURCES.to_owned(),
                 config.lint_caps,
                 target,
                 util::rustc_version_str().unwrap_or("unknown"),

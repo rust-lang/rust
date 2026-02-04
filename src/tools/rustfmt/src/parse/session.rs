@@ -104,7 +104,7 @@ fn default_dcx(
         ColorConfig::Never
     };
 
-    let translator = rustc_driver::default_translator();
+    let translator = rustc_interface::interface::default_translator();
 
     let emitter: Box<DynEmitter> = if show_parse_errors {
         Box::new(

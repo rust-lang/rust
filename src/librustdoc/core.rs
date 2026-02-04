@@ -157,7 +157,7 @@ pub(crate) fn new_dcx(
     diagnostic_width: Option<usize>,
     unstable_opts: &UnstableOptions,
 ) -> rustc_errors::DiagCtxt {
-    let translator = rustc_driver::default_translator();
+    let translator = rustc_interface::interface::default_translator();
     let emitter: Box<DynEmitter> = match error_format {
         ErrorOutputType::HumanReadable { kind, color_config } => match kind {
             HumanReadableErrorType { short, unicode } => Box::new(
@@ -289,7 +289,6 @@ pub(crate) fn create_config(
         output_file: None,
         output_dir: None,
         file_loader: None,
-        locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
         lint_caps,
         psess_created: None,
         hash_untracked_state: None,
