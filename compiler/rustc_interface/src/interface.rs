@@ -22,7 +22,6 @@ use rustc_session::parse::ParseSess;
 use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, lint};
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMapInputs};
 use rustc_span::{FileName, sym};
-use rustc_target::spec::Target;
 use tracing::trace;
 
 use crate::util;
@@ -364,8 +363,7 @@ pub struct Config {
     /// hotswapping branch of cg_clif" for "setting the codegen backend from a
     /// custom driver where the custom codegen backend has arbitrary data."
     /// (See #102759.)
-    pub make_codegen_backend:
-        Option<Box<dyn FnOnce(&config::Options, &Target) -> Box<dyn CodegenBackend> + Send>>,
+    pub make_codegen_backend: Option<Box<dyn FnOnce(&Session) -> Box<dyn CodegenBackend> + Send>>,
 
     /// The inner atomic value is set to true when a feature marked as `internal` is
     /// enabled. Makes it so that "please report a bug" is hidden, as ICEs with
@@ -419,20 +417,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             // impl `Send`. Creating a new one is fine.
             let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
 
-            let codegen_backend = match config.make_codegen_backend {
-                None => util::get_codegen_backend(
-                    &early_dcx,
-                    &config.opts.sysroot,
-                    config.opts.unstable_opts.codegen_backend.as_deref(),
-                    &target,
-                ),
-                Some(make_codegen_backend) => {
-                    // N.B. `make_codegen_backend` takes precedence over
-                    // `target.default_codegen_backend`, which is ignored in this case.
-                    make_codegen_backend(&config.opts, &target)
-                }
-            };
-
             let temps_dir = config.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
 
             let mut sess = rustc_session::build_session(
@@ -450,6 +434,19 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 config.using_internal_features,
             );
 
+            let codegen_backend = match config.make_codegen_backend {
+                None => util::get_codegen_backend(
+                    &early_dcx,
+                    &sess.opts.sysroot,
+                    sess.opts.unstable_opts.codegen_backend.as_deref(),
+                    &sess.target,
+                ),
+                Some(make_codegen_backend) => {
+                    // N.B. `make_codegen_backend` takes precedence over
+                    // `target.default_codegen_backend`, which is ignored in this case.
+                    make_codegen_backend(&sess)
+                }
+            };
             codegen_backend.init(&sess);
             sess.replaced_intrinsics = FxHashSet::from_iter(codegen_backend.replaced_intrinsics());
             sess.thin_lto_supported = codegen_backend.thin_lto_supported();
