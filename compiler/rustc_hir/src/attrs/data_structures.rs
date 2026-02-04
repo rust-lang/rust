@@ -1111,6 +1111,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_effective_visibility]`.
     RustcEffectiveVisibility,
 
+    /// Represents `#[rustc_evaluate_where_clauses]`
+    RustcEvaluateWhereClauses,
+
     /// Represents `#[rustc_has_incoherent_inherent_impls]`
     RustcHasIncoherentInherentImpls,
 

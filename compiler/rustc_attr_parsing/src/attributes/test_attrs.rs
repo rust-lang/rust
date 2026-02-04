@@ -199,3 +199,18 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDelayedBugFromInsideQueryParser
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDelayedBugFromInsideQuery;
 }
+
+pub(crate) struct RustcEvaluateWhereClausesParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcEvaluateWhereClausesParser {
+    const PATH: &[Symbol] = &[sym::rustc_evaluate_where_clauses];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcEvaluateWhereClauses;
+}

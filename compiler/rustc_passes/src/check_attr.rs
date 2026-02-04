@@ -310,6 +310,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDumpVtable(..)
                     | AttributeKind::RustcDynIncompatibleTrait(..)
                     | AttributeKind::RustcEffectiveVisibility
+                    | AttributeKind::RustcEvaluateWhereClauses
                     | AttributeKind::RustcHasIncoherentInherentImpls
                     | AttributeKind::RustcHiddenTypeOfOpaques
                     | AttributeKind::RustcIfThisChanged(..)
@@ -405,7 +406,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_mir
                             | sym::rustc_outlives
                             | sym::rustc_symbol_name
-                            | sym::rustc_evaluate_where_clauses
                             | sym::rustc_def_path
                             | sym::rustc_partition_reused
                             | sym::rustc_partition_codegened
