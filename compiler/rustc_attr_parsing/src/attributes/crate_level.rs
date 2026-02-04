@@ -283,3 +283,12 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcPreserveUbChecksParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPreserveUbChecks;
 }
+
+pub(crate) struct RustcNoImplicitBoundsParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcNoImplicitBoundsParser {
+    const PATH: &[Symbol] = &[sym::rustc_no_implicit_bounds];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoImplicitBounds;
+}

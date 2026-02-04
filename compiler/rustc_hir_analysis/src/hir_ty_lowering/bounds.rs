@@ -13,7 +13,7 @@ use rustc_middle::ty::{
     self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor, Upcast,
 };
-use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
+use rustc_span::{ErrorGuaranteed, Ident, Span, kw};
 use rustc_trait_selection::traits;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
@@ -171,7 +171,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
 
         // Skip adding any default bounds if `#![rustc_no_implicit_bounds]`
-        if tcx.has_attr(CRATE_DEF_ID, sym::rustc_no_implicit_bounds) {
+        if find_attr!(tcx.get_all_attrs(CRATE_DEF_ID), AttributeKind::RustcNoImplicitBounds) {
             return;
         }
 
@@ -285,7 +285,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         context: ImpliedBoundsContext<'tcx>,
     ) -> bool {
         let collected = collect_bounds(hir_bounds, context, trait_def_id);
-        !self.tcx().has_attr(CRATE_DEF_ID, sym::rustc_no_implicit_bounds) && !collected.any()
+        !find_attr!(self.tcx().get_all_attrs(CRATE_DEF_ID), AttributeKind::RustcNoImplicitBounds)
+            && !collected.any()
     }
 
     fn reject_duplicate_relaxed_bounds(&self, relaxed_bounds: SmallVec<[&PolyTraitRef<'_>; 1]>) {
