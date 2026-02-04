@@ -19,9 +19,6 @@ pub mod pat_column;
 pub mod rustc;
 pub mod usefulness;
 
-#[cfg(feature = "rustc")]
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
-
 use std::fmt;
 
 pub use rustc_index::{Idx, IndexVec}; // re-exported to avoid rustc_index version issues
