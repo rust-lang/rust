@@ -12,7 +12,7 @@ fn bench_push_back_100(b: &mut test::Bencher) {
         for i in 0..100 {
             deq.push_back(i);
         }
-        deq.head = 0;
+        deq.head = WrappedIndex::zero();
         deq.len = 0;
     })
 }
@@ -24,7 +24,7 @@ fn bench_push_front_100(b: &mut test::Bencher) {
         for i in 0..100 {
             deq.push_front(i);
         }
-        deq.head = 0;
+        deq.head = WrappedIndex::zero();
         deq.len = 0;
     })
 }
@@ -38,7 +38,7 @@ fn bench_pop_back_100(b: &mut test::Bencher) {
     unsafe { deq.ptr().write_bytes(0u8, size + 1) };
 
     b.iter(|| {
-        deq.head = 0;
+        deq.head = WrappedIndex::zero();
         deq.len = 100;
         while !deq.is_empty() {
             test::black_box(deq.pop_back());
@@ -88,7 +88,7 @@ fn bench_pop_front_100(b: &mut test::Bencher) {
     unsafe { deq.ptr().write_bytes(0u8, size + 1) };
 
     b.iter(|| {
-        deq.head = 0;
+        deq.head = WrappedIndex::zero();
         deq.len = 100;
         while !deq.is_empty() {
             test::black_box(deq.pop_front());
@@ -109,7 +109,9 @@ fn test_swap_front_back_remove() {
             let expected: VecDeque<_> =
                 if back { (0..len).collect() } else { (0..len).rev().collect() };
             for head_pos in 0..usable_cap {
-                tester.head = head_pos;
+                unsafe {
+                    tester.head = WrappedIndex::new(head_pos);
+                }
                 tester.len = 0;
                 if back {
                     for i in 0..len * 2 {
@@ -127,7 +129,7 @@ fn test_swap_front_back_remove() {
                         assert_eq!(tester.swap_remove_front(idx), Some(len * 2 - 1 - i));
                     }
                 }
-                assert!(tester.head <= tester.capacity());
+                assert!(tester.head.as_index() <= tester.capacity());
                 assert!(tester.len <= tester.capacity());
                 assert_eq!(tester, expected);
             }
@@ -155,7 +157,9 @@ fn test_insert() {
         let expected = (0..).take(len).collect::<VecDeque<_>>();
         for head_pos in 0..cap {
             for to_insert in 0..len {
-                tester.head = head_pos;
+                unsafe {
+                    tester.head = WrappedIndex::new(head_pos);
+                }
                 tester.len = 0;
                 for i in 0..len {
                     if i != to_insert {
@@ -636,7 +640,9 @@ fn test_remove() {
         let expected = (0..).take(len).collect::<VecDeque<_>>();
         for head_pos in 0..cap {
             for to_remove in 0..=len {
-                tester.head = head_pos;
+                unsafe {
+                    tester.head = WrappedIndex::new(head_pos);
+                }
                 tester.len = 0;
                 for i in 0..len {
                     if i == to_remove {
@@ -666,7 +672,9 @@ fn test_range() {
         for head in 0..=cap {
             for start in 0..=len {
                 for end in start..=len {
-                    tester.head = head;
+                    unsafe {
+                        tester.head = WrappedIndex::new(head);
+                    }
                     tester.len = 0;
                     for i in 0..len {
                         tester.push_back(i);
@@ -691,7 +699,9 @@ fn test_range_mut() {
         for head in 0..=cap {
             for start in 0..=len {
                 for end in start..=len {
-                    tester.head = head;
+                    unsafe {
+                        tester.head = WrappedIndex::new(head);
+                    }
                     tester.len = 0;
                     for i in 0..len {
                         tester.push_back(i);
@@ -725,7 +735,9 @@ fn test_drain() {
         for head in 0..cap {
             for drain_start in 0..=len {
                 for drain_end in drain_start..=len {
-                    tester.head = head;
+                    unsafe {
+                        tester.head = WrappedIndex::new(head);
+                    }
                     tester.len = 0;
                     for i in 0..len {
                         tester.push_back(i);
@@ -782,7 +794,9 @@ fn test_shrink_to() {
                 assert_eq!(deque.capacity(), cap);
 
                 // we can let the head point anywhere in the buffer since the deque is empty.
-                deque.head = head;
+                unsafe {
+                    deque.head = WrappedIndex::new(head);
+                }
                 deque.extend(1..=len);
 
                 deque.shrink_to(target_cap);
@@ -811,7 +825,9 @@ fn test_shrink_to_fit() {
         let expected = (0..).take(len).collect::<VecDeque<_>>();
         for head_pos in 0..=max_cap {
             tester.reserve(head_pos);
-            tester.head = head_pos;
+            unsafe {
+                tester.head = WrappedIndex::new(head_pos);
+            }
             tester.len = 0;
             tester.reserve(63);
             for i in 0..len {
@@ -848,7 +864,9 @@ fn test_split_off() {
             let expected_other = (at..).take(len - at).collect::<VecDeque<_>>();
 
             for head_pos in 0..cap {
-                tester.head = head_pos;
+                unsafe {
+                    tester.head = WrappedIndex::new(head_pos);
+                }
                 tester.len = 0;
                 for i in 0..len {
                     tester.push_back(i);
