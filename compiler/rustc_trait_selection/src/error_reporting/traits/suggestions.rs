@@ -954,7 +954,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let new_obligation =
             self.mk_trait_obligation_with_new_self_ty(obligation.param_env, trait_pred_and_self);
-        if self.predicate_must_hold_modulo_regions(&new_obligation) {
+        if !matches!(tail_expr.kind, hir::ExprKind::Err(_))
+            && self.predicate_must_hold_modulo_regions(&new_obligation)
+        {
             err.span_suggestion_short(
                 stmt.span.with_lo(tail_expr.span.hi()),
                 "remove this semicolon",
