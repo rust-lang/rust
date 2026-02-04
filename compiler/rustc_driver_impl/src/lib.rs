@@ -126,7 +126,6 @@ pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     rustc_hir_typeck::DEFAULT_LOCALE_RESOURCE,
     rustc_lint::DEFAULT_LOCALE_RESOURCE,
     rustc_metadata::DEFAULT_LOCALE_RESOURCE,
-    rustc_middle::DEFAULT_LOCALE_RESOURCE,
     rustc_mir_build::DEFAULT_LOCALE_RESOURCE,
     rustc_mir_transform::DEFAULT_LOCALE_RESOURCE,
     rustc_monomorphize::DEFAULT_LOCALE_RESOURCE,

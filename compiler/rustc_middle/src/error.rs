@@ -9,8 +9,8 @@ use rustc_span::{Span, Symbol};
 use crate::ty::{Instance, Ty};
 
 #[derive(Diagnostic)]
-#[diag(middle_drop_check_overflow, code = E0320)]
-#[note]
+#[diag("overflow while adding drop-check rules for `{$ty}`", code = E0320)]
+#[note("overflowed on `{$overflow_ty}`")]
 pub(crate) struct DropCheckOverflow<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -19,33 +19,33 @@ pub(crate) struct DropCheckOverflow<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(middle_failed_writing_file)]
+#[diag("failed to write file {$path}: {$error}\"")]
 pub(crate) struct FailedWritingFile<'a> {
     pub path: &'a Path,
     pub error: io::Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(middle_opaque_hidden_type_mismatch)]
+#[diag("concrete type differs from previous defining opaque type use")]
 pub(crate) struct OpaqueHiddenTypeMismatch<'tcx> {
     pub self_ty: Ty<'tcx>,
     pub other_ty: Ty<'tcx>,
     #[primary_span]
-    #[label]
+    #[label("expected `{$self_ty}`, got `{$other_ty}`")]
     pub other_span: Span,
     #[subdiagnostic]
     pub sub: TypeMismatchReason,
 }
 
 #[derive(Diagnostic)]
-#[diag(middle_unsupported_union)]
+#[diag("we don't support unions yet: '{$ty_name}'")]
 pub struct UnsupportedUnion {
     pub ty_name: String,
 }
 
 // FIXME(autodiff): I should get used somewhere
 #[derive(Diagnostic)]
-#[diag(middle_autodiff_unsafe_inner_const_ref)]
+#[diag("reading from a `Duplicated` const {$ty} is unsafe")]
 pub struct AutodiffUnsafeInnerConstRef<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -54,12 +54,12 @@ pub struct AutodiffUnsafeInnerConstRef<'tcx> {
 
 #[derive(Subdiagnostic)]
 pub enum TypeMismatchReason {
-    #[label(middle_conflict_types)]
+    #[label("this expression supplies two conflicting concrete types for the same opaque type")]
     ConflictType {
         #[primary_span]
         span: Span,
     },
-    #[note(middle_previous_use_here)]
+    #[note("previous use here")]
     PreviousUse {
         #[primary_span]
         span: Span,
@@ -67,8 +67,10 @@ pub enum TypeMismatchReason {
 }
 
 #[derive(Diagnostic)]
-#[diag(middle_recursion_limit_reached)]
-#[help]
+#[diag("reached the recursion limit finding the struct tail for `{$ty}`")]
+#[help(
+    "consider increasing the recursion limit by adding a `#![recursion_limit = \"{$suggested_limit}\"]`"
+)]
 pub(crate) struct RecursionLimitReached<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -77,23 +79,25 @@ pub(crate) struct RecursionLimitReached<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(middle_const_eval_non_int)]
+#[diag("constant evaluation of enum discriminant resulted in non-integer")]
 pub(crate) struct ConstEvalNonIntError {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(middle_strict_coherence_needs_negative_coherence)]
+#[diag(
+    "to use `strict_coherence` on this trait, the `with_negative_coherence` feature must be enabled"
+)]
 pub(crate) struct StrictCoherenceNeedsNegativeCoherence {
     #[primary_span]
     pub span: Span,
-    #[label]
+    #[label("due to this attribute")]
     pub attr_span: Option<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag(middle_requires_lang_item)]
+#[diag("requires `{$name}` lang_item")]
 pub(crate) struct RequiresLangItem {
     #[primary_span]
     pub span: Span,
@@ -101,7 +105,9 @@ pub(crate) struct RequiresLangItem {
 }
 
 #[derive(Diagnostic)]
-#[diag(middle_const_not_used_in_type_alias)]
+#[diag(
+    "const parameter `{$ct}` is part of concrete type but not used in parameter list for the `impl Trait` type alias"
+)]
 pub(super) struct ConstNotUsedTraitAlias {
     pub ct: String,
     #[primary_span]
@@ -133,41 +139,41 @@ impl fmt::Debug for CustomSubdiagnostic<'_> {
 
 #[derive(Diagnostic)]
 pub enum LayoutError<'tcx> {
-    #[diag(middle_layout_unknown)]
+    #[diag("the type `{$ty}` has an unknown layout")]
     Unknown { ty: Ty<'tcx> },
 
-    #[diag(middle_layout_too_generic)]
+    #[diag("the type `{$ty}` does not have a fixed layout")]
     TooGeneric { ty: Ty<'tcx> },
 
-    #[diag(middle_layout_size_overflow)]
+    #[diag("values of the type `{$ty}` are too big for the target architecture")]
     Overflow { ty: Ty<'tcx> },
 
-    #[diag(middle_layout_simd_too_many)]
+    #[diag("the SIMD type `{$ty}` has more elements than the limit {$max_lanes}")]
     SimdTooManyLanes { ty: Ty<'tcx>, max_lanes: u64 },
 
-    #[diag(middle_layout_simd_zero_length)]
+    #[diag("the SIMD type `{$ty}` has zero elements")]
     SimdZeroLength { ty: Ty<'tcx> },
 
-    #[diag(middle_layout_normalization_failure)]
+    #[diag("unable to determine layout for `{$ty}` because `{$failure_ty}` cannot be normalized")]
     NormalizationFailure { ty: Ty<'tcx>, failure_ty: String },
 
-    #[diag(middle_layout_cycle)]
+    #[diag("a cycle occurred during layout computation")]
     Cycle,
 
-    #[diag(middle_layout_references_error)]
+    #[diag("the type has an unknown layout")]
     ReferencesError,
 }
 
 #[derive(Diagnostic)]
-#[diag(middle_erroneous_constant)]
+#[diag("erroneous constant encountered")]
 pub(crate) struct ErroneousConstant {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(middle_type_length_limit)]
-#[help(middle_consider_type_length_limit)]
+#[diag("reached the type-length limit while instantiating `{$instance}`")]
+#[help("consider adding a `#![type_length_limit=\"{$type_length}\"]` attribute to your crate")]
 pub(crate) struct TypeLengthLimit<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -176,7 +182,7 @@ pub(crate) struct TypeLengthLimit<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(middle_max_num_nodes_in_valtree)]
+#[diag("maximum number of nodes exceeded in constant {$global_const_id}")]
 pub(crate) struct MaxNumNodesInValtree {
     #[primary_span]
     pub span: Span,
@@ -184,8 +190,8 @@ pub(crate) struct MaxNumNodesInValtree {
 }
 
 #[derive(Diagnostic)]
-#[diag(middle_invalid_const_in_valtree)]
-#[note]
+#[diag("constant {$global_const_id} cannot be used as pattern")]
+#[note("constants that reference mutable or external memory cannot be used as patterns")]
 pub(crate) struct InvalidConstInValtree {
     #[primary_span]
     pub span: Span,
