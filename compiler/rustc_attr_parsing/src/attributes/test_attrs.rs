@@ -214,3 +214,17 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcEvaluateWhereClausesParser {
     ]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcEvaluateWhereClauses;
 }
+
+pub(crate) struct RustcOutlivesParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcOutlivesParser {
+    const PATH: &[Symbol] = &[sym::rustc_outlives];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+        Allow(Target::TyAlias),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcOutlives;
+}

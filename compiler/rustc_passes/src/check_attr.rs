@@ -331,6 +331,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcObjcClass { .. }
                     | AttributeKind::RustcObjcSelector { .. }
                     | AttributeKind::RustcOffloadKernel
+                    | AttributeKind::RustcOutlives
                     | AttributeKind::RustcParenSugar(..)
                     | AttributeKind::RustcPassByValue (..)
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
@@ -404,7 +405,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_regions
                             | sym::rustc_strict_coherence
                             | sym::rustc_mir
-                            | sym::rustc_outlives
                             | sym::rustc_symbol_name
                             | sym::rustc_def_path
                             | sym::rustc_partition_reused

@@ -139,6 +139,7 @@ impl AttributeKind {
             RustcObjcSelector { .. } => No,
             RustcObjectLifetimeDefault => No,
             RustcOffloadKernel => Yes,
+            RustcOutlives => No,
             RustcParenSugar(..) => No,
             RustcPassByValue(..) => Yes,
             RustcPassIndirectlyInNonRusticAbis(..) => No,
