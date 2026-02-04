@@ -379,7 +379,7 @@ fn test_native_libs_tracking_hash_different_values() {
         NativeLib {
             name: String::from("a"),
             new_name: None,
-            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None, export_symbols: None },
             verbatim: None,
         },
         NativeLib {
@@ -401,7 +401,7 @@ fn test_native_libs_tracking_hash_different_values() {
         NativeLib {
             name: String::from("a"),
             new_name: None,
-            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None, export_symbols: None },
             verbatim: None,
         },
         NativeLib {
@@ -423,13 +423,13 @@ fn test_native_libs_tracking_hash_different_values() {
         NativeLib {
             name: String::from("a"),
             new_name: None,
-            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None, export_symbols: None },
             verbatim: None,
         },
         NativeLib {
             name: String::from("b"),
             new_name: None,
-            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None, export_symbols: None },
             verbatim: None,
         },
         NativeLib {
@@ -445,7 +445,7 @@ fn test_native_libs_tracking_hash_different_values() {
         NativeLib {
             name: String::from("a"),
             new_name: None,
-            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None, export_symbols: None },
             verbatim: None,
         },
         NativeLib {
@@ -467,7 +467,7 @@ fn test_native_libs_tracking_hash_different_values() {
         NativeLib {
             name: String::from("a"),
             new_name: None,
-            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None, export_symbols: None },
             verbatim: None,
         },
         NativeLib {
@@ -501,7 +501,7 @@ fn test_native_libs_tracking_hash_different_order() {
         NativeLib {
             name: String::from("a"),
             new_name: None,
-            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None, export_symbols: None },
             verbatim: None,
         },
         NativeLib {
@@ -528,7 +528,7 @@ fn test_native_libs_tracking_hash_different_order() {
         NativeLib {
             name: String::from("a"),
             new_name: None,
-            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None, export_symbols: None },
             verbatim: None,
         },
         NativeLib {
@@ -549,7 +549,7 @@ fn test_native_libs_tracking_hash_different_order() {
         NativeLib {
             name: String::from("a"),
             new_name: None,
-            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None, export_symbols: None },
             verbatim: None,
         },
         NativeLib {
