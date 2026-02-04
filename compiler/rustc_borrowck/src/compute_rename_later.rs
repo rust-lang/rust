@@ -1,7 +1,5 @@
 // TODO: add description later
 
-use std::iter;
-
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::{TyCtxtInferExt, canonical};
 use rustc_infer::traits::ObligationCause;
@@ -14,10 +12,7 @@ use rustc_trait_selection::traits::query::type_op::implied_outlives_bounds::comp
 use crate::hir::def::DefKind;
 use crate::ty::solve::NoSolution;
 use crate::ty::{CanonicalVarValues, GenericArg, GenericArgs};
-use crate::universal_regions::{
-    compute_inputs_and_output_non_nll, defining_ty_non_nll,
-    for_each_late_bound_region_in_recursive_scope,
-};
+use crate::universal_regions::{compute_inputs_and_output_non_nll, defining_ty_non_nll};
 use crate::{LocalDefId, ParamEnv, RegionVariableOrigin, Ty, TypingMode, fold_regions, ty};
 
 pub(crate) fn provide(p: &mut Providers) {
@@ -135,20 +130,10 @@ fn compute_outlives_bounds_rename<'tcx>(
     }
     // Get early and late bound params.
     let typeck_root_def_id = tcx.typeck_root_def_id(mir_def.to_def_id());
-    let mut region_params = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
+    let params = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
 
-    // Collect late bound region for closure, coroutine, or inline-const.
-    // TODO: remove this?
-    if mir_def.to_def_id() != typeck_root_def_id {
-        for_each_late_bound_region_in_recursive_scope(tcx, tcx.local_parent(mir_def), |r| {
-            // FIXME: is there a better way of doing this?
-            region_params = tcx.mk_args_from_iter(region_params.iter().chain(iter::once(r.into())));
-        });
-    }
-
-    // TODO: not happy with constantly chaining here, take a look at this again later.
     let var_value = tcx.mk_args_from_iter(
-        region_params.iter().chain(norm_sig_tys.iter().map(|ty| GenericArg::from(*ty))),
+        params.iter().chain(norm_sig_tys.iter().map(|ty| GenericArg::from(*ty))),
     );
 
     let var_values: CanonicalVarValues<TyCtxt<'_>> =

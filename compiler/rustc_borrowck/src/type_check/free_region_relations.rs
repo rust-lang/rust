@@ -1,5 +1,3 @@
-use std::iter;
-
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::transitive_relation::{TransitiveRelation, TransitiveRelationBuilder};
 use rustc_infer::infer::canonical::{OriginalQueryValues, QueryRegionConstraints};
@@ -19,7 +17,7 @@ use type_op::TypeOpOutput;
 
 use crate::ty::{GenericArg, GenericArgs};
 use crate::type_check::{Locations, MirTypeckRegionConstraints, constraint_conversion};
-use crate::universal_regions::{UniversalRegions, for_each_late_bound_region_in_recursive_scope};
+use crate::universal_regions::UniversalRegions;
 use crate::{BorrowckInferCtxt, LocalDefId, SmallVec};
 
 #[derive(Debug)]
@@ -262,15 +260,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         }
 
         // Get early and late bound params.
-        let mut var_values = GenericArgs::identity_for_item(tcx, self.infcx.root_def_id);
-
-        // Collect late bound region for closure, coroutine, or inline-const.
-        if self.def != self.infcx.root_def_id {
-            for_each_late_bound_region_in_recursive_scope(tcx, tcx.local_parent(self.def), |r| {
-                // FIXME: is there a better way of doing this?
-                var_values = tcx.mk_args_from_iter(var_values.iter().chain(iter::once(r.into())));
-            });
-        }
+        let var_values = GenericArgs::identity_for_item(tcx, self.infcx.root_def_id);
 
         // Add the normalized fn_sig to var_values too
         let var_values = var_values
