@@ -6,7 +6,14 @@ use rustc_span::Span;
 use crate::rustc::{RustcPatCtxt, WitnessPat};
 
 #[derive(Subdiagnostic)]
-#[label(pattern_analysis_uncovered)]
+#[label(
+    "{$count ->
+        [1] pattern `{$witness_1}`
+        [2] patterns `{$witness_1}` and `{$witness_2}`
+        [3] patterns `{$witness_1}`, `{$witness_2}` and `{$witness_3}`
+        *[other] patterns `{$witness_1}`, `{$witness_2}`, `{$witness_3}` and {$remainder} more
+    } not covered"
+)]
 pub struct Uncovered {
     #[primary_span]
     span: Span,
@@ -40,10 +47,10 @@ impl Uncovered {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(pattern_analysis_overlapping_range_endpoints)]
-#[note]
+#[diag("multiple patterns overlap on their endpoints")]
+#[note("you likely meant to write mutually exclusive ranges")]
 pub struct OverlappingRangeEndpoints {
-    #[label]
+    #[label("... with this range")]
     pub range: Span,
     #[subdiagnostic]
     pub overlap: Vec<Overlap>,
@@ -66,10 +73,14 @@ impl Subdiagnostic for Overlap {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(pattern_analysis_excluside_range_missing_max)]
+#[diag("exclusive range missing `{$max}`")]
 pub struct ExclusiveRangeMissingMax {
-    #[label]
-    #[suggestion(code = "{suggestion}", applicability = "maybe-incorrect")]
+    #[label("this range doesn't match `{$max}` because `..` is an exclusive range")]
+    #[suggestion(
+        "use an inclusive range instead",
+        code = "{suggestion}",
+        applicability = "maybe-incorrect"
+    )]
     /// This is an exclusive range that looks like `lo..max` (i.e. doesn't match `max`).
     pub first_range: Span,
     /// Suggest `lo..=max` instead.
@@ -78,10 +89,14 @@ pub struct ExclusiveRangeMissingMax {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(pattern_analysis_excluside_range_missing_gap)]
+#[diag("multiple ranges are one apart")]
 pub struct ExclusiveRangeMissingGap {
-    #[label]
-    #[suggestion(code = "{suggestion}", applicability = "maybe-incorrect")]
+    #[label("this range doesn't match `{$gap}` because `..` is an exclusive range")]
+    #[suggestion(
+        "use an inclusive range instead",
+        code = "{suggestion}",
+        applicability = "maybe-incorrect"
+    )]
     /// This is an exclusive range that looks like `lo..gap` (i.e. doesn't match `gap`).
     pub first_range: Span,
     pub gap: String, // a printed pattern
@@ -113,9 +128,11 @@ impl Subdiagnostic for GappedRange {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(pattern_analysis_non_exhaustive_omitted_pattern)]
-#[help]
-#[note]
+#[diag("some variants are not matched explicitly")]
+#[help("ensure that all variants are matched explicitly by adding the suggested match arms")]
+#[note(
+    "the matched value is of type `{$scrut_ty}` and the `non_exhaustive_omitted_patterns` attribute was found"
+)]
 pub(crate) struct NonExhaustiveOmittedPattern<'tcx> {
     pub scrut_ty: Ty<'tcx>,
     #[subdiagnostic]
@@ -123,25 +140,29 @@ pub(crate) struct NonExhaustiveOmittedPattern<'tcx> {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(pattern_analysis_non_exhaustive_omitted_pattern_lint_on_arm)]
-#[help]
+#[diag("the lint level must be set on the whole match")]
+#[help("it no longer has any effect to set the lint level on an individual match arm")]
 pub(crate) struct NonExhaustiveOmittedPatternLintOnArm {
-    #[label]
+    #[label("remove this attribute")]
     pub lint_span: Span,
-    #[suggestion(code = "#[{lint_level}({lint_name})]\n", applicability = "maybe-incorrect")]
+    #[suggestion(
+        "set the lint level on the whole match",
+        code = "#[{lint_level}({lint_name})]\n",
+        applicability = "maybe-incorrect"
+    )]
     pub suggest_lint_on_match: Option<Span>,
     pub lint_level: &'static str,
     pub lint_name: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(pattern_analysis_mixed_deref_pattern_constructors)]
+#[diag("mix of deref patterns and normal constructors")]
 pub(crate) struct MixedDerefPatternConstructors<'tcx> {
     #[primary_span]
     pub spans: Vec<Span>,
     pub smart_pointer_ty: Ty<'tcx>,
-    #[label(pattern_analysis_deref_pattern_label)]
+    #[label("matches on the result of dereferencing `{$smart_pointer_ty}`")]
     pub deref_pattern_label: Span,
-    #[label(pattern_analysis_normal_constructor_label)]
+    #[label("matches directly on `{$smart_pointer_ty}`")]
     pub normal_constructor_label: Span,
 }
