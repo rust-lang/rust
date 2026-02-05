@@ -112,6 +112,7 @@ impl AttributeKind {
             RustcDumpUserArgs => No,
             RustcDumpVtable(..) => No,
             RustcDynIncompatibleTrait(..) => No,
+            RustcEffectiveVisibility => Yes,
             RustcHasIncoherentInherentImpls => Yes,
             RustcHiddenTypeOfOpaques => No,
             RustcIfThisChanged(..) => No,
