@@ -724,8 +724,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Some(ctxt) => ctxt.coerce.as_ref().map(|coerce| coerce.expected_ty()),
                         None => {
                             // Avoid ICE when `break` is inside a closure (#65383).
-                            return Ty::new_error_with_message(
-                                tcx,
+                            return tcx.new_error_with_message(
                                 expr.span,
                                 "break was outside loop, but no error was emitted",
                             );
@@ -762,8 +761,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
             let Some(ctxt) = enclosing_breakables.opt_find_breakable(target_id) else {
                 // Avoid ICE when `break` is inside a closure (#65383).
-                return Ty::new_error_with_message(
-                    tcx,
+                return tcx.new_error_with_message(
                     expr.span,
                     "break was outside loop, but no error was emitted",
                 );
@@ -823,8 +821,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // this can only happen if the `break` was not
             // inside a loop at all, which is caught by the
             // loop-checking pass.
-            let err = Ty::new_error_with_message(
-                self.tcx,
+            let err = self.tcx.new_error_with_message(
                 expr.span,
                 "break was outside loop, but no error was emitted",
             );
@@ -871,7 +868,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else {
             // There was an error; make type-check fail.
-            Ty::new_misc_error(self.tcx)
+            self.tcx.new_misc_error()
         }
     }
 

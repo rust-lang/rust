@@ -12,6 +12,7 @@ pub enum SolverLangItem {
     FieldBase,
     FieldType,
     FutureOutput,
+    GlobalAlloc,
     Metadata,
     // tidy-alphabetical-end
 }

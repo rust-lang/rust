@@ -33,8 +33,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     return map[&trait_item_def_id];
                 }
                 Err(_) => {
-                    return ty::EarlyBinder::bind(Ty::new_error_with_message(
-                        tcx,
+                    return ty::EarlyBinder::bind(tcx.new_error_with_message(
                         DUMMY_SP,
                         "Could not collect return position impl trait in trait tys",
                     ));
@@ -359,8 +358,7 @@ fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx
             tcx.type_of(field_def_id).instantiate_identity()
         }
 
-        _ => Ty::new_error_with_message(
-            tcx,
+        _ => tcx.new_error_with_message(
             span,
             format!("unexpected anon const parent in type_of(): {parent_node:?}"),
         ),
@@ -395,8 +393,7 @@ fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: S
 
         // This is not a `bug!` as const arguments in path segments that did not resolve to anything
         // will result in `type_of` never being fed.
-        _ => Ty::new_error_with_message(
-            tcx,
+        _ => tcx.new_error_with_message(
             span,
             "`type_of` called on const argument's anon const before the const argument was lowered",
         ),
@@ -420,8 +417,7 @@ fn infer_placeholder_type<'tcx>(
         if let Some(trait_item_def_id) = tcx.trait_item_of(def_id.to_def_id()) {
             tcx.type_of(trait_item_def_id).instantiate_identity()
         } else {
-            Ty::new_error_with_message(
-                tcx,
+            tcx.new_error_with_message(
                 ty_span,
                 "constant with `type const` requires an explicit type",
             )

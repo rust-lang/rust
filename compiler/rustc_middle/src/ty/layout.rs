@@ -376,8 +376,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     &ObligationCause::dummy(),
                     |ty| match tcx.try_normalize_erasing_regions(typing_env, ty) {
                         Ok(ty) => ty,
-                        Err(e) => Ty::new_error_with_message(
-                            tcx,
+                        Err(e) => tcx.new_error_with_message(
                             DUMMY_SP,
                             format!(
                                 "normalization failed for {} but no errors reported",

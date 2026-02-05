@@ -769,6 +769,11 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
     fn is_manually_drop(self) -> bool {
         self.inner().flags.is_manually_drop
     }
+
+    fn has_unsafe_fields(self) -> bool {
+        // TODO: track field safety in next-solver adt metadata.
+        false
+    }
 }
 
 impl fmt::Debug for AdtDef {
@@ -1298,6 +1303,22 @@ impl<'db> Interner for DbInterner<'db> {
         T: rustc_type_ir::CollectAndApply<Self::Ty, Self::Tys>,
     {
         Tys::new_from_iter(self, args)
+    }
+
+    fn mk_ty_from_kind(self, kind: TyKind<'db>) -> Ty<'db> {
+        Ty::new(self, kind)
+    }
+
+    fn mk_coroutine_witness_for_coroutine(
+        self,
+        def_id: Self::CoroutineId,
+        args: Self::GenericArgs,
+    ) -> Ty<'db> {
+        Ty::new(self, TyKind::CoroutineWitness(def_id, args))
+    }
+
+    fn ty_discriminant_ty(self, _ty: Ty<'db>) -> Ty<'db> {
+        Ty::new_uint(self, UintTy::U8)
     }
 
     fn parent(self, def_id: Self::DefId) -> Self::DefId {

@@ -1,8 +1,10 @@
 //! Implementation of [`rustc_type_ir::Interner`] for [`TyCtxt`].
 
+use std::ops::Range;
 use std::{debug_assert_matches, fmt};
 
-use rustc_abi::ExternAbi;
+use rustc_abi::{ExternAbi, FieldIdx, VariantIdx};
+use rustc_data_structures::intern::Interned;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
@@ -10,17 +12,19 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
-use rustc_type_ir::{CollectAndApply, Interner, TypeFoldable, search_graph};
+use rustc_type_ir::{CollectAndApply, Interner, TypeFoldable, elaborate, search_graph};
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
 use crate::infer::canonical::CanonicalVarKinds;
+use crate::traits::ObligationCause;
 use crate::traits::cache::WithDepNode;
 use crate::traits::solve::{
     self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, QueryResult, inspect,
 };
+use crate::ty::util::Discr;
 use crate::ty::{
-    self, Clause, Const, List, ParamTy, Pattern, PolyExistentialPredicate, Predicate, Region, Ty,
-    TyCtxt,
+    self, Clause, Const, GenericArgs, List, ParamTy, Pattern, PolyExistentialPredicate, Predicate,
+    Region, Ty, TyCtxt,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -38,11 +42,17 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type CoroutineClosureId = DefId;
     type CoroutineId = DefId;
     type AdtId = DefId;
+    type GenericArgs = ty::GenericArgsRef<'tcx>;
+    type VariantDef = &'tcx ty::VariantDef;
     type ImplId = DefId;
     type UnevaluatedConstId = DefId;
     type Span = Span;
-
-    type GenericArgs = ty::GenericArgsRef<'tcx>;
+    type Interned<T: Copy + Clone + std::fmt::Debug + std::hash::Hash + Eq + PartialEq> =
+        Interned<'tcx, T>;
+    type VariantIdx = VariantIdx;
+    type Discr = Discr<'tcx>;
+    type ObligationCause = ObligationCause<'tcx>;
+    type LangItem = LangItem;
 
     type GenericArgsSlice = &'tcx [ty::GenericArg<'tcx>];
     type GenericArg = ty::GenericArg<'tcx>;
@@ -77,7 +87,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn with_cached_task<T>(self, task: impl FnOnce() -> T) -> (T, DepNodeIndex) {
         self.dep_graph.with_anon_task(self, DepKind::TraitSelect, task)
     }
-    type Ty = Ty<'tcx>;
     type Tys = &'tcx List<Ty<'tcx>>;
 
     type FnInputTys = &'tcx [Ty<'tcx>];
@@ -263,6 +272,94 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.debug_assert_args_compatible(def_id, args);
     }
 
+    fn debug_assert_adt_def_compatible(self, def: ty::AdtDef<'tcx>) {
+        if cfg!(debug_assertions) {
+            match self.def_kind(def.did()) {
+                DefKind::Struct | DefKind::Union | DefKind::Enum => {}
+                DefKind::Mod
+                | DefKind::Variant
+                | DefKind::Trait
+                | DefKind::TyAlias
+                | DefKind::ForeignTy
+                | DefKind::TraitAlias
+                | DefKind::AssocTy
+                | DefKind::TyParam
+                | DefKind::Fn
+                | DefKind::Const { .. }
+                | DefKind::ConstParam
+                | DefKind::Static { .. }
+                | DefKind::Ctor(..)
+                | DefKind::AssocFn
+                | DefKind::AssocConst { .. }
+                | DefKind::Macro(..)
+                | DefKind::ExternCrate
+                | DefKind::Use
+                | DefKind::ForeignMod
+                | DefKind::AnonConst
+                | DefKind::InlineConst
+                | DefKind::OpaqueTy
+                | DefKind::Field
+                | DefKind::LifetimeParam
+                | DefKind::GlobalAsm
+                | DefKind::Impl { .. }
+                | DefKind::Closure
+                | DefKind::SyntheticCoroutineBody => {
+                    bug!("not an adt: {def:?} ({:?})", self.def_kind(def.did()))
+                }
+            }
+        }
+    }
+
+    /// Given the `DefId`, returns the `DefId` of the innermost item that
+    /// has its own type-checking context or "inference environment".
+    ///
+    /// For example, a closure has its own `DefId`, but it is type-checked
+    /// with the containing item. Therefore, when we fetch the `typeck` of the closure,
+    /// for example, we really wind up fetching the `typeck` of the enclosing fn item.
+    fn typeck_root_def_id(self, def_id: DefId) -> DefId {
+        let mut def_id = def_id;
+        while self.is_typeck_child(def_id) {
+            def_id = self.parent(def_id);
+        }
+        def_id
+    }
+
+    fn debug_assert_new_dynamic_compatible(
+        self,
+        obj: &'tcx List<ty::PolyExistentialPredicate<'tcx>>,
+    ) {
+        if cfg!(debug_assertions) {
+            let projection_count = obj
+                .projection_bounds()
+                .filter(|item| !self.generics_require_sized_self(item.item_def_id()))
+                .count();
+            let expected_count: usize = obj
+                .principal_def_id()
+                .into_iter()
+                .flat_map(|principal_def_id| {
+                    // IMPORTANT: This has to agree with HIR ty lowering of dyn trait!
+                    elaborate::supertraits(
+                        self,
+                        ty::Binder::dummy(ty::TraitRef::identity(self, principal_def_id)),
+                    )
+                    .map(|principal| {
+                        self.associated_items(principal.def_id())
+                            .in_definition_order()
+                            .filter(|item| item.is_type() || item.is_const())
+                            .filter(|item| !item.is_impl_trait_in_trait())
+                            .filter(|item| !self.generics_require_sized_self(item.def_id))
+                            .count()
+                    })
+                })
+                .sum();
+            assert_eq!(
+                projection_count, expected_count,
+                "expected {obj:?} to have {expected_count} projections, \
+                but it has {projection_count}"
+            );
+        }
+    }
+
     /// Assert that the args from an `ExistentialTraitRef` or `ExistentialProjection`
     /// are compatible with the `DefId`. Since we're missing a `Self` type, stick on
     /// a dummy self type and forward to `debug_assert_args_compatible`.
@@ -289,6 +386,22 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         T: CollectAndApply<Ty<'tcx>, &'tcx List<Ty<'tcx>>>,
     {
         self.mk_type_list_from_iter(args)
+    }
+
+    fn mk_ty_from_kind(self, kind: ty::TyKind<'tcx>) -> Ty<'tcx> {
+        self.mk_ty_from_kind(kind)
+    }
+
+    fn mk_coroutine_witness_for_coroutine(
+        self,
+        def_id: DefId,
+        args: Self::GenericArgs,
+    ) -> Ty<'tcx> {
+        Ty::new_coroutine_witness_for_coroutine(self, def_id, args)
+    }
+
+    fn ty_discriminant_ty(self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        ty.discriminant_ty(self)
     }
 
     fn parent(self, def_id: DefId) -> DefId {
@@ -451,6 +564,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn is_lang_item(self, def_id: DefId, lang_item: SolverLangItem) -> bool {
         self.is_lang_item(def_id, solver_lang_item_to_lang_item(lang_item))
+    }
+
+    fn is_c_void(self, adt: ty::AdtDef<'tcx>) -> bool {
+        self.is_c_void(adt)
     }
 
     fn is_trait_lang_item(self, def_id: DefId, lang_item: SolverTraitLangItem) -> bool {
@@ -723,6 +840,215 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             bug!("item_name: no name for {:?}", self.def_path(id));
         })
     }
+
+    #[inline]
+    fn i8_type(self) -> Ty<'tcx> {
+        self.types.i8
+    }
+
+    #[inline]
+    fn i16_type(self) -> Ty<'tcx> {
+        self.types.i16
+    }
+
+    #[inline]
+    fn i32_type(self) -> Ty<'tcx> {
+        self.types.i32
+    }
+
+    #[inline]
+    fn u8_type(self) -> Ty<'tcx> {
+        self.types.u8
+    }
+
+    #[inline]
+    fn usize_type(self) -> Ty<'tcx> {
+        self.types.usize
+    }
+
+    #[inline]
+    fn unit_type(self) -> Ty<'tcx> {
+        self.types.unit
+    }
+
+    fn is_async_drop_in_place_coroutine(self, def_id: DefId) -> bool {
+        self.is_async_drop_in_place_coroutine(def_id)
+    }
+
+    #[inline]
+    fn coroutine_variant_range(
+        self,
+        def_id: DefId,
+        coroutine_args: ty::CoroutineArgs<Self>,
+    ) -> Range<VariantIdx> {
+        self.coroutine_variant_range(def_id, coroutine_args)
+    }
+
+    fn struct_tail_raw(
+        self,
+        mut ty: Ty<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        mut normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
+        mut f: impl FnMut() -> (),
+    ) -> Ty<'tcx> {
+        self.struct_tail_raw(ty, cause, normalize, f)
+    }
+
+    fn get_ty_var(self, id: usize) -> Option<Ty<'tcx>> {
+        self.types.ty_vars.get(id).copied()
+    }
+
+    fn get_fresh_ty(self, id: usize) -> Option<Ty<'tcx>> {
+        self.types.fresh_tys.get(id).copied()
+    }
+
+    fn get_fresh_ty_int(self, id: usize) -> Option<Ty<'tcx>> {
+        self.types.fresh_int_tys.get(id).copied()
+    }
+
+    fn get_fresh_ty_float(self, id: usize) -> Option<Ty<'tcx>> {
+        self.types.fresh_float_tys.get(id).copied()
+    }
+
+    fn get_anon_bound_ty(self, id: usize) -> Option<Vec<Ty<'tcx>>> {
+        self.types.anon_bound_tys.get(id).copied()
+    }
+
+    fn get_anon_canonical_bound_ty(self, id: usize) -> Option<Ty<'tcx>> {
+        self.types.anon_canonical_bound_tys.get(id.as_usize()).copied()
+    }
+
+    fn get_generic_args_for_item(
+        self,
+        def_id: DefId,
+        coroutine_args: ty::GenericArgsRef<'tcx>,
+    ) -> ty::GenericArgsRef<'tcx> {
+        // HACK: Coroutine witness types are lifetime erased, so they
+        // never reference any lifetime args from the coroutine. We erase
+        // the regions here since we may get into situations where a
+        // coroutine is recursively contained within itself, leading to
+        // witness types that differ by region args. This means that
+        // cycle detection in fulfillment will not kick in, which leads
+        // to unnecessary overflows in async code. See the issue:
+        // <https://github.com/rust-lang/rust/issues/145151>.
+        ty::GenericArgs::for_item(self, self.typeck_root_def_id(def_id), |def, _| match def.kind {
+            ty::GenericParamDefKind::Lifetime => self.lifetimes.re_erased.into(),
+            ty::GenericParamDefKind::Type { .. } | ty::GenericParamDefKind::Const { .. } => {
+                coroutine_args[def.index as usize]
+            }
+        })
+    }
+
+    fn get_generic_adt_args(
+        self,
+        wrapper_def_id: DefId,
+        ty_param: Ty<'tcx>,
+    ) -> ty::GenericArgsRef<'tcx> {
+        GenericArgs::for_item(self, wrapper_def_id, |param, args| match param.kind {
+            ty::GenericParamDefKind::Lifetime | ty::GenericParamDefKind::Const { .. } => bug!(),
+            ty::GenericParamDefKind::Type { has_default, .. } => {
+                if param.index == 0 {
+                    ty_param.into()
+                } else {
+                    assert!(has_default);
+                    self.type_of(param.def_id).instantiate(self, args).into()
+                }
+            }
+        })
+    }
+
+    fn new_static_str(self) -> Ty<'tcx> {
+        Ty::new_imm_ref(self, self.lifetimes.re_static, self.types.str_)
+    }
+
+    fn get_lang_item(self, item: LangItem) -> Option<DefId> {
+        self.lang_items().get(item)
+    }
+
+    fn get_diagnostic_item(self, name: Symbol) -> Option<DefId> {
+        self.get_diagnostic_item(name)
+    }
+
+    fn require_lang_item_owned_box(self) -> DefId {
+        self.require_lang_item(LangItem::OwnedBox, DUMMY_SP)
+    }
+
+    fn require_lang_item_option(self) -> DefId {
+        self.require_lang_item(LangItem::Option, DUMMY_SP)
+    }
+
+    fn require_lang_item_maybe_uninit(self) -> DefId {
+        self.require_lang_item(LangItem::MaybeUninit, DUMMY_SP)
+    }
+
+    fn require_lang_item_pin(self) -> DefId {
+        self.require_lang_item(LangItem::Pin, DUMMY_SP)
+    }
+
+    fn require_lang_item_context(self) -> DefId {
+        self.require_lang_item(LangItem::Context, DUMMY_SP)
+    }
+
+    fn new_field_representing_type(
+        self,
+        base: Ty<'tcx>,
+        variant: VariantIdx,
+        field: FieldIdx,
+    ) -> Ty<'tcx> {
+        let Some(did) = self.lang_items().field_representing_type() else {
+            bug!("could not locate the `FieldRepresentingType` lang item")
+        };
+        let def = self.adt_def(did);
+        let args = self.mk_args(&[
+            base.into(),
+            Const::new_value(
+                self,
+                ty::ValTree::from_scalar_int(self, variant.as_u32().into()),
+                self.types.u32,
+            )
+            .into(),
+            Const::new_value(
+                self,
+                ty::ValTree::from_scalar_int(self, field.as_u32().into()),
+                self.types.u32,
+            )
+            .into(),
+        ]);
+        Ty::new_adt(self, def, args)
+    }
+
+    fn get_re_erased_region(self) -> Region<'tcx> {
+        self.lifetimes.re_erased
+    }
+
+    fn new_generic_adt(self, wrapper_def_id: DefId, ty_param: Ty<'tcx>) -> Ty<'tcx> {
+        let adt_def = self.adt_def(wrapper_def_id);
+        let args = GenericArgs::for_item(self, wrapper_def_id, |param, args| match param.kind {
+            ty::GenericParamDefKind::Lifetime | ty::GenericParamDefKind::Const { .. } => bug!(),
+            ty::GenericParamDefKind::Type { has_default, .. } => {
+                if param.index == 0 {
+                    ty_param.into()
+                } else {
+                    assert!(has_default);
+                    self.type_of(param.def_id).instantiate(self, args).into()
+                }
+            }
+        });
+        Ty::new_adt(self, adt_def, args)
+    }
+
+    fn new_pinned_ref(self, r: Region<'tcx>, ty: Ty<'tcx>, mutbl: ty::Mutability) -> Ty<'tcx> {
+        let pin = self.adt_def(self.require_lang_item(LangItem::Pin, DUMMY_SP));
+        Ty::new_adt(self, pin, self.mk_args(&[Ty::new_ref(self, r, ty, mutbl).into()]))
+    }
+
+    fn new_task_context(self) -> Ty<'tcx> {
+        let context_did = self.require_lang_item(LangItem::Context, DUMMY_SP);
+        let context_adt_ref = self.adt_def(context_did);
+        let context_args = self.mk_args(&[self.lifetimes.re_erased.into()]);
+        let context_ty = Ty::new_adt(self, context_adt_ref, context_args);
+        Ty::new_mut_ref(self, self.lifetimes.re_erased, context_ty)
+    }
 }
 
 /// Defines trivial conversion functions between the main [`LangItem`] enum,
@@ -761,6 +1087,7 @@ bidirectional_lang_item_map! {
     FieldBase,
     FieldType,
     FutureOutput,
+    GlobalAlloc,
     Metadata,
 // tidy-alphabetical-end
 }

@@ -1179,7 +1179,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
         Ty::new(interner, TyKind::Slice(ty))
     }
 
-    fn new_tup(interner: DbInterner<'db>, tys: &[<DbInterner<'db> as Interner>::Ty]) -> Self {
+    fn new_tup(interner: DbInterner<'db>, tys: &[rustc_type_ir::Ty<DbInterner<'db>>]) -> Self {
         Ty::new(interner, TyKind::Tuple(Tys::new_from_slice(tys)))
     }
 
@@ -1217,7 +1217,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_unsafe_binder(
         interner: DbInterner<'db>,
-        ty: rustc_type_ir::Binder<DbInterner<'db>, <DbInterner<'db> as Interner>::Ty>,
+        ty: rustc_type_ir::Binder<DbInterner<'db>, rustc_type_ir::Ty<DbInterner<'db>>>,
     ) -> Self {
         Ty::new(interner, TyKind::UnsafeBinder(ty.into()))
     }
@@ -1275,7 +1275,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
         false
     }
 
-    fn discriminant_ty(self, interner: DbInterner<'db>) -> <DbInterner<'db> as Interner>::Ty {
+    fn discriminant_ty(self, interner: DbInterner<'db>) -> rustc_type_ir::Ty<DbInterner<'db>> {
         match self.kind() {
             TyKind::Adt(adt, _) if adt.is_enum() => adt.repr().discr_type().to_ty(interner),
             TyKind::Coroutine(_, args) => args.as_coroutine().discr_ty(interner),
@@ -1346,7 +1346,7 @@ impl<'db> rustc_type_ir::inherent::Tys<DbInterner<'db>> for Tys<'db> {
         self.as_slice().split_last().unwrap().1
     }
 
-    fn output(self) -> <DbInterner<'db> as Interner>::Ty {
+    fn output(self) -> rustc_type_ir::Ty<DbInterner<'db>> {
         *self.as_slice().split_last().unwrap().0
     }
 }

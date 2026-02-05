@@ -777,11 +777,9 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         if !remapped_types.contains_key(assoc_item) {
             remapped_types.insert(
                 *assoc_item,
-                ty::EarlyBinder::bind(Ty::new_error_with_message(
-                    tcx,
-                    return_span,
-                    "missing synthetic item for RPITIT",
-                )),
+                ty::EarlyBinder::bind(
+                    tcx.new_error_with_message(return_span, "missing synthetic item for RPITIT"),
+                ),
             );
         }
     }
