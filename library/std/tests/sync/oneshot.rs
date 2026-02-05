@@ -127,6 +127,7 @@ fn recv_before_send() {
 }
 
 #[test]
+#[ignore = "Inherently flaky and has caused several CI failures"]
 fn recv_timeout_before_send() {
     let (sender, receiver) = oneshot::channel();
 
@@ -135,6 +136,8 @@ fn recv_timeout_before_send() {
         sender.send(99u128).unwrap();
     });
 
+    // FIXME(#152145): Under load, there's no guarantee that thread `t` has
+    // ever been scheduled and run before this timeout expires.
     match receiver.recv_timeout(Duration::from_secs(1)) {
         Ok(99) => {}
         _ => panic!("expected Ok(99)"),
