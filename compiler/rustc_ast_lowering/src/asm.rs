@@ -3,6 +3,7 @@ use std::fmt::Write;
 
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_errors::inline_fluent;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::parse::feature_err;
@@ -19,8 +20,7 @@ use super::errors::{
     RegisterConflict,
 };
 use crate::{
-    AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, ParamMode,
-    ResolverAstLoweringExt, fluent_generated as fluent,
+    AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, ParamMode, ResolverAstLoweringExt,
 };
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
@@ -67,7 +67,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     &self.tcx.sess,
                     sym::asm_experimental_arch,
                     sp,
-                    fluent::ast_lowering_unstable_inline_assembly,
+                    inline_fluent!("inline assembly is not stable yet on this architecture"),
                 )
                 .emit();
             }
@@ -84,7 +84,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 &self.tcx.sess,
                 sym::asm_unwind,
                 sp,
-                fluent::ast_lowering_unstable_may_unwind,
+                inline_fluent!("the `may_unwind` option is unstable"),
             )
             .emit();
         }
@@ -499,7 +499,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     sess,
                     sym::asm_goto_with_outputs,
                     *op_sp,
-                    fluent::ast_lowering_unstable_inline_assembly_label_operand_with_outputs,
+                    inline_fluent!(
+                        "using both label and output operands for inline assembly is unstable"
+                    ),
                 )
                 .emit();
             }
