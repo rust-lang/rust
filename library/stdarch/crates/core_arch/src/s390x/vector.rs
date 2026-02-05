@@ -51,6 +51,54 @@ types! {
     pub struct vector_double(2 x f64);
 }
 
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+impl From<m8x16> for vector_bool_char {
+    #[inline]
+    fn from(value: m8x16) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+impl From<vector_bool_char> for m8x16 {
+    #[inline]
+    fn from(value: vector_bool_char) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+impl From<m16x8> for vector_bool_short {
+    #[inline]
+    fn from(value: m16x8) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+impl From<vector_bool_short> for m16x8 {
+    #[inline]
+    fn from(value: vector_bool_short) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+impl From<m32x4> for vector_bool_int {
+    #[inline]
+    fn from(value: m32x4) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+impl From<vector_bool_int> for m32x4 {
+    #[inline]
+    fn from(value: vector_bool_int) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
 #[repr(C, packed)]
 struct PackedTuple<T, U> {
     x: T,
@@ -6051,27 +6099,16 @@ mod tests {
     }
 
     macro_rules! test_vec_1 {
-        { $name: ident, $fn:ident, f32x4, [$($a:expr),+], ~[$($d:expr),+] } => {
-            #[simd_test(enable = "vector")]
-            unsafe fn $name() {
-                let a: vector_float = transmute(f32x4::new($($a),+));
-
-                let d: vector_float = transmute(f32x4::new($($d),+));
-                let r = transmute(vec_cmple(vec_abs(vec_sub($fn(a), d)), vec_splats(f32::EPSILON)));
-                let e = m32x4::new(true, true, true, true);
-                assert_eq!(e, r);
-            }
-        };
         { $name: ident, $fn:ident, $ty: ident, [$($a:expr),+], [$($d:expr),+] } => {
             test_vec_1! { $name, $fn, $ty -> $ty, [$($a),+], [$($d),+] }
         };
         { $name: ident, $fn:ident, $ty: ident -> $ty_out: ident, [$($a:expr),+], [$($d:expr),+] } => {
             #[simd_test(enable = "vector")]
-            unsafe fn $name() {
-                let a: s_t_l!($ty) = transmute($ty::new($($a),+));
+            fn $name() {
+                let a: s_t_l!($ty) = $ty::new($($a),+).into();
 
                 let d = $ty_out::new($($d),+);
-                let r : $ty_out = transmute($fn(a));
+                let r = $ty_out::from(unsafe { $fn(a) });
                 assert_eq!(d, r);
             }
         }
@@ -6086,35 +6123,23 @@ mod tests {
          };
         { $name: ident, $fn:ident, $ty1: ident, $ty2: ident -> $ty_out: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
             #[simd_test(enable = "vector")]
-            unsafe fn $name() {
-                let a: s_t_l!($ty1) = transmute($ty1::new($($a),+));
-                let b: s_t_l!($ty2) = transmute($ty2::new($($b),+));
+            fn $name() {
+                let a: s_t_l!($ty1) = $ty1::new($($a),+).into();
+                let b: s_t_l!($ty2) = $ty2::new($($b),+).into();
 
                 let d = $ty_out::new($($d),+);
-                let r : $ty_out = transmute($fn(a, b));
+                let r = $ty_out::from(unsafe { $fn(a, b) });
                 assert_eq!(d, r);
             }
          };
-         { $name: ident, $fn:ident, $ty: ident -> $ty_out: ident, [$($a:expr),+], [$($b:expr),+], $d:expr } => {
-            #[simd_test(enable = "vector")]
-            unsafe fn $name() {
-                let a: s_t_l!($ty) = transmute($ty::new($($a),+));
-                let b: s_t_l!($ty) = transmute($ty::new($($b),+));
-
-                let r : $ty_out = transmute($fn(a, b));
-                assert_eq!($d, r);
-            }
-         }
    }
 
     #[simd_test(enable = "vector")]
-    unsafe fn vec_add_i32x4_i32x4() {
-        let x = i32x4::new(1, 2, 3, 4);
-        let y = i32x4::new(4, 3, 2, 1);
-        let x: vector_signed_int = transmute(x);
-        let y: vector_signed_int = transmute(y);
-        let z = vec_add(x, y);
-        assert_eq!(i32x4::splat(5), transmute(z));
+    fn vec_add_i32x4_i32x4() {
+        let x = vector_signed_int::from(i32x4::new(1, 2, 3, 4));
+        let y = vector_signed_int::from(i32x4::new(4, 3, 2, 1));
+        let z = unsafe { vec_add(x, y) };
+        assert_eq!(i32x4::splat(5), i32x4::from(z));
     }
 
     macro_rules! test_vec_sub {
@@ -6232,11 +6257,11 @@ mod tests {
     macro_rules! test_vec_abs {
         { $name: ident, $ty: ident, $a: expr, $d: expr } => {
             #[simd_test(enable = "vector")]
-            unsafe fn $name() {
-                let a: s_t_l!($ty) = vec_splats($a);
-                let a: s_t_l!($ty) = vec_abs(a);
+            fn $name() {
+                let a: s_t_l!($ty) = unsafe { vec_splats($a) };
+                let a: s_t_l!($ty) = unsafe { vec_abs(a) };
                 let d = $ty::splat($d);
-                assert_eq!(d, transmute(a));
+                assert_eq!(d, $ty::from(a));
             }
         }
     }
@@ -6386,7 +6411,7 @@ mod tests {
     [0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 16],
     [4, 2, 1, 8] }
 
-    test_vec_2! { test_vec_sral_pos, vec_sral, u32x4, u8x16 -> i32x4,
+    test_vec_2! { test_vec_sral_pos, vec_sral, u32x4, u8x16 -> u32x4,
     [0b1000, 0b1000, 0b1000, 0b1000],
     [0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 16],
     [4, 2, 1, 8] }
@@ -6423,13 +6448,13 @@ mod tests {
          $shorttype:ident, $longtype:ident,
          [$($a:expr),+], [$($b:expr),+], [$($c:expr),+], [$($d:expr),+]} => {
             #[simd_test(enable = "vector")]
-            unsafe fn $name() {
-                let a: $longtype = transmute($shorttype::new($($a),+));
-                let b: $longtype = transmute($shorttype::new($($b),+));
-                let c: vector_unsigned_char = transmute(u8x16::new($($c),+));
+            fn $name() {
+                let a = $longtype::from($shorttype::new($($a),+));
+                let b = $longtype::from($shorttype::new($($b),+));
+                let c = vector_unsigned_char::from(u8x16::new($($c),+));
                 let d = $shorttype::new($($d),+);
 
-                let r: $shorttype = transmute(vec_perm(a, b, c));
+                let r = $shorttype::from(unsafe { vec_perm(a, b, c) });
                 assert_eq!(d, r);
             }
         }
@@ -6512,46 +6537,46 @@ mod tests {
     [core::f32::consts::PI, 1.0, 25.0, 2.0],
     [core::f32::consts::PI.sqrt(), 1.0, 5.0, core::f32::consts::SQRT_2] }
 
-    test_vec_2! { test_vec_find_any_eq, vec_find_any_eq, i32x4, i32x4 -> u32x4,
+    test_vec_2! { test_vec_find_any_eq, vec_find_any_eq, i32x4, i32x4 -> i32x4,
         [1, -2, 3, -4],
         [-5, 3, -7, 8],
-        [0, 0, 0xFFFFFFFF, 0]
+        [0, 0, !0, 0]
     }
 
-    test_vec_2! { test_vec_find_any_ne, vec_find_any_ne, i32x4, i32x4 -> u32x4,
+    test_vec_2! { test_vec_find_any_ne, vec_find_any_ne, i32x4, i32x4 -> i32x4,
         [1, -2, 3, -4],
         [-5, 3, -7, 8],
-        [0xFFFFFFFF, 0xFFFFFFFF, 0, 0xFFFFFFFF]
+        [!0, !0, 0, !0]
     }
 
-    test_vec_2! { test_vec_find_any_eq_idx_1, vec_find_any_eq_idx, i32x4, i32x4 -> u32x4,
+    test_vec_2! { test_vec_find_any_eq_idx_1, vec_find_any_eq_idx, i32x4, i32x4 -> i32x4,
         [1, 2, 3, 4],
         [5, 3, 7, 8],
         [0, 8, 0, 0]
     }
-    test_vec_2! { test_vec_find_any_eq_idx_2, vec_find_any_eq_idx, i32x4, i32x4 -> u32x4,
+    test_vec_2! { test_vec_find_any_eq_idx_2, vec_find_any_eq_idx, i32x4, i32x4 -> i32x4,
         [1, 2, 3, 4],
         [5, 6, 7, 8],
         [0, 16, 0, 0]
     }
 
-    test_vec_2! { test_vec_find_any_ne_idx_1, vec_find_any_ne_idx, i32x4, i32x4 -> u32x4,
+    test_vec_2! { test_vec_find_any_ne_idx_1, vec_find_any_ne_idx, i32x4, i32x4 -> i32x4,
         [1, 2, 3, 4],
         [1, 5, 3, 4],
         [0, 4, 0, 0]
     }
-    test_vec_2! { test_vec_find_any_ne_idx_2, vec_find_any_ne_idx, i32x4, i32x4 -> u32x4,
+    test_vec_2! { test_vec_find_any_ne_idx_2, vec_find_any_ne_idx, i32x4, i32x4 -> i32x4,
         [1, 2, 3, 4],
         [1, 2, 3, 4],
         [0, 16, 0, 0]
     }
 
-    test_vec_2! { test_vec_find_any_eq_or_0_idx_1, vec_find_any_eq_or_0_idx, i32x4, i32x4 -> u32x4,
+    test_vec_2! { test_vec_find_any_eq_or_0_idx_1, vec_find_any_eq_or_0_idx, i32x4, i32x4 -> i32x4,
         [1, 2, 0, 4],
         [5, 6, 7, 8],
         [0, 8, 0, 0]
     }
-    test_vec_2! { test_vec_find_any_ne_or_0_idx_1, vec_find_any_ne_or_0_idx, i32x4, i32x4 -> u32x4,
+    test_vec_2! { test_vec_find_any_ne_or_0_idx_1, vec_find_any_ne_or_0_idx, i32x4, i32x4 -> i32x4,
         [1, 2, 0, 4],
         [1, 2, 3, 4],
         [0, 8, 0, 0]

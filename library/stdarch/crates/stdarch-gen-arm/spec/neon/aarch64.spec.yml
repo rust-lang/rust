@@ -8958,7 +8958,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 1']]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1', '3']]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     static_defs: ['const LANE1: i32, const LANE2: i32']
@@ -8983,7 +8983,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 1']]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1', '3']]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     static_defs: ['const LANE1: i32, const LANE2: i32']
@@ -9008,7 +9008,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 1']]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1', '3']]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     static_defs: ['const LANE1: i32, const LANE2: i32']
@@ -9037,7 +9037,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 1']]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1', '3']]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     static_defs: ['const LANE1: i32, const LANE2: i32']

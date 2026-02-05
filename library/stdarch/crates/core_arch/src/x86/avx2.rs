@@ -991,7 +991,21 @@ pub const fn _mm256_hadd_epi32(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vphaddsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hadds_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(phaddsw(a.as_i16x16(), b.as_i16x16())) }
+    let a = a.as_i16x16();
+    let b = b.as_i16x16();
+    unsafe {
+        let even: i16x16 = simd_shuffle!(
+            a,
+            b,
+            [0, 2, 4, 6, 16, 18, 20, 22, 8, 10, 12, 14, 24, 26, 28, 30]
+        );
+        let odd: i16x16 = simd_shuffle!(
+            a,
+            b,
+            [1, 3, 5, 7, 17, 19, 21, 23, 9, 11, 13, 15, 25, 27, 29, 31]
+        );
+        simd_saturating_add(even, odd).as_m256i()
+    }
 }
 
 /// Horizontally subtract adjacent pairs of 16-bit integers in `a` and `b`.
@@ -1047,7 +1061,21 @@ pub const fn _mm256_hsub_epi32(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vphsubsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hsubs_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(phsubsw(a.as_i16x16(), b.as_i16x16())) }
+    let a = a.as_i16x16();
+    let b = b.as_i16x16();
+    unsafe {
+        let even: i16x16 = simd_shuffle!(
+            a,
+            b,
+            [0, 2, 4, 6, 16, 18, 20, 22, 8, 10, 12, 14, 24, 26, 28, 30]
+        );
+        let odd: i16x16 = simd_shuffle!(
+            a,
+            b,
+            [1, 3, 5, 7, 17, 19, 21, 23, 9, 11, 13, 15, 25, 27, 29, 31]
+        );
+        simd_saturating_sub(even, odd).as_m256i()
+    }
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
@@ -3791,10 +3819,6 @@ pub const fn _mm256_extract_epi16<const INDEX: i32>(a: __m256i) -> i32 {
 
 #[allow(improper_ctypes)]
 unsafe extern "C" {
-    #[link_name = "llvm.x86.avx2.phadd.sw"]
-    fn phaddsw(a: i16x16, b: i16x16) -> i16x16;
-    #[link_name = "llvm.x86.avx2.phsub.sw"]
-    fn phsubsw(a: i16x16, b: i16x16) -> i16x16;
     #[link_name = "llvm.x86.avx2.pmadd.wd"]
     fn pmaddwd(a: i16x16, b: i16x16) -> i32x8;
     #[link_name = "llvm.x86.avx2.pmadd.ub.sw"]
@@ -4651,6 +4675,26 @@ mod tests {
         let r = _mm256_madd_epi16(a, b);
         let e = _mm256_set1_epi32(16);
         assert_eq_m256i(r, e);
+    }
+
+    #[target_feature(enable = "avx2")]
+    #[cfg_attr(test, assert_instr(vpmaddwd))]
+    unsafe fn test_mm256_madd_epi16_mul_one(v: __m256i) -> __m256i {
+        // This is a trick used in the adler32 algorithm to get a widening addition. The
+        // multiplication by 1 is trivial, but must not be optimized out because then the vpmaddwd
+        // instruction is no longer selected. The assert_instr verifies that this is the case.
+        let one_v = _mm256_set1_epi16(1);
+        _mm256_madd_epi16(v, one_v)
+    }
+
+    #[target_feature(enable = "avx2")]
+    #[cfg_attr(test, assert_instr(vpmaddwd))]
+    unsafe fn test_mm256_madd_epi16_shl(v: __m256i) -> __m256i {
+        // This is a trick used in the base64 algorithm to get a widening addition. Instead of a
+        // multiplication, a vector shl is used. In LLVM 22 that breaks the pattern recognition
+        // for the automatic optimization to vpmaddwd.
+        let shift_value = _mm256_set1_epi32(12i32);
+        _mm256_madd_epi16(v, shift_value)
     }
 
     #[simd_test(enable = "avx2")]

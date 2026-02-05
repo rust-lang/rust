@@ -2681,6 +2681,7 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld1]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
+    big_endian_inverse: false
     safety:
       unsafe: [neon]
     types:
@@ -2740,6 +2741,7 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld1]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
+    big_endian_inverse: false
     safety:
       unsafe: [neon]
     types:
