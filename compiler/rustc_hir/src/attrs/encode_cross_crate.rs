@@ -87,6 +87,7 @@ impl AttributeKind {
             ProcMacroDerive { .. } => No,
             ProfilerRuntime => No,
             RecursionLimit { .. } => No,
+            ReexportTestHarnessMain(..) => No,
             Repr { .. } => No,
             RustcAllocator => No,
             RustcAllocatorZeroed => No,
