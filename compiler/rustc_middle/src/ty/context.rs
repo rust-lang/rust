@@ -1886,10 +1886,15 @@ impl<'tcx> TyCtxt<'tcx> {
         self.is_lang_item(self.parent(def_id), LangItem::AsyncDropInPlace)
     }
 
+    pub fn type_const_span(self, def_id: DefId) -> Option<Span> {
+        matches!(self.def_kind(def_id), DefKind::Const | DefKind::AssocConst)
+            .then(|| find_attr!(self.get_all_attrs(def_id), AttributeKind::TypeConst(sp) => *sp))
+            .flatten()
+    }
+
     /// Check if the given `def_id` is a const with the `#[type_const]` attribute.
     pub fn is_type_const(self, def_id: DefId) -> bool {
-        matches!(self.def_kind(def_id), DefKind::Const | DefKind::AssocConst)
-            && find_attr!(self.get_all_attrs(def_id), AttributeKind::TypeConst(_))
+        self.type_const_span(def_id).is_some()
     }
 
     /// Returns the movability of the coroutine of `def_id`, or panics
