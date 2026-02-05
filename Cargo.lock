@@ -4532,9 +4532,11 @@ version = "0.0.0"
 dependencies = [
  "measureme",
  "rustc_data_structures",
+ "rustc_errors",
  "rustc_hashes",
  "rustc_hir",
  "rustc_index",
+ "rustc_macros",
  "rustc_middle",
  "rustc_query_system",
  "rustc_serialize",
