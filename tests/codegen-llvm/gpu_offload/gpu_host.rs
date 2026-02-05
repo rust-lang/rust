@@ -55,9 +55,7 @@ pub fn _kernel_1(x: &mut [f32; 256]) {
 // CHECK-NEXT:   %.offload_ptrs = alloca [1 x ptr], align 8
 // CHECK-NEXT:   %.offload_sizes = alloca [1 x i64], align 8
 // CHECK-NEXT:   %kernel_args = alloca %struct.__tgt_kernel_arguments, align 8
-// CHECK:   %dummy = load volatile ptr, ptr @.offload_sizes.[[K]], align 8
-// CHECK-NEXT:   %dummy1 = load volatile ptr, ptr @.offloading.entry.[[K]], align 8
-// CHECK-NEXT:   call void @__tgt_init_all_rtls()
+// CHECK:        call void @__tgt_init_all_rtls()
 // CHECK-NEXT:   store ptr %x, ptr %.offload_baseptrs, align 8
 // CHECK-NEXT:   store ptr %x, ptr %.offload_ptrs, align 8
 // CHECK-NEXT:   store i64 1024, ptr %.offload_sizes, align 8
