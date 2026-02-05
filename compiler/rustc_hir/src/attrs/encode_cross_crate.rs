@@ -118,6 +118,7 @@ impl AttributeKind {
             RustcHiddenTypeOfOpaques => No,
             RustcIfThisChanged(..) => No,
             RustcIntrinsic => Yes,
+            RustcIntrinsicConstStableIndirect => No,
             RustcLayout(..) => No,
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,
