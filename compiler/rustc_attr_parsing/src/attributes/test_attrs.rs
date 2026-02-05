@@ -1,3 +1,4 @@
+use rustc_hir::attrs::RustcAbiAttrKind;
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 
 use super::prelude::*;
@@ -138,5 +139,54 @@ impl<S: Stage> SingleAttributeParser<S> for ReexportTestHarnessMainParser {
         };
 
         Some(AttributeKind::ReexportTestHarnessMain(name))
+    }
+}
+
+pub(crate) struct RustcAbiParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcAbiParser {
+    const PATH: &[Symbol] = &[sym::rustc_abi];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::debug, sym::assert_eq]);
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::TyAlias),
+        Allow(Target::Fn),
+        Allow(Target::ForeignFn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(args) = args.list() else {
+            cx.expected_specific_argument_and_list(cx.attr_span, &[sym::assert_eq, sym::debug]);
+            return None;
+        };
+
+        let Some(arg) = args.single() else {
+            cx.expected_single_argument(cx.attr_span);
+            return None;
+        };
+
+        let fail_incorrect_argument =
+            |span| cx.expected_specific_argument(span, &[sym::assert_eq, sym::debug]);
+
+        let Some(arg) = arg.meta_item() else {
+            fail_incorrect_argument(args.span);
+            return None;
+        };
+
+        let kind: RustcAbiAttrKind = match arg.path().word_sym() {
+            Some(sym::assert_eq) => RustcAbiAttrKind::AssertEq,
+            Some(sym::debug) => RustcAbiAttrKind::Debug,
+            None | Some(_) => {
+                fail_incorrect_argument(arg.span());
+                return None;
+            }
+        };
+
+        Some(AttributeKind::RustcAbi { attr_span: cx.attr_span, kind })
     }
 }

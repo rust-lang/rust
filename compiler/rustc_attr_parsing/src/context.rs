@@ -191,6 +191,7 @@ attribute_parsers!(
         Single<ProcMacroDeriveParser>,
         Single<RecursionLimitParser>,
         Single<ReexportTestHarnessMainParser>,
+        Single<RustcAbiParser>,
         Single<RustcAllocatorZeroedVariantParser>,
         Single<RustcBuiltinMacroParser>,
         Single<RustcForceInlineParser>,
