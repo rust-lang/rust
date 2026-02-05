@@ -1859,11 +1859,17 @@ impl Config {
             .get(&target)
             .and_then(|t| t.llvm_libunwind)
             .or(self.llvm_libunwind_default)
-            .unwrap_or(if target.contains("fuchsia") || target.contains("hexagon") {
-                LlvmLibunwind::InTree
-            } else {
-                LlvmLibunwind::No
-            })
+            .unwrap_or(
+                if target.contains("fuchsia")
+                    || (target.contains("hexagon") && !target.contains("qurt"))
+                {
+                    // Fuchsia and Hexagon Linux use in-tree llvm-libunwind.
+                    // Hexagon QuRT uses libc_eh from the Hexagon SDK instead.
+                    LlvmLibunwind::InTree
+                } else {
+                    LlvmLibunwind::No
+                },
+            )
     }
 
     pub fn split_debuginfo(&self, target: TargetSelection) -> SplitDebuginfo {
