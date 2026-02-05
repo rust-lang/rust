@@ -721,3 +721,42 @@ impl<S: Stage> CombineAttributeParser<S> for RustcThenThisWouldNeedParser {
         Some(ident)
     }
 }
+
+pub(crate) struct RustcEffectiveVisibilityParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcEffectiveVisibilityParser {
+    const PATH: &'static [Symbol] = &[sym::rustc_effective_visibility];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Use),
+        Allow(Target::Static),
+        Allow(Target::Const),
+        Allow(Target::Fn),
+        Allow(Target::Closure),
+        Allow(Target::Mod),
+        Allow(Target::ForeignMod),
+        Allow(Target::TyAlias),
+        Allow(Target::Enum),
+        Allow(Target::Variant),
+        Allow(Target::Struct),
+        Allow(Target::Field),
+        Allow(Target::Union),
+        Allow(Target::Trait),
+        Allow(Target::TraitAlias),
+        Allow(Target::Impl { of_trait: false }),
+        Allow(Target::Impl { of_trait: true }),
+        Allow(Target::AssocConst),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::AssocTy),
+        Allow(Target::ForeignFn),
+        Allow(Target::ForeignStatic),
+        Allow(Target::ForeignTy),
+        Allow(Target::MacroDef),
+        Allow(Target::PatField),
+        Allow(Target::Crate),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcEffectiveVisibility;
+}
