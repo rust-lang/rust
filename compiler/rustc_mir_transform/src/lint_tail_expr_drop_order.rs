@@ -5,7 +5,7 @@ use std::rc::Rc;
 use itertools::Itertools as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_errors::Subdiagnostic;
+use rustc_errors::{Subdiagnostic, inline_fluent};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::MixedBitSet;
@@ -499,13 +499,17 @@ fn assign_observables_names(
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_transform_tail_expr_drop_order)]
+#[diag("relative drop order changing in Rust 2024")]
 struct TailExprDropOrderLint<'a> {
     #[subdiagnostic]
     local_labels: Vec<LocalLabel<'a>>,
-    #[label(mir_transform_drop_location)]
+    #[label(
+        "now the temporary value is dropped here, before the local variables in the block or statement"
+    )]
     drop_span: Option<Span>,
-    #[note(mir_transform_note_epilogue)]
+    #[note(
+        "most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages"
+    )]
     _epilogue: (),
 }
 
@@ -527,19 +531,32 @@ impl Subdiagnostic for LocalLabel<'_> {
         diag.arg("is_generated_name", self.is_generated_name);
         diag.remove_arg("is_dropped_first_edition_2024");
         diag.arg("is_dropped_first_edition_2024", self.is_dropped_first_edition_2024);
-        let msg = diag.eagerly_translate(crate::fluent_generated::mir_transform_tail_expr_local);
+        let msg = diag.eagerly_translate(inline_fluent!(
+            "{$is_generated_name ->
+                [true] this value will be stored in a temporary; let us call it `{$name}`
+                *[false] `{$name}` calls a custom destructor
+            }"
+        ));
         diag.span_label(self.span, msg);
         for dtor in self.destructors {
             dtor.add_to_diag(diag);
         }
         let msg =
-            diag.eagerly_translate(crate::fluent_generated::mir_transform_label_local_epilogue);
+            diag.eagerly_translate(inline_fluent!("{$is_dropped_first_edition_2024 ->
+                [true] up until Edition 2021 `{$name}` is dropped last but will be dropped earlier in Edition 2024
+                *[false] `{$name}` will be dropped later as of Edition 2024
+            }"));
         diag.span_label(self.span, msg);
     }
 }
 
 #[derive(Subdiagnostic)]
-#[note(mir_transform_tail_expr_dtor)]
+#[note(
+    "{$dtor_kind ->
+        [dyn] `{$name}` may invoke a custom destructor because it contains a trait object
+        *[concrete] `{$name}` invokes this custom destructor
+    }"
+)]
 struct DestructorLabel<'a> {
     #[primary_span]
     span: Span,
