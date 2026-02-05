@@ -721,6 +721,8 @@ impl<S: Stage> CombineAttributeParser<S> for RustcThenThisWouldNeedParser {
         Some(ident)
     }
 }
+<<<<<<< Conflict 1 of 1
++++++++ Contents of side #1
 
 pub(crate) struct RustcEffectiveVisibilityParser;
 
@@ -759,4 +761,13 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcEffectiveVisibilityParser {
         Allow(Target::Crate),
     ]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcEffectiveVisibility;
+}
+
+pub(crate) struct RustcIntrinsicParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcIntrinsicParser {
+    const PATH: &'static [Symbol] = &[sym::rustc_intrinsic];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsic;
 }

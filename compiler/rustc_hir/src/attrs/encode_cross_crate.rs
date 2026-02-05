@@ -117,6 +117,7 @@ impl AttributeKind {
             RustcHasIncoherentInherentImpls => Yes,
             RustcHiddenTypeOfOpaques => No,
             RustcIfThisChanged(..) => No,
+            RustcIntrinsic => Yes,
             RustcLayout(..) => No,
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,
