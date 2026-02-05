@@ -38,11 +38,12 @@ use std::fs::{self, File};
 use std::io::Write;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::graph::linked_graph::{Direction, INCOMING, NodeIndex, OUTGOING};
+use rustc_data_structures::graph::linked_graph::{Direction, INCOMING, OUTGOING};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_index::IndexVec;
 use rustc_middle::dep_graph::{
-    DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, EdgeFilter, dep_kinds,
+    DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, DepNodeIndex, EdgeFilter, dep_kinds,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
@@ -375,10 +376,10 @@ fn walk_between<'q>(
         Excluded,
     }
 
-    let mut node_states = vec![State::Undecided; query.graph.len_nodes()];
+    let mut node_states = IndexVec::from_elem_n(State::Undecided, query.graph.len_nodes());
 
     for &target in targets {
-        node_states[query.indices[target].0] = State::Included;
+        node_states[query.indices[target]] = State::Included;
     }
 
     for source in sources.iter().map(|&n| query.indices[n]) {
@@ -390,13 +391,17 @@ fn walk_between<'q>(
         .into_iter()
         .filter(|&n| {
             let index = query.indices[n];
-            node_states[index.0] == State::Included
+            node_states[index] == State::Included
         })
         .map(|n| n.kind)
         .collect();
 
-    fn recurse(query: &DepGraphQuery, node_states: &mut [State], node: NodeIndex) -> bool {
-        match node_states[node.0] {
+    fn recurse(
+        query: &DepGraphQuery,
+        node_states: &mut IndexVec<DepNodeIndex, State>,
+        node: DepNodeIndex,
+    ) -> bool {
+        match node_states[node] {
             // known to reach a target
             State::Included => return true,
 
@@ -409,20 +414,20 @@ fn walk_between<'q>(
             State::Undecided => {}
         }
 
-        node_states[node.0] = State::Deciding;
+        node_states[node] = State::Deciding;
 
         for neighbor_index in query.graph.successor_nodes(node) {
             if recurse(query, node_states, neighbor_index) {
-                node_states[node.0] = State::Included;
+                node_states[node] = State::Included;
             }
         }
 
         // if we didn't find a path to target, then set to excluded
-        if node_states[node.0] == State::Deciding {
-            node_states[node.0] = State::Excluded;
+        if node_states[node] == State::Deciding {
+            node_states[node] = State::Excluded;
             false
         } else {
-            assert!(node_states[node.0] == State::Included);
+            assert!(node_states[node] == State::Included);
             true
         }
     }
