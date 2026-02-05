@@ -2,38 +2,43 @@ use std::io::Error;
 use std::path::{Path, PathBuf};
 
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, inline_fluent};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 
-use crate::fluent_generated as fluent;
 use crate::locator::CrateFlavor;
 
 #[derive(Diagnostic)]
-#[diag(metadata_rlib_required)]
+#[diag(
+    "crate `{$crate_name}` required to be available in rlib format, but was not found in this form"
+)]
 pub struct RlibRequired {
     pub crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_lib_required)]
+#[diag(
+    "crate `{$crate_name}` required to be available in {$kind} format, but was not found in this form"
+)]
 pub struct LibRequired<'a> {
     pub crate_name: Symbol,
     pub kind: &'a str,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_rustc_lib_required)]
-#[help]
+#[diag(
+    "crate `{$crate_name}` required to be available in {$kind} format, but was not found in this form"
+)]
+#[help("try adding `extern crate rustc_driver;` at the top level of this crate")]
 pub struct RustcLibRequired<'a> {
     pub crate_name: Symbol,
     pub kind: &'a str,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_crate_dep_multiple)]
-#[help]
+#[diag("cannot satisfy dependencies so `{$crate_name}` only shows up once")]
+#[help("having upstream crates all available in one format will likely make this go away")]
 pub struct CrateDepMultiple {
     pub crate_name: Symbol,
     #[subdiagnostic]
@@ -43,32 +48,36 @@ pub struct CrateDepMultiple {
 }
 
 #[derive(Subdiagnostic)]
-#[note(metadata_crate_dep_not_static)]
+#[note("`{$crate_name}` was unavailable as a static crate, preventing fully static linking")]
 pub struct NonStaticCrateDep {
     /// It's different from `crate_name` in main Diagnostic.
     pub crate_name_: Symbol,
 }
 
 #[derive(Subdiagnostic)]
-#[help(metadata_crate_dep_rustc_driver)]
+#[help("`feature(rustc_private)` is needed to link to the compiler's `rustc_driver` library")]
 pub struct RustcDriverHelp;
 
 #[derive(Diagnostic)]
-#[diag(metadata_two_panic_runtimes)]
+#[diag("cannot link together two panic runtimes: {$prev_name} and {$cur_name}")]
 pub struct TwoPanicRuntimes {
     pub prev_name: Symbol,
     pub cur_name: Symbol,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_bad_panic_strategy)]
+#[diag(
+    "the linked panic runtime `{$runtime}` is not compiled with this crate's panic strategy `{$strategy}`"
+)]
 pub struct BadPanicStrategy {
     pub runtime: Symbol,
     pub strategy: PanicStrategy,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_required_panic_strategy)]
+#[diag(
+    "the crate `{$crate_name}` requires panic strategy `{$found_strategy}` which is incompatible with this crate's strategy of `{$desired_strategy}`"
+)]
 pub struct RequiredPanicStrategy {
     pub crate_name: Symbol,
     pub found_strategy: PanicStrategy,
@@ -76,17 +85,23 @@ pub struct RequiredPanicStrategy {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_incompatible_with_immediate_abort)]
+#[diag(
+    "the crate `{$crate_name}` was compiled with a panic strategy which is incompatible with `immediate-abort`"
+)]
 pub struct IncompatibleWithImmediateAbort {
     pub crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_incompatible_with_immediate_abort_core)]
+#[diag(
+    "the crate `core` was compiled with a panic strategy which is incompatible with `immediate-abort`"
+)]
 pub struct IncompatibleWithImmediateAbortCore;
 
 #[derive(Diagnostic)]
-#[diag(metadata_incompatible_panic_in_drop_strategy)]
+#[diag(
+    "the crate `{$crate_name}` is compiled with the panic-in-drop strategy `{$found_strategy}` which is incompatible with this crate's strategy of `{$desired_strategy}`"
+)]
 pub struct IncompatiblePanicInDropStrategy {
     pub crate_name: Symbol,
     pub found_strategy: PanicStrategy,
@@ -94,126 +109,138 @@ pub struct IncompatiblePanicInDropStrategy {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_link_ordinal_raw_dylib)]
+#[diag("`#[link_ordinal]` is only supported if link kind is `raw-dylib`")]
 pub struct LinkOrdinalRawDylib {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_lib_framework_apple)]
+#[diag("library kind `framework` is only supported on Apple targets")]
 pub struct LibFrameworkApple;
 
 #[derive(Diagnostic)]
-#[diag(metadata_empty_renaming_target)]
+#[diag("an empty renaming target was specified for library `{$lib_name}`")]
 pub struct EmptyRenamingTarget<'a> {
     pub lib_name: &'a str,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_renaming_no_link)]
+#[diag(
+    "renaming of the library `{$lib_name}` was specified, however this crate contains no `#[link(...)]` attributes referencing this library"
+)]
 pub struct RenamingNoLink<'a> {
     pub lib_name: &'a str,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_multiple_renamings)]
+#[diag("multiple renamings were specified for library `{$lib_name}`")]
 pub struct MultipleRenamings<'a> {
     pub lib_name: &'a str,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_no_link_mod_override)]
+#[diag("overriding linking modifiers from command line is not supported")]
 pub struct NoLinkModOverride {
     #[primary_span]
     pub span: Option<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_raw_dylib_unsupported_abi)]
+#[diag("ABI not supported by `#[link(kind = \"raw-dylib\")]` on this architecture")]
 pub struct RawDylibUnsupportedAbi {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_fail_create_file_encoder)]
+#[diag("failed to create file encoder: {$err}")]
 pub struct FailCreateFileEncoder {
     pub err: Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_fail_write_file)]
+#[diag("failed to write to `{$path}`: {$err}")]
 pub struct FailWriteFile<'a> {
     pub path: &'a Path,
     pub err: Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_crate_not_panic_runtime)]
+#[diag("the crate `{$crate_name}` is not a panic runtime")]
 pub struct CrateNotPanicRuntime {
     pub crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_crate_not_compiler_builtins)]
+#[diag(
+    "the crate `{$crate_name}` resolved as `compiler_builtins` but is not `#![compiler_builtins]`"
+)]
 pub struct CrateNotCompilerBuiltins {
     pub crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_no_panic_strategy)]
+#[diag("the crate `{$crate_name}` does not have the panic strategy `{$strategy}`")]
 pub struct NoPanicStrategy {
     pub crate_name: Symbol,
     pub strategy: PanicStrategy,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_not_profiler_runtime)]
+#[diag("the crate `{$crate_name}` is not a profiler runtime")]
 pub struct NotProfilerRuntime {
     pub crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_no_multiple_global_alloc)]
+#[diag("cannot define multiple global allocators")]
 pub struct NoMultipleGlobalAlloc {
     #[primary_span]
-    #[label]
+    #[label("cannot define a new global allocator")]
     pub span2: Span,
-    #[label(metadata_prev_global_alloc)]
+    #[label("previous global allocator defined here")]
     pub span1: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_no_multiple_alloc_error_handler)]
+#[diag("cannot define multiple allocation error handlers")]
 pub struct NoMultipleAllocErrorHandler {
     #[primary_span]
-    #[label]
+    #[label("cannot define a new allocation error handler")]
     pub span2: Span,
-    #[label(metadata_prev_alloc_error_handler)]
+    #[label("previous allocation error handler defined here")]
     pub span1: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_conflicting_global_alloc)]
+#[diag(
+    "the `#[global_allocator]` in {$other_crate_name} conflicts with global allocator in: {$crate_name}"
+)]
 pub struct ConflictingGlobalAlloc {
     pub crate_name: Symbol,
     pub other_crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_conflicting_alloc_error_handler)]
+#[diag(
+    "the `#[alloc_error_handler]` in {$other_crate_name} conflicts with allocation error handler in: {$crate_name}"
+)]
 pub struct ConflictingAllocErrorHandler {
     pub crate_name: Symbol,
     pub other_crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_global_alloc_required)]
+#[diag(
+    "no global memory allocator found but one is required; link to std or add `#[global_allocator]` to a static item that implements the GlobalAlloc trait"
+)]
 pub struct GlobalAllocRequired;
 
 #[derive(Diagnostic)]
-#[diag(metadata_no_transitive_needs_dep)]
+#[diag(
+    "the crate `{$crate_name}` cannot depend on a crate that needs {$needs_crate_name}, but it depends on `{$deps_crate_name}`"
+)]
 pub struct NoTransitiveNeedsDep<'a> {
     pub crate_name: Symbol,
     pub needs_crate_name: &'a str,
@@ -221,25 +248,27 @@ pub struct NoTransitiveNeedsDep<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_failed_write_error)]
+#[diag("failed to write {$filename}: {$err}")]
 pub struct FailedWriteError {
     pub filename: PathBuf,
     pub err: Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_failed_copy_to_stdout)]
+#[diag("failed to copy {$filename} to stdout: {$err}")]
 pub struct FailedCopyToStdout {
     pub filename: PathBuf,
     pub err: Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_binary_output_to_tty)]
+#[diag(
+    "option `-o` or `--emit` is used to write binary output type `metadata` to stdout, but stdout is a tty"
+)]
 pub struct BinaryOutputToTty;
 
 #[derive(Diagnostic)]
-#[diag(metadata_missing_native_library)]
+#[diag("could not find native static library `{$libname}`, perhaps an -L flag is missing?")]
 pub struct MissingNativeLibrary<'a> {
     libname: &'a str,
     #[subdiagnostic]
@@ -273,32 +302,32 @@ impl<'a> MissingNativeLibrary<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[help(metadata_only_provide_library_name)]
+#[help("only provide the library name `{$suggested_name}`, not the full filename")]
 pub struct SuggestLibraryName<'a> {
     suggested_name: &'a str,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_failed_create_tempdir)]
+#[diag("couldn't create a temp dir: {$err}")]
 pub struct FailedCreateTempdir {
     pub err: Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_failed_create_file)]
+#[diag("failed to create the file {$filename}: {$err}")]
 pub struct FailedCreateFile<'a> {
     pub filename: &'a Path,
     pub err: Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_failed_create_encoded_metadata)]
+#[diag("failed to create encoded metadata from file: {$err}")]
 pub struct FailedCreateEncodedMetadata {
     pub err: Error,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_non_ascii_name)]
+#[diag("cannot load a crate with a non-ascii name `{$crate_name}`")]
 pub struct NonAsciiName {
     #[primary_span]
     pub span: Span,
@@ -306,7 +335,7 @@ pub struct NonAsciiName {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_extern_location_not_exist)]
+#[diag("extern location for {$crate_name} does not exist: {$location}")]
 pub struct ExternLocationNotExist<'a> {
     #[primary_span]
     pub span: Span,
@@ -315,7 +344,7 @@ pub struct ExternLocationNotExist<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_extern_location_not_file)]
+#[diag("extern location for {$crate_name} is not a file: {$location}")]
 pub struct ExternLocationNotFile<'a> {
     #[primary_span]
     pub span: Span,
@@ -332,7 +361,11 @@ pub(crate) struct MultipleCandidates {
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for MultipleCandidates {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(dcx, level, fluent::metadata_multiple_candidates);
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            inline_fluent!("multiple candidates for `{$flavor}` dependency `{$crate_name}` found"),
+        );
         diag.arg("crate_name", self.crate_name);
         diag.arg("flavor", self.flavor);
         diag.code(E0464);
@@ -345,7 +378,9 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for MultipleCandidates {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_full_metadata_not_found)]
+#[diag(
+    "only metadata stub found for `{$flavor}` dependency `{$crate_name}` please provide path to the corresponding .rmeta file with full metadata"
+)]
 pub(crate) struct FullMetadataNotFound {
     #[primary_span]
     pub span: Span,
@@ -354,7 +389,7 @@ pub(crate) struct FullMetadataNotFound {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_symbol_conflicts_current, code = E0519)]
+#[diag("the current crate is indistinguishable from one of its dependencies: it has the same crate-name `{$crate_name}` and was compiled with the same `-C metadata` arguments, so this will result in symbol conflicts between the two", code = E0519)]
 pub struct SymbolConflictsCurrent {
     #[primary_span]
     pub span: Span,
@@ -362,7 +397,7 @@ pub struct SymbolConflictsCurrent {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_stable_crate_id_collision)]
+#[diag("found crates (`{$crate_name0}` and `{$crate_name1}`) with colliding StableCrateId values")]
 pub struct StableCrateIdCollision {
     #[primary_span]
     pub span: Span,
@@ -371,7 +406,7 @@ pub struct StableCrateIdCollision {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_dl_error)]
+#[diag("{$path}{$err}")]
 pub struct DlError {
     #[primary_span]
     pub span: Span,
@@ -380,9 +415,9 @@ pub struct DlError {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_newer_crate_version, code = E0460)]
-#[note]
-#[note(metadata_found_crate_versions)]
+#[diag("found possibly newer version of crate `{$crate_name}`{$add_info}", code = E0460)]
+#[note("perhaps that crate needs to be recompiled?")]
+#[note("the following crate versions were found:{$found_crates}")]
 pub struct NewerCrateVersion {
     #[primary_span]
     pub span: Span,
@@ -392,8 +427,8 @@ pub struct NewerCrateVersion {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_no_crate_with_triple, code = E0461)]
-#[note(metadata_found_crate_versions)]
+#[diag("couldn't find crate `{$crate_name}` with expected target triple {$locator_triple}{$add_info}", code = E0461)]
+#[note("the following crate versions were found:{$found_crates}")]
 pub struct NoCrateWithTriple<'a> {
     #[primary_span]
     pub span: Span,
@@ -404,9 +439,9 @@ pub struct NoCrateWithTriple<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_found_staticlib, code = E0462)]
-#[note(metadata_found_crate_versions)]
-#[help]
+#[diag("found staticlib `{$crate_name}` instead of rlib or dylib{$add_info}", code = E0462)]
+#[note("the following crate versions were found:{$found_crates}")]
+#[help("please recompile that crate using --crate-type lib")]
 pub struct FoundStaticlib {
     #[primary_span]
     pub span: Span,
@@ -416,9 +451,11 @@ pub struct FoundStaticlib {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_incompatible_rustc, code = E0514)]
-#[note(metadata_found_crate_versions)]
-#[help]
+#[diag("found crate `{$crate_name}` compiled by an incompatible version of rustc{$add_info}", code = E0514)]
+#[note("the following crate versions were found:{$found_crates}")]
+#[help(
+    "please recompile that crate using this compiler ({$rustc_version}) (consider running `cargo clean` first)"
+)]
 pub struct IncompatibleRustc {
     #[primary_span]
     pub span: Span,
@@ -438,7 +475,11 @@ pub struct InvalidMetadataFiles {
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for InvalidMetadataFiles {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(dcx, level, fluent::metadata_invalid_meta_files);
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            inline_fluent!("found invalid metadata files for crate `{$crate_name}`{$add_info}"),
+        );
         diag.arg("crate_name", self.crate_name);
         diag.arg("add_info", self.add_info);
         diag.code(E0786);
@@ -466,7 +507,11 @@ pub struct CannotFindCrate {
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(dcx, level, fluent::metadata_cannot_find_crate);
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            inline_fluent!("can't find crate for `{$crate_name}`{$add_info}"),
+        );
         diag.arg("crate_name", self.crate_name);
         diag.arg("current_crate", self.current_crate);
         diag.arg("add_info", self.add_info);
@@ -475,9 +520,11 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
         diag.span(self.span);
         if self.crate_name == sym::std || self.crate_name == sym::core {
             if self.missing_core {
-                diag.note(fluent::metadata_target_not_installed);
+                diag.note(inline_fluent!("the `{$locator_triple}` target may not be installed"));
             } else {
-                diag.note(fluent::metadata_target_no_std_support);
+                diag.note(inline_fluent!(
+                    "the `{$locator_triple}` target may not support the standard library"
+                ));
             }
 
             let has_precompiled_std = !self.is_tier_3;
@@ -485,12 +532,14 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
             if self.missing_core {
                 if env!("CFG_RELEASE_CHANNEL") == "dev" && !self.is_ui_testing {
                     // Note: Emits the nicer suggestion only for the dev channel.
-                    diag.help(fluent::metadata_consider_adding_std);
+                    diag.help(inline_fluent!("consider adding the standard library to the sysroot with `x build library --target {$locator_triple}`"));
                 } else if has_precompiled_std {
                     // NOTE: this suggests using rustup, even though the user may not have it installed.
                     // That's because they could choose to install it; or this may give them a hint which
                     // target they need to install from their distro.
-                    diag.help(fluent::metadata_consider_downloading_target);
+                    diag.help(inline_fluent!(
+                        "consider downloading the target with `rustup target add {$locator_triple}`"
+                    ));
                 }
             }
 
@@ -499,25 +548,27 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
             // If it's not a dummy, that means someone added `extern crate std` explicitly and
             // `#![no_std]` won't help.
             if !self.missing_core && self.span.is_dummy() {
-                diag.note(fluent::metadata_std_required);
+                diag.note(inline_fluent!("`std` is required by `{$current_crate}` because it does not declare `#![no_std]`"));
             }
             // Recommend -Zbuild-std even on stable builds for Tier 3 targets because
             // it's the recommended way to use the target, the user should switch to nightly.
             if self.is_nightly_build || !has_precompiled_std {
-                diag.help(fluent::metadata_consider_building_std);
+                diag.help(inline_fluent!("consider building the standard library from source with `cargo build -Zbuild-std`"));
             }
         } else if self.crate_name == self.profiler_runtime {
-            diag.note(fluent::metadata_compiler_missing_profiler);
+            diag.note(inline_fluent!(
+                "the compiler may have been built without the profiler runtime"
+            ));
         } else if self.crate_name.as_str().starts_with("rustc_") {
-            diag.help(fluent::metadata_install_missing_components);
+            diag.help(inline_fluent!("maybe you need to install the missing components with: `rustup component add rust-src rustc-dev llvm-tools-preview`"));
         }
-        diag.span_label(self.span, fluent::metadata_cant_find_crate);
+        diag.span_label(self.span, inline_fluent!("can't find crate"));
         diag
     }
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_crate_location_unknown_type)]
+#[diag("extern location for {$crate_name} is of an unknown type: {$path}")]
 pub struct CrateLocationUnknownType<'a> {
     #[primary_span]
     pub span: Span,
@@ -526,7 +577,7 @@ pub struct CrateLocationUnknownType<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_lib_filename_form)]
+#[diag("file name should be lib*.rlib or {$dll_prefix}*{$dll_suffix}")]
 pub struct LibFilenameForm<'a> {
     #[primary_span]
     pub span: Span,
@@ -535,18 +586,28 @@ pub struct LibFilenameForm<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_wasm_c_abi)]
+#[diag(
+    "older versions of the `wasm-bindgen` crate are incompatible with current versions of Rust; please update to `wasm-bindgen` v0.2.88"
+)]
 pub(crate) struct WasmCAbi {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_incompatible_target_modifiers)]
-#[help]
-#[note]
-#[help(metadata_incompatible_target_modifiers_help_fix)]
-#[help(metadata_incompatible_target_modifiers_help_allow)]
+#[diag("mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`")]
+#[help(
+    "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"
+)]
+#[note(
+    "`{$flag_name_prefixed}={$local_value}` in this crate is incompatible with `{$flag_name_prefixed}={$extern_value}` in dependency `{$extern_crate}`"
+)]
+#[help(
+    "set `{$flag_name_prefixed}={$extern_value}` in this crate or `{$flag_name_prefixed}={$local_value}` in `{$extern_crate}`"
+)]
+#[help(
+    "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
+)]
 pub struct IncompatibleTargetModifiers {
     #[primary_span]
     pub span: Span,
@@ -559,11 +620,19 @@ pub struct IncompatibleTargetModifiers {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_incompatible_target_modifiers_l_missed)]
-#[help]
-#[note]
-#[help(metadata_incompatible_target_modifiers_help_fix_l_missed)]
-#[help(metadata_incompatible_target_modifiers_help_allow)]
+#[diag("mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`")]
+#[help(
+    "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"
+)]
+#[note(
+    "unset `{$flag_name_prefixed}` in this crate is incompatible with `{$flag_name_prefixed}={$extern_value}` in dependency `{$extern_crate}`"
+)]
+#[help(
+    "set `{$flag_name_prefixed}={$extern_value}` in this crate or unset `{$flag_name_prefixed}` in `{$extern_crate}`"
+)]
+#[help(
+    "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
+)]
 pub struct IncompatibleTargetModifiersLMissed {
     #[primary_span]
     pub span: Span,
@@ -575,11 +644,19 @@ pub struct IncompatibleTargetModifiersLMissed {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_incompatible_target_modifiers_r_missed)]
-#[help]
-#[note]
-#[help(metadata_incompatible_target_modifiers_help_fix_r_missed)]
-#[help(metadata_incompatible_target_modifiers_help_allow)]
+#[diag("mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`")]
+#[help(
+    "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"
+)]
+#[note(
+    "`{$flag_name_prefixed}={$local_value}` in this crate is incompatible with unset `{$flag_name_prefixed}` in dependency `{$extern_crate}`"
+)]
+#[help(
+    "unset `{$flag_name_prefixed}` in this crate or set `{$flag_name_prefixed}={$local_value}` in `{$extern_crate}`"
+)]
+#[help(
+    "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
+)]
 pub struct IncompatibleTargetModifiersRMissed {
     #[primary_span]
     pub span: Span,
@@ -591,7 +668,9 @@ pub struct IncompatibleTargetModifiersRMissed {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_unknown_target_modifier_unsafe_allowed)]
+#[diag(
+    "unknown target modifier `{$flag_name}`, requested by `-Cunsafe-allow-abi-mismatch={$flag_name}`"
+)]
 pub struct UnknownTargetModifierUnsafeAllowed {
     #[primary_span]
     pub span: Span,
@@ -599,8 +678,12 @@ pub struct UnknownTargetModifierUnsafeAllowed {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_async_drop_types_in_dependency)]
-#[help]
+#[diag(
+    "found async drop types in dependency `{$extern_crate}`, but async_drop feature is disabled for `{$local_crate}`"
+)]
+#[help(
+    "if async drop type will be dropped in a crate without `feature(async_drop)`, sync Drop will be used"
+)]
 pub struct AsyncDropTypesInDependency {
     #[primary_span]
     pub span: Span,
@@ -609,7 +692,7 @@ pub struct AsyncDropTypesInDependency {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_raw_dylib_malformed)]
+#[diag("link name must be well-formed if link kind is `raw-dylib`")]
 pub struct RawDylibMalformed {
     #[primary_span]
     pub span: Span,

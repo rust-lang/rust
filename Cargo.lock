@@ -4230,7 +4230,6 @@ dependencies = [
  "rustc_errors",
  "rustc_expand",
  "rustc_feature",
- "rustc_fluent_macro",
  "rustc_fs_util",
  "rustc_hir",
  "rustc_hir_pretty",
