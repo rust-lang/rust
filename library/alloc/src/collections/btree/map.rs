@@ -1274,7 +1274,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// b.insert(5, String::from("f"));
     ///
     /// // concatenate a's value and b's value
-    /// a.merge(&mut b, |_, a_val, b_val| {
+    /// a.merge(b, |_, a_val, b_val| {
     ///     format!("{a_val}{b_val}")
     /// });
     ///
