@@ -5,7 +5,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_span::ErrorGuaranteed;
 
 use super::QueryStackFrameExtra;
-use crate::dep_graph::{DepKind, DepNode, DepNodeParams, HasDepContext, SerializedDepNodeIndex};
+use crate::dep_graph::{DepKind, DepNode, DepNodeKey, HasDepContext, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::{CycleError, CycleErrorHandling, DepNodeIndex, QueryContext, QueryState};
@@ -33,7 +33,7 @@ pub trait QueryDispatcher<'tcx>: Copy + 'tcx {
 
     // `Key` and `Value` are `Copy` instead of `Clone` to ensure copying them stays cheap,
     // but it isn't necessary.
-    type Key: DepNodeParams<DepContextOf<'tcx, Self>> + Eq + Hash + Copy + Debug;
+    type Key: DepNodeKey<DepContextOf<'tcx, Self>> + Eq + Hash + Copy + Debug;
     type Value: Copy;
 
     type Cache: QueryCache<Key = Self::Key, Value = Self::Value>;

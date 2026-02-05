@@ -1,7 +1,7 @@
 //! Helper functions that serve as the immediate implementation of
 //! `tcx.$query(..)` and its variations.
 
-use rustc_query_system::dep_graph::{DepKind, DepNodeParams};
+use rustc_query_system::dep_graph::{DepKind, DepNodeKey};
 use rustc_query_system::query::{QueryCache, QueryMode, try_get_cached};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
@@ -86,7 +86,7 @@ pub(crate) fn query_feed<'tcx, Cache>(
     value: Cache::Value,
 ) where
     Cache: QueryCache,
-    Cache::Key: DepNodeParams<TyCtxt<'tcx>>,
+    Cache::Key: DepNodeKey<TyCtxt<'tcx>>,
 {
     let format_value = query_vtable.format_value;
 

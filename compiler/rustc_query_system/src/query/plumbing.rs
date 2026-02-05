@@ -18,7 +18,7 @@ use tracing::instrument;
 
 use super::{QueryDispatcher, QueryStackDeferred, QueryStackFrameExtra};
 use crate::dep_graph::{
-    DepContext, DepGraphData, DepNode, DepNodeIndex, DepNodeParams, HasDepContext,
+    DepContext, DepGraphData, DepNode, DepNodeIndex, DepNodeKey, HasDepContext,
 };
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
