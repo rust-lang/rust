@@ -1651,28 +1651,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     && let name = Symbol::intern(name)
                     && name.can_be_raw()
                 {
-                    let ident = if is_namespaced_crate(name.as_str()) {
-                        let crate_name_base = name
-                            .as_str()
-                            .split("::")
-                            .nth(0)
-                            .expect("namespaced crate name should contain '::'");
-
-                        if !namespaced_crate_names.contains_key(crate_name_base) {
-                            panic!("{} should be in `namespaced_crates`", name);
-                        }
-
-                        IdentKey::with_root_ctxt(Symbol::intern(crate_name_base))
-                    } else {
-                        IdentKey::with_root_ctxt(name)
-                    };
-
+                    // TODO need to add a virtual flag here
+                    let ident = IdentKey::with_root_ctxt(name);
                     Some((ident, ExternPreludeEntry::flag()))
                 } else {
                     None
                 }
             })
             .collect();
+
         debug!(?extern_prelude);
 
         if !attr::contains_name(attrs, sym::no_core) {

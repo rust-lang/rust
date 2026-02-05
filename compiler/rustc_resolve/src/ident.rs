@@ -26,7 +26,7 @@ use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingKey, CmResolver, Decl, DeclKind,
     Determinacy, Finalize, IdentKey, ImportKind, LateDecl, Module, ModuleKind, ModuleOrUniformRoot,
     ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet,
-    Segment, Stage, Used, errors,
+    Segment, Stage, Symbol, Used, errors,
 };
 
 #[derive(Copy, Clone)]
@@ -397,7 +397,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     /// Resolve an identifier in the specified set of scopes.
-    #[instrument(level = "debug", skip(self))]
     pub(crate) fn resolve_ident_in_scope_set<'r>(
         self: CmResolver<'r, 'ra, 'tcx>,
         orig_ident: Ident,
@@ -698,8 +697,39 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
             }
             Scope::NamespacedCrates(module, _) => {
-                // TODO: Implement this
-                Err(Determinacy::Determined)
+                if let Some(def_id) = module.opt_def_id() {
+                    if let Some(ns_base_name) =
+                        self.def_id_to_namespaced_crate_names.borrow().get(&def_id)
+                    {
+                        // find the namespaced crate whose second segment matches `ident`
+                        let ns_crate_cand = self
+                            .namespaced_crate_names
+                            .get(ns_base_name.as_str())
+                            .into_iter()
+                            .flatten()
+                            .find(|s| s.split("::").nth(1) == Some(ident.name.as_str()));
+
+                        match ns_crate_cand {
+                            Some(ns_cand) => {
+                                let ns_ident = IdentKey::with_root_ctxt(Symbol::intern(ns_cand));
+
+                                match self.extern_prelude_get_flag(
+                                    ns_ident,
+                                    module.span,
+                                    finalize.is_some(),
+                                ) {
+                                    Some(decl) => Ok(decl),
+                                    None => Err(Determinacy::Determined),
+                                }
+                            }
+                            None => Err(Determinacy::Determined),
+                        }
+                    } else {
+                        Err(Determinacy::Determined)
+                    }
+                } else {
+                    Err(Determinacy::Determined)
+                }
             }
             Scope::MacroUsePrelude => match self.macro_use_prelude.get(&ident.name).cloned() {
                 Some(decl) => Ok(decl),
