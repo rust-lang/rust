@@ -898,6 +898,28 @@ static M68K_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
+static AVR_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+    // tidy-alphabetical-start
+    ("addsubiw", Unstable(sym::avr_target_feature), &[]),
+    ("break", Unstable(sym::avr_target_feature), &[]),
+    ("eijmpcall", Unstable(sym::avr_target_feature), &[]),
+    ("elpm", Unstable(sym::avr_target_feature), &[]),
+    ("elpmx", Unstable(sym::avr_target_feature), &[]),
+    ("ijmpcall", Unstable(sym::avr_target_feature), &[]),
+    ("jmpcall", Unstable(sym::avr_target_feature), &[]),
+    ("lowbytefirst", Unstable(sym::avr_target_feature), &[]),
+    ("lpm", Unstable(sym::avr_target_feature), &[]),
+    ("lpmx", Unstable(sym::avr_target_feature), &[]),
+    ("movw", Unstable(sym::avr_target_feature), &[]),
+    ("mul", Unstable(sym::avr_target_feature), &[]),
+    ("rmw", Unstable(sym::avr_target_feature), &[]),
+    ("spm", Unstable(sym::avr_target_feature), &[]),
+    ("spmx", Unstable(sym::avr_target_feature), &[]),
+    ("sram", Forbidden { reason: "devices that have no SRAM are unsupported" }, &[]),
+    ("tinyencoding", Unstable(sym::avr_target_feature), &[]),
+    // tidy-alphabetical-end
+];
+
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
@@ -919,6 +941,7 @@ pub fn all_rust_features() -> impl Iterator<Item = (&'static str, Stability)> {
         .chain(IBMZ_FEATURES)
         .chain(SPARC_FEATURES)
         .chain(M68K_FEATURES)
+        .chain(AVR_FEATURES)
         .cloned()
         .map(|(f, s, _)| (f, s))
 }
@@ -996,12 +1019,8 @@ impl Target {
             Arch::S390x => IBMZ_FEATURES,
             Arch::Sparc | Arch::Sparc64 => SPARC_FEATURES,
             Arch::M68k => M68K_FEATURES,
-            Arch::AmdGpu
-            | Arch::Avr
-            | Arch::Msp430
-            | Arch::SpirV
-            | Arch::Xtensa
-            | Arch::Other(_) => &[],
+            Arch::Avr => AVR_FEATURES,
+            Arch::AmdGpu | Arch::Msp430 | Arch::SpirV | Arch::Xtensa | Arch::Other(_) => &[],
         }
     }
 
@@ -1023,11 +1042,11 @@ impl Target {
                 MIPS_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI
             }
             Arch::AmdGpu => AMDGPU_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
-            Arch::Nvptx64 | Arch::Bpf | Arch::M68k => &[], // no vector ABI
+            Arch::Nvptx64 | Arch::Bpf | Arch::M68k | Arch::Avr => &[], // no vector ABI
             Arch::CSky => CSKY_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
             // FIXME: for some tier3 targets, we are overly cautious and always give warnings
             // when passing args in vector registers.
-            Arch::Avr | Arch::Msp430 | Arch::SpirV | Arch::Xtensa | Arch::Other(_) => &[],
+            Arch::Msp430 | Arch::SpirV | Arch::Xtensa | Arch::Other(_) => &[],
         }
     }
 
@@ -1223,6 +1242,12 @@ impl Target {
                 // The "vector" target feature does not affect the ABI for floats
                 // because the vector and float registers overlap.
                 FeatureConstraints { required: &[], incompatible: &["soft-float"] }
+            }
+            Arch::Avr => {
+                // SRAM is minimum requirement for C/C++ in both avr-gcc and Clang,
+                // and backends of them only support assembly for devices have no SRAM.
+                // See the discussion in https://github.com/rust-lang/rust/pull/146900 for more.
+                FeatureConstraints { required: &["sram"], incompatible: &[] }
             }
             _ => NOTHING,
         }
