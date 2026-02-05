@@ -540,7 +540,7 @@ macro_rules! typed_def_id {
 }
 
 // N.B.: when adding new typed `DefId`s update the corresponding trait impls in
-// `rustc_middle::dep_graph::def_node` for `DepNodeParams`.
+// `rustc_middle::dep_graph::dep_node_key` for `DepNodeKey`.
 typed_def_id! { ModDefId, LocalModDefId }
 
 impl LocalModDefId {

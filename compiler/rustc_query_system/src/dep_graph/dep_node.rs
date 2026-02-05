@@ -124,7 +124,7 @@ impl DepNode {
     pub fn construct<Tcx, Key>(tcx: Tcx, kind: DepKind, arg: &Key) -> DepNode
     where
         Tcx: super::DepContext,
-        Key: DepNodeParams<Tcx>,
+        Key: DepNodeKey<Tcx>,
     {
         let hash = arg.to_fingerprint(tcx);
         let dep_node = DepNode { kind, hash: hash.into() };
@@ -167,16 +167,13 @@ impl fmt::Debug for DepNode {
     }
 }
 
-pub trait DepNodeParams<Tcx: DepContext>: fmt::Debug + Sized {
+/// Trait for query keys as seen by dependency-node tracking.
+pub trait DepNodeKey<Tcx: DepContext>: fmt::Debug + Sized {
     fn fingerprint_style() -> FingerprintStyle;
 
-    /// This method turns the parameters of a DepNodeConstructor into an opaque
-    /// Fingerprint to be used in DepNode.
-    /// Not all DepNodeParams support being turned into a Fingerprint (they
-    /// don't need to if the corresponding DepNode is anonymous).
-    fn to_fingerprint(&self, _: Tcx) -> Fingerprint {
-        panic!("Not implemented. Accidentally called on anonymous node?")
-    }
+    /// This method turns a query key into an opaque `Fingerprint` to be used
+    /// in `DepNode`.
+    fn to_fingerprint(&self, _: Tcx) -> Fingerprint;
 
     fn to_debug_str(&self, tcx: Tcx) -> String;
 
@@ -189,7 +186,8 @@ pub trait DepNodeParams<Tcx: DepContext>: fmt::Debug + Sized {
     fn recover(tcx: Tcx, dep_node: &DepNode) -> Option<Self>;
 }
 
-impl<Tcx: DepContext, T> DepNodeParams<Tcx> for T
+// Blanket impl of `DepNodeKey`, which is specialized by other impls elsewhere.
+impl<Tcx: DepContext, T> DepNodeKey<Tcx> for T
 where
     T: for<'a> HashStable<StableHashingContext<'a>> + fmt::Debug,
 {
@@ -239,7 +237,7 @@ pub struct DepKindVTable<Tcx: DepContext> {
 
     /// Indicates whether and how the query key can be recovered from its hashed fingerprint.
     ///
-    /// The [`DepNodeParams`] trait determines the fingerprint style for each key type.
+    /// The [`DepNodeKey`] trait determines the fingerprint style for each key type.
     pub fingerprint_style: FingerprintStyle,
 
     /// The red/green evaluation system will try to mark a specific DepNode in the
