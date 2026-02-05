@@ -347,7 +347,6 @@ pub(crate) struct OffloadKernelGlobals<'ll> {
     pub offload_sizes: &'ll llvm::Value,
     pub memtransfer_types: &'ll llvm::Value,
     pub region_id: &'ll llvm::Value,
-    pub offload_entry: &'ll llvm::Value,
 }
 
 fn gen_tgt_data_mappers<'ll>(
@@ -468,8 +467,12 @@ pub(crate) fn gen_define_handling<'ll>(
     let c_section_name = CString::new("llvm_offload_entries").unwrap();
     llvm::set_section(offload_entry, &c_section_name);
 
-    let result =
-        OffloadKernelGlobals { offload_sizes, memtransfer_types, region_id, offload_entry };
+    cx.add_compiler_used_global(offload_entry);
+
+    let result = OffloadKernelGlobals { offload_sizes, memtransfer_types, region_id };
+
+    // FIXME(Sa4dUs): use this global for constant offload sizes
+    cx.add_compiler_used_global(result.offload_sizes);
 
     cx.offload_kernel_cache.borrow_mut().insert(symbol, result);
 
@@ -532,8 +535,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     offload_dims: &OffloadKernelDims<'ll>,
 ) {
     let cx = builder.cx;
-    let OffloadKernelGlobals { offload_sizes, offload_entry, memtransfer_types, region_id } =
-        offload_data;
+    let OffloadKernelGlobals { memtransfer_types, region_id, .. } = offload_data;
     let OffloadKernelDims { num_workgroups, threads_per_block, workgroup_dims, thread_dims } =
         offload_dims;
 
@@ -547,20 +549,6 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
     let num_args = types.len() as u64;
     let bb = builder.llbb();
-
-    // FIXME(Sa4dUs): dummy loads are a temp workaround, we should find a proper way to prevent these
-    // variables from being optimized away
-    for val in [offload_sizes, offload_entry] {
-        unsafe {
-            let dummy = llvm::LLVMBuildLoad2(
-                &builder.llbuilder,
-                llvm::LLVMTypeOf(val),
-                val,
-                b"dummy\0".as_ptr() as *const _,
-            );
-            llvm::LLVMSetVolatile(dummy, llvm::TRUE);
-        }
-    }
 
     // Step 0)
     unsafe {
