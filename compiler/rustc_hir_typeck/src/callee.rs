@@ -2,7 +2,7 @@ use std::iter;
 
 use rustc_abi::{CanonAbi, ExternAbi};
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey, inline_fluent};
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
@@ -25,8 +25,8 @@ use tracing::{debug, instrument};
 use super::method::MethodCallee;
 use super::method::probe::ProbeScope;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
+use crate::errors;
 use crate::method::TreatNotYetDefinedOpaques;
-use crate::{errors, fluent_generated};
 
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
@@ -832,12 +832,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (Some((_, kind, path)), _) => {
                     err.arg("kind", kind);
                     err.arg("path", path);
-                    Some(fluent_generated::hir_typeck_invalid_defined_kind)
+                    Some(inline_fluent!("{$kind} `{$path}` defined here"))
                 }
                 (_, Some(hir::QPath::Resolved(_, path))) => {
                     self.tcx.sess.source_map().span_to_snippet(path.span).ok().map(|p| {
                         err.arg("func", p);
-                        fluent_generated::hir_typeck_invalid_fn_defined
+                        inline_fluent!("`{$func}` defined here returns `{$ty}`")
                     })
                 }
                 _ => {
@@ -846,15 +846,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // type definitions themselves, but rather variables *of* that type.
                         Res::Local(hir_id) => {
                             err.arg("local_name", self.tcx.hir_name(hir_id));
-                            Some(fluent_generated::hir_typeck_invalid_local)
+                            Some(inline_fluent!("`{$local_name}` has type `{$ty}`"))
                         }
                         Res::Def(kind, def_id) if kind.ns() == Some(Namespace::ValueNS) => {
                             err.arg("path", self.tcx.def_path_str(def_id));
-                            Some(fluent_generated::hir_typeck_invalid_defined)
+                            Some(inline_fluent!("`{$path}` defined here"))
                         }
                         _ => {
                             err.arg("path", callee_ty);
-                            Some(fluent_generated::hir_typeck_invalid_defined)
+                            Some(inline_fluent!("`{$path}` defined here"))
                         }
                     }
                 }
