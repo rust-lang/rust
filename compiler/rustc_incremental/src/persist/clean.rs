@@ -19,25 +19,21 @@
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
 
-use rustc_ast::{self as ast, MetaItemInner};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::unord::UnordSet;
+use rustc_hir::attrs::{AttributeKind, RustcCleanAttribute};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{
-    Attribute, ImplItemKind, ItemKind as HirItem, Node as HirNode, TraitItemKind, intravisit,
+    Attribute, ImplItemKind, ItemKind as HirItem, Node as HirNode, TraitItemKind, find_attr,
+    intravisit,
 };
 use rustc_middle::dep_graph::{DepNode, DepNodeExt, dep_kind_from_label, label_strs};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::{Span, Symbol, sym};
-use thin_vec::ThinVec;
+use rustc_span::{Span, Symbol};
 use tracing::debug;
 
 use crate::errors;
-
-const LOADED_FROM_DISK: Symbol = sym::loaded_from_disk;
-const EXCEPT: Symbol = sym::except;
-const CFG: Symbol = sym::cfg;
 
 // Base and Extra labels to build up the labels
 
@@ -127,14 +123,14 @@ const LABELS_ADT: &[&[&str]] = &[BASE_HIR, BASE_STRUCT];
 
 type Labels = UnordSet<String>;
 
-/// Represents the requested configuration by rustc_clean/dirty
+/// Represents the requested configuration by rustc_clean
 struct Assertion {
     clean: Labels,
     dirty: Labels,
     loaded_from_disk: Labels,
 }
 
-pub(crate) fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
+pub(crate) fn check_clean_annotations(tcx: TyCtxt<'_>) {
     if !tcx.sess.opts.unstable_opts.query_dep_graph {
         return;
     }
@@ -145,24 +141,24 @@ pub(crate) fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
     }
 
     tcx.dep_graph.with_ignore(|| {
-        let mut dirty_clean_visitor = DirtyCleanVisitor { tcx, checked_attrs: Default::default() };
+        let mut clean_visitor = CleanVisitor { tcx, checked_attrs: Default::default() };
 
         let crate_items = tcx.hir_crate_items(());
 
         for id in crate_items.free_items() {
-            dirty_clean_visitor.check_item(id.owner_id.def_id);
+            clean_visitor.check_item(id.owner_id.def_id);
         }
 
         for id in crate_items.trait_items() {
-            dirty_clean_visitor.check_item(id.owner_id.def_id);
+            clean_visitor.check_item(id.owner_id.def_id);
         }
 
         for id in crate_items.impl_items() {
-            dirty_clean_visitor.check_item(id.owner_id.def_id);
+            clean_visitor.check_item(id.owner_id.def_id);
         }
 
         for id in crate_items.foreign_items() {
-            dirty_clean_visitor.check_item(id.owner_id.def_id);
+            clean_visitor.check_item(id.owner_id.def_id);
         }
 
         let mut all_attrs = FindAllAttrs { tcx, found_attrs: vec![] };
@@ -171,67 +167,62 @@ pub(crate) fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
         // Note that we cannot use the existing "unused attribute"-infrastructure
         // here, since that is running before codegen. This is also the reason why
         // all codegen-specific attributes are `AssumedUsed` in rustc_ast::feature_gate.
-        all_attrs.report_unchecked_attrs(dirty_clean_visitor.checked_attrs);
+        all_attrs.report_unchecked_attrs(clean_visitor.checked_attrs);
     })
 }
 
-struct DirtyCleanVisitor<'tcx> {
+struct CleanVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    checked_attrs: FxHashSet<ast::AttrId>,
+    checked_attrs: FxHashSet<Span>,
 }
 
-impl<'tcx> DirtyCleanVisitor<'tcx> {
-    /// Possibly "deserialize" the attribute into a clean/dirty assertion
-    fn assertion_maybe(&mut self, item_id: LocalDefId, attr: &Attribute) -> Option<Assertion> {
-        assert!(attr.has_name(sym::rustc_clean));
-        if !check_config(self.tcx, attr) {
-            // skip: not the correct `cfg=`
-            return None;
-        }
-        let assertion = self.assertion_auto(item_id, attr);
-        Some(assertion)
+impl<'tcx> CleanVisitor<'tcx> {
+    /// Convert the attribute to an [`Assertion`] if the relevant cfg is active
+    fn assertion_maybe(
+        &mut self,
+        item_id: LocalDefId,
+        attr: &RustcCleanAttribute,
+    ) -> Option<Assertion> {
+        self.tcx
+            .sess
+            .psess
+            .config
+            .contains(&(attr.cfg, None))
+            .then(|| self.assertion_auto(item_id, attr))
     }
 
     /// Gets the "auto" assertion on pre-validated attr, along with the `except` labels.
-    fn assertion_auto(&mut self, item_id: LocalDefId, attr: &Attribute) -> Assertion {
-        let (name, mut auto) = self.auto_labels(item_id, attr);
+    fn assertion_auto(&mut self, item_id: LocalDefId, attr: &RustcCleanAttribute) -> Assertion {
+        let (name, mut auto) = self.auto_labels(item_id, attr.span);
         let except = self.except(attr);
         let loaded_from_disk = self.loaded_from_disk(attr);
         for e in except.items().into_sorted_stable_ord() {
             if !auto.remove(e) {
-                self.tcx.dcx().emit_fatal(errors::AssertionAuto { span: attr.span(), name, e });
+                self.tcx.dcx().emit_fatal(errors::AssertionAuto { span: attr.span, name, e });
             }
         }
         Assertion { clean: auto, dirty: except, loaded_from_disk }
     }
 
     /// `loaded_from_disk=` attribute value
-    fn loaded_from_disk(&self, attr: &Attribute) -> Labels {
-        for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
-            if item.has_name(LOADED_FROM_DISK) {
-                let value = expect_associated_value(self.tcx, &item);
-                return self.resolve_labels(&item, value);
-            }
-        }
-        // If `loaded_from_disk=` is not specified, don't assert anything
-        Labels::default()
+    fn loaded_from_disk(&self, attr: &RustcCleanAttribute) -> Labels {
+        attr.loaded_from_disk
+            .as_ref()
+            .map(|queries| self.resolve_labels(&queries.entries, queries.span))
+            .unwrap_or_default()
     }
 
     /// `except=` attribute value
-    fn except(&self, attr: &Attribute) -> Labels {
-        for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
-            if item.has_name(EXCEPT) {
-                let value = expect_associated_value(self.tcx, &item);
-                return self.resolve_labels(&item, value);
-            }
-        }
-        // if no `label` or `except` is given, only the node's group are asserted
-        Labels::default()
+    fn except(&self, attr: &RustcCleanAttribute) -> Labels {
+        attr.except
+            .as_ref()
+            .map(|queries| self.resolve_labels(&queries.entries, queries.span))
+            .unwrap_or_default()
     }
 
     /// Return all DepNode labels that should be asserted for this item.
     /// index=0 is the "name" used for error messages
-    fn auto_labels(&mut self, item_id: LocalDefId, attr: &Attribute) -> (&'static str, Labels) {
+    fn auto_labels(&mut self, item_id: LocalDefId, span: Span) -> (&'static str, Labels) {
         let node = self.tcx.hir_node_by_def_id(item_id);
         let (name, labels) = match node {
             HirNode::Item(item) => {
@@ -282,7 +273,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                     HirItem::Impl { .. } => ("ItemKind::Impl", LABELS_IMPL),
 
                     _ => self.tcx.dcx().emit_fatal(errors::UndefinedCleanDirtyItem {
-                        span: attr.span(),
+                        span,
                         kind: format!("{:?}", item.kind),
                     }),
                 }
@@ -297,31 +288,31 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                 ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
                 ImplItemKind::Type(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
             },
-            _ => self.tcx.dcx().emit_fatal(errors::UndefinedCleanDirty {
-                span: attr.span(),
-                kind: format!("{node:?}"),
-            }),
+            _ => self
+                .tcx
+                .dcx()
+                .emit_fatal(errors::UndefinedCleanDirty { span, kind: format!("{node:?}") }),
         };
         let labels =
             Labels::from_iter(labels.iter().flat_map(|s| s.iter().map(|l| (*l).to_string())));
         (name, labels)
     }
 
-    fn resolve_labels(&self, item: &MetaItemInner, value: Symbol) -> Labels {
+    fn resolve_labels(&self, values: &[Symbol], span: Span) -> Labels {
         let mut out = Labels::default();
-        for label in value.as_str().split(',') {
-            let label = label.trim();
-            if DepNode::has_label_string(label) {
-                if out.contains(label) {
+        for label in values {
+            let label_str = label.as_str();
+            if DepNode::has_label_string(label_str) {
+                if out.contains(label_str) {
                     self.tcx
                         .dcx()
-                        .emit_fatal(errors::RepeatedDepNodeLabel { span: item.span(), label });
+                        .emit_fatal(errors::RepeatedDepNodeLabel { span, label: label_str });
                 }
-                out.insert(label.to_string());
+                out.insert(label_str.to_string());
             } else {
                 self.tcx
                     .dcx()
-                    .emit_fatal(errors::UnrecognizedDepNodeLabel { span: item.span(), label });
+                    .emit_fatal(errors::UnrecognizedDepNodeLabel { span, label: label_str });
             }
         }
         out
@@ -360,11 +351,18 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
     fn check_item(&mut self, item_id: LocalDefId) {
         let item_span = self.tcx.def_span(item_id.to_def_id());
         let def_path_hash = self.tcx.def_path_hash(item_id.to_def_id());
-        for attr in self.tcx.get_attrs(item_id, sym::rustc_clean) {
+
+        let Some(attr) =
+            find_attr!(self.tcx.get_all_attrs(item_id), AttributeKind::RustcClean(attr) => attr)
+        else {
+            return;
+        };
+
+        for attr in attr {
             let Some(assertion) = self.assertion_maybe(item_id, attr) else {
                 continue;
             };
-            self.checked_attrs.insert(attr.id());
+            self.checked_attrs.insert(attr.span);
             for label in assertion.clean.items().into_sorted_stable_ord() {
                 let dep_node = DepNode::from_label_string(self.tcx, label, def_path_hash).unwrap();
                 self.assert_clean(item_span, dep_node);
@@ -400,61 +398,24 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
     }
 }
 
-/// Given a `#[rustc_clean]` attribute, scan for a `cfg="foo"` attribute and check whether we have
-/// a cfg flag called `foo`.
-fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
-    debug!("check_config(attr={:?})", attr);
-    let config = &tcx.sess.psess.config;
-    debug!("check_config: config={:?}", config);
-    let mut cfg = None;
-    for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
-        if item.has_name(CFG) {
-            let value = expect_associated_value(tcx, &item);
-            debug!("check_config: searching for cfg {:?}", value);
-            cfg = Some(config.contains(&(value, None)));
-        } else if !(item.has_name(EXCEPT) || item.has_name(LOADED_FROM_DISK)) {
-            tcx.dcx().emit_err(errors::UnknownRustcCleanArgument { span: item.span() });
-        }
-    }
-
-    match cfg {
-        None => tcx.dcx().emit_fatal(errors::NoCfg { span: attr.span() }),
-        Some(c) => c,
-    }
-}
-
-fn expect_associated_value(tcx: TyCtxt<'_>, item: &MetaItemInner) -> Symbol {
-    if let Some(value) = item.value_str() {
-        value
-    } else if let Some(ident) = item.ident() {
-        tcx.dcx().emit_fatal(errors::AssociatedValueExpectedFor { span: item.span(), ident });
-    } else {
-        tcx.dcx().emit_fatal(errors::AssociatedValueExpected { span: item.span() });
-    }
-}
-
 /// A visitor that collects all `#[rustc_clean]` attributes from
 /// the HIR. It is used to verify that we really ran checks for all annotated
 /// nodes.
 struct FindAllAttrs<'tcx> {
     tcx: TyCtxt<'tcx>,
-    found_attrs: Vec<&'tcx Attribute>,
+    found_attrs: Vec<&'tcx RustcCleanAttribute>,
 }
 
 impl<'tcx> FindAllAttrs<'tcx> {
-    fn is_active_attr(&mut self, attr: &Attribute) -> bool {
-        if attr.has_name(sym::rustc_clean) && check_config(self.tcx, attr) {
-            return true;
-        }
-
-        false
+    fn is_active_attr(&self, attr: &RustcCleanAttribute) -> bool {
+        self.tcx.sess.psess.config.contains(&(attr.cfg, None))
     }
 
-    fn report_unchecked_attrs(&self, mut checked_attrs: FxHashSet<ast::AttrId>) {
+    fn report_unchecked_attrs(&self, mut checked_attrs: FxHashSet<Span>) {
         for attr in &self.found_attrs {
-            if !checked_attrs.contains(&attr.id()) {
-                self.tcx.dcx().emit_err(errors::UncheckedClean { span: attr.span() });
-                checked_attrs.insert(attr.id());
+            if !checked_attrs.contains(&attr.span) {
+                self.tcx.dcx().emit_err(errors::UncheckedClean { span: attr.span });
+                checked_attrs.insert(attr.span);
             }
         }
     }
@@ -468,8 +429,12 @@ impl<'tcx> intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
     }
 
     fn visit_attribute(&mut self, attr: &'tcx Attribute) {
-        if self.is_active_attr(attr) {
-            self.found_attrs.push(attr);
+        if let Attribute::Parsed(AttributeKind::RustcClean(attrs)) = attr {
+            for attr in attrs {
+                if self.is_active_attr(attr) {
+                    self.found_attrs.push(attr);
+                }
+            }
         }
     }
 }

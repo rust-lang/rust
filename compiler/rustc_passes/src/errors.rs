@@ -218,13 +218,6 @@ pub(crate) struct RustcLegacyConstGenericsIndexExceed {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_rustc_dirty_clean)]
-pub(crate) struct RustcDirtyClean {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_repr_conflicting, code = E0566)]
 pub(crate) struct ReprConflicting {
     #[primary_span]
