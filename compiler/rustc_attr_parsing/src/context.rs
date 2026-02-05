@@ -260,6 +260,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcDumpVtableParser>>,
         Single<WithoutArgs<RustcHasIncoherentInherentImplsParser>>,
         Single<WithoutArgs<RustcHiddenTypeOfOpaquesParser>>,
+        Single<WithoutArgs<RustcIntrinsicParser>>,
         Single<WithoutArgs<RustcLintOptTyParser>>,
         Single<WithoutArgs<RustcLintQueryInstabilityParser>>,
         Single<WithoutArgs<RustcLintUntrackedQueryInformationParser>>,

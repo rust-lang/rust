@@ -721,3 +721,12 @@ impl<S: Stage> CombineAttributeParser<S> for RustcThenThisWouldNeedParser {
         Some(ident)
     }
 }
+
+pub(crate) struct RustcIntrinsicParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcIntrinsicParser {
+    const PATH: &'static [Symbol] = &[sym::rustc_intrinsic];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsic;
+}
