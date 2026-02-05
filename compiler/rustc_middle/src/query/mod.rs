@@ -13,6 +13,7 @@ mod keys;
 pub mod on_disk_cache;
 #[macro_use]
 pub mod plumbing;
+pub mod values;
 
 pub fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> String {
     let def_id = def_id.into();
