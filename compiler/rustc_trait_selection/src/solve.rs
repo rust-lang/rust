@@ -57,7 +57,7 @@ fn try_eagerly_normalize_alias<'a, 'tcx>(
     let obligation = Obligation::new(
         tcx,
         // we ignore the error anyway
-        ObligationCause::dummy(),
+        ObligationCause::dummy_with_span(span),
         param_env,
         ty::PredicateKind::AliasRelate(
             alias.to_ty(tcx).into(),
