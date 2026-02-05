@@ -1230,10 +1230,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
+        // Only report when the `macro_export` was produced by another macro (e.g. macro_rules!
+        // expanding to a macro_rules!), not when it merely has attributes (AstPass/Desugaring)
+        // or inert attribute processing (MacroKind::Attr).
         if shadowing == Shadowing::Unrestricted
             && binding.expansion != LocalExpnId::ROOT
             && let DeclKind::Import { import, .. } = binding.kind
             && matches!(import.kind, ImportKind::MacroExport)
+            && matches!(binding.expansion.expn_data().kind, ExpnKind::Macro(MacroKind::Bang, _))
         {
             self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
         }
