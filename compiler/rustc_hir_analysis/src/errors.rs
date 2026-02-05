@@ -278,6 +278,8 @@ pub(crate) struct CopyImplOnTypeWithDtor {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[note]
+    pub impl_: Span,
 }
 
 #[derive(Diagnostic)]

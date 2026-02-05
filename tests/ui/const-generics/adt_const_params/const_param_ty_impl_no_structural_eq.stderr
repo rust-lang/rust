@@ -27,10 +27,12 @@ note: required by a bound in `ConstParamTy_`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
 
 error[E0277]: the trait bound `CantParamDerive: Eq` is not satisfied
-  --> $DIR/const_param_ty_impl_no_structural_eq.rs:14:10
+  --> $DIR/const_param_ty_impl_no_structural_eq.rs:15:8
    |
 LL | #[derive(std::marker::ConstParamTy)]
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Eq` is not implemented for `CantParamDerive`
+   |          ------------------------- in this derive macro expansion
+LL | struct CantParamDerive(ImplementsConstParamTy);
+   |        ^^^^^^^^^^^^^^^ the trait `Eq` is not implemented for `CantParamDerive`
    |
 note: required by a bound in `ConstParamTy_`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
@@ -41,13 +43,15 @@ LL | struct CantParamDerive(ImplementsConstParamTy);
    |
 
 error[E0277]: the type `CantParamDerive` does not `#[derive(PartialEq)]`
-  --> $DIR/const_param_ty_impl_no_structural_eq.rs:14:10
+  --> $DIR/const_param_ty_impl_no_structural_eq.rs:15:8
    |
 LL | #[derive(std::marker::ConstParamTy)]
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |          ------------------------- in this derive macro expansion
+LL | struct CantParamDerive(ImplementsConstParamTy);
+   |        ^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
 help: the nightly-only, unstable trait `StructuralPartialEq` is not implemented for `CantParamDerive`
-  --> $DIR/const_param_ty_impl_no_structural_eq.rs:17:1
+  --> $DIR/const_param_ty_impl_no_structural_eq.rs:15:1
    |
 LL | struct CantParamDerive(ImplementsConstParamTy);
    | ^^^^^^^^^^^^^^^^^^^^^^

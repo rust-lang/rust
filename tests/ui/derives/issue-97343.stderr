@@ -2,12 +2,11 @@ error[E0109]: type arguments are not allowed on type parameter `Irrelevant`
   --> $DIR/issue-97343.rs:4:23
    |
 LL | #[derive(Debug)]
-   |          -----
-   |          |
-   |          not allowed on type parameter `Irrelevant`
-   |          in this derive macro expansion
+   |          ----- in this derive macro expansion
 LL | pub struct Irrelevant<Irrelevant> {
-   |                       ^^^^^^^^^^ type argument not allowed
+   |            ---------- ^^^^^^^^^^ type argument not allowed
+   |            |
+   |            not allowed on type parameter `Irrelevant`
    |
 note: type parameter `Irrelevant` defined here
   --> $DIR/issue-97343.rs:4:23

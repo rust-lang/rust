@@ -4,15 +4,15 @@
 use std::marker::ConstParamTy;
 
 #[derive(ConstParamTy)]
-//~^ ERROR the trait `ConstParamTy_` cannot be implemented for this ty
 struct Foo([*const u8; 1]);
+//~^ ERROR the trait `ConstParamTy_` cannot be implemented for this ty
 
 #[derive(ConstParamTy)]
-//~^ ERROR the trait `ConstParamTy_` cannot be implemented for this ty
 struct Foo2([*mut u8; 1]);
+//~^ ERROR the trait `ConstParamTy_` cannot be implemented for this ty
 
 #[derive(ConstParamTy)]
-//~^ ERROR the trait `ConstParamTy_` cannot be implemented for this ty
 struct Foo3([fn(); 1]);
+//~^ ERROR the trait `ConstParamTy_` cannot be implemented for this ty
 
 fn main() {}

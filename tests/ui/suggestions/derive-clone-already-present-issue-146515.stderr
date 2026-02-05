@@ -14,9 +14,14 @@ note: `ContainsRc<T>` does not implement `Clone`, so `&ContainsRc<T>` was cloned
    |
 LL |     x.clone()
    |     ^
-   = help: `Clone` is not implemented because the trait bound `T: Clone` is not satisfied
-note: the trait `Clone` must be implemented
-  --> $SRC_DIR/core/src/clone.rs:LL:COL
+help: `Clone` is not implemented because a trait bound is not satisfied
+  --> $DIR/derive-clone-already-present-issue-146515.rs:6:19
+   |
+LL | #[derive(Clone)]
+   |          ----- in this derive macro expansion
+LL | struct ContainsRc<T> {
+   |                   ^ derive introduces an implicit `T: Clone` bound
+   = help: consider manually implementing `Clone` to avoid the implicit type parameter bounds
 
 error: aborting due to 1 previous error
 
