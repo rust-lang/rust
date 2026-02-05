@@ -338,7 +338,11 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
                 }
             }
 
-            Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend))
+            let linker = Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend);
+
+            tcx.report_unused_features();
+
+            Some(linker)
         });
 
         // Linking is done outside the `compiler.enter()` so that the

@@ -36,7 +36,7 @@ use rustc_hir::definitions::{DefPathData, Definitions, DisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
-use rustc_hir::{self as hir, HirId, Node, TraitCandidate, find_attr};
+use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
@@ -1686,6 +1686,36 @@ impl<'tcx> TyCtxt<'tcx> {
 
         if let Err((path, error)) = self.dep_graph.finish_encoding() {
             self.sess.dcx().emit_fatal(crate::error::FailedWritingFile { path: &path, error });
+        }
+    }
+
+    pub fn report_unused_features(self) {
+        // Collect first to avoid holding the lock while linting.
+        let used_features = self.sess.used_features.lock();
+        let unused_features = self
+            .features()
+            .enabled_features_iter_stable_order()
+            .filter(|(f, _)| {
+                !used_features.contains_key(f)
+                // FIXME: `restricted_std` is used to tell a standard library built
+                // for a platform that it doesn't know how to support. But it
+                // could only gate a private mod (see `__restricted_std_workaround`)
+                // with `cfg(not(restricted_std))`, so it cannot be recorded as used
+                // in downstream crates. It should never be linted, but should we
+                // hack this in the linter to ignore it?
+                && f.as_str() != "restricted_std"
+            })
+            .collect::<Vec<_>>();
+
+        for (feature, span) in unused_features {
+            self.node_span_lint(
+                rustc_session::lint::builtin::UNUSED_FEATURES,
+                CRATE_HIR_ID,
+                span,
+                |lint| {
+                    lint.primary_message(format!("feature `{}` is declared but not used", feature));
+                },
+            );
         }
     }
 }
