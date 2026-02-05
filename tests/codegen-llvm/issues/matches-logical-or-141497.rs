@@ -2,7 +2,7 @@
 // `f == FrameType::Inter || f == FrameType::Switch`.
 
 //@ compile-flags: -Copt-level=3
-//@ min-llvm-version: 21
+//@ min-llvm-version: 23
 
 #![crate_type = "lib"]
 
@@ -18,8 +18,7 @@ pub enum FrameType {
 #[no_mangle]
 pub fn is_inter_or_switch(f: FrameType) -> bool {
     // CHECK-NEXT: start:
-    // CHECK-NEXT: and i8
-    // CHECK-NEXT: icmp
+    // CHECK-NEXT: trunc i8 %{{.*}} to i1
     // CHECK-NEXT: ret
     matches!(f, FrameType::Inter | FrameType::Switch)
 }
