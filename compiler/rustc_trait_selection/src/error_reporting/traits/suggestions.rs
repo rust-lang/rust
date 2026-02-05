@@ -3307,6 +3307,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::SizedReturnType | ObligationCauseCode::SizedCallReturnType => {
                 err.note("the return type of a function must have a statically known size");
+                if let Some(node_body_id) = tcx.hir_node_by_def_id(body_id).body_id()
+                    && let body = tcx.hir_body(node_body_id)
+                    && let hir::Node::Expr(closure_expr) = tcx.hir_node_by_def_id(body_id)
+                    && let hir::ExprKind::Closure(closure) = closure_expr.kind
+                    && let hir::FnRetTy::DefaultReturn(_) = closure.fn_decl.output
+                {
+                    err.span_suggestion_verbose(
+                        body.value.span.shrink_to_lo(),
+                        "consider borrowing the value",
+                        "&",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
             ObligationCauseCode::SizedYieldType => {
                 err.note("the yield type of a coroutine must have a statically known size");
