@@ -23,6 +23,9 @@ pub(crate) fn target() -> Target {
 
             // With `ptx-linker` approach, it can be later overridden via link flags.
             cpu: "sm_30".into(),
+            // The target cpu for NVPTX must be set manually and be consistent
+            // across crates linked together.
+            requires_explicit_and_consistent_cpu: true,
 
             // FIXME: create tests for the atomics.
             max_atomic_width: Some(64),

@@ -11,10 +11,10 @@ LL + extern "x86-interrupt" fn x86(_p: *mut ()) {
    |
 
 error: requires `ResumeTy` lang_item
-  --> $DIR/cannot-be-coroutine.rs:38:19
+  --> $DIR/cannot-be-coroutine.rs:38:20
    |
-LL |   async fn vanilla(){
-   |  ___________________^
+LL |   async fn vanilla() {
+   |  ____________________^
 LL | |
 LL | | }
    | |_^

@@ -2273,9 +2273,10 @@ pub struct TargetOptions {
     /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults
     /// to "generic".
     pub cpu: StaticCow<str>,
-    /// Whether a cpu needs to be explicitly set.
-    /// Set to true if there is no default cpu. Defaults to false.
-    pub need_explicit_cpu: bool,
+    /// Signals that the cpu needs to be explicitly set and be consistent when
+    /// multiple crates are linked together. Internally modifies `-Ctarget-cpu`
+    /// to act as a target modifier. Defaults to false.
+    pub requires_explicit_and_consistent_cpu: bool,
     /// Default (Rust) target features to enable for this target. These features
     /// overwrite `-Ctarget-cpu` but can be overwritten with `-Ctarget-features`.
     /// Corresponds to `llc -mattr=$llvm_features` where `$llvm_features` is the
@@ -2733,7 +2734,7 @@ impl Default for TargetOptions {
             link_script: None,
             asm_args: cvs![],
             cpu: "generic".into(),
-            need_explicit_cpu: false,
+            requires_explicit_and_consistent_cpu: false,
             features: "".into(),
             direct_access_external_data: None,
             dynamic_linking: false,

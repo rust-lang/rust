@@ -7,11 +7,7 @@ use crate::path_helpers::cwd;
 /// If a given [`Command`] failed (as indicated by its [`CompletedProcess`]), verbose print the
 /// executed command, failure location, output status and stdout/stderr, and abort the process with
 /// exit code `1`.
-pub(crate) fn handle_failed_output(
-    cmd: &Command,
-    output: CompletedProcess,
-    caller_line_number: u32,
-) -> ! {
+pub fn handle_failed_output(cmd: &Command, output: CompletedProcess, caller_line_number: u32) -> ! {
     if output.status().success() {
         eprintln!("command unexpectedly succeeded at line {caller_line_number}");
     } else {
