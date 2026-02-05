@@ -490,6 +490,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcMirParser {
             .collect()
     }
 }
+
 pub(crate) struct RustcNonConstTraitMethodParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNonConstTraitMethodParser {
@@ -770,4 +771,13 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcIntrinsicParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsic;
+}
+
+pub(crate) struct RustcIntrinsicConstStableIndirectParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcIntrinsicConstStableIndirectParser {
+    const PATH: &'static [Symbol] = &[sym::rustc_intrinsic_const_stable_indirect];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsicConstStableIndirect;
 }
