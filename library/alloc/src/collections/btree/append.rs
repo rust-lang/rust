@@ -33,19 +33,19 @@ impl<K, V> Root<K, V> {
         self.bulk_push(iter, length, alloc)
     }
 
-    /// Appends all key-value pairs from the union of two ascending iterators,
+    /// Merges all key-value pairs from the union of two ascending iterators,
     /// incrementing a `length` variable along the way. The latter makes it
     /// easier for the caller to avoid a leak when a drop handler panicks.
     ///
     /// If both iterators produce the same key, this method constructs a pair using the
-    /// key from the left iterator and calls on a function `f` to return a value given
+    /// key from the left iterator and calls on a closure `f` to return a value given
     /// the conflicting key and value from left and right iterators.
     ///
     /// If you want the tree to end up in a strictly ascending order, like for
     /// a `BTreeMap`, both iterators should produce keys in strictly ascending
     /// order, each greater than all keys in the tree, including any keys
     /// already in the tree upon entry.
-    pub(super) fn append_from_sorted_iters_with<I, A: Allocator + Clone>(
+    pub(super) fn merge_from_sorted_iters_with<I, A: Allocator + Clone>(
         &mut self,
         left: I,
         right: I,
@@ -161,7 +161,7 @@ where
     type Item = (K, V);
 
     /// If two keys are equal, returns the key from the left and uses `f` to return
-    /// a value given knowledge of conflicting key and values from left and right
+    /// a value given the conflicting key and values from left and right
     fn next(&mut self) -> Option<(K, V)> {
         let (a_next, b_next) = self.inner.nexts(|a: &(K, V), b: &(K, V)| K::cmp(&a.0, &b.0));
         match (a_next, b_next) {

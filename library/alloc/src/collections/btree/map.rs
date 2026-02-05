@@ -1243,20 +1243,24 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Moves all elements from `other` into `self`, leaving `other` empty.
     ///
     /// If a key from `other` is already present in `self`, then the `conflict`
-    /// function is used to return a value to `self` given the conflicting key,
-    /// the current value of `self`, and the current value of `other`.
-    /// An example of why one might use this function over `BTreeMap::append`
+    /// closure is used to return a value to `self`. For clarity, the `conflict`
+    /// closure takes in a borrow of `self`'s key, `self`'s value, and `other`'s value
+    /// in that order.
+    ///
+    /// An example of why one might use this method over [`append`]
     /// is to merge `self`'s value with `other`'s value when their keys conflict.
+    ///
     /// Similar to [`insert`], though, the key is not overwritten,
     /// which matters for types that can be `==` without being identical.
     ///
     ///
     /// [`insert`]: BTreeMap::insert
+    /// [`append`]: BTreeMap::append
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(btree_append_with)]
+    /// #![feature(btree_merge)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
@@ -1270,7 +1274,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// b.insert(5, String::from("f"));
     ///
     /// // concatenate a's value and b's value
-    /// a.append_with(&mut b, |_, a_val, b_val| {
+    /// a.merge(&mut b, |_, a_val, b_val| {
     ///     format!("{a_val}{b_val}")
     /// });
     ///
@@ -1283,8 +1287,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(a[&4], "e");
     /// assert_eq!(a[&5], "f");
     /// ```
-    #[unstable(feature = "btree_append_with", issue = "147700")] // FIXME: Change issue # to track #
-    pub fn append_with(&mut self, other: &mut Self, conflict: impl FnMut(&K, V, V) -> V)
+    #[unstable(feature = "btree_merge", issue = "147700")] // FIXME: Change issue # to track #
+    pub fn merge(&mut self, mut other: Self, conflict: impl FnMut(&K, V, V) -> V)
     where
         K: Ord,
         A: Clone,
@@ -1296,14 +1300,14 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
 
         // We can just swap `self` and `other` if `self` is empty.
         if self.is_empty() {
-            mem::swap(self, other);
+            mem::swap(self, &mut other);
             return;
         }
 
         let self_iter = mem::replace(self, Self::new_in((*self.alloc).clone())).into_iter();
-        let other_iter = mem::replace(other, Self::new_in((*self.alloc).clone())).into_iter();
+        let other_iter = mem::replace(&mut other, Self::new_in((*self.alloc).clone())).into_iter();
         let root = self.root.get_or_insert_with(|| Root::new((*self.alloc).clone()));
-        root.append_from_sorted_iters_with(
+        root.merge_from_sorted_iters_with(
             self_iter,
             other_iter,
             &mut self.length,
