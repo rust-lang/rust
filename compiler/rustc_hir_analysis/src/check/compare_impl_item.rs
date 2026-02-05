@@ -6,10 +6,9 @@ use hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, pluralize, struct_span_code_err};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::VisitorExt;
-use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, find_attr, intravisit};
+use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, intravisit};
 use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -2051,12 +2050,8 @@ fn compare_type_const<'tcx>(
     impl_const_item: ty::AssocItem,
     trait_const_item: ty::AssocItem,
 ) -> Result<(), ErrorGuaranteed> {
-    let impl_is_type_const =
-        find_attr!(tcx.get_all_attrs(impl_const_item.def_id), AttributeKind::TypeConst(_));
-    let trait_type_const_span = find_attr!(
-        tcx.get_all_attrs(trait_const_item.def_id),
-        AttributeKind::TypeConst(sp) => *sp
-    );
+    let impl_is_type_const = tcx.is_type_const(impl_const_item.def_id);
+    let trait_type_const_span = tcx.type_const_span(trait_const_item.def_id);
 
     if let Some(trait_type_const_span) = trait_type_const_span
         && !impl_is_type_const
