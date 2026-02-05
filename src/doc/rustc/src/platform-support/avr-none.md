@@ -68,6 +68,8 @@ the possible variants:
 
 https://github.com/llvm/llvm-project/blob/093d4db2f3c874d4683fb01194b00dbb20e5c713/clang/lib/Basic/Targets/AVR.cpp#L32
 
+Note that devices that have no SRAM are not supported, same as when compiling C/C++ programs with avr-gcc or Clang.
+
 ## Testing
 
 You can use [`simavr`](https://github.com/buserror/simavr) to emulate the
