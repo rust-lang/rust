@@ -1287,7 +1287,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(a[&4], "e");
     /// assert_eq!(a[&5], "f");
     /// ```
-    #[unstable(feature = "btree_merge", issue = "147700")] // FIXME: Change issue # to track #
+    #[unstable(feature = "btree_merge", issue = "152152")]
     pub fn merge(&mut self, mut other: Self, conflict: impl FnMut(&K, V, V) -> V)
     where
         K: Ord,
