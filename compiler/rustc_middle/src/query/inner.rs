@@ -2,13 +2,32 @@
 //! `tcx.$query(..)` and its variations.
 
 use rustc_query_system::dep_graph::{DepKind, DepNodeKey};
-use rustc_query_system::query::{QueryCache, QueryMode, try_get_cached};
+use rustc_query_system::query::{QueryCache, QueryMode};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use crate::dep_graph;
 use crate::query::erase::{self, Erasable, Erased};
 use crate::query::plumbing::QueryVTable;
 use crate::ty::TyCtxt;
+
+/// Checks whether there is already a value for this key in the in-memory
+/// query cache, returning that value if present.
+///
+/// (Also performs some associated bookkeeping, if a value was found.)
+#[inline(always)]
+fn try_get_cached<'tcx, C>(tcx: TyCtxt<'tcx>, cache: &C, key: &C::Key) -> Option<C::Value>
+where
+    C: QueryCache,
+{
+    match cache.lookup(key) {
+        Some((value, index)) => {
+            tcx.prof.query_cache_hit(index.into());
+            tcx.dep_graph.read_index(index);
+            Some(value)
+        }
+        None => None,
+    }
+}
 
 /// Shared implementation of `tcx.$query(..)` and `tcx.at(span).$query(..)`
 /// for all queries.
