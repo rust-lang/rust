@@ -995,12 +995,14 @@ cfg_select! {
     }
     unix => {
         pub fn get_resident_set_size() -> Option<usize> {
+            use libc::{sysconf, _SC_PAGESIZE};
             let field = 1;
             let contents = fs::read("/proc/self/statm").ok()?;
             let contents = String::from_utf8(contents).ok()?;
             let s = contents.split_whitespace().nth(field)?;
             let npages = s.parse::<usize>().ok()?;
-            Some(npages * 4096)
+            // SAFETY: `sysconf(_SC_PAGESIZE)` has no side effects and is safe to call.
+            Some(npages * unsafe { sysconf(_SC_PAGESIZE) } as usize)
         }
     }
     _ => {
