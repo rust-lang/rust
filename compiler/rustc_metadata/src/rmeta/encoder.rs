@@ -369,6 +369,8 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for [u8] {
 }
 
 impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
+    type Interner = TyCtxt<'tcx>;
+
     const CLEAR_CROSS_CRATE: bool = true;
 
     fn position(&self) -> usize {

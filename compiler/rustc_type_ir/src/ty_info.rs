@@ -17,7 +17,7 @@ use crate::{DebruijnIndex, TypeFlags};
 /// StableHash::ZERO for the hash, in which case the hash gets computed each time.
 /// This is useful if you have values that you intern but never (can?) use for stable
 /// hashing.
-#[derive(Copy, Clone, GenericTypeVisitable)]
+#[derive(Copy, Clone, Debug, GenericTypeVisitable)]
 pub struct WithCachedTypeInfo<T> {
     pub internee: T,
 

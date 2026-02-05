@@ -11,7 +11,7 @@ use crate::inherent::*;
 use crate::relate::VarianceDiagInfo;
 use crate::solve::Goal;
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, InferCtxtLike, Interner, TypingMode, Upcast};
+use crate::{self as ty, InferCtxtLike, Interner, Ty, TypingMode, Upcast};
 
 pub trait PredicateEmittingRelation<Infcx, I = <Infcx as InferCtxtLike>::Interner>:
     TypeRelation<I>
@@ -39,15 +39,15 @@ where
     );
 
     /// Register `AliasRelate` obligation(s) that both types must be related to each other.
-    fn register_alias_relate_predicate(&mut self, a: I::Ty, b: I::Ty);
+    fn register_alias_relate_predicate(&mut self, a: Ty<I>, b: Ty<I>);
 }
 
 pub fn super_combine_tys<Infcx, I, R>(
     infcx: &Infcx,
     relation: &mut R,
-    a: I::Ty,
-    b: I::Ty,
-) -> RelateResult<I, I::Ty>
+    a: Ty<I>,
+    b: Ty<I>,
+) -> RelateResult<I, Ty<I>>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
@@ -226,13 +226,13 @@ where
 pub fn combine_ty_args<Infcx, I, R>(
     infcx: &Infcx,
     relation: &mut R,
-    a_ty: I::Ty,
-    b_ty: I::Ty,
+    a_ty: Ty<I>,
+    b_ty: Ty<I>,
     variances: I::VariancesOf,
     a_args: I::GenericArgs,
     b_args: I::GenericArgs,
-    mk: impl FnOnce(I::GenericArgs) -> I::Ty,
-) -> RelateResult<I, I::Ty>
+    mk: impl FnOnce(I::GenericArgs) -> Ty<I>,
+) -> RelateResult<I, Ty<I>>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,

@@ -1065,7 +1065,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         demand_eqtype(&mut rhs, lhs);
 
         if let (Some((true, ..)), _) | (_, Some((true, ..))) = (lhs, rhs) {
-            return Ty::new_misc_error(self.tcx);
+            return self.tcx.new_misc_error();
         }
 
         // Find the unified type and check if it's of numeric or char type again.
@@ -2053,7 +2053,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         })
                         .unwrap_or_else(|| {
                             inexistent_fields.push(field);
-                            Ty::new_misc_error(tcx)
+                            tcx.new_misc_error()
                         })
                 }
             };

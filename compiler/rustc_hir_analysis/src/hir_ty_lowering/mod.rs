@@ -765,7 +765,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             self.lowerer.ty_infer(Some(param), self.span).into()
                         } else {
                             // We've already errored above about the mismatch.
-                            Ty::new_misc_error(tcx).into()
+                            tcx.new_misc_error().into()
                         }
                     }
                     GenericParamDefKind::Const { has_default, .. } => {

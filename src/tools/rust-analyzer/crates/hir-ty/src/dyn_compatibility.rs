@@ -231,7 +231,7 @@ fn contains_illegal_self_type_reference<'db, T: rustc_type_ir::TypeVisitable<DbI
 
         fn visit_ty(
             &mut self,
-            ty: <DbInterner<'db> as rustc_type_ir::Interner>::Ty,
+            ty: rustc_type_ir::Ty<DbInterner<'db>>,
         ) -> Self::Result {
             let interner = DbInterner::new_no_crate(self.db);
             match ty.kind() {
@@ -499,7 +499,7 @@ fn contains_illegal_impl_trait_in_trait<'db>(
 
         fn visit_ty(
             &mut self,
-            ty: <DbInterner<'db> as rustc_type_ir::Interner>::Ty,
+            ty: rustc_type_ir::Ty<DbInterner<'db>>,
         ) -> Self::Result {
             if let rustc_type_ir::TyKind::Alias(AliasTyKind::Opaque, op) = ty.kind() {
                 let id = match op.def_id {

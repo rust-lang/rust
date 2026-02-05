@@ -387,6 +387,8 @@ impl<'a> BlobDecodeContext<'a> {
 }
 
 impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
+    type Interner = TyCtxt<'tcx>;
+
     const CLEAR_CROSS_CRATE: bool = true;
 
     #[inline]

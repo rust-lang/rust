@@ -257,7 +257,7 @@ pub(crate) fn check_intrinsic_type(
         {
             Ty::new_param(tcx, n, name)
         } else {
-            Ty::new_error_with_message(tcx, span, "expected param")
+            tcx.new_error_with_message(span, "expected param")
         }
     };
 

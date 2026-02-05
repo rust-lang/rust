@@ -1528,25 +1528,27 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
                 &mut obligations,
             )
         };
-        let metadata_ty = self_ty.ptr_metadata_ty_or_tail(tcx, normalize).unwrap_or_else(|tail| {
-            if tail == self_ty {
-                // This is the "fallback impl" for type parameters, unnormalizable projections
-                // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
-                // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
-                // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
-                let sized_predicate = ty::TraitRef::new(
-                    tcx,
-                    tcx.require_lang_item(LangItem::Sized, obligation.cause.span),
-                    [self_ty],
-                );
-                obligations.push(obligation.with(tcx, sized_predicate));
-                tcx.types.unit
-            } else {
-                // We know that `self_ty` has the same metadata as `tail`. This allows us
-                // to prove predicates like `Wrapper<Tail>::Metadata == Tail::Metadata`.
-                Ty::new_projection(tcx, metadata_def_id, [tail])
-            }
-        });
+        let metadata_ty = self_ty
+            .ptr_metadata_ty_or_tail(tcx, &ObligationCause::dummy(), normalize)
+            .unwrap_or_else(|tail| {
+                if tail == self_ty {
+                    // This is the "fallback impl" for type parameters, unnormalizable projections
+                    // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
+                    // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
+                    // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
+                    let sized_predicate = ty::TraitRef::new(
+                        tcx,
+                        tcx.require_lang_item(LangItem::Sized, obligation.cause.span),
+                        [self_ty],
+                    );
+                    obligations.push(obligation.with(tcx, sized_predicate));
+                    tcx.types.unit
+                } else {
+                    // We know that `self_ty` has the same metadata as `tail`. This allows us
+                    // to prove predicates like `Wrapper<Tail>::Metadata == Tail::Metadata`.
+                    Ty::new_projection(tcx, metadata_def_id, [tail])
+                }
+            });
         (metadata_ty.into(), obligations)
     } else if tcx.is_lang_item(trait_def_id, LangItem::Field) {
         let ty::Adt(def, args) = self_ty.kind() else {
@@ -1973,7 +1975,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
                 "Failed to unify obligation `{obligation:?}` with poly_projection `{poly_cache_entry:?}`: {e:?}",
             );
             debug!("confirm_param_env_candidate: {}", msg);
-            let err = Ty::new_error_with_message(infcx.tcx, obligation.cause.span, msg);
+            let err = infcx.tcx.new_error_with_message(obligation.cause.span, msg);
             Progress { term: err.into(), obligations: PredicateObligations::new() }
         }
     }
@@ -2024,7 +2026,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         } else {
             return Ok(Projected::Progress(Progress {
                 term: if obligation.predicate.kind(tcx).is_type() {
-                    Ty::new_misc_error(tcx).into()
+                    tcx.new_misc_error().into()
                 } else {
                     ty::Const::new_misc_error(tcx).into()
                 },
@@ -2052,7 +2054,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         let msg = "impl item and trait item have different parameters";
         let span = obligation.cause.span;
         let err = if obligation.predicate.kind(tcx).is_type() {
-            Ty::new_error_with_message(tcx, span, msg).into()
+            tcx.new_error_with_message(span, msg).into()
         } else {
             ty::Const::new_error_with_message(tcx, span, msg).into()
         };

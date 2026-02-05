@@ -6,6 +6,7 @@ use tracing::{debug, instrument};
 
 use super::interpret::GlobalAlloc;
 use super::*;
+use crate::traits::ObligationCause;
 use crate::ty::CoroutineArgsExt;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -870,7 +871,9 @@ impl<'tcx> UnOp {
     pub fn ty(&self, tcx: TyCtxt<'tcx>, arg_ty: Ty<'tcx>) -> Ty<'tcx> {
         match self {
             UnOp::Not | UnOp::Neg => arg_ty,
-            UnOp::PtrMetadata => arg_ty.pointee_metadata_ty_or_projection(tcx),
+            UnOp::PtrMetadata => {
+                arg_ty.pointee_metadata_ty_or_projection(&ObligationCause::dummy(), tcx)
+            }
         }
     }
 }

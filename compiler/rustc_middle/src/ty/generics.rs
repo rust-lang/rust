@@ -5,7 +5,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::{Span, Symbol, kw};
 use tracing::instrument;
 
-use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
+use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, TyCtxt};
 use crate::ty;
 use crate::ty::{EarlyBinder, GenericArgsRef};
 
@@ -96,7 +96,7 @@ impl GenericParamDef {
     pub fn to_error<'tcx>(&self, tcx: TyCtxt<'tcx>) -> ty::GenericArg<'tcx> {
         match &self.kind {
             ty::GenericParamDefKind::Lifetime => ty::Region::new_error_misc(tcx).into(),
-            ty::GenericParamDefKind::Type { .. } => Ty::new_misc_error(tcx).into(),
+            ty::GenericParamDefKind::Type { .. } => tcx.new_misc_error().into(),
             ty::GenericParamDefKind::Const { .. } => ty::Const::new_misc_error(tcx).into(),
         }
     }
