@@ -65,7 +65,7 @@ pub struct QueryJobInfo<'tcx> {
 }
 
 /// Represents an active query job.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct QueryJob<'tcx> {
     pub id: QueryJobId,
 
@@ -77,12 +77,6 @@ pub struct QueryJob<'tcx> {
 
     /// The latch that is used to wait on this job.
     latch: Option<QueryLatch<'tcx>>,
-}
-
-impl<'tcx> Clone for QueryJob<'tcx> {
-    fn clone(&self) -> Self {
-        Self { id: self.id, span: self.span, parent: self.parent, latch: self.latch.clone() }
-    }
 }
 
 impl<'tcx> QueryJob<'tcx> {
