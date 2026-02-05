@@ -716,6 +716,23 @@ pub enum BorrowckGraphvizFormatKind {
     TwoPhase,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct RustcCleanAttribute {
+    pub span: Span,
+    pub cfg: Symbol,
+    pub except: Option<RustcCleanQueries>,
+    pub loaded_from_disk: Option<RustcCleanQueries>,
+}
+
+/// Represents the `except=` or `loaded_from_disk=` argument of `#[rustc_clean]`
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct RustcCleanQueries {
+    pub entries: ThinVec<Symbol>,
+    pub span: Span,
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -1022,6 +1039,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_builtin_macro]`.
     RustcBuiltinMacro { builtin_name: Option<Symbol>, helper_attrs: ThinVec<Symbol>, span: Span },
 
+    /// Represents `#[rustc_clean]`
+    RustcClean(ThinVec<RustcCleanAttribute>),
+
     /// Represents `#[rustc_coherence_is_core]`
     RustcCoherenceIsCore(Span),
 
@@ -1076,6 +1096,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_hidden_type_of_opaques]`
     RustcHiddenTypeOfOpaques,
+
+    /// Represents `#[rustc_if_this_changed]`
+    RustcIfThisChanged(Span, Option<Symbol>),
 
     /// Represents `#[rustc_layout]`
     RustcLayout(ThinVec<RustcLayoutType>),
@@ -1177,6 +1200,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_std_internal_symbol]`.
     RustcStdInternalSymbol(Span),
+
+    /// Represents `#[rustc_then_this_would_need]`
+    RustcThenThisWouldNeed(Span, ThinVec<Ident>),
 
     /// Represents `#[rustc_unsafe_specialization_marker]`.
     RustcUnsafeSpecializationMarker(Span),

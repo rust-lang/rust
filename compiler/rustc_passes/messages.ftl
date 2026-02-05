@@ -441,8 +441,6 @@ passes_rustc_allow_const_fn_unstable =
 
 passes_rustc_const_stable_indirect_pairing =
     `const_stable_indirect` attribute does not make sense on `rustc_const_stable` function, its behavior is already implied
-passes_rustc_dirty_clean =
-    attribute requires -Z query-dep-graph to be enabled
 
 passes_rustc_force_inline_coro =
     attribute cannot be applied to a `async`, `gen` or `async gen` function

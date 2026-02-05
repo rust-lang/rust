@@ -5,7 +5,7 @@
 //! annotations. These annotations can be used to test whether paths
 //! exist in the graph. These checks run after codegen, so they view the
 //! the final state of the dependency graph. Note that there are
-//! similar assertions found in `persist::dirty_clean` which check the
+//! similar assertions found in `persist::clean` which check the
 //! **initial** state of the dependency graph, just after it has been
 //! loaded from disk.
 //!
@@ -39,14 +39,16 @@ use std::io::Write;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::linked_graph::{Direction, INCOMING, NodeIndex, OUTGOING};
+use rustc_hir::Attribute;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_middle::bug;
 use rustc_middle::dep_graph::{
     DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, EdgeFilter, dep_kinds,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 use {rustc_graphviz as dot, rustc_hir as hir};
@@ -105,29 +107,13 @@ struct IfThisChanged<'tcx> {
 }
 
 impl<'tcx> IfThisChanged<'tcx> {
-    fn argument(&self, attr: &hir::Attribute) -> Option<Symbol> {
-        let mut value = None;
-        for list_item in attr.meta_item_list().unwrap_or_default() {
-            match list_item.ident() {
-                Some(ident) if list_item.is_word() && value.is_none() => value = Some(ident.name),
-                _ =>
-                // FIXME better-encapsulate meta_item (don't directly access `node`)
-                {
-                    span_bug!(list_item.span(), "unexpected meta-item {:?}", list_item)
-                }
-            }
-        }
-        value
-    }
-
     fn process_attrs(&mut self, def_id: LocalDefId) {
         let def_path_hash = self.tcx.def_path_hash(def_id.to_def_id());
         let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
         let attrs = self.tcx.hir_attrs(hir_id);
         for attr in attrs {
-            if attr.has_name(sym::rustc_if_this_changed) {
-                let dep_node_interned = self.argument(attr);
-                let dep_node = match dep_node_interned {
+            if let Attribute::Parsed(AttributeKind::RustcIfThisChanged(span, dep_node)) = *attr {
+                let dep_node = match dep_node {
                     None => DepNode::from_def_path_hash(
                         self.tcx,
                         def_path_hash,
@@ -136,36 +122,29 @@ impl<'tcx> IfThisChanged<'tcx> {
                     Some(n) => {
                         match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
                             Ok(n) => n,
-                            Err(()) => self.tcx.dcx().emit_fatal(errors::UnrecognizedDepNode {
-                                span: attr.span(),
-                                name: n,
-                            }),
+                            Err(()) => self
+                                .tcx
+                                .dcx()
+                                .emit_fatal(errors::UnrecognizedDepNode { span, name: n }),
                         }
                     }
                 };
-                self.if_this_changed.push((attr.span(), def_id.to_def_id(), dep_node));
-            } else if attr.has_name(sym::rustc_then_this_would_need) {
-                let dep_node_interned = self.argument(attr);
-                let dep_node = match dep_node_interned {
-                    Some(n) => {
-                        match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
-                            Ok(n) => n,
-                            Err(()) => self.tcx.dcx().emit_fatal(errors::UnrecognizedDepNode {
-                                span: attr.span(),
-                                name: n,
-                            }),
-                        }
-                    }
-                    None => {
-                        self.tcx.dcx().emit_fatal(errors::MissingDepNode { span: attr.span() });
-                    }
-                };
-                self.then_this_would_need.push((
-                    attr.span(),
-                    dep_node_interned.unwrap(),
-                    hir_id,
-                    dep_node,
-                ));
+                self.if_this_changed.push((span, def_id.to_def_id(), dep_node));
+            } else if let Attribute::Parsed(AttributeKind::RustcThenThisWouldNeed(
+                _,
+                ref dep_nodes,
+            )) = *attr
+            {
+                for &n in dep_nodes {
+                    let Ok(dep_node) =
+                        DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash)
+                    else {
+                        self.tcx
+                            .dcx()
+                            .emit_fatal(errors::UnrecognizedDepNode { span: n.span, name: n.name });
+                    };
+                    self.then_this_would_need.push((n.span, n.name, hir_id, dep_node));
+                }
             }
         }
     }

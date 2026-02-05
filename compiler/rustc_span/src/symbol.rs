@@ -1957,7 +1957,6 @@ symbols! {
         rustc_deprecated_safe_2024,
         rustc_diagnostic_item,
         rustc_diagnostic_macros,
-        rustc_dirty,
         rustc_do_not_const_check,
         rustc_doc_primitive,
         rustc_driver,

@@ -4037,7 +4037,6 @@ name = "rustc_incremental"
 version = "0.0.0"
 dependencies = [
  "rand 0.9.2",
- "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fs_util",
@@ -4049,7 +4048,6 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
- "thin-vec",
  "tracing",
 ]
 

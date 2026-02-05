@@ -532,6 +532,14 @@ pub(crate) struct RustcScalableVectorCountOutOfRange {
     pub n: u128,
 }
 
+#[derive(Diagnostic)]
+#[diag("attribute requires {$opt} to be enabled")]
+pub(crate) struct AttributeRequiresOpt {
+    #[primary_span]
+    pub span: Span,
+    pub opt: &'static str,
+}
+
 pub(crate) enum AttributeParseErrorReason<'a> {
     ExpectedNoArgs,
     ExpectedStringLiteral {
