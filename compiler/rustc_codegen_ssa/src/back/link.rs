@@ -663,7 +663,7 @@ fn link_dwarf_object(sess: &Session, cg_results: &CodegenResults, executable_out
 }
 
 #[derive(LintDiagnostic)]
-#[diag(codegen_ssa_linker_output)]
+#[diag("{$inner}")]
 /// Translating this is kind of useless. We don't pass translation flags to the linker, so we'd just
 /// end up with inconsistent languages within the same diagnostic.
 struct LinkerOutput {
