@@ -1094,6 +1094,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dyn_incompatible_trait]`.
     RustcDynIncompatibleTrait(Span),
 
+    /// Represents `#[rustc_effective_visibility]`.
+    RustcEffectiveVisibility,
+
     /// Represents `#[rustc_has_incoherent_inherent_impls]`
     RustcHasIncoherentInherentImpls,
 
