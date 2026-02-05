@@ -1,5 +1,5 @@
 use super::SINGLE_ELEMENT_LOOP;
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::{indent_of, snippet, snippet_with_applicability};
 use clippy_utils::visitors::contains_break_or_continue;
 use rustc_ast::Mutability;
@@ -66,7 +66,7 @@ pub(super) fn check<'tcx>(
         _ => return,
     };
     if let ExprKind::Block(block, _) = body.kind
-        && !block.stmts.is_empty()
+        && (!block.stmts.is_empty() || block.expr.is_some())
         && !contains_break_or_continue(body)
     {
         let mut applicability = Applicability::MachineApplicable;
@@ -78,7 +78,13 @@ pub(super) fn check<'tcx>(
         let mut block_str = snippet_with_applicability(cx, block.span, "..", &mut applicability).into_owned();
         block_str.remove(0);
         block_str.pop();
-        let indent = " ".repeat(indent_of(cx, block.stmts[0].span).unwrap_or(0));
+        let indent = if let Some(first_stmt) = block.stmts.first() {
+            " ".repeat(indent_of(cx, first_stmt.span).unwrap_or(0))
+        } else if let Some(block_expr) = block.expr {
+            " ".repeat(indent_of(cx, block_expr.span).unwrap_or(0))
+        } else {
+            String::new()
+        };
 
         // Reference iterator from `&(mut) []` or `[].iter(_mut)()`.
         if !prefix.is_empty()
@@ -90,19 +96,23 @@ pub(super) fn check<'tcx>(
             arg_snip = format!("({arg_snip})").into();
         }
 
-        if clippy_utils::higher::Range::hir(cx, arg_expression).is_some() {
-            let range_expr = snippet(cx, arg_expression.span, "?").to_string();
-
-            let sugg = snippet(cx, arg_expression.span, "..");
-            span_lint_and_sugg(
-                cx,
-                SINGLE_ELEMENT_LOOP,
-                arg.span,
-                format!("this loops only once with `{pat_snip}` being `{range_expr}`"),
-                "did you mean to iterate over the range instead?",
-                sugg.to_string(),
-                Applicability::Unspecified,
-            );
+        if let Some(range) = clippy_utils::higher::Range::hir(cx, arg_expression) {
+            if range.start.is_some() {
+                // Only suggest iterating over ranges that have a start value.
+                let range_expr = snippet(cx, arg_expression.span, "?").to_string();
+                let sugg = snippet(cx, arg_expression.span, "..");
+                span_lint_and_sugg(
+                    cx,
+                    SINGLE_ELEMENT_LOOP,
+                    arg.span,
+                    format!("this loops only once with `{pat_snip}` being `{range_expr}`"),
+                    "did you mean to iterate over the range instead?",
+                    sugg.to_string(),
+                    Applicability::Unspecified,
+                );
+            } else {
+                span_lint(cx, SINGLE_ELEMENT_LOOP, expr.span, "for loop over a single element");
+            }
         } else {
             span_lint_and_sugg(
                 cx,

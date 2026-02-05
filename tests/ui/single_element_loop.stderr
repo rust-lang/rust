@@ -106,5 +106,11 @@ LL +         let ptr: *const bool = std::ptr::null();
 LL +     }
    |
 
-error: aborting due to 8 previous errors
+error: this loops only once with `_` being `3..5`
+  --> tests/ui/single_element_loop.rs:73:14
+   |
+LL |     for _ in [3..5] {
+   |              ^^^^^^ help: did you mean to iterate over the range instead?: `3..5`
+
+error: aborting due to 9 previous errors
 
