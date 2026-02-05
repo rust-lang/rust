@@ -473,11 +473,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         ),
         FutureWarnFollowing, EncodeCrossCrate::No,
     ),
-    // FIXME(Centril): This can be used on stable but shouldn't.
-    ungated!(
-        reexport_test_harness_main, CrateLevel, template!(NameValueStr: "name"), ErrorFollowing,
-        EncodeCrossCrate::No,
-    ),
 
     // Macros:
     ungated!(
@@ -831,6 +826,13 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, custom_test_frameworks,
         "custom test frameworks are an unstable feature",
     ),
+
+    gated!(
+        reexport_test_harness_main, CrateLevel, template!(NameValueStr: "name"), ErrorFollowing,
+        EncodeCrossCrate::No, custom_test_frameworks,
+        "custom test frameworks are an unstable feature",
+    ),
+
     // RFC #1268
     gated!(
         marker, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,

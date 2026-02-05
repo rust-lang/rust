@@ -124,8 +124,6 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         should_panic, Normal,
         template!(Word, List: r#"expected = "reason""#, NameValueStr: "reason"), FutureWarnFollowing,
     ),
-    // FIXME(Centril): This can be used on stable but shouldn't.
-    ungated!(reexport_test_harness_main, CrateLevel, template!(NameValueStr: "name"), ErrorFollowing),
 
     // Macros:
     ungated!(automatically_derived, Normal, template!(Word), WarnFollowing),
@@ -264,6 +262,13 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         test_runner, CrateLevel, template!(List: "path"), ErrorFollowing, custom_test_frameworks,
         "custom test frameworks are an unstable feature",
     ),
+
+    gated!(
+        reexport_test_harness_main, CrateLevel, template!(NameValueStr: "name"),
+        ErrorFollowing, custom_test_frameworks,
+        "custom test frameworks are an unstable feature",
+    ),
+
     // RFC #1268
     gated!(
         marker, Normal, template!(Word), WarnFollowing, @only_local: true,
