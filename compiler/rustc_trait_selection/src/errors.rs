@@ -3,7 +3,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
-    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic,
+    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, inline_fluent,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -17,12 +17,11 @@ use rustc_span::{BytePos, Ident, Span, Symbol, kw};
 use crate::error_reporting::infer::ObligationCauseAsDiagArg;
 use crate::error_reporting::infer::need_type_info::UnderspecifiedArgKind;
 use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlighted;
-use crate::fluent_generated as fluent;
 
 pub mod note_and_explain;
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_unable_to_construct_constant_value)]
+#[diag("unable to construct a constant value for the unevaluated constant {$unevaluated}")]
 pub struct UnableToConstructConstantValue<'a> {
     #[primary_span]
     pub span: Span,
@@ -31,60 +30,64 @@ pub struct UnableToConstructConstantValue<'a> {
 
 #[derive(Diagnostic)]
 pub enum InvalidOnClause {
-    #[diag(trait_selection_rustc_on_unimplemented_empty_on_clause, code = E0232)]
+    #[diag("empty `on`-clause in `#[rustc_on_unimplemented]`", code = E0232)]
     Empty {
         #[primary_span]
-        #[label]
+        #[label("empty `on`-clause here")]
         span: Span,
     },
-    #[diag(trait_selection_rustc_on_unimplemented_expected_one_predicate_in_not, code = E0232)]
+    #[diag("expected a single predicate in `not(..)`", code = E0232)]
     ExpectedOnePredInNot {
         #[primary_span]
-        #[label]
+        #[label("unexpected quantity of predicates here")]
         span: Span,
     },
-    #[diag(trait_selection_rustc_on_unimplemented_unsupported_literal_in_on, code = E0232)]
+    #[diag("literals inside `on`-clauses are not supported", code = E0232)]
     UnsupportedLiteral {
         #[primary_span]
-        #[label]
+        #[label("unexpected literal here")]
         span: Span,
     },
-    #[diag(trait_selection_rustc_on_unimplemented_expected_identifier, code = E0232)]
+    #[diag("expected an identifier inside this `on`-clause", code = E0232)]
     ExpectedIdentifier {
         #[primary_span]
-        #[label]
+        #[label("expected an identifier here, not `{$path}`")]
         span: Span,
         path: Path,
     },
-    #[diag(trait_selection_rustc_on_unimplemented_invalid_predicate, code = E0232)]
+    #[diag("this predicate is invalid", code = E0232)]
     InvalidPredicate {
         #[primary_span]
-        #[label]
+        #[label("expected one of `any`, `all` or `not` here, not `{$invalid_pred}`")]
         span: Span,
         invalid_pred: Symbol,
     },
-    #[diag(trait_selection_rustc_on_unimplemented_invalid_flag, code = E0232)]
+    #[diag("invalid flag in `on`-clause", code = E0232)]
     InvalidFlag {
         #[primary_span]
-        #[label]
+        #[label(
+            "expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `{$invalid_flag}`"
+        )]
         span: Span,
         invalid_flag: Symbol,
     },
-    #[diag(trait_selection_rustc_on_unimplemented_invalid_name, code = E0232)]
+    #[diag("invalid name in `on`-clause", code = E0232)]
     InvalidName {
         #[primary_span]
-        #[label]
+        #[label(
+            "expected one of `cause`, `from_desugaring`, `Self` or any generic parameter of the trait, not `{$invalid_name}`"
+        )]
         span: Span,
         invalid_name: Symbol,
     },
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_rustc_on_unimplemented_missing_value, code = E0232)]
-#[note]
+#[diag("this attribute must have a value", code = E0232)]
+#[note("e.g. `#[rustc_on_unimplemented(message=\"foo\")]`")]
 pub struct NoValueInOnUnimplemented {
     #[primary_span]
-    #[label]
+    #[label("expected value here")]
     pub span: Span,
 }
 
@@ -99,26 +102,33 @@ pub struct NegativePositiveConflict<'tcx> {
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for NegativePositiveConflict<'_> {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(dcx, level, fluent::trait_selection_negative_positive_conflict);
+        let mut diag = Diag::new(dcx, level, inline_fluent!("found both positive and negative implementation of trait `{$trait_desc}`{$self_desc ->
+[none] {\"\"}
+*[default] {\" \"}for type `{$self_desc}`
+}:"));
         diag.arg("trait_desc", self.trait_desc.print_only_trait_path().to_string());
         diag.arg("self_desc", self.self_ty.map_or_else(|| "none".to_string(), |ty| ty.to_string()));
         diag.span(self.impl_span);
         diag.code(E0751);
         match self.negative_impl_span {
             Ok(span) => {
-                diag.span_label(span, fluent::trait_selection_negative_implementation_here);
+                diag.span_label(span, inline_fluent!("negative implementation here"));
             }
             Err(cname) => {
-                diag.note(fluent::trait_selection_negative_implementation_in_crate);
+                diag.note(inline_fluent!(
+                    "negative implementation in crate `{$negative_impl_cname}`"
+                ));
                 diag.arg("negative_impl_cname", cname.to_string());
             }
         }
         match self.positive_impl_span {
             Ok(span) => {
-                diag.span_label(span, fluent::trait_selection_positive_implementation_here);
+                diag.span_label(span, inline_fluent!("positive implementation here"));
             }
             Err(cname) => {
-                diag.note(fluent::trait_selection_positive_implementation_in_crate);
+                diag.note(inline_fluent!(
+                    "positive implementation in crate `{$positive_impl_cname}`"
+                ));
                 diag.arg("positive_impl_cname", cname.to_string());
             }
         }
@@ -127,7 +137,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for NegativePositiveConflict<'_> {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_inherent_projection_normalization_overflow)]
+#[diag("overflow evaluating associated type `{$ty}`")]
 pub struct InherentProjectionNormalizationOverflow {
     #[primary_span]
     pub span: Span,
@@ -145,7 +155,12 @@ impl Subdiagnostic for AdjustSignatureBorrow {
             AdjustSignatureBorrow::Borrow { to_borrow } => {
                 diag.arg("len", to_borrow.len());
                 diag.multipart_suggestion_verbose(
-                    fluent::trait_selection_adjust_signature_borrow,
+                    inline_fluent!(
+                        "consider adjusting the signature so it borrows its {$len ->
+[one] argument
+*[other] arguments
+}"
+                    ),
                     to_borrow,
                     Applicability::MaybeIncorrect,
                 );
@@ -153,7 +168,12 @@ impl Subdiagnostic for AdjustSignatureBorrow {
             AdjustSignatureBorrow::RemoveBorrow { remove_borrow } => {
                 diag.arg("len", remove_borrow.len());
                 diag.multipart_suggestion_verbose(
-                    fluent::trait_selection_adjust_signature_remove_borrow,
+                    inline_fluent!(
+                        "consider adjusting the signature so it does not borrow its {$len ->
+[one] argument
+*[other] arguments
+}"
+                    ),
                     remove_borrow,
                     Applicability::MaybeIncorrect,
                 );
@@ -163,14 +183,14 @@ impl Subdiagnostic for AdjustSignatureBorrow {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_closure_kind_mismatch, code = E0525)]
+#[diag("expected a closure that implements the `{$trait_prefix}{$expected}` trait, but this closure only implements `{$trait_prefix}{$found}`", code = E0525)]
 pub struct ClosureKindMismatch {
     #[primary_span]
-    #[label]
+    #[label("this closure implements `{$trait_prefix}{$found}`, not `{$trait_prefix}{$expected}`")]
     pub closure_span: Span,
     pub expected: ClosureKind,
     pub found: ClosureKind,
-    #[label(trait_selection_closure_kind_requirement)]
+    #[label("the requirement to implement `{$trait_prefix}{$expected}` derives from here")]
     pub cause_span: Span,
 
     pub trait_prefix: &'static str,
@@ -183,7 +203,9 @@ pub struct ClosureKindMismatch {
 }
 
 #[derive(Subdiagnostic)]
-#[label(trait_selection_closure_fn_once_label)]
+#[label(
+    "closure is `{$trait_prefix}FnOnce` because it moves the variable `{$place}` out of its environment"
+)]
 pub struct ClosureFnOnceLabel {
     #[primary_span]
     pub span: Span,
@@ -191,7 +213,7 @@ pub struct ClosureFnOnceLabel {
 }
 
 #[derive(Subdiagnostic)]
-#[label(trait_selection_closure_fn_mut_label)]
+#[label("closure is `{$trait_prefix}FnMut` because it mutates the variable `{$place}` here")]
 pub struct ClosureFnMutLabel {
     #[primary_span]
     pub span: Span,
@@ -199,7 +221,9 @@ pub struct ClosureFnMutLabel {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_coro_closure_not_fn)]
+#[diag(
+    "{$coro_kind}closure does not implement `{$kind}` because it captures state from its environment"
+)]
 pub(crate) struct CoroClosureNotFn {
     #[primary_span]
     pub span: Span,
@@ -208,13 +232,17 @@ pub(crate) struct CoroClosureNotFn {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_type_annotations_needed, code = E0282)]
+#[diag("{$source_kind ->
+[closure] type annotations needed for the closure `{$source_name}`
+[normal] type annotations needed for `{$source_name}`
+*[other] type annotations needed
+}", code = E0282)]
 pub struct AnnotationRequired<'a> {
     #[primary_span]
     pub span: Span,
     pub source_kind: &'static str,
     pub source_name: &'a str,
-    #[label]
+    #[label("type must be known at this point")]
     pub failure_span: Option<Span>,
     #[subdiagnostic]
     pub bad_label: Option<InferenceBadError<'a>>,
@@ -226,13 +254,17 @@ pub struct AnnotationRequired<'a> {
 
 // Copy of `AnnotationRequired` for E0283
 #[derive(Diagnostic)]
-#[diag(trait_selection_type_annotations_needed, code = E0283)]
+#[diag("{$source_kind ->
+[closure] type annotations needed for the closure `{$source_name}`
+[normal] type annotations needed for `{$source_name}`
+*[other] type annotations needed
+}", code = E0283)]
 pub struct AmbiguousImpl<'a> {
     #[primary_span]
     pub span: Span,
     pub source_kind: &'static str,
     pub source_name: &'a str,
-    #[label]
+    #[label("type must be known at this point")]
     pub failure_span: Option<Span>,
     #[subdiagnostic]
     pub bad_label: Option<InferenceBadError<'a>>,
@@ -244,13 +276,17 @@ pub struct AmbiguousImpl<'a> {
 
 // Copy of `AnnotationRequired` for E0284
 #[derive(Diagnostic)]
-#[diag(trait_selection_type_annotations_needed, code = E0284)]
+#[diag("{$source_kind ->
+[closure] type annotations needed for the closure `{$source_name}`
+[normal] type annotations needed for `{$source_name}`
+*[other] type annotations needed
+}", code = E0284)]
 pub struct AmbiguousReturn<'a> {
     #[primary_span]
     pub span: Span,
     pub source_kind: &'static str,
     pub source_name: &'a str,
-    #[label]
+    #[label("type must be known at this point")]
     pub failure_span: Option<Span>,
     #[subdiagnostic]
     pub bad_label: Option<InferenceBadError<'a>>,
@@ -262,7 +298,19 @@ pub struct AmbiguousReturn<'a> {
 
 // Used when a better one isn't available
 #[derive(Subdiagnostic)]
-#[label(trait_selection_label_bad)]
+#[label(
+    "{$bad_kind ->
+*[other] cannot infer type
+[more_info] cannot infer {$prefix_kind ->
+*[type] type for {$prefix}
+[const_with_param] the value of const parameter
+[const] the value of the constant
+} `{$name}`{$has_parent ->
+[true] {\" \"}declared on the {$parent_prefix} `{$parent_name}`
+*[false] {\"\"}
+}
+}"
+)]
 pub struct InferenceBadError<'a> {
     #[primary_span]
     pub span: Span,
@@ -278,7 +326,19 @@ pub struct InferenceBadError<'a> {
 #[derive(Subdiagnostic)]
 pub enum SourceKindSubdiag<'a> {
     #[suggestion(
-        trait_selection_source_kind_subdiag_let,
+        "{$kind ->
+[with_pattern] consider giving `{$name}` an explicit type
+[closure] consider giving this closure parameter an explicit type
+*[other] consider giving this pattern a type
+}{$x_kind ->
+[has_name] , where the {$prefix_kind ->
+*[type] type for {$prefix}
+[const_with_param] value of const parameter
+[const] value of the constant
+} `{$arg_name}` is specified
+[underscore] , where the placeholders `_` are specified
+*[empty] {\"\"}
+}",
         style = "verbose",
         code = ": {type_name}",
         applicability = "has-placeholders"
@@ -294,7 +354,18 @@ pub enum SourceKindSubdiag<'a> {
         prefix: &'a str,
         arg_name: String,
     },
-    #[label(trait_selection_source_kind_subdiag_generic_label)]
+    #[label(
+        "cannot infer {$is_type ->
+[true] type
+*[false] the value
+} of the {$is_type ->
+[true] type
+*[false] const
+} {$parent_exists ->
+[true] parameter `{$param_name}` declared on the {$parent_prefix} `{$parent_name}`
+*[false] parameter {$param_name}
+}"
+    )]
     GenericLabel {
         #[primary_span]
         span: Span,
@@ -305,7 +376,10 @@ pub enum SourceKindSubdiag<'a> {
         parent_name: String,
     },
     #[suggestion(
-        trait_selection_source_kind_subdiag_generic_suggestion,
+        "consider specifying the generic {$arg_count ->
+[one] argument
+*[other] arguments
+}",
         style = "verbose",
         code = "::<{args}>",
         applicability = "has-placeholders"
@@ -321,7 +395,7 @@ pub enum SourceKindSubdiag<'a> {
 #[derive(Subdiagnostic)]
 pub enum SourceKindMultiSuggestion<'a> {
     #[multipart_suggestion(
-        trait_selection_source_kind_fully_qualified,
+        "try using a fully qualified path to specify the expected types",
         style = "verbose",
         applicability = "has-placeholders"
     )]
@@ -335,7 +409,7 @@ pub enum SourceKindMultiSuggestion<'a> {
         successor_pos: &'a str,
     },
     #[multipart_suggestion(
-        trait_selection_source_kind_closure_return,
+        "try giving this closure an explicit return type",
         style = "verbose",
         applicability = "has-placeholders"
     )]
@@ -427,7 +501,24 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                 requirement,
                 expected_found: Some((expected, found)),
             } => {
-                label_or_note(span, fluent::trait_selection_subtype);
+                label_or_note(
+                    span,
+                    inline_fluent!(
+                        "...so that the {$requirement ->
+[method_compat] method type is compatible with trait
+[type_compat] associated type is compatible with trait
+[const_compat] const is compatible with trait
+[expr_assignable] expression is assignable
+[if_else_different] `if` and `else` have incompatible types
+[no_else] `if` missing an `else` returns `()`
+[fn_main_correct_type] `main` function has the correct type
+[fn_lang_correct_type] lang item function has the correct type
+[intrinsic_correct_type] intrinsic has the correct type
+[method_correct_type] method receiver has the correct type
+*[other] types are compatible
+}"
+                    ),
+                );
                 diag.arg("requirement", requirement);
 
                 diag.note_expected_found("", expected, "", found);
@@ -436,7 +527,24 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                 // FIXME: this really should be handled at some earlier stage. Our
                 // handling of region checking when type errors are present is
                 // *terrible*.
-                label_or_note(span, fluent::trait_selection_subtype_2);
+                label_or_note(
+                    span,
+                    inline_fluent!(
+                        "...so that {$requirement ->
+[method_compat] method type is compatible with trait
+[type_compat] associated type is compatible with trait
+[const_compat] const is compatible with trait
+[expr_assignable] expression is assignable
+[if_else_different] `if` and `else` have incompatible types
+[no_else] `if` missing an `else` returns `()`
+[fn_main_correct_type] `main` function has the correct type
+[fn_lang_correct_type] lang item function has the correct type
+[intrinsic_correct_type] intrinsic has the correct type
+[method_correct_type] method receiver has the correct type
+*[other] types are compatible
+}"
+                    ),
+                );
                 diag.arg("requirement", requirement);
             }
         };
@@ -464,9 +572,17 @@ impl Subdiagnostic for LifetimeMismatchLabels {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             LifetimeMismatchLabels::InRet { param_span, ret_span, span, label_var1 } => {
-                diag.span_label(param_span, fluent::trait_selection_declared_different);
-                diag.span_label(ret_span, fluent::trait_selection_nothing);
-                diag.span_label(span, fluent::trait_selection_data_returned);
+                diag.span_label(param_span, inline_fluent!("this parameter and the return type are declared with different lifetimes..."));
+                diag.span_label(ret_span, inline_fluent!("{\"\"}"));
+                diag.span_label(
+                    span,
+                    inline_fluent!(
+                        "...but data{$label_var1_exists ->
+[true] {\" \"}from `{$label_var1}`
+*[false] {\"\"}
+} is returned here"
+                    ),
+                );
                 diag.arg("label_var1_exists", label_var1.is_some());
                 diag.arg("label_var1", label_var1.map(|x| x.to_string()).unwrap_or_default());
             }
@@ -479,13 +595,33 @@ impl Subdiagnostic for LifetimeMismatchLabels {
                 sub: label_var2,
             } => {
                 if hir_equal {
-                    diag.span_label(ty_sup, fluent::trait_selection_declared_multiple);
-                    diag.span_label(ty_sub, fluent::trait_selection_nothing);
-                    diag.span_label(span, fluent::trait_selection_data_lifetime_flow);
+                    diag.span_label(
+                        ty_sup,
+                        inline_fluent!("this type is declared with multiple lifetimes..."),
+                    );
+                    diag.span_label(ty_sub, inline_fluent!("{\"\"}"));
+                    diag.span_label(
+                        span,
+                        inline_fluent!("...but data with one lifetime flows into the other here"),
+                    );
                 } else {
-                    diag.span_label(ty_sup, fluent::trait_selection_types_declared_different);
-                    diag.span_label(ty_sub, fluent::trait_selection_nothing);
-                    diag.span_label(span, fluent::trait_selection_data_flows);
+                    diag.span_label(
+                        ty_sup,
+                        inline_fluent!("these two types are declared with different lifetimes..."),
+                    );
+                    diag.span_label(ty_sub, inline_fluent!("{\"\"}"));
+                    diag.span_label(
+                        span,
+                        inline_fluent!(
+                            "...but data{$label_var1_exists ->
+[true] {\" \"}from `{$label_var1}`
+*[false] {\"\"}
+} flows{$label_var2_exists ->
+[true] {\" \"}into `{$label_var2}`
+*[false] {\"\"}
+} here"
+                        ),
+                    );
                     diag.arg("label_var1_exists", label_var1.is_some());
                     diag.arg("label_var1", label_var1.map(|x| x.to_string()).unwrap_or_default());
                     diag.arg("label_var2_exists", label_var2.is_some());
@@ -651,7 +787,15 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                 visitor.suggestions.push(new_param_suggestion);
             }
             diag.multipart_suggestion_verbose(
-                fluent::trait_selection_lifetime_param_suggestion,
+                inline_fluent!(
+                    "consider {$is_reuse ->
+[true] reusing
+*[false] introducing
+} a named lifetime parameter{$is_impl ->
+[true] {\" \"}and update trait if needed
+*[false] {\"\"}
+}"
+                ),
                 visitor.suggestions,
                 Applicability::MaybeIncorrect,
             );
@@ -661,13 +805,15 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
             true
         };
         if mk_suggestion() && self.add_note {
-            diag.note(fluent::trait_selection_lifetime_param_suggestion_elided);
+            diag.note(inline_fluent!(
+                "each elided lifetime in input position becomes a distinct lifetime"
+            ));
         }
     }
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_lifetime_mismatch, code = E0623)]
+#[diag("lifetime mismatch", code = E0623)]
 pub struct LifetimeMismatch<'a> {
     #[primary_span]
     pub span: Span,
@@ -684,33 +830,42 @@ pub struct IntroducesStaticBecauseUnmetLifetimeReq {
 
 impl Subdiagnostic for IntroducesStaticBecauseUnmetLifetimeReq {
     fn add_to_diag<G: EmissionGuarantee>(mut self, diag: &mut Diag<'_, G>) {
-        self.unmet_requirements
-            .push_span_label(self.binding_span, fluent::trait_selection_msl_introduces_static);
-        diag.span_note(self.unmet_requirements, fluent::trait_selection_msl_unmet_req);
+        self.unmet_requirements.push_span_label(
+            self.binding_span,
+            inline_fluent!("introduces a `'static` lifetime requirement"),
+        );
+        diag.span_note(
+            self.unmet_requirements,
+            inline_fluent!("because this has an unmet lifetime requirement"),
+        );
     }
 }
 
 // FIXME(#100717): replace with a `Option<Span>` when subdiagnostic supports that
 #[derive(Subdiagnostic)]
 pub enum DoesNotOutliveStaticFromImpl {
-    #[note(trait_selection_does_not_outlive_static_from_impl)]
+    #[note(
+        "...does not necessarily outlive the static lifetime introduced by the compatible `impl`"
+    )]
     Spanned {
         #[primary_span]
         span: Span,
     },
-    #[note(trait_selection_does_not_outlive_static_from_impl)]
+    #[note(
+        "...does not necessarily outlive the static lifetime introduced by the compatible `impl`"
+    )]
     Unspanned,
 }
 
 #[derive(Subdiagnostic)]
 pub enum ImplicitStaticLifetimeSubdiag {
-    #[note(trait_selection_implicit_static_lifetime_note)]
+    #[note("this has an implicit `'static` lifetime requirement")]
     Note {
         #[primary_span]
         span: Span,
     },
     #[suggestion(
-        trait_selection_implicit_static_lifetime_suggestion,
+        "consider relaxing the implicit `'static` requirement",
         style = "verbose",
         code = " + '_",
         applicability = "maybe-incorrect"
@@ -722,7 +877,7 @@ pub enum ImplicitStaticLifetimeSubdiag {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_mismatched_static_lifetime)]
+#[diag("incompatible lifetime on type")]
 pub struct MismatchedStaticLifetime<'a> {
     #[primary_span]
     pub cause_span: Span,
@@ -738,15 +893,15 @@ pub struct MismatchedStaticLifetime<'a> {
 
 #[derive(Diagnostic)]
 pub enum ExplicitLifetimeRequired<'a> {
-    #[diag(trait_selection_explicit_lifetime_required_with_ident, code = E0621)]
+    #[diag("explicit lifetime required in the type of `{$simple_ident}`", code = E0621)]
     WithIdent {
         #[primary_span]
-        #[label]
+        #[label("lifetime `{$named}` required")]
         span: Span,
         simple_ident: Ident,
         named: String,
         #[suggestion(
-            trait_selection_explicit_lifetime_required_sugg_with_ident,
+            "add explicit lifetime `{$named}` to the type of `{$simple_ident}`",
             code = "{new_ty}",
             applicability = "unspecified",
             style = "verbose"
@@ -755,14 +910,14 @@ pub enum ExplicitLifetimeRequired<'a> {
         #[skip_arg]
         new_ty: Ty<'a>,
     },
-    #[diag(trait_selection_explicit_lifetime_required_with_param_type, code = E0621)]
+    #[diag("explicit lifetime required in parameter type", code = E0621)]
     WithParamType {
         #[primary_span]
-        #[label]
+        #[label("lifetime `{$named}` required")]
         span: Span,
         named: String,
         #[suggestion(
-            trait_selection_explicit_lifetime_required_sugg_with_param_type,
+            "add explicit lifetime `{$named}` to type",
             code = "{new_ty}",
             applicability = "unspecified",
             style = "verbose"
@@ -789,7 +944,10 @@ impl IntoDiagArg for TyOrSig<'_> {
 
 #[derive(Subdiagnostic)]
 pub enum ActualImplExplNotes<'tcx> {
-    #[note(trait_selection_actual_impl_expl_expected_signature_two)]
+    #[note("{$leading_ellipsis ->
+[true] ...
+*[false] {\"\"}
+}closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...")]
     ExpectedSignatureTwo {
         leading_ellipsis: bool,
         ty_or_sig: TyOrSig<'tcx>,
@@ -797,27 +955,41 @@ pub enum ActualImplExplNotes<'tcx> {
         lifetime_1: usize,
         lifetime_2: usize,
     },
-    #[note(trait_selection_actual_impl_expl_expected_signature_any)]
+    #[note("{$leading_ellipsis ->
+[true] ...
+*[false] {\"\"}
+}closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for any lifetime `'{$lifetime_1}`...")]
     ExpectedSignatureAny {
         leading_ellipsis: bool,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
-    #[note(trait_selection_actual_impl_expl_expected_signature_some)]
+    #[note("{$leading_ellipsis ->
+[true] ...
+*[false] {\"\"}
+}closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime `'{$lifetime_1}`...")]
     ExpectedSignatureSome {
         leading_ellipsis: bool,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
-    #[note(trait_selection_actual_impl_expl_expected_signature_nothing)]
+    #[note(
+        "{$leading_ellipsis ->
+[true] ...
+*[false] {\"\"}
+}closure with signature `{$ty_or_sig}` must implement `{$trait_path}`"
+    )]
     ExpectedSignatureNothing {
         leading_ellipsis: bool,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
     },
-    #[note(trait_selection_actual_impl_expl_expected_passive_two)]
+    #[note("{$leading_ellipsis ->
+[true] ...
+*[false] {\"\"}
+}`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...")]
     ExpectedPassiveTwo {
         leading_ellipsis: bool,
         ty_or_sig: TyOrSig<'tcx>,
@@ -825,27 +997,41 @@ pub enum ActualImplExplNotes<'tcx> {
         lifetime_1: usize,
         lifetime_2: usize,
     },
-    #[note(trait_selection_actual_impl_expl_expected_passive_any)]
+    #[note("{$leading_ellipsis ->
+[true] ...
+*[false] {\"\"}
+}`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for any lifetime `'{$lifetime_1}`...")]
     ExpectedPassiveAny {
         leading_ellipsis: bool,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
-    #[note(trait_selection_actual_impl_expl_expected_passive_some)]
+    #[note("{$leading_ellipsis ->
+[true] ...
+*[false] {\"\"}
+}`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for some specific lifetime `'{$lifetime_1}`...")]
     ExpectedPassiveSome {
         leading_ellipsis: bool,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
-    #[note(trait_selection_actual_impl_expl_expected_passive_nothing)]
+    #[note(
+        "{$leading_ellipsis ->
+[true] ...
+*[false] {\"\"}
+}`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`"
+    )]
     ExpectedPassiveNothing {
         leading_ellipsis: bool,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
     },
-    #[note(trait_selection_actual_impl_expl_expected_other_two)]
+    #[note("{$leading_ellipsis ->
+[true] ...
+*[false] {\"\"}
+}`{$ty_or_sig}` must implement `{$trait_path}`, for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...")]
     ExpectedOtherTwo {
         leading_ellipsis: bool,
         ty_or_sig: TyOrSig<'tcx>,
@@ -853,40 +1039,70 @@ pub enum ActualImplExplNotes<'tcx> {
         lifetime_1: usize,
         lifetime_2: usize,
     },
-    #[note(trait_selection_actual_impl_expl_expected_other_any)]
+    #[note(
+        "{$leading_ellipsis ->
+[true] ...
+*[false] {\"\"}
+}`{$ty_or_sig}` must implement `{$trait_path}`, for any lifetime `'{$lifetime_1}`..."
+    )]
     ExpectedOtherAny {
         leading_ellipsis: bool,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
-    #[note(trait_selection_actual_impl_expl_expected_other_some)]
+    #[note(
+        "{$leading_ellipsis ->
+[true] ...
+*[false] {\"\"}
+}`{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime `'{$lifetime_1}`..."
+    )]
     ExpectedOtherSome {
         leading_ellipsis: bool,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
-    #[note(trait_selection_actual_impl_expl_expected_other_nothing)]
+    #[note(
+        "{$leading_ellipsis ->
+[true] ...
+*[false] {\"\"}
+}`{$ty_or_sig}` must implement `{$trait_path}`"
+    )]
     ExpectedOtherNothing {
         leading_ellipsis: bool,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
     },
-    #[note(trait_selection_actual_impl_expl_but_actually_implements_trait)]
+    #[note(
+        "...but it actually implements `{$trait_path}`{$has_lifetime ->
+[true] , for some specific lifetime `'{$lifetime}`
+*[false] {\"\"}
+}"
+    )]
     ButActuallyImplementsTrait {
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         has_lifetime: bool,
         lifetime: usize,
     },
-    #[note(trait_selection_actual_impl_expl_but_actually_implemented_for_ty)]
+    #[note(
+        "...but `{$trait_path}` is actually implemented for the type `{$ty}`{$has_lifetime ->
+[true] , for some specific lifetime `'{$lifetime}`
+*[false] {\"\"}
+}"
+    )]
     ButActuallyImplementedForTy {
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         has_lifetime: bool,
         lifetime: usize,
         ty: String,
     },
-    #[note(trait_selection_actual_impl_expl_but_actually_ty_implements)]
+    #[note(
+        "...but `{$ty}` actually implements `{$trait_path}`{$has_lifetime ->
+[true] , for some specific lifetime `'{$lifetime}`
+*[false] {\"\"}
+}"
+    )]
     ButActuallyTyImplements {
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         has_lifetime: bool,
@@ -978,15 +1194,15 @@ impl<'tcx> ActualImplExplNotes<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_trait_placeholder_mismatch)]
+#[diag("implementation of `{$trait_def_id}` is not general enough")]
 pub struct TraitPlaceholderMismatch<'tcx> {
     #[primary_span]
     pub span: Span,
-    #[label(trait_selection_label_satisfy)]
+    #[label("doesn't satisfy where-clause")]
     pub satisfy_span: Option<Span>,
-    #[label(trait_selection_label_where)]
+    #[label("due to a where-clause on `{$def_id}`...")]
     pub where_span: Option<Span>,
-    #[label(trait_selection_label_dup)]
+    #[label("implementation of `{$trait_def_id}` is not general enough")]
     pub dup_span: Option<Span>,
     pub def_id: String,
     pub trait_def_id: String,
@@ -1004,26 +1220,34 @@ impl Subdiagnostic for ConsiderBorrowingParamHelp {
         let mut type_param_span: MultiSpan = self.spans.clone().into();
         for &span in &self.spans {
             // Seems like we can't call f() here as Into<DiagMessage> is required
-            type_param_span.push_span_label(span, fluent::trait_selection_tid_consider_borrowing);
+            type_param_span.push_span_label(
+                span,
+                inline_fluent!("consider borrowing this type parameter in the trait"),
+            );
         }
-        let msg = diag.eagerly_translate(fluent::trait_selection_tid_param_help);
+        let msg = diag.eagerly_translate(inline_fluent!("the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`"));
         diag.span_help(type_param_span, msg);
     }
 }
 
 #[derive(Subdiagnostic)]
-#[help(trait_selection_tid_rel_help)]
+#[help(
+    "verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output"
+)]
 pub struct RelationshipHelp;
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_trait_impl_diff)]
+#[diag("`impl` item signature doesn't match `trait` item signature")]
 pub struct TraitImplDiff {
     #[primary_span]
-    #[label(trait_selection_found)]
+    #[label("found `{$found}`")]
     pub sp: Span,
-    #[label(trait_selection_expected)]
+    #[label("expected `{$expected}`")]
     pub trait_sp: Span,
-    #[note(trait_selection_expected_found)]
+    #[note(
+        "expected signature `{$expected}`
+               {\"   \"}found signature `{$found}`"
+    )]
     pub note: (),
     #[subdiagnostic]
     pub param_help: ConsiderBorrowingParamHelp,
@@ -1043,12 +1267,20 @@ pub struct DynTraitConstraintSuggestion {
 impl Subdiagnostic for DynTraitConstraintSuggestion {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let mut multi_span: MultiSpan = vec![self.span].into();
-        multi_span.push_span_label(self.span, fluent::trait_selection_dtcs_has_lifetime_req_label);
-        multi_span
-            .push_span_label(self.ident.span, fluent::trait_selection_dtcs_introduces_requirement);
-        let msg = diag.eagerly_translate(fluent::trait_selection_dtcs_has_req_note);
+        multi_span.push_span_label(
+            self.span,
+            inline_fluent!("this has an implicit `'static` lifetime requirement"),
+        );
+        multi_span.push_span_label(
+            self.ident.span,
+            inline_fluent!("calling this method introduces the `impl`'s `'static` requirement"),
+        );
+        let msg =
+            diag.eagerly_translate(inline_fluent!("the used `impl` has a `'static` requirement"));
         diag.span_note(multi_span, msg);
-        let msg = diag.eagerly_translate(fluent::trait_selection_dtcs_suggestion);
+        let msg = diag.eagerly_translate(inline_fluent!(
+            "consider relaxing the implicit `'static` requirement"
+        ));
         diag.span_suggestion_verbose(
             self.span.shrink_to_hi(),
             msg,
@@ -1059,12 +1291,26 @@ impl Subdiagnostic for DynTraitConstraintSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_but_calling_introduces, code = E0772)]
+#[diag("{$has_param_name ->
+    [true] `{$param_name}`
+    *[false] `fn` parameter
+} has {$lifetime_kind ->
+    [true] lifetime `{$lifetime}`
+    *[false] an anonymous lifetime `'_`
+} but calling `{$assoc_item}` introduces an implicit `'static` lifetime requirement", code = E0772)]
 pub struct ButCallingIntroduces {
-    #[label(trait_selection_label1)]
+    #[label(
+        "{$has_lifetime ->
+        [true] lifetime `{$lifetime}`
+        *[false] an anonymous lifetime `'_`
+    }"
+    )]
     pub param_ty_span: Span,
     #[primary_span]
-    #[label(trait_selection_label2)]
+    #[label("...is used and required to live as long as `'static` here because of an implicit lifetime bound on the {$has_impl_path ->
+        [true] `impl` of `{$impl_path}`
+        *[false] inherent `impl`
+    }")]
     pub cause_span: Span,
 
     pub has_param_name: bool,
@@ -1087,32 +1333,61 @@ pub struct ReqIntroducedLocations {
 impl Subdiagnostic for ReqIntroducedLocations {
     fn add_to_diag<G: EmissionGuarantee>(mut self, diag: &mut Diag<'_, G>) {
         for sp in self.spans {
-            self.span.push_span_label(sp, fluent::trait_selection_ril_introduced_here);
+            self.span.push_span_label(sp, inline_fluent!("`'static` requirement introduced here"));
         }
 
         if self.add_label {
-            self.span.push_span_label(self.fn_decl_span, fluent::trait_selection_ril_introduced_by);
+            self.span.push_span_label(
+                self.fn_decl_span,
+                inline_fluent!("requirement introduced by this return type"),
+            );
         }
-        self.span.push_span_label(self.cause_span, fluent::trait_selection_ril_because_of);
-        let msg = diag.eagerly_translate(fluent::trait_selection_ril_static_introduced_by);
+        self.span.push_span_label(
+            self.cause_span,
+            inline_fluent!("because of this returned expression"),
+        );
+        let msg = diag.eagerly_translate(inline_fluent!(
+            "\"`'static` lifetime requirement introduced by the return type"
+        ));
         diag.span_note(self.span, msg);
     }
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_but_needs_to_satisfy, code = E0759)]
+#[diag("{$has_param_name ->
+    [true] `{$param_name}`
+    *[false] `fn` parameter
+} has {$has_lifetime ->
+    [true] lifetime `{$lifetime}`
+    *[false] an anonymous lifetime `'_`
+} but it needs to satisfy a `'static` lifetime requirement", code = E0759)]
 pub struct ButNeedsToSatisfy {
     #[primary_span]
     pub sp: Span,
-    #[label(trait_selection_influencer)]
+    #[label(
+        "this data with {$has_lifetime ->
+        [true] lifetime `{$lifetime}`
+        *[false] an anonymous lifetime `'_`
+    }..."
+    )]
     pub influencer_point: Span,
-    #[label(trait_selection_used_here)]
+    #[label("...is used here...")]
     pub spans: Vec<Span>,
-    #[label(trait_selection_require)]
+    #[label(
+        "{$spans_empty ->
+        *[true] ...is used and required to live as long as `'static` here
+        [false] ...and is required to live as long as `'static` here
+    }"
+    )]
     pub require_span_as_label: Option<Span>,
-    #[note(trait_selection_require)]
+    #[note(
+        "{$spans_empty ->
+        *[true] ...is used and required to live as long as `'static` here
+        [false] ...and is required to live as long as `'static` here
+    }"
+    )]
     pub require_span_as_note: Option<Span>,
-    #[note(trait_selection_introduced_by_bound)]
+    #[note("`'static` lifetime requirement introduced by this bound")]
     pub bound: Option<Span>,
 
     pub has_param_name: bool,
@@ -1123,7 +1398,7 @@ pub struct ButNeedsToSatisfy {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_outlives_content, code = E0312)]
+#[diag("lifetime of reference outlives lifetime of borrowed content...", code = E0312)]
 pub struct OutlivesContent<'a> {
     #[primary_span]
     pub span: Span,
@@ -1132,7 +1407,7 @@ pub struct OutlivesContent<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_outlives_bound, code = E0476)]
+#[diag("lifetime of the source pointer does not outlive lifetime bound of the object type", code = E0476)]
 pub struct OutlivesBound<'a> {
     #[primary_span]
     pub span: Span,
@@ -1141,7 +1416,7 @@ pub struct OutlivesBound<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_fulfill_req_lifetime, code = E0477)]
+#[diag("the type `{$ty}` does not fulfill the required lifetime", code = E0477)]
 pub struct FulfillReqLifetime<'a> {
     #[primary_span]
     pub span: Span,
@@ -1151,7 +1426,7 @@ pub struct FulfillReqLifetime<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_lf_bound_not_satisfied, code = E0478)]
+#[diag("lifetime bound not satisfied", code = E0478)]
 pub struct LfBoundNotSatisfied<'a> {
     #[primary_span]
     pub span: Span,
@@ -1160,7 +1435,7 @@ pub struct LfBoundNotSatisfied<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_ref_longer_than_data, code = E0491)]
+#[diag("in type `{$ty}`, reference has a longer lifetime than the data it references", code = E0491)]
 pub struct RefLongerThanData<'a> {
     #[primary_span]
     pub span: Span,
@@ -1172,7 +1447,7 @@ pub struct RefLongerThanData<'a> {
 #[derive(Subdiagnostic)]
 pub enum WhereClauseSuggestions {
     #[suggestion(
-        trait_selection_where_remove,
+        "remove the `where` clause",
         code = "",
         applicability = "machine-applicable",
         style = "verbose"
@@ -1182,7 +1457,7 @@ pub enum WhereClauseSuggestions {
         span: Span,
     },
     #[suggestion(
-        trait_selection_where_copy_predicates,
+        "copy the `where` clause predicates from the trait",
         code = "{space}where {trait_predicates}",
         applicability = "machine-applicable",
         style = "verbose"
@@ -1198,7 +1473,7 @@ pub enum WhereClauseSuggestions {
 #[derive(Subdiagnostic)]
 pub enum SuggestRemoveSemiOrReturnBinding {
     #[multipart_suggestion(
-        trait_selection_srs_remove_and_box,
+        "consider removing this semicolon and boxing the expressions",
         applicability = "machine-applicable"
     )]
     RemoveAndBox {
@@ -1214,7 +1489,7 @@ pub enum SuggestRemoveSemiOrReturnBinding {
         sp: Span,
     },
     #[suggestion(
-        trait_selection_srs_remove,
+        "consider removing this semicolon",
         style = "short",
         code = "",
         applicability = "machine-applicable"
@@ -1224,7 +1499,7 @@ pub enum SuggestRemoveSemiOrReturnBinding {
         sp: Span,
     },
     #[suggestion(
-        trait_selection_srs_add,
+        "consider returning the local binding `{$ident}`",
         style = "verbose",
         code = "{code}",
         applicability = "maybe-incorrect"
@@ -1235,7 +1510,7 @@ pub enum SuggestRemoveSemiOrReturnBinding {
         code: String,
         ident: Ident,
     },
-    #[note(trait_selection_srs_add_one)]
+    #[note("consider returning one of these bindings")]
     AddOne {
         #[primary_span]
         spans: MultiSpan,
@@ -1244,9 +1519,12 @@ pub enum SuggestRemoveSemiOrReturnBinding {
 
 #[derive(Subdiagnostic)]
 pub enum ConsiderAddingAwait {
-    #[help(trait_selection_await_both_futures)]
+    #[help("consider `await`ing on both `Future`s")]
     BothFuturesHelp,
-    #[multipart_suggestion(trait_selection_await_both_futures, applicability = "maybe-incorrect")]
+    #[multipart_suggestion(
+        "consider `await`ing on both `Future`s",
+        applicability = "maybe-incorrect"
+    )]
     BothFuturesSugg {
         #[suggestion_part(code = ".await")]
         first: Span,
@@ -1254,7 +1532,7 @@ pub enum ConsiderAddingAwait {
         second: Span,
     },
     #[suggestion(
-        trait_selection_await_future,
+        "consider `await`ing on the `Future`",
         code = ".await",
         style = "verbose",
         applicability = "maybe-incorrect"
@@ -1263,13 +1541,13 @@ pub enum ConsiderAddingAwait {
         #[primary_span]
         span: Span,
     },
-    #[note(trait_selection_await_note)]
+    #[note("calling an async function returns a future")]
     FutureSuggNote {
         #[primary_span]
         span: Span,
     },
     #[multipart_suggestion(
-        trait_selection_await_future,
+        "consider `await`ing on the `Future`",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
@@ -1281,69 +1559,79 @@ pub enum ConsiderAddingAwait {
 
 #[derive(Diagnostic)]
 pub enum PlaceholderRelationLfNotSatisfied {
-    #[diag(trait_selection_lf_bound_not_satisfied)]
+    #[diag("lifetime bound not satisfied")]
     HasBoth {
         #[primary_span]
         span: Span,
-        #[note(trait_selection_prlf_defined_with_sub)]
+        #[note("the lifetime `{$sub_symbol}` defined here...")]
         sub_span: Span,
-        #[note(trait_selection_prlf_must_outlive_with_sup)]
+        #[note("...must outlive the lifetime `{$sup_symbol}` defined here")]
         sup_span: Span,
         sub_symbol: Symbol,
         sup_symbol: Symbol,
-        #[note(trait_selection_prlf_known_limitation)]
+        #[note(
+            "this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)"
+        )]
         note: (),
     },
-    #[diag(trait_selection_lf_bound_not_satisfied)]
+    #[diag("lifetime bound not satisfied")]
     HasSub {
         #[primary_span]
         span: Span,
-        #[note(trait_selection_prlf_defined_with_sub)]
+        #[note("the lifetime `{$sub_symbol}` defined here...")]
         sub_span: Span,
-        #[note(trait_selection_prlf_must_outlive_without_sup)]
+        #[note("...must outlive the lifetime defined here")]
         sup_span: Span,
         sub_symbol: Symbol,
-        #[note(trait_selection_prlf_known_limitation)]
+        #[note(
+            "this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)"
+        )]
         note: (),
     },
-    #[diag(trait_selection_lf_bound_not_satisfied)]
+    #[diag("lifetime bound not satisfied")]
     HasSup {
         #[primary_span]
         span: Span,
-        #[note(trait_selection_prlf_defined_without_sub)]
+        #[note("the lifetime defined here...")]
         sub_span: Span,
-        #[note(trait_selection_prlf_must_outlive_with_sup)]
+        #[note("...must outlive the lifetime `{$sup_symbol}` defined here")]
         sup_span: Span,
         sup_symbol: Symbol,
-        #[note(trait_selection_prlf_known_limitation)]
+        #[note(
+            "this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)"
+        )]
         note: (),
     },
-    #[diag(trait_selection_lf_bound_not_satisfied)]
+    #[diag("lifetime bound not satisfied")]
     HasNone {
         #[primary_span]
         span: Span,
-        #[note(trait_selection_prlf_defined_without_sub)]
+        #[note("the lifetime defined here...")]
         sub_span: Span,
-        #[note(trait_selection_prlf_must_outlive_without_sup)]
+        #[note("...must outlive the lifetime defined here")]
         sup_span: Span,
-        #[note(trait_selection_prlf_known_limitation)]
+        #[note(
+            "this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)"
+        )]
         note: (),
     },
-    #[diag(trait_selection_lf_bound_not_satisfied)]
+    #[diag("lifetime bound not satisfied")]
     OnlyPrimarySpan {
         #[primary_span]
         span: Span,
-        #[note(trait_selection_prlf_known_limitation)]
+        #[note(
+            "this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)"
+        )]
         note: (),
     },
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_opaque_captures_lifetime, code = E0700)]
+#[diag("hidden type for `{$opaque_ty}` captures lifetime that does not appear in bounds", code = E0700)]
 pub struct OpaqueCapturesLifetime<'tcx> {
     #[primary_span]
     pub span: Span,
-    #[label]
+    #[label("opaque type defined here")]
     pub opaque_ty_span: Span,
     pub opaque_ty: Ty<'tcx>,
 }
@@ -1351,7 +1639,7 @@ pub struct OpaqueCapturesLifetime<'tcx> {
 #[derive(Subdiagnostic)]
 pub enum FunctionPointerSuggestion<'a> {
     #[suggestion(
-        trait_selection_fps_use_ref,
+        "consider using a reference",
         code = "&",
         style = "verbose",
         applicability = "maybe-incorrect"
@@ -1361,7 +1649,7 @@ pub enum FunctionPointerSuggestion<'a> {
         span: Span,
     },
     #[suggestion(
-        trait_selection_fps_remove_ref,
+        "consider removing the reference",
         code = "{fn_name}",
         style = "verbose",
         applicability = "maybe-incorrect"
@@ -1373,7 +1661,7 @@ pub enum FunctionPointerSuggestion<'a> {
         fn_name: String,
     },
     #[suggestion(
-        trait_selection_fps_cast,
+        "consider casting to a fn pointer",
         code = "&({fn_name} as {sig})",
         style = "verbose",
         applicability = "maybe-incorrect"
@@ -1387,7 +1675,7 @@ pub enum FunctionPointerSuggestion<'a> {
         sig: Binder<'a, FnSig<'a>>,
     },
     #[suggestion(
-        trait_selection_fps_cast,
+        "consider casting to a fn pointer",
         code = " as {sig}",
         style = "verbose",
         applicability = "maybe-incorrect"
@@ -1399,7 +1687,7 @@ pub enum FunctionPointerSuggestion<'a> {
         sig: Binder<'a, FnSig<'a>>,
     },
     #[suggestion(
-        trait_selection_fps_cast_both,
+        "consider casting both fn items to fn pointers using `as {$expected_sig}`",
         code = " as {found_sig}",
         style = "hidden",
         applicability = "maybe-incorrect"
@@ -1412,7 +1700,7 @@ pub enum FunctionPointerSuggestion<'a> {
         expected_sig: Binder<'a, FnSig<'a>>,
     },
     #[suggestion(
-        trait_selection_fps_cast_both,
+        "consider casting both fn items to fn pointers using `as {$expected_sig}`",
         code = "&({fn_name} as {found_sig})",
         style = "hidden",
         applicability = "maybe-incorrect"
@@ -1429,21 +1717,21 @@ pub enum FunctionPointerSuggestion<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[note(trait_selection_fps_items_are_distinct)]
+#[note("fn items are distinct from fn pointers")]
 pub struct FnItemsAreDistinct;
 
 #[derive(Subdiagnostic)]
-#[note(trait_selection_fn_uniq_types)]
+#[note("different fn items have unique types, even if their signatures are the same")]
 pub struct FnUniqTypes;
 
 #[derive(Subdiagnostic)]
-#[help(trait_selection_fn_consider_casting)]
+#[help("consider casting the fn item to a fn pointer: `{$casting}`")]
 pub struct FnConsiderCasting {
     pub casting: String,
 }
 
 #[derive(Subdiagnostic)]
-#[help(trait_selection_fn_consider_casting_both)]
+#[help("consider casting both fn items to fn pointers using `as {$sig}`")]
 pub struct FnConsiderCastingBoth<'a> {
     pub sig: Binder<'a, FnSig<'a>>,
 }
@@ -1451,7 +1739,7 @@ pub struct FnConsiderCastingBoth<'a> {
 #[derive(Subdiagnostic)]
 pub enum SuggestAccessingField<'a> {
     #[suggestion(
-        trait_selection_suggest_accessing_field,
+        "you might have meant to use field `{$name}` whose type is `{$ty}`",
         code = "{snippet}.{name}",
         applicability = "maybe-incorrect",
         style = "verbose"
@@ -1464,7 +1752,7 @@ pub enum SuggestAccessingField<'a> {
         ty: Ty<'a>,
     },
     #[suggestion(
-        trait_selection_suggest_accessing_field,
+        "you might have meant to use field `{$name}` whose type is `{$ty}`",
         code = "unsafe {{ {snippet}.{name} }}",
         applicability = "maybe-incorrect",
         style = "verbose"
@@ -1479,7 +1767,10 @@ pub enum SuggestAccessingField<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(trait_selection_stp_wrap_one, applicability = "maybe-incorrect")]
+#[multipart_suggestion(
+    "try wrapping the pattern in `{$variant}`",
+    applicability = "maybe-incorrect"
+)]
 pub struct SuggestTuplePatternOne {
     pub variant: String,
     #[suggestion_part(code = "{variant}(")]
@@ -1497,7 +1788,9 @@ pub struct SuggestTuplePatternMany {
 impl Subdiagnostic for SuggestTuplePatternMany {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("path", self.path);
-        let message = diag.eagerly_translate(fluent::trait_selection_stp_wrap_many);
+        let message = diag.eagerly_translate(inline_fluent!(
+            "try wrapping the pattern in a variant of `{$path}`"
+        ));
         diag.multipart_suggestions(
             message,
             self.compatible_variants.into_iter().map(|variant| {
@@ -1514,7 +1807,7 @@ impl Subdiagnostic for SuggestTuplePatternMany {
 #[derive(Subdiagnostic)]
 pub enum TypeErrorAdditionalDiags {
     #[suggestion(
-        trait_selection_meant_byte_literal,
+        "if you meant to write a byte literal, prefix with `b`",
         code = "b'{code}'",
         applicability = "machine-applicable"
     )]
@@ -1524,7 +1817,7 @@ pub enum TypeErrorAdditionalDiags {
         code: String,
     },
     #[suggestion(
-        trait_selection_meant_char_literal,
+        "if you meant to write a `char` literal, use single quotes",
         code = "'{code}'",
         applicability = "machine-applicable"
     )]
@@ -1533,7 +1826,10 @@ pub enum TypeErrorAdditionalDiags {
         span: Span,
         code: String,
     },
-    #[multipart_suggestion(trait_selection_meant_str_literal, applicability = "machine-applicable")]
+    #[multipart_suggestion(
+        "if you meant to write a string literal, use double quotes",
+        applicability = "machine-applicable"
+    )]
     MeantStrLiteral {
         #[suggestion_part(code = "\"")]
         start: Span,
@@ -1541,7 +1837,7 @@ pub enum TypeErrorAdditionalDiags {
         end: Span,
     },
     #[suggestion(
-        trait_selection_consider_specifying_length,
+        "consider specifying the actual array length",
         code = "{length}",
         applicability = "maybe-incorrect"
     )]
@@ -1550,10 +1846,10 @@ pub enum TypeErrorAdditionalDiags {
         span: Span,
         length: u64,
     },
-    #[note(trait_selection_try_cannot_convert)]
+    #[note("`?` operator cannot convert from `{$found}` to `{$expected}`")]
     TryCannotConvert { found: String, expected: String },
     #[suggestion(
-        trait_selection_tuple_trailing_comma,
+        "use a trailing comma to create a tuple with one element",
         code = ",",
         applicability = "machine-applicable"
     )]
@@ -1562,7 +1858,7 @@ pub enum TypeErrorAdditionalDiags {
         span: Span,
     },
     #[multipart_suggestion(
-        trait_selection_tuple_trailing_comma,
+        "use a trailing comma to create a tuple with one element",
         applicability = "machine-applicable"
     )]
     TupleAlsoParentheses {
@@ -1572,7 +1868,7 @@ pub enum TypeErrorAdditionalDiags {
         span_high: Span,
     },
     #[suggestion(
-        trait_selection_suggest_add_let_for_letchains,
+        "consider adding `let`",
         style = "verbose",
         applicability = "machine-applicable",
         code = "let "
@@ -1585,66 +1881,69 @@ pub enum TypeErrorAdditionalDiags {
 
 #[derive(Diagnostic)]
 pub enum ObligationCauseFailureCode {
-    #[diag(trait_selection_oc_method_compat, code = E0308)]
+    #[diag("method not compatible with trait", code = E0308)]
     MethodCompat {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(trait_selection_oc_type_compat, code = E0308)]
+    #[diag("type not compatible with trait", code = E0308)]
     TypeCompat {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(trait_selection_oc_const_compat, code = E0308)]
+    #[diag("const not compatible with trait", code = E0308)]
     ConstCompat {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(trait_selection_oc_try_compat, code = E0308)]
+    #[diag("`?` operator has incompatible types", code = E0308)]
     TryCompat {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(trait_selection_oc_match_compat, code = E0308)]
+    #[diag("`match` arms have incompatible types", code = E0308)]
     MatchCompat {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(trait_selection_oc_if_else_different, code = E0308)]
+    #[diag("`if` and `else` have incompatible types", code = E0308)]
     IfElseDifferent {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(trait_selection_oc_no_else, code = E0317)]
+    #[diag("`if` may be missing an `else` clause", code = E0317)]
     NoElse {
         #[primary_span]
         span: Span,
     },
-    #[diag(trait_selection_oc_no_diverge, code = E0308)]
+    #[diag("`else` clause of `let...else` does not diverge", code = E0308)]
     NoDiverge {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(trait_selection_oc_fn_main_correct_type, code = E0580)]
+    #[diag("`main` function has wrong type", code = E0580)]
     FnMainCorrectType {
         #[primary_span]
         span: Span,
     },
-    #[diag(trait_selection_oc_fn_lang_correct_type, code = E0308)]
+    #[diag("{$lang_item_name ->
+[panic_impl] `#[panic_handler]`
+*[lang_item_name] lang item `{$lang_item_name}`
+} function has wrong type", code = E0308)]
     FnLangCorrectType {
         #[primary_span]
         span: Span,
@@ -1652,40 +1951,40 @@ pub enum ObligationCauseFailureCode {
         subdiags: Vec<TypeErrorAdditionalDiags>,
         lang_item_name: Symbol,
     },
-    #[diag(trait_selection_oc_intrinsic_correct_type, code = E0308)]
+    #[diag("intrinsic has wrong type", code = E0308)]
     IntrinsicCorrectType {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(trait_selection_oc_method_correct_type, code = E0308)]
+    #[diag("mismatched `self` parameter type", code = E0308)]
     MethodCorrectType {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(trait_selection_oc_closure_selfref, code = E0644)]
+    #[diag("closure/coroutine type that references itself", code = E0644)]
     ClosureSelfref {
         #[primary_span]
         span: Span,
     },
-    #[diag(trait_selection_oc_cant_coerce_force_inline, code = E0308)]
+    #[diag("cannot coerce functions which must be inlined to function pointers", code = E0308)]
     CantCoerceForceInline {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(trait_selection_oc_cant_coerce_intrinsic, code = E0308)]
+    #[diag("cannot coerce intrinsics to function pointers", code = E0308)]
     CantCoerceIntrinsic {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(trait_selection_oc_generic, code = E0308)]
+    #[diag("mismatched types", code = E0308)]
     Generic {
         #[primary_span]
         span: Span,
@@ -1697,7 +1996,7 @@ pub enum ObligationCauseFailureCode {
 #[derive(Subdiagnostic)]
 pub enum AddPreciseCapturing {
     #[suggestion(
-        trait_selection_precise_capturing_new,
+        "add a `use<...>` bound to explicitly capture `{$new_lifetime}`",
         style = "verbose",
         code = " + use<{concatenated_bounds}>",
         applicability = "machine-applicable"
@@ -1709,7 +2008,7 @@ pub enum AddPreciseCapturing {
         concatenated_bounds: String,
     },
     #[suggestion(
-        trait_selection_precise_capturing_existing,
+        "add `{$new_lifetime}` to the `use<...>` bound to explicitly capture it",
         style = "verbose",
         code = "{pre}{new_lifetime}{post}",
         applicability = "machine-applicable"
@@ -1733,13 +2032,13 @@ impl Subdiagnostic for AddPreciseCapturingAndParams {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("new_lifetime", self.new_lifetime);
         diag.multipart_suggestion_verbose(
-            fluent::trait_selection_precise_capturing_new_but_apit,
+            inline_fluent!("add a `use<...>` bound to explicitly capture `{$new_lifetime}` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate"),
             self.suggs,
             Applicability::MaybeIncorrect,
         );
         diag.span_note(
             self.apit_spans,
-            fluent::trait_selection_warn_removing_apit_params_for_undercapture,
+            inline_fluent!("you could use a `use<...>` bound to explicitly capture `{$new_lifetime}`, but argument-position `impl Trait`s are not nameable"),
         );
     }
 }
@@ -1880,26 +2179,31 @@ impl Subdiagnostic for AddPreciseCapturingForOvercapture {
             Applicability::MaybeIncorrect
         };
         diag.multipart_suggestion_verbose(
-            fluent::trait_selection_precise_capturing_overcaptures,
+            inline_fluent!(
+                "use the precise capturing `use<...>` syntax to make the captures explicit"
+            ),
             self.suggs,
             applicability,
         );
         if !self.apit_spans.is_empty() {
             diag.span_note(
                 self.apit_spans,
-                fluent::trait_selection_warn_removing_apit_params_for_overcapture,
+                inline_fluent!("you could use a `use<...>` bound to explicitly specify captures, but argument-position `impl Trait`s are not nameable"),
             );
         }
     }
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_opaque_type_non_generic_param, code = E0792)]
+#[diag("expected generic {$kind} parameter, found `{$arg}`", code = E0792)]
 pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
     pub arg: GenericArg<'tcx>,
     pub kind: &'a str,
     #[primary_span]
     pub span: Span,
-    #[label]
+    #[label("{STREQ($arg, \"'static\") ->
+        [true] cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
+        *[other] this generic parameter must be used with a generic {$kind} parameter
+    }")]
     pub param_span: Span,
 }
