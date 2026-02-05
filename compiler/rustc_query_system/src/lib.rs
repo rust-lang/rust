@@ -1,7 +1,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![feature(assert_matches)]
-#![feature(core_intrinsics)]
 #![feature(min_specialization)]
 // tidy-alphabetical-end
 

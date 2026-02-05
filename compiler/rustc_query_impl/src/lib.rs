@@ -3,6 +3,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![feature(adt_const_params)]
+#![feature(core_intrinsics)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
 // tidy-alphabetical-end
@@ -25,7 +26,7 @@ use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
     CycleError, CycleErrorHandling, HashResult, QueryCache, QueryDispatcher, QueryMap, QueryMode,
-    QueryState, get_query_incr, get_query_non_incr,
+    QueryState,
 };
 use rustc_span::{ErrorGuaranteed, Span};
 

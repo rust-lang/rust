@@ -82,7 +82,7 @@ pub(super) enum DepNodeColor {
     Unknown,
 }
 
-pub(crate) struct DepGraphData<D: Deps> {
+pub struct DepGraphData<D: Deps> {
     /// The new encoding of the dependency graph, optimized for red/green
     /// tracking. The `current` field is the dependency graph of only the
     /// current compilation session: We don't merge the previous dep-graph into
@@ -171,7 +171,7 @@ impl<D: Deps> DepGraph<D> {
     }
 
     #[inline]
-    pub(crate) fn data(&self) -> Option<&DepGraphData<D>> {
+    pub fn data(&self) -> Option<&DepGraphData<D>> {
         self.data.as_deref()
     }
 
@@ -323,7 +323,7 @@ impl<D: Deps> DepGraphData<D> {
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html
     #[inline(always)]
-    pub(crate) fn with_task<Ctxt: HasDepContext<Deps = D>, A: Debug, R>(
+    pub fn with_task<Ctxt: HasDepContext<Deps = D>, A: Debug, R>(
         &self,
         key: DepNode,
         cx: Ctxt,
@@ -373,7 +373,7 @@ impl<D: Deps> DepGraphData<D> {
     /// FIXME: This could perhaps return a `WithDepNode` to ensure that the
     /// user of this function actually performs the read; we'll have to see
     /// how to make that work with `anon` in `execute_job_incr`, though.
-    pub(crate) fn with_anon_task_inner<Tcx: DepContext<Deps = D>, OP, R>(
+    pub fn with_anon_task_inner<Tcx: DepContext<Deps = D>, OP, R>(
         &self,
         cx: Tcx,
         dep_kind: DepKind,
@@ -653,12 +653,12 @@ impl<D: Deps> DepGraphData<D> {
     /// Returns true if the given node has been marked as green during the
     /// current compilation session. Used in various assertions
     #[inline]
-    pub(crate) fn is_index_green(&self, prev_index: SerializedDepNodeIndex) -> bool {
+    pub fn is_index_green(&self, prev_index: SerializedDepNodeIndex) -> bool {
         matches!(self.colors.get(prev_index), DepNodeColor::Green(_))
     }
 
     #[inline]
-    pub(crate) fn prev_fingerprint_of(&self, prev_index: SerializedDepNodeIndex) -> Fingerprint {
+    pub fn prev_fingerprint_of(&self, prev_index: SerializedDepNodeIndex) -> Fingerprint {
         self.previous.fingerprint_by_index(prev_index)
     }
 
@@ -667,7 +667,7 @@ impl<D: Deps> DepGraphData<D> {
         self.previous.index_to_node(prev_index)
     }
 
-    pub(crate) fn mark_debug_loaded_from_disk(&self, dep_node: DepNode) {
+    pub fn mark_debug_loaded_from_disk(&self, dep_node: DepNode) {
         self.debug_loaded_from_disk.lock().insert(dep_node);
     }
 
@@ -863,7 +863,7 @@ impl<D: Deps> DepGraphData<D> {
     /// A node will have an index, when it's already been marked green, or when we can mark it
     /// green. This function will mark the current task as a reader of the specified node, when
     /// a node index can be found for that node.
-    pub(crate) fn try_mark_green<'tcx, Qcx: QueryContext<'tcx, Deps = D>>(
+    pub fn try_mark_green<'tcx, Qcx: QueryContext<'tcx, Deps = D>>(
         &self,
         qcx: Qcx,
         dep_node: &DepNode,
@@ -1074,7 +1074,7 @@ impl<D: Deps> DepGraph<D> {
         if let Some(data) = &self.data { data.current.encoder.finish(&data.current) } else { Ok(0) }
     }
 
-    pub(crate) fn next_virtual_depnode_index(&self) -> DepNodeIndex {
+    pub fn next_virtual_depnode_index(&self) -> DepNodeIndex {
         debug_assert!(self.data.is_none());
         let index = self.virtual_dep_node_index.fetch_add(1, Ordering::Relaxed);
         DepNodeIndex::from_u32(index)
