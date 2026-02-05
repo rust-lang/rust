@@ -161,11 +161,6 @@ pub trait QueryContext<'tcx>: HasDepContext {
     /// a token while waiting on a query.
     fn jobserver_proxy(&self) -> &Proxy;
 
-    fn next_job_id(self) -> QueryJobId;
-
-    /// Get the query information from the TLS context.
-    fn current_query_job(self) -> Option<QueryJobId>;
-
     fn collect_active_jobs_from_all_queries(
         self,
         require_complete: bool,
@@ -179,9 +174,4 @@ pub trait QueryContext<'tcx>: HasDepContext {
 
     /// Register a side effect for the given node, for use in next session.
     fn store_side_effect(self, dep_node_index: DepNodeIndex, side_effect: QuerySideEffect);
-
-    /// Executes a job by changing the `ImplicitCtxt` to point to the
-    /// new query job while it executes.
-    fn start_query<R>(self, token: QueryJobId, depth_limit: bool, compute: impl FnOnce() -> R)
-    -> R;
 }
