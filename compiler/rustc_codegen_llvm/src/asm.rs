@@ -399,7 +399,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         for piece in template {
             match *piece {
                 InlineAsmTemplatePiece::String(ref s) => template_str.push_str(s),
-                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: _ } => {
+                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span } => {
                     match operands[operand_idx] {
                         GlobalAsmOperandRef::Const { ref string } => {
                             // Const operands get injected directly into the
@@ -414,7 +414,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                                 llvm::LLVMRustGetMangledName(llval, s);
                             })
                             .expect("symbol is not valid UTF-8");
-                            template_str.push_str(&symbol);
+                            template_str.push_str(&escape_symbol_name(self, symbol, span));
                         }
                         GlobalAsmOperandRef::SymStatic { def_id } => {
                             let llval = self
@@ -428,7 +428,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                                 llvm::LLVMRustGetMangledName(llval, s);
                             })
                             .expect("symbol is not valid UTF-8");
-                            template_str.push_str(&symbol);
+                            template_str.push_str(&escape_symbol_name(self, symbol, span));
                         }
                     }
                 }
@@ -1389,4 +1389,43 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
         ) if s.primitive() == Primitive::Float(Float::F64) => cx.type_vector(cx.type_f64(), 2),
         _ => layout.llvm_type(cx),
     }
+}
+
+fn escape_symbol_name<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, symbol: String, span: Span) -> String {
+    use rustc_target::spec::{Arch, BinaryFormat};
+    if !symbol.is_empty()
+        && symbol.chars().all(|c| matches!(c, '0'..='9' | 'A'..='Z' | 'a'..='z' | '_' | '$' | '.'))
+    {
+        return symbol;
+    }
+    if cx.tcx.sess.target.binary_format == BinaryFormat::Xcoff {
+        cx.tcx.sess.dcx().span_fatal(
+            span,
+            format!(
+                "symbol escaping is not supported for the binary format {}",
+                cx.tcx.sess.target.binary_format
+            ),
+        );
+    }
+    if cx.tcx.sess.target.arch == Arch::Nvptx64 {
+        cx.tcx.sess.dcx().span_fatal(
+            span,
+            format!(
+                "symbol escaping is not supported for the architecture {}",
+                cx.tcx.sess.target.arch
+            ),
+        );
+    }
+    let mut escaped_symbol = String::new();
+    escaped_symbol.push('\"');
+    for c in symbol.chars() {
+        match c {
+            '\n' => escaped_symbol.push_str("\\\n"),
+            '"' => escaped_symbol.push_str("\\\""),
+            '\\' => escaped_symbol.push_str("\\\\"),
+            c => escaped_symbol.push(c),
+        }
+    }
+    escaped_symbol.push('\"');
+    escaped_symbol
 }
