@@ -1796,8 +1796,13 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
-        let hash = make_hash::<K, S>(&self.hash_builder, &k);
-        match self.find_or_find_insert_index(hash, &k) {
+        let hash = make_hash(&self.hash_builder, &k);
+        let equivalent = equivalent_key(&k);
+        let hasher = make_hasher(&self.hash_builder);
+        match self
+            .table
+            .find_or_find_insert_index(hash, equivalent, hasher)
+        {
             Ok(bucket) => Some(mem::replace(unsafe { &mut bucket.as_mut().1 }, v)),
             Err(index) => {
                 unsafe {
@@ -1806,22 +1811,6 @@ where
                 None
             }
         }
-    }
-
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub(crate) fn find_or_find_insert_index<Q>(
-        &mut self,
-        hash: u64,
-        key: &Q,
-    ) -> Result<Bucket<(K, V)>, usize>
-    where
-        Q: Equivalent<K> + ?Sized,
-    {
-        self.table.find_or_find_insert_index(
-            hash,
-            equivalent_key(key),
-            make_hasher(&self.hash_builder),
-        )
     }
 
     /// Insert a key-value pair into the map without checking
@@ -3779,6 +3768,97 @@ impl<'a, K, V, S, A: Allocator> OccupiedEntry<'a, K, V, S, A> {
         unsafe { &self.elem.as_ref().0 }
     }
 
+    /// Replaces the key in the entry with a new one.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if `key` is not equivalent to the key in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{Entry, HashMap};
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    ///
+    /// let old_key = "poneyland";
+    /// let new_key = Box::leak(old_key.to_owned().into_boxed_str());
+    /// map.entry(old_key).or_insert(12);
+    ///  match map.entry("poneyland") {
+    ///     Entry::Vacant(_) => panic!(),
+    ///     Entry::Occupied(mut entry) => {
+    ///         let replaced = entry.replace_key(new_key);
+    ///         assert!(std::ptr::eq(replaced, old_key));
+    ///         assert!(std::ptr::eq(*entry.key(), new_key));
+    ///     },
+    /// }
+    ///
+    /// # // appease miri; no memory leaks here!
+    /// # drop(map);
+    /// # unsafe {
+    /// #     Box::from_raw(new_key);
+    /// # }
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn replace_key(&mut self, key: K) -> K
+    where
+        K: Equivalent<K>,
+    {
+        assert!(
+            self.key().equivalent(&key),
+            "replaced key is not equivalent to the one in the entry"
+        );
+
+        // SAFETY: We verified that the keys were equivalent.
+        unsafe { self.replace_key_unchecked(key) }
+    }
+
+    /// Replaces the key in the entry with a new one, without checking the
+    /// equivalence of the key.
+    ///
+    /// # Safety
+    ///
+    /// This operation is safe if you replace the key with an equivalent one.
+    ///
+    /// Additionally, this operation (and following operations) are guaranteed
+    /// to not violate memory safety.
+    ///
+    /// However this operation is still unsafe because the resulting `HashMap`
+    /// may be passed to unsafe code which does expect the map to behave
+    /// correctly. If the map has keys at unexpected positions inside it,
+    /// future operations may panic, loop forever, or return unexpected results,
+    /// potentially violating memory safety.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{Entry, HashMap};
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    ///
+    /// let old_key = "poneyland";
+    /// let new_key = Box::leak(old_key.to_owned().into_boxed_str());
+    /// map.entry(old_key).or_insert(12);
+    ///  match map.entry("poneyland") {
+    ///     Entry::Vacant(_) => panic!(),
+    ///     Entry::Occupied(mut entry) => {
+    ///         let replaced = unsafe { entry.replace_key_unchecked(new_key) };
+    ///         assert!(std::ptr::eq(replaced, old_key));
+    ///         assert!(std::ptr::eq(*entry.key(), new_key));
+    ///     },
+    /// }
+    ///
+    /// # // appease miri; no memory leaks here!
+    /// # drop(map);
+    /// # unsafe {
+    /// #     Box::from_raw(new_key);
+    /// # }
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub unsafe fn replace_key_unchecked(&mut self, key: K) -> K {
+        mem::replace(unsafe { &mut self.elem.as_mut().0 }, key)
+    }
+
     /// Take the ownership of the key and value from the map.
     /// Keeps the allocated memory for reuse.
     ///
@@ -4504,6 +4584,50 @@ impl<'map, 'key, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'map, 'key, K,
         self.insert_entry_with_key(key, value).into_mut()
     }
 
+    /// Sets the key and value of the entry and returns a mutable reference to
+    /// the inserted value, without checking the equivalence of the key.
+    ///
+    /// See [`insert_with_key`](Self::insert_with_key) for more information.
+    ///
+    /// # Safety
+    ///
+    /// This operation is safe if the keys are equivalent.
+    ///
+    /// Additionally, this operation (and following operations) are guaranteed
+    /// to not violate memory safety.
+    ///
+    /// However this operation is still unsafe because the resulting `HashMap`
+    /// may be passed to unsafe code which does expect the map to behave
+    /// correctly. If the map has keys at unexpected positions inside it,
+    /// future operations may panic, loop forever, or return unexpected results,
+    /// potentially violating memory safety.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use hashbrown::hash_map::EntryRef;
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::<(String, String), char>::new();
+    /// let k = ("c".to_string(), "C".to_string());
+    /// let v =  match map.entry_ref(&k) {
+    ///   // SAFETY: We trust the `Clone` implementation to return an equivalent value
+    ///   EntryRef::Vacant(r) => unsafe { r.insert_with_key_unchecked(k.clone(), 'c') },
+    ///   // In this branch we avoid the clone.
+    ///   EntryRef::Occupied(r) => r.into_mut(),
+    /// };
+    /// assert_eq!(*v, 'c');
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub unsafe fn insert_with_key_unchecked(self, key: K, value: V) -> &'map mut V
+    where
+        K: Hash,
+        S: BuildHasher,
+    {
+        // SAFETY: Guaranteed by caller.
+        unsafe { self.insert_entry_with_key_unchecked(key, value) }.into_mut()
+    }
+
     /// Sets the value of the entry with the [`VacantEntryRef`]'s key,
     /// and returns an [`OccupiedEntry`].
     ///
@@ -4578,6 +4702,54 @@ impl<'map, 'key, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'map, 'key, K,
             (self.key).equivalent(&key),
             "key used for Entry creation is not equivalent to the one used for insertion"
         );
+        // SAFETY: We checked equivalence first.
+        unsafe { self.insert_entry_with_key_unchecked(key, value) }
+    }
+
+    /// Sets the key and value of the entry and returns an [`OccupiedEntry`],
+    /// without checking the equivalence of the key.
+    ///
+    /// See [`insert_entry_with_key`](Self::insert_entry_with_key) for more information.
+    ///
+    /// # Safety
+    ///
+    /// This operation is safe if the keys are equivalent.
+    ///
+    /// Additionally, this operation (and following operations) are guaranteed
+    /// to not violate memory safety.
+    ///
+    /// However this operation is still unsafe because the resulting `HashMap`
+    /// may be passed to unsafe code which does expect the map to behave
+    /// correctly. If the map has keys at unexpected positions inside it,
+    /// future operations may panic, loop forever, or return unexpected results,
+    /// potentially violating memory safety.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use hashbrown::hash_map::EntryRef;
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::<(String, String), char>::new();
+    /// let k = ("c".to_string(), "C".to_string());
+    /// let r = match map.entry_ref(&k) {
+    ///   // SAFETY: We trust the `Clone` implementation to return an equivalent key
+    ///   EntryRef::Vacant(r) => unsafe { r.insert_entry_with_key_unchecked(k.clone(), 'c') },
+    ///   // In this branch we avoid the clone.
+    ///   EntryRef::Occupied(r) => r,
+    /// };
+    /// assert_eq!(r.get(), &'c');
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub unsafe fn insert_entry_with_key_unchecked(
+        self,
+        key: K,
+        value: V,
+    ) -> OccupiedEntry<'map, K, V, S, A>
+    where
+        K: Hash,
+        S: BuildHasher,
+    {
         let elem = self.table.table.insert(
             self.hash,
             (key, value),
