@@ -2795,6 +2795,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 obligation.param_env,
                 obligation.cause.code(),
             );
+            self.suggest_borrow_for_unsized_closure_return(
+                obligation.cause.body_id,
+                err,
+                obligation.predicate,
+            );
             self.suggest_unsized_bound_if_applicable(err, obligation);
             if let Some(span) = err.span.primary_span()
                 && let Some(mut diag) =
