@@ -5,7 +5,7 @@ use core::iter;
 use hir::def_id::LocalDefId;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::packed::Pu128;
-use rustc_errors::{Applicability, Diag, MultiSpan, listify};
+use rustc_errors::{Applicability, Diag, MultiSpan, inline_fluent, listify};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
@@ -33,10 +33,10 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 use tracing::{debug, instrument};
 
 use super::FnCtxt;
+use crate::errors;
 use crate::fn_ctxt::rustc_span::BytePos;
 use crate::method::probe;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
-use crate::{errors, fluent_generated as fluent};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn body_fn_sig(&self) -> Option<ty::FnSig<'tcx>> {
@@ -482,7 +482,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let sugg = prefix_wrap(".map(|x| x.as_str())");
                 err.span_suggestion_verbose(
                     expr.span.shrink_to_hi(),
-                    fluent::hir_typeck_convert_to_str,
+                    inline_fluent!("try converting the passed type into a `&str`"),
                     sugg,
                     Applicability::MachineApplicable,
                 );

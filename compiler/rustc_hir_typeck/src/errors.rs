@@ -7,7 +7,7 @@ use rustc_ast::{AssignOpKind, Label};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic,
-    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic,
+    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, inline_fluent,
 };
 use rustc_hir as hir;
 use rustc_hir::ExprKind;
@@ -17,15 +17,15 @@ use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::Spanned;
 use rustc_span::{Ident, Span, Symbol};
 
-use crate::{FnCtxt, fluent_generated as fluent};
+use crate::FnCtxt;
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_base_expression_double_dot, code = E0797)]
+#[diag("base expression required after `..`", code = E0797)]
 pub(crate) struct BaseExpressionDoubleDot {
     #[primary_span]
     pub span: Span,
     #[suggestion(
-        hir_typeck_base_expression_double_dot_enable_default_field_values,
+        "add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields",
         code = "#![feature(default_field_values)]\n",
         applicability = "machine-applicable",
         style = "verbose"
@@ -39,7 +39,7 @@ pub(crate) struct BaseExpressionDoubleDot {
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    hir_typeck_base_expression_double_dot_remove,
+    "remove the `..` as all the fields are already present",
     code = "",
     applicability = "machine-applicable",
     style = "verbose"
@@ -51,7 +51,7 @@ pub(crate) struct BaseExpressionDoubleDotRemove {
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    hir_typeck_base_expression_double_dot_add_expr,
+    "add a base expression here",
     code = "/* expr */",
     applicability = "has-placeholders",
     style = "verbose"
@@ -62,24 +62,24 @@ pub(crate) struct BaseExpressionDoubleDotAddExpr {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_field_multiply_specified_in_initializer, code = E0062)]
+#[diag("field `{$ident}` specified more than once", code = E0062)]
 pub(crate) struct FieldMultiplySpecifiedInInitializer {
     #[primary_span]
-    #[label]
+    #[label("used more than once")]
     pub span: Span,
-    #[label(hir_typeck_previous_use_label)]
+    #[label("first use of `{$ident}`")]
     pub prev_span: Span,
     pub ident: Ident,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_return_stmt_outside_of_fn_body, code = E0572)]
+#[diag("{$statement_kind} statement outside of function body", code = E0572)]
 pub(crate) struct ReturnStmtOutsideOfFnBody {
     #[primary_span]
     pub span: Span,
-    #[label(hir_typeck_encl_body_label)]
+    #[label("the {$statement_kind} is part of this body...")]
     pub encl_body_span: Option<Span>,
-    #[label(hir_typeck_encl_fn_label)]
+    #[label("...not the enclosing function body")]
     pub encl_fn_span: Option<Span>,
     pub statement_kind: ReturnLikeStatementKind,
 }
@@ -102,21 +102,21 @@ impl IntoDiagArg for ReturnLikeStatementKind {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_rustcall_incorrect_args)]
+#[diag("functions with the \"rust-call\" ABI must take a single non-self tuple argument")]
 pub(crate) struct RustCallIncorrectArgs {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_yield_expr_outside_of_coroutine, code = E0627)]
+#[diag("yield expression outside of coroutine literal", code = E0627)]
 pub(crate) struct YieldExprOutsideOfCoroutine {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_struct_expr_non_exhaustive, code = E0639)]
+#[diag("cannot create non-exhaustive {$what} using struct expression", code = E0639)]
 pub(crate) struct StructExprNonExhaustive {
     #[primary_span]
     pub span: Span,
@@ -124,24 +124,24 @@ pub(crate) struct StructExprNonExhaustive {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_functional_record_update_on_non_struct, code = E0436)]
+#[diag("functional record update syntax requires a struct", code = E0436)]
 pub(crate) struct FunctionalRecordUpdateOnNonStruct {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_address_of_temporary_taken, code = E0745)]
+#[diag("cannot take address of a temporary", code = E0745)]
 pub(crate) struct AddressOfTemporaryTaken {
     #[primary_span]
-    #[label]
+    #[label("temporary value")]
     pub span: Span,
 }
 
 #[derive(Subdiagnostic)]
 pub(crate) enum AddReturnTypeSuggestion {
     #[suggestion(
-        hir_typeck_add_return_type_add,
+        "try adding a return type",
         code = " -> {found}",
         applicability = "machine-applicable"
     )]
@@ -151,7 +151,7 @@ pub(crate) enum AddReturnTypeSuggestion {
         found: String,
     },
     #[suggestion(
-        hir_typeck_add_return_type_missing_here,
+        "a return type might be missing here",
         code = " -> _",
         applicability = "has-placeholders"
     )]
@@ -163,12 +163,12 @@ pub(crate) enum AddReturnTypeSuggestion {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum ExpectedReturnTypeLabel<'tcx> {
-    #[label(hir_typeck_expected_default_return_type)]
+    #[label("expected `()` because of default return type")]
     Unit {
         #[primary_span]
         span: Span,
     },
-    #[label(hir_typeck_expected_return_type)]
+    #[label("expected `{$expected}` because of return type")]
     Other {
         #[primary_span]
         span: Span,
@@ -177,10 +177,10 @@ pub(crate) enum ExpectedReturnTypeLabel<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_explicit_destructor, code = E0040)]
+#[diag("explicit use of destructor method", code = E0040)]
 pub(crate) struct ExplicitDestructorCall {
     #[primary_span]
-    #[label]
+    #[label("explicit destructor calls not allowed")]
     pub span: Span,
     #[subdiagnostic]
     pub sugg: ExplicitDestructorCallSugg,
@@ -188,9 +188,13 @@ pub(crate) struct ExplicitDestructorCall {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum ExplicitDestructorCallSugg {
-    #[suggestion(hir_typeck_suggestion, code = "drop", applicability = "maybe-incorrect")]
+    #[suggestion(
+        "consider using `drop` function",
+        code = "drop",
+        applicability = "maybe-incorrect"
+    )]
     Empty(#[primary_span] Span),
-    #[multipart_suggestion(hir_typeck_suggestion, style = "short")]
+    #[multipart_suggestion("consider using `drop` function", style = "short")]
     Snippet {
         #[suggestion_part(code = "drop(")]
         lo: Span,
@@ -200,10 +204,10 @@ pub(crate) enum ExplicitDestructorCallSugg {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_missing_parentheses_in_range, code = E0689)]
+#[diag("can't call method `{$method_name}` on type `{$ty}`", code = E0689)]
 pub(crate) struct MissingParenthesesInRange<'tcx> {
     #[primary_span]
-    #[label(hir_typeck_missing_parentheses_in_range)]
+    #[label("can't call method `{$method_name}` on type `{$ty}`")]
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub method_name: String,
@@ -213,32 +217,32 @@ pub(crate) struct MissingParenthesesInRange<'tcx> {
 
 #[derive(LintDiagnostic)]
 pub(crate) enum NeverTypeFallbackFlowingIntoUnsafe {
-    #[help]
-    #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_call)]
+    #[help("specify the type explicitly")]
+    #[diag("never type fallback affects this call to an `unsafe` function")]
     Call {
         #[subdiagnostic]
         sugg: SuggestAnnotations,
     },
-    #[help]
-    #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_method)]
+    #[help("specify the type explicitly")]
+    #[diag("never type fallback affects this call to an `unsafe` method")]
     Method {
         #[subdiagnostic]
         sugg: SuggestAnnotations,
     },
-    #[help]
-    #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_path)]
+    #[help("specify the type explicitly")]
+    #[diag("never type fallback affects this `unsafe` function")]
     Path {
         #[subdiagnostic]
         sugg: SuggestAnnotations,
     },
-    #[help]
-    #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_union_field)]
+    #[help("specify the type explicitly")]
+    #[diag("never type fallback affects this union access")]
     UnionField {
         #[subdiagnostic]
         sugg: SuggestAnnotations,
     },
-    #[help]
-    #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_deref)]
+    #[help("specify the type explicitly")]
+    #[diag("never type fallback affects this raw pointer dereference")]
     Deref {
         #[subdiagnostic]
         sugg: SuggestAnnotations,
@@ -246,10 +250,10 @@ pub(crate) enum NeverTypeFallbackFlowingIntoUnsafe {
 }
 
 #[derive(LintDiagnostic)]
-#[help]
-#[diag(hir_typeck_dependency_on_unit_never_type_fallback)]
+#[help("specify the types explicitly")]
+#[diag("this function depends on never type fallback being `()`")]
 pub(crate) struct DependencyOnUnitNeverTypeFallback<'tcx> {
-    #[note]
+    #[note("in edition 2024, the requirement `{$obligation}` will fail")]
     pub obligation_span: Span,
     pub obligation: ty::Predicate<'tcx>,
     #[subdiagnostic]
@@ -310,7 +314,7 @@ impl Subdiagnostic for SuggestAnnotations {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    hir_typeck_add_missing_parentheses_in_range,
+    "you must surround the range in parentheses to call its `{$func_name}` function",
     style = "verbose",
     applicability = "maybe-incorrect"
 )]
@@ -337,17 +341,35 @@ impl Subdiagnostic for TypeMismatchFruTypo {
 
         // Only explain that `a ..b` is a range if it's split up
         if self.expr_span.between(self.fru_span).is_empty() {
-            diag.span_note(self.expr_span.to(self.fru_span), fluent::hir_typeck_fru_note);
+            diag.span_note(
+                self.expr_span.to(self.fru_span),
+                inline_fluent!(
+                    "this expression may have been misinterpreted as a `..` range expression"
+                ),
+            );
         } else {
             let mut multispan: MultiSpan = vec![self.expr_span, self.fru_span].into();
-            multispan.push_span_label(self.expr_span, fluent::hir_typeck_fru_expr);
-            multispan.push_span_label(self.fru_span, fluent::hir_typeck_fru_expr2);
-            diag.span_note(multispan, fluent::hir_typeck_fru_note);
+            multispan.push_span_label(
+                self.expr_span,
+                inline_fluent!("this expression does not end in a comma..."),
+            );
+            multispan.push_span_label(self.fru_span, inline_fluent!("... so this is interpreted as a `..` range expression, instead of functional record update syntax"));
+            diag.span_note(
+                multispan,
+                inline_fluent!(
+                    "this expression may have been misinterpreted as a `..` range expression"
+                ),
+            );
         }
 
         diag.span_suggestion(
             self.expr_span.shrink_to_hi(),
-            fluent::hir_typeck_fru_suggestion,
+            inline_fluent!(
+                "to set the remaining fields{$expr ->
+                    [NONE]{\"\"}
+                    *[other] {\" \"}from `{$expr}`
+                }, separate the last named field with a comma"
+            ),
             ", ",
             Applicability::MaybeIncorrect,
         );
@@ -355,8 +377,10 @@ impl Subdiagnostic for TypeMismatchFruTypo {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(hir_typeck_lossy_provenance_int2ptr)]
-#[help]
+#[diag("strict provenance disallows casting integer `{$expr_ty}` to pointer `{$cast_ty}`")]
+#[help(
+    "if you can't comply with strict provenance and don't have a pointer with the correct provenance you can use `std::ptr::with_exposed_provenance()` instead"
+)]
 pub(crate) struct LossyProvenanceInt2Ptr<'tcx> {
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
@@ -365,19 +389,25 @@ pub(crate) struct LossyProvenanceInt2Ptr<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_ptr_cast_add_auto_to_object, code = E0804)]
-#[note]
-#[help]
+#[diag("cannot add {$traits_len ->
+    [1] auto trait {$traits}
+    *[other] auto traits {$traits}
+} to dyn bound via pointer cast", code = E0804)]
+#[note("this could allow UB elsewhere")]
+#[help("use `transmute` if you're sure this is sound")]
 pub(crate) struct PtrCastAddAutoToObject {
     #[primary_span]
-    #[label]
+    #[label("unsupported cast")]
     pub span: Span,
     pub traits_len: usize,
     pub traits: DiagSymbolList<String>,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(hir_typeck_suggestion, applicability = "has-placeholders")]
+#[multipart_suggestion(
+    "use `.with_addr()` to adjust a valid pointer in the same allocation, to this address",
+    applicability = "has-placeholders"
+)]
 pub(crate) struct LossyProvenanceInt2PtrSuggestion {
     #[suggestion_part(code = "(...).with_addr(")]
     pub lo: Span,
@@ -386,8 +416,12 @@ pub(crate) struct LossyProvenanceInt2PtrSuggestion {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(hir_typeck_lossy_provenance_ptr2int)]
-#[help]
+#[diag(
+    "under strict provenance it is considered bad style to cast pointer `{$expr_ty}` to integer `{$cast_ty}`"
+)]
+#[help(
+    "if you can't comply with strict provenance and need to expose the pointer provenance you can use `.expose_provenance()` instead"
+)]
 pub(crate) struct LossyProvenancePtr2Int<'tcx> {
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
@@ -397,7 +431,10 @@ pub(crate) struct LossyProvenancePtr2Int<'tcx> {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum LossyProvenancePtr2IntSuggestion<'tcx> {
-    #[multipart_suggestion(hir_typeck_suggestion, applicability = "maybe-incorrect")]
+    #[multipart_suggestion(
+        "use `.addr()` to obtain the address of a pointer",
+        applicability = "maybe-incorrect"
+    )]
     NeedsParensCast {
         #[suggestion_part(code = "(")]
         expr_span: Span,
@@ -405,7 +442,10 @@ pub(crate) enum LossyProvenancePtr2IntSuggestion<'tcx> {
         cast_span: Span,
         cast_ty: Ty<'tcx>,
     },
-    #[multipart_suggestion(hir_typeck_suggestion, applicability = "maybe-incorrect")]
+    #[multipart_suggestion(
+        "use `.addr()` to obtain the address of a pointer",
+        applicability = "maybe-incorrect"
+    )]
     NeedsParens {
         #[suggestion_part(code = "(")]
         expr_span: Span,
@@ -413,7 +453,7 @@ pub(crate) enum LossyProvenancePtr2IntSuggestion<'tcx> {
         cast_span: Span,
     },
     #[suggestion(
-        hir_typeck_suggestion,
+        "use `.addr()` to obtain the address of a pointer",
         code = ".addr() as {cast_ty}",
         applicability = "maybe-incorrect"
     )]
@@ -422,7 +462,11 @@ pub(crate) enum LossyProvenancePtr2IntSuggestion<'tcx> {
         cast_span: Span,
         cast_ty: Ty<'tcx>,
     },
-    #[suggestion(hir_typeck_suggestion, code = ".addr()", applicability = "maybe-incorrect")]
+    #[suggestion(
+        "use `.addr()` to obtain the address of a pointer",
+        code = ".addr()",
+        applicability = "maybe-incorrect"
+    )]
     Other {
         #[primary_span]
         cast_span: Span,
@@ -431,11 +475,11 @@ pub(crate) enum LossyProvenancePtr2IntSuggestion<'tcx> {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum HelpUseLatestEdition {
-    #[help(hir_typeck_help_set_edition_cargo)]
-    #[note(hir_typeck_note_edition_guide)]
+    #[help("set `edition = \"{$edition}\"` in `Cargo.toml`")]
+    #[note("for more on editions, read https://doc.rust-lang.org/edition-guide")]
     Cargo { edition: Edition },
-    #[help(hir_typeck_help_set_edition_standalone)]
-    #[note(hir_typeck_note_edition_guide)]
+    #[help("pass `--edition {$edition}` to `rustc`")]
+    #[note("for more on editions, read https://doc.rust-lang.org/edition-guide")]
     Standalone { edition: Edition },
 }
 
@@ -451,7 +495,7 @@ impl HelpUseLatestEdition {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_no_field_on_type, code = E0609)]
+#[diag("no field `{$field}` on type `{$ty}`", code = E0609)]
 pub(crate) struct NoFieldOnType<'tcx> {
     #[primary_span]
     pub(crate) span: Span,
@@ -460,33 +504,33 @@ pub(crate) struct NoFieldOnType<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_no_field_on_variant, code = E0609)]
+#[diag("no field named `{$field}` on enum variant `{$container}::{$ident}`", code = E0609)]
 pub(crate) struct NoFieldOnVariant<'tcx> {
     #[primary_span]
     pub(crate) span: Span,
     pub(crate) container: Ty<'tcx>,
     pub(crate) ident: Ident,
     pub(crate) field: Ident,
-    #[label(hir_typeck_no_field_on_variant_enum)]
+    #[label("this enum variant...")]
     pub(crate) enum_span: Span,
-    #[label(hir_typeck_no_field_on_variant_field)]
+    #[label("...does not have this field")]
     pub(crate) field_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_cant_dereference, code = E0614)]
+#[diag("type `{$ty}` cannot be dereferenced", code = E0614)]
 pub(crate) struct CantDereference<'tcx> {
     #[primary_span]
-    #[label(hir_typeck_cant_dereference_label)]
+    #[label("can't be dereferenced")]
     pub(crate) span: Span,
     pub(crate) ty: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_expected_array_or_slice, code = E0529)]
+#[diag("expected an array or slice, found `{$ty}`", code = E0529)]
 pub(crate) struct ExpectedArrayOrSlice<'tcx> {
     #[primary_span]
-    #[label(hir_typeck_expected_array_or_slice_label)]
+    #[label("pattern cannot match with input type `{$ty}`")]
     pub(crate) span: Span,
     pub(crate) ty: Ty<'tcx>,
     pub(crate) slice_pat_semantics: bool,
@@ -498,7 +542,7 @@ pub(crate) struct ExpectedArrayOrSlice<'tcx> {
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    hir_typeck_as_deref_suggestion,
+    "consider using `as_deref` here",
     code = ".as_deref()",
     style = "verbose",
     applicability = "maybe-incorrect"
@@ -510,7 +554,7 @@ pub(crate) struct AsDerefSuggestion {
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    hir_typeck_slicing_suggestion,
+    "consider slicing here",
     code = "[..]",
     style = "verbose",
     applicability = "maybe-incorrect"
@@ -521,7 +565,7 @@ pub(crate) struct SlicingSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_invalid_callee, code = E0618)]
+#[diag("expected function, found {$found}", code = E0618)]
 pub(crate) struct InvalidCallee<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -530,15 +574,20 @@ pub(crate) struct InvalidCallee<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_int_to_fat, code = E0606)]
+#[diag("cannot cast `{$expr_ty}` to a pointer that {$known_wide ->
+    [true] is
+    *[false] may be
+} wide", code = E0606)]
 pub(crate) struct IntToWide<'tcx> {
     #[primary_span]
-    #[label(hir_typeck_int_to_fat_label)]
+    #[label("creating a `{$cast_ty}` requires both an address and {$metadata}")]
     pub span: Span,
     pub metadata: &'tcx str,
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
-    #[label(hir_typeck_int_to_fat_label_nightly)]
+    #[label(
+        "consider casting this expression to `*const ()`, then using `core::ptr::from_raw_parts`"
+    )]
     pub expr_if_nightly: Option<Span>,
     pub known_wide: bool,
 }
@@ -546,7 +595,7 @@ pub(crate) struct IntToWide<'tcx> {
 #[derive(Subdiagnostic)]
 pub(crate) enum OptionResultRefMismatch {
     #[suggestion(
-        hir_typeck_option_result_copied,
+        "use `{$def_path}::copied` to copy the value inside the `{$def_path}`",
         code = ".copied()",
         style = "verbose",
         applicability = "machine-applicable"
@@ -557,7 +606,7 @@ pub(crate) enum OptionResultRefMismatch {
         def_path: String,
     },
     #[suggestion(
-        hir_typeck_option_result_cloned,
+        "use `{$def_path}::cloned` to clone the value inside the `{$def_path}`",
         code = ".cloned()",
         style = "verbose",
         applicability = "machine-applicable"
@@ -569,7 +618,7 @@ pub(crate) enum OptionResultRefMismatch {
     },
     // FIXME: #114050
     // #[suggestion(
-    //     hir_typeck_option_result_asref,
+    //     "use `{$def_path}::as_ref` to convert `{$expected_ty}` to `{$expr_ty}`",
     //     code = ".as_ref()",
     //     style = "verbose",
     //     applicability = "machine-applicable"
@@ -592,14 +641,30 @@ pub(crate) struct RemoveSemiForCoerce {
 impl Subdiagnostic for RemoveSemiForCoerce {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let mut multispan: MultiSpan = self.semi.into();
-        multispan.push_span_label(self.expr, fluent::hir_typeck_remove_semi_for_coerce_expr);
-        multispan.push_span_label(self.ret, fluent::hir_typeck_remove_semi_for_coerce_ret);
-        multispan.push_span_label(self.semi, fluent::hir_typeck_remove_semi_for_coerce_semi);
-        diag.span_note(multispan, fluent::hir_typeck_remove_semi_for_coerce);
+        multispan.push_span_label(
+            self.expr,
+            inline_fluent!(
+                "this could be implicitly returned but it is a statement, not a tail expression"
+            ),
+        );
+        multispan.push_span_label(
+            self.ret,
+            inline_fluent!("the `match` arms can conform to this return type"),
+        );
+        multispan.push_span_label(
+            self.semi,
+            inline_fluent!(
+                "the `match` is a statement because of this semicolon, consider removing it"
+            ),
+        );
+        diag.span_note(
+            multispan,
+            inline_fluent!("you might have meant to return the `match` expression"),
+        );
 
         diag.tool_only_span_suggestion(
             self.semi,
-            fluent::hir_typeck_remove_semi_for_coerce_suggestion,
+            inline_fluent!("remove this semicolon"),
             "",
             Applicability::MaybeIncorrect,
         );
@@ -607,14 +672,14 @@ impl Subdiagnostic for RemoveSemiForCoerce {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_union_pat_multiple_fields)]
+#[diag("union patterns should have exactly one field")]
 pub(crate) struct UnionPatMultipleFields {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_union_pat_dotdot)]
+#[diag("`..` cannot be used in union patterns")]
 pub(crate) struct UnionPatDotDot {
     #[primary_span]
     pub span: Span,
@@ -622,7 +687,7 @@ pub(crate) struct UnionPatDotDot {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    hir_typeck_use_is_empty,
+    "consider using the `is_empty` method on `{$expr_ty}` to determine if it contains anything",
     applicability = "maybe-incorrect",
     style = "verbose"
 )]
@@ -635,7 +700,7 @@ pub(crate) struct UseIsEmpty<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_arg_mismatch_indeterminate)]
+#[diag("argument type mismatch was detected, but rustc had trouble determining where")]
 pub(crate) struct ArgMismatchIndeterminate {
     #[primary_span]
     pub span: Span,
@@ -643,9 +708,11 @@ pub(crate) struct ArgMismatchIndeterminate {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum SuggestBoxing {
-    #[note(hir_typeck_suggest_boxing_note)]
+    #[note(
+        "for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html"
+    )]
     #[multipart_suggestion(
-        hir_typeck_suggest_boxing_when_appropriate,
+        "store this in the heap by calling `Box::new`",
         applicability = "machine-applicable"
     )]
     Unit {
@@ -654,11 +721,15 @@ pub(crate) enum SuggestBoxing {
         #[suggestion_part(code = "")]
         end: Span,
     },
-    #[note(hir_typeck_suggest_boxing_note)]
+    #[note(
+        "for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html"
+    )]
     AsyncBody,
-    #[note(hir_typeck_suggest_boxing_note)]
+    #[note(
+        "for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html"
+    )]
     #[multipart_suggestion(
-        hir_typeck_suggest_boxing_when_appropriate,
+        "store this in the heap by calling `Box::new`",
         applicability = "machine-applicable"
     )]
     ExprFieldShorthand {
@@ -668,9 +739,11 @@ pub(crate) enum SuggestBoxing {
         end: Span,
         ident: Ident,
     },
-    #[note(hir_typeck_suggest_boxing_note)]
+    #[note(
+        "for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html"
+    )]
     #[multipart_suggestion(
-        hir_typeck_suggest_boxing_when_appropriate,
+        "store this in the heap by calling `Box::new`",
         applicability = "machine-applicable"
     )]
     Other {
@@ -683,7 +756,7 @@ pub(crate) enum SuggestBoxing {
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    hir_typeck_suggest_ptr_null_mut,
+    "consider using `core::ptr::null_mut` instead",
     applicability = "maybe-incorrect",
     style = "verbose",
     code = "core::ptr::null_mut()"
@@ -694,8 +767,13 @@ pub(crate) struct SuggestPtrNullMut {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(hir_typeck_trivial_cast)]
-#[help]
+#[diag(
+    "trivial {$numeric ->
+        [true] numeric cast
+        *[false] cast
+    }: `{$expr_ty}` as `{$cast_ty}`"
+)]
+#[help("cast can be replaced by coercion; this might require a temporary variable")]
 pub(crate) struct TrivialCast<'tcx> {
     pub numeric: bool,
     pub expr_ty: Ty<'tcx>,
@@ -716,17 +794,24 @@ pub(crate) struct BreakNonLoop<'a> {
 impl<'a, G: EmissionGuarantee> Diagnostic<'_, G> for BreakNonLoop<'a> {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(dcx, level, fluent::hir_typeck_break_non_loop);
+        let mut diag =
+            Diag::new(dcx, level, inline_fluent!("`break` with value from a `{$kind}` loop"));
         diag.span(self.span);
         diag.code(E0571);
         diag.arg("kind", self.kind);
-        diag.span_label(self.span, fluent::hir_typeck_label);
+        diag.span_label(
+            self.span,
+            inline_fluent!("can only break with a value inside `loop` or breakable block"),
+        );
         if let Some(head) = self.head {
-            diag.span_label(head, fluent::hir_typeck_label2);
+            diag.span_label(
+                head,
+                inline_fluent!("you can't `break` with a value in a `{$kind}` loop"),
+            );
         }
         diag.span_suggestion(
             self.span,
-            fluent::hir_typeck_suggestion,
+            inline_fluent!("use `break` on its own without a value inside this `{$kind}` loop"),
             self.suggestion,
             Applicability::MaybeIncorrect,
         );
@@ -744,7 +829,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'_, G> for BreakNonLoop<'a> {
                 _ => {
                     diag.span_suggestion(
                         self.break_expr_span,
-                        fluent::hir_typeck_break_expr_suggestion,
+                        inline_fluent!(
+                            "alternatively, you might have meant to use the available loop label"
+                        ),
                         label.ident,
                         Applicability::MaybeIncorrect,
                     );
@@ -756,33 +843,33 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'_, G> for BreakNonLoop<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_continue_labeled_block, code = E0696)]
+#[diag("`continue` pointing to a labeled block", code = E0696)]
 pub(crate) struct ContinueLabeledBlock {
     #[primary_span]
-    #[label]
+    #[label("labeled blocks cannot be `continue`'d")]
     pub span: Span,
-    #[label(hir_typeck_block_label)]
+    #[label("labeled block the `continue` points to")]
     pub block_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_break_inside_closure, code = E0267)]
+#[diag("`{$name}` inside of a closure", code = E0267)]
 pub(crate) struct BreakInsideClosure<'a> {
     #[primary_span]
-    #[label]
+    #[label("cannot `{$name}` inside of a closure")]
     pub span: Span,
-    #[label(hir_typeck_closure_label)]
+    #[label("enclosing closure")]
     pub closure_span: Span,
     pub name: &'a str,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_break_inside_coroutine, code = E0267)]
+#[diag("`{$name}` inside `{$kind}` {$source}", code = E0267)]
 pub(crate) struct BreakInsideCoroutine<'a> {
     #[primary_span]
-    #[label]
+    #[label("cannot `{$name}` inside `{$kind}` {$source}")]
     pub span: Span,
-    #[label(hir_typeck_coroutine_label)]
+    #[label("enclosing `{$kind}` {$source}")]
     pub coroutine_span: Span,
     pub name: &'a str,
     pub kind: &'a str,
@@ -790,10 +877,18 @@ pub(crate) struct BreakInsideCoroutine<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_outside_loop, code = E0268)]
+#[diag("`{$name}` outside of a loop{$is_break ->
+        [true] {\" or labeled block\"}
+        *[false] {\"\"}
+    }", code = E0268)]
 pub(crate) struct OutsideLoop<'a> {
     #[primary_span]
-    #[label]
+    #[label(
+        "cannot `{$name}` outside of a loop{$is_break ->
+        [true] {\" or labeled block\"}
+        *[false] {\"\"}
+    }"
+    )]
     pub spans: Vec<Span>,
     pub name: &'a str,
     pub is_break: bool,
@@ -801,7 +896,10 @@ pub(crate) struct OutsideLoop<'a> {
     pub suggestion: Option<OutsideLoopSuggestion>,
 }
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(hir_typeck_outside_loop_suggestion, applicability = "maybe-incorrect")]
+#[multipart_suggestion(
+    "consider labeling this block to be able to break within it",
+    applicability = "maybe-incorrect"
+)]
 pub(crate) struct OutsideLoopSuggestion {
     #[suggestion_part(code = "'block: ")]
     pub block_span: Span,
@@ -810,25 +908,30 @@ pub(crate) struct OutsideLoopSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_unlabeled_in_labeled_block, code = E0695)]
+#[diag("unlabeled `{$cf_type}` inside of a labeled block", code = E0695)]
 pub(crate) struct UnlabeledInLabeledBlock<'a> {
     #[primary_span]
-    #[label]
+    #[label(
+        "`{$cf_type}` statements that would diverge to or through a labeled block need to bear a label"
+    )]
     pub span: Span,
     pub cf_type: &'a str,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_unlabeled_cf_in_while_condition, code = E0590)]
+#[diag("`break` or `continue` with no label in the condition of a `while` loop", code = E0590)]
 pub(crate) struct UnlabeledCfInWhileCondition<'a> {
     #[primary_span]
-    #[label]
+    #[label("unlabeled `{$cf_type}` in the condition of a `while` loop")]
     pub span: Span,
     pub cf_type: &'a str,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_no_associated_item, code = E0599)]
+#[diag("no {$item_kind} named `{$item_ident}` found for {$ty_prefix} `{$ty}`{$trait_missing_method ->
+    [true] {\"\"}
+    *[other] {\" \"}in the current scope
+}", code = E0599)]
 pub(crate) struct NoAssociatedItem<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -840,7 +943,13 @@ pub(crate) struct NoAssociatedItem<'tcx> {
 }
 
 #[derive(Subdiagnostic)]
-#[note(hir_typeck_candidate_trait_note)]
+#[note(
+    "`{$trait_name}` defines an item `{$item_name}`{$action_or_ty ->
+        [NONE] {\"\"}
+        [implement] , perhaps you need to implement it
+        *[other] , perhaps you need to restrict type parameter `{$action_or_ty}` with it
+    }"
+)]
 pub(crate) struct CandidateTraitNote {
     #[primary_span]
     pub span: Span,
@@ -850,7 +959,7 @@ pub(crate) struct CandidateTraitNote {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_cannot_cast_to_bool, code = E0054)]
+#[diag("cannot cast `{$expr_ty}` as `bool`", code = E0054)]
 pub(crate) struct CannotCastToBool<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -860,7 +969,7 @@ pub(crate) struct CannotCastToBool<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_cast_enum_drop)]
+#[diag("cannot cast enum `{$expr_ty}` into integer `{$cast_ty}` because it implements `Drop`")]
 pub(crate) struct CastEnumDrop<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -869,7 +978,10 @@ pub(crate) struct CastEnumDrop<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_cast_unknown_pointer, code = E0641)]
+#[diag("cannot cast {$to ->
+    [true] to
+    *[false] from
+} a pointer of an unknown kind", code = E0641)]
 pub(crate) struct CastUnknownPointer {
     #[primary_span]
     pub span: Span,
@@ -887,13 +999,13 @@ impl rustc_errors::Subdiagnostic for CastUnknownPointerSub {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             CastUnknownPointerSub::To(span) => {
-                let msg = diag.eagerly_translate(fluent::hir_typeck_label_to);
+                let msg = diag.eagerly_translate(inline_fluent!("needs more type information"));
                 diag.span_label(span, msg);
-                let msg = diag.eagerly_translate(fluent::hir_typeck_note);
+                let msg = diag.eagerly_translate(inline_fluent!("the type information given here is insufficient to check whether the pointer cast is valid"));
                 diag.note(msg);
             }
             CastUnknownPointerSub::From(span) => {
-                let msg = diag.eagerly_translate(fluent::hir_typeck_label_from);
+                let msg = diag.eagerly_translate(inline_fluent!("the type information given here is insufficient to check whether the pointer cast is valid"));
                 diag.span_label(span, msg);
             }
         }
@@ -903,18 +1015,18 @@ impl rustc_errors::Subdiagnostic for CastUnknownPointerSub {
 #[derive(Subdiagnostic)]
 pub(crate) enum CannotCastToBoolHelp {
     #[suggestion(
-        hir_typeck_suggestion,
+        "compare with zero instead",
         applicability = "machine-applicable",
         code = " != 0",
         style = "verbose"
     )]
     Numeric(#[primary_span] Span),
-    #[label(hir_typeck_label)]
+    #[label("unsupported cast")]
     Unsupported(#[primary_span] Span),
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_ctor_is_private, code = E0603)]
+#[diag("tuple struct constructor `{$def}` is private", code = E0603)]
 pub(crate) struct CtorIsPrivate {
     #[primary_span]
     pub span: Span,
@@ -922,7 +1034,7 @@ pub(crate) struct CtorIsPrivate {
 }
 
 #[derive(Subdiagnostic)]
-#[note(hir_typeck_deref_is_empty)]
+#[note("this expression `Deref`s to `{$deref_ty}` which implements `is_empty`")]
 pub(crate) struct DerefImplsIsEmpty<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -931,7 +1043,7 @@ pub(crate) struct DerefImplsIsEmpty<'tcx> {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    hir_typeck_convert_using_method,
+    "try using `{$sugg}` to convert `{$found}` to `{$expected}`",
     applicability = "machine-applicable",
     style = "verbose"
 )]
@@ -946,7 +1058,9 @@ pub(crate) struct SuggestConvertViaMethod<'tcx> {
 }
 
 #[derive(Subdiagnostic)]
-#[note(hir_typeck_note_caller_chooses_ty_for_ty_param)]
+#[note(
+    "the caller chooses a type for `{$ty_param_name}` which can be different from `{$found_ty}`"
+)]
 pub(crate) struct NoteCallerChoosesTyForTyParam<'tcx> {
     pub ty_param_name: Symbol,
     pub found_ty: Ty<'tcx>,
@@ -954,14 +1068,20 @@ pub(crate) struct NoteCallerChoosesTyForTyParam<'tcx> {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum SuggestBoxingForReturnImplTrait {
-    #[multipart_suggestion(hir_typeck_rpit_change_return_type, applicability = "maybe-incorrect")]
+    #[multipart_suggestion(
+        "you could change the return type to be a boxed trait object",
+        applicability = "maybe-incorrect"
+    )]
     ChangeReturnType {
         #[suggestion_part(code = "Box<dyn")]
         start_sp: Span,
         #[suggestion_part(code = ">")]
         end_sp: Span,
     },
-    #[multipart_suggestion(hir_typeck_rpit_box_return_expr, applicability = "maybe-incorrect")]
+    #[multipart_suggestion(
+        "if you change the return type to expect trait objects, box the returned expressions",
+        applicability = "maybe-incorrect"
+    )]
     BoxReturnExpr {
         #[suggestion_part(code = "Box::new(")]
         starts: Vec<Span>,
@@ -971,11 +1091,13 @@ pub(crate) enum SuggestBoxingForReturnImplTrait {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_self_ctor_from_outer_item, code = E0401)]
+#[diag("can't reference `Self` constructor from outer item", code = E0401)]
 pub(crate) struct SelfCtorFromOuterItem {
     #[primary_span]
     pub span: Span,
-    #[label]
+    #[label(
+        "the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference"
+    )]
     pub impl_span: Span,
     #[subdiagnostic]
     pub sugg: Option<ReplaceWithName>,
@@ -984,16 +1106,18 @@ pub(crate) struct SelfCtorFromOuterItem {
 }
 
 #[derive(Subdiagnostic)]
-#[label(hir_typeck_self_ctor_from_outer_item_inner_item)]
+#[label("`Self` used in this inner item")]
 pub(crate) struct InnerItem {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(LintDiagnostic)]
-#[diag(hir_typeck_self_ctor_from_outer_item)]
+#[diag("can't reference `Self` constructor from outer item")]
 pub(crate) struct SelfCtorFromOuterItemLint {
-    #[label]
+    #[label(
+        "the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference"
+    )]
     pub impl_span: Span,
     #[subdiagnostic]
     pub sugg: Option<ReplaceWithName>,
@@ -1002,7 +1126,11 @@ pub(crate) struct SelfCtorFromOuterItemLint {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(hir_typeck_suggestion, code = "{name}", applicability = "machine-applicable")]
+#[suggestion(
+    "replace `Self` with the actual type",
+    code = "{name}",
+    applicability = "machine-applicable"
+)]
 pub(crate) struct ReplaceWithName {
     #[primary_span]
     pub span: Span,
@@ -1010,44 +1138,75 @@ pub(crate) struct ReplaceWithName {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_cast_thin_pointer_to_wide_pointer, code = E0607)]
+#[diag("cannot cast thin pointer `{$expr_ty}` to wide pointer `{$cast_ty}`", code = E0607)]
 pub(crate) struct CastThinPointerToWidePointer<'tcx> {
     #[primary_span]
     pub span: Span,
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
-    #[note(hir_typeck_teach_help)]
+    #[note(
+        "Thin pointers are \"simple\" pointers: they are purely a reference to a
+        memory address.
+
+        Wide pointers are pointers referencing \"Dynamically Sized Types\" (also
+        called DST). DST don't have a statically known size, therefore they can
+        only exist behind some kind of pointers that contain additional
+        information. Slices and trait objects are DSTs. In the case of slices,
+        the additional information the wide pointer holds is their size.
+
+        To fix this error, don't try to cast directly between thin and wide
+        pointers.
+
+        For more information about casts, take a look at The Book:
+        https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions"
+    )]
     pub(crate) teach: bool,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_pass_to_variadic_function, code = E0617)]
+#[diag("can't pass `{$ty}` to variadic function", code = E0617)]
 pub(crate) struct PassToVariadicFunction<'a, 'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub cast_ty: &'a str,
-    #[suggestion(code = " as {cast_ty}", applicability = "machine-applicable", style = "verbose")]
+    #[suggestion(
+        "cast the value to `{$cast_ty}`",
+        code = " as {cast_ty}",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
     pub sugg_span: Span,
-    #[note(hir_typeck_teach_help)]
+    #[note(
+        "certain types, like `{$ty}`, must be cast before passing them to a variadic function to match the implicit cast that a C compiler would perform as part of C's numeric promotion rules"
+    )]
     pub(crate) teach: bool,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_fn_item_to_variadic_function, code = E0617)]
-#[help]
-#[note]
+#[diag("can't pass a function item to a variadic function", code = E0617)]
+#[help(
+    "a function item is zero-sized and needs to be cast into a function pointer to be used in FFI"
+)]
+#[note(
+    "for more information on function items, visit https://doc.rust-lang.org/reference/types/function-item.html"
+)]
 pub(crate) struct PassFnItemToVariadicFunction {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " as {replace}", applicability = "machine-applicable", style = "verbose")]
+    #[suggestion(
+        "use a function pointer instead",
+        code = " as {replace}",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
     pub sugg_span: Span,
     pub replace: String,
 }
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    hir_typeck_replace_comma_with_semicolon,
+    "replace the comma with a semicolon to create {$descr}",
     applicability = "machine-applicable",
     style = "verbose",
     code = "; "
@@ -1059,7 +1218,7 @@ pub(crate) struct ReplaceCommaWithSemicolon {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(hir_typeck_supertrait_item_shadowing)]
+#[diag("trait item `{$item}` from `{$subtrait}` shadows identically named item from supertrait")]
 pub(crate) struct SupertraitItemShadowing {
     pub item: Symbol,
     pub subtrait: Symbol,
@@ -1070,7 +1229,7 @@ pub(crate) struct SupertraitItemShadowing {
 }
 
 #[derive(Subdiagnostic)]
-#[note(hir_typeck_supertrait_item_shadower)]
+#[note("item from `{$subtrait}` shadows a supertrait item")]
 pub(crate) struct SupertraitItemShadower {
     pub subtrait: Symbol,
     #[primary_span]
@@ -1079,13 +1238,13 @@ pub(crate) struct SupertraitItemShadower {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum SupertraitItemShadowee {
-    #[note(hir_typeck_supertrait_item_shadowee)]
+    #[note("item from `{$supertrait}` is shadowed by a subtrait item")]
     Labeled {
         #[primary_span]
         span: Span,
         supertrait: Symbol,
     },
-    #[note(hir_typeck_supertrait_item_multiple_shadowee)]
+    #[note("items from several supertraits are shadowed: {$traits}")]
     Several {
         #[primary_span]
         spans: MultiSpan,
@@ -1094,7 +1253,7 @@ pub(crate) enum SupertraitItemShadowee {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_register_type_unstable)]
+#[diag("type `{$ty}` cannot be used with this register class in stable")]
 pub(crate) struct RegisterTypeUnstable<'a> {
     #[primary_span]
     pub span: Span,
@@ -1102,22 +1261,22 @@ pub(crate) struct RegisterTypeUnstable<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_naked_asm_outside_naked_fn)]
+#[diag("the `naked_asm!` macro can only be used in functions marked with `#[unsafe(naked)]`")]
 pub(crate) struct NakedAsmOutsideNakedFn {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_no_patterns)]
+#[diag("patterns not allowed in naked function parameters")]
 pub(crate) struct NoPatterns {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_params_not_allowed)]
-#[help]
+#[diag("referencing function parameters is not allowed in naked functions")]
+#[help("follow the calling convention in asm block to use parameters")]
 pub(crate) struct ParamsNotAllowed {
     #[primary_span]
     pub span: Span,
@@ -1132,14 +1291,23 @@ pub(crate) struct NakedFunctionsAsmBlock {
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for NakedFunctionsAsmBlock {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(dcx, level, fluent::hir_typeck_naked_functions_asm_block);
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            inline_fluent!("naked functions must contain a single `naked_asm!` invocation"),
+        );
         diag.span(self.span);
         diag.code(E0787);
         for span in self.multiple_asms.iter() {
-            diag.span_label(*span, fluent::hir_typeck_label_multiple_asm);
+            diag.span_label(
+                *span,
+                inline_fluent!(
+                    "multiple `naked_asm!` invocations are not allowed in naked functions"
+                ),
+            );
         }
         for span in self.non_asms.iter() {
-            diag.span_label(*span, fluent::hir_typeck_label_non_asm);
+            diag.span_label(*span, inline_fluent!("not allowed in naked functions"));
         }
         diag
     }
@@ -1182,44 +1350,48 @@ pub(crate) fn maybe_emit_plus_equals_diagnostic<'a>(
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_naked_functions_must_naked_asm, code = E0787)]
+#[diag("the `asm!` macro is not allowed in naked functions", code = E0787)]
 pub(crate) struct NakedFunctionsMustNakedAsm {
     #[primary_span]
-    #[label]
+    #[label("consider using the `naked_asm!` macro instead")]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_abi_cannot_be_called)]
+#[diag("functions with the {$abi} ABI cannot be called")]
 pub(crate) struct AbiCannotBeCalled {
     #[primary_span]
-    #[note]
+    #[note("an `extern {$abi}` function can only be called using inline assembly")]
     pub span: Span,
     pub abi: ExternAbi,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_gpu_kernel_abi_cannot_be_called)]
+#[diag("functions with the \"gpu-kernel\" ABI cannot be called")]
 pub(crate) struct GpuKernelAbiCannotBeCalled {
     #[primary_span]
-    #[note]
+    #[note("an `extern \"gpu-kernel\"` function must be launched on the GPU by the runtime")]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_const_continue_bad_label)]
+#[diag("`#[const_continue]` must break to a labeled block that participates in a `#[loop_match]`")]
 pub(crate) struct ConstContinueBadLabel {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_project_on_non_pin_project_type)]
+#[diag("cannot project on type that is not `#[pin_v2]`")]
 pub(crate) struct ProjectOnNonPinProjectType {
     #[primary_span]
     pub span: Span,
-    #[note]
+    #[note("type defined here")]
     pub def_span: Option<Span>,
-    #[suggestion(code = "#[pin_v2]\n", applicability = "machine-applicable")]
+    #[suggestion(
+        "add `#[pin_v2]` here",
+        code = "#[pin_v2]\n",
+        applicability = "machine-applicable"
+    )]
     pub sugg_span: Option<Span>,
 }
