@@ -120,7 +120,6 @@ pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     rustc_codegen_ssa::DEFAULT_LOCALE_RESOURCE,
     rustc_const_eval::DEFAULT_LOCALE_RESOURCE,
     rustc_errors::DEFAULT_LOCALE_RESOURCE,
-    rustc_expand::DEFAULT_LOCALE_RESOURCE,
     rustc_hir_analysis::DEFAULT_LOCALE_RESOURCE,
     rustc_lint::DEFAULT_LOCALE_RESOURCE,
     rustc_metadata::DEFAULT_LOCALE_RESOURCE,
