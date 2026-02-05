@@ -15,7 +15,7 @@ codegen_ssa_bpf_staticlib_not_supported = linking static libraries is not suppor
 codegen_ssa_cgu_not_recorded =
     CGU-reuse for `{$cgu_user_name}` is (mangled: `{$cgu_name}`) was not recorded
 
-codegen_ssa_check_installed_visual_studio = please ensure that Visual Studio 2017 or later, or Build Tools for Visual Studio were installed with the Visual C++ option.
+codegen_ssa_check_installed_visual_studio = please ensure that Visual Studio 2017 or later, or Build Tools for Visual Studio were installed with the Visual C++ option
 
 codegen_ssa_compiler_builtins_cannot_call =
     `compiler_builtins` cannot call functions through upstream monomorphizations; encountered invalid call from `{$caller}` to `{$callee}`
@@ -86,7 +86,7 @@ codegen_ssa_incorrect_cgu_reuse_type =
     *[other] {""}
     }`{$expected_reuse}`
 
-codegen_ssa_insufficient_vs_code_product = VS Code is a different product, and is not sufficient.
+codegen_ssa_insufficient_vs_code_product = VS Code is a different product, and is not sufficient
 
 codegen_ssa_invalid_monomorphization_basic_float_type = invalid monomorphization of `{$name}` intrinsic: expected basic float type, found `{$ty}`
 
@@ -195,7 +195,7 @@ codegen_ssa_lto_dylib = lto cannot be used for `dylib` crate type without `-Zdyl
 codegen_ssa_lto_proc_macro = lto cannot be used for `proc-macro` crate type without `-Zdylib-lto`
 
 codegen_ssa_malformed_cgu_name =
-    found malformed codegen unit name `{$user_path}`. codegen units names must always start with the name of the crate (`{$crate_name}` in this case).
+    found malformed codegen unit name `{$user_path}`. codegen units names must always start with the name of the crate (`{$crate_name}` in this case)
 
 codegen_ssa_missing_cpp_build_tool_component = or a necessary component may be missing from the "C++ build tools" workload
 
@@ -247,9 +247,9 @@ codegen_ssa_shuffle_indices_evaluation = could not evaluate shuffle_indices at c
 
 codegen_ssa_specify_libraries_to_link = use the `-l` flag to specify native libraries to link
 
-codegen_ssa_static_library_native_artifacts = link against the following native artifacts when linking against this static library. The order and any duplication can be significant on some platforms.
+codegen_ssa_static_library_native_artifacts = link against the following native artifacts when linking against this static library; the order and any duplication can be significant on some platforms
 
-codegen_ssa_static_library_native_artifacts_to_file = native artifacts to link against have been written to {$path}. The order and any duplication can be significant on some platforms.
+codegen_ssa_static_library_native_artifacts_to_file = native artifacts to link against have been written to {$path}; the order and any duplication can be significant on some platforms
 
 codegen_ssa_stripping_debug_info_failed = stripping debug info with `{$util}` failed: {$status}
     .note = {$output}
@@ -373,6 +373,8 @@ codegen_ssa_unsupported_link_self_contained = option `-C link-self-contained` is
 codegen_ssa_use_cargo_directive = use the `cargo:rustc-link-lib` directive to specify the native libraries to link with Cargo (see https://doc.rust-lang.org/cargo/reference/build-scripts.html#rustc-link-lib)
 
 codegen_ssa_version_script_write_failure = failed to write version script: {$error}
+
+codegen_ssa_visual_studio_build_tools_url = you can obtain "Build Tools for Visual Studio" from <https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2026>
 
 codegen_ssa_visual_studio_not_installed = you may need to install Visual Studio build tools with the "C++ build tools" workload
 
