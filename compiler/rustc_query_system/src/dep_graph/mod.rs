@@ -7,7 +7,7 @@ mod serialized;
 
 use std::panic;
 
-pub use dep_node::{DepKind, DepKindVTable, DepNode, DepNodeParams, WorkProductId};
+pub use dep_node::{DepKind, DepKindVTable, DepNode, DepNodeKey, WorkProductId};
 pub(crate) use graph::DepGraphData;
 pub use graph::{DepGraph, DepNodeIndex, TaskDepsRef, WorkProduct, WorkProductMap, hash_result};
 pub use query::DepGraphQuery;
