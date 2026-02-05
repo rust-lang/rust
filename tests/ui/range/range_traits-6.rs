@@ -1,6 +1,6 @@
 use std::ops::*;
 
-#[derive(Copy, Clone)] //~ ERROR Copy
-struct R(RangeInclusive<usize>);
+#[derive(Copy, Clone)]
+struct R(RangeInclusive<usize>); //~ ERROR Copy
 
 fn main() {}

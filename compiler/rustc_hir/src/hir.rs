@@ -1,6 +1,7 @@
 // ignore-tidy-filelength
 use std::borrow::Cow;
 use std::fmt;
+use std::ops::Not;
 
 use rustc_abi::ExternAbi;
 use rustc_ast::attr::AttributeExt;
@@ -1012,10 +1013,14 @@ impl<'hir> Generics<'hir> {
 
                 span_for_parentheses.map_or_else(
                     || {
-                        // We include bounds that come from a `#[derive(_)]` but point at the user's code,
-                        // as we use this method to get a span appropriate for suggestions.
+                        // We include bounds that come from a `#[derive(_)]` but point at the user's
+                        // code, as we use this method to get a span appropriate for suggestions.
                         let bs = bound.span();
-                        bs.can_be_used_for_suggestions().then(|| (bs.shrink_to_hi(), None))
+                        // We use `from_expansion` instead of `can_be_used_for_suggestions` because
+                        // the trait bound from imperfect derives do point at the type parameter,
+                        // but expanded to a where clause, so we want to ignore those. This is only
+                        // true for derive intrinsics.
+                        bs.from_expansion().not().then(|| (bs.shrink_to_hi(), None))
                     },
                     |span| Some((span.shrink_to_hi(), Some(span.shrink_to_lo()))),
                 )
