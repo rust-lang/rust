@@ -19,8 +19,8 @@ use rustc_middle::queries::{
 use rustc_middle::query::AsLocalKey;
 use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
 use rustc_middle::query::plumbing::{QuerySystem, QuerySystemFns, QueryVTable};
+use rustc_middle::query::values::Value;
 use rustc_middle::ty::TyCtxt;
-use rustc_query_system::Value;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
@@ -38,6 +38,8 @@ pub use crate::plumbing::{QueryCtxt, query_key_hash_verify_all};
 
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;
+
+mod error;
 
 #[derive(ConstParamTy)] // Allow this struct to be used for const-generic values.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
