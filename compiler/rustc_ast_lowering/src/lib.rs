@@ -2425,15 +2425,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 );
 
                 let lowered_args = self.arena.alloc_from_iter(args.iter().map(|arg| {
-                    let const_arg = if let ExprKind::ConstBlock(anon_const) = &arg.kind {
-                        let def_id = self.local_def_id(anon_const.id);
-                        let def_kind = self.tcx.def_kind(def_id);
-                        assert_eq!(DefKind::AnonConst, def_kind);
-                        self.lower_anon_const_to_const_arg(anon_const)
-                    } else {
-                        self.lower_expr_to_const_arg_direct(arg)
-                    };
-
+                    let const_arg = self.lower_expr_to_const_arg_direct(arg);
                     &*self.arena.alloc(const_arg)
                 }));
 
@@ -2445,16 +2437,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             ExprKind::Tup(exprs) => {
                 let exprs = self.arena.alloc_from_iter(exprs.iter().map(|expr| {
-                    let expr = if let ExprKind::ConstBlock(anon_const) = &expr.kind {
-                        let def_id = self.local_def_id(anon_const.id);
-                        let def_kind = self.tcx.def_kind(def_id);
-                        assert_eq!(DefKind::AnonConst, def_kind);
-
-                        self.lower_anon_const_to_const_arg(anon_const)
-                    } else {
-                        self.lower_expr_to_const_arg_direct(&expr)
-                    };
-
+                    let expr = self.lower_expr_to_const_arg_direct(&expr);
                     &*self.arena.alloc(expr)
                 }));
 
@@ -2494,16 +2477,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // then go unused as the `Target::ExprField` is not actually
                     // corresponding to `Node::ExprField`.
                     self.lower_attrs(hir_id, &f.attrs, f.span, Target::ExprField);
-
-                    let expr = if let ExprKind::ConstBlock(anon_const) = &f.expr.kind {
-                        let def_id = self.local_def_id(anon_const.id);
-                        let def_kind = self.tcx.def_kind(def_id);
-                        assert_eq!(DefKind::AnonConst, def_kind);
-
-                        self.lower_anon_const_to_const_arg(anon_const)
-                    } else {
-                        self.lower_expr_to_const_arg_direct(&f.expr)
-                    };
+                    let expr = self.lower_expr_to_const_arg_direct(&f.expr);
 
                     &*self.arena.alloc(hir::ConstArgExprField {
                         hir_id,
@@ -2521,13 +2495,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             ExprKind::Array(elements) => {
                 let lowered_elems = self.arena.alloc_from_iter(elements.iter().map(|element| {
-                    let const_arg = if let ExprKind::ConstBlock(anon_const) = &element.kind {
-                        let def_id = self.local_def_id(anon_const.id);
-                        assert_eq!(DefKind::AnonConst, self.tcx.def_kind(def_id));
-                        self.lower_anon_const_to_const_arg(anon_const)
-                    } else {
-                        self.lower_expr_to_const_arg_direct(element)
-                    };
+                    let const_arg = self.lower_expr_to_const_arg_direct(element);
                     &*self.arena.alloc(const_arg)
                 }));
                 let array_expr = self.arena.alloc(hir::ConstArgArrayExpr {
@@ -2557,6 +2525,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             | ExprKind::Call(..)
                             | ExprKind::Tup(..)
                             | ExprKind::Array(..)
+                            | ExprKind::ConstBlock(..)
                     )
                 {
                     return self.lower_expr_to_const_arg_direct(expr);
@@ -2586,6 +2555,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     span,
                 }
             }
+            ExprKind::ConstBlock(anon_const) => {
+                let def_id = self.local_def_id(anon_const.id);
+                assert_eq!(DefKind::AnonConst, self.tcx.def_kind(def_id));
+                self.lower_anon_const_to_const_arg(anon_const, span)
+            }
             _ => overly_complex_const(self),
         }
     }
@@ -2596,11 +2570,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         anon: &AnonConst,
     ) -> &'hir hir::ConstArg<'hir> {
-        self.arena.alloc(self.lower_anon_const_to_const_arg(anon))
+        self.arena.alloc(self.lower_anon_const_to_const_arg(anon, anon.value.span))
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn lower_anon_const_to_const_arg(&mut self, anon: &AnonConst) -> hir::ConstArg<'hir> {
+    fn lower_anon_const_to_const_arg(
+        &mut self,
+        anon: &AnonConst,
+        span: Span,
+    ) -> hir::ConstArg<'hir> {
         let tcx = self.tcx;
 
         // We cannot change parsing depending on feature gates available,
@@ -2611,7 +2589,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         if tcx.features().min_generic_const_args() {
             return match anon.mgca_disambiguation {
                 MgcaDisambiguation::AnonConst => {
-                    let lowered_anon = self.lower_anon_const_to_anon_const(anon);
+                    let lowered_anon = self.lower_anon_const_to_anon_const(anon, span);
                     ConstArg {
                         hir_id: self.next_id(),
                         kind: hir::ConstArgKind::Anon(lowered_anon),
@@ -2657,7 +2635,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             };
         }
 
-        let lowered_anon = self.lower_anon_const_to_anon_const(anon);
+        let lowered_anon = self.lower_anon_const_to_anon_const(anon, anon.value.span);
         ConstArg {
             hir_id: self.next_id(),
             kind: hir::ConstArgKind::Anon(lowered_anon),
@@ -2667,7 +2645,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     /// See [`hir::ConstArg`] for when to use this function vs
     /// [`Self::lower_anon_const_to_const_arg`].
-    fn lower_anon_const_to_anon_const(&mut self, c: &AnonConst) -> &'hir hir::AnonConst {
+    fn lower_anon_const_to_anon_const(
+        &mut self,
+        c: &AnonConst,
+        span: Span,
+    ) -> &'hir hir::AnonConst {
         self.arena.alloc(self.with_new_scopes(c.value.span, |this| {
             let def_id = this.local_def_id(c.id);
             let hir_id = this.lower_node_id(c.id);
@@ -2675,7 +2657,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 def_id,
                 hir_id,
                 body: this.lower_const_body(c.value.span, Some(&c.value)),
-                span: this.lower_span(c.value.span),
+                span: this.lower_span(span),
             }
         }))
     }
