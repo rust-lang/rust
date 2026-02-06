@@ -302,7 +302,7 @@ fn deny_new_nondescriptive_test_names(
             && !stripped_path.starts_with("ui/issues/")
         {
             check.error(format!(
-                "file `tests/{stripped_path}` must begin with a descriptive name, consider `{{reason}}-issue-{issue_n}.rs`",
+                "issue-number-only test names are not descriptive, consider renaming file `tests/{stripped_path}` to `{{reason}}-issue-{issue_n}.rs`",
                 issue_n = &test_name[1],
             ));
         }
