@@ -5,7 +5,8 @@ use either::Either;
 use rustc_abi::WrappingRange;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Diag, DiagArgValue, DiagMessage, Diagnostic, EmissionGuarantee, Level, MultiSpan, Subdiagnostic,
+    Diag, DiagArgValue, DiagMessage, Diagnostic, EmissionGuarantee, Level, MultiSpan,
+    Subdiagnostic, inline_fluent,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -17,11 +18,18 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::ty::{self, Mutability, Ty};
 use rustc_span::{Span, Symbol};
 
-use crate::fluent_generated as fluent;
 use crate::interpret::InternKind;
 
 #[derive(Diagnostic)]
-#[diag(const_eval_dangling_ptr_in_final)]
+#[diag(
+    r#"encountered dangling pointer in final value of {$kind ->
+    [static] static
+    [static_mut] mutable static
+    [const] constant
+    [promoted] promoted
+    *[other] {""}
+}"#
+)]
 pub(crate) struct DanglingPtrInFinal {
     #[primary_span]
     pub span: Span,
@@ -29,14 +37,24 @@ pub(crate) struct DanglingPtrInFinal {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_nested_static_in_thread_local)]
+#[diag(
+    "#[thread_local] does not support implicit nested statics, please create explicit static items and refer to them instead"
+)]
 pub(crate) struct NestedStaticInThreadLocal {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_mutable_ptr_in_final)]
+#[diag(
+    r#"encountered mutable pointer in final value of {$kind ->
+    [static] static
+    [static_mut] mutable static
+    [const] constant
+    [promoted] promoted
+    *[other] {""}
+}"#
+)]
 pub(crate) struct MutablePtrInFinal {
     #[primary_span]
     pub span: Span,
@@ -44,16 +62,28 @@ pub(crate) struct MutablePtrInFinal {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_const_heap_ptr_in_final)]
-#[note]
+#[diag("encountered `const_allocate` pointer in final value that was not made global")]
+#[note(
+    "use `const_make_global` to turn allocated pointers into immutable globals before returning"
+)]
 pub(crate) struct ConstHeapPtrInFinal {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_partial_pointer_in_final)]
-#[note]
+#[diag(
+    r#"encountered partial pointer in final value of {$kind ->
+    [static] static
+    [static_mut] mutable static
+    [const] constant
+    [promoted] promoted
+    *[other] {""}
+}"#
+)]
+#[note(
+    "while pointers can be broken apart into individual bytes during const-evaluation, only complete pointers (with all their bytes in the right order) are supported in the final value"
+)]
 pub(crate) struct PartialPtrInFinal {
     #[primary_span]
     pub span: Span,
@@ -61,17 +91,24 @@ pub(crate) struct PartialPtrInFinal {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unstable_in_stable_exposed)]
+#[diag(
+    "const function that might be (indirectly) exposed to stable cannot use `#[feature({$gate})]`"
+)]
 pub(crate) struct UnstableInStableExposed {
     pub gate: String,
     #[primary_span]
     pub span: Span,
-    #[help(const_eval_is_function_call)]
+    #[help(
+        "mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features"
+    )]
     pub is_function_call: bool,
     /// Need to duplicate the field so that fluent also provides it as a variable...
     pub is_function_call2: bool,
     #[suggestion(
-        const_eval_unstable_sugg,
+        "if the {$is_function_call2 ->
+    [true] caller
+    *[false] function
+} is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`",
         code = "#[rustc_const_unstable(feature = \"...\", issue = \"...\")]\n",
         applicability = "has-placeholders"
     )]
@@ -79,38 +116,47 @@ pub(crate) struct UnstableInStableExposed {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_thread_local_access, code = E0625)]
+#[diag("thread-local statics cannot be accessed at compile-time", code = E0625)]
 pub(crate) struct ThreadLocalAccessErr {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_raw_ptr_to_int)]
-#[note]
-#[note(const_eval_note2)]
+#[diag("pointers cannot be cast to integers during const eval")]
+#[note("at compile-time, pointers do not have an integer value")]
+#[note(
+    "avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior"
+)]
 pub(crate) struct RawPtrToIntErr {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_raw_ptr_comparison)]
-#[note]
+#[diag("pointers cannot be reliably compared during const eval")]
+#[note("see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information")]
 pub(crate) struct RawPtrComparisonErr {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_panic_non_str)]
+#[diag("argument to `panic!()` in a const context must have type `&str`")]
 pub(crate) struct PanicNonStrErr {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unallowed_fn_pointer_call)]
+#[diag(
+    r#"function pointer calls are not allowed in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#
+)]
 pub(crate) struct UnallowedFnPointerCall {
     #[primary_span]
     pub span: Span,
@@ -118,7 +164,7 @@ pub(crate) struct UnallowedFnPointerCall {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unstable_const_fn)]
+#[diag("`{$def_path}` is not yet stable as a const fn")]
 pub(crate) struct UnstableConstFn {
     #[primary_span]
     pub span: Span,
@@ -126,7 +172,7 @@ pub(crate) struct UnstableConstFn {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unstable_const_trait)]
+#[diag("`{$def_path}` is not yet stable as a const trait")]
 pub(crate) struct UnstableConstTrait {
     #[primary_span]
     pub span: Span,
@@ -134,14 +180,14 @@ pub(crate) struct UnstableConstTrait {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unstable_intrinsic)]
+#[diag("`{$name}` is not yet stable as a const intrinsic")]
 pub(crate) struct UnstableIntrinsic {
     #[primary_span]
     pub span: Span,
     pub name: Symbol,
     pub feature: Symbol,
     #[suggestion(
-        const_eval_unstable_intrinsic_suggestion,
+        "add `#![feature({$feature})]` to the crate attributes to enable",
         code = "#![feature({feature})]\n",
         applicability = "machine-applicable"
     )]
@@ -149,8 +195,10 @@ pub(crate) struct UnstableIntrinsic {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unmarked_const_item_exposed)]
-#[help]
+#[diag("`{$def_path}` cannot be (indirectly) exposed to stable")]
+#[help(
+    "either mark the callee as `#[rustc_const_stable_indirect]`, or the caller as `#[rustc_const_unstable]`"
+)]
 pub(crate) struct UnmarkedConstItemExposed {
     #[primary_span]
     pub span: Span,
@@ -158,8 +206,10 @@ pub(crate) struct UnmarkedConstItemExposed {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unmarked_intrinsic_exposed)]
-#[help]
+#[diag("intrinsic `{$def_path}` cannot be (indirectly) exposed to stable")]
+#[help(
+    "mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_intrinsic_const_stable_indirect]` (but this requires team approval)"
+)]
 pub(crate) struct UnmarkedIntrinsicExposed {
     #[primary_span]
     pub span: Span,
@@ -167,19 +217,31 @@ pub(crate) struct UnmarkedIntrinsicExposed {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_mutable_borrow_escaping, code = E0764)]
-#[note]
-#[note(const_eval_note2)]
-#[help]
+#[diag("mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed", code = E0764)]
+#[note(
+    "temporaries in constants and statics can have their lifetime extended until the end of the program"
+)]
+#[note("to avoid accidentally creating global mutable state, such temporaries must be immutable")]
+#[help(
+    "if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`"
+)]
 pub(crate) struct MutableBorrowEscaping {
     #[primary_span]
-    #[label]
+    #[label("this mutable borrow refers to such a temporary")]
     pub span: Span,
     pub kind: ConstContext,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_fmt_macro_call, code = E0015)]
+#[diag(
+    r#"cannot call {$non_or_conditionally}-const formatting macro in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#,
+    code = E0015,
+)]
 pub(crate) struct NonConstFmtMacroCall {
     #[primary_span]
     pub span: Span,
@@ -188,7 +250,12 @@ pub(crate) struct NonConstFmtMacroCall {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_fn_call, code = E0015)]
+#[diag(r#"cannot call {$non_or_conditionally}-const {$def_descr} `{$def_path_str}` in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#, code = E0015)]
 pub(crate) struct NonConstFnCall {
     #[primary_span]
     pub span: Span,
@@ -199,7 +266,14 @@ pub(crate) struct NonConstFnCall {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_intrinsic)]
+#[diag(
+    r#"cannot call non-const intrinsic `{$name}` in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#
+)]
 pub(crate) struct NonConstIntrinsic {
     #[primary_span]
     pub span: Span,
@@ -208,7 +282,7 @@ pub(crate) struct NonConstIntrinsic {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unallowed_op_in_const_context)]
+#[diag("{$msg}")]
 pub(crate) struct UnallowedOpInConstContext {
     #[primary_span]
     pub span: Span,
@@ -216,18 +290,37 @@ pub(crate) struct UnallowedOpInConstContext {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unallowed_heap_allocations, code = E0010)]
+#[diag(r#"allocations are not allowed in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#, code = E0010)]
 pub(crate) struct UnallowedHeapAllocations {
     #[primary_span]
-    #[label]
+    #[label(
+        r#"allocation not allowed in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#
+    )]
     pub span: Span,
     pub kind: ConstContext,
-    #[note(const_eval_teach_note)]
+    #[note(
+        "The runtime heap is not yet available at compile-time, so no runtime heap allocations can be created."
+    )]
     pub teach: bool,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unallowed_inline_asm, code = E0015)]
+#[diag(r#"inline assembly is not allowed in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#, code = E0015)]
 pub(crate) struct UnallowedInlineAsm {
     #[primary_span]
     pub span: Span,
@@ -235,39 +328,46 @@ pub(crate) struct UnallowedInlineAsm {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_interior_mutable_borrow_escaping, code = E0492)]
-#[note]
-#[note(const_eval_note2)]
-#[help]
+#[diag("interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed", code = E0492)]
+#[note(
+    "temporaries in constants and statics can have their lifetime extended until the end of the program"
+)]
+#[note("to avoid accidentally creating global mutable state, such temporaries must be immutable")]
+#[help(
+    "if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`"
+)]
 pub(crate) struct InteriorMutableBorrowEscaping {
     #[primary_span]
-    #[label]
+    #[label("this borrow of an interior mutable value refers to such a temporary")]
     pub span: Span,
     pub kind: ConstContext,
 }
 
 #[derive(LintDiagnostic)]
-#[diag(const_eval_long_running)]
-#[note]
+#[diag("constant evaluation is taking a long time")]
+#[note(
+    "this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
+    If your compilation actually takes a long time, you can safely allow the lint."
+)]
 pub struct LongRunning {
-    #[help]
+    #[help("the constant being evaluated")]
     pub item_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_long_running)]
+#[diag("constant evaluation is taking a long time")]
 pub struct LongRunningWarn {
     #[primary_span]
-    #[label]
+    #[label("the const evaluator is currently interpreting this expression")]
     pub span: Span,
-    #[help]
+    #[help("the constant being evaluated")]
     pub item_span: Span,
     // Used for evading `-Z deduplicate-diagnostics`.
     pub force_duplicate: usize,
 }
 
 #[derive(Subdiagnostic)]
-#[note(const_eval_non_const_impl)]
+#[note("impl defined here, but it is not `const`")]
 pub(crate) struct NonConstImplNote {
     #[primary_span]
     pub span: Span,
@@ -289,9 +389,21 @@ impl Subdiagnostic for FrameNote {
         diag.arg("instance", self.instance);
         let mut span: MultiSpan = self.span.into();
         if self.has_label && !self.span.is_dummy() {
-            span.push_span_label(self.span, fluent::const_eval_frame_note_last);
+            span.push_span_label(self.span, inline_fluent!("the failure occurred here"));
         }
-        let msg = diag.eagerly_translate(fluent::const_eval_frame_note);
+        let msg = diag.eagerly_translate(inline_fluent!(
+            r#"{$times ->
+    [0] {const_eval_frame_note_inner}
+    *[other] [... {$times} additional calls {const_eval_frame_note_inner} ...]
+}
+
+const_eval_frame_note_inner = inside {$where_ ->
+    [closure] closure
+    [instance] `{$instance}`
+    *[other] {""}
+}
+"#
+        ));
         diag.remove_arg("times");
         diag.remove_arg("where_");
         diag.remove_arg("instance");
@@ -300,7 +412,7 @@ impl Subdiagnostic for FrameNote {
 }
 
 #[derive(Subdiagnostic)]
-#[note(const_eval_raw_bytes)]
+#[note(r#"the raw bytes of the constant (size: {$size}, align: {$align}) {"{"}{$bytes}{"}"}"#)]
 pub struct RawBytesNote {
     pub size: u64,
     pub align: u64,
@@ -310,8 +422,15 @@ pub struct RawBytesNote {
 // FIXME(fee1-dead) do not use stringly typed `ConstContext`
 
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_match_eq, code = E0015)]
-#[note]
+#[diag(
+    r#"cannot match on `{$ty}` in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#
+)]
+#[note("`{$ty}` cannot be compared in compile-time, and therefore cannot be used in `match`es")]
 pub struct NonConstMatchEq<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -321,7 +440,12 @@ pub struct NonConstMatchEq<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_for_loop_into_iter, code = E0015)]
+#[diag(r#"cannot use `for` loop on `{$ty}` in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#, code = E0015)]
 pub struct NonConstForLoopIntoIter<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -331,7 +455,12 @@ pub struct NonConstForLoopIntoIter<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_question_branch, code = E0015)]
+#[diag(r#"`?` is not allowed on `{$ty}` in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#, code = E0015)]
 pub struct NonConstQuestionBranch<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -341,7 +470,12 @@ pub struct NonConstQuestionBranch<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_question_from_residual, code = E0015)]
+#[diag(r#"`?` is not allowed on `{$ty}` in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#, code = E0015)]
 pub struct NonConstQuestionFromResidual<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -351,7 +485,12 @@ pub struct NonConstQuestionFromResidual<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_try_block_from_output, code = E0015)]
+#[diag(r#"`try` block cannot convert `{$ty}` to the result in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#, code = E0015)]
 pub struct NonConstTryBlockFromOutput<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -361,7 +500,12 @@ pub struct NonConstTryBlockFromOutput<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_await, code = E0015)]
+#[diag(r#"cannot convert `{$ty}` into a future in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#, code = E0015)]
 pub struct NonConstAwait<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -371,7 +515,12 @@ pub struct NonConstAwait<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_closure, code = E0015)]
+#[diag(r#"cannot call {$non_or_conditionally}-const closure in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#, code = E0015)]
 pub struct NonConstClosure {
     #[primary_span]
     pub span: Span,
@@ -383,19 +532,33 @@ pub struct NonConstClosure {
 
 #[derive(Subdiagnostic)]
 pub enum NonConstClosureNote {
-    #[note(const_eval_closure_fndef_not_const)]
+    #[note("function defined here, but it is not `const`")]
     FnDef {
         #[primary_span]
         span: Span,
     },
-    #[note(const_eval_fn_ptr_call)]
+    #[note(
+        r#"function pointers need an RFC before allowed to be called in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#
+    )]
     FnPtr,
-    #[note(const_eval_closure_call)]
+    #[note(
+        r#"closures need an RFC before allowed to be called in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#
+    )]
     Closure,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(const_eval_consider_dereferencing, applicability = "machine-applicable")]
+#[multipart_suggestion("consider dereferencing here", applicability = "machine-applicable")]
 pub struct ConsiderDereferencing {
     pub deref: String,
     #[suggestion_part(code = "{deref}")]
@@ -405,7 +568,12 @@ pub struct ConsiderDereferencing {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_operator, code = E0015)]
+#[diag(r#"cannot call {$non_or_conditionally}-const operator in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#, code = E0015)]
 pub struct NonConstOperator {
     #[primary_span]
     pub span: Span,
@@ -416,28 +584,40 @@ pub struct NonConstOperator {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_deref_coercion, code = E0015)]
-#[note]
+#[diag(r#"cannot perform {$non_or_conditionally}-const deref coercion on `{$ty}` in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#, code = E0015)]
+#[note("attempting to deref into `{$target_ty}`")]
 pub struct NonConstDerefCoercion<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
     pub target_ty: Ty<'tcx>,
-    #[note(const_eval_target_note)]
+    #[note("deref defined here")]
     pub deref_target: Option<Span>,
     pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_live_drop, code = E0493)]
+#[diag("destructor of `{$dropped_ty}` cannot be evaluated at compile-time", code = E0493)]
 pub struct LiveDrop<'tcx> {
     #[primary_span]
-    #[label]
+    #[label(
+        r#"the destructor for this type cannot be evaluated in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#
+    )]
     pub span: Span,
     pub kind: ConstContext,
     pub dropped_ty: Ty<'tcx>,
-    #[label(const_eval_dropped_at_label)]
+    #[label("value is dropped here")]
     pub dropped_at: Span,
 }
 
@@ -466,51 +646,128 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
     fn diagnostic_message(&self) -> DiagMessage {
         use UndefinedBehaviorInfo::*;
 
-        use crate::fluent_generated::*;
         match self {
             Ub(msg) => msg.clone().into(),
             Custom(x) => (x.msg)(),
             ValidationError(e) => e.diagnostic_message(),
 
-            Unreachable => const_eval_unreachable,
-            BoundsCheckFailed { .. } => const_eval_bounds_check_failed,
-            DivisionByZero => const_eval_division_by_zero,
-            RemainderByZero => const_eval_remainder_by_zero,
-            DivisionOverflow => const_eval_division_overflow,
-            RemainderOverflow => const_eval_remainder_overflow,
-            PointerArithOverflow => const_eval_pointer_arithmetic_overflow,
-            ArithOverflow { .. } => const_eval_overflow_arith,
-            ShiftOverflow { .. } => const_eval_overflow_shift,
-            InvalidMeta(InvalidMetaKind::SliceTooBig) => const_eval_invalid_meta_slice,
-            InvalidMeta(InvalidMetaKind::TooBig) => const_eval_invalid_meta,
-            UnterminatedCString(_) => const_eval_unterminated_c_string,
-            PointerUseAfterFree(_, _) => const_eval_pointer_use_after_free,
-            PointerOutOfBounds { .. } => const_eval_pointer_out_of_bounds,
-            DanglingIntPointer { addr: 0, .. } => const_eval_dangling_null_pointer,
-            DanglingIntPointer { .. } => const_eval_dangling_int_pointer,
-            AlignmentCheckFailed { .. } => const_eval_alignment_check_failed,
-            WriteToReadOnly(_) => const_eval_write_to_read_only,
-            DerefFunctionPointer(_) => const_eval_deref_function_pointer,
-            DerefVTablePointer(_) => const_eval_deref_vtable_pointer,
-            DerefTypeIdPointer(_) => const_eval_deref_typeid_pointer,
-            InvalidBool(_) => const_eval_invalid_bool,
-            InvalidChar(_) => const_eval_invalid_char,
-            InvalidTag(_) => const_eval_invalid_tag,
-            InvalidFunctionPointer(_) => const_eval_invalid_function_pointer,
-            InvalidVTablePointer(_) => const_eval_invalid_vtable_pointer,
-            InvalidVTableTrait { .. } => const_eval_invalid_vtable_trait,
-            InvalidStr(_) => const_eval_invalid_str,
-            InvalidUninitBytes(None) => const_eval_invalid_uninit_bytes_unknown,
-            InvalidUninitBytes(Some(_)) => const_eval_invalid_uninit_bytes,
-            DeadLocal => const_eval_dead_local,
-            ScalarSizeMismatch(_) => const_eval_scalar_size_mismatch,
-            UninhabitedEnumVariantWritten(_) => const_eval_uninhabited_enum_variant_written,
-            UninhabitedEnumVariantRead(_) => const_eval_uninhabited_enum_variant_read,
-            InvalidNichedEnumVariantWritten { .. } => {
-                const_eval_invalid_niched_enum_variant_written
+            Unreachable => "entering unreachable code".into(),
+            BoundsCheckFailed { .. } => inline_fluent!("indexing out of bounds: the len is {$len} but the index is {$index}"),
+            DivisionByZero => "dividing by zero".into(),
+            RemainderByZero => "calculating the remainder with a divisor of zero".into(),
+            DivisionOverflow => "overflow in signed division (dividing MIN by -1)".into(),
+            RemainderOverflow => "overflow in signed remainder (dividing MIN by -1)".into(),
+            PointerArithOverflow => "overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`".into(),
+            ArithOverflow { .. } => inline_fluent!("arithmetic overflow in `{$intrinsic}`"),
+            ShiftOverflow { .. } => inline_fluent!("overflowing shift by {$shift_amount} in `{$intrinsic}`"),
+            InvalidMeta(InvalidMetaKind::SliceTooBig) => "invalid metadata in wide pointer: slice is bigger than largest supported object".into(),
+            InvalidMeta(InvalidMetaKind::TooBig) => "invalid metadata in wide pointer: total size is bigger than largest supported object".into(),
+            UnterminatedCString(_) => "reading a null-terminated string starting at {$pointer} with no null found before end of allocation".into(),
+            PointerUseAfterFree(_, _) => inline_fluent!("{$operation ->
+  [MemoryAccess] memory access failed
+  [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
+  *[Dereferenceable] pointer not dereferenceable
+}: {$alloc_id} has been freed, so this pointer is dangling"),
+            PointerOutOfBounds { .. } => inline_fluent!("{$operation ->
+  [MemoryAccess] memory access failed
+  [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
+  *[Dereferenceable] pointer not dereferenceable
+}: {$operation ->
+    [MemoryAccess] attempting to access {$inbounds_size ->
+        [1] 1 byte
+        *[x] {$inbounds_size} bytes
+    }
+    [InboundsPointerArithmetic] attempting to offset pointer by {$inbounds_size ->
+        [1] 1 byte
+        *[x] {$inbounds_size} bytes
+    }
+    *[Dereferenceable] pointer must {$inbounds_size ->
+        [0] point to some allocation
+        [1] be dereferenceable for 1 byte
+        *[x] be dereferenceable for {$inbounds_size} bytes
+    }
+}, but got {$pointer} which {$ptr_offset_is_neg ->
+    [true] points to before the beginning of the allocation
+    *[false] {$inbounds_size_is_neg ->
+        [false] {$alloc_size_minus_ptr_offset ->
+            [0] is at or beyond the end of the allocation of size {$alloc_size ->
+                [1] 1 byte
+                *[x] {$alloc_size} bytes
             }
-            AbiMismatchArgument { .. } => const_eval_incompatible_arg_types,
-            AbiMismatchReturn { .. } => const_eval_incompatible_return_types,
+            [1] is only 1 byte from the end of the allocation
+            *[x] is only {$alloc_size_minus_ptr_offset} bytes from the end of the allocation
+        }
+        *[true] {$ptr_offset_abs ->
+            [0] is at the beginning of the allocation
+            *[other] is only {$ptr_offset_abs} bytes from the beginning of the allocation
+        }
+    }
+}
+"),
+            DanglingIntPointer { addr: 0, .. } => inline_fluent!("{$operation ->
+  [MemoryAccess] memory access failed
+  [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
+  *[Dereferenceable] pointer not dereferenceable
+}: {$operation ->
+    [MemoryAccess] attempting to access {$inbounds_size ->
+        [1] 1 byte
+        *[x] {$inbounds_size} bytes
+    }
+    [InboundsPointerArithmetic] attempting to offset pointer by {$inbounds_size ->
+        [1] 1 byte
+        *[x] {$inbounds_size} bytes
+    }
+    *[Dereferenceable] pointer must {$inbounds_size ->
+        [0] point to some allocation
+        [1] be dereferenceable for 1 byte
+        *[x] be dereferenceable for {$inbounds_size} bytes
+    }
+}, but got null pointer"),
+            DanglingIntPointer { .. } => inline_fluent!("{$operation ->
+  [MemoryAccess] memory access failed
+  [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
+  *[Dereferenceable] pointer not dereferenceable
+}: {$operation ->
+    [MemoryAccess] attempting to access {$inbounds_size ->
+        [1] 1 byte
+        *[x] {$inbounds_size} bytes
+    }
+    [InboundsPointerArithmetic] attempting to offset pointer by {$inbounds_size ->
+        [1] 1 byte
+        *[x] {$inbounds_size} bytes
+    }
+    *[Dereferenceable] pointer must {$inbounds_size ->
+        [0] point to some allocation
+        [1] be dereferenceable for 1 byte
+        *[x] be dereferenceable for {$inbounds_size} bytes
+    }
+}, but got {$pointer} which is a dangling pointer (it has no provenance)"),
+            AlignmentCheckFailed { .. } => inline_fluent!("{$msg ->
+    [AccessedPtr] accessing memory
+    *[other] accessing memory based on pointer
+} with alignment {$has}, but alignment {$required} is required"),
+            WriteToReadOnly(_) => inline_fluent!("writing to {$allocation} which is read-only"),
+            DerefFunctionPointer(_) => inline_fluent!("accessing {$allocation} which contains a function"),
+            DerefVTablePointer(_) => inline_fluent!("accessing {$allocation} which contains a vtable"),
+            DerefTypeIdPointer(_) => inline_fluent!("accessing {$allocation} which contains a `TypeId`"),
+            InvalidBool(_) => inline_fluent!("interpreting an invalid 8-bit value as a bool: 0x{$value}"),
+            InvalidChar(_) => inline_fluent!("interpreting an invalid 32-bit value as a char: 0x{$value}"),
+            InvalidTag(_) => inline_fluent!("enum value has invalid tag: {$tag}"),
+            InvalidFunctionPointer(_) => inline_fluent!("using {$pointer} as function pointer but it does not point to a function"),
+            InvalidVTablePointer(_) => inline_fluent!("using {$pointer} as vtable pointer but it does not point to a vtable"),
+            InvalidVTableTrait { .. } => inline_fluent!("using vtable for `{$vtable_dyn_type}` but `{$expected_dyn_type}` was expected"),
+            InvalidStr(_) => inline_fluent!("this string is not valid UTF-8: {$err}"),
+            InvalidUninitBytes(None) => "using uninitialized data, but this operation requires initialized memory".into(),
+            InvalidUninitBytes(Some(_)) => inline_fluent!("reading memory at {$alloc}{$access}, but memory is uninitialized at {$uninit}, and this operation requires initialized memory"),
+            DeadLocal => "accessing a dead local variable".into(),
+            ScalarSizeMismatch(_) => inline_fluent!("scalar size mismatch: expected {$target_size} bytes but got {$data_size} bytes instead"),
+            UninhabitedEnumVariantWritten(_) => "writing discriminant of an uninhabited enum variant".into(),
+            UninhabitedEnumVariantRead(_) => "read discriminant of an uninhabited enum variant".into(),
+            InvalidNichedEnumVariantWritten { .. } => {
+                inline_fluent!("trying to set discriminant of a {$ty} to the niched variant, but the value does not match")
+            }
+            AbiMismatchArgument { .. } => inline_fluent!("calling a function whose parameter #{$arg_idx} has type {$callee_ty} passing argument of type {$caller_ty}"),
+            AbiMismatchReturn { .. } => inline_fluent!("calling a function with return type {$callee_ty} passing return place of type {$caller_ty}"),
         }
     }
 
@@ -653,92 +910,189 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
     fn diagnostic_message(&self) -> DiagMessage {
         use rustc_middle::mir::interpret::ValidationErrorKind::*;
 
-        use crate::fluent_generated::*;
         match self.kind {
             PtrToUninhabited { ptr_kind: PointerKind::Box, .. } => {
-                const_eval_validation_box_to_uninhabited
+                inline_fluent!(
+                    "{$front_matter}: encountered a box pointing to uninhabited type {$ty}"
+                )
             }
             PtrToUninhabited { ptr_kind: PointerKind::Ref(_), .. } => {
-                const_eval_validation_ref_to_uninhabited
+                inline_fluent!(
+                    "{$front_matter}: encountered a reference pointing to uninhabited type {$ty}"
+                )
             }
 
-            PointerAsInt { .. } => const_eval_validation_pointer_as_int,
-            PartialPointer => const_eval_validation_partial_pointer,
-            MutableRefToImmutable => const_eval_validation_mutable_ref_to_immutable,
-            NullFnPtr { .. } => const_eval_validation_null_fn_ptr,
-            NeverVal => const_eval_validation_never_val,
-            NonnullPtrMaybeNull { .. } => const_eval_validation_nonnull_ptr_out_of_range,
-            PtrOutOfRange { .. } => const_eval_validation_ptr_out_of_range,
-            OutOfRange { .. } => const_eval_validation_out_of_range,
-            UnsafeCellInImmutable => const_eval_validation_unsafe_cell,
-            UninhabitedVal { .. } => const_eval_validation_uninhabited_val,
-            InvalidEnumTag { .. } => const_eval_validation_invalid_enum_tag,
-            UninhabitedEnumVariant => const_eval_validation_uninhabited_enum_variant,
-            Uninit { .. } => const_eval_validation_uninit,
-            InvalidVTablePtr { .. } => const_eval_validation_invalid_vtable_ptr,
-            InvalidMetaWrongTrait { .. } => const_eval_validation_invalid_vtable_trait,
+            PointerAsInt { .. } => {
+                inline_fluent!("{$front_matter}: encountered a pointer, but {$expected}")
+            }
+            PartialPointer => inline_fluent!(
+                "{$front_matter}: encountered a partial pointer or a mix of pointers"
+            ),
+            MutableRefToImmutable => {
+                inline_fluent!(
+                    "{$front_matter}: encountered mutable reference or box pointing to read-only memory"
+                )
+            }
+            NullFnPtr { .. } => {
+                inline_fluent!(
+                    "{$front_matter}: encountered a {$maybe ->
+    [true] maybe-null
+    *[false] null
+} function pointer"
+                )
+            }
+            NeverVal => {
+                inline_fluent!("{$front_matter}: encountered a value of the never type `!`")
+            }
+            NonnullPtrMaybeNull { .. } => {
+                inline_fluent!(
+                    "{$front_matter}: encountered a maybe-null pointer, but expected something that is definitely non-zero"
+                )
+            }
+            PtrOutOfRange { .. } => {
+                inline_fluent!(
+                    "{$front_matter}: encountered a pointer with unknown absolute address, but expected something that is definitely {$in_range}"
+                )
+            }
+            OutOfRange { .. } => {
+                inline_fluent!(
+                    "{$front_matter}: encountered {$value}, but expected something {$in_range}"
+                )
+            }
+            UnsafeCellInImmutable => {
+                inline_fluent!("{$front_matter}: encountered `UnsafeCell` in read-only memory")
+            }
+            UninhabitedVal { .. } => {
+                inline_fluent!("{$front_matter}: encountered a value of uninhabited type `{$ty}`")
+            }
+            InvalidEnumTag { .. } => {
+                inline_fluent!(
+                    "{$front_matter}: encountered {$value}, but expected a valid enum tag"
+                )
+            }
+            UninhabitedEnumVariant => {
+                inline_fluent!("{$front_matter}: encountered an uninhabited enum variant")
+            }
+            Uninit { .. } => {
+                inline_fluent!("{$front_matter}: encountered uninitialized memory, but {$expected}")
+            }
+            InvalidVTablePtr { .. } => {
+                inline_fluent!(
+                    "{$front_matter}: encountered {$value}, but expected a vtable pointer"
+                )
+            }
+            InvalidMetaWrongTrait { .. } => {
+                inline_fluent!(
+                    "{$front_matter}: wrong trait in wide pointer vtable: expected `{$expected_dyn_type}`, but encountered `{$vtable_dyn_type}`"
+                )
+            }
             InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Box } => {
-                const_eval_validation_invalid_box_slice_meta
+                inline_fluent!(
+                    "{$front_matter}: encountered invalid box metadata: slice is bigger than largest supported object"
+                )
             }
             InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Ref(_) } => {
-                const_eval_validation_invalid_ref_slice_meta
+                inline_fluent!(
+                    "{$front_matter}: encountered invalid reference metadata: slice is bigger than largest supported object"
+                )
             }
 
             InvalidMetaTooLarge { ptr_kind: PointerKind::Box } => {
-                const_eval_validation_invalid_box_meta
+                inline_fluent!(
+                    "{$front_matter}: encountered invalid box metadata: total size is bigger than largest supported object"
+                )
             }
             InvalidMetaTooLarge { ptr_kind: PointerKind::Ref(_) } => {
-                const_eval_validation_invalid_ref_meta
+                inline_fluent!(
+                    "{$front_matter}: encountered invalid reference metadata: total size is bigger than largest supported object"
+                )
             }
             UnalignedPtr { ptr_kind: PointerKind::Ref(_), .. } => {
-                const_eval_validation_unaligned_ref
+                inline_fluent!(
+                    "{$front_matter}: encountered an unaligned reference (required {$required_bytes} byte alignment but found {$found_bytes})"
+                )
             }
-            UnalignedPtr { ptr_kind: PointerKind::Box, .. } => const_eval_validation_unaligned_box,
+            UnalignedPtr { ptr_kind: PointerKind::Box, .. } => {
+                inline_fluent!(
+                    "{$front_matter}: encountered an unaligned box (required {$required_bytes} byte alignment but found {$found_bytes})"
+                )
+            }
 
-            NullPtr { ptr_kind: PointerKind::Box, .. } => const_eval_validation_null_box,
-            NullPtr { ptr_kind: PointerKind::Ref(_), .. } => const_eval_validation_null_ref,
+            NullPtr { ptr_kind: PointerKind::Box, .. } => {
+                inline_fluent!(
+                    "{$front_matter}: encountered a {$maybe ->
+    [true] maybe-null
+    *[false] null
+} box"
+                )
+            }
+            NullPtr { ptr_kind: PointerKind::Ref(_), .. } => {
+                inline_fluent!(
+                    "{$front_matter}: encountered a {$maybe ->
+    [true] maybe-null
+    *[false] null
+} reference"
+                )
+            }
             DanglingPtrNoProvenance { ptr_kind: PointerKind::Box, .. } => {
-                const_eval_validation_dangling_box_no_provenance
+                inline_fluent!(
+                    "{$front_matter}: encountered a dangling box ({$pointer} has no provenance)"
+                )
             }
             DanglingPtrNoProvenance { ptr_kind: PointerKind::Ref(_), .. } => {
-                const_eval_validation_dangling_ref_no_provenance
+                inline_fluent!(
+                    "{$front_matter}: encountered a dangling reference ({$pointer} has no provenance)"
+                )
             }
             DanglingPtrOutOfBounds { ptr_kind: PointerKind::Box } => {
-                const_eval_validation_dangling_box_out_of_bounds
+                inline_fluent!(
+                    "{$front_matter}: encountered a dangling box (going beyond the bounds of its allocation)"
+                )
             }
             DanglingPtrOutOfBounds { ptr_kind: PointerKind::Ref(_) } => {
-                const_eval_validation_dangling_ref_out_of_bounds
+                inline_fluent!(
+                    "{$front_matter}: encountered a dangling reference (going beyond the bounds of its allocation)"
+                )
             }
             DanglingPtrUseAfterFree { ptr_kind: PointerKind::Box } => {
-                const_eval_validation_dangling_box_use_after_free
+                inline_fluent!("{$front_matter}: encountered a dangling box (use-after-free)")
             }
             DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref(_) } => {
-                const_eval_validation_dangling_ref_use_after_free
+                inline_fluent!("{$front_matter}: encountered a dangling reference (use-after-free)")
             }
-            InvalidBool { .. } => const_eval_validation_invalid_bool,
-            InvalidChar { .. } => const_eval_validation_invalid_char,
-            InvalidFnPtr { .. } => const_eval_validation_invalid_fn_ptr,
+            InvalidBool { .. } => {
+                inline_fluent!("{$front_matter}: encountered {$value}, but expected a boolean")
+            }
+            InvalidChar { .. } => {
+                inline_fluent!(
+                    "{$front_matter}: encountered {$value}, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)"
+                )
+            }
+            InvalidFnPtr { .. } => {
+                inline_fluent!(
+                    "{$front_matter}: encountered {$value}, but expected a function pointer"
+                )
+            }
         }
     }
 
     fn add_args<G: EmissionGuarantee>(self, err: &mut Diag<'_, G>) {
+        use rustc_errors::inline_fluent;
         use rustc_middle::mir::interpret::ValidationErrorKind::*;
 
-        use crate::fluent_generated as fluent;
-
         if let PointerAsInt { .. } | PartialPointer = self.kind {
-            err.help(fluent::const_eval_ptr_as_bytes_1);
-            err.help(fluent::const_eval_ptr_as_bytes_2);
+            err.help(inline_fluent!("this code performed an operation that depends on the underlying bytes representing a pointer"));
+            err.help(inline_fluent!("the absolute address of a pointer is not known at compile-time, so such operations are not supported"));
         }
 
         let message = if let Some(path) = self.path {
             err.dcx.eagerly_translate_to_string(
-                fluent::const_eval_validation_front_matter_invalid_value_with_path,
+                inline_fluent!("constructing invalid value at {$path}"),
                 [("path".into(), DiagArgValue::Str(path.into()))].iter().map(|(a, b)| (a, b)),
             )
         } else {
             err.dcx.eagerly_translate_to_string(
-                fluent::const_eval_validation_front_matter_invalid_value,
+                inline_fluent!("constructing invalid value"),
                 [].into_iter(),
             )
         };
@@ -753,17 +1107,17 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             let WrappingRange { start: lo, end: hi } = r;
             assert!(hi <= max_hi);
             let msg = if lo > hi {
-                fluent::const_eval_range_wrapping
+                inline_fluent!("less or equal to {$hi}, or greater or equal to {$lo}")
             } else if lo == hi {
-                fluent::const_eval_range_singular
+                inline_fluent!("equal to {$lo}")
             } else if lo == 0 {
                 assert!(hi < max_hi, "should not be printing if the range covers everything");
-                fluent::const_eval_range_upper
+                inline_fluent!("less or equal to {$hi}")
             } else if hi == max_hi {
                 assert!(lo > 0, "should not be printing if the range covers everything");
-                fluent::const_eval_range_lower
+                inline_fluent!("greater or equal to {$lo}")
             } else {
-                fluent::const_eval_range
+                inline_fluent!("in the range {$lo}..={$hi}")
             };
 
             let args = [
@@ -781,17 +1135,17 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             }
             PointerAsInt { expected } | Uninit { expected } => {
                 let msg = match expected {
-                    ExpectedKind::Reference => fluent::const_eval_validation_expected_ref,
-                    ExpectedKind::Box => fluent::const_eval_validation_expected_box,
-                    ExpectedKind::RawPtr => fluent::const_eval_validation_expected_raw_ptr,
-                    ExpectedKind::InitScalar => fluent::const_eval_validation_expected_init_scalar,
-                    ExpectedKind::Bool => fluent::const_eval_validation_expected_bool,
-                    ExpectedKind::Char => fluent::const_eval_validation_expected_char,
-                    ExpectedKind::Float => fluent::const_eval_validation_expected_float,
-                    ExpectedKind::Int => fluent::const_eval_validation_expected_int,
-                    ExpectedKind::FnPtr => fluent::const_eval_validation_expected_fn_ptr,
-                    ExpectedKind::EnumTag => fluent::const_eval_validation_expected_enum_tag,
-                    ExpectedKind::Str => fluent::const_eval_validation_expected_str,
+                    ExpectedKind::Reference => inline_fluent!("expected a reference"),
+                    ExpectedKind::Box => inline_fluent!("expected a box"),
+                    ExpectedKind::RawPtr => inline_fluent!("expected a raw pointer"),
+                    ExpectedKind::InitScalar => inline_fluent!("expected initialized scalar value"),
+                    ExpectedKind::Bool => inline_fluent!("expected a boolean"),
+                    ExpectedKind::Char => inline_fluent!("expected a unicode scalar value"),
+                    ExpectedKind::Float => inline_fluent!("expected a floating point number"),
+                    ExpectedKind::Int => inline_fluent!("expected an integer"),
+                    ExpectedKind::FnPtr => inline_fluent!("expected a function pointer"),
+                    ExpectedKind::EnumTag => inline_fluent!("expected a valid enum tag"),
+                    ExpectedKind::Str => inline_fluent!("expected a string"),
                 };
                 let msg = err.dcx.eagerly_translate_to_string(msg, [].into_iter());
                 err.arg("expected", msg);
@@ -838,25 +1192,32 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
 
 impl ReportErrorExt for UnsupportedOpInfo {
     fn diagnostic_message(&self) -> DiagMessage {
-        use crate::fluent_generated::*;
         match self {
             UnsupportedOpInfo::Unsupported(s) => s.clone().into(),
-            UnsupportedOpInfo::ExternTypeField => const_eval_extern_type_field,
-            UnsupportedOpInfo::UnsizedLocal => const_eval_unsized_local,
-            UnsupportedOpInfo::ReadPartialPointer(_) => const_eval_partial_pointer_read,
-            UnsupportedOpInfo::ReadPointerAsInt(_) => const_eval_read_pointer_as_int,
-            UnsupportedOpInfo::ThreadLocalStatic(_) => const_eval_thread_local_static,
-            UnsupportedOpInfo::ExternStatic(_) => const_eval_extern_static,
+            UnsupportedOpInfo::ExternTypeField => {
+                "`extern type` field does not have a known offset".into()
+            }
+            UnsupportedOpInfo::UnsizedLocal => "unsized locals are not supported".into(),
+            UnsupportedOpInfo::ReadPartialPointer(_) => {
+                inline_fluent!("unable to read parts of a pointer from memory at {$ptr}")
+            }
+            UnsupportedOpInfo::ReadPointerAsInt(_) => "unable to turn pointer into integer".into(),
+            UnsupportedOpInfo::ThreadLocalStatic(_) => {
+                inline_fluent!("cannot access thread local static `{$did}`")
+            }
+            UnsupportedOpInfo::ExternStatic(_) => {
+                inline_fluent!("cannot access extern static `{$did}`")
+            }
         }
+        .into()
     }
 
     fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         use UnsupportedOpInfo::*;
 
-        use crate::fluent_generated::*;
         if let ReadPointerAsInt(_) | ReadPartialPointer(_) = self {
-            diag.help(const_eval_ptr_as_bytes_1);
-            diag.help(const_eval_ptr_as_bytes_2);
+            diag.help("this code performed an operation that depends on the underlying bytes representing a pointer");
+            diag.help("the absolute address of a pointer is not known at compile-time, so such operations are not supported");
         }
         match self {
             // `ReadPointerAsInt(Some(info))` is never printed anyway, it only serves as an error to
@@ -901,10 +1262,12 @@ impl<'tcx> ReportErrorExt for InterpErrorKind<'tcx> {
 
 impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
     fn diagnostic_message(&self) -> DiagMessage {
-        use crate::fluent_generated::*;
         match self {
-            InvalidProgramInfo::TooGeneric => const_eval_too_generic,
-            InvalidProgramInfo::AlreadyReported(_) => const_eval_already_reported,
+            InvalidProgramInfo::TooGeneric => "encountered overly generic constant".into(),
+            InvalidProgramInfo::AlreadyReported(_) => {
+                "an error has already been reported elsewhere (this should not usually be printed)"
+                    .into()
+            }
             InvalidProgramInfo::Layout(e) => e.diagnostic_message(),
         }
     }
@@ -926,13 +1289,19 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
 
 impl ReportErrorExt for ResourceExhaustionInfo {
     fn diagnostic_message(&self) -> DiagMessage {
-        use crate::fluent_generated::*;
         match self {
-            ResourceExhaustionInfo::StackFrameLimitReached => const_eval_stack_frame_limit_reached,
-            ResourceExhaustionInfo::MemoryExhausted => const_eval_memory_exhausted,
-            ResourceExhaustionInfo::AddressSpaceFull => const_eval_address_space_full,
-            ResourceExhaustionInfo::Interrupted => const_eval_interrupted,
+            ResourceExhaustionInfo::StackFrameLimitReached => {
+                "reached the configured maximum number of stack frames"
+            }
+            ResourceExhaustionInfo::MemoryExhausted => {
+                "tried to allocate more memory than available to compiler"
+            }
+            ResourceExhaustionInfo::AddressSpaceFull => {
+                "there are no more free addresses in the address space"
+            }
+            ResourceExhaustionInfo::Interrupted => "compilation was interrupted",
         }
+        .into()
     }
     fn add_args<G: EmissionGuarantee>(self, _: &mut Diag<'_, G>) {}
 }

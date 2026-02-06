@@ -2,6 +2,7 @@ use rustc_abi::{FieldIdx, Integer};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_data_structures::assert_matches;
+use rustc_errors::inline_fluent;
 use rustc_middle::mir::CastKind;
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::ty::adjustment::PointerCoercion;
@@ -15,8 +16,8 @@ use super::{
     FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy, err_inval, interp_ok, throw_ub,
     throw_ub_custom,
 };
+use crate::enter_trace_span;
 use crate::interpret::Writeable;
-use crate::{enter_trace_span, fluent_generated as fluent};
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn cast(
@@ -138,7 +139,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 assert_eq!(cast_ty, dest.layout.ty); // we otherwise ignore `cast_ty` enirely...
                 if src.layout.size != dest.layout.size {
                     throw_ub_custom!(
-                        fluent::const_eval_invalid_transmute,
+                        inline_fluent!(
+                            "transmuting from {$src_bytes}-byte type to {$dest_bytes}-byte type: `{$src}` -> `{$dest}`"
+                        ),
                         src_bytes = src.layout.size.bytes(),
                         dest_bytes = dest.layout.size.bytes(),
                         src = src.layout.ty,

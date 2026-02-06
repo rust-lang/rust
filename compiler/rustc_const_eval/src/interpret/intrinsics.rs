@@ -7,6 +7,7 @@ mod simd;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, HasDataLayout, Size, VariantIdx};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_data_structures::assert_matches;
+use rustc_errors::inline_fluent;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
@@ -25,7 +26,6 @@ use super::{
     PointerArithmetic, Provenance, Scalar, err_ub_custom, err_unsup_format, interp_ok, throw_inval,
     throw_ub_custom, throw_ub_format,
 };
-use crate::fluent_generated as fluent;
 use crate::interpret::Writeable;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -438,7 +438,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         _ => {
                             // Not into the same allocation -- this is UB.
                             throw_ub_custom!(
-                                fluent::const_eval_offset_from_different_allocations,
+                                inline_fluent!(
+                                    "`{$name}` called on two different pointers that are not both derived from the same allocation"
+                                ),
                                 name = intrinsic_name,
                             );
                         }
@@ -459,7 +461,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         // a < b
                         if intrinsic_name == sym::ptr_offset_from_unsigned {
                             throw_ub_custom!(
-                                fluent::const_eval_offset_from_unsigned_overflow,
+                                inline_fluent!("`ptr_offset_from_unsigned` called when first pointer has smaller {$is_addr ->
+    [true] address
+    *[false] offset
+} than second: {$a_offset} < {$b_offset}"),
                                 a_offset = a_offset,
                                 b_offset = b_offset,
                                 is_addr = is_addr,
@@ -471,7 +476,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         let dist = val.to_target_isize(self)?;
                         if dist >= 0 || i128::from(dist) == self.pointer_size().signed_int_min() {
                             throw_ub_custom!(
-                                fluent::const_eval_offset_from_underflow,
+                                inline_fluent!(
+                                    "`{$name}` called when first pointer is too far before second"
+                                ),
                                 name = intrinsic_name,
                             );
                         }
@@ -483,7 +490,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         // because they were more than isize::MAX apart.
                         if dist < 0 {
                             throw_ub_custom!(
-                                fluent::const_eval_offset_from_overflow,
+                                inline_fluent!(
+                                    "`{$name}` called when first pointer is too far ahead of second"
+                                ),
                                 name = intrinsic_name,
                             );
                         }
@@ -502,12 +511,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             && a_alloc_id == b_alloc_id
                         {
                             err_ub_custom!(
-                                fluent::const_eval_offset_from_out_of_bounds,
+                                inline_fluent!("`{$name}` called on two different pointers where the memory range between them is not in-bounds of an allocation"),
                                 name = intrinsic_name,
                             )
                         } else {
                             err_ub_custom!(
-                                fluent::const_eval_offset_from_different_allocations,
+                                inline_fluent!("`{$name}` called on two different pointers that are not both derived from the same allocation"),
                                 name = intrinsic_name,
                             )
                         }
@@ -522,7 +531,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 .map_err_kind(|_| {
                     // Make the error more specific.
                     err_ub_custom!(
-                        fluent::const_eval_offset_from_different_allocations,
+                        inline_fluent!("`{$name}` called on two different pointers that are not both derived from the same allocation"),
                         name = intrinsic_name,
                     )
                 })?;
@@ -752,7 +761,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let op = self.eval_operand(op, None)?;
                 let cond = self.read_scalar(&op)?.to_bool()?;
                 if !cond {
-                    throw_ub_custom!(fluent::const_eval_assume_false);
+                    throw_ub_custom!(inline_fluent!("`assume` called with `false`"));
                 }
                 interp_ok(())
             }
@@ -782,7 +791,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let bits_out = match name {
             sym::ctpop => u128::from(bits.count_ones()),
             sym::ctlz_nonzero | sym::cttz_nonzero if bits == 0 => {
-                throw_ub_custom!(fluent::const_eval_call_nonzero_intrinsic, name = name,);
+                throw_ub_custom!(inline_fluent!("`{$name}` called on 0"), name = name,);
             }
             sym::ctlz | sym::ctlz_nonzero => u128::from(bits.leading_zeros()) - extra,
             sym::cttz | sym::cttz_nonzero => u128::from((bits << extra).trailing_zeros()) - extra,
@@ -815,7 +824,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // sign does not matter for 0 test, so `to_bits` is fine
         if rem.to_scalar().to_bits(a.layout.size)? != 0 {
             throw_ub_custom!(
-                fluent::const_eval_exact_div_has_remainder,
+                inline_fluent!("exact_div: {$a} cannot be divided by {$b} without remainder"),
                 a = format!("{a}"),
                 b = format!("{b}")
             )
@@ -900,7 +909,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         let size = self.compute_size_in_bytes(size, count).ok_or_else(|| {
             err_ub_custom!(
-                fluent::const_eval_size_overflow,
+                inline_fluent!("overflow computing total size of `{$name}`"),
                 name = if nonoverlapping { "copy_nonoverlapping" } else { "copy" }
             )
         })?;
@@ -963,9 +972,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // `checked_mul` enforces a too small bound (the correct one would probably be target_isize_max),
         // but no actual allocation can be big enough for the difference to be noticeable.
-        let len = self
-            .compute_size_in_bytes(layout.size, count)
-            .ok_or_else(|| err_ub_custom!(fluent::const_eval_size_overflow, name = name))?;
+        let len = self.compute_size_in_bytes(layout.size, count).ok_or_else(|| {
+            err_ub_custom!(
+                inline_fluent!("overflow computing total size of `{$name}`"),
+                name = name
+            )
+        })?;
 
         let bytes = std::iter::repeat_n(byte, len.bytes_usize());
         self.write_bytes_ptr(dst, bytes)

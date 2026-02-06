@@ -26,8 +26,6 @@ use rustc_middle::util::Providers;
 
 pub use self::errors::ReportErrorExt;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
-
 pub fn provide(providers: &mut Providers) {
     const_eval::provide(&mut providers.queries);
     providers.queries.tag_for_variant = const_eval::tag_for_variant_provider;
