@@ -113,7 +113,6 @@ auto:
         --set rust.jemalloc
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       DEVELOPER_DIR: /Applications/Xcode_15.4.app/Contents/Developer
-      USE_XCODE_CLANG: 1
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
       # supports the hardware, so only need to test it there.
       MACOSX_DEPLOYMENT_TARGET: 11.0
