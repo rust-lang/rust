@@ -13,15 +13,15 @@
 //! to pass a prebuilt Clippy from the outside when running `cargo clippy`, but that would be
 //! (as usual) a massive undertaking/refactoring.
 
-use build_helper::exit;
-
 use super::compile::{ArtifactKeepMode, run_cargo, rustc_cargo, std_cargo};
 use super::tool::{SourceType, prepare_tool_cargo};
 use crate::builder::{Builder, ShouldRun};
 use crate::core::build_steps::check::{CompilerForCheck, prepare_compiler_for_check};
 use crate::core::build_steps::compile::std_crates_for_run_make;
-use crate::core::builder;
-use crate::core::builder::{Alias, Kind, RunConfig, Step, StepMetadata, crate_description};
+use crate::core::builder::{
+    self, Alias, Kind, RunConfig, Step, StepMetadata, SupportedConfig, Unsupported,
+    crate_description,
+};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::{Compiler, Mode, Subcommand, TargetSelection};
 
@@ -266,7 +266,7 @@ impl Step for Rustc {
 
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
-        let crates = run.make_run_crates(Alias::Compiler);
+        let crates = run.expand_alias(Alias::Compiler);
         let config = LintConfig::new(run.builder);
         run.builder.ensure(Rustc::new(builder, run.target, config, crates));
     }
@@ -534,17 +534,20 @@ impl Step for CI {
         false
     }
 
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported> {
+        if config.builder.top_stage != 2 {
+            Unsupported::fatal("`x clippy ci` should always be executed with --stage 2")
+        } else {
+            Ok(())
+        }
+    }
+
     fn make_run(run: RunConfig<'_>) {
         let config = LintConfig::new(run.builder);
         run.builder.ensure(CI { target: run.target, config });
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        if builder.top_stage != 2 {
-            eprintln!("ERROR: `x clippy ci` should always be executed with --stage 2");
-            exit!(1);
-        }
-
         // We want to check in-tree source using in-tree clippy. However, if we naively did
         // a stage 2 `x clippy ci`, it would *build* a stage 2 rustc, in order to lint stage 2
         // std, which is wasteful.

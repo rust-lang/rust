@@ -16,7 +16,8 @@ use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, SourceType, Tool, prepare_tool_cargo,
 };
 use crate::core::builder::{
-    self, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
+    self, Builder, Compiler, Kind, MakeOrEnsure, RunConfig, ShouldRun, Step, StepMetadata,
+    SupportedConfig, Unsupported, crate_description,
 };
 use crate::core::config::{Config, TargetSelection};
 use crate::helpers::{submodule_path_of, symlink_dir, t, up_to_date};
@@ -652,12 +653,24 @@ impl Step for Std {
         builder.config.docs
     }
 
-    fn make_run(run: RunConfig<'_>) {
-        let crates = compile::std_crates_for_run_make(&run);
-        let target_is_no_std = run.builder.no_std(run.target).unwrap_or(false);
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported<Self::Output>> {
+        let crates_buf;
+        let (crates, target) = match config.extra {
+            MakeOrEnsure::Run(run) => {
+                crates_buf = compile::std_crates_for_run_make(run);
+                (&crates_buf, run.target)
+            }
+            MakeOrEnsure::Step(this) => (&this.crates, this.target),
+        };
+        let target_is_no_std = config.builder.no_std(target).unwrap_or(false);
         if crates.is_empty() && target_is_no_std {
-            return;
+            Unsupported::skip("no standard library crates supported for this no_std target")
+        } else {
+            Ok(())
         }
+    }
+
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Std {
             build_compiler: run.builder.compiler_for_std(run.builder.top_stage),
             target: run.target,
@@ -666,7 +679,7 @@ impl Step for Std {
             } else {
                 DocumentationFormat::Html
             },
-            crates,
+            crates: compile::std_crates_for_run_make(&run),
         });
     }
 

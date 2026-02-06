@@ -1089,6 +1089,7 @@ impl Step for RustAnalyzerProcMacroSrv {
         // Allow building `rust-analyzer-proc-macro-srv` both as part of the `rust-analyzer` and as a stand-alone tool.
         run.path("src/tools/rust-analyzer")
             .path("src/tools/rust-analyzer/crates/proc-macro-srv-cli")
+            .alias("rust-analyzer-proc-macro-srv")
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {

@@ -42,9 +42,9 @@ use crate::utils::helpers::{self, dir_is_empty, exe, libdir, set_file_times, spl
 mod core;
 mod utils;
 
-pub use core::builder::PathSet;
 #[cfg(feature = "tracing")]
 pub use core::builder::STEP_SPAN_TARGET;
+pub use core::builder::StepSelectors;
 pub use core::config::flags::{Flags, Subcommand};
 pub use core::config::{ChangeId, Config};
 
@@ -141,6 +141,27 @@ impl CodegenBackendKind {
             CodegenBackendKind::Cranelift => "cranelift",
             CodegenBackendKind::Gcc => "gcc",
             CodegenBackendKind::Custom(name) => name,
+        }
+    }
+
+    pub fn supports_target(&self, target: TargetSelection) -> bool {
+        match self {
+            CodegenBackendKind::Llvm | CodegenBackendKind::Custom(_) => true,
+            CodegenBackendKind::Gcc => target.contains("linux") && target.contains("x86_64"),
+            CodegenBackendKind::Cranelift => {
+                if target.contains("linux") {
+                    target.contains("x86_64")
+                        || target.contains("aarch64")
+                        || target.contains("s390x")
+                        || target.contains("riscv64gc")
+                } else if target.contains("darwin") {
+                    target.contains("x86_64") || target.contains("aarch64")
+                } else if target.is_windows() {
+                    target.contains("x86_64")
+                } else {
+                    false
+                }
+            }
         }
     }
 

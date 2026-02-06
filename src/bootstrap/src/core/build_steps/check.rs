@@ -13,7 +13,8 @@ use crate::core::build_steps::tool::{
     prepare_tool_cargo,
 };
 use crate::core::builder::{
-    self, Alias, Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
+    self, Alias, Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, SupportedConfig,
+    Unsupported, crate_description,
 };
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
@@ -52,19 +53,30 @@ impl Step for Std {
         true
     }
 
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported<Self::Output>> {
+        let dummy_stamp = BuildStamp::new(Path::new("/dev/null"));
+
+        if !config.builder.download_rustc()
+            && config.builder.config.skip_std_check_if_no_download_rustc
+        {
+            return Err(Unsupported::Skip(
+                "`--skip-std-check-if-no-download-rustc` flag was passed and `rust.download-rustc` is not available".into(),
+                dummy_stamp,
+            ));
+        }
+
+        if config.builder.config.compile_time_deps {
+            return Err(Unsupported::Skip(
+                "libstd doesn't have any important build scripts and can't have any proc macros"
+                    .into(),
+                dummy_stamp,
+            ));
+        }
+
+        Ok(())
+    }
+
     fn make_run(run: RunConfig<'_>) {
-        if !run.builder.download_rustc() && run.builder.config.skip_std_check_if_no_download_rustc {
-            eprintln!(
-                "WARNING: `--skip-std-check-if-no-download-rustc` flag was passed and `rust.download-rustc` is not available. Skipping."
-            );
-            return;
-        }
-
-        if run.builder.config.compile_time_deps {
-            // libstd doesn't have any important build scripts and can't have any proc macros
-            return;
-        }
-
         // Explicitly pass -p for all dependencies crates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather
         // than just the leaf crate.
@@ -330,7 +342,7 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = run.make_run_crates(Alias::Compiler);
+        let crates = run.expand_alias(Alias::Compiler);
         run.builder.ensure(Rustc::new(run.builder, run.target, crates));
     }
 
@@ -626,13 +638,18 @@ impl Step for GccCodegenBackend {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) {
+    fn is_supported(config: SupportedConfig<'_, Self>) -> Result<(), Unsupported> {
         // FIXME: remove once https://github.com/rust-lang/rust/issues/112393 is resolved
-        if builder.build.config.vendor {
-            println!("Skipping checking of `rustc_codegen_gcc` with vendoring enabled.");
-            return;
+        if config.builder.build.config.vendor {
+            Unsupported::skip(
+                "`rustc_codegen_gcc` does not currently support vendoring, see #112393",
+            )
+        } else {
+            Ok(())
         }
+    }
 
+    fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.build_compiler.build_compiler();
         let target = self.target;
 
