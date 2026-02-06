@@ -293,6 +293,14 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
+        BuiltinLintDiag::UnreachableCfg { span, wildcard_span } => match wildcard_span {
+            Some(wildcard_span) => {
+                lints::UnreachableCfgSelectPredicateWildcard { span, wildcard_span }
+                    .decorate_lint(diag)
+            }
+            None => lints::UnreachableCfgSelectPredicate { span }.decorate_lint(diag),
+        },
+
         BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
             lints::UnusedCrateDependency { extern_crate, local_crate }.decorate_lint(diag)
         }

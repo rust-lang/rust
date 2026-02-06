@@ -1,20 +1,33 @@
 use rustc_ast::token::Token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, NodeId, token};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::{AttrPath, Target};
 use rustc_parse::exp;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::Session;
-use rustc_span::{ErrorGuaranteed, Span, sym};
+use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::lint::builtin::UNREACHABLE_CFG_SELECT_PREDICATES;
+use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::parser::MetaItemOrLitParser;
 use crate::{AttributeParser, ParsedDescription, ShouldEmit, parse_cfg_entry};
 
+#[derive(Clone)]
 pub enum CfgSelectPredicate {
     Cfg(CfgEntry),
     Wildcard(Token),
+}
+
+impl CfgSelectPredicate {
+    fn span(&self) -> Span {
+        match self {
+            CfgSelectPredicate::Cfg(cfg_entry) => cfg_entry.span(),
+            CfgSelectPredicate::Wildcard(token) => token.span,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -115,5 +128,102 @@ pub fn parse_cfg_select(
         }
     }
 
+    if let Some(features) = features
+        && features.enabled(sym::cfg_select)
+    {
+        let it = branches
+            .reachable
+            .iter()
+            .map(|(entry, _, _)| CfgSelectPredicate::Cfg(entry.clone()))
+            .chain(branches.wildcard.as_ref().map(|(t, _, _)| CfgSelectPredicate::Wildcard(*t)))
+            .chain(
+                branches.unreachable.iter().map(|(entry, _, _)| CfgSelectPredicate::clone(entry)),
+            );
+
+        lint_unreachable(p, it, lint_node_id);
+    }
+
     Ok(branches)
+}
+
+fn lint_unreachable(
+    p: &mut Parser<'_>,
+    predicates: impl Iterator<Item = CfgSelectPredicate>,
+    lint_node_id: NodeId,
+) {
+    // Symbols that have a known value.
+    let mut known = FxHashMap::<Symbol, bool>::default();
+    let mut wildcard_span = None;
+    let mut it = predicates;
+
+    let branch_is_unreachable = |predicate: CfgSelectPredicate, wildcard_span| {
+        let span = predicate.span();
+        p.psess.buffer_lint(
+            UNREACHABLE_CFG_SELECT_PREDICATES,
+            span,
+            lint_node_id,
+            BuiltinLintDiag::UnreachableCfg { span, wildcard_span },
+        );
+    };
+
+    for predicate in &mut it {
+        let CfgSelectPredicate::Cfg(ref cfg_entry) = predicate else {
+            wildcard_span = Some(predicate.span());
+            break;
+        };
+
+        match cfg_entry {
+            CfgEntry::Bool(true, _) => {
+                wildcard_span = Some(predicate.span());
+                break;
+            }
+            CfgEntry::Bool(false, _) => continue,
+            CfgEntry::NameValue { name, value, .. } => match value {
+                None => {
+                    // `name` will be false in all subsequent branches.
+                    let current = known.insert(*name, false);
+
+                    match current {
+                        None => continue,
+                        Some(false) => {
+                            branch_is_unreachable(predicate, None);
+                            break;
+                        }
+                        Some(true) => {
+                            // this branch will be taken, so all subsequent branches are unreachable.
+                            break;
+                        }
+                    }
+                }
+                Some(_) => { /* for now we don't bother solving these */ }
+            },
+            CfgEntry::Not(inner, _) => match &**inner {
+                CfgEntry::NameValue { name, value: None, .. } => {
+                    // `name` will be true in all subsequent branches.
+                    let current = known.insert(*name, true);
+
+                    match current {
+                        None => continue,
+                        Some(true) => {
+                            branch_is_unreachable(predicate, None);
+                            break;
+                        }
+                        Some(false) => {
+                            // this branch will be taken, so all subsequent branches are unreachable.
+                            break;
+                        }
+                    }
+                }
+                _ => { /* for now we don't bother solving these */ }
+            },
+            CfgEntry::All(_, _) | CfgEntry::Any(_, _) => {
+                /* for now we don't bother solving these */
+            }
+            CfgEntry::Version(..) => { /* don't bother solving these */ }
+        }
+    }
+
+    for predicate in it {
+        branch_is_unreachable(predicate, wildcard_span)
+    }
 }

@@ -1087,17 +1087,6 @@ pub(crate) struct CfgSelectNoMatches {
 }
 
 #[derive(Diagnostic)]
-#[diag("unreachable predicate")]
-pub(crate) struct CfgSelectUnreachable {
-    #[primary_span]
-    #[label("this predicate is never reached")]
-    pub span: Span,
-
-    #[label("always matches")]
-    pub wildcard_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[eii_declaration(...)]` is only valid on macros")]
 pub(crate) struct EiiExternTargetExpectedMacro {
     #[primary_span]
