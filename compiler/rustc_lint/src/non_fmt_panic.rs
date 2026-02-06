@@ -1,5 +1,5 @@
 use rustc_ast as ast;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, inline_fluent};
 use rustc_hir::{self as hir, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::{bug, ty};
@@ -10,7 +10,7 @@ use rustc_span::{InnerSpan, Span, Symbol, hygiene, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::lints::{NonFmtPanicBraces, NonFmtPanicUnused};
-use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
+use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `non_fmt_panics` lint detects `panic!(..)` invocations where the first
@@ -121,20 +121,20 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
     }
 
     cx.span_lint(NON_FMT_PANICS, arg_span, |lint| {
-        lint.primary_message(fluent::lint_non_fmt_panic);
+        lint.primary_message(inline_fluent!("panic message is not a string literal"));
         lint.arg("name", symbol);
-        lint.note(fluent::lint_note);
-        lint.note(fluent::lint_more_info_note);
+        lint.note(inline_fluent!("this usage of `{$name}!()` is deprecated; it will be a hard error in Rust 2021"));
+        lint.note(inline_fluent!("for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>"));
         if !is_arg_inside_call(arg_span, span) {
             // No clue where this argument is coming from.
             return;
         }
         if arg_macro.is_some_and(|id| cx.tcx.is_diagnostic_item(sym::format_macro, id)) {
             // A case of `panic!(format!(..))`.
-            lint.note(fluent::lint_supports_fmt_note);
+            lint.note(inline_fluent!("the `{$name}!()` macro supports formatting, so there's no need for the `format!()` macro here"));
             if let Some((open, close, _)) = find_delimiters(cx, arg_span) {
                 lint.multipart_suggestion(
-                    fluent::lint_supports_fmt_suggestion,
+                    inline_fluent!("remove the `format!(..)` macro call"),
                     vec![
                         (arg_span.until(open.shrink_to_hi()), "".into()),
                         (close.until(arg_span.shrink_to_hi()), "".into()),
@@ -178,7 +178,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
             if suggest_display {
                 lint.span_suggestion_verbose(
                     arg_span.shrink_to_lo(),
-                    fluent::lint_display_suggestion,
+                    inline_fluent!(r#"add a "{"{"}{"}"}" format string to `Display` the message"#),
                     "\"{}\", ",
                     fmt_applicability,
                 );
@@ -186,7 +186,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 lint.arg("ty", ty);
                 lint.span_suggestion_verbose(
                     arg_span.shrink_to_lo(),
-                    fluent::lint_debug_suggestion,
+                    inline_fluent!(r#"add a "{"{"}:?{"}"}" format string to use the `Debug` implementation of `{$ty}`"#),
                     "\"{:?}\", ",
                     fmt_applicability,
                 );
@@ -196,7 +196,10 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 if let Some((open, close, del)) = find_delimiters(cx, span) {
                     lint.arg("already_suggested", suggest_display || suggest_debug);
                     lint.multipart_suggestion(
-                        fluent::lint_panic_suggestion,
+                        inline_fluent!("{$already_suggested ->
+                            [true] or use
+                            *[false] use
+                        } std::panic::panic_any instead"),
                         if del == '(' {
                             vec![(span.until(open), "std::panic::panic_any".into())]
                         } else {
