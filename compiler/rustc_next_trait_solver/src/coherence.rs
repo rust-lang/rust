@@ -96,32 +96,24 @@ pub fn trait_ref_is_local_or_fundamental<I: Interner>(tcx: I, trait_ref: ty::Tra
     trait_ref.def_id.is_local() || tcx.trait_is_fundamental(trait_ref.def_id)
 }
 
-TrivialTypeTraversalImpls! { IsFirstInputType, }
+TrivialTypeTraversalImpls! { InSelfTy }
 
 #[derive(Debug, Copy, Clone)]
-pub enum IsFirstInputType {
+pub enum InSelfTy {
     No,
     Yes,
 }
 
-impl From<bool> for IsFirstInputType {
-    fn from(b: bool) -> IsFirstInputType {
-        match b {
-            false => IsFirstInputType::No,
-            true => IsFirstInputType::Yes,
-        }
-    }
-}
-
 #[derive_where(Debug; I: Interner, T: Debug)]
 pub enum OrphanCheckErr<I: Interner, T> {
-    NonLocalInputType(Vec<(I::Ty, IsFirstInputType)>),
-    UncoveredTyParams(UncoveredTyParams<I, T>),
+    NonLocalInputType(Vec<(I::Ty, InSelfTy)>),
+    UncoveredTy(UncoveredTy<I, T>),
 }
 
 #[derive_where(Debug; I: Interner, T: Debug)]
-pub struct UncoveredTyParams<I: Interner, T> {
+pub struct UncoveredTy<I: Interner, T> {
     pub uncovered: T,
+    pub in_self_ty: InSelfTy,
     pub local_ty: Option<I::Ty>,
 }
 
@@ -238,15 +230,16 @@ where
         ControlFlow::Continue(()) => Err(OrphanCheckErr::NonLocalInputType(checker.non_local_tys)),
         ControlFlow::Break(residual) => match residual {
             OrphanCheckEarlyExit::NormalizationFailure(err) => return Err(err),
-            OrphanCheckEarlyExit::UncoveredTyParam(ty) => {
+            OrphanCheckEarlyExit::UncoveredTy(ty, in_self_ty) => {
                 // Does there exist some local type after the `ParamTy`.
                 checker.search_first_local_ty = true;
                 let local_ty = match trait_ref.visit_with(&mut checker) {
                     ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(local_ty)) => Some(local_ty),
                     _ => None,
                 };
-                Err(OrphanCheckErr::UncoveredTyParams(UncoveredTyParams {
+                Err(OrphanCheckErr::UncoveredTy(UncoveredTy {
                     uncovered: ty,
+                    in_self_ty,
                     local_ty,
                 }))
             }
@@ -258,11 +251,11 @@ where
 struct OrphanChecker<'a, Infcx, I: Interner, F> {
     infcx: &'a Infcx,
     in_crate: InCrate,
-    in_self_ty: bool,
+    in_self_ty: InSelfTy,
     lazily_normalize_ty: F,
     /// Ignore orphan check failures and exclusively search for the first local type.
     search_first_local_ty: bool,
-    non_local_tys: Vec<(I::Ty, IsFirstInputType)>,
+    non_local_tys: Vec<(I::Ty, InSelfTy)>,
 }
 
 impl<'a, Infcx, I, F, E> OrphanChecker<'a, Infcx, I, F>
@@ -275,7 +268,7 @@ where
         OrphanChecker {
             infcx,
             in_crate,
-            in_self_ty: true,
+            in_self_ty: InSelfTy::Yes,
             lazily_normalize_ty,
             search_first_local_ty: false,
             non_local_tys: Vec::new(),
@@ -283,16 +276,16 @@ where
     }
 
     fn found_non_local_ty(&mut self, t: I::Ty) -> ControlFlow<OrphanCheckEarlyExit<I, E>> {
-        self.non_local_tys.push((t, self.in_self_ty.into()));
+        self.non_local_tys.push((t, self.in_self_ty));
         ControlFlow::Continue(())
     }
 
-    fn found_uncovered_ty_param(&mut self, ty: I::Ty) -> ControlFlow<OrphanCheckEarlyExit<I, E>> {
+    fn found_uncovered_ty(&mut self, ty: I::Ty) -> ControlFlow<OrphanCheckEarlyExit<I, E>> {
         if self.search_first_local_ty {
             return ControlFlow::Continue(());
         }
 
-        ControlFlow::Break(OrphanCheckEarlyExit::UncoveredTyParam(ty))
+        ControlFlow::Break(OrphanCheckEarlyExit::UncoveredTy(ty, self.in_self_ty))
     }
 
     fn def_id_is_local(&mut self, def_id: impl DefId<I>) -> bool {
@@ -305,7 +298,7 @@ where
 
 enum OrphanCheckEarlyExit<I: Interner, E> {
     NormalizationFailure(E),
-    UncoveredTyParam(I::Ty),
+    UncoveredTy(I::Ty, InSelfTy),
     LocalTy(I::Ty),
 }
 
@@ -324,6 +317,7 @@ where
     fn visit_ty(&mut self, ty: I::Ty) -> Self::Result {
         let ty = self.infcx.shallow_resolve(ty);
         let ty = match (self.lazily_normalize_ty)(ty) {
+            // FIXME(fmease): Explain why.
             Ok(norm_ty) if norm_ty.is_ty_var() => ty,
             Ok(norm_ty) => norm_ty,
             Err(err) => return ControlFlow::Break(OrphanCheckEarlyExit::NormalizationFailure(err)),
@@ -348,61 +342,36 @@ where
 
             ty::Param(..) => panic!("unexpected ty param"),
 
+            // FIXME(fmease): Mention here or at the top of the function that infer vars may
+            //               correspond to ty params and opaque tys
             ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) => {
                 match self.in_crate {
-                    InCrate::Local { .. } => self.found_uncovered_ty_param(ty),
+                    InCrate::Local { .. } => self.found_uncovered_ty(ty),
                     // The inference variable might be unified with a local
                     // type in that remote crate.
                     InCrate::Remote => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
                 }
             }
 
+            // FIXME(fmease): Update comments.
             // A rigid alias may normalize to anything.
             // * If it references an infer var, placeholder or bound ty, it may
             //   normalize to that, so we have to treat it as an uncovered ty param.
             // * Otherwise it may normalize to any non-type-generic type
             //   be it local or non-local.
+            // FIXME(fmease): Go more in-depth for opaque types (→composability, ...).
             ty::Alias(kind, _) => {
-                if ty.has_type_flags(
-                    ty::TypeFlags::HAS_TY_PLACEHOLDER
-                        | ty::TypeFlags::HAS_TY_BOUND
-                        | ty::TypeFlags::HAS_TY_INFER,
-                ) {
-                    match self.in_crate {
-                        InCrate::Local { mode } => match kind {
-                            ty::Projection => {
-                                if let OrphanCheckMode::Compat = mode {
-                                    ControlFlow::Continue(())
-                                } else {
-                                    self.found_uncovered_ty_param(ty)
-                                }
-                            }
-                            _ => self.found_uncovered_ty_param(ty),
-                        },
-                        InCrate::Remote => {
-                            // The inference variable might be unified with a local
-                            // type in that remote crate.
-                            ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
-                        }
+                match self.in_crate {
+                    InCrate::Local { mode } => match (kind, mode) {
+                        (ty::Projection, OrphanCheckMode::Compat) => ControlFlow::Continue(()),
+                        _ => self.found_uncovered_ty(ty),
+                    },
+                    InCrate::Remote => {
+                        // FIXME(fmease): Update comment.
+                        // The inference variable might be unified with a local
+                        // type in that remote crate.
+                        ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
                     }
-                } else {
-                    // Regarding *opaque types* specifically, we choose to treat them as non-local,
-                    // even those that appear within the same crate. This seems somewhat surprising
-                    // at first, but makes sense when you consider that opaque types are supposed
-                    // to hide the underlying type *within the same crate*. When an opaque type is
-                    // used from outside the module where it is declared, it should be impossible to
-                    // observe anything about it other than the traits that it implements.
-                    //
-                    // The alternative would be to look at the underlying type to determine whether
-                    // or not the opaque type itself should be considered local.
-                    //
-                    // However, this could make it a breaking change to switch the underlying hidden
-                    // type from a local type to a remote type. This would violate the rule that
-                    // opaque types should be completely opaque apart from the traits that they
-                    // implement, so we don't use this behavior.
-                    // Addendum: Moreover, revealing the underlying type is likely to cause cycle
-                    // errors as we rely on coherence / the specialization graph during typeck.
-                    self.found_non_local_ty(ty)
                 }
             }
 
@@ -444,7 +413,7 @@ where
         };
         // A bit of a hack, the `OrphanChecker` is only used to visit a `TraitRef`, so
         // the first type we visit is always the self type.
-        self.in_self_ty = false;
+        self.in_self_ty = InSelfTy::No;
         result
     }
 

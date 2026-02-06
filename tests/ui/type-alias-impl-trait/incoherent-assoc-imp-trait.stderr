@@ -1,11 +1,11 @@
-error[E0210]: type parameter `F` must be used as the type parameter for some local type (e.g., `MyStruct<F>`)
+error[E0210]: type parameter `F` must be used as the argument to some local type (e.g., `MyStruct<F>`)
   --> $DIR/incoherent-assoc-imp-trait.rs:10:6
    |
 LL | impl<F> FnOnce<()> for &F {
-   |      ^ type parameter `F` must be used as the type parameter for some local type
+   |      ^ uncovered type parameter
    |
    = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
-   = note: only traits defined in the current crate can be implemented for a type parameter
+   = note: only traits defined in the current crate can be implemented for type parameters and opaque types
 
 error: aborting due to 1 previous error
 

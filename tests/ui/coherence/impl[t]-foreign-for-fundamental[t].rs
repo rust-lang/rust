@@ -8,7 +8,7 @@ use std::rc::Rc;
 struct Local;
 
 impl<T> Remote for Box<T> {
-    //~^ ERROR type parameter `T` must be used as the type parameter for
+    //~^ ERROR type parameter `T` must be used as the argument to
     // | some local type (e.g., `MyStruct<T>`)
 }
 
