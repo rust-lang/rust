@@ -1627,16 +1627,8 @@ impl<'a> Parser<'a> {
             let first_expr = self.parse_expr()?;
             if self.eat(exp!(Semi)) {
                 // Repeating array syntax: `[ 0; 512 ]`
-                let count = if self.eat_keyword(exp!(Const)) {
-                    // While we could just disambiguate `Direct` from `AnonConst` by
-                    // treating all const block exprs as `AnonConst`, that would
-                    // complicate the DefCollector and likely all other visitors.
-                    // So we strip the const blockiness and just store it as a block
-                    // in the AST with the extra disambiguator on the AnonConst
-                    self.parse_mgca_const_block(false)?
-                } else {
-                    self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?
-                };
+                let count =
+                    self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?;
                 self.expect(close)?;
                 ExprKind::Repeat(first_expr, count)
             } else if self.eat(exp!(Comma)) {

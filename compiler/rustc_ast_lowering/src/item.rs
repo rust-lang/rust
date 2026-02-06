@@ -827,7 +827,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir_id,
             def_id: self.local_def_id(v.id),
             data: self.lower_variant_data(hir_id, item_kind, &v.data),
-            disr_expr: v.disr_expr.as_ref().map(|e| self.lower_anon_const_to_anon_const(e)),
+            disr_expr: v
+                .disr_expr
+                .as_ref()
+                .map(|e| self.lower_anon_const_to_anon_const(e, e.value.span)),
             ident: self.lower_ident(v.ident),
             span: self.lower_span(v.span),
         }
@@ -917,7 +920,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 None => Ident::new(sym::integer(index), self.lower_span(f.span)),
             },
             vis_span: self.lower_span(f.vis.span),
-            default: f.default.as_ref().map(|v| self.lower_anon_const_to_anon_const(v)),
+            default: f
+                .default
+                .as_ref()
+                .map(|v| self.lower_anon_const_to_anon_const(v, v.value.span)),
             ty,
             safety: self.lower_safety(f.safety, hir::Safety::Safe),
         }
