@@ -290,7 +290,19 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// function call isn't allowed (a.k.a. `va_list`).
     ///
     /// This function handles transparent types automatically.
-    pub fn pass_indirectly_in_non_rustic_abis<C>(mut self, cx: &C) -> bool
+    pub fn pass_indirectly_in_non_rustic_abis<C>(self, cx: &C) -> bool
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        let base = self.peel_transparent_wrappers(cx);
+        Ty::is_pass_indirectly_in_non_rustic_abis_flag_set(base)
+    }
+
+    /// Recursively peel away transparent wrappers, returning the inner value.
+    ///
+    /// The return value is not `repr(transparent)` and/or does
+    /// not have a non-1zst field.
+    pub fn peel_transparent_wrappers<C>(mut self, cx: &C) -> Self
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
@@ -300,7 +312,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             self = field;
         }
 
-        Ty::is_pass_indirectly_in_non_rustic_abis_flag_set(self)
+        self
     }
 
     /// Finds the one field that is not a 1-ZST.
