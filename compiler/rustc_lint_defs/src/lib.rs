@@ -830,7 +830,6 @@ pub enum AttributeLintKind {
         span: Span,
         suggested: Option<Symbol>,
     },
-    MalformedDoc,
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;

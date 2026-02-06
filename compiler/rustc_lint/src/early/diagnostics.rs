@@ -436,7 +436,5 @@ pub fn decorate_attribute_lint(
             sugg: suggested.map(|s| lints::UnknownCrateTypesSuggestion { span, snippet: s }),
         }
         .decorate_lint(diag),
-
-        &AttributeLintKind::MalformedDoc => lints::MalformedDoc.decorate_lint(diag),
     }
 }
