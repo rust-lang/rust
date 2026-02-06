@@ -1,5 +1,7 @@
-//@ run-rustfix
-
+// Related to #71054 / #120871: `Self::Out(1)` now resolves when Out is an associated
+// type set to a tuple struct.
+//
+//@ check-pass
 #![allow(unused)]
 
 struct Constructor(i32);
@@ -15,7 +17,6 @@ impl Trait for () {
 
     fn mk() -> Self::Out {
         Self::Out(1)
-        //~^ ERROR no associated item named `Out` found for unit type `()`
     }
 }
 
