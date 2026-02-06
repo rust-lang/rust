@@ -3,7 +3,7 @@
 **Tier: 2 (without Host Tools)**
 
 RISC-V target using the ratified [RVA23 Profile](https://github.com/riscv/riscv-profiles/blob/main/src/rva23-profile.adoc).
-This target will enable all mandary features of rva23u64 by default.
+This target will enable all mandatory features of rva23u64 by default.
 
 ## Target maintainers
 
@@ -14,7 +14,7 @@ This target will enable all mandary features of rva23u64 by default.
 
 This target can be sucessfully build on the following platform: ubuntu 24.04 (Linux Kernel version 6.8.0, glibc 2.39).
 
-Other platforms may work, but are not tested. Please contanct if you encounter any issues.
+Other platforms may work, but are not tested. Please contact us if you encounter any issues.
 
 ## Building the target
 
