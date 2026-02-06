@@ -25,7 +25,7 @@ impl<'l, 'f, T, U, const N: usize, F: FnMut(T) -> U> Drain<'l, 'f, T, N, F> {
         // for direct pointer equality with `ptr` to check if the drainer is done.
         unsafe {
             let end = if T::IS_ZST { null_mut() } else { ptr.as_ptr().add(N) };
-            Self { ptr, end, f, l: PhantomData }
+            Self { ptr, end, zst_processed: 0, f, l: PhantomData }
         }
     }
 }
@@ -44,6 +44,8 @@ pub(super) struct Drain<'l, 'f, T, const N: usize, F> {
     /// For non-ZSTs, the non-null pointer to the past-the-end element.
     /// For ZSTs, this is null.
     end: *mut T,
+    /// For ZSTs, tracks how many elements have been processed
+    zst_processed: usize,
 
     f: &'f mut F,
     l: PhantomData<&'l mut [T; N]>,
@@ -74,6 +76,8 @@ where
         (_ /* ignore argument */,): (usize,),
     ) -> Self::Output {
         if T::IS_ZST {
+            // Track that we've processed one more ZST
+            self.zst_processed += 1;
             // its UB to call this more than N times, so returning more ZSTs is valid.
             // SAFETY: its a ZST? we conjur.
             (self.f)(unsafe { conjure_zst::<T>() })
@@ -93,16 +97,28 @@ impl<T: [const] Destruct, const N: usize, F> const Drop for Drain<'_, '_, T, N, 
     fn drop(&mut self) {
         if !T::IS_ZST {
             // SAFETY: we cant read more than N elements
-            let slice = unsafe {
-                from_raw_parts_mut::<[T]>(
-                    self.ptr.as_ptr(),
-                    // SAFETY: `start <= end`
-                    self.end.offset_from_unsigned(self.ptr.as_ptr()),
-                )
-            };
+            let slice = from_raw_parts_mut::<[T]>(
+                self.ptr.as_ptr(),
+                // SAFETY: `start <= end`
+                unsafe { self.end.offset_from_unsigned(self.ptr.as_ptr()) },
+            );
 
             // SAFETY: By the type invariant, we're allowed to drop all these. (we own it, after all)
             unsafe { drop_in_place(slice) }
+        } else {
+            // For ZSTs, drop the remaining unprocessed elements
+            // conjure_zst creates new values, so the original N elements are still in the array
+            let remaining = N - self.zst_processed;
+            let mut i = 0;
+            while i < remaining {
+                // SAFETY: By the type invariant, we're allowed to drop the remaining ZST elements
+                unsafe { drop_in_place(self.ptr.as_ptr()) }
+                i += 1;
+            }
         }
     }
 }
+
+
+
+
