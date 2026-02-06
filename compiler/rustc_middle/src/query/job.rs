@@ -110,7 +110,7 @@ impl<'tcx> QueryLatch<'tcx> {
         span: Span,
     ) -> Result<(), CycleError<QueryStackDeferred<'tcx>>> {
         let waiter =
-            Arc::new(QueryWaiter { query, span, cycle: Mutex::new(None), condvar: Condvar::new() });
+            Arc::new(QueryWaiter { query, cycle: Mutex::new(None), condvar: Condvar::new(), span });
         self.wait_on_inner(tcx, &waiter);
         // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
         // although another thread may still have a Arc reference so we cannot

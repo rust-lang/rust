@@ -1,12 +1,13 @@
+use std::collections::hash_map;
 use std::io::Write;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexmap::{self, IndexMap};
+use rustc_data_structures::tree_node_index::TreeNodeIndex;
 use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
 use rustc_middle::query::{
-    CycleError, QueryInfo, QueryJob, QueryJobId, QueryStackDeferred,
-    QueryStackFrame,
+    CycleError, QueryInfo, QueryJob, QueryJobId, QueryStackDeferred, QueryStackFrame,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -96,13 +97,47 @@ pub(crate) fn find_dep_kind_root<'tcx>(
     last_layout
 }
 
-/// Finds a query to break cycle on.
+/// Breaks left-most cycle on a left-most query in order of a single-threaded execution.
 ///
-/// This function doesn't distinguish between a query wait and a query execution, so both are just
-/// query calls.
+/// Order of queries is tracked using [`TreeNodeIndex`] in [`rustc_middle::sync`].
+/// This function uses ordered depth-first search from a single root query down to the first
+/// duplicate query.
+/// It doesn't distinguish between a query wait and a query execution, so both are just query calls.
 /// As such some queries may have two or more parent query calls too.
-/// It uses depth-first search from a single root query down to the first duplicate query,
-/// establishing a cycle.
+///
+/// But while it breaks on the same query as with a single thread,
+/// we are not guaranteed to break on the same query **call**.
+/// This is good enough, as the difference is irrelevant to query cycle recovery code.
+/// Every other difference AFAIK is tolerable.
+/// Potential different query result values are fine as either ill-defined due to cycles or
+/// as they preserve the same query result value between different query calls.
+///
+/// To illustrate how it work say we have a query cycle:
+///
+/// ```text
+/// a() -> b() -> a()
+/// ```
+///
+/// and a program `join(|| a(), || b())`.
+/// On a single-thread it triggers cycle recovery on a `a()` call within `b()` query.
+/// However consider a multi-threaded execution:
+///
+/// ```text
+/// thread 1: waits on a()
+/// thread 2: b() -> a() -> waits on b()
+/// ```
+///
+/// Similar to single-threaded execution, we have to resume wait on `a()`.
+/// However this time it could only be done to a *different query call*, the one inside of `join`.
+/// Then we resume until thread 1 blocks in join on a `b()` task.
+///
+/// ```text
+/// thread 1: indirectly waits on b()
+/// thread 2: b() -> a() -> waits on b()
+/// ```
+///
+/// Now the left-most query to break is `b()` so we resume thread 2.
+/// This difference in behavior is strictly more tolerable than the undeterministic cycle breaking.
 #[allow(rustc::potential_query_instability)]
 fn find_cycle_in_graph<'tcx>(
     query_map: &QueryJobMap<'tcx>,
@@ -117,9 +152,26 @@ fn find_cycle_in_graph<'tcx>(
     #[derive(Clone, Copy)]
     struct Subquery {
         id: QueryJobId,
+        branch: TreeNodeIndex,
         span: Span,
         /// Waiter index or `usize::MAX` if subquery was executed
         waiter_idx: usize,
+    }
+
+    fn insert_min_by_branch_subquery(
+        entry: hash_map::Entry<'_, QueryJobId, Subquery>,
+        subquery: Subquery,
+    ) {
+        match entry {
+            hash_map::Entry::Occupied(mut entry) => {
+                if subquery.branch < entry.get_mut().branch {
+                    *entry.get_mut() = subquery
+                }
+            }
+            hash_map::Entry::Vacant(entry) => {
+                entry.insert(subquery);
+            }
+        }
     }
 
     // We are allowed to keep track of just one subquery since each query has at least one subquery.
@@ -134,12 +186,16 @@ fn find_cycle_in_graph<'tcx>(
         let Some(parent) = query.job.parent else {
             continue;
         };
-        // We are safe to only track a single subquery due to the statement above
-        subqueries.entry(parent.id).or_insert(Subquery {
-            id: query.job.id,
-            span: query.job.span,
-            waiter_idx: usize::MAX,
-        });
+        // We are safe to only track the left-most subquery due to the statement above
+        insert_min_by_branch_subquery(
+            subqueries.entry(parent.id),
+            Subquery {
+                id: query.job.id,
+                branch: parent.branch,
+                span: query.job.span,
+                waiter_idx: usize::MAX,
+            },
+        );
     }
 
     for query in query_map.map.values() {
@@ -151,12 +207,16 @@ fn find_cycle_in_graph<'tcx>(
         assert!(!lock.complete);
         for (waiter_idx, waiter) in lock.waiters.iter().enumerate() {
             let waited_on_query = waiter.query.expect("cannot wait on a root query");
-            // We are safe to only track a single subquery due to the statement above
-            subqueries.entry(waited_on_query.id).or_insert(Subquery {
-                id: query.job.id,
-                span: waiter.span,
-                waiter_idx,
-            });
+            // We are safe to only track the left-most subquery due to the statement above
+            insert_min_by_branch_subquery(
+                subqueries.entry(waited_on_query.id),
+                Subquery {
+                    id: query.job.id,
+                    branch: waited_on_query.branch,
+                    span: waiter.span,
+                    waiter_idx,
+                },
+            );
         }
     }
 
@@ -181,7 +241,12 @@ fn find_cycle_in_graph<'tcx>(
     // so the original statement must be true.
     let mut visited = IndexMap::new();
     let mut last_parent = None;
-    let mut last = Subquery { id: root_query, span: DUMMY_SP, waiter_idx: usize::MAX };
+    let mut last = Subquery {
+        id: root_query,
+        branch: TreeNodeIndex::root(),
+        span: DUMMY_SP,
+        waiter_idx: usize::MAX,
+    };
     while let indexmap::map::Entry::Vacant(entry) = visited.entry(last.id) {
         entry.insert((last_parent, last));
         last_parent = Some(last.id);
