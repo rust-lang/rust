@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 use std::path::PathBuf;
 
-use rustc_ast::token::Token;
+use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, Token};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::codes::*;
@@ -17,7 +17,6 @@ use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
-use crate::parser::{ForbiddenLetReason, TokenDescription};
 
 #[derive(Diagnostic)]
 #[diag(parse_maybe_report_ambiguous_plus)]
@@ -3709,4 +3708,65 @@ pub(crate) struct StructLiteralWithoutPathLate {
     pub span: Span,
     #[suggestion(applicability = "has-placeholders", code = "/* Type */ ", style = "verbose")]
     pub suggestion_span: Span,
+}
+
+/// Used to forbid `let` expressions in certain syntactic locations.
+#[derive(Clone, Copy, Subdiagnostic)]
+pub(crate) enum ForbiddenLetReason {
+    /// `let` is not valid and the source environment is not important
+    OtherForbidden,
+    /// A let chain with the `||` operator
+    #[note(parse_not_supported_or)]
+    NotSupportedOr(#[primary_span] Span),
+    /// A let chain with invalid parentheses
+    ///
+    /// For example, `let 1 = 1 && (expr && expr)` is allowed
+    /// but `(let 1 = 1 && (let 1 = 1 && (let 1 = 1))) && let a = 1` is not
+    #[note(parse_not_supported_parentheses)]
+    NotSupportedParentheses(#[primary_span] Span),
+}
+
+#[derive(Debug, rustc_macros::Subdiagnostic)]
+#[suggestion(
+    parse_misspelled_kw,
+    applicability = "machine-applicable",
+    code = "{similar_kw}",
+    style = "verbose"
+)]
+pub(crate) struct MisspelledKw {
+    // We use a String here because `Symbol::into_diag_arg` calls `Symbol::to_ident_string`, which
+    // prefix the keyword with a `r#` because it aims to print the symbol as an identifier.
+    pub similar_kw: String,
+    #[primary_span]
+    pub span: Span,
+    pub is_incorrect_case: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum TokenDescription {
+    ReservedIdentifier,
+    Keyword,
+    ReservedKeyword,
+    DocComment,
+
+    // Expanded metavariables are wrapped in invisible delimiters which aren't
+    // pretty-printed. In error messages we must handle these specially
+    // otherwise we get confusing things in messages like "expected `(`, found
+    // ``". It's better to say e.g. "expected `(`, found type metavariable".
+    MetaVar(MetaVarKind),
+}
+
+impl TokenDescription {
+    pub(super) fn from_token(token: &Token) -> Option<Self> {
+        match token.kind {
+            _ if token.is_special_ident() => Some(TokenDescription::ReservedIdentifier),
+            _ if token.is_used_keyword() => Some(TokenDescription::Keyword),
+            _ if token.is_unused_keyword() => Some(TokenDescription::ReservedKeyword),
+            token::DocComment(..) => Some(TokenDescription::DocComment),
+            token::OpenInvisible(InvisibleOrigin::MetaVar(kind)) => {
+                Some(TokenDescription::MetaVar(kind))
+            }
+            _ => None,
+        }
+    }
 }
