@@ -29,7 +29,7 @@ LL |     fn iter(&self) -> impl 'a + Iterator<Item = I::Item<'a>> {
 help: replace the return type so that it matches the trait
    |
 LL -     fn iter(&self) -> impl 'a + Iterator<Item = I::Item<'a>> {
-LL +     fn iter(&self) -> impl Iterator<Item = <Self as Iterable>::Item<'_>> + '_ {
+LL +     fn iter(&self) -> impl std::iter::Iterator<Item = <Self as Iterable>::Item<'_>> + '_ {
    |
 
 error: aborting due to 1 previous error; 1 warning emitted
