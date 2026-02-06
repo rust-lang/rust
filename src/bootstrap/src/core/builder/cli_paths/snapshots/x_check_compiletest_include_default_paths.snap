@@ -82,7 +82,8 @@ expression: check compiletest --include-default-paths
     - Set({check::compiler/rustc_windows_rc})
 [Check] check::Rustdoc
     targets: [x86_64-unknown-linux-gnu]
-    - Set({check::src/librustdoc, check::src/tools/rustdoc})
+    - Set({check::src/librustdoc})
+    - Set({check::src/tools/rustdoc})
 [Check] check::CraneliftCodegenBackend
     targets: [x86_64-unknown-linux-gnu]
     - Set({check::cg_clif})

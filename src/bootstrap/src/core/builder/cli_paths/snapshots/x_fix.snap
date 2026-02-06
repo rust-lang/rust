@@ -82,7 +82,8 @@ expression: fix
     - Set({fix::compiler/rustc_windows_rc})
 [Fix] check::Rustdoc
     targets: [x86_64-unknown-linux-gnu]
-    - Set({fix::src/librustdoc, fix::src/tools/rustdoc})
+    - Set({fix::src/librustdoc})
+    - Set({fix::src/tools/rustdoc})
 [Fix] check::CraneliftCodegenBackend
     targets: [x86_64-unknown-linux-gnu]
     - Set({fix::cg_clif})

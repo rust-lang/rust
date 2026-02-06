@@ -98,4 +98,5 @@ expression: bench
     - Set({bench::compiler/rustc_windows_rc})
 [Bench] test::CrateRustdoc
     targets: [x86_64-unknown-linux-gnu]
-    - Set({bench::src/librustdoc, bench::src/tools/rustdoc})
+    - Set({bench::src/librustdoc})
+    - Set({bench::src/tools/rustdoc})
