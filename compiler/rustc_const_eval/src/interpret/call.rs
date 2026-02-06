@@ -1,10 +1,12 @@
 //! Manages calling a concrete function (with known MIR body) with argument passing,
 //! and returning the return value to the caller.
+
 use std::borrow::Cow;
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
 use rustc_data_structures::assert_matches;
+use rustc_errors::inline_fluent;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
@@ -19,8 +21,8 @@ use super::{
     Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, StackPopInfo, interp_ok,
     throw_ub, throw_ub_custom, throw_unsup_format,
 };
+use crate::enter_trace_span;
 use crate::interpret::EnteredTraceSpan;
-use crate::{enter_trace_span, fluent_generated as fluent};
 
 /// An argument passed to a function.
 #[derive(Clone, Debug)]
@@ -292,7 +294,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
         // Find next caller arg.
         let Some((caller_arg, caller_abi)) = caller_args.next() else {
-            throw_ub_custom!(fluent::const_eval_not_enough_caller_args);
+            throw_ub_custom!(inline_fluent!(
+                "calling a function with fewer arguments than it requires"
+            ));
         };
         assert_eq!(caller_arg.layout().layout, caller_abi.layout.layout);
         // Sadly we cannot assert that `caller_arg.layout().ty` and `caller_abi.layout.ty` are
@@ -359,7 +363,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         if caller_fn_abi.conv != callee_fn_abi.conv {
             throw_ub_custom!(
-                fluent::const_eval_incompatible_calling_conventions,
+                rustc_errors::inline_fluent!(
+                    "calling a function with calling convention \"{$callee_conv}\" using calling convention \"{$caller_conv}\""
+                ),
                 callee_conv = format!("{}", callee_fn_abi.conv),
                 caller_conv = format!("{}", caller_fn_abi.conv),
             )
@@ -490,7 +496,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 "mismatch between callee ABI and callee body arguments"
             );
             if caller_args.next().is_some() {
-                throw_ub_custom!(fluent::const_eval_too_many_caller_args);
+                throw_ub_custom!(inline_fluent!(
+                    "calling a function with more arguments than it expected"
+                ));
             }
             // Don't forget to check the return type!
             if !self.check_argument_compat(&caller_fn_abi.ret, &callee_fn_abi.ret)? {
@@ -690,7 +698,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let vtable_entries = self.vtable_entries(receiver_trait.principal(), dyn_ty);
                 let Some(ty::VtblEntry::Method(fn_inst)) = vtable_entries.get(idx).copied() else {
                     // FIXME(fee1-dead) these could be variants of the UB info enum instead of this
-                    throw_ub_custom!(fluent::const_eval_dyn_call_not_a_method);
+                    throw_ub_custom!(inline_fluent!(
+                        "`dyn` call trying to call something that is not a method"
+                    ));
                 };
                 trace!("Virtual call dispatches to {fn_inst:#?}");
                 // We can also do the lookup based on `def_id` and `dyn_ty`, and check that that
@@ -887,7 +897,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         );
         if unwinding && self.frame_idx() == 0 {
-            throw_ub_custom!(fluent::const_eval_unwind_past_top);
+            throw_ub_custom!(inline_fluent!("unwinding past the topmost frame of the stack"));
         }
 
         // Get out the return value. Must happen *before* the frame is popped as we have to get the

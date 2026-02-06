@@ -2,7 +2,7 @@
 
 use hir::{ConstContext, LangItem};
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, MultiSpan};
+use rustc_errors::{Applicability, Diag, MultiSpan, inline_fluent};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -23,7 +23,7 @@ use rustc_trait_selection::traits::SelectionContext;
 use tracing::debug;
 
 use super::ConstCx;
-use crate::{errors, fluent_generated};
+use crate::errors;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
@@ -181,7 +181,9 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         );
 
         if let ConstContext::Static(_) = ccx.const_kind() {
-            err.note(fluent_generated::const_eval_lazy_lock);
+            err.note(inline_fluent!(
+                "consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`"
+            ));
         }
 
         err

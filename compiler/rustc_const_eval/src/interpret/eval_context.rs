@@ -1,7 +1,7 @@
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_data_structures::debug_assert_matches;
-use rustc_errors::DiagCtxtHandle;
+use rustc_errors::{DiagCtxtHandle, inline_fluent};
 use rustc_hir::def_id::DefId;
 use rustc_hir::limit::Limit;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
@@ -23,7 +23,7 @@ use super::{
     MemPlaceMeta, Memory, OpTy, Place, PlaceTy, PointerArithmetic, Projectable, Provenance,
     err_inval, interp_ok, throw_inval, throw_ub, throw_ub_custom,
 };
-use crate::{ReportErrorExt, enter_trace_span, fluent_generated as fluent, util};
+use crate::{ReportErrorExt, enter_trace_span, util};
 
 pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     /// Stores the `Machine` instance.
@@ -555,7 +555,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             mir::UnwindAction::Cleanup(block) => Left(mir::Location { block, statement_index: 0 }),
             mir::UnwindAction::Continue => Right(self.frame_mut().body.span),
             mir::UnwindAction::Unreachable => {
-                throw_ub_custom!(fluent::const_eval_unreachable_unwind);
+                throw_ub_custom!(inline_fluent!(
+                    "unwinding past a stack frame that does not allow unwinding"
+                ));
             }
             mir::UnwindAction::Terminate(reason) => {
                 self.frame_mut().loc = Right(self.frame_mut().body.span);
