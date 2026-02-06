@@ -590,6 +590,26 @@ impl fmt::Debug for ChildStderr {
 /// // And then execute `ls` again but in the root directory.
 /// list_dir.status().expect("process failed to execute");
 /// ```
+///
+/// # Platform-Specific Program Behavior
+///
+/// While `Command` is designed to be OS-agnostic, the spawned program's
+/// behavior may differ by platform. For example, when detecting whether
+/// a program is available, invoking it with no arguments may hang on
+/// Windows (if the program waits for stdin) but exit immediately on Unix:
+///
+/// ```no_run
+/// use std::process::Command;
+///
+/// // Programs that read stdin (python3, node, cat, etc.) may behave differently:
+/// // - Unix: often detect non-TTY stdin and exit immediately
+/// // - Windows: may wait indefinitely for input
+/// // Using `--version` ensures consistent behavior when probing for availability.
+/// let output = Command::new("python3")
+///     .arg("--version")
+///     .output()
+///     .expect("failed to execute python3");
+/// ```
 #[stable(feature = "process", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Command")]
 pub struct Command {
