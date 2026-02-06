@@ -132,7 +132,7 @@ enum Scope<'ra> {
     /// lint if it should be reported.
     ModuleGlobs(Module<'ra>, Option<NodeId>),
     // Crate names of the form `foo::bar`.
-    NamespacedCrates(Module<'ra>, Option<NodeId>),
+    NamespacedCrates(NamespacedCrateRoot<'ra>, Option<NodeId>),
     /// Names introduced by `#[macro_use]` attributes on `extern crate` items.
     MacroUsePrelude,
     /// Built-in attributes.
@@ -163,6 +163,8 @@ enum ScopeSet<'ra> {
     ExternPrelude,
     /// Same as `All(MacroNS)`, but with the given macro kind restriction.
     Macro(MacroKind),
+    /// Only `Scope::NamespacedCrates`
+    NamespacedCrate(Namespace, Symbol),
 }
 
 /// Everything you need to know about a name's location to resolve it.
@@ -463,6 +465,11 @@ enum ModuleOrUniformRoot<'ra> {
     /// Used only for resolving single-segment imports. The reason it exists is that import paths
     /// are always split into two parts, the first of which should be some kind of module.
     CurrentScope,
+
+    /// Virtual module for the resolution of base names of namespaced crates,
+    /// where the base name doesn't correspond to a module in the extern prelude.
+    /// E.g. `my_api::utils` is in the prelude, but `my_api` is not.
+    VirtualNamespacedCrate(Symbol),
 }
 
 #[derive(Debug)]
@@ -2313,17 +2320,26 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 PendingDecl::Pending => {
                     debug_assert!(!finalized);
-                    let crate_id = if finalize {
-                        self.cstore_mut().process_path_extern(self.tcx, ident.name, orig_ident_span)
+                    if is_virtual {
+                        let res = Res::VirtualMod(ident.name);
+                        Some(self.arenas.new_pub_def_decl(res, DUMMY_SP, LocalExpnId::ROOT))
                     } else {
-                        self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)
-                    };
-                    crate_id.map(|crate_id| {
-                        let def_id = crate_id.as_def_id();
-                        let res = Res::Def(DefKind::Mod, def_id);
-                        self.try_add_def_id_for_namespaced_crate(def_id, ident);
-                        self.arenas.new_pub_def_decl(res, DUMMY_SP, LocalExpnId::ROOT)
-                    })
+                        let crate_id = if finalize {
+                            self.cstore_mut().process_path_extern(
+                                self.tcx,
+                                ident.name,
+                                orig_ident_span,
+                            )
+                        } else {
+                            self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)
+                        };
+                        crate_id.map(|crate_id| {
+                            let def_id = crate_id.as_def_id();
+                            let res = Res::Def(DefKind::Mod, def_id);
+                            self.try_add_def_id_for_namespaced_crate(def_id, ident);
+                            self.arenas.new_pub_def_decl(res, DUMMY_SP, LocalExpnId::ROOT)
+                        })
+                    }
                 }
             };
             flag_decl.set((PendingDecl::Ready(decl), finalize || finalized, is_virtual));
@@ -2655,6 +2671,22 @@ impl Finalize {
 
     fn with_root_span(node_id: NodeId, path_span: Span, root_span: Span) -> Finalize {
         Finalize { node_id, path_span, root_span, .. }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum NamespacedCrateRoot<'ra> {
+    Mod(Module<'ra>),
+    VirtualMod(Symbol),
+}
+
+impl<'ra> NamespacedCrateRoot<'ra> {
+    /// Retrieves the `Module` of `NamespacedCrateRoot::Mod`. Panics if variant is `VirtualMod`.
+    pub(crate) fn get_mod(&self) -> Module<'ra> {
+        match self {
+            Self::Mod(m) => *m,
+            Self::VirtualMod(..) => panic!("expected NamespacedCrateRoot::Mod"),
+        }
     }
 }
 
