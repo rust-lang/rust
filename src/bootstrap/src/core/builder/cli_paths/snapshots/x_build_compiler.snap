@@ -26,7 +26,6 @@ expression: build compiler
     - Set({build::compiler/rustc_errors})
     - Set({build::compiler/rustc_expand})
     - Set({build::compiler/rustc_feature})
-    - Set({build::compiler/rustc_fluent_macro})
     - Set({build::compiler/rustc_fs_util})
     - Set({build::compiler/rustc_graphviz})
     - Set({build::compiler/rustc_hashes})

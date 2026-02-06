@@ -3889,19 +3889,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc_fluent_macro"
-version = "0.0.0"
-dependencies = [
- "annotate-snippets 0.11.5",
- "fluent-bundle",
- "fluent-syntax",
- "proc-macro2",
- "quote",
- "syn 2.0.110",
- "unic-langid",
-]
-
-[[package]]
 name = "rustc_fs_util"
 version = "0.0.0"
 dependencies = [
