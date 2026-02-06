@@ -1,7 +1,7 @@
 //! Error reporting machinery for lifetime errors.
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, inline_fluent};
 use rustc_hir as hir;
 use rustc_hir::GenericBound::Trait;
 use rustc_hir::QPath::Resolved;
@@ -27,7 +27,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 use tracing::{debug, instrument, trace};
 
-use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
+use super::{LIMITATION_NOTE, OutlivesSuggestionBuilder, RegionName, RegionNameSource};
 use crate::nll::ConstraintDescription;
 use crate::region_infer::values::RegionElement;
 use crate::region_infer::{BlameConstraint, TypeTest};
@@ -36,7 +36,7 @@ use crate::session_diagnostics::{
     LifetimeReturnCategoryErr, RequireStaticErr, VarHereDenote,
 };
 use crate::universal_regions::DefiningTy;
-use crate::{MirBorrowckCtxt, borrowck_errors, fluent_generated as fluent};
+use crate::{MirBorrowckCtxt, borrowck_errors};
 
 impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
     fn description(&self) -> &'static str {
@@ -265,7 +265,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }) = bound else {
                 return;
             };
-            diag.span_note(*trait_span, fluent::borrowck_limitations_implies_static);
+            diag.span_note(*trait_span, LIMITATION_NOTE);
             let Some(generics_fn) = tcx.hir_get_generics(self.body.source.def_id().expect_local())
             else {
                 return;
@@ -298,7 +298,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if suggestions.len() > 0 {
             suggestions.dedup();
             diag.multipart_suggestion_verbose(
-                fluent::borrowck_restrict_to_static,
+                inline_fluent!("consider restricting the type parameter to the `'static` lifetime"),
                 suggestions,
                 Applicability::MaybeIncorrect,
             );
@@ -966,12 +966,20 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             debug!("trait spans found: {:?}", traits);
             for span in &traits {
                 let mut multi_span: MultiSpan = vec![*span].into();
-                multi_span.push_span_label(*span, fluent::borrowck_implicit_static);
-                multi_span.push_span_label(ident.span, fluent::borrowck_implicit_static_introduced);
+                multi_span.push_span_label(
+                    *span,
+                    inline_fluent!("this has an implicit `'static` lifetime requirement"),
+                );
+                multi_span.push_span_label(
+                    ident.span,
+                    inline_fluent!(
+                        "calling this method introduces the `impl`'s `'static` requirement"
+                    ),
+                );
                 err.subdiagnostic(RequireStaticErr::UsedImpl { multi_span });
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
-                    fluent::borrowck_implicit_static_relax,
+                    inline_fluent!("consider relaxing the implicit `'static` requirement"),
                     " + '_",
                     Applicability::MaybeIncorrect,
                 );
@@ -1134,7 +1142,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if ocx.evaluate_obligations_error_on_ambiguity().is_empty() && count > 0 {
             diag.span_suggestion_verbose(
                 tcx.hir_body(*body).value.peel_blocks().span.shrink_to_lo(),
-                fluent::borrowck_dereference_suggestion,
+                inline_fluent!("dereference the return value"),
                 "*".repeat(count),
                 Applicability::MachineApplicable,
             );
@@ -1178,7 +1186,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if let Some(closure_span) = closure_span {
             diag.span_suggestion_verbose(
                 closure_span,
-                fluent::borrowck_move_closure_suggestion,
+                inline_fluent!("consider adding 'move' keyword before the nested closure"),
                 "move ",
                 Applicability::MaybeIncorrect,
             );
