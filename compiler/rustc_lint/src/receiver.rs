@@ -83,8 +83,6 @@ fn check<'tcx>(
 ) -> Option<CheckResult> {
     let deref_trait = tcx.require_lang_item(LangItem::Deref, DUMMY_SP);
     let deref_target = tcx.require_lang_item(LangItem::DerefTarget, DUMMY_SP);
-    let receiver_trait = tcx.require_lang_item(LangItem::Receiver, DUMMY_SP);
-    let receiver_target = tcx.require_lang_item(LangItem::ReceiverTarget, DUMMY_SP);
 
     if infcx.type_implements_trait(deref_trait, [ty], param_env).must_apply_modulo_regions() {
         let target_ty = tcx.normalize_erasing_regions(
@@ -101,21 +99,28 @@ fn check<'tcx>(
             return Some(result);
         }
     }
-    if tcx.features().arbitrary_self_types()
-        && infcx.type_implements_trait(receiver_trait, [ty], param_env).must_apply_modulo_regions()
-    {
-        let target_ty = tcx.normalize_erasing_regions(
-            typing_env,
-            Ty::new_alias(tcx, AliasTyKind::Projection, AliasTy::new(tcx, receiver_target, [ty])),
-        );
-        if let ty::Param(_) = target_ty.kind() {
-            let (impl_id, target_id) = find_impl_and_target_id(tcx, receiver_trait, ty);
-            return Some(CheckResult { impl_plus_target: vec![(impl_id, target_id)] });
-        }
-        if let Some(mut result) = check(tcx, infcx, typing_env, param_env, target_ty) {
-            let (impl_id, target_id) = find_impl_and_target_id(tcx, receiver_trait, ty);
-            result.impl_plus_target.push((impl_id, target_id));
-            return Some(result);
+    if tcx.features().arbitrary_self_types() {
+        let receiver_trait = tcx.require_lang_item(LangItem::Receiver, DUMMY_SP);
+        let receiver_target = tcx.require_lang_item(LangItem::ReceiverTarget, DUMMY_SP);
+        if infcx.type_implements_trait(receiver_trait, [ty], param_env).must_apply_modulo_regions()
+        {
+            let target_ty = tcx.normalize_erasing_regions(
+                typing_env,
+                Ty::new_alias(
+                    tcx,
+                    AliasTyKind::Projection,
+                    AliasTy::new(tcx, receiver_target, [ty]),
+                ),
+            );
+            if let ty::Param(_) = target_ty.kind() {
+                let (impl_id, target_id) = find_impl_and_target_id(tcx, receiver_trait, ty);
+                return Some(CheckResult { impl_plus_target: vec![(impl_id, target_id)] });
+            }
+            if let Some(mut result) = check(tcx, infcx, typing_env, param_env, target_ty) {
+                let (impl_id, target_id) = find_impl_and_target_id(tcx, receiver_trait, ty);
+                result.impl_plus_target.push((impl_id, target_id));
+                return Some(result);
+            }
         }
     }
     None
