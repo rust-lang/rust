@@ -22,6 +22,8 @@ pub trait MyKey = Hash + Eq + Copy + Debug + for<'a> HashStable<StableHashingCon
 /// Types implementing this trait are associated with actual key/value types
 /// by the `Cache` associated type of the `rustc_middle::query::Key` trait.
 pub trait QueryCache: Sized {
+    // `Key` and `Value` are `Copy` instead of `Clone` to ensure copying them stays cheap,
+    // but it isn't strictly necessary.
     type Key: MyKey;
     type Value: Copy;
 

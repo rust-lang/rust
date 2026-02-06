@@ -12,7 +12,7 @@ use std::marker::ConstParamTy;
 
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
-use rustc_middle::dep_graph::{self, DepKind, DepKindVTable, DepNodeIndex};
+use rustc_middle::dep_graph::{self, DepKind, DepKindVTable, DepNode, DepNodeIndex};
 use rustc_middle::queries::{
     self, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates,
 };
@@ -23,8 +23,7 @@ use rustc_middle::query::values::Value;
 use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::query::{
-    CycleError, CycleErrorHandling, HashResult, QueryCache, QueryDispatcher, QueryMap, QueryMode,
-    QueryState,
+    CycleError, CycleErrorHandling, HashResult, QueryCache, QueryMap, QueryMode, QueryState,
 };
 use rustc_span::{ErrorGuaranteed, Span};
 
@@ -51,8 +50,8 @@ struct QueryFlags {
     is_feedable: bool,
 }
 
-/// Combines a [`QueryVTable`] with some additional compile-time booleans
-/// to implement [`QueryDispatcher`], for use by code in [`rustc_query_system`].
+/// Combines a [`QueryVTable`] with some additional compile-time booleans.
+/// "Dispatcher" should be understood as a near-synonym of "vtable".
 ///
 /// Baking these boolean flags into the type gives a modest but measurable
 /// improvement to compiler perf and compiler code size; see
@@ -74,54 +73,49 @@ impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> Clone
     }
 }
 
-// This is `impl QueryDispatcher for SemiDynamicQueryDispatcher`.
-impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> QueryDispatcher<'tcx>
-    for SemiDynamicQueryDispatcher<'tcx, C, FLAGS>
-{
-    type Qcx = QueryCtxt<'tcx>;
-    type Key = C::Key;
-    type Value = C::Value;
-    type Cache = C;
-
+impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> SemiDynamicQueryDispatcher<'tcx, C, FLAGS> {
     #[inline(always)]
     fn name(self) -> &'static str {
         self.vtable.name
     }
 
     #[inline(always)]
-    fn will_cache_on_disk_for_key(self, tcx: TyCtxt<'tcx>, key: &Self::Key) -> bool {
+    fn will_cache_on_disk_for_key(self, tcx: TyCtxt<'tcx>, key: &C::Key) -> bool {
         self.vtable.will_cache_on_disk_for_key_fn.map_or(false, |f| f(tcx, key))
     }
 
+    // Don't use this method to access query results, instead use the methods on TyCtxt.
     #[inline(always)]
-    fn query_state(self, qcx: QueryCtxt<'tcx>) -> &'tcx QueryState<'tcx, Self::Key> {
+    fn query_state(self, qcx: QueryCtxt<'tcx>) -> &'tcx QueryState<'tcx, C::Key> {
         // Safety:
         // This is just manually doing the subfield referencing through pointer math.
         unsafe {
             &*(&qcx.tcx.query_system.states as *const QueryStates<'tcx>)
                 .byte_add(self.vtable.query_state)
-                .cast::<QueryState<'tcx, Self::Key>>()
+                .cast::<QueryState<'tcx, C::Key>>()
         }
     }
 
+    // Don't use this method to access query results, instead use the methods on TyCtxt.
     #[inline(always)]
-    fn query_cache(self, qcx: QueryCtxt<'tcx>) -> &'tcx Self::Cache {
+    fn query_cache(self, qcx: QueryCtxt<'tcx>) -> &'tcx C {
         // Safety:
         // This is just manually doing the subfield referencing through pointer math.
         unsafe {
             &*(&qcx.tcx.query_system.caches as *const QueryCaches<'tcx>)
                 .byte_add(self.vtable.query_cache)
-                .cast::<Self::Cache>()
+                .cast::<C>()
         }
     }
 
+    // Don't use this method to compute query results, instead use the methods on TyCtxt.
     #[inline(always)]
-    fn execute_query(self, tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value {
+    fn execute_query(self, tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value {
         (self.vtable.execute_query)(tcx, key)
     }
 
     #[inline(always)]
-    fn compute(self, qcx: QueryCtxt<'tcx>, key: Self::Key) -> Self::Value {
+    fn compute(self, qcx: QueryCtxt<'tcx>, key: C::Key) -> C::Value {
         (self.vtable.compute_fn)(qcx.tcx, key)
     }
 
@@ -129,10 +123,10 @@ impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> QueryDispatcher<'tcx>
     fn try_load_from_disk(
         self,
         qcx: QueryCtxt<'tcx>,
-        key: &Self::Key,
+        key: &C::Key,
         prev_index: SerializedDepNodeIndex,
         index: DepNodeIndex,
-    ) -> Option<Self::Value> {
+    ) -> Option<C::Value> {
         // `?` will return None immediately for queries that never cache to disk.
         self.vtable.try_load_from_disk_fn?(qcx.tcx, key, prev_index, index)
     }
@@ -141,23 +135,24 @@ impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> QueryDispatcher<'tcx>
     fn is_loadable_from_disk(
         self,
         qcx: QueryCtxt<'tcx>,
-        key: &Self::Key,
+        key: &C::Key,
         index: SerializedDepNodeIndex,
     ) -> bool {
         self.vtable.is_loadable_from_disk_fn.map_or(false, |f| f(qcx.tcx, key, index))
     }
 
+    /// Synthesize an error value to let compilation continue after a cycle.
     fn value_from_cycle_error(
         self,
         tcx: TyCtxt<'tcx>,
         cycle_error: &CycleError,
         guar: ErrorGuaranteed,
-    ) -> Self::Value {
+    ) -> C::Value {
         (self.vtable.value_from_cycle_error)(tcx, cycle_error, guar)
     }
 
     #[inline(always)]
-    fn format_value(self) -> fn(&Self::Value) -> String {
+    fn format_value(self) -> fn(&C::Value) -> String {
         self.vtable.format_value
     }
 
@@ -192,13 +187,17 @@ impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> QueryDispatcher<'tcx>
     }
 
     #[inline(always)]
-    fn hash_result(self) -> HashResult<Self::Value> {
+    fn hash_result(self) -> HashResult<C::Value> {
         self.vtable.hash_result
+    }
+
+    fn construct_dep_node(self, tcx: TyCtxt<'tcx>, key: &C::Key) -> DepNode {
+        DepNode::construct(tcx, self.dep_kind(), key)
     }
 }
 
 /// Provides access to vtable-like operations for a query
-/// (by creating a [`QueryDispatcher`]),
+/// (by creating a [`SemiDynamicQueryDispatcher`]),
 /// but also keeps track of the "unerased" value type of the query
 /// (i.e. the actual result type in the query declaration).
 ///
@@ -210,7 +209,7 @@ impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> QueryDispatcher<'tcx>
 /// on the type `rustc_query_impl::query_impl::$name::QueryType`.
 trait QueryDispatcherUnerased<'tcx, C: QueryCache, const FLAGS: QueryFlags> {
     type UnerasedValue;
-    //type Dispatcher: QueryDispatcher<'tcx, Qcx = QueryCtxt<'tcx>>;
+    //type Dispatcher: QueryDispatcher<'tcx, Qcx = QueryCtxt<'tcx>>; // njn: remove
 
     const NAME: &'static &'static str;
 
