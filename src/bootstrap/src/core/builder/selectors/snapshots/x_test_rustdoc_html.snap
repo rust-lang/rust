@@ -1,0 +1,7 @@
+---
+source: src/bootstrap/src/core/builder/selectors/tests.rs
+expression: test rustdoc-html
+---
+[Test] test::RustdocHtml
+    targets: [x86_64-unknown-linux-gnu]
+    - TestSuite(test::tests/rustdoc-html)

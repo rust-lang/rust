@@ -41,7 +41,7 @@ use crate::utils::helpers::{
     linker_args, linker_flags, t, target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, CodegenBackendKind, DocTests, GitRepo, Mode, PathSet, envify};
+use crate::{CLang, CodegenBackendKind, DocTests, GitRepo, Mode, StepSelectors, envify};
 
 mod compiletest;
 
@@ -1698,7 +1698,7 @@ impl Step for Coverage {
         // determine which modes to run in.
         for path in &run.paths {
             match path {
-                PathSet::Set(_) => {
+                StepSelectors::Set(_) => {
                     for &mode in Self::ALL_MODES {
                         if path.assert_single_path().path == Path::new(mode.as_str()) {
                             modes.push(mode);
@@ -1706,7 +1706,7 @@ impl Step for Coverage {
                         }
                     }
                 }
-                PathSet::Suite(_) => {
+                StepSelectors::TestSuite(_) => {
                     modes.extend_from_slice(Self::ALL_MODES);
                     break;
                 }
@@ -2868,7 +2868,7 @@ impl Step for CrateLibrustc {
         let builder = run.builder;
         let host = run.build_triple();
         let build_compiler = builder.compiler(builder.top_stage - 1, host);
-        let crates = run.make_run_crates(Alias::Compiler);
+        let crates = run.expand_alias(Alias::Compiler);
 
         builder.ensure(CrateLibrustc { build_compiler, target: run.target, crates });
     }
@@ -3817,7 +3817,7 @@ impl Step for CodegenCranelift {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["compiler/rustc_codegen_cranelift"])
+        run.path("compiler/rustc_codegen_cranelift")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -3938,7 +3938,7 @@ impl Step for CodegenGCC {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["compiler/rustc_codegen_gcc"])
+        run.path("compiler/rustc_codegen_gcc")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
