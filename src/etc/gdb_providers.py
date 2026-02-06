@@ -169,7 +169,13 @@ class StdVecProvider(printer_base):
 class StdVecDequeProvider(printer_base):
     def __init__(self, valobj):
         self._valobj = valobj
-        self._head = int(valobj["head"])
+
+        head = valobj["head"]
+
+        # BACKCOMPAT: rust 1.95
+        if head.type.code != gdb.TYPE_CODE_INT:
+            head = head[ZERO_FIELD]
+        self._head = int(head)
         self._size = int(valobj["len"])
         # BACKCOMPAT: rust 1.75
         cap = valobj["buf"]["inner"]["cap"]
