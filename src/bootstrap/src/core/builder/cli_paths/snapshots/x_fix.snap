@@ -28,7 +28,6 @@ expression: fix
     - Set({fix::compiler/rustc_errors})
     - Set({fix::compiler/rustc_expand})
     - Set({fix::compiler/rustc_feature})
-    - Set({fix::compiler/rustc_fluent_macro})
     - Set({fix::compiler/rustc_fs_util})
     - Set({fix::compiler/rustc_graphviz})
     - Set({fix::compiler/rustc_hashes})

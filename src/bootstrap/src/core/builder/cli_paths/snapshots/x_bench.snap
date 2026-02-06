@@ -44,7 +44,6 @@ expression: bench
     - Set({bench::compiler/rustc_errors})
     - Set({bench::compiler/rustc_expand})
     - Set({bench::compiler/rustc_feature})
-    - Set({bench::compiler/rustc_fluent_macro})
     - Set({bench::compiler/rustc_fs_util})
     - Set({bench::compiler/rustc_graphviz})
     - Set({bench::compiler/rustc_hashes})

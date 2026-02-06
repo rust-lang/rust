@@ -43,7 +43,6 @@ expression: clippy
     - Set({clippy::compiler/rustc_errors})
     - Set({clippy::compiler/rustc_expand})
     - Set({clippy::compiler/rustc_feature})
-    - Set({clippy::compiler/rustc_fluent_macro})
     - Set({clippy::compiler/rustc_fs_util})
     - Set({clippy::compiler/rustc_graphviz})
     - Set({clippy::compiler/rustc_hashes})
