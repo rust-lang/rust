@@ -693,6 +693,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // own its own names, we have to adjust the owner before
                     // lowering the rest of the import.
                     self.with_hir_id_owner(id, |this| {
+                        let vis_span = this.lower_span(vis_span);
+
                         // `prefix` is lowered multiple times, but in different HIR owners.
                         // So each segment gets renewed `HirId` with the same
                         // `ItemLocalId` and the new owner. (See `lower_node_id`)
@@ -712,6 +714,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                 AttributeKind::EiiImpls(..) | AttributeKind::EiiDeclaration(..)
                             ),
                         };
+
                         hir::OwnerNode::Item(this.arena.alloc(item))
                     });
                 }

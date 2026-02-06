@@ -19,6 +19,10 @@ pub struct StableHashingContext<'a> {
     // The value of `-Z incremental-ignore-spans`.
     // This field should only be used by `unstable_opts_incremental_ignore_span`
     incremental_ignore_spans: bool,
+
+    #[cfg(debug_assertions)]
+    pub(crate) current_owner_node_did: Option<LocalDefId>,
+
     // Very often, we are hashing something that does not need the
     // `CachingSourceMapView`, so we initialize it lazily.
     raw_source_map: &'a SourceMap,
@@ -34,6 +38,8 @@ impl<'a> StableHashingContext<'a> {
         StableHashingContext {
             untracked,
             incremental_ignore_spans: sess.opts.unstable_opts.incremental_ignore_spans,
+            #[cfg(debug_assertions)]
+            current_owner_node_did: None,
             caching_source_map: None,
             raw_source_map: sess.source_map(),
             hashing_controls: HashingControls { hash_spans: hash_spans_initial },
@@ -123,6 +129,26 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     #[inline]
     fn hashing_controls(&self) -> HashingControls {
         self.hashing_controls.clone()
+    }
+
+    #[cfg(debug_assertions)]
+    fn validate_span_parent(&self, span: Span) {
+        // If we're hashing an owner node right now...
+        let Some(current_owner_node_did) = self.current_owner_node_did else {
+            return;
+        };
+
+        // we don't care about the dummy span
+        if span.is_dummy() {
+            return;
+        }
+
+        // then the parent must be set and match that defid.
+        assert!(
+            span.parent().is_some_and(|i| i == current_owner_node_did),
+            "Expected span to be lowered. Lowered spans have their parent set to their enclosing owner node. However, contained in the owner node with defid={current_owner_node_did:?} a span={span:?} was found whose parent is {:?}.",
+            span.parent()
+        )
     }
 }
 

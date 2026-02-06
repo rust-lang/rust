@@ -184,11 +184,26 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         self.with_stable_hashing_context(|mut hcx| {
+            // With debug assertions on, *while hashing*,
+            // we will check whether spans properly set their parent to the current node's defid
+            // For that we set the defid here to check against
+            #[cfg(debug_assertions)]
+            if self.sess.opts.incremental.is_some() && !matches!(node, OwnerNode::Synthetic) {
+                hcx.set_current_owner_node_defid(Some(node.def_id().def_id));
+            }
+
             let mut stable_hasher = StableHasher::new();
             node.hash_stable(&mut hcx, &mut stable_hasher);
             // Bodies are stored out of line, so we need to pull them explicitly in the hash.
             bodies.hash_stable(&mut hcx, &mut stable_hasher);
             let h1 = stable_hasher.finish();
+
+            // At the start of hashing an owner node we set this to the node's defid.
+            // We clear it again here, ending checking of spans.
+            #[cfg(debug_assertions)]
+            if self.sess.opts.incremental.is_some() {
+                hcx.set_current_owner_node_defid(None);
+            }
 
             let mut stable_hasher = StableHasher::new();
             attrs.hash_stable(&mut hcx, &mut stable_hasher);
