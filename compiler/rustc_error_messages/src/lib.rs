@@ -192,7 +192,7 @@ pub fn fluent_bundle(
     Ok(Some(bundle))
 }
 
-fn register_functions(bundle: &mut FluentBundle) {
+pub fn register_functions<R, M>(bundle: &mut fluent_bundle::bundle::FluentBundle<R, M>) {
     bundle
         .add_function("STREQ", |positional, _named| match positional {
             [FluentValue::String(a), FluentValue::String(b)] => format!("{}", (a == b)).into(),

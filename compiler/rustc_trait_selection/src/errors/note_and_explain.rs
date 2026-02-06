@@ -1,11 +1,10 @@
-use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, Subdiagnostic};
+use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, Subdiagnostic, inline_fluent};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{Span, kw};
 
 use crate::error_reporting::infer::nice_region_error::find_anon_type;
-use crate::fluent_generated as fluent;
 
 struct DescriptionCtx<'a> {
     span: Option<Span>,
@@ -170,7 +169,40 @@ impl Subdiagnostic for RegionExplanation<'_> {
         diag.arg("desc_kind", self.desc.kind);
         diag.arg("desc_arg", self.desc.arg);
 
-        let msg = diag.eagerly_translate(fluent::trait_selection_region_explanation);
+        let msg = diag.eagerly_translate(inline_fluent!(
+            "{$pref_kind ->
+*[should_not_happen] [{$pref_kind}]
+[ref_valid_for] ...the reference is valid for
+[content_valid_for] ...but the borrowed content is only valid for
+[type_obj_valid_for] object type is valid for
+[source_pointer_valid_for] source pointer is only valid for
+[type_satisfy] type must satisfy
+[type_outlive] type must outlive
+[lf_param_instantiated_with] lifetime parameter instantiated with
+[lf_param_must_outlive] but lifetime parameter must outlive
+[lf_instantiated_with] lifetime instantiated with
+[lf_must_outlive] but lifetime must outlive
+[pointer_valid_for] the pointer is valid for
+[data_valid_for] but the referenced data is only valid for
+[empty] {\"\"}
+}{$pref_kind ->
+[empty] {\"\"}
+*[other] {\" \"}
+}{$desc_kind ->
+*[should_not_happen] [{$desc_kind}]
+[restatic] the static lifetime
+[revar] lifetime {$desc_arg}
+[as_defined] the lifetime `{$desc_arg}` as defined here
+[as_defined_anon] the anonymous lifetime as defined here
+[defined_here] the anonymous lifetime defined here
+[defined_here_reg] the lifetime `{$desc_arg}` as defined here
+}{$suff_kind ->
+*[should_not_happen] [{$suff_kind}]
+[empty]{\"\"}
+[continues] ...
+[req_by_binding] {\" \"}as required by this binding
+}"
+        ));
         diag.restore_args();
         if let Some(span) = self.desc.span {
             diag.span_note(span, msg);

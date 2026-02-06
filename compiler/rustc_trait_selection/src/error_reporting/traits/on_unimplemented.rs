@@ -360,10 +360,10 @@ pub enum AppendConstMessage {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(trait_selection_malformed_on_unimplemented_attr)]
-#[help]
+#[diag("malformed `on_unimplemented` attribute")]
+#[help("only `message`, `note` and `label` are allowed as options")]
 pub struct MalformedOnUnimplementedAttrLint {
-    #[label]
+    #[label("invalid option found here")]
     pub span: Span,
 }
 
@@ -374,17 +374,17 @@ impl MalformedOnUnimplementedAttrLint {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(trait_selection_missing_options_for_on_unimplemented_attr)]
-#[help]
+#[diag("missing options for `on_unimplemented` attribute")]
+#[help("at least one of the `message`, `note` and `label` options are expected")]
 pub struct MissingOptionsForOnUnimplementedAttr;
 
 #[derive(LintDiagnostic)]
-#[diag(trait_selection_ignored_diagnostic_option)]
+#[diag("`{$option_name}` is ignored due to previous definition of `{$option_name}`")]
 pub struct IgnoredDiagnosticOption {
     pub option_name: &'static str,
-    #[label]
+    #[label("`{$option_name}` is already declared here")]
     pub span: Span,
-    #[label(trait_selection_other_label)]
+    #[label("`{$option_name}` is first declared here")]
     pub prev_span: Span,
 }
 
@@ -410,7 +410,7 @@ impl IgnoredDiagnosticOption {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(trait_selection_wrapped_parser_error)]
+#[diag("{$description}")]
 pub struct WrappedParserError {
     pub description: String,
     pub label: String,

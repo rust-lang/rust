@@ -34,5 +34,3 @@ pub mod opaque_types;
 pub mod regions;
 pub mod solve;
 pub mod traits;
-
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

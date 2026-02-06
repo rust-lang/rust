@@ -310,25 +310,27 @@ pub mod errors {
     use super::*;
 
     #[derive(LintDiagnostic)]
-    #[diag(trait_selection_unknown_format_parameter_for_on_unimplemented_attr)]
-    #[help]
+    #[diag("there is no parameter `{$argument_name}` on trait `{$trait_name}`")]
+    #[help("expect either a generic argument name or {\"`{Self}`\"} as format argument")]
     pub struct UnknownFormatParameterForOnUnimplementedAttr {
         pub argument_name: Symbol,
         pub trait_name: Ident,
     }
 
     #[derive(LintDiagnostic)]
-    #[diag(trait_selection_disallowed_positional_argument)]
-    #[help]
+    #[diag("positional format arguments are not allowed here")]
+    #[help(
+        "only named format arguments with the name of one of the generic types are allowed in this context"
+    )]
     pub struct DisallowedPositionalArgument;
 
     #[derive(LintDiagnostic)]
-    #[diag(trait_selection_invalid_format_specifier)]
-    #[help]
+    #[diag("invalid format specifier")]
+    #[help("no format specifier are supported in this position")]
     pub struct InvalidFormatSpecifier;
 
     #[derive(LintDiagnostic)]
-    #[diag(trait_selection_missing_options_for_on_unimplemented_attr)]
-    #[help]
+    #[diag("missing options for `on_unimplemented` attribute")]
+    #[help("at least one of the `message`, `note` and `label` options are expected")]
     pub struct MissingOptionsForOnUnimplementedAttr;
 }

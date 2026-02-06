@@ -3,8 +3,8 @@ use std::env;
 use std::error::Report;
 use std::sync::Arc;
 
-use rustc_error_messages::langid;
 pub use rustc_error_messages::{FluentArgs, LazyFallbackBundle};
+use rustc_error_messages::{langid, register_functions};
 use tracing::{debug, trace};
 
 use crate::error::{TranslateError, TranslateErrorKind};
@@ -91,6 +91,7 @@ impl Translator {
                 let mut bundle = fluent_bundle::FluentBundle::new(vec![langid!("en-US")]);
                 bundle.set_use_isolating(false);
                 bundle.add_resource(resource).unwrap();
+                register_functions(&mut bundle);
                 let message = bundle.get_message(GENERATED_MSG_ID).unwrap();
                 let value = message.value().unwrap();
 
