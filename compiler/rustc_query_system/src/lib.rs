@@ -2,6 +2,7 @@
 #![allow(internal_features)]
 #![feature(assert_matches)]
 #![feature(min_specialization)]
+#![feature(trait_alias)]
 // tidy-alphabetical-end
 
 pub mod cache;

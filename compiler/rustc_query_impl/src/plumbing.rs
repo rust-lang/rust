@@ -33,7 +33,6 @@ use rustc_middle::ty::print::with_reduced_queries;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::{DepGraphData, DepNodeKey, FingerprintStyle, HasDepContext};
-use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
     ActiveKeyStatus, CycleError, CycleErrorHandling, QueryCache, QueryContext, QueryDispatcher,
     QueryJob, QueryJobId, QueryJobInfo, QueryLatch, QueryMap, QueryMode, QuerySideEffect,
@@ -368,7 +367,7 @@ pub(crate) fn create_deferred_query_stack_frame<'tcx, Cache>(
 ) -> QueryStackFrame<QueryStackDeferred<'tcx>>
 where
     Cache: QueryCache,
-    Cache::Key: Key + DynSend + DynSync + for<'a> HashStable<StableHashingContext<'a>> + 'tcx,
+    Cache::Key: Key + DynSend + DynSync,
 {
     let kind = vtable.dep_kind;
 

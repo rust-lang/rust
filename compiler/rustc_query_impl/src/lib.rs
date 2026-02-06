@@ -10,7 +10,6 @@
 
 use std::marker::ConstParamTy;
 
-use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::{self, DepKind, DepKindVTable, DepNodeIndex};
@@ -23,7 +22,6 @@ use rustc_middle::query::plumbing::{QuerySystem, QuerySystemFns, QueryVTable};
 use rustc_middle::query::values::Value;
 use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
-use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
     CycleError, CycleErrorHandling, HashResult, QueryCache, QueryDispatcher, QueryMap, QueryMode,
     QueryState,
@@ -79,8 +77,6 @@ impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> Clone
 // This is `impl QueryDispatcher for SemiDynamicQueryDispatcher`.
 impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> QueryDispatcher<'tcx>
     for SemiDynamicQueryDispatcher<'tcx, C, FLAGS>
-where
-    for<'a> C::Key: HashStable<StableHashingContext<'a>>,
 {
     type Qcx = QueryCtxt<'tcx>;
     type Key = C::Key;

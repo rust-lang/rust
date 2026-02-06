@@ -3,12 +3,18 @@ use std::hash::Hash;
 use std::sync::OnceLock;
 
 use rustc_data_structures::sharded::ShardedHashMap;
+use rustc_data_structures::stable_hasher::HashStable;
 pub use rustc_data_structures::vec_cache::VecCache;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_index::Idx;
 use rustc_span::def_id::{DefId, DefIndex};
 
 use crate::dep_graph::DepNodeIndex;
+use crate::ich::StableHashingContext;
+
+// njn: explain
+// njn: rename
+pub trait MyKey = Hash + Eq + Copy + Debug + for<'a> HashStable<StableHashingContext<'a>>;
 
 /// Trait for types that serve as an in-memory cache for query results,
 /// for a given key (argument) type and value (return) type.
@@ -16,7 +22,7 @@ use crate::dep_graph::DepNodeIndex;
 /// Types implementing this trait are associated with actual key/value types
 /// by the `Cache` associated type of the `rustc_middle::query::Key` trait.
 pub trait QueryCache: Sized {
-    type Key: Hash + Eq + Copy + Debug;
+    type Key: MyKey;
     type Value: Copy;
 
     /// Returns the cached value (and other information) associated with the
@@ -48,7 +54,7 @@ impl<K, V> Default for DefaultCache<K, V> {
 
 impl<K, V> QueryCache for DefaultCache<K, V>
 where
-    K: Eq + Hash + Copy + Debug,
+    K: MyKey,
     V: Copy,
 {
     type Key = K;
@@ -175,7 +181,7 @@ where
 
 impl<K, V> QueryCache for VecCache<K, V, DepNodeIndex>
 where
-    K: Idx + Eq + Hash + Copy + Debug,
+    K: Idx + MyKey,
     V: Copy,
 {
     type Key = K;

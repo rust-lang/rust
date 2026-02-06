@@ -12,7 +12,7 @@ use rustc_macros::{Decodable, Encodable};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 
-pub use self::caches::{DefIdCache, DefaultCache, QueryCache, SingleCache, VecCache};
+pub use self::caches::{DefIdCache, DefaultCache, MyKey, QueryCache, SingleCache, VecCache};
 pub use self::dispatcher::{HashResult, QueryDispatcher};
 pub use self::job::{
     QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryLatch, QueryMap, break_query_cycles,
