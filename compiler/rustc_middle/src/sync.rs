@@ -2,6 +2,7 @@ use parking_lot::Mutex;
 pub use rustc_data_structures::marker::{DynSend, DynSync};
 pub use rustc_data_structures::sync::*;
 
+use crate::query::QueryInclusion;
 pub use crate::ty::tls;
 
 fn serial_join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
@@ -24,6 +25,7 @@ where
 pub fn par_fns(funcs: &mut [&mut (dyn FnMut() + DynSend)]) {
     parallel_guard(|guard: &ParallelGuard| {
         if is_dyn_thread_safe() {
+            let func_count = funcs.len().try_into().unwrap();
             let funcs = FromDyn::from(funcs);
             rustc_thread_pool::scope(|s| {
                 let Some((first, rest)) = funcs.into_inner().split_at_mut_checked(1) else {
@@ -33,16 +35,18 @@ pub fn par_fns(funcs: &mut [&mut (dyn FnMut() + DynSend)]) {
                 // Reverse the order of the later functions since Rayon executes them in reverse
                 // order when using a single thread. This ensures the execution order matches
                 // that of a single threaded rustc.
-                for f in rest.iter_mut().rev() {
+                for (i, f) in rest.iter_mut().enumerate().rev() {
                     let f = FromDyn::from(f);
-                    s.spawn(|_| {
-                        guard.run(|| (f.into_inner())());
+                    s.spawn(move |_| {
+                        branch_context((i + 1).try_into().unwrap(), func_count, || {
+                            guard.run(|| (f.into_inner())())
+                        });
                     });
                 }
 
                 // Run the first function without spawning to
                 // ensure it executes immediately on this thread.
-                guard.run(|| first[0]());
+                branch_context(0, func_count, || guard.run(|| first[0]()));
             });
         } else {
             for f in funcs {
@@ -62,7 +66,7 @@ where
         let oper_a = FromDyn::from(oper_a);
         let oper_b = FromDyn::from(oper_b);
         let (a, b) = parallel_guard(|guard| {
-            rustc_thread_pool::join(
+            raw_branched_join(
                 move || guard.run(move || FromDyn::from(oper_a.into_inner()())),
                 move || guard.run(move || FromDyn::from(oper_b.into_inner()())),
             )
@@ -78,20 +82,50 @@ fn par_slice<I: DynSend>(
     guard: &ParallelGuard,
     for_each: impl Fn(&mut I) + DynSync + DynSend,
 ) {
+    match items {
+        [] => return,
+        [item] => {
+            guard.run(|| for_each(item));
+            return;
+        }
+        _ => (),
+    }
+
     let for_each = FromDyn::from(for_each);
     let mut items = for_each.derive(items);
     rustc_thread_pool::scope(|s| {
+        let for_each = &for_each;
         let proof = items.derive(());
-        let group_size = std::cmp::max(items.len() / 128, 1);
-        for group in items.chunks_mut(group_size) {
+
+        const MAX_GROUP_COUNT: usize = 128;
+        let group_size = items.len().div_ceil(MAX_GROUP_COUNT);
+        let mut groups = items.chunks_mut(group_size).enumerate();
+        let group_count = groups.len().try_into().unwrap();
+
+        let Some((_, first_group)) = groups.next() else { return };
+
+        // Reverse the order of the later functions since Rayon executes them in reverse
+        // order when using a single thread. This ensures the execution order matches
+        // that of a single threaded rustc.
+        for (i, group) in groups.rev() {
             let group = proof.derive(group);
-            s.spawn(|_| {
-                let mut group = group;
-                for i in group.iter_mut() {
-                    guard.run(|| for_each(i));
-                }
+            s.spawn(move |_| {
+                branch_context(i.try_into().unwrap(), group_count, || {
+                    let mut group = group;
+                    for i in group.iter_mut() {
+                        guard.run(|| for_each(i));
+                    }
+                })
             });
         }
+
+        // Run the first function without spawning to
+        // ensure it executes immediately on this thread.
+        branch_context(0, group_count, || {
+            for i in first_group.iter_mut() {
+                guard.run(|| for_each(i));
+            }
+        });
     });
 }
 
@@ -159,6 +193,33 @@ pub fn par_map<I: DynSend, T: IntoIterator<Item = I>, R: DynSend, C: FromIterato
             items.into_iter().filter_map(|i| i.1).collect()
         } else {
             t.into_iter().filter_map(|i| guard.run(|| map(i))).collect()
+        }
+    })
+}
+
+fn raw_branched_join<A, B, RA: Send, RB: Send>(oper_a: A, oper_b: B) -> (RA, RB)
+where
+    A: FnOnce() -> RA + Send,
+    B: FnOnce() -> RB + Send,
+{
+    rustc_thread_pool::join(|| branch_context(0, 2, oper_a), || branch_context(1, 2, oper_b))
+}
+
+fn branch_context<F, R>(branch_num: u64, branch_space: u64, f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    tls::with_context_opt(|icx| {
+        if let Some(icx) = icx
+            && let Some(QueryInclusion { id, branch }) = icx.query
+        {
+            let icx = tls::ImplicitCtxt {
+                query: Some(QueryInclusion { id, branch: branch.branch(branch_num, branch_space) }),
+                ..*icx
+            };
+            tls::enter_context(&icx, f)
+        } else {
+            f()
         }
     })
 }
