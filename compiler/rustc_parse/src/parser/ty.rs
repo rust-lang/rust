@@ -658,16 +658,8 @@ impl<'a> Parser<'a> {
         };
 
         let ty = if self.eat(exp!(Semi)) {
-            let mut length = if self.eat_keyword(exp!(Const)) {
-                // While we could just disambiguate `Direct` from `AnonConst` by
-                // treating all const block exprs as `AnonConst`, that would
-                // complicate the DefCollector and likely all other visitors.
-                // So we strip the const blockiness and just store it as a block
-                // in the AST with the extra disambiguator on the AnonConst
-                self.parse_mgca_const_block(false)?
-            } else {
-                self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?
-            };
+            let mut length =
+                self.parse_expr_anon_const(|this, expr| this.mgca_direct_lit_hack(expr))?;
 
             if let Err(e) = self.expect(exp!(CloseBracket)) {
                 // Try to recover from `X<Y, ...>` when `X::<Y, ...>` works
