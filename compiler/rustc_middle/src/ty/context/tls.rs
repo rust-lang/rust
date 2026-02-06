@@ -4,7 +4,7 @@ use rustc_data_structures::sync;
 
 use super::{GlobalCtxt, TyCtxt};
 use crate::dep_graph::TaskDepsRef;
-use crate::query::QueryJobId;
+use crate::query::QueryInclusion;
 
 /// This is the implicit state of rustc. It contains the current
 /// `TyCtxt` and query. It is updated when creating a local interner or
@@ -16,8 +16,9 @@ pub struct ImplicitCtxt<'a, 'tcx> {
     /// The current `TyCtxt`.
     pub tcx: TyCtxt<'tcx>,
 
-    /// The current query job, if any.
-    pub query: Option<QueryJobId>,
+    /// The current query job, if any. This is updated by `JobOwner::start` in
+    /// `ty::query::plumbing` when executing a query.
+    pub query: Option<QueryInclusion>,
 
     /// Used to prevent queries from calling too deeply.
     pub query_depth: usize,

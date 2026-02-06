@@ -4,6 +4,7 @@ use std::num::NonZero;
 use std::sync::Arc;
 
 use parking_lot::{Condvar, Mutex};
+use rustc_data_structures::tree_node_index::TreeNodeIndex;
 use rustc_span::Span;
 
 use crate::query::plumbing::CycleError;
@@ -37,7 +38,7 @@ pub struct QueryJob<'tcx> {
     pub span: Span,
 
     /// The parent query job which created this job and is implicitly waiting on it.
-    pub parent: Option<QueryJobId>,
+    pub parent: Option<QueryInclusion>,
 
     /// The latch that is used to wait on this job.
     pub latch: Option<QueryLatch<'tcx>>,
@@ -46,7 +47,7 @@ pub struct QueryJob<'tcx> {
 impl<'tcx> QueryJob<'tcx> {
     /// Creates a new query job.
     #[inline]
-    pub fn new(id: QueryJobId, span: Span, parent: Option<QueryJobId>) -> Self {
+    pub fn new(id: QueryJobId, span: Span, parent: Option<QueryInclusion>) -> Self {
         QueryJob { id, span, parent, latch: None }
     }
 
@@ -69,9 +70,15 @@ impl<'tcx> QueryJob<'tcx> {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct QueryInclusion {
+    pub id: QueryJobId,
+    pub branch: TreeNodeIndex,
+}
+
 #[derive(Debug)]
 pub struct QueryWaiter<'tcx> {
-    pub query: Option<QueryJobId>,
+    pub query: Option<QueryInclusion>,
     pub condvar: Condvar,
     pub span: Span,
     pub cycle: Mutex<Option<CycleError<QueryStackDeferred<'tcx>>>>,
@@ -99,7 +106,7 @@ impl<'tcx> QueryLatch<'tcx> {
     pub fn wait_on(
         &self,
         tcx: TyCtxt<'tcx>,
-        query: Option<QueryJobId>,
+        query: Option<QueryInclusion>,
         span: Span,
     ) -> Result<(), CycleError<QueryStackDeferred<'tcx>>> {
         let waiter =

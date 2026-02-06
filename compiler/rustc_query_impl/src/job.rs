@@ -5,7 +5,8 @@ use rustc_data_structures::indexmap::{self, IndexMap};
 use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
 use rustc_middle::query::{
-    CycleError, QueryInfo, QueryJob, QueryJobId, QueryStackDeferred, QueryStackFrame,
+    CycleError, QueryInfo, QueryJob, QueryJobId, QueryStackDeferred,
+    QueryStackFrame,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -62,11 +63,11 @@ pub(crate) fn find_cycle_in_stack<'tcx>(
             cycle[0].span = span;
             // Find out why the cycle itself was used
             let usage =
-                info.job.parent.map(|parent| (info.job.span, job_map.frame_of(parent).clone()));
+                info.job.parent.map(|parent| (info.job.span, job_map.frame_of(parent.id).clone()));
             return Some(CycleError { usage, cycle });
         }
 
-        current_job = info.job.parent;
+        current_job = info.job.parent.map(|i| i.id);
     }
 
     None
@@ -81,16 +82,16 @@ pub(crate) fn find_dep_kind_root<'tcx>(
     let mut depth = 1;
     let info = &job_map.map[&id];
     let dep_kind = info.frame.dep_kind;
-    let mut current_id = info.job.parent;
+    let mut current = info.job.parent;
     let mut last_layout = (info.clone(), depth);
 
-    while let Some(id) = current_id {
-        let info = &job_map.map[&id];
+    while let Some(inclusion) = current {
+        let info = &job_map.map[&inclusion.id];
         if info.frame.dep_kind == dep_kind {
             depth += 1;
             last_layout = (info.clone(), depth);
         }
-        current_id = info.job.parent;
+        current = info.job.parent;
     }
     last_layout
 }
@@ -134,7 +135,7 @@ fn find_cycle_in_graph<'tcx>(
             continue;
         };
         // We are safe to only track a single subquery due to the statement above
-        subqueries.entry(parent).or_insert(Subquery {
+        subqueries.entry(parent.id).or_insert(Subquery {
             id: query.job.id,
             span: query.job.span,
             waiter_idx: usize::MAX,
@@ -151,7 +152,7 @@ fn find_cycle_in_graph<'tcx>(
         for (waiter_idx, waiter) in lock.waiters.iter().enumerate() {
             let waited_on_query = waiter.query.expect("cannot wait on a root query");
             // We are safe to only track a single subquery due to the statement above
-            subqueries.entry(waited_on_query).or_insert(Subquery {
+            subqueries.entry(waited_on_query.id).or_insert(Subquery {
                 id: query.job.id,
                 span: waiter.span,
                 waiter_idx,
@@ -283,7 +284,7 @@ pub fn print_query_stack<'tcx>(
             );
         }
 
-        current_query = query_info.job.parent;
+        current_query = query_info.job.parent.map(|i| i.id);
         count_total += 1;
     }
 
