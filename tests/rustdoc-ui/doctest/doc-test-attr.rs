@@ -1,4 +1,3 @@
-#![deny(invalid_doc_attributes)]
 #![crate_type = "lib"]
 
 #![doc(test)]

@@ -1,18 +1,14 @@
 error: this attribute can only be applied at the crate level
-  --> $DIR/invalid-crate-level-lint.rs:4:12
+  --> $DIR/invalid-crate-level-lint.rs:3:12
    |
 LL | #[doc(test(no_crate_inject))]
    |            ^^^^^^^^^^^^^^^
    |
    = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
-note: the lint level is defined here
-  --> $DIR/invalid-crate-level-lint.rs:1:9
-   |
-LL | #![deny(invalid_doc_attributes)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(invalid_doc_attributes)]` on by default
 
 error: this attribute can only be applied at the crate level
-  --> $DIR/invalid-crate-level-lint.rs:8:17
+  --> $DIR/invalid-crate-level-lint.rs:7:17
    |
 LL |     #![doc(test(no_crate_inject))]
    |                 ^^^^^^^^^^^^^^^
@@ -20,7 +16,7 @@ LL |     #![doc(test(no_crate_inject))]
    = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
 
 error: this attribute can only be applied at the crate level
-  --> $DIR/invalid-crate-level-lint.rs:11:16
+  --> $DIR/invalid-crate-level-lint.rs:10:16
    |
 LL |     #[doc(test(no_crate_inject))]
    |                ^^^^^^^^^^^^^^^

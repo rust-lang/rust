@@ -1,4 +1,3 @@
-#![deny(invalid_doc_attributes)]
 #![crate_type = "lib"]
 
 #[repr(uwu)] //~ERROR: unrecognized representation hint
