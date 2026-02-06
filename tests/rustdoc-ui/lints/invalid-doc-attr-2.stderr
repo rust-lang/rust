@@ -1,4 +1,4 @@
-error: expected this to be of the form `... = "..."`
+error: malformed `doc` attribute input
   --> $DIR/invalid-doc-attr-2.rs:3:8
    |
 LL | #![doc("other attribute")]

@@ -1,4 +1,4 @@
-error: expected this to be of the form `... = "..."`
+error: malformed `doc` attribute input
   --> $DIR/doc-attr.rs:4:7
    |
 LL | #[doc(123)]
@@ -11,7 +11,7 @@ note: the lint level is defined here
 LL | #![deny(invalid_doc_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
-error: expected this to be of the form `... = "..."`
+error: malformed `doc` attribute input
   --> $DIR/doc-attr.rs:7:7
    |
 LL | #[doc("hello", "bar")]
@@ -19,7 +19,7 @@ LL | #[doc("hello", "bar")]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: expected this to be of the form `... = "..."`
+error: malformed `doc` attribute input
   --> $DIR/doc-attr.rs:7:16
    |
 LL | #[doc("hello", "bar")]

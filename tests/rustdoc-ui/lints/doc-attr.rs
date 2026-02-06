@@ -2,11 +2,11 @@
 #![deny(invalid_doc_attributes)]
 
 #[doc(123)]
-//~^ ERROR
+//~^ ERROR malformed `doc` attribute
 //~| WARN
 #[doc("hello", "bar")]
-//~^ ERROR
-//~| ERROR
+//~^ ERROR malformed `doc` attribute
+//~| ERROR malformed `doc` attribute
 //~| WARN
 //~| WARN
 fn bar() {}

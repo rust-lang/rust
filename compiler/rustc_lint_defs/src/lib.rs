@@ -831,8 +831,6 @@ pub enum AttributeLintKind {
         suggested: Option<Symbol>,
     },
     MalformedDoc,
-    ExpectedNoArgs,
-    ExpectedNameValue,
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;

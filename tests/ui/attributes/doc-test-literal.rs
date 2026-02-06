@@ -1,7 +1,4 @@
-#![deny(invalid_doc_attributes)]
-
 #![doc(test(""))]
-//~^ ERROR
-//~| WARN
+//~^ ERROR malformed `doc` attribute input
 
 fn main() {}
