@@ -1,7 +1,7 @@
 use rustc_hir::def_id::DefId;
 use rustc_hir::{ImplItemImplKind, ImplItemKind, LangItem, PatKind};
 use rustc_infer::infer::InferCtxt;
-use rustc_middle::ty::{self, AliasTy, AliasTyKind, ParamEnv, Ty, TyCtxt, TypingEnv, TypingMode};
+use rustc_middle::ty::{self, AliasTy, AliasTyKind, Ty, TyCtxt, TypingEnv};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{DUMMY_SP, kw, sym};
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
@@ -52,9 +52,9 @@ impl<'tcx> LateLintPass<'tcx> for InherentMethodOnReceiver {
         }
         let self_ty: ty::EarlyBinder<'tcx, Ty<'tcx>> = cx.tcx.type_of(impl_id);
         let self_ty = self_ty.instantiate_identity();
-        let infcx: InferCtxt<'tcx> = cx.tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+        let infcx: InferCtxt<'tcx> = cx.tcx.infer_ctxt().build(cx.typing_mode());
         if let Some(CheckResult { impl_plus_target }) =
-            check(cx.tcx, &infcx, cx.typing_env(), cx.param_env, self_ty)
+            check(cx.tcx, &infcx, cx.typing_env(), self_ty)
         {
             cx.span_lint(INHERENT_METHOD_ON_RECEIVER, first_param.span, |lint| {
                 for (impl_id, target_id) in impl_plus_target {
@@ -78,13 +78,15 @@ fn check<'tcx>(
     tcx: TyCtxt<'tcx>,
     infcx: &InferCtxt<'tcx>,
     typing_env: TypingEnv<'tcx>,
-    param_env: ParamEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<CheckResult> {
     let deref_trait = tcx.require_lang_item(LangItem::Deref, DUMMY_SP);
     let deref_target = tcx.require_lang_item(LangItem::DerefTarget, DUMMY_SP);
 
-    if infcx.type_implements_trait(deref_trait, [ty], param_env).must_apply_modulo_regions() {
+    if infcx
+        .type_implements_trait(deref_trait, [ty], typing_env.param_env)
+        .must_apply_modulo_regions()
+    {
         let target_ty = tcx.normalize_erasing_regions(
             typing_env,
             Ty::new_alias(tcx, AliasTyKind::Projection, AliasTy::new(tcx, deref_target, [ty])),
@@ -93,7 +95,7 @@ fn check<'tcx>(
             let (impl_id, target_id) = find_impl_and_target_id(tcx, deref_trait, ty);
             return Some(CheckResult { impl_plus_target: vec![(impl_id, target_id)] });
         }
-        if let Some(mut result) = check(tcx, infcx, typing_env, param_env, target_ty) {
+        if let Some(mut result) = check(tcx, infcx, typing_env, target_ty) {
             let (impl_id, target_id) = find_impl_and_target_id(tcx, deref_trait, ty);
             result.impl_plus_target.push((impl_id, target_id));
             return Some(result);
@@ -102,7 +104,9 @@ fn check<'tcx>(
     if tcx.features().arbitrary_self_types() {
         let receiver_trait = tcx.require_lang_item(LangItem::Receiver, DUMMY_SP);
         let receiver_target = tcx.require_lang_item(LangItem::ReceiverTarget, DUMMY_SP);
-        if infcx.type_implements_trait(receiver_trait, [ty], param_env).must_apply_modulo_regions()
+        if infcx
+            .type_implements_trait(receiver_trait, [ty], typing_env.param_env)
+            .must_apply_modulo_regions()
         {
             let target_ty = tcx.normalize_erasing_regions(
                 typing_env,
@@ -116,7 +120,7 @@ fn check<'tcx>(
                 let (impl_id, target_id) = find_impl_and_target_id(tcx, receiver_trait, ty);
                 return Some(CheckResult { impl_plus_target: vec![(impl_id, target_id)] });
             }
-            if let Some(mut result) = check(tcx, infcx, typing_env, param_env, target_ty) {
+            if let Some(mut result) = check(tcx, infcx, typing_env, target_ty) {
                 let (impl_id, target_id) = find_impl_and_target_id(tcx, receiver_trait, ty);
                 result.impl_plus_target.push((impl_id, target_id));
                 return Some(result);
