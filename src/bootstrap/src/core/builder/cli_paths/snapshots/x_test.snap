@@ -148,7 +148,8 @@ expression: test
     - Set({test::compiler/rustc_windows_rc})
 [Test] test::CrateRustdoc
     targets: [x86_64-unknown-linux-gnu]
-    - Set({test::src/librustdoc, test::src/tools/rustdoc})
+    - Set({test::src/librustdoc})
+    - Set({test::src/tools/rustdoc})
 [Test] test::CrateRustdocJsonTypes
     targets: [x86_64-unknown-linux-gnu]
     - Set({test::src/rustdoc-json-types})
