@@ -4,10 +4,9 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::PolyTraitRef;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
-use rustc_hir::{PolyTraitRef, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -603,10 +602,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         });
 
                         if let ty::AssocTag::Const = assoc_tag
-                            && !find_attr!(
-                                self.tcx().get_all_attrs(assoc_item.def_id),
-                                AttributeKind::TypeConst(_)
-                            )
+                            && !self.tcx().is_type_const(assoc_item.def_id)
                         {
                             if tcx.features().min_generic_const_args() {
                                 let mut err = self.dcx().struct_span_err(
