@@ -3,7 +3,7 @@ use core::ops::ControlFlow;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::Diag;
+use rustc_errors::{Diag, inline_fluent};
 use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
@@ -82,10 +82,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 err.span_label(self.tcx.def_span(self.tcx.local_parent(def_id)), "");
             }
             if let hir::def::DefKind::Const | hir::def::DefKind::AssocConst = def_kind {
-                err.span_label(
-                    self.tcx.def_span(uv.def),
-                    crate::fluent_generated::mir_build_const_defined_here,
-                );
+                err.span_label(self.tcx.def_span(uv.def), inline_fluent!("constant defined here"));
             }
         }
         Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()), extra: None })
