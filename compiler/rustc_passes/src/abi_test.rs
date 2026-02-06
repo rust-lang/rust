@@ -1,11 +1,12 @@
-use rustc_hir::Attribute;
+use rustc_hir::attrs::{AttributeKind, RustcAbiAttrKind};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::find_attr;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{FnAbiError, LayoutError};
 use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TyCtxt};
+use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_span::sym;
 use rustc_target::callconv::FnAbi;
 
 use super::layout_test::ensure_wf;
@@ -17,17 +18,19 @@ pub fn test_abi(tcx: TyCtxt<'_>) {
         return;
     }
     for id in tcx.hir_crate_items(()).definitions() {
-        for attr in tcx.get_attrs(id, sym::rustc_abi) {
-            match tcx.def_kind(id) {
-                DefKind::Fn | DefKind::AssocFn => {
-                    dump_abi_of_fn_item(tcx, id, attr);
-                }
-                DefKind::TyAlias => {
-                    dump_abi_of_fn_type(tcx, id, attr);
-                }
-                _ => {
-                    tcx.dcx().emit_err(AbiInvalidAttribute { span: tcx.def_span(id) });
-                }
+        let Some((attr_span, attr_kind)) = find_attr!(tcx.get_all_attrs(id), AttributeKind::RustcAbi{ attr_span, kind } => (*attr_span, *kind))
+        else {
+            continue;
+        };
+        match tcx.def_kind(id) {
+            DefKind::Fn | DefKind::AssocFn => {
+                dump_abi_of_fn_item(tcx, id, attr_span, attr_kind);
+            }
+            DefKind::TyAlias => {
+                dump_abi_of_fn_type(tcx, id, attr_span, attr_kind);
+            }
+            _ => {
+                tcx.dcx().emit_err(AbiInvalidAttribute { span: tcx.def_span(id) });
             }
         }
     }
@@ -49,7 +52,12 @@ fn unwrap_fn_abi<'tcx>(
     }
 }
 
-fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
+fn dump_abi_of_fn_item(
+    tcx: TyCtxt<'_>,
+    item_def_id: LocalDefId,
+    attr_span: Span,
+    attr_kind: RustcAbiAttrKind,
+) {
     let typing_env = ty::TypingEnv::post_analysis(tcx, item_def_id);
     let args = GenericArgs::identity_for_item(tcx, item_def_id);
     let instance = match Instance::try_resolve(tcx, typing_env, item_def_id.into(), args) {
@@ -75,22 +83,18 @@ fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
 
     // Check out the `#[rustc_abi(..)]` attribute to tell what to dump.
     // The `..` are the names of fields to dump.
-    let meta_items = attr.meta_item_list().unwrap_or_default();
-    for meta_item in meta_items {
-        match meta_item.name() {
-            Some(sym::debug) => {
-                let fn_name = tcx.item_name(item_def_id);
-                tcx.dcx().emit_err(AbiOf {
-                    span: tcx.def_span(item_def_id),
-                    fn_name,
-                    // FIXME: using the `Debug` impl here isn't ideal.
-                    fn_abi: format!("{:#?}", abi),
-                });
-            }
-
-            _ => {
-                tcx.dcx().emit_err(UnrecognizedArgument { span: meta_item.span() });
-            }
+    match attr_kind {
+        RustcAbiAttrKind::Debug => {
+            let fn_name = tcx.item_name(item_def_id);
+            tcx.dcx().emit_err(AbiOf {
+                span: tcx.def_span(item_def_id),
+                fn_name,
+                // FIXME: using the `Debug` impl here isn't ideal.
+                fn_abi: format!("{:#?}", abi),
+            });
+        }
+        _ => {
+            tcx.dcx().emit_err(UnrecognizedArgument { span: attr_span });
         }
     }
 }
@@ -109,24 +113,29 @@ fn test_abi_eq<'tcx>(abi1: &'tcx FnAbi<'tcx, Ty<'tcx>>, abi2: &'tcx FnAbi<'tcx, 
         && abi1.args.iter().zip(abi2.args.iter()).all(|(arg1, arg2)| arg1.eq_abi(arg2))
 }
 
-fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
+fn dump_abi_of_fn_type(
+    tcx: TyCtxt<'_>,
+    item_def_id: LocalDefId,
+    attr_span: Span,
+    attr_kind: RustcAbiAttrKind,
+) {
     let typing_env = ty::TypingEnv::post_analysis(tcx, item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity();
     let span = tcx.def_span(item_def_id);
     if !ensure_wf(tcx, typing_env, ty, item_def_id, span) {
         return;
     }
-    let meta_items = attr.meta_item_list().unwrap_or_default();
-    for meta_item in meta_items {
-        match meta_item.name() {
-            Some(sym::debug) => {
-                let ty::FnPtr(sig_tys, hdr) = ty.kind() else {
-                    span_bug!(
-                        meta_item.span(),
-                        "`#[rustc_abi(debug)]` on a type alias requires function pointer type"
-                    );
-                };
-                let abi = unwrap_fn_abi(
+
+    match attr_kind {
+        RustcAbiAttrKind::Debug => {
+            let ty::FnPtr(sig_tys, hdr) = ty.kind() else {
+                span_bug!(
+                    attr_span,
+                    "`#[rustc_abi(debug)]` on a type alias requires function pointer type"
+                );
+            };
+            let abi =
+                unwrap_fn_abi(
                     tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((
                         sig_tys.with(*hdr),
                         /* extra_args */ ty::List::empty(),
@@ -135,61 +144,57 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                     item_def_id,
                 );
 
-                let fn_name = tcx.item_name(item_def_id);
-                tcx.dcx().emit_err(AbiOf { span, fn_name, fn_abi: format!("{:#?}", abi) });
-            }
-            Some(sym::assert_eq) => {
-                let ty::Tuple(fields) = ty.kind() else {
-                    span_bug!(
-                        meta_item.span(),
-                        "`#[rustc_abi(assert_eq)]` on a type alias requires pair type"
-                    );
-                };
-                let [field1, field2] = ***fields else {
-                    span_bug!(
-                        meta_item.span(),
-                        "`#[rustc_abi(assert_eq)]` on a type alias requires pair type"
-                    );
-                };
-                let ty::FnPtr(sig_tys1, hdr1) = field1.kind() else {
-                    span_bug!(
-                        meta_item.span(),
-                        "`#[rustc_abi(assert_eq)]` on a type alias requires pair of function pointer types"
-                    );
-                };
-                let abi1 = unwrap_fn_abi(
-                    tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((
-                        sig_tys1.with(*hdr1),
-                        /* extra_args */ ty::List::empty(),
-                    ))),
-                    tcx,
-                    item_def_id,
+            let fn_name = tcx.item_name(item_def_id);
+            tcx.dcx().emit_err(AbiOf { span, fn_name, fn_abi: format!("{:#?}", abi) });
+        }
+        RustcAbiAttrKind::AssertEq => {
+            let ty::Tuple(fields) = ty.kind() else {
+                span_bug!(
+                    attr_span,
+                    "`#[rustc_abi(assert_eq)]` on a type alias requires pair type"
                 );
-                let ty::FnPtr(sig_tys2, hdr2) = field2.kind() else {
-                    span_bug!(
-                        meta_item.span(),
-                        "`#[rustc_abi(assert_eq)]` on a type alias requires pair of function pointer types"
-                    );
-                };
-                let abi2 = unwrap_fn_abi(
-                    tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((
-                        sig_tys2.with(*hdr2),
-                        /* extra_args */ ty::List::empty(),
-                    ))),
-                    tcx,
-                    item_def_id,
+            };
+            let [field1, field2] = ***fields else {
+                span_bug!(
+                    attr_span,
+                    "`#[rustc_abi(assert_eq)]` on a type alias requires pair type"
                 );
+            };
+            let ty::FnPtr(sig_tys1, hdr1) = field1.kind() else {
+                span_bug!(
+                    attr_span,
+                    "`#[rustc_abi(assert_eq)]` on a type alias requires pair of function pointer types"
+                );
+            };
+            let abi1 = unwrap_fn_abi(
+                tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((
+                    sig_tys1.with(*hdr1),
+                    /* extra_args */ ty::List::empty(),
+                ))),
+                tcx,
+                item_def_id,
+            );
+            let ty::FnPtr(sig_tys2, hdr2) = field2.kind() else {
+                span_bug!(
+                    attr_span,
+                    "`#[rustc_abi(assert_eq)]` on a type alias requires pair of function pointer types"
+                );
+            };
+            let abi2 = unwrap_fn_abi(
+                tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((
+                    sig_tys2.with(*hdr2),
+                    /* extra_args */ ty::List::empty(),
+                ))),
+                tcx,
+                item_def_id,
+            );
 
-                if !test_abi_eq(abi1, abi2) {
-                    tcx.dcx().emit_err(AbiNe {
-                        span,
-                        left: format!("{:#?}", abi1),
-                        right: format!("{:#?}", abi2),
-                    });
-                }
-            }
-            _ => {
-                tcx.dcx().emit_err(UnrecognizedArgument { span: meta_item.span() });
+            if !test_abi_eq(abi1, abi2) {
+                tcx.dcx().emit_err(AbiNe {
+                    span,
+                    left: format!("{:#?}", abi1),
+                    right: format!("{:#?}", abi2),
+                });
             }
         }
     }

@@ -287,6 +287,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ReexportTestHarnessMain(..)
                     // handled below this loop and elsewhere
                     | AttributeKind::Repr { .. }
+                    | AttributeKind::RustcAbi { .. }
                     | AttributeKind::RustcAllocator
                     | AttributeKind::RustcAllocatorZeroed
                     | AttributeKind::RustcAllocatorZeroedVariant { .. }
@@ -393,7 +394,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_conversion_suggestion
                             | sym::rustc_deprecated_safe_2024
                             | sym::rustc_test_marker
-                            | sym::rustc_abi
                             | sym::rustc_layout
                             | sym::rustc_proc_macro_decls
                             | sym::rustc_never_type_options
