@@ -39,12 +39,12 @@ type TestFnPtr = fn(bool) -> u8; //~ ERROR: fn_abi
 #[rustc_abi(debug)]
 fn test_generic<T>(_x: *const T) {} //~ ERROR: fn_abi
 
-#[rustc_abi(debug)]
-const C: () = (); //~ ERROR: can only be applied to
+#[rustc_abi(debug)] //~ ERROR: `#[rustc_abi]` attribute cannot be used on constants
+const C: () = (); //~ ERROR: `#[rustc_abi]` can only be applied to
 
 impl S {
-    #[rustc_abi(debug)]
-    const C: () = (); //~ ERROR: can only be applied to
+    #[rustc_abi(debug)] //~ ERROR: `#[rustc_abi]` attribute cannot be used on assoc
+    const C: () = (); //~ ERROR: `#[rustc_abi]` can only be applied to
 }
 
 impl S {
@@ -71,5 +71,5 @@ type TestAbiNeSign = (fn(i32), fn(u32)); //~ ERROR: ABIs are not compatible
 #[rustc_abi(assert_eq)]
 type TestAbiEqNonsense = (fn((str, str)), fn((str, str))); //~ ERROR: cannot be known at compilation time
 
-#[rustc_abi("assert_eq")] //~ ERROR unrecognized argument
+#[rustc_abi("assert_eq")] //~ ERROR malformed `rustc_abi` attribute input
 type Bad = u32;

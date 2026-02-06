@@ -167,6 +167,14 @@ pub enum CoverageAttrKind {
     Off,
 }
 
+/// Successfully-parsed value of a `#[rustc_abi(..)]` attribute.
+#[derive(Copy, Debug, Eq, PartialEq, Encodable, Decodable, Clone)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum RustcAbiAttrKind {
+    Debug,
+    AssertEq,
+}
+
 impl Deprecation {
     /// Whether an item marked with #[deprecated(since = "X")] is currently
     /// deprecated (i.e., whether X is not greater than the current rustc
@@ -1014,6 +1022,9 @@ pub enum AttributeKind {
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr { reprs: ThinVec<(ReprAttr, Span)>, first_span: Span },
+
+    /// Represents `#[rustc_abi(..)]`
+    RustcAbi { attr_span: Span, kind: RustcAbiAttrKind },
 
     /// Represents `#[rustc_allocator]`
     RustcAllocator,

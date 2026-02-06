@@ -1,3 +1,36 @@
+error: `#[rustc_abi]` attribute cannot be used on constants
+  --> $DIR/debug.rs:42:1
+   |
+LL | #[rustc_abi(debug)]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_abi]` can be applied to functions and type aliases
+
+error: `#[rustc_abi]` attribute cannot be used on associated consts
+  --> $DIR/debug.rs:46:5
+   |
+LL |     #[rustc_abi(debug)]
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_abi]` can be applied to functions and type aliases
+
+error[E0539]: malformed `rustc_abi` attribute input
+  --> $DIR/debug.rs:74:1
+   |
+LL | #[rustc_abi("assert_eq")]
+   | ^^^^^^^^^^^-------------^
+   |            |
+   |            valid arguments are `assert_eq` or `debug`
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[rustc_abi("assert_eq")]
+LL + #[rustc_abi(assert_eq)]
+   |
+LL - #[rustc_abi("assert_eq")]
+LL + #[rustc_abi(debug)]
+   |
+
 error: fn_abi_of(test) = FnAbi {
            args: [
                ArgAbi {
@@ -884,12 +917,6 @@ LL | type TestAbiEqNonsense = (fn((str, str)), fn((str, str)));
    = help: the trait `Sized` is not implemented for `str`
    = note: only the last element of a tuple may have a dynamically sized type
 
-error: unrecognized argument
-  --> $DIR/debug.rs:74:13
-   |
-LL | #[rustc_abi("assert_eq")]
-   |             ^^^^^^^^^^^
-
 error: `#[rustc_abi]` can only be applied to function items, type aliases, and associated functions
   --> $DIR/debug.rs:47:5
    |
@@ -986,6 +1013,7 @@ error: fn_abi_of(assoc_test) = FnAbi {
 LL |     fn assoc_test(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
+error: aborting due to 14 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0277, E0539.
+For more information about an error, try `rustc --explain E0277`.
