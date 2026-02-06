@@ -18,8 +18,6 @@ pub mod thir;
 
 use rustc_middle::util::Providers;
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
-
 pub fn provide(providers: &mut Providers) {
     providers.queries.check_match = thir::pattern::check_match;
     providers.queries.lit_to_const = thir::constant::lit_to_const;
