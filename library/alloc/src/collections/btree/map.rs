@@ -1243,12 +1243,12 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Moves all elements from `other` into `self`, leaving `other` empty.
     ///
     /// If a key from `other` is already present in `self`, then the `conflict`
-    /// closure is used to return a value to `self`. For clarity, the `conflict`
+    /// closure is used to return a value to `self`. The `conflict`
     /// closure takes in a borrow of `self`'s key, `self`'s value, and `other`'s value
     /// in that order.
     ///
     /// An example of why one might use this method over [`append`]
-    /// is to merge `self`'s value with `other`'s value when their keys conflict.
+    /// is to combine `self`'s value with `other`'s value when their keys conflict.
     ///
     /// Similar to [`insert`], though, the key is not overwritten,
     /// which matters for types that can be `==` without being identical.
@@ -1278,8 +1278,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///     format!("{a_val}{b_val}")
     /// });
     ///
-    /// assert_eq!(a.len(), 5);
-    /// assert_eq!(b.len(), 0);
+    /// assert_eq!(a.len(), 5); // all of b's keys in a
     ///
     /// assert_eq!(a[&1], "a");
     /// assert_eq!(a[&2], "b");

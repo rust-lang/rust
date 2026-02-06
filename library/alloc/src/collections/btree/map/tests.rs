@@ -1,9 +1,9 @@
 use core::assert_matches;
-use std::iter;
 use std::ops::Bound::{Excluded, Included, Unbounded};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::SeqCst;
+use std::{cmp, iter};
 
 use super::*;
 use crate::boxed::Box;
@@ -2128,6 +2128,76 @@ create_append_test!(test_append_239, 239);
 #[cfg(not(miri))] // Miri is too slow
 create_append_test!(test_append_1700, 1700);
 
+macro_rules! create_merge_test {
+    ($name:ident, $len:expr) => {
+        #[test]
+        fn $name() {
+            let mut a = BTreeMap::new();
+            for i in 0..8 {
+                a.insert(i, i);
+            }
+
+            let mut b = BTreeMap::new();
+            for i in 5..$len {
+                b.insert(i, 2 * i);
+            }
+
+            a.merge(b, |_, a_val, b_val| a_val + b_val);
+
+            assert_eq!(a.len(), cmp::max($len, 8));
+
+            for i in 0..cmp::max($len, 8) {
+                if i < 5 {
+                    assert_eq!(a[&i], i);
+                } else {
+                    if i < cmp::min($len, 8) {
+                        assert_eq!(a[&i], i + 2 * i);
+                    } else if i >= $len {
+                        assert_eq!(a[&i], i);
+                    } else {
+                        assert_eq!(a[&i], 2 * i);
+                    }
+                }
+            }
+
+            a.check();
+            assert_eq!(
+                a.remove(&($len - 1)),
+                if $len >= 5 && $len < 8 {
+                    Some(($len - 1) + 2 * ($len - 1))
+                } else {
+                    Some(2 * ($len - 1))
+                }
+            );
+            assert_eq!(a.insert($len - 1, 20), None);
+            a.check();
+        }
+    };
+}
+
+// These are mostly for testing the algorithm that "fixes" the right edge after insertion.
+// Single node, merge conflicting key values.
+create_merge_test!(test_merge_7, 7);
+// Single node.
+create_merge_test!(test_merge_9, 9);
+// Two leafs that don't need fixing.
+create_merge_test!(test_merge_17, 17);
+// Two leafs where the second one ends up underfull and needs stealing at the end.
+create_merge_test!(test_merge_14, 14);
+// Two leafs where the second one ends up empty because the insertion finished at the root.
+create_merge_test!(test_merge_12, 12);
+// Three levels; insertion finished at the root.
+create_merge_test!(test_merge_144, 144);
+// Three levels; insertion finished at leaf while there is an empty node on the second level.
+create_merge_test!(test_merge_145, 145);
+// Tests for several randomly chosen sizes.
+create_merge_test!(test_merge_170, 170);
+create_merge_test!(test_merge_181, 181);
+#[cfg(not(miri))] // Miri is too slow
+create_merge_test!(test_merge_239, 239);
+#[cfg(not(miri))] // Miri is too slow
+create_merge_test!(test_merge_1700, 1700);
+
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_append_drop_leak() {
@@ -2612,6 +2682,22 @@ fn test_id_based_append() {
     rhs.insert(IdBased { id: 0, name: "rhs_k".to_string() }, "rhs_v".to_string());
 
     lhs.append(&mut rhs);
+
+    assert_eq!(lhs.pop_first().unwrap().0.name, "lhs_k".to_string());
+}
+
+#[test]
+fn test_id_based_merge() {
+    let mut lhs = BTreeMap::new();
+    let mut rhs = BTreeMap::new();
+
+    lhs.insert(IdBased { id: 0, name: "lhs_k".to_string() }, "1".to_string());
+    rhs.insert(IdBased { id: 0, name: "rhs_k".to_string() }, "2".to_string());
+
+    lhs.merge(rhs, |_, mut lhs_val, rhs_val| {
+        lhs_val.push_str(&rhs_val);
+        lhs_val
+    });
 
     assert_eq!(lhs.pop_first().unwrap().0.name, "lhs_k".to_string());
 }

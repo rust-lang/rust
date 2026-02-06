@@ -1,5 +1,6 @@
 #![feature(allocator_api)]
 #![feature(binary_heap_pop_if)]
+#![feature(btree_merge)]
 #![feature(const_heap)]
 #![feature(deque_extend_front)]
 #![feature(iter_array_chunks)]
