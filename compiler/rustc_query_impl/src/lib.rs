@@ -208,17 +208,15 @@ impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> QueryDispatcher<'tcx>
 ///
 /// There is one macro-generated implementation of this trait for each query,
 /// on the type `rustc_query_impl::query_impl::$name::QueryType`.
-trait QueryDispatcherUnerased<'tcx> {
+trait QueryDispatcherUnerased<'tcx, C: QueryCache, const FLAGS: QueryFlags> {
     type UnerasedValue;
-    type Dispatcher: QueryDispatcher<'tcx, Qcx = QueryCtxt<'tcx>>;
+    //type Dispatcher: QueryDispatcher<'tcx, Qcx = QueryCtxt<'tcx>>;
 
     const NAME: &'static &'static str;
 
-    fn query_dispatcher(tcx: TyCtxt<'tcx>) -> Self::Dispatcher;
+    fn query_dispatcher(tcx: TyCtxt<'tcx>) -> SemiDynamicQueryDispatcher<'tcx, C, FLAGS>;
 
-    fn restore_val(
-        value: <Self::Dispatcher as QueryDispatcher<'tcx>>::Value,
-    ) -> Self::UnerasedValue;
+    fn restore_val(value: C::Value) -> Self::UnerasedValue;
 }
 
 pub fn query_system<'tcx>(
