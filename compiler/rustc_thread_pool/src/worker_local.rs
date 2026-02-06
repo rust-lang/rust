@@ -35,6 +35,7 @@ impl<T> WorkerLocal<T> {
 
     /// Returns the worker-local value for each thread
     #[inline]
+    #[cfg_attr(not(bootstrap), expect(inherent_method_on_receiver, reason = "compiler internals"))]
     pub fn into_inner(self) -> Vec<T> {
         self.locals.into_iter().map(|c| c.0).collect()
     }

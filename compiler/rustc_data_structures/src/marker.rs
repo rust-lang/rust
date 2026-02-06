@@ -197,12 +197,14 @@ impl<T> FromDyn<T> {
     }
 
     #[inline(always)]
+    #[cfg_attr(not(bootstrap), expect(inherent_method_on_receiver, reason = "compiler internals"))]
     pub fn derive<O>(&self, val: O) -> FromDyn<O> {
         // We already did the check for `sync::is_dyn_thread_safe()` when creating `Self`
         FromDyn(val)
     }
 
     #[inline(always)]
+    #[cfg_attr(not(bootstrap), expect(inherent_method_on_receiver, reason = "compiler internals"))]
     pub fn into_inner(self) -> T {
         self.0
     }

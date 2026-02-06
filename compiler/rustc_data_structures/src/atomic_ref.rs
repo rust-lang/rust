@@ -9,6 +9,7 @@ impl<T: 'static> AtomicRef<T> {
         AtomicRef(AtomicPtr::new(initial as *const T as *mut T), PhantomData)
     }
 
+    #[cfg_attr(not(bootstrap), expect(inherent_method_on_receiver, reason = "compiler internals"))]
     pub fn swap(&self, new: &'static T) -> &'static T {
         // We never allow storing anything but a `'static` reference so it's safe to
         // return it for the same.
