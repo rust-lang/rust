@@ -923,7 +923,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 );
                 check_where_clauses(wfcx, def_id);
 
-                if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_)) {
+                if tcx.is_type_const(def_id.into()) {
                     wfcheck::check_type_const(wfcx, def_id, ty, true)?;
                 }
                 Ok(())
