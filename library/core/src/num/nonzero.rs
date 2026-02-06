@@ -1240,16 +1240,78 @@ macro_rules! nonzero_integer {
                 // So the result cannot be zero.
                 unsafe { Self::new_unchecked(self.get().saturating_pow(other)) }
             }
+
+            /// Parses a non-zero integer from a string slice with digits in a given base.
+            ///
+            /// The string is expected to be an optional
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    " `+` or `-` "
+                }
+                if unsigned {
+                    " `+` "
+                }
+            }]
+            /// sign followed by only digits. Leading and trailing non-digit characters (including
+            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
+            /// also represent an error.
+            ///
+            /// Digits are a subset of these characters, depending on `radix`:
+            ///
+            /// - `0-9`
+            /// - `a-z`
+            /// - `A-Z`
+            ///
+            /// # Panics
+            ///
+            /// This method panics if `radix` is not in the range from 2 to 36.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(nonzero_from_str_radix)]
+            ///
+            /// # use std::num::NonZero;
+            /// #
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::from_str_radix(\"A\", 16), Ok(NonZero::new(10)?));")]
+            /// # Some(())
+            /// # }
+            /// ```
+            ///
+            /// Trailing space returns error:
+            ///
+            /// ```
+            /// #![feature(nonzero_from_str_radix)]
+            ///
+            /// # use std::num::NonZero;
+            /// #
+            #[doc = concat!("assert!(NonZero::<", stringify!($Int), ">::from_str_radix(\"1 \", 10).is_err());")]
+            /// ```
+            #[unstable(feature = "nonzero_from_str_radix", issue = "152193")]
+            #[inline]
+            pub const fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
+                let n = match <$Int>::from_str_radix(src, radix) {
+                    Ok(n) => n,
+                    Err(err) => return Err(err),
+                };
+                if let Some(n) = Self::new(n) {
+                    Ok(n)
+                } else {
+                    Err(ParseIntError { kind: IntErrorKind::Zero })
+                }
+            }
         }
 
         #[stable(feature = "nonzero_parse", since = "1.35.0")]
         impl FromStr for NonZero<$Int> {
             type Err = ParseIntError;
             fn from_str(src: &str) -> Result<Self, Self::Err> {
-                Self::new(<$Int>::from_str_radix(src, 10)?)
-                    .ok_or(ParseIntError {
-                        kind: IntErrorKind::Zero
-                    })
+                Self::from_str_radix(src, 10)
             }
         }
 

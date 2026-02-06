@@ -125,6 +125,41 @@ fn test_from_signed_nonzero() {
 }
 
 #[test]
+fn test_from_str_radix() {
+    assert_eq!(NonZero::<u8>::from_str_radix("123", 10), Ok(NonZero::new(123).unwrap()));
+    assert_eq!(NonZero::<u8>::from_str_radix("1001", 2), Ok(NonZero::new(9).unwrap()));
+    assert_eq!(NonZero::<u8>::from_str_radix("123", 8), Ok(NonZero::new(83).unwrap()));
+    assert_eq!(NonZero::<u16>::from_str_radix("123", 16), Ok(NonZero::new(291).unwrap()));
+    assert_eq!(NonZero::<u16>::from_str_radix("ffff", 16), Ok(NonZero::new(65535).unwrap()));
+    assert_eq!(NonZero::<u8>::from_str_radix("z", 36), Ok(NonZero::new(35).unwrap()));
+    assert_eq!(
+        NonZero::<u8>::from_str_radix("0", 10).err().map(|e| e.kind().clone()),
+        Some(IntErrorKind::Zero)
+    );
+    assert_eq!(
+        NonZero::<u8>::from_str_radix("-1", 10).err().map(|e| e.kind().clone()),
+        Some(IntErrorKind::InvalidDigit)
+    );
+    assert_eq!(
+        NonZero::<i8>::from_str_radix("-129", 10).err().map(|e| e.kind().clone()),
+        Some(IntErrorKind::NegOverflow)
+    );
+    assert_eq!(
+        NonZero::<u8>::from_str_radix("257", 10).err().map(|e| e.kind().clone()),
+        Some(IntErrorKind::PosOverflow)
+    );
+
+    assert_eq!(
+        NonZero::<u8>::from_str_radix("Z", 10).err().map(|e| e.kind().clone()),
+        Some(IntErrorKind::InvalidDigit)
+    );
+    assert_eq!(
+        NonZero::<u8>::from_str_radix("_", 2).err().map(|e| e.kind().clone()),
+        Some(IntErrorKind::InvalidDigit)
+    );
+}
+
+#[test]
 fn test_from_str() {
     assert_eq!("123".parse::<NonZero<u8>>(), Ok(NonZero::new(123).unwrap()));
     assert_eq!(
