@@ -3344,6 +3344,13 @@ pub(crate) struct UnknownCrateTypesSuggestion {
 #[derive(LintDiagnostic)]
 #[diag(lint_unreachable_cfg_select_predicate)]
 pub(crate) struct UnreachableCfgSelectPredicate {
+    #[label]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unreachable_cfg_select_predicate_wildcard)]
+pub(crate) struct UnreachableCfgSelectPredicateWildcard {
     #[label(lint_label2)]
     pub span: Span,
 

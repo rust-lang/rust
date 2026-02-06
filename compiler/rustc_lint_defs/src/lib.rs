@@ -750,7 +750,7 @@ pub enum BuiltinLintDiag {
     AttributeLint(AttributeLintKind),
     UnreachableCfg {
         span: Span,
-        wildcard_span: Span,
+        wildcard_span: Option<Span>,
     },
 }
 

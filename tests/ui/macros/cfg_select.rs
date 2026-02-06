@@ -24,39 +24,39 @@ fn arm_rhs_expr_1() -> i32 {
 
 fn arm_rhs_expr_2() -> i32 {
     cfg_select! {
-        true => 1,
-        false => 2
+        false => 2,
+        true => 1
     }
 }
 
 fn arm_rhs_expr_3() -> i32 {
     cfg_select! {
-        true => 1,
-        false => 2,
-        true => { 42 }
-        false => -1 as i32,
-        true => 2 + 2,
-        false => "",
-        true => if true { 42 } else { 84 }
-        false => if true { 42 } else { 84 },
-        true => return 42,
-        false => loop {}
-        true => (1, 2),
-        false => (1, 2,),
-        true => todo!(),
-        false => println!("hello"),
+        any(true) => 1,
+        any(false) => 2,
+        any(true) => { 42 }
+        any(false) => -1 as i32,
+        any(true) => 2 + 2,
+        any(false) => "",
+        any(true) => if true { 42 } else { 84 }
+        any(false) => if true { 42 } else { 84 },
+        any(true) => return 42,
+        any(false) => loop {}
+        any(true) => (1, 2),
+        any(false) => (1, 2,),
+        any(true) => todo!(),
+        any(false) => println!("hello"),
     }
 }
 
 fn expand_to_statements() -> i32 {
     cfg_select! {
-        true => {
-            let a = 1;
-            a + 1
-        }
         false => {
             let b = 2;
             b + 1
+        }
+        true => {
+            let a = 1;
+            a + 1
         }
     }
 }
@@ -77,7 +77,7 @@ fn expand_to_pattern(x: Option<i32>) -> bool {
 }
 
 cfg_select! {
-    true => {
+    false => {
         fn foo() {}
     }
     _ => {
@@ -89,7 +89,7 @@ struct S;
 
 impl S {
     cfg_select! {
-        true => {
+        false => {
             fn foo() {}
         }
         _ => {
@@ -100,7 +100,7 @@ impl S {
 
 trait T {
     cfg_select! {
-        true => {
+        false => {
             fn a();
         }
         _ => {
@@ -111,7 +111,7 @@ trait T {
 
 impl T for S {
     cfg_select! {
-        true => {
+        false => {
             fn a() {}
         }
         _ => {
@@ -122,7 +122,7 @@ impl T for S {
 
 extern "C" {
     cfg_select! {
-        true => {
+        false => {
             fn puts(s: *const i8) -> i32;
         }
         _ => {
@@ -134,6 +134,25 @@ extern "C" {
 cfg_select! {
     _ => {}
     true => {}
+    //~^ WARN unreachable configuration predicate
+}
+
+cfg_select! {
+    true => {}
+    _ => {}
+    //~^ WARN unreachable configuration predicate
+}
+
+cfg_select! {
+    unix => {}
+    not(unix) => {}
+    _ => {}
+    //~^ WARN unreachable configuration predicate
+}
+
+cfg_select! {
+    unix => {}
+    unix => {}
     //~^ WARN unreachable configuration predicate
 }
 
