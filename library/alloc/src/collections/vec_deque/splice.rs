@@ -138,8 +138,48 @@ impl<T, A: Allocator> Drain<'_, T, A> {
     /// self.deque must be valid.
     unsafe fn move_tail(&mut self, additional: usize) {
         let deque = unsafe { self.deque.as_mut() };
-        let tail_start = deque.len + self.drain_len;
-        deque.buf.reserve(tail_start + self.tail_len, additional);
+
+        // `Drain::new` modifies the deque's len (so does `Drain::fill` here)
+        // directly with the start bound of the range passed into
+        // `VecDeque::splice`. This causes a few different issue:
+        //     - Most notably, there will be a hole at the end of the
+        //       buffer when our buffer resizes in the case that our
+        //       data wraps around.
+        //     - We cannot use `VecDeque::reserve` directly because
+        //       how it reserves more space and updates the `VecDeque`'s
+        //       `head` field accordingly depends on the `VecDeque`'s
+        //       actual `len`.
+        //     - We cannot just directly modify `VecDeque`'s `len` and
+        //       and call `VecDeque::reserve` afterward because if
+        //       `VecDeque::reserve` panics on capacity overflow,
+        //       well now our `VecDeque`'s head does not get updated
+        //       and we still have a potential hole at the end of the
+        //       buffer.
+        // Therefore, we manually reserve additional space (if necessary)
+        // based on calculating the actual `len` of the `VecDeque` and adjust
+        // `VecDeque`'s len right *after* the panicking region of `VecDeque::reserve`
+        // (that is `RawVec` `reserve()` call)
+
+        let drain_start = deque.len;
+        let tail_start = drain_start + self.drain_len;
+
+        // Actual VecDeque's len = drain_start + tail_len + drain_len
+        let actual_len = drain_start + self.tail_len + self.drain_len;
+        let new_cap = actual_len.checked_add(additional).expect("capacity overflow");
+        let old_cap = deque.capacity();
+
+        if new_cap > old_cap {
+            deque.buf.reserve(actual_len, additional);
+            // If new_cap doesn't panic, we can safely set the `VecDeque` len to its
+            // actual len; this needs to be done in order to set deque.head correctly
+            // on `VecDeque::handle_capacity_increase`
+            deque.len = actual_len;
+            // SAFETY: this cannot panic since our internal buffer's new_cap should
+            // be bigger than the passed in old_cap
+            unsafe {
+                deque.handle_capacity_increase(old_cap);
+            }
+        }
 
         let new_tail_start = tail_start + additional;
         unsafe {
@@ -149,6 +189,9 @@ impl<T, A: Allocator> Drain<'_, T, A> {
                 self.tail_len,
             );
         }
+
+        // revert the `VecDeque` len to what it was before
+        deque.len = drain_start;
         self.drain_len += additional;
     }
 }
