@@ -795,7 +795,8 @@ zulip_stream = 474880 # #t-compiler/backports
 topic = "#{number}: stable-nominated"
 message_on_add = [
     """\
-@**channel** PR #{number} "{title}" has been nominated for stable backport.
+PR #{number} "{title}" fixes a regression and has been nominated for backport.
+{recipients}, what do you think about it?
 """,
     """\
 /poll Approve stable backport of #{number}?
