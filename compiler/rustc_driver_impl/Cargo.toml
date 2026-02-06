@@ -10,7 +10,6 @@ jiff = { version = "0.2.5", default-features = false, features = ["std"] }
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
-rustc_borrowck = { path = "../rustc_borrowck" }
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 rustc_const_eval = { path = "../rustc_const_eval" }
 rustc_data_structures = { path = "../rustc_data_structures" }
