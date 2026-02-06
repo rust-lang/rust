@@ -2,7 +2,7 @@ use rustc_ast::attr::AttributeExt;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
+use rustc_errors::{Diag, LintDiagnostic, MultiSpan, inline_fluent};
 use rustc_feature::{Features, GateIssue};
 use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -31,7 +31,6 @@ use crate::errors::{
     CheckNameUnknownTool, MalformedAttribute, MalformedAttributeSub, OverruledAttribute,
     OverruledAttributeSub, RequestedLevel, UnknownToolInScopedLint, UnsupportedGroup,
 };
-use crate::fluent_generated as fluent;
 use crate::late::unerased_lint_store;
 use crate::lints::{
     DeprecatedLintName, DeprecatedLintNameFromCommandLine, IgnoredUnlessCrateSpecified,
@@ -942,9 +941,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             let lint = builtin::UNKNOWN_LINTS;
             let level = self.lint_level(builtin::UNKNOWN_LINTS);
             lint_level(self.sess, lint, level, Some(span.into()), |lint| {
-                lint.primary_message(fluent::lint_unknown_gated_lint);
+                lint.primary_message(inline_fluent!("unknown lint: `{$name}`"));
                 lint.arg("name", lint_id.lint.name_lower());
-                lint.note(fluent::lint_note);
+                lint.note(inline_fluent!("the `{$name}` lint is unstable"));
                 rustc_session::parse::add_feature_diagnostics_for_issue(
                     lint,
                     &self.sess,

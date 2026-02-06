@@ -369,8 +369,10 @@ fn check_unnecessary_transmute<'tcx>(
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_undefined_transmute)]
-#[note]
-#[note(lint_note2)]
-#[help]
+#[diag("pointers cannot be transmuted to integers during const eval")]
+#[note("at compile-time, pointers do not have an integer value")]
+#[note(
+    "avoiding this restriction via `union` or raw pointers leads to compile-time undefined behavior"
+)]
+#[help("for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html")]
 pub(crate) struct UndefinedTransmuteLint;
