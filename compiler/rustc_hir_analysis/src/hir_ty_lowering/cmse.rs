@@ -1,8 +1,8 @@
-use rustc_abi::{BackendRepr, ExternAbi, Float, Integer, Primitive, Scalar};
+use rustc_abi::ExternAbi;
 use rustc_errors::{DiagCtxtHandle, E0781, struct_span_code_err};
 use rustc_hir::{self as hir, HirId};
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutCx, LayoutError, TyAndLayout};
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 
@@ -150,8 +150,9 @@ fn is_valid_cmse_output<'tcx>(
 
     let typing_env = ty::TypingEnv::fully_monomorphized();
     let layout = tcx.layout_of(typing_env.as_query_input(return_type))?;
+    let layout_cx = LayoutCx::new(tcx, typing_env);
 
-    if !is_valid_cmse_output_layout(layout) {
+    if !is_valid_cmse_output_layout(layout_cx, layout) {
         dcx.emit_err(errors::CmseOutputStackSpill { span: fn_decl.output.span(), abi });
     }
 
@@ -159,25 +160,20 @@ fn is_valid_cmse_output<'tcx>(
 }
 
 /// Returns whether the output will fit into the available registers
-fn is_valid_cmse_output_layout<'tcx>(layout: TyAndLayout<'tcx>) -> bool {
+fn is_valid_cmse_output_layout<'tcx>(cx: LayoutCx<'tcx>, layout: TyAndLayout<'tcx>) -> bool {
     let size = layout.layout.size().bytes();
 
     if size <= 4 {
         return true;
-    } else if size > 8 {
+    } else if size != 8 {
         return false;
     }
 
-    // Accept scalar 64-bit types.
-    let BackendRepr::Scalar(scalar) = layout.layout.backend_repr else {
-        return false;
-    };
-
-    let Scalar::Initialized { value, .. } = scalar else {
-        return false;
-    };
-
-    matches!(value, Primitive::Int(Integer::I64, _) | Primitive::Float(Float::F64))
+    // Accept (transparently wrapped) scalar 64-bit primitives.
+    matches!(
+        layout.peel_transparent_wrappers(&cx).ty.kind(),
+        ty::Int(ty::IntTy::I64) | ty::Uint(ty::UintTy::U64) | ty::Float(ty::FloatTy::F64)
+    )
 }
 
 fn should_emit_layout_error<'tcx>(abi: ExternAbi, layout_err: &'tcx LayoutError<'tcx>) -> bool {
