@@ -1,0 +1,57 @@
+error: inherent methods on types that implement `Deref` or `Receiver` shadow methods of their target
+  --> $DIR/lint-inherent-method-on-receiver.rs:20:19
+   |
+LL | impl<T> Deref for Thing<T> {
+   | -------------------------- trait implemented here
+LL |     type Target = T;
+   |     ----------- with `Target` set here
+...
+LL |     pub fn method(&self) {}
+   |                   ^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-inherent-method-on-receiver.rs:2:9
+   |
+LL | #![deny(inherent_method_on_receiver)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: inherent methods on types that implement `Deref` or `Receiver` shadow methods of their target
+  --> $DIR/lint-inherent-method-on-receiver.rs:33:19
+   |
+LL | impl<T> Receiver for Thing2<T> {
+   | ------------------------------ trait implemented here
+LL |     type Target = T;
+   |     ----------- with `Target` set here
+...
+LL |     pub fn method(&self) {}
+   |                   ^^^^^
+
+error: inherent methods on types that implement `Deref` or `Receiver` shadow methods of their target
+  --> $DIR/lint-inherent-method-on-receiver.rs:46:19
+   |
+LL | impl<T> Receiver for Thing3<T> {
+   | ------------------------------ trait implemented here
+LL |     type Target = T;
+   |     ----------- with `Target` set here
+...
+LL |     pub fn method(self: Box<Self>) {}
+   |                   ^^^^
+
+error: inherent methods on types that implement `Deref` or `Receiver` shadow methods of their target
+  --> $DIR/lint-inherent-method-on-receiver.rs:95:19
+   |
+LL | impl<T> Deref for Thing<T> {
+   | -------------------------- trait implemented here
+LL |     type Target = T;
+   |     ----------- with `Target` set here
+...
+LL | impl<T> Receiver for Thing7<T> {
+   | ------------------------------ trait implemented here
+LL |     type Target = Thing<T>;
+   |     ----------- with `Target` set here
+...
+LL |     pub fn method(&self) {}
+   |                   ^^^^^
+
+error: aborting due to 4 previous errors
+
