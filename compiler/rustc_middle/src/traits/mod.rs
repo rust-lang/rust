@@ -2,6 +2,7 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 
+pub mod cache;
 pub mod query;
 pub mod select;
 pub mod solve;

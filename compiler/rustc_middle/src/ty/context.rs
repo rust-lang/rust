@@ -40,7 +40,6 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
 use rustc_hir::{self as hir, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
-use rustc_query_system::cache::WithDepNode;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
@@ -71,6 +70,7 @@ use crate::query::plumbing::QuerySystem;
 use crate::query::{IntoQueryParam, LocalCrate, Providers, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
+use crate::traits::cache::WithDepNode;
 use crate::traits::solve::{
     self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, PredefinedOpaques,
     QueryResult, inspect,
