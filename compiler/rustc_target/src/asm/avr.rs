@@ -1,8 +1,10 @@
 use std::fmt;
 
-use rustc_span::Symbol;
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_span::{Symbol, sym};
 
 use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
+use crate::spec::{RelocModel, Target};
 
 def_reg_class! {
     Avr AvrInlineAsmRegClass {
@@ -52,24 +54,44 @@ impl AvrInlineAsmRegClass {
     }
 }
 
+pub(crate) fn is_tiny(target_features: &FxIndexSet<Symbol>) -> bool {
+    target_features.contains(&sym::tinyencoding)
+}
+
+fn not_tiny(
+    _arch: InlineAsmArch,
+    _reloc_model: RelocModel,
+    target_features: &FxIndexSet<Symbol>,
+    _target: &Target,
+    _is_clobber: bool,
+) -> Result<(), &'static str> {
+    if is_tiny(target_features) {
+        Err(
+            "on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM",
+        )
+    } else {
+        Ok(())
+    }
+}
+
 def_regs! {
     Avr AvrInlineAsmReg AvrInlineAsmRegClass {
-        r2: reg = ["r2"],
-        r3: reg = ["r3"],
-        r4: reg = ["r4"],
-        r5: reg = ["r5"],
-        r6: reg = ["r6"],
-        r7: reg = ["r7"],
-        r8: reg = ["r8"],
-        r9: reg = ["r9"],
-        r10: reg = ["r10"],
-        r11: reg = ["r11"],
-        r12: reg = ["r12"],
-        r13: reg = ["r13"],
-        r14: reg = ["r14"],
-        r15: reg = ["r15"],
-        r16: reg, reg_upper = ["r16"],
-        r17: reg, reg_upper = ["r17"],
+        r2: reg = ["r2"] % not_tiny,
+        r3: reg = ["r3"] % not_tiny,
+        r4: reg = ["r4"] % not_tiny,
+        r5: reg = ["r5"] % not_tiny,
+        r6: reg = ["r6"] % not_tiny,
+        r7: reg = ["r7"] % not_tiny,
+        r8: reg = ["r8"] % not_tiny,
+        r9: reg = ["r9"] % not_tiny,
+        r10: reg = ["r10"] % not_tiny,
+        r11: reg = ["r11"] % not_tiny,
+        r12: reg = ["r12"] % not_tiny,
+        r13: reg = ["r13"] % not_tiny,
+        r14: reg = ["r14"] % not_tiny,
+        r15: reg = ["r15"] % not_tiny,
+        r16: reg, reg_upper = ["r16"] % not_tiny,
+        r17: reg, reg_upper = ["r17"] % not_tiny,
         r18: reg, reg_upper = ["r18"],
         r19: reg, reg_upper = ["r19"],
         r20: reg, reg_upper = ["r20"],
@@ -83,14 +105,14 @@ def_regs! {
         r30: reg, reg_upper = ["r30", "ZL"],
         r31: reg, reg_upper = ["r31", "ZH"],
 
-        r3r2: reg_pair = ["r3r2"],
-        r5r4: reg_pair = ["r5r4"],
-        r7r6: reg_pair = ["r7r6"],
-        r9r8: reg_pair = ["r9r8"],
-        r11r10: reg_pair = ["r11r10"],
-        r13r12: reg_pair = ["r13r12"],
-        r15r14: reg_pair = ["r15r14"],
-        r17r16: reg_pair = ["r17r16"],
+        r3r2: reg_pair = ["r3r2"] % not_tiny,
+        r5r4: reg_pair = ["r5r4"] % not_tiny,
+        r7r6: reg_pair = ["r7r6"] % not_tiny,
+        r9r8: reg_pair = ["r9r8"] % not_tiny,
+        r11r10: reg_pair = ["r11r10"] % not_tiny,
+        r13r12: reg_pair = ["r13r12"] % not_tiny,
+        r15r14: reg_pair = ["r15r14"] % not_tiny,
+        r17r16: reg_pair = ["r17r16"] % not_tiny,
         r19r18: reg_pair = ["r19r18"],
         r21r20: reg_pair = ["r21r20"],
         r23r22: reg_pair = ["r23r22"],
