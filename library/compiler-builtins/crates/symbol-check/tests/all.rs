@@ -51,7 +51,7 @@ fn test_duplicates() {
     let status = ar.arg(&dup_out).status().unwrap();
     assert!(status.success());
 
-    let assert = cargo_bin_cmd!().arg("check").arg(&lib_out).assert();
+    let assert = cargo_bin_cmd!().arg("--check").arg(&lib_out).assert();
     assert
         .failure()
         .stderr_contains("duplicate symbols")
@@ -65,7 +65,7 @@ fn test_core_symbols() {
     let dir = tempdir().unwrap();
     let lib_out = dir.path().join("libfoo.rlib");
     rustc_build(&input_dir().join("core_symbols.rs"), &lib_out, |cmd| cmd);
-    let assert = cargo_bin_cmd!().arg("check").arg(&lib_out).assert();
+    let assert = cargo_bin_cmd!().arg("--check").arg(&lib_out).assert();
     assert
         .failure()
         .stderr_contains("found 1 undefined symbols from core")
@@ -77,7 +77,7 @@ fn test_good() {
     let dir = tempdir().unwrap();
     let lib_out = dir.path().join("libfoo.rlib");
     rustc_build(&input_dir().join("good.rs"), &lib_out, |cmd| cmd);
-    let assert = cargo_bin_cmd!().arg("check").arg(&lib_out).assert();
+    let assert = cargo_bin_cmd!().arg("--check").arg(&lib_out).assert();
     assert.success();
 }
 

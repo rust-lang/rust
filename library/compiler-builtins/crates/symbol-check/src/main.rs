@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, Stdio, exit};
 use std::sync::LazyLock;
 
 use object::read::archive::ArchiveFile;
@@ -24,38 +24,60 @@ const CHECK_EXTENSIONS: &[Option<&str>] = &[Some("rlib"), Some("a"), Some("exe")
 
 const USAGE: &str = "Usage:
 
-    symbol-check build-and-check [TARGET] -- CARGO_BUILD_ARGS ...
-
-Cargo will get invoked with `CARGO_ARGS` and the specified target. All output
-`compiler_builtins*.rlib` files will be checked.
-
-If TARGET is not specified, the host target is used.
-
-    check PATHS ...
-
-Run the same checks on the given set of paths, without invoking Cargo. Paths
-may be either archives or object files.
+    symbol-check --build-and-check [--target TARGET] -- CARGO_BUILD_ARGS ...
+    symbol-check --check PATHS ...\
 ";
 
 fn main() {
-    // Create a `&str` vec so we can match on it.
-    let args = std::env::args().collect::<Vec<_>>();
-    let args_ref = args.iter().map(String::as_str).collect::<Vec<_>>();
+    let mut opts = getopts::Options::new();
 
-    match &args_ref[1..] {
-        ["build-and-check", target, "--", args @ ..] if !args.is_empty() => {
-            run_build_and_check(target, args);
+    // Ideally these would be subcommands but that isn't supported.
+    opts.optflag("h", "help", "Print this help message");
+    opts.optflag(
+        "",
+        "build-and-check",
+        "Cargo will get invoked with `CARGO_BUILD_ARGS` and the specified target. All output \
+        `compiler_builtins*.rlib` files will be checked.",
+    );
+    opts.optopt(
+        "",
+        "target",
+        "Set the target for build-and-check. Falls back to the host target otherwise.",
+        "TARGET",
+    );
+    opts.optflag(
+        "",
+        "check",
+        "Run checks on the given set of paths, without invoking Cargo. Paths \
+        may be either archives or object files.",
+    );
+
+    let print_usage_and_exit = |code: i32| -> ! {
+        eprintln!("{}", opts.usage(USAGE));
+        exit(code);
+    };
+
+    let m = opts.parse(std::env::args().skip(1)).unwrap_or_else(|e| {
+        eprintln!("{e}");
+        print_usage_and_exit(1);
+    });
+
+    if m.opt_present("help") {
+        print_usage_and_exit(0);
+    }
+
+    let free_args = m.free.iter().map(String::as_str).collect::<Vec<_>>();
+
+    if m.opt_present("build-and-check") {
+        let target = m.opt_str("target").unwrap_or(env!("HOST").to_string());
+        run_build_and_check(&target, &free_args);
+    } else if m.opt_present("check") {
+        if free_args.is_empty() {
+            print_usage_and_exit(1);
         }
-        ["build-and-check", "--", args @ ..] if !args.is_empty() => {
-            run_build_and_check(env!("HOST"), args);
-        }
-        ["check", paths @ ..] if !paths.is_empty() => {
-            check_paths(paths);
-        }
-        _ => {
-            println!("{USAGE}");
-            std::process::exit(1);
-        }
+        check_paths(&free_args);
+    } else {
+        print_usage_and_exit(1);
     }
 }
 
@@ -65,7 +87,7 @@ fn run_build_and_check(target: &str, args: &[&str]) {
     for arg in args {
         assert!(
             !arg.contains("--target"),
-            "target must be passed positionally. {USAGE}"
+            "target must be passed to symbol-check"
         );
     }
 

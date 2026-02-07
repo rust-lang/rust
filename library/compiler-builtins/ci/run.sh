@@ -48,21 +48,21 @@ fi
 # build with the arguments we provide it, then validates the built artifacts.
 SYMCHECK_TEST_TARGET="$target" cargo test -p symbol-check --release
 symcheck=(cargo run -p symbol-check --release)
-symcheck+=(-- build-and-check)
+symcheck+=(-- --build-and-check --target "$target")
 
-"${symcheck[@]}" "$target" -- -p compiler_builtins
-"${symcheck[@]}" "$target" -- -p compiler_builtins --release
-"${symcheck[@]}" "$target" -- -p compiler_builtins --features c
-"${symcheck[@]}" "$target" -- -p compiler_builtins --features c --release
-"${symcheck[@]}" "$target" -- -p compiler_builtins --features no-asm
-"${symcheck[@]}" "$target" -- -p compiler_builtins --features no-asm --release
+"${symcheck[@]}" -- -p compiler_builtins
+"${symcheck[@]}" -- -p compiler_builtins --release
+"${symcheck[@]}" -- -p compiler_builtins --features c
+"${symcheck[@]}" -- -p compiler_builtins --features c --release
+"${symcheck[@]}" -- -p compiler_builtins --features no-asm
+"${symcheck[@]}" -- -p compiler_builtins --features no-asm --release
 
 run_intrinsics_test() {
     build_args=(--verbose --manifest-path builtins-test-intrinsics/Cargo.toml)
     build_args+=("$@")
 
     # symcheck also checks the results of builtins-test-intrinsics
-    "${symcheck[@]}" "$target" -- "${build_args[@]}"
+    "${symcheck[@]}" -- "${build_args[@]}"
 
     # FIXME: we get access violations on Windows, our entrypoint may need to
     # be tweaked.
