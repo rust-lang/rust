@@ -49,10 +49,14 @@ pub enum Round {
 }
 
 /// IEEE 754 exception status flags.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Status(u8);
 
 impl Status {
+    /* Note that if we ever store/load this to/from floating point control status registers, it
+     * may be worth making these values platform-dependent to line up with register layout
+     * to avoid bit swapping. For the time being, this isn't a concern. */
+
     /// Default status indicating no errors.
     pub const OK: Self = Self(0);
 
@@ -74,7 +78,7 @@ impl Status {
     /// result is -inf.
     /// `x / y` when `x != 0.0` and `y == 0.0`,
     #[cfg_attr(not(feature = "unstable-public-internals"), allow(dead_code))]
-    pub const DIVIDE_BY_ZERO: Self = Self(1 << 2);
+    pub const DIVIDE_BY_ZERO: Self = Self(1 << 1);
 
     /// The result exceeds the maximum finite value.
     ///
@@ -82,14 +86,14 @@ impl Status {
     /// on the intermediate result. `Zero` rounds to the signed maximum finite. `Positive` and
     /// `Negative` round to signed maximum finite in one direction, signed infinity in the other.
     #[cfg_attr(not(feature = "unstable-public-internals"), allow(dead_code))]
-    pub const OVERFLOW: Self = Self(1 << 3);
+    pub const OVERFLOW: Self = Self(1 << 2);
 
     /// The result is subnormal and lost precision.
-    pub const UNDERFLOW: Self = Self(1 << 4);
+    pub const UNDERFLOW: Self = Self(1 << 3);
 
     /// The finite-precision result does not match that of infinite precision, and the reason
     /// is not represented by one of the other flags.
-    pub const INEXACT: Self = Self(1 << 5);
+    pub const INEXACT: Self = Self(1 << 4);
 
     /// True if `UNDERFLOW` is set.
     #[cfg_attr(not(feature = "unstable-public-internals"), allow(dead_code))]
@@ -126,5 +130,40 @@ impl Status {
 
     pub(crate) const fn with(self, rhs: Self) -> Self {
         Self(self.0 | rhs.0)
+    }
+}
+
+#[cfg(any(test, feature = "unstable-public-internals"))]
+impl core::fmt::Debug for Status {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        // shift -> flag map
+        let names = &[
+            "INVALID",
+            "DIVIDE_BY_ZERO",
+            "OVERFLOW",
+            "UNDERFLOW",
+            "INEXACT",
+        ];
+
+        write!(f, "Status(")?;
+        let mut any = false;
+        for shift in 0..u8::BITS {
+            if self.0 & (1 << shift) != 0 {
+                if any {
+                    write!(f, " | ")?;
+                }
+                match names.get(shift as usize) {
+                    Some(name) => write!(f, "{name}")?,
+                    None => write!(f, "UNKNOWN(1 << {shift})")?,
+                }
+                any = true;
+            }
+        }
+
+        if !any {
+            write!(f, "OK")?;
+        }
+        write!(f, ")")?;
+        Ok(())
     }
 }
