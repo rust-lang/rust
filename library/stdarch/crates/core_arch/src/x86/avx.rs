@@ -3077,7 +3077,7 @@ pub const fn _mm256_undefined_pd() -> __m256d {
     const { unsafe { mem::zeroed() } }
 }
 
-/// Returns vector of type __m256i with with indeterminate elements.
+/// Returns vector of type __m256i with indeterminate elements.
 /// Despite using the word "undefined" (following Intel's naming scheme), this non-deterministically
 /// picks some valid value and is not equivalent to [`mem::MaybeUninit`].
 /// In practice, this is typically equivalent to [`mem::zeroed`].
