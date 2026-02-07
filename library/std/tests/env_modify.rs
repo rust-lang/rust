@@ -1,6 +1,5 @@
 // These tests are in a separate integration test as they modify the environment,
 // and would otherwise cause some other tests to fail.
-#![feature(cfg_select)]
 
 use std::env::*;
 use std::ffi::{OsStr, OsString};

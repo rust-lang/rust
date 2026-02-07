@@ -1,7 +1,6 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![feature(cfg_emscripten_wasm_eh)]
-#![feature(cfg_select)]
 #![feature(link_cfg)]
 #![feature(staged_api)]
 #![cfg_attr(

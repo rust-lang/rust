@@ -864,7 +864,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(cfg_select)]
     /// cfg_select! {
     ///     _ => (),
     ///     windows => (),
@@ -882,7 +881,6 @@ declare_lint! {
     pub UNREACHABLE_CFG_SELECT_PREDICATES,
     Warn,
     "detects unreachable configuration predicates in the cfg_select macro",
-    @feature_gate = cfg_select;
 }
 
 declare_lint! {
