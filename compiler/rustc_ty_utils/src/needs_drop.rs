@@ -1,13 +1,14 @@
 //! Check whether a type has (potentially) non-trivial drop glue.
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::find_attr;
 use rustc_hir::limit::Limit;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{AlwaysRequiresDrop, needs_drop_components};
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
-use rustc_span::sym;
 use tracing::{debug, instrument};
 
 use crate::errors::NeedsDropOverflow;
@@ -396,8 +397,7 @@ fn adt_consider_insignificant_dtor<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> impl Fn(ty::AdtDef<'tcx>) -> Option<DtorType> {
     move |adt_def: ty::AdtDef<'tcx>| {
-        let is_marked_insig = tcx.has_attr(adt_def.did(), sym::rustc_insignificant_dtor);
-        if is_marked_insig {
+        if find_attr!(tcx.get_all_attrs(adt_def.did()), AttributeKind::RustcInsignificantDtor) {
             // In some cases like `std::collections::HashMap` where the struct is a wrapper around
             // a type that is a Drop type, and the wrapped type (eg: `hashbrown::HashMap`) lies
             // outside stdlib, we might choose to still annotate the wrapper (std HashMap) with
