@@ -849,7 +849,7 @@ pub(crate) struct LowerRangeBoundMustBeLessThanOrEqualToUpper {
     #[label("lower bound larger than upper bound")]
     pub(crate) span: Span,
     #[note(
-        "When matching against a range, the compiler verifies that the range is non-empty. Range patterns include both end-points, so this is equivalent to requiring the start of the range to be less than or equal to the end of the range."
+        "when matching against a range, the compiler verifies that the range is non-empty. Range patterns include both end-points, so this is equivalent to requiring the start of the range to be less than or equal to the end of the range"
     )]
     pub(crate) teach: bool,
 }
