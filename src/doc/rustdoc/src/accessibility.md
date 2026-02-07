@@ -1,6 +1,6 @@
 # A Note on Accessibility in Rustdoc
 
-`rustdoc` is WCAG-compliant[^1] and implements accessible documentation generation, with support for many accessibility practices and we strive to fully comply with WCAG Level AA[^2].
+`rustdoc` is WCAG-compliant[^1] and implements accessible documentation generation, with support for many accessibility practices.
 
 ## Accessibility Practices Followed by Rustdoc
 
