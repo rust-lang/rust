@@ -1274,7 +1274,8 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader
         .of_trait
         .unwrap_or_else(|| panic!("expected impl trait, found inherent impl on {def_id:?}"));
     let selfty = tcx.type_of(def_id).instantiate_identity();
-    let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
+    let is_rustc_reservation =
+        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::RustcReservationImpl(..));
 
     check_impl_constness(tcx, impl_.constness, &of_trait.trait_ref);
 
