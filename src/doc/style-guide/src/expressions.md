@@ -154,6 +154,37 @@ move |arg1: i32, arg2: i32| -> i32 {
 }
 ```
 
+## Try blocks
+
+### Homogeneous
+
+Put a space between `try` and the block. Format on a single line if it fits. Otherwise format the
+block as if it started with `try {` instead of `{`.
+
+```rust
+try { foo()?; bar()? }
+
+try {
+    foo()?;
+    bar()?
+}
+```
+
+### Heterogeneous
+
+Put a space between `try` and `bikeshed`, between `bikeshed` and the type, and between the type and
+the block. Format on a single line if it fits. Otherwise format the block as if it started with `try
+bikeshed Type {` instead of `{`, where `Type` is the type formatted on a single line.
+
+```rust
+try bikeshed Option<()> { foo()?; bar()? }
+
+try bikeshed Result<(), _> {
+    foo()?;
+    bar()?;
+}
+```
+
 ## Struct literals
 
 If a struct literal is *small*, format it on a single line, and do not use a
