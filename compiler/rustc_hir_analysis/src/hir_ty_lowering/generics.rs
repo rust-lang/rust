@@ -393,8 +393,7 @@ pub fn check_generic_arg_count_for_call(
         IsMethodCall::Yes => GenericArgPosition::MethodCall,
         IsMethodCall::No => GenericArgPosition::Value,
     };
-    let has_self = generics.parent.is_none() && generics.has_self;
-    check_generic_arg_count(cx, def_id, seg, generics, gen_pos, has_self)
+    check_generic_arg_count(cx, def_id, seg, generics, gen_pos, generics.has_own_self())
 }
 
 /// Checks that the correct number of generic arguments have been provided.
