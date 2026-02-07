@@ -19,7 +19,6 @@ extern crate rustc_span;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-extern crate rustc_fluent_macro;
 extern crate rustc_macros;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 
