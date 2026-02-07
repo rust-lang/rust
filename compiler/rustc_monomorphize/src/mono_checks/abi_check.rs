@@ -5,6 +5,7 @@ use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
+use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_target::callconv::{FnAbi, PassMode};
 
@@ -157,12 +158,16 @@ fn do_check_unsized_params<'tcx>(
 /// - the signature requires target features that are not enabled
 fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     let typing_env = ty::TypingEnv::fully_monomorphized();
-    let Ok(abi) = tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
-    else {
-        // An error will be reported during codegen if we cannot determine the ABI of this
-        // function.
-        tcx.dcx().delayed_bug("ABI computation failure should lead to compilation failure");
-        return;
+    let abi = match tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
+    {
+        Ok(abi) => abi,
+        Err(err) => {
+            // Emit directly: codegen may never see this instance (dead code, `-Zno-codegen`).
+            let ty::layout::FnAbiError::Layout(layout_err) = *err;
+            let span = tcx.def_span(instance.def_id());
+            tcx.dcx().emit_err(Spanned { node: layout_err.into_diagnostic(), span });
+            return;
+        }
     };
     // Unlike the call-site check, we do also check "Rust" ABI functions here.
     // This should never trigger, *except* if we start making use of vector registers
