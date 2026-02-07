@@ -331,6 +331,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcNeverReturnsNullPointer
                     | AttributeKind::RustcNoImplicitAutorefs
                     | AttributeKind::RustcNonConstTraitMethod
+                    | AttributeKind::RustcNonnullOptimizationGuaranteed
                     | AttributeKind::RustcNounwind
                     | AttributeKind::RustcObjcClass { .. }
                     | AttributeKind::RustcObjcSelector { .. }
@@ -391,7 +392,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_diagnostic_item
                             | sym::rustc_no_mir_inline
                             | sym::rustc_insignificant_dtor
-                            | sym::rustc_nonnull_optimization_guaranteed
                             | sym::rustc_inherit_overflow_checks
                             | sym::rustc_trivial_field_reads
                             | sym::rustc_on_unimplemented
