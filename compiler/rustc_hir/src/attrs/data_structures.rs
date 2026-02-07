@@ -1091,6 +1091,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_const_stable_indirect]`.
     RustcConstStabilityIndirect,
 
+    /// Represents `#[rustc_conversion_suggestion]`
+    RustcConversionSuggestion,
+
     /// Represents `#[rustc_deallocator]`
     RustcDeallocator,
 

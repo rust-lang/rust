@@ -104,6 +104,7 @@ impl AttributeKind {
             RustcConfusables { .. } => Yes,
             RustcConstStability { .. } => Yes,
             RustcConstStabilityIndirect => No,
+            RustcConversionSuggestion => Yes,
             RustcDeallocator => No,
             RustcDefPath(..) => No,
             RustcDelayedBugFromInsideQuery => No,

@@ -299,6 +299,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcCoinductive(..)
                     | AttributeKind::RustcConfusables { .. }
                     | AttributeKind::RustcConstStabilityIndirect
+                    | AttributeKind::RustcConversionSuggestion
                     | AttributeKind::RustcDeallocator
                     | AttributeKind::RustcDefPath(..)
                     | AttributeKind::RustcDelayedBugFromInsideQuery
@@ -400,7 +401,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_do_not_const_check
                             | sym::rustc_reservation_impl
                             | sym::rustc_doc_primitive
-                            | sym::rustc_conversion_suggestion
                             | sym::rustc_test_marker
                             | sym::rustc_layout
                             | sym::rustc_proc_macro_decls
