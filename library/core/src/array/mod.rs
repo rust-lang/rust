@@ -53,6 +53,7 @@ pub use iter::IntoIter;
 #[stable(feature = "array_repeat", since = "1.91.0")]
 #[rustc_const_unstable(feature = "const_array", issue = "147606")]
 pub const fn repeat<T: [const] Clone + [const] Destruct, const N: usize>(val: T) -> [T; N] {
+    // FIXME(const-hack): |n| if n == N - 1 { val } else { val.clone() }
     struct Factory<T, const N: usize> {
         value: Option<T>,
     }
