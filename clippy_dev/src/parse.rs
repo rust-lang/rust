@@ -1,6 +1,6 @@
 pub mod cursor;
 
-use self::cursor::{Capture, Cursor};
+use self::cursor::{Capture, Cursor, IdentPat};
 use crate::utils::{ErrAction, File, Scoped, expect_action, slice_groups_mut, walk_dir_no_dot_or_target};
 use core::cell::Cell;
 use core::fmt::{self, Display, Write as _};
@@ -352,16 +352,17 @@ impl<'cx> ParseCxImpl<'cx> {
         #[allow(clippy::enum_glob_use)]
         use cursor::Pat::*;
         #[rustfmt::skip]
-        static LINT_DECL_TOKENS: &[cursor::Pat<'_>] = &[
+        static LINT_DECL_TOKENS: &[cursor::Pat] = &[
             // !{ /// docs
             Bang, OpenBrace, AnyComment,
             // #[clippy::version = "version"]
-            Pound, OpenBracket, Ident("clippy"), DoubleColon, Ident("version"), Eq, LitStr, CloseBracket,
+            Pound, OpenBracket, Ident(IdentPat::clippy), DoubleColon,
+            Ident(IdentPat::version), Eq, LitStr, CloseBracket,
             // pub NAME, GROUP,
-            Ident("pub"), CaptureIdent, Comma, AnyComment, CaptureIdent, Comma,
+            Ident(IdentPat::r#pub), CaptureIdent, Comma, AnyComment, CaptureIdent, Comma,
         ];
         #[rustfmt::skip]
-        static PASS_DECL_TOKENS: &[cursor::Pat<'_>] = &[
+        static PASS_DECL_TOKENS: &[cursor::Pat] = &[
             // !( NAME <'lt> => [
             Bang, OpenParen, CaptureDocLines, CaptureIdent, CaptureOptLifetimeArg, FatArrow, OpenBracket,
         ];
@@ -453,22 +454,26 @@ impl<'cx> ParseCxImpl<'cx> {
     fn parse_deprecated_lints(&mut self, data: &mut LintData<'cx>) {
         #[allow(clippy::enum_glob_use)]
         use cursor::Pat::*;
+
         #[rustfmt::skip]
-        static DECL_TOKENS: &[cursor::Pat<'_>] = &[
+        static DECL_TOKENS: &[cursor::Pat] = &[
             // #[clippy::version = "version"]
-            Pound, OpenBracket, Ident("clippy"), DoubleColon, Ident("version"), Eq, CaptureLitStr, CloseBracket,
+            Pound, OpenBracket, Ident(IdentPat::clippy), DoubleColon,
+            Ident(IdentPat::version), Eq, CaptureLitStr, CloseBracket,
             // ("first", "second"),
             OpenParen, CaptureLitStr, Comma, CaptureLitStr, CloseParen, Comma,
         ];
         #[rustfmt::skip]
-        static DEPRECATED_TOKENS: &[cursor::Pat<'_>] = &[
+        static DEPRECATED_TOKENS: &[cursor::Pat] = &[
             // !{ DEPRECATED(DEPRECATED_VERSION) = [
-            Bang, OpenBrace, Ident("DEPRECATED"), OpenParen, Ident("DEPRECATED_VERSION"), CloseParen, Eq, OpenBracket,
+            Bang, OpenBrace, Ident(IdentPat::DEPRECATED), OpenParen,
+            Ident(IdentPat::DEPRECATED_VERSION), CloseParen, Eq, OpenBracket,
         ];
         #[rustfmt::skip]
-        static RENAMED_TOKENS: &[cursor::Pat<'_>] = &[
+        static RENAMED_TOKENS: &[cursor::Pat] = &[
             // !{ RENAMED(RENAMED_VERSION) = [
-            Bang, OpenBrace, Ident("RENAMED"), OpenParen, Ident("RENAMED_VERSION"), CloseParen, Eq, OpenBracket,
+            Bang, OpenBrace, Ident(IdentPat::RENAMED), OpenParen,
+            Ident(IdentPat::RENAMED_VERSION), CloseParen, Eq, OpenBracket,
         ];
 
         let file = data.deprecated_file;

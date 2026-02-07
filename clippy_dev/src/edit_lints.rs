@@ -333,7 +333,7 @@ fn uplift_update_fn<'a>(
         while let Some(ident) = cursor.find_any_ident() {
             match cursor.get_text(ident) {
                 "mod"
-                    if remove_mod && cursor.match_all(&[cursor::Pat::Ident(old_name), cursor::Pat::Semi], &mut []) =>
+                    if remove_mod && cursor.match_ident(old_name).is_some() && cursor.match_pat(cursor::Pat::Semi) =>
                 {
                     dst.push_str(&src[copy_pos as usize..ident.pos as usize]);
                     dst.push_str(new_name);
@@ -343,7 +343,7 @@ fn uplift_update_fn<'a>(
                     }
                     changed = true;
                 },
-                "clippy" if cursor.match_all(&[cursor::Pat::DoubleColon, cursor::Pat::Ident(old_name)], &mut []) => {
+                "clippy" if cursor.match_pat(cursor::Pat::DoubleColon) && cursor.match_ident(old_name).is_some() => {
                     dst.push_str(&src[copy_pos as usize..ident.pos as usize]);
                     dst.push_str(new_name);
                     copy_pos = cursor.pos();

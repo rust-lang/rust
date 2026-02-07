@@ -8,10 +8,10 @@ use rustc_lexer::{self as lex, LiteralKind, Token, TokenKind};
 /// `DoubleColon` will consume the first `:` and then fail to match, leaving the cursor at
 /// the `*`.
 #[derive(Clone, Copy)]
-pub enum Pat<'a> {
+pub enum Pat {
+    Ident(IdentPat),
     /// Matches any number of comments and doc comments.
     AnyComment,
-    Ident(&'a str),
     CaptureDocLines,
     CaptureIdent,
     LitStr,
@@ -33,6 +33,36 @@ pub enum Pat<'a> {
     CaptureOptLifetimeArg,
     Pound,
     Semi,
+}
+
+macro_rules! ident_or_lit {
+    ($ident:ident) => {
+        stringify!($ident)
+    };
+    ($_ident:ident $lit:literal) => {
+        $lit
+    };
+}
+macro_rules! decl_ident_pats {
+    ($($ident:ident $(= $s:literal)?,)*) => {
+        #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
+        #[derive(Clone, Copy)]
+        pub enum IdentPat { $($ident),* }
+        impl IdentPat {
+            pub fn as_str(self) -> &'static str {
+                match self { $(Self::$ident => ident_or_lit!($ident $($s)?)),* }
+            }
+        }
+    }
+}
+decl_ident_pats! {
+    DEPRECATED,
+    DEPRECATED_VERSION,
+    RENAMED,
+    RENAMED_VERSION,
+    clippy,
+    r#pub = "pub",
+    version,
 }
 
 #[derive(Clone, Copy)]
@@ -116,7 +146,7 @@ impl<'txt> Cursor<'txt> {
     /// For each capture made by the pattern one item will be taken from the capture
     /// sequence with the result placed inside.
     #[expect(clippy::too_many_lines)]
-    fn match_impl(&mut self, pat: Pat<'_>, captures: &mut slice::IterMut<'_, Capture>) -> bool {
+    fn match_impl(&mut self, pat: Pat, captures: &mut slice::IterMut<'_, Capture>) -> bool {
         loop {
             match (pat, self.next_token.kind) {
                 #[rustfmt::skip] // rustfmt bug: https://github.com/rust-lang/rustfmt/issues/6697
@@ -149,7 +179,7 @@ impl<'txt> Cursor<'txt> {
                     self.step();
                     return true;
                 },
-                (Pat::Ident(x), TokenKind::Ident) if x == self.peek_text() => {
+                (Pat::Ident(x), TokenKind::Ident) if x.as_str() == self.peek_text() => {
                     self.step();
                     return true;
                 },
@@ -319,7 +349,7 @@ impl<'txt> Cursor<'txt> {
     /// Not generally suitable for multi-token patterns or patterns that can match
     /// nothing.
     #[must_use]
-    pub fn find_pat(&mut self, pat: Pat<'_>) -> bool {
+    pub fn find_pat(&mut self, pat: Pat) -> bool {
         let mut capture = [].iter_mut();
         while !self.match_impl(pat, &mut capture) {
             self.step();
@@ -340,7 +370,7 @@ impl<'txt> Cursor<'txt> {
     ///
     /// If the match fails the cursor will be positioned at the first failing token.
     #[must_use]
-    pub fn match_all(&mut self, pats: &[Pat<'_>], captures: &mut [Capture]) -> bool {
+    pub fn match_all(&mut self, pats: &[Pat], captures: &mut [Capture]) -> bool {
         let mut captures = captures.iter_mut();
         pats.iter().all(|&p| self.match_impl(p, &mut captures))
     }
@@ -351,7 +381,7 @@ impl<'txt> Cursor<'txt> {
     /// If the pattern attempts to capture anything this will panic. If the match fails
     /// the cursor will be positioned at the first failing token.
     #[must_use]
-    pub fn match_pat(&mut self, pat: Pat<'_>) -> bool {
+    pub fn match_pat(&mut self, pat: Pat) -> bool {
         self.match_impl(pat, &mut [].iter_mut())
     }
 }
