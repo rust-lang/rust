@@ -7,23 +7,23 @@ use rustc_data_structures::sync::Lock;
 
 use crate::dep_graph::{DepContext, DepNodeIndex};
 
-pub struct Cache<Key, Value> {
+pub struct WithDepNodeCache<Key, Value> {
     hashmap: Lock<FxHashMap<Key, WithDepNode<Value>>>,
 }
 
-impl<Key: Clone, Value: Clone> Clone for Cache<Key, Value> {
+impl<Key: Clone, Value: Clone> Clone for WithDepNodeCache<Key, Value> {
     fn clone(&self) -> Self {
         Self { hashmap: Lock::new(self.hashmap.borrow().clone()) }
     }
 }
 
-impl<Key, Value> Default for Cache<Key, Value> {
+impl<Key, Value> Default for WithDepNodeCache<Key, Value> {
     fn default() -> Self {
         Self { hashmap: Default::default() }
     }
 }
 
-impl<Key: Eq + Hash, Value: Clone> Cache<Key, Value> {
+impl<Key: Eq + Hash, Value: Clone> WithDepNodeCache<Key, Value> {
     pub fn get<Tcx: DepContext>(&self, key: &Key, tcx: Tcx) -> Option<Value> {
         Some(self.hashmap.borrow().get(key)?.get(tcx))
     }
