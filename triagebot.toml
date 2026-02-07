@@ -1488,11 +1488,6 @@ infra-ci = [
     "@jdno",
     "@jieyouxu",
 ]
-rustdoc = [
-    "@GuillaumeGomez",
-    "@notriddle",
-    "@fmease",
-]
 docs = [
     "@ehuss",
     "@GuillaumeGomez",
