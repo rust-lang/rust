@@ -409,8 +409,7 @@ pub const unsafe fn assume(b: bool) {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// This intrinsic does not have a stable counterpart.
-#[unstable(feature = "core_intrinsics", issue = "none")]
+/// The stabilized version of this intrinsic is [`core::hint::cold_path`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[miri::intrinsic_fallback_is_spec]
