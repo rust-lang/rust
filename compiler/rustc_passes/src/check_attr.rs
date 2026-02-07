@@ -335,6 +335,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
                     | AttributeKind::RustcPreserveUbChecks
                     | AttributeKind::RustcReallocator
+                    | AttributeKind::RustcReservationImpl(..)
                     | AttributeKind::RustcScalableVector { .. }
                     | AttributeKind::RustcShouldNotBeCalledOnConstItems(..)
                     | AttributeKind::RustcSimdMonomorphizeLaneLimit(..)
@@ -391,7 +392,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_trivial_field_reads
                             | sym::rustc_on_unimplemented
                             | sym::rustc_do_not_const_check
-                            | sym::rustc_reservation_impl
                             | sym::rustc_doc_primitive
                             | sym::rustc_conversion_suggestion
                             | sym::rustc_deprecated_safe_2024

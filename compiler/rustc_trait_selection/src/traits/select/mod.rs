@@ -12,9 +12,9 @@ use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diag, EmissionGuarantee};
-use rustc_hir as hir;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::at::ToTrace;
@@ -33,7 +33,7 @@ use rustc_middle::ty::{
     may_use_unstable_feature,
 };
 use rustc_next_trait_solver::solve::AliasBoundKind;
-use rustc_span::{Symbol, sym};
+use rustc_span::Symbol;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
@@ -1445,8 +1445,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             && let ty::ImplPolarity::Reservation = tcx.impl_polarity(def_id)
         {
             if let Some(intercrate_ambiguity_clauses) = &mut self.intercrate_ambiguity_causes {
-                let message =
-                    tcx.get_attr(def_id, sym::rustc_reservation_impl).and_then(|a| a.value_str());
+                let message = find_attr!(tcx.get_all_attrs(def_id), AttributeKind::RustcReservationImpl(_, message) => *message);
                 if let Some(message) = message {
                     debug!(
                         "filter_reservation_impls: \
