@@ -1204,6 +1204,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_reallocator]`
     RustcReallocator,
 
+    /// Represents `#[rustc_regions]`
+    RustcRegions,
+
     /// Represents `#[rustc_scalable_vector(N)]`
     RustcScalableVector {
         /// The base multiple of lanes that are in a scalable vector, if provided. `element_count`

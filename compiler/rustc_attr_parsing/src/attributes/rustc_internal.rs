@@ -219,6 +219,22 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcLintQueryInstabilityParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintQueryInstability;
 }
 
+pub(crate) struct RustcRegionsParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcRegionsParser {
+    const PATH: &[Symbol] = &[sym::rustc_regions];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcRegions;
+}
+
 pub(crate) struct RustcLintUntrackedQueryInformationParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcLintUntrackedQueryInformationParser {

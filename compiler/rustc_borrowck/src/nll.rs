@@ -7,6 +7,8 @@ use std::str::FromStr;
 
 use polonius_engine::{Algorithm, AllFacts, Output};
 use rustc_data_structures::frozen::Frozen;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::pretty::PrettyPrintMirOptions;
 use rustc_middle::mir::{Body, MirDumper, PassWhere, Promoted};
@@ -15,7 +17,6 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_session::config::MirIncludeSpans;
-use rustc_span::sym;
 use tracing::{debug, instrument};
 
 use crate::borrow_set::BorrowSet;
@@ -295,7 +296,7 @@ pub(super) fn dump_annotation<'tcx, 'infcx>(
 ) {
     let tcx = infcx.tcx;
     let base_def_id = tcx.typeck_root_def_id(body.source.def_id());
-    if !tcx.has_attr(base_def_id, sym::rustc_regions) {
+    if !find_attr!(tcx.get_all_attrs(base_def_id), AttributeKind::RustcRegions) {
         return;
     }
 
