@@ -105,7 +105,7 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     // to align the arguments and parameters for the iteration below and to enable us to correctly
     // instantiate the generic parameter default later.
     let generics = cx.tcx.generics_of(owner);
-    let args = if !has_self && generics.parent.is_none() && generics.has_self {
+    let args = if !has_self && generics.has_own_self() {
         has_self = true;
         [cx.tcx.types.trait_object_dummy_self.into()]
             .into_iter()

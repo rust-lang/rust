@@ -1263,7 +1263,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 .iter()
                 .position(|&arg| self.generic_arg_contains_target(arg))
             {
-                if generics.parent.is_none() && generics.has_self {
+                if generics.has_own_self() {
                     argument_index += 1;
                 }
                 let args = self.tecx.resolve_vars_if_possible(args);
