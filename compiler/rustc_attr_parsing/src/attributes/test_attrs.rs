@@ -190,3 +190,41 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAbiParser {
         Some(AttributeKind::RustcAbi { attr_span: cx.attr_span, kind })
     }
 }
+
+pub(crate) struct RustcDelayedBugFromInsideQueryParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcDelayedBugFromInsideQueryParser {
+    const PATH: &[Symbol] = &[sym::rustc_delayed_bug_from_inside_query];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDelayedBugFromInsideQuery;
+}
+
+pub(crate) struct RustcEvaluateWhereClausesParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcEvaluateWhereClausesParser {
+    const PATH: &[Symbol] = &[sym::rustc_evaluate_where_clauses];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcEvaluateWhereClauses;
+}
+
+pub(crate) struct RustcOutlivesParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcOutlivesParser {
+    const PATH: &[Symbol] = &[sym::rustc_outlives];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+        Allow(Target::TyAlias),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcOutlives;
+}
