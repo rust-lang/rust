@@ -10,6 +10,9 @@
 //@ needs-symlink
 //@ needs-subprocess
 
+// FIXME(151366) Currently `-Ztranslate-additional-ftl` is currently broken
+//@ ignore-test
+
 #![deny(warnings)]
 
 use std::path::{Path, PathBuf};

@@ -727,25 +727,26 @@ impl<'a> Parser<'a> {
                         );
 
                         let args_span = self.look_ahead(1, |t| t.span).to(span_after_type);
-                        let suggestion = errors::ComparisonOrShiftInterpretedAsGenericSugg {
-                            left: expr.span.shrink_to_lo(),
-                            right: expr.span.shrink_to_hi(),
-                        };
-
                         match self.token.kind {
                             token::Lt => {
                                 self.dcx().emit_err(errors::ComparisonInterpretedAsGeneric {
                                     comparison: self.token.span,
                                     r#type: path,
                                     args: args_span,
-                                    suggestion,
+                                    suggestion: errors::ComparisonInterpretedAsGenericSugg {
+                                        left: expr.span.shrink_to_lo(),
+                                        right: expr.span.shrink_to_hi(),
+                                    },
                                 })
                             }
                             token::Shl => self.dcx().emit_err(errors::ShiftInterpretedAsGeneric {
                                 shift: self.token.span,
                                 r#type: path,
                                 args: args_span,
-                                suggestion,
+                                suggestion: errors::ShiftInterpretedAsGenericSugg {
+                                    left: expr.span.shrink_to_lo(),
+                                    right: expr.span.shrink_to_hi(),
+                                },
                             }),
                             _ => {
                                 // We can end up here even without `<` being the next token, for

@@ -114,7 +114,6 @@ pub fn default_translator() -> Translator {
 pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     // tidy-alphabetical-start
     rustc_lint::DEFAULT_LOCALE_RESOURCE,
-    rustc_parse::DEFAULT_LOCALE_RESOURCE,
     // tidy-alphabetical-end
 ];
 

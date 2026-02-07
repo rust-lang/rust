@@ -53,10 +53,9 @@ pub struct Compiler {
 pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()
         .map(|s| {
-            let psess = ParseSess::emitter_with_note(
-                vec![rustc_parse::DEFAULT_LOCALE_RESOURCE],
-                format!("this occurred on the command line: `--cfg={s}`"),
-            );
+            let psess = ParseSess::emitter_with_note(format!(
+                "this occurred on the command line: `--cfg={s}`"
+            ));
             let filename = FileName::cfg_spec_source_code(&s);
 
             macro_rules! error {
@@ -125,10 +124,9 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
     let mut check_cfg = CheckCfg { exhaustive_names, exhaustive_values, ..CheckCfg::default() };
 
     for s in specs {
-        let psess = ParseSess::emitter_with_note(
-            vec![rustc_parse::DEFAULT_LOCALE_RESOURCE],
-            format!("this occurred on the command line: `--check-cfg={s}`"),
-        );
+        let psess = ParseSess::emitter_with_note(format!(
+            "this occurred on the command line: `--check-cfg={s}`"
+        ));
         let filename = FileName::cfg_spec_source_code(&s);
 
         const VISIT: &str =

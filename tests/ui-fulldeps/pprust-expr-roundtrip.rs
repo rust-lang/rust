@@ -219,7 +219,7 @@ fn main() {
 }
 
 fn run() {
-    let psess = ParseSess::new(vec![rustc_parse::DEFAULT_LOCALE_RESOURCE]);
+    let psess = ParseSess::new(vec![]);
 
     iter_exprs(2, &mut |mut e| {
         // If the pretty printer is correct, then `parse(print(e))` should be identical to `e`,

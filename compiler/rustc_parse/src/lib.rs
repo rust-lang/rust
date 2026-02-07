@@ -75,8 +75,6 @@ const _: () = {
     }
 };
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
-
 // Unwrap the result if `Ok`, otherwise emit the diagnostics and abort.
 pub fn unwrap_or_emit_fatal<T>(expr: Result<T, Vec<Diag<'_>>>) -> T {
     match expr {

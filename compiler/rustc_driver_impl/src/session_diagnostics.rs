@@ -51,7 +51,7 @@ pub(crate) struct RlinkCorruptFile<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("the compiler unexpectedly panicked. this is a bug.")]
+#[diag("the compiler unexpectedly panicked. This is a bug")]
 pub(crate) struct Ice;
 
 #[derive(Diagnostic)]

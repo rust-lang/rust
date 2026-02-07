@@ -13,7 +13,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, PResult, Subdiagnostic, Suggestions,
-    pluralize,
+    inline_fluent, pluralize,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -41,10 +41,10 @@ use crate::errors::{
     TernaryOperatorSuggestion, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
     UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
+use crate::exp;
 use crate::parser::FnContext;
 use crate::parser::attr::InnerAttrPolicy;
 use crate::parser::item::IsDotDotDot;
-use crate::{exp, fluent_generated as fluent};
 
 /// Creates a placeholder argument.
 pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
@@ -1272,7 +1272,7 @@ impl<'a> Parser<'a> {
                         // We made sense of it. Improve the error message.
                         e.span_suggestion_verbose(
                             binop.span.shrink_to_lo(),
-                            fluent::parse_sugg_turbofish_syntax,
+                            inline_fluent!("use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments"),
                             "::",
                             Applicability::MaybeIncorrect,
                         );

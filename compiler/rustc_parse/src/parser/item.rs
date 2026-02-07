@@ -11,7 +11,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, PResult, StashKey, struct_span_code_err};
+use rustc_errors::{Applicability, PResult, StashKey, inline_fluent, struct_span_code_err};
 use rustc_session::lint::builtin::VARARGS_WITHOUT_PATTERN;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
@@ -26,7 +26,7 @@ use super::{
     Parser, PathStyle, Recovered, Trailing, UsePreAttrPos,
 };
 use crate::errors::{self, FnPointerCannotBeAsync, FnPointerCannotBeConst, MacroExpandsToAdtField};
-use crate::{exp, fluent_generated as fluent};
+use crate::exp;
 
 impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
@@ -1721,7 +1721,7 @@ impl<'a> Parser<'a> {
 
             if this.token == token::Bang {
                 if let Err(err) = this.unexpected() {
-                    err.with_note(fluent::parse_macro_expands_to_enum_variant).emit();
+                    err.with_note(inline_fluent!("macros cannot expand to enum variants")).emit();
                 }
 
                 this.bump();

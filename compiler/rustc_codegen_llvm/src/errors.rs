@@ -214,5 +214,5 @@ pub(crate) struct FixedX18InvalidArch<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("`-Zsanitizer-kcfi-arity` requires LLVM 21.0.0 or later.")]
+#[diag("`-Zsanitizer-kcfi-arity` requires LLVM 21.0.0 or later")]
 pub(crate) struct SanitizerKcfiArityRequiresLLVM2100;

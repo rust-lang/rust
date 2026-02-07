@@ -29,7 +29,7 @@ pub fn main() {
 }
 
 fn parse() {
-    let psess = ParseSess::new(vec![rustc_parse::DEFAULT_LOCALE_RESOURCE]);
+    let psess = ParseSess::new(vec![]);
 
     let path = Path::new(file!());
     let path = path.canonicalize().unwrap();
