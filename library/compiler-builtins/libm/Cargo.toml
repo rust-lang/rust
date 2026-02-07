@@ -17,7 +17,7 @@ rust-version = "1.67"
 
 [dev-dependencies]
 # FIXME(msrv): switch to `no-panic.workspace` when possible
-no-panic = "0.1.35"
+no-panic = "0.1.36"
 
 [features]
 default = ["arch"]

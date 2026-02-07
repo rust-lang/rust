@@ -5,7 +5,7 @@ use std::sync::LazyLock;
 use libm::support::Float;
 use rand::distr::{Alphanumeric, StandardUniform};
 use rand::prelude::Distribution;
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use super::KnownSize;

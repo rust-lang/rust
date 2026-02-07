@@ -34,14 +34,14 @@ exclude = [
 [workspace.dependencies]
 anyhow = "1.0.101"
 assert_cmd = "2.1.2"
-cc = "1.2.55"
+cc = "1.2.56"
 cfg-if = "1.0.4"
 compiler_builtins = { path = "builtins-shim", default-features = false }
-criterion = { version = "0.6.0", default-features = false, features = ["cargo_bench_support"] }
+criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 getopts = "0.2.24"
-getrandom = "0.3.4"
+getrandom = "0.4.1"
 gmp-mpfr-sys = { version = "1.6.8", default-features = false }
-gungraun = "0.17.0"
+gungraun = "0.17.2"
 heck = "0.5.0"
 indicatif = { version = "0.18.3", default-features = false }
 libm = { path = "libm", default-features = false }
@@ -49,22 +49,22 @@ libm-macros = { path = "crates/libm-macros" }
 libm-test = { path = "libm-test", default-features = false }
 libtest-mimic = "0.8.1"
 musl-math-sys = { path = "crates/musl-math-sys" }
-no-panic = "0.1.35"
-object = { version = "0.37.3", features = ["wasm"] }
+no-panic = "0.1.36"
+object = { version = "0.38.1", features = ["wasm"] }
 panic-handler = { path = "crates/panic-handler" }
 paste = "1.0.15"
 proc-macro2 = "1.0.106"
 quote = "1.0.44"
-rand = "0.9.2"
-rand_chacha = "0.9.0"
-rand_xoshiro = "0.7"
+rand = "0.10.0"
+rand_chacha = "0.10.0"
+rand_xoshiro = "0.8"
 rayon = "1.11.0"
 regex = "1.12.3"
 rug = { version = "1.28.1", default-features = false, features = ["float", "integer", "std"] }
 rustc_apfloat = "0.2.3"
 serde_json = "1.0.149"
-syn = "2.0.114"
-tempfile = "3.24.0"
+syn = "2.0.115"
+tempfile = "3.25.0"
 
 [profile.release]
 panic = "abort"
