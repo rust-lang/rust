@@ -1,112 +1,164 @@
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:19:5
+error: align: AbiAlign { abi: Align(4 bytes) }
+  --> $DIR/reprc-power-alignment.rs:15:1
    |
-LL |     c: f64,
-   |     ^^^^^^
-   |
-note: the lint level is defined here
-  --> $DIR/reprc-power-alignment.rs:14:8
-   |
-LL | #[warn(uses_power_alignment)]
-   |        ^^^^^^^^^^^^^^^^^^^^
+LL | pub struct Floats {
+   | ^^^^^^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:46:5
+error: align: AbiAlign { abi: Align(4 bytes) }
+  --> $DIR/reprc-power-alignment.rs:23:1
    |
-LL |     b: f64,
-   |     ^^^^^^
-   |
-   = note: `#[warn(uses_power_alignment)]` on by default
+LL | pub struct Floats2 {
+   | ^^^^^^^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:53:5
+error: align: AbiAlign { abi: Align(8 bytes) }
+  --> $DIR/reprc-power-alignment.rs:31:1
    |
-LL |     y: f64,
-   |     ^^^^^^
+LL | pub struct Floats3 {
+   | ^^^^^^^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:59:5
+error: align: AbiAlign { abi: Align(8 bytes) }
+  --> $DIR/reprc-power-alignment.rs:39:1
    |
-LL |     y: Floats,
-   |     ^^^^^^^^^
+LL | pub struct Floats4 {
+   | ^^^^^^^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:66:5
+error: align: AbiAlign { abi: Align(4 bytes) }
+  --> $DIR/reprc-power-alignment.rs:47:1
    |
-LL |     y: FloatAgg2,
-   |     ^^^^^^^^^^^^
+LL | pub struct Floats5 {
+   | ^^^^^^^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:67:5
+error: align: AbiAlign { abi: Align(4 bytes) }
+  --> $DIR/reprc-power-alignment.rs:55:1
    |
-LL |     z: FloatAgg2,
-   |     ^^^^^^^^^^^^
+LL | pub struct FloatAgg1 {
+   | ^^^^^^^^^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:73:5
+error: align: AbiAlign { abi: Align(8 bytes) }
+  --> $DIR/reprc-power-alignment.rs:62:1
    |
-LL |     y: FloatAgg2,
-   |     ^^^^^^^^^^^^
+LL | pub struct FloatAgg2 {
+   | ^^^^^^^^^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:79:5
+error: align: AbiAlign { abi: Align(8 bytes) }
+  --> $DIR/reprc-power-alignment.rs:69:1
    |
-LL |     y: FloatAgg2,
-   |     ^^^^^^^^^^^^
+LL | pub struct FloatAgg3 {
+   | ^^^^^^^^^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:80:5
+error: align: AbiAlign { abi: Align(8 bytes) }
+  --> $DIR/reprc-power-alignment.rs:77:1
    |
-LL |     z: FloatAgg3,
-   |     ^^^^^^^^^^^^
+LL | pub struct FloatAgg4 {
+   | ^^^^^^^^^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:86:5
+error: align: AbiAlign { abi: Align(8 bytes) }
+  --> $DIR/reprc-power-alignment.rs:84:1
    |
-LL |     y: Floats,
-   |     ^^^^^^^^^
+LL | pub struct FloatAgg5 {
+   | ^^^^^^^^^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:93:5
+error: align: AbiAlign { abi: Align(8 bytes) }
+  --> $DIR/reprc-power-alignment.rs:92:1
    |
-LL |     y: Floats,
-   |     ^^^^^^^^^
+LL | pub struct FloatAgg6 {
+   | ^^^^^^^^^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:106:5
+error: align: AbiAlign { abi: Align(8 bytes) }
+  --> $DIR/reprc-power-alignment.rs:100:1
    |
-LL |     d: f64,
-   |     ^^^^^^
+LL | pub struct FloatAgg7 {
+   | ^^^^^^^^^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:111:5
+error: align: AbiAlign { abi: Align(4 bytes) }
+  --> $DIR/reprc-power-alignment.rs:109:1
    |
-LL |     b: B,
-   |     ^^^^
+LL | pub struct A {
+   | ^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:120:5
+error: align: AbiAlign { abi: Align(4 bytes) }
+  --> $DIR/reprc-power-alignment.rs:115:1
    |
-LL |     d: D,
-   |     ^^^^
+LL | pub struct B {
+   | ^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:125:5
+error: align: AbiAlign { abi: Align(4 bytes) }
+  --> $DIR/reprc-power-alignment.rs:123:1
    |
-LL |     b: f64,
-   |     ^^^^^^
+LL | pub struct C {
+   | ^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:131:5
+error: align: AbiAlign { abi: Align(4 bytes) }
+  --> $DIR/reprc-power-alignment.rs:130:1
    |
-LL |     c: f64,
-   |     ^^^^^^
+LL | pub struct D {
+   | ^^^^^^^^^^^^
 
-warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:133:5
+error: align: AbiAlign { abi: Align(4 bytes) }
+  --> $DIR/reprc-power-alignment.rs:136:1
    |
-LL |     e: f64,
-   |     ^^^^^^
+LL | pub struct E {
+   | ^^^^^^^^^^^^
 
-warning: 17 warnings emitted
+error: align: AbiAlign { abi: Align(4 bytes) }
+  --> $DIR/reprc-power-alignment.rs:143:1
+   |
+LL | pub struct F {
+   | ^^^^^^^^^^^^
+
+error: align: AbiAlign { abi: Align(4 bytes) }
+  --> $DIR/reprc-power-alignment.rs:150:1
+   |
+LL | pub struct G {
+   | ^^^^^^^^^^^^
+
+error: align: AbiAlign { abi: Align(1 bytes) }
+  --> $DIR/reprc-power-alignment.rs:160:1
+   |
+LL | pub struct H {
+   | ^^^^^^^^^^^^
+
+error: align: AbiAlign { abi: Align(1 bytes) }
+  --> $DIR/reprc-power-alignment.rs:170:1
+   |
+LL | pub struct I {
+   | ^^^^^^^^^^^^
+
+error: align: AbiAlign { abi: Align(1 bytes) }
+  --> $DIR/reprc-power-alignment.rs:181:1
+   |
+LL | pub struct J {
+   | ^^^^^^^^^^^^
+
+error: align: AbiAlign { abi: Align(8 bytes) }
+  --> $DIR/reprc-power-alignment.rs:188:1
+   |
+LL | pub struct K {
+   | ^^^^^^^^^^^^
+
+error: align: AbiAlign { abi: Align(8 bytes) }
+  --> $DIR/reprc-power-alignment.rs:198:1
+   |
+LL | pub struct L {
+   | ^^^^^^^^^^^^
+
+error: align: AbiAlign { abi: Align(8 bytes) }
+  --> $DIR/reprc-power-alignment.rs:205:1
+   |
+LL | pub struct M {
+   | ^^^^^^^^^^^^
+
+error: align: AbiAlign { abi: Align(4 bytes) }
+  --> $DIR/reprc-power-alignment.rs:213:1
+   |
+LL | pub union Union {
+   | ^^^^^^^^^^^^^^^
+
+error: align: AbiAlign { abi: Align(4 bytes) }
+  --> $DIR/reprc-power-alignment.rs:223:1
+   |
+LL | pub enum Enum {
+   | ^^^^^^^^^^^^^
+
+error: aborting due to 27 previous errors
 

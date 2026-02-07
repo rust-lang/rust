@@ -1776,10 +1776,6 @@ pub(crate) struct TooLargeCharCast {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_uses_power_alignment)]
-pub(crate) struct UsesPowerAlignment;
-
-#[derive(LintDiagnostic)]
 #[diag(lint_unused_comparisons)]
 pub(crate) struct UnusedComparisons;
 
