@@ -1160,7 +1160,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Determine the binding mode...
         let bm = match user_bind_annot {
             BindingMode(ByRef::No, Mutability::Mut) if let ByRef::Yes(_, def_br_mutbl) = def_br => {
-                // Only mention the experimental `mut_ref` feature if if we're in edition 2024 and
+                // Only mention the experimental `mut_ref` feature if we're in edition 2024 and
                 // using other experimental matching features compatible with it.
                 if pat.span.at_least_rust_2024()
                     && (self.tcx.features().ref_pat_eat_one_layer_2024()
