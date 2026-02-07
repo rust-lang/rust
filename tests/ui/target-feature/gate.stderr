@@ -1,5 +1,5 @@
 error[E0658]: the target feature `x87` is currently unstable
-  --> $DIR/gate.rs:24:18
+  --> $DIR/gate.rs:25:18
    |
 LL | #[target_feature(enable = "x87")]
    |                  ^^^^^^^^^^^^^^
