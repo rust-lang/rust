@@ -656,11 +656,7 @@ impl Pat {
             // A tuple pattern `(P0, .., Pn)` can be reparsed as `(T0, .., Tn)`
             // assuming `T0` to `Tn` are all syntactically valid as types.
             PatKind::Tuple(pats) => {
-                let mut tys = ThinVec::with_capacity(pats.len());
-                // FIXME(#48994) - could just be collected into an Option<Vec>
-                for pat in pats {
-                    tys.push(pat.to_ty()?);
-                }
+                let tys = pats.iter().map(|pat| pat.to_ty()).collect::<Option<ThinVec<_>>>()?;
                 TyKind::Tup(tys)
             }
             _ => return None,
