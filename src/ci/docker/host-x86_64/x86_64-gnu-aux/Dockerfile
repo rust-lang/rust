@@ -29,5 +29,5 @@ RUN sh /scripts/sccache.sh
 ENV NO_DEBUG_ASSERTIONS=1
 ENV NO_OVERFLOW_CHECKS=1
 
-ENV RUST_CONFIGURE_ARGS --build=x86_64-unknown-linux-gnu
-ENV RUST_CHECK_TARGET check-aux
+ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu"
+ENV RUST_CHECK_TARGET="check-aux"

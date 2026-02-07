@@ -27,7 +27,7 @@ ENV CC_loongarch64_unknown_linux_musl=loongarch64-unknown-linux-musl-gcc \
 
 ENV HOSTS=loongarch64-unknown-linux-musl
 
-ENV RUST_CONFIGURE_ARGS \
+ENV RUST_CONFIGURE_ARGS=" \
       --enable-extended \
       --enable-full-tools \
       --enable-profiler \
@@ -37,6 +37,6 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.lto=thin \
       --set rust.codegen-units=1 \
       --set target.loongarch64-unknown-linux-musl.crt-static=false \
-      --musl-root-loongarch64=/x-tools/loongarch64-unknown-linux-musl/loongarch64-unknown-linux-musl/sysroot/usr
+      --musl-root-loongarch64=/x-tools/loongarch64-unknown-linux-musl/loongarch64-unknown-linux-musl/sysroot/usr"
 
-ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS
+ENV SCRIPT="python3 ../x.py dist --host $HOSTS --target $HOSTS"

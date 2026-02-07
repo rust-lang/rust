@@ -1,5 +1,5 @@
 # Runs `distcheck`, which is a collection of smoke tests:
-# 
+#
 # - Run `make check` from an unpacked dist tarball to make sure we can at the
 #   minimum run check steps from those sources.
 # - Check that selected dist components at least have expected directory shape
@@ -34,6 +34,6 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 # Make distcheck builds faster
-ENV DISTCHECK_CONFIGURE_ARGS "--enable-sccache"
+ENV DISTCHECK_CONFIGURE_ARGS="--enable-sccache"
 
-ENV SCRIPT python3 ../x.py test distcheck
+ENV SCRIPT="python3 ../x.py test distcheck"

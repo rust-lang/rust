@@ -30,7 +30,7 @@ ENV RUST_CONFIGURE_ARGS="--set rust.validate-mir-opts=3"
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-ENV SCRIPT \
+ENV SCRIPT=" \
         python3 ../x.py check && \
         python3 ../x.py clippy ci --stage 2 && \
         python3 ../x.py test --stage 1 core alloc std test proc_macro && \
@@ -48,4 +48,4 @@ ENV SCRIPT \
         RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc library/test --stage 1 && \
         # The BOOTSTRAP_TRACING flag is added to verify whether the
         # bootstrap process compiles successfully with this flag enabled.
-        BOOTSTRAP_TRACING=1 python3 ../x.py --help
+        BOOTSTRAP_TRACING=1 python3 ../x.py --help"

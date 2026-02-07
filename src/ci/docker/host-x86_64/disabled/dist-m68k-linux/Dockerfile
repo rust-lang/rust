@@ -24,5 +24,5 @@ RUN sh /scripts/sccache.sh
 
 ENV HOSTS=m68k-unknown-linux-gnu
 
-ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended
-ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS
+ENV RUST_CONFIGURE_ARGS="--host=$HOSTS --enable-extended"
+ENV SCRIPT="python3 ../x.py dist --host $HOSTS --target $HOSTS"
