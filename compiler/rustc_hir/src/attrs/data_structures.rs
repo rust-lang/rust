@@ -1120,6 +1120,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_if_this_changed]`
     RustcIfThisChanged(Span, Option<Symbol>),
 
+    /// Represents `#[rustc_insignificant_dtor]`
+    RustcInsignificantDtor,
+
     /// Represents `#[rustc_layout]`
     RustcLayout(ThinVec<RustcLayoutType>),
 
