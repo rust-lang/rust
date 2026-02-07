@@ -295,6 +295,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcBodyStability { .. }
                     | AttributeKind::RustcBuiltinMacro { .. }
                     | AttributeKind::RustcCaptureAnalysis
+                    | AttributeKind::RustcCguTestAttr(..)
                     | AttributeKind::RustcClean(..)
                     | AttributeKind::RustcCoherenceIsCore(..)
                     | AttributeKind::RustcCoinductive(..)
@@ -341,7 +342,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcOffloadKernel
                     | AttributeKind::RustcOutlives
                     | AttributeKind::RustcParenSugar(..)
-                    | AttributeKind::RustcCguTestAttr(..)
                     | AttributeKind::RustcPassByValue (..)
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
                     | AttributeKind::RustcPreserveUbChecks
@@ -356,6 +356,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcStrictCoherence(..)
                     | AttributeKind::RustcSymbolName(..)
                     | AttributeKind::RustcThenThisWouldNeed(..)
+                    | AttributeKind::RustcTrivialFieldReads
                     | AttributeKind::RustcUnsafeSpecializationMarker(..)
                     | AttributeKind::RustcVariance
                     | AttributeKind::RustcVarianceOfOpaques
@@ -398,7 +399,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_no_mir_inline
                             | sym::rustc_nonnull_optimization_guaranteed
                             | sym::rustc_inherit_overflow_checks
-                            | sym::rustc_trivial_field_reads
                             | sym::rustc_on_unimplemented
                             | sym::rustc_do_not_const_check
                             | sym::rustc_reservation_impl

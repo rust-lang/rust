@@ -147,9 +147,9 @@ attribute_parsers!(
         DocParser,
         MacroUseParser,
         NakedParser,
+        RustcCguTestAttributeParser,
         StabilityParser,
         UsedParser,
-        RustcCguTestAttributeParser,
         // tidy-alphabetical-end
 
         // tidy-alphabetical-start
@@ -169,6 +169,20 @@ attribute_parsers!(
         // tidy-alphabetical-end
 
         // tidy-alphabetical-start
+%%%%%%% Changes from base to side #1
++        Single<WithoutArgs<RustcStrictCoherenceParser>>,
++++++++ Contents of side #2
+        Single<WithoutArgs<RustcTrivialFieldReadsParser>>,
+<<<<<<< Conflict 1 of 1
+>>>>>>> Conflict 1 of 1 ends
+        Single<WithoutArgs<RustcVarianceOfOpaquesParser>>,
+        Single<WithoutArgs<RustcVarianceParser>>,
+        Single<WithoutArgs<SpecializationTraitParser>>,
+        Single<WithoutArgs<StdInternalSymbolParser>>,
+        Single<WithoutArgs<ThreadLocalParser>>,
+        Single<WithoutArgs<TrackCallerParser>>,
+        Single<WithoutArgs<TypeConstParser>>,
+        Single<WithoutArgs<UnsafeSpecializationMarkerParser>>,
         Single<CfiEncodingParser>,
         Single<CollapseDebugInfoParser>,
         Single<CoverageParser>,
@@ -210,8 +224,8 @@ attribute_parsers!(
         Single<RustcLegacyConstGenericsParser>,
         Single<RustcLintOptDenyFieldAccessParser>,
         Single<RustcMustImplementOneOfParser>,
-        Single<RustcObjectLifetimeDefaultParser>,
         Single<RustcNeverTypeOptionsParser>,
+        Single<RustcObjectLifetimeDefaultParser>,
         Single<RustcScalableVectorParser>,
         Single<RustcSimdMonomorphizeLaneLimitParser>,
         Single<RustcSymbolName>,
@@ -295,15 +309,6 @@ attribute_parsers!(
         Single<WithoutArgs<RustcReallocatorParser>>,
         Single<WithoutArgs<RustcRegionsParser>>,
         Single<WithoutArgs<RustcShouldNotBeCalledOnConstItems>>,
-        Single<WithoutArgs<RustcStrictCoherenceParser>>,
-        Single<WithoutArgs<RustcVarianceOfOpaquesParser>>,
-        Single<WithoutArgs<RustcVarianceParser>>,
-        Single<WithoutArgs<SpecializationTraitParser>>,
-        Single<WithoutArgs<StdInternalSymbolParser>>,
-        Single<WithoutArgs<ThreadLocalParser>>,
-        Single<WithoutArgs<TrackCallerParser>>,
-        Single<WithoutArgs<TypeConstParser>>,
-        Single<WithoutArgs<UnsafeSpecializationMarkerParser>>,
         // tidy-alphabetical-end
     ];
 );

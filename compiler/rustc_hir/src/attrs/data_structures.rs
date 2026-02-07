@@ -1107,6 +1107,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_capture_analysis]`
     RustcCaptureAnalysis,
 
+    /// Represents `#[rustc_expected_cgu_reuse]`, `#[rustc_partition_codegened]` and `#[rustc_partition_reused]`.
+    RustcCguTestAttr(ThinVec<(Span, CguFields)>),
+
     /// Represents `#[rustc_clean]`
     RustcClean(ThinVec<RustcCleanAttribute>),
 
@@ -1176,9 +1179,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_evaluate_where_clauses]`
     RustcEvaluateWhereClauses,
-
-    /// Represents `#[rustc_expected_cgu_reuse]`, `#[rustc_partition_codegened]` and `#[rustc_partition_reused]`.
-    RustcCguTestAttr(ThinVec<(Span, CguFields)>),
 
     /// Represents `#[rustc_has_incoherent_inherent_impls]`
     RustcHasIncoherentInherentImpls,
@@ -1319,6 +1319,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_then_this_would_need]`
     RustcThenThisWouldNeed(Span, ThinVec<Ident>),
+
+    /// Represents `#[rustc_trivial_field_reads]`
+    RustcTrivialFieldReads,
 
     /// Represents `#[rustc_unsafe_specialization_marker]`.
     RustcUnsafeSpecializationMarker(Span),

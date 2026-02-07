@@ -502,6 +502,15 @@ impl<S: Stage> SingleAttributeParser<S> for RustcNeverTypeOptionsParser {
     }
 }
 
+pub(crate) struct RustcTrivialFieldReadsParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcTrivialFieldReadsParser {
+    const PATH: &[Symbol] = &[sym::rustc_trivial_field_reads];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcTrivialFieldReads;
+}
+
 pub(crate) struct RustcLintQueryInstabilityParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcLintQueryInstabilityParser {
