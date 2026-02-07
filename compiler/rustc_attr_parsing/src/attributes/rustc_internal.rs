@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use rustc_ast::{LitIntType, LitKind, MetaItemLit};
 use rustc_hir::attrs::{
-    BorrowckGraphvizFormatKind, RustcCleanAttribute, RustcCleanQueries, RustcLayoutType,
+    BorrowckGraphvizFormatKind, CguFields, CguKind, DivergingBlockBehavior,
+    DivergingFallbackBehavior, RustcCleanAttribute, RustcCleanQueries, RustcLayoutType,
     RustcMirKind,
 };
 use rustc_session::errors;
@@ -10,7 +11,9 @@ use rustc_span::Symbol;
 
 use super::prelude::*;
 use super::util::parse_single_integer;
-use crate::session_diagnostics::{AttributeRequiresOpt, RustcScalableVectorCountOutOfRange};
+use crate::session_diagnostics::{
+    AttributeRequiresOpt, CguFieldsMissing, RustcScalableVectorCountOutOfRange,
+};
 
 pub(crate) struct RustcMainParser;
 
@@ -204,6 +207,144 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcLintOptTyParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintOptTy;
 }
 
+fn parse_cgu_fields<S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    args: &ArgParser,
+    accepts_kind: bool,
+) -> Option<(Symbol, Symbol, Option<CguKind>)> {
+    let Some(args) = args.list() else {
+        cx.expected_list(cx.attr_span, args);
+        return None;
+    };
+
+    let mut cfg = None::<(Symbol, Span)>;
+    let mut module = None::<(Symbol, Span)>;
+    let mut kind = None::<(Symbol, Span)>;
+
+    for arg in args.mixed() {
+        let Some(arg) = arg.meta_item() else {
+            cx.expected_name_value(args.span, None);
+            continue;
+        };
+
+        let res = match arg.ident().map(|i| i.name) {
+            Some(sym::cfg) => &mut cfg,
+            Some(sym::module) => &mut module,
+            Some(sym::kind) if accepts_kind => &mut kind,
+            _ => {
+                cx.expected_specific_argument(
+                    arg.path().span(),
+                    if accepts_kind {
+                        &[sym::cfg, sym::module, sym::kind]
+                    } else {
+                        &[sym::cfg, sym::module]
+                    },
+                );
+                continue;
+            }
+        };
+
+        let Some(i) = arg.args().name_value() else {
+            cx.expected_name_value(arg.span(), None);
+            continue;
+        };
+
+        let Some(str) = i.value_as_str() else {
+            cx.expected_string_literal(i.value_span, Some(i.value_as_lit()));
+            continue;
+        };
+
+        if res.is_some() {
+            cx.duplicate_key(arg.span(), arg.ident().unwrap().name);
+            continue;
+        }
+
+        *res = Some((str, i.value_span));
+    }
+
+    let Some((cfg, _)) = cfg else {
+        cx.emit_err(CguFieldsMissing { span: args.span, name: &cx.attr_path, field: sym::cfg });
+        return None;
+    };
+    let Some((module, _)) = module else {
+        cx.emit_err(CguFieldsMissing { span: args.span, name: &cx.attr_path, field: sym::module });
+        return None;
+    };
+    let kind = if let Some((kind, span)) = kind {
+        Some(match kind {
+            sym::no => CguKind::No,
+            sym::pre_dash_lto => CguKind::PreDashLto,
+            sym::post_dash_lto => CguKind::PostDashLto,
+            sym::any => CguKind::Any,
+            _ => {
+                cx.expected_specific_argument_strings(
+                    span,
+                    &[sym::no, sym::pre_dash_lto, sym::post_dash_lto, sym::any],
+                );
+                return None;
+            }
+        })
+    } else {
+        // return None so that an unwrap for the attributes that need it is ok.
+        if accepts_kind {
+            cx.emit_err(CguFieldsMissing {
+                span: args.span,
+                name: &cx.attr_path,
+                field: sym::kind,
+            });
+            return None;
+        };
+
+        None
+    };
+
+    Some((cfg, module, kind))
+}
+
+#[derive(Default)]
+pub(crate) struct RustcCguTestAttributeParser {
+    items: ThinVec<(Span, CguFields)>,
+}
+
+impl<S: Stage> AttributeParser<S> for RustcCguTestAttributeParser {
+    const ATTRIBUTES: AcceptMapping<Self, S> = &[
+        (
+            &[sym::rustc_partition_reused],
+            template!(List: &[r#"cfg = "...", module = "...""#]),
+            |this, cx, args| {
+                this.items.extend(parse_cgu_fields(cx, args, false).map(|(cfg, module, _)| {
+                    (cx.attr_span, CguFields::PartitionReused { cfg, module })
+                }));
+            },
+        ),
+        (
+            &[sym::rustc_partition_codegened],
+            template!(List: &[r#"cfg = "...", module = "...""#]),
+            |this, cx, args| {
+                this.items.extend(parse_cgu_fields(cx, args, false).map(|(cfg, module, _)| {
+                    (cx.attr_span, CguFields::PartitionCodegened { cfg, module })
+                }));
+            },
+        ),
+        (
+            &[sym::rustc_expected_cgu_reuse],
+            template!(List: &[r#"cfg = "...", module = "...", kind = "...""#]),
+            |this, cx, args| {
+                this.items.extend(parse_cgu_fields(cx, args, true).map(|(cfg, module, kind)| {
+                    // unwrap ok because if not given, we return None in `parse_cgu_fields`.
+                    (cx.attr_span, CguFields::ExpectedCguReuse { cfg, module, kind: kind.unwrap() })
+                }));
+            },
+        ),
+    ];
+
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Mod), Allow(Target::Crate)]);
+
+    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+        Some(AttributeKind::RustcCguTestAttr(self.items))
+    }
+}
 pub(crate) struct RustcLintQueryInstabilityParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcLintQueryInstabilityParser {

@@ -149,6 +149,7 @@ attribute_parsers!(
         NakedParser,
         StabilityParser,
         UsedParser,
+        RustcCguTestAttributeParser,
         // tidy-alphabetical-end
 
         // tidy-alphabetical-start

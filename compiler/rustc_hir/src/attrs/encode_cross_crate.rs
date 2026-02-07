@@ -145,6 +145,7 @@ impl AttributeKind {
             RustcOffloadKernel => Yes,
             RustcOutlives => No,
             RustcParenSugar(..) => No,
+            RustcCguTestAttr { .. } => No,
             RustcPassByValue(..) => Yes,
             RustcPassIndirectlyInNonRusticAbis(..) => No,
             RustcPreserveUbChecks => No,

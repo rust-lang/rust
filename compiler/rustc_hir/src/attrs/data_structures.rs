@@ -50,6 +50,19 @@ pub struct EiiDecl {
 }
 
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, PrintAttribute)]
+pub enum CguKind {
+    No,
+    PreDashLto,
+    PostDashLto,
+    Any,
+}
+
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, PrintAttribute)]
+pub enum CguFields {
+    PartitionReused { cfg: Symbol, module: Symbol },
+    PartitionCodegened { cfg: Symbol, module: Symbol },
+    ExpectedCguReuse { cfg: Symbol, module: Symbol, kind: CguKind },
+}
 pub enum InlineAttr {
     None,
     Hint,
@@ -1116,6 +1129,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_evaluate_where_clauses]`
     RustcEvaluateWhereClauses,
+
+    /// Represents `#[rustc_expected_cgu_reuse]`, `#[rustc_partition_codegened]` and `#[rustc_partition_reused]`.
+    RustcCguTestAttr(ThinVec<(Span, CguFields)>),
 
     /// Represents `#[rustc_has_incoherent_inherent_impls]`
     RustcHasIncoherentInherentImpls,

@@ -337,6 +337,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcOffloadKernel
                     | AttributeKind::RustcOutlives
                     | AttributeKind::RustcParenSugar(..)
+                    | AttributeKind::RustcCguTestAttr(..)
                     | AttributeKind::RustcPassByValue (..)
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
                     | AttributeKind::RustcPreserveUbChecks
@@ -407,9 +408,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_autodiff
                             | sym::rustc_capture_analysis
                             | sym::rustc_mir
-                            | sym::rustc_partition_reused
-                            | sym::rustc_partition_codegened
-                            | sym::rustc_expected_cgu_reuse
                             // crate-level attrs, are checked below
                             | sym::feature
                             | sym::register_tool
