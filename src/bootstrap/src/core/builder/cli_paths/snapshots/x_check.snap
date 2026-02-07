@@ -28,7 +28,6 @@ expression: check
     - Set({check::compiler/rustc_errors})
     - Set({check::compiler/rustc_expand})
     - Set({check::compiler/rustc_feature})
-    - Set({check::compiler/rustc_fluent_macro})
     - Set({check::compiler/rustc_fs_util})
     - Set({check::compiler/rustc_graphviz})
     - Set({check::compiler/rustc_hashes})

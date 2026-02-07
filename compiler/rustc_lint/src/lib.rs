@@ -139,8 +139,6 @@ pub use rustc_errors::BufferedEarlyLint;
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec};
 
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
-
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
     expect::provide(providers);
