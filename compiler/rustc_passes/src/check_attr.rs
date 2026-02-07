@@ -303,6 +303,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDefPath(..)
                     | AttributeKind::RustcDelayedBugFromInsideQuery
                     | AttributeKind::RustcDenyExplicitImpl(..)
+                    | AttributeKind::RustcDoNotConstCheck
                     | AttributeKind::RustcDummy
                     | AttributeKind::RustcDumpDefParents
                     | AttributeKind::RustcDumpItemBounds
@@ -394,7 +395,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_inherit_overflow_checks
                             | sym::rustc_trivial_field_reads
                             | sym::rustc_on_unimplemented
-                            | sym::rustc_do_not_const_check
                             | sym::rustc_reservation_impl
                             | sym::rustc_doc_primitive
                             | sym::rustc_conversion_suggestion

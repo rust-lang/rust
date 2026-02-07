@@ -1090,6 +1090,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_deny_explicit_impl]`.
     RustcDenyExplicitImpl(Span),
 
+    /// Represents `#[rustc_do_not_const_check]`
+    RustcDoNotConstCheck,
+
     /// Represents `#[rustc_dummy]`.
     RustcDummy,
 
