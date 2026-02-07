@@ -1145,7 +1145,7 @@ pub(crate) struct CastThinPointerToWidePointer<'tcx> {
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
     #[note(
-        "Thin pointers are \"simple\" pointers: they are purely a reference to a
+        "thin pointers are \"simple\" pointers: they are purely a reference to a
         memory address.
 
         Wide pointers are pointers referencing \"Dynamically Sized Types\" (also

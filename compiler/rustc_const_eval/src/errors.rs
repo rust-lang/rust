@@ -309,7 +309,7 @@ pub(crate) struct UnallowedHeapAllocations {
     pub span: Span,
     pub kind: ConstContext,
     #[note(
-        "The runtime heap is not yet available at compile-time, so no runtime heap allocations can be created."
+        "the runtime heap is not yet available at compile-time, so no runtime heap allocations can be created"
     )]
     pub teach: bool,
 }
@@ -347,7 +347,7 @@ pub(crate) struct InteriorMutableBorrowEscaping {
 #[diag("constant evaluation is taking a long time")]
 #[note(
     "this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
-    If your compilation actually takes a long time, you can safely allow the lint."
+    If your compilation actually takes a long time, you can safely allow the lint"
 )]
 pub struct LongRunning {
     #[help("the constant being evaluated")]

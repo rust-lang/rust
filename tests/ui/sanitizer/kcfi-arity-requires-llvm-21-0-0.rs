@@ -5,7 +5,7 @@
 //@ build-fail
 //@ max-llvm-major-version: 20
 
-//~? ERROR `-Zsanitizer-kcfi-arity` requires LLVM 21.0.0 or later.
+//~? ERROR `-Zsanitizer-kcfi-arity` requires LLVM 21.0.0 or later
 #![feature(no_core)]
 #![no_core]
 #![no_main]
