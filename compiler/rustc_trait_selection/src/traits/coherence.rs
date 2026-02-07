@@ -8,8 +8,10 @@ use std::fmt::Debug;
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{Diag, EmissionGuarantee};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
+use rustc_hir::find_attr;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::PredicateObligations;
 use rustc_macros::{TypeFoldable, TypeVisitable};
@@ -23,7 +25,7 @@ use rustc_middle::ty::{
 };
 pub use rustc_next_trait_solver::coherence::*;
 use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
-use rustc_span::{DUMMY_SP, Span, sym};
+use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, warn};
 
 use super::ObligationCtxt;
@@ -758,10 +760,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
             } = cand.kind()
                 && let ty::ImplPolarity::Reservation = infcx.tcx.impl_polarity(def_id)
             {
-                let message = infcx
-                    .tcx
-                    .get_attr(def_id, sym::rustc_reservation_impl)
-                    .and_then(|a| a.value_str());
+                let message = find_attr!(infcx.tcx.get_all_attrs(def_id), AttributeKind::RustcReservationImpl(_, message) => *message);
                 if let Some(message) = message {
                     self.causes.insert(IntercrateAmbiguityCause::ReservationImpl { message });
                 }

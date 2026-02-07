@@ -490,6 +490,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcMirParser {
             .collect()
     }
 }
+
 pub(crate) struct RustcNonConstTraitMethodParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNonConstTraitMethodParser {
@@ -808,5 +809,31 @@ impl<S: Stage> SingleAttributeParser<S> for RustcDefPath {
             return None;
         }
         Some(AttributeKind::RustcDefPath(cx.attr_span))
+    }
+}
+
+pub(crate) struct RustcReservationImplParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcReservationImplParser {
+    const PATH: &[Symbol] = &[sym::rustc_reservation_impl];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Impl { of_trait: true })]);
+
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "reservation message");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(nv) = args.name_value() else {
+            cx.expected_name_value(args.span().unwrap_or(cx.attr_span), None);
+            return None;
+        };
+
+        let Some(value_str) = nv.value_as_str() else {
+            cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+            return None;
+        };
+
+        Some(AttributeKind::RustcReservationImpl(cx.attr_span, value_str))
     }
 }
