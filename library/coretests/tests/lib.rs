@@ -66,6 +66,7 @@
 #![feature(generic_assert_internals)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
+#![feature(int_from_ascii)]
 #![feature(int_lowest_highest_one)]
 #![feature(int_roundings)]
 #![feature(ip)]
