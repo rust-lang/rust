@@ -202,11 +202,11 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_opaque_hidden_inferred_bound)]
+#[diag("opaque type `{$ty}` does not satisfy its associated type bounds")]
 struct OpaqueHiddenInferredBoundLint<'tcx> {
     ty: Ty<'tcx>,
     proj_ty: Ty<'tcx>,
-    #[label(lint_specifically)]
+    #[label("this associated type bound is unsatisfied for `{$proj_ty}`")]
     assoc_pred_span: Span,
     #[subdiagnostic]
     add_bound: Option<AddBound<'tcx>>,
@@ -214,7 +214,7 @@ struct OpaqueHiddenInferredBoundLint<'tcx> {
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    lint_opaque_hidden_inferred_bound_sugg,
+    "add this bound",
     style = "verbose",
     applicability = "machine-applicable",
     code = " + {trait_ref}"

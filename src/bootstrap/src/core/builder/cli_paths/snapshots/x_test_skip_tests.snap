@@ -1,6 +1,5 @@
 ---
 source: src/bootstrap/src/core/builder/cli_paths/tests.rs
-assertion_line: 68
 expression: test --skip=tests
 ---
 [Test] test::Tidy
@@ -58,7 +57,6 @@ expression: test --skip=tests
     - Set({test::compiler/rustc_errors})
     - Set({test::compiler/rustc_expand})
     - Set({test::compiler/rustc_feature})
-    - Set({test::compiler/rustc_fluent_macro})
     - Set({test::compiler/rustc_fs_util})
     - Set({test::compiler/rustc_graphviz})
     - Set({test::compiler/rustc_hashes})

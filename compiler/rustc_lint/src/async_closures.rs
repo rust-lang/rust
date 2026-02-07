@@ -108,16 +108,18 @@ impl<'tcx> LateLintPass<'tcx> for AsyncClosureUsage {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_closure_returning_async_block)]
+#[diag("closure returning async block can be made into an async closure")]
 struct ClosureReturningAsyncBlock {
-    #[label]
+    #[label(
+        "this async block can be removed, and the closure can be turned into an async closure"
+    )]
     async_decl_span: Span,
     #[subdiagnostic]
     sugg: AsyncClosureSugg,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(lint_suggestion, applicability = "maybe-incorrect")]
+#[multipart_suggestion("turn this into an async closure", applicability = "maybe-incorrect")]
 struct AsyncClosureSugg {
     #[suggestion_part(code = "")]
     deletion_span: Span,

@@ -22,7 +22,7 @@ use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_attr_parsing::AttributeParser;
-use rustc_errors::{Applicability, LintDiagnostic};
+use rustc_errors::{Applicability, LintDiagnostic, inline_fluent};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, DocAttribute};
@@ -61,10 +61,7 @@ use crate::lints::{
     BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
     BuiltinUnusedDocCommentSub, BuiltinWhileTrue, InvalidAsmLabel,
 };
-use crate::{
-    EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
-    fluent_generated as fluent,
-};
+use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext};
 declare_lint! {
     /// The `while_true` lint detects `while true { }`.
     ///
@@ -2655,8 +2652,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             let conjured_ty = cx.typeck_results().expr_ty(expr);
             if let Some(err) = with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty, init)) {
                 let msg = match init {
-                    InitKind::Zeroed => fluent::lint_builtin_unpermitted_type_init_zeroed,
-                    InitKind::Uninit => fluent::lint_builtin_unpermitted_type_init_uninit,
+                    InitKind::Zeroed => {
+                        inline_fluent!("the type `{$ty}` does not permit zero-initialization")
+                    }
+                    InitKind::Uninit => {
+                        inline_fluent!("the type `{$ty}` does not permit being left uninitialized")
+                    }
                 };
                 let sub = BuiltinUnpermittedTypeInitSub { err };
                 cx.emit_span_lint(
