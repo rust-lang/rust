@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 use std::ops::{Deref, DerefMut};
 use std::sync::LazyLock;
 
@@ -61,7 +62,7 @@ use crate::target_checking::AllowedTargets;
 type GroupType<S> = LazyLock<GroupTypeInner<S>>;
 
 pub(super) struct GroupTypeInner<S: Stage> {
-    pub(super) accepters: BTreeMap<&'static [Symbol], Vec<GroupTypeInnerAccept<S>>>,
+    pub(super) accepters: BTreeMap<&'static [Symbol], GroupTypeInnerAccept<S>>,
 }
 
 pub(super) struct GroupTypeInnerAccept<S: Stage> {
@@ -101,7 +102,7 @@ macro_rules! attribute_parsers {
         @[$stage: ty] pub(crate) static $name: ident = [$($names: ty),* $(,)?];
     ) => {
         pub(crate) static $name: GroupType<$stage> = LazyLock::new(|| {
-            let mut accepters = BTreeMap::<_, Vec<GroupTypeInnerAccept<$stage>>>::new();
+            let mut accepters = BTreeMap::<_, GroupTypeInnerAccept<$stage>>::new();
             $(
                 {
                     thread_local! {
@@ -109,19 +110,24 @@ macro_rules! attribute_parsers {
                     };
 
                     for (path, template, accept_fn) in <$names>::ATTRIBUTES {
-                        accepters.entry(*path).or_default().push(GroupTypeInnerAccept {
-                            template: *template,
-                            accept_fn: Box::new(|cx, args| {
-                                STATE_OBJECT.with_borrow_mut(|s| {
-                                    accept_fn(s, cx, args)
-                                })
-                            }),
-                            allowed_targets: <$names as crate::attributes::AttributeParser<$stage>>::ALLOWED_TARGETS,
-                            finalizer: Box::new(|cx| {
-                                let state = STATE_OBJECT.take();
-                                state.finalize(cx)
-                            }),
-                        });
+                        match accepters.entry(*path) {
+                            Entry::Vacant(e) => {
+                                e.insert(GroupTypeInnerAccept {
+                                    template: *template,
+                                    accept_fn: Box::new(|cx, args| {
+                                        STATE_OBJECT.with_borrow_mut(|s| {
+                                            accept_fn(s, cx, args)
+                                        })
+                                    }),
+                                    allowed_targets: <$names as crate::attributes::AttributeParser<$stage>>::ALLOWED_TARGETS,
+                                    finalizer: Box::new(|cx| {
+                                        let state = STATE_OBJECT.take();
+                                        state.finalize(cx)
+                                    })
+                                });
+                            }
+                            Entry::Occupied(_) => panic!("Attribute {path:?} has multiple accepters"),
+                        }
                     }
                 }
             )*

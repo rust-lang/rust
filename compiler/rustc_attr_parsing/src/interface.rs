@@ -327,7 +327,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                     let parts =
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
 
-                    if let Some(accepts) = S::parsers().accepters.get(parts.as_slice()) {
+                    if let Some(accept) = S::parsers().accepters.get(parts.as_slice()) {
                         let Some(args) = ArgParser::from_attr_args(
                             args,
                             &parts,
@@ -368,28 +368,26 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             continue;
                         }
 
-                        for accept in accepts {
-                            let mut cx: AcceptContext<'_, 'sess, S> = AcceptContext {
-                                shared: SharedContext {
-                                    cx: self,
-                                    target_span,
-                                    target,
-                                    emit_lint: &mut emit_lint,
-                                },
-                                attr_span,
-                                inner_span: lower_span(n.item.span()),
-                                attr_style: attr.style,
-                                parsed_description: ParsedDescription::Attribute,
-                                template: &accept.template,
-                                attr_path: attr_path.clone(),
-                            };
+                        let mut cx: AcceptContext<'_, 'sess, S> = AcceptContext {
+                            shared: SharedContext {
+                                cx: self,
+                                target_span,
+                                target,
+                                emit_lint: &mut emit_lint,
+                            },
+                            attr_span,
+                            inner_span: lower_span(n.item.span()),
+                            attr_style: attr.style,
+                            parsed_description: ParsedDescription::Attribute,
+                            template: &accept.template,
+                            attr_path: attr_path.clone(),
+                        };
 
-                            (accept.accept_fn)(&mut cx, &args);
-                            finalizers.push(&accept.finalizer);
+                        (accept.accept_fn)(&mut cx, &args);
+                        finalizers.push(&accept.finalizer);
 
-                            if !matches!(cx.stage.should_emit(), ShouldEmit::Nothing) {
-                                Self::check_target(&accept.allowed_targets, target, &mut cx);
-                            }
+                        if !matches!(cx.stage.should_emit(), ShouldEmit::Nothing) {
+                            Self::check_target(&accept.allowed_targets, target, &mut cx);
                         }
                     } else {
                         // If we're here, we must be compiling a tool attribute... Or someone
