@@ -388,8 +388,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// most one continuous overlapping region between src and dest).
     unsafe fn wrap_copy(&mut self, src: WrappedIndex, dst: WrappedIndex, len: usize) {
         debug_assert!(
-            cmp::min(src.abs_diff(dst).as_index(), self.capacity() - src.abs_diff(dst).as_index())
-                + len
+            cmp::min(src.abs_diff(dst), self.capacity() - src.abs_diff(dst)) + len
                 <= self.capacity(),
             "wrc dst={} src={} len={} cap={}",
             dst,
@@ -3656,8 +3655,8 @@ mod index {
         }
 
         #[inline(always)]
-        pub(super) fn abs_diff(self, other: Self) -> Self {
-            Self(self.0.abs_diff(other.0))
+        pub(super) fn abs_diff(self, other: Self) -> usize {
+            self.0.abs_diff(other.0)
         }
 
         #[inline(always)]

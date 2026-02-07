@@ -1024,6 +1024,7 @@ class StdVecDequeSyntheticProvider:
 
     def update(self):
         head = self.valobj.GetChildMemberWithName("head")
+        # BACKCOMPAT: rust 1.95
         if head.GetType().num_fields == 1:
             head = head.GetChildAtIndex(0)
         self.head = head.GetValueAsUnsigned()
