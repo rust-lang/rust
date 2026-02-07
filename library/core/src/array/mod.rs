@@ -11,7 +11,7 @@ use crate::convert::Infallible;
 use crate::error::Error;
 use crate::hash::{self, Hash};
 use crate::intrinsics::transmute_unchecked;
-use crate::iter::{UncheckedIterator, repeat_n};
+use crate::iter::UncheckedIterator;
 use crate::marker::Destruct;
 use crate::mem::{self, ManuallyDrop, MaybeUninit};
 use crate::ops::{
@@ -51,8 +51,29 @@ pub use iter::IntoIter;
 #[inline]
 #[must_use = "cloning is often expensive and is not expected to have side effects"]
 #[stable(feature = "array_repeat", since = "1.91.0")]
-pub fn repeat<T: Clone, const N: usize>(val: T) -> [T; N] {
-    from_trusted_iterator(repeat_n(val, N))
+#[rustc_const_unstable(feature = "const_array", issue = "147606")]
+pub const fn repeat<T: [const] Clone + [const] Destruct, const N: usize>(val: T) -> [T; N] {
+    struct Factory<T, const N: usize> {
+        value: Option<T>,
+    }
+    #[rustc_const_unstable(feature = "const_array", issue = "147606")]
+    impl<T: [const] Clone, const N: usize> const FnOnce<(usize,)> for Factory<T, N> {
+        type Output = T;
+
+        extern "rust-call" fn call_once(self, _: (usize,)) -> Self::Output {
+            self.value.unwrap()
+        }
+    }
+    #[rustc_const_unstable(feature = "const_array", issue = "147606")]
+    impl<T: [const] Clone + [const] Destruct, const N: usize> const FnMut<(usize,)> for Factory<T, N> {
+        extern "rust-call" fn call_mut(&mut self, (index,): (usize,)) -> Self::Output {
+            if index == N - 1 {
+                return self.value.take().unwrap();
+            }
+            self.value.clone().unwrap()
+        }
+    }
+    from_fn(Factory::<T, N> { value: Some(val) })
 }
 
 /// Creates an array where each element is produced by calling `f` with
@@ -85,15 +106,6 @@ pub fn repeat<T: Clone, const N: usize>(val: T) -> [T; N] {
 /// let bool_arr = core::array::from_fn::<_, 5, _>(|i| i % 2 == 0);
 /// // indexes are:       0     1      2     3      4
 /// assert_eq!(bool_arr, [true, false, true, false, true]);
-/// ```
-///
-/// You can also capture things, for example to create an array full of clones
-/// where you can't just use `[item; N]` because it's not `Copy`:
-/// ```
-/// # // TBH `array::repeat` would be better for this, but it's not stable yet.
-/// let my_string = String::from("Hello");
-/// let clones: [String; 42] = std::array::from_fn(|_| my_string.clone());
-/// assert!(clones.iter().all(|x| *x == my_string));
 /// ```
 ///
 /// The array is generated in ascending index order, starting from the front
