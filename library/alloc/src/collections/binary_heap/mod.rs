@@ -408,6 +408,9 @@ impl<'a, T: Ord, A: Allocator> PeekMut<'a, T, A> {
     /// ```
     #[unstable(feature = "binary_heap_peek_mut_refresh", issue = "138355")]
     #[must_use = "is equivalent to dropping and getting a new PeekMut except for return information"]
+    // FIXME(inherent_method_on_receiver): t-libs-api needs to weigh in on whether this should be an
+    // associated functions instead
+    #[allow(inherent_method_on_receiver)]
     pub fn refresh(&mut self) -> bool {
         // The length of the underlying heap is unchanged by sifting down. The value stored for leak
         // amplification thus remains accurate. We erase the leak amplification firstly because the

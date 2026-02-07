@@ -136,6 +136,7 @@ where
 
     /// Retrieves the pointer.
     #[inline]
+    #[cfg_attr(not(bootstrap), expect(inherent_method_on_receiver, reason = "compiler internals"))]
     pub fn pointer(self) -> &'a P {
         // SAFETY: pointer_raw returns the original pointer
         unsafe { self.pointer_raw().as_ref() }
@@ -143,6 +144,7 @@ where
 
     /// Retrieves the tag.
     #[inline]
+    #[cfg_attr(not(bootstrap), expect(inherent_method_on_receiver, reason = "compiler internals"))]
     pub fn tag(&self) -> T {
         // Unpack the tag, according to the `self.packed` encoding scheme
         let tag = self.packed.addr().get() >> Self::TAG_BIT_SHIFT;
@@ -155,6 +157,7 @@ where
 
     /// Sets the tag to a new value.
     #[inline]
+    #[cfg_attr(not(bootstrap), expect(inherent_method_on_receiver, reason = "compiler internals"))]
     pub fn set_tag(&mut self, tag: T) {
         self.packed = Self::pack(self.pointer_raw(), tag);
     }

@@ -155,6 +155,7 @@ pub struct FreezeWriteGuard<'a, T: ?Sized> {
 }
 
 impl<'a, T> FreezeWriteGuard<'a, T> {
+    #[cfg_attr(not(bootstrap), expect(inherent_method_on_receiver, reason = "compiler internals"))]
     pub fn freeze(self) -> &'a T {
         self.frozen.store(true, Ordering::Release);
 

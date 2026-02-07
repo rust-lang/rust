@@ -1531,6 +1531,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     ///
     /// [`pin` module]: self#projections-and-structural-pinning
     #[stable(feature = "pin", since = "1.33.0")]
+    #[expect(inherent_method_on_receiver, reason = "stable API cannot be changed")]
     pub unsafe fn map_unchecked<U, F>(self, func: F) -> Pin<&'a U>
     where
         U: ?Sized,
@@ -1565,6 +1566,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     #[must_use]
     #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
+    #[expect(inherent_method_on_receiver, reason = "stable API cannot be changed")]
     pub const fn get_ref(self) -> &'a T {
         self.pointer
     }
@@ -1576,6 +1578,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
+    #[expect(inherent_method_on_receiver, reason = "stable API cannot be changed")]
     pub const fn into_ref(self) -> Pin<&'a T> {
         Pin { pointer: self.pointer }
     }
@@ -1593,6 +1596,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "pin", since = "1.33.0")]
     #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
+    #[expect(inherent_method_on_receiver, reason = "stable API cannot be changed")]
     pub const fn get_mut(self) -> &'a mut T
     where
         T: Unpin,
@@ -1614,6 +1618,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "pin", since = "1.33.0")]
     #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
+    #[expect(inherent_method_on_receiver, reason = "stable API cannot be changed")]
     pub const unsafe fn get_unchecked_mut(self) -> &'a mut T {
         self.pointer
     }
@@ -1635,6 +1640,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// [`pin` module]: self#projections-and-structural-pinning
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "pin", since = "1.33.0")]
+    #[expect(inherent_method_on_receiver, reason = "stable API cannot be changed")]
     pub unsafe fn map_unchecked_mut<U, F>(self, func: F) -> Pin<&'a mut U>
     where
         U: ?Sized,

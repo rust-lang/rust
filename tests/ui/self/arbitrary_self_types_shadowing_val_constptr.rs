@@ -6,7 +6,9 @@
 pub struct A;
 
 impl A {
-    pub fn f(self: *const MyNonNull<Self>) -> i32 { 1 }
+    pub fn f(self: *const MyNonNull<Self>) -> i32 {
+        1
+    }
 }
 
 pub struct MyNonNull<T>(T);
@@ -18,6 +20,7 @@ impl<T> core::ops::Receiver for MyNonNull<T> {
 impl<T> MyNonNull<T> {
     // Imagine this a NEW method in B<T> shadowing an EXISTING
     // method in A.
+    #[expect(inherent_method_on_receiver, reason = "we're testing this behavior")]
     pub fn f(self: *mut Self) -> i32 {
         2
     }
