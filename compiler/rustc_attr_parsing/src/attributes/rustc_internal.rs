@@ -511,6 +511,21 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcTrivialFieldReadsParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcTrivialFieldReads;
 }
 
+pub(crate) struct RustcNoMirInlineParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcNoMirInlineParser {
+    const PATH: &[Symbol] = &[sym::rustc_no_mir_inline];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoMirInline;
+}
+
 pub(crate) struct RustcLintQueryInstabilityParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcLintQueryInstabilityParser {

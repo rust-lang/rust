@@ -142,6 +142,7 @@ impl AttributeKind {
             RustcNeverReturnsNullPointer => Yes,
             RustcNeverTypeOptions { .. } => No,
             RustcNoImplicitAutorefs => Yes,
+            RustcNoMirInline => Yes,
             RustcNonConstTraitMethod => No, // should be reported via other queries like `constness`
             RustcNounwind => No,
             RustcObjcClass { .. } => No,
