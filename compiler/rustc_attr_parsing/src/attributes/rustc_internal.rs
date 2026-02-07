@@ -345,6 +345,56 @@ impl<S: Stage> AttributeParser<S> for RustcCguTestAttributeParser {
         Some(AttributeKind::RustcCguTestAttr(self.items))
     }
 }
+
+pub(crate) struct RustcDeprecatedSafe2024Parser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcDeprecatedSafe2024Parser {
+    const PATH: &[Symbol] = &[sym::rustc_deprecated_safe_2024];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const TEMPLATE: AttributeTemplate = template!(List: &[r#"audit_that = "...""#]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(args) = args.list() else {
+            cx.expected_list(cx.attr_span, args);
+            return None;
+        };
+
+        let Some(single) = args.single() else {
+            cx.expected_single_argument(args.span);
+            return None;
+        };
+
+        let Some(arg) = single.meta_item() else {
+            cx.expected_name_value(args.span, None);
+            return None;
+        };
+
+        let Some(args) = arg.word_is(sym::audit_that) else {
+            cx.expected_specific_argument(arg.span(), &[sym::audit_that]);
+            return None;
+        };
+
+        let Some(nv) = args.name_value() else {
+            cx.expected_name_value(arg.span(), Some(sym::audit_that));
+            return None;
+        };
+
+        let Some(suggestion) = nv.value_as_str() else {
+            cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+            return None;
+        };
+
+        Some(AttributeKind::RustcDeprecatedSafe2024 { suggestion })
+    }
+}
 pub(crate) struct RustcLintQueryInstabilityParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcLintQueryInstabilityParser {

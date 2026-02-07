@@ -303,6 +303,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDefPath(..)
                     | AttributeKind::RustcDelayedBugFromInsideQuery
                     | AttributeKind::RustcDenyExplicitImpl(..)
+                    | AttributeKind::RustcDeprecatedSafe2024 {..}
                     | AttributeKind::RustcDummy
                     | AttributeKind::RustcDumpDefParents
                     | AttributeKind::RustcDumpItemBounds
@@ -400,7 +401,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_reservation_impl
                             | sym::rustc_doc_primitive
                             | sym::rustc_conversion_suggestion
-                            | sym::rustc_deprecated_safe_2024
                             | sym::rustc_test_marker
                             | sym::rustc_layout
                             | sym::rustc_proc_macro_decls

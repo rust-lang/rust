@@ -1103,6 +1103,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_deny_explicit_impl]`.
     RustcDenyExplicitImpl(Span),
 
+    /// Represents `#[rustc_deprecated_safe_2024]`
+    RustcDeprecatedSafe2024 { suggestion: Symbol },
+
     /// Represents `#[rustc_dummy]`.
     RustcDummy,
 
