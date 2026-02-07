@@ -139,6 +139,7 @@ impl AttributeKind {
             RustcMir(..) => Yes,
             RustcMustImplementOneOf { .. } => No,
             RustcNeverReturnsNullPointer => Yes,
+            RustcNeverTypeOptions { .. } => No,
             RustcNoImplicitAutorefs => Yes,
             RustcNonConstTraitMethod => No, // should be reported via other queries like `constness`
             RustcNounwind => No,

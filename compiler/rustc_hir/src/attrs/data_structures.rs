@@ -63,6 +63,44 @@ pub enum CguFields {
     PartitionCodegened { cfg: Symbol, module: Symbol },
     ExpectedCguReuse { cfg: Symbol, module: Symbol, kind: CguKind },
 }
+
+#[derive(Copy, Clone, PartialEq, Debug, PrintAttribute)]
+#[derive(HashStable_Generic, Encodable, Decodable)]
+pub enum DivergingFallbackBehavior {
+    /// Always fallback to `()` (aka "always spontaneous decay")
+    ToUnit,
+    /// Always fallback to `!` (which should be equivalent to never falling back + not making
+    /// never-to-any coercions unless necessary)
+    ToNever,
+    /// Don't fallback at all
+    NoFallback,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, PrintAttribute, Default)]
+#[derive(HashStable_Generic, Encodable, Decodable)]
+pub enum DivergingBlockBehavior {
+    /// This is the current stable behavior:
+    ///
+    /// ```rust
+    /// {
+    ///     return;
+    /// } // block has type = !, even though we are supposedly dropping it with `;`
+    /// ```
+    #[default]
+    Never,
+
+    /// Alternative behavior:
+    ///
+    /// ```ignore (very-unstable-new-attribute)
+    /// #![rustc_never_type_options(diverging_block_default = "unit")]
+    /// {
+    ///     return;
+    /// } // block has type = (), since we are dropping `!` from `return` with `;`
+    /// ```
+    Unit,
+}
+
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, PrintAttribute)]
 pub enum InlineAttr {
     None,
     Hint,
@@ -1198,6 +1236,12 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_never_returns_null_ptr]`
     RustcNeverReturnsNullPointer,
+
+    /// Represents `#[rustc_never_type_options]`.
+    RustcNeverTypeOptions {
+        fallback: Option<DivergingFallbackBehavior>,
+        diverging_block_default: Option<DivergingBlockBehavior>,
+    },
 
     /// Represents `#[rustc_no_implicit_autorefs]`
     RustcNoImplicitAutorefs,

@@ -420,6 +420,88 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcCaptureAnalysisParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCaptureAnalysis;
 }
 
+pub(crate) struct RustcNeverTypeOptionsParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcNeverTypeOptionsParser {
+    const PATH: &[Symbol] = &[sym::rustc_never_type_options];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const TEMPLATE: AttributeTemplate = template!(List: &[
+        r#"fallback = "unit", "never", "no""#,
+        r#"diverging_block_default = "unit", "never""#,
+    ]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(list) = args.list() else {
+            cx.expected_list(cx.attr_span, args);
+            return None;
+        };
+
+        let mut fallback = None::<Ident>;
+        let mut diverging_block_default = None::<Ident>;
+
+        for arg in list.mixed() {
+            let Some(meta) = arg.meta_item() else {
+                cx.expected_name_value(arg.span(), None);
+                continue;
+            };
+
+            let res = match meta.ident().map(|i| i.name) {
+                Some(sym::fallback) => &mut fallback,
+                Some(sym::diverging_block_default) => &mut diverging_block_default,
+                _ => {
+                    cx.expected_specific_argument(
+                        meta.path().span(),
+                        &[sym::fallback, sym::diverging_block_default],
+                    );
+                    continue;
+                }
+            };
+
+            let Some(nv) = meta.args().name_value() else {
+                cx.expected_name_value(meta.span(), None);
+                continue;
+            };
+
+            let Some(field) = nv.value_as_str() else {
+                cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+                continue;
+            };
+
+            if res.is_some() {
+                cx.duplicate_key(meta.span(), meta.ident().unwrap().name);
+                continue;
+            }
+
+            *res = Some(Ident { name: field, span: nv.value_span });
+        }
+
+        let fallback = match fallback {
+            None => None,
+            Some(Ident { name: sym::unit, .. }) => Some(DivergingFallbackBehavior::ToUnit),
+            Some(Ident { name: sym::never, .. }) => Some(DivergingFallbackBehavior::ToNever),
+            Some(Ident { name: sym::no, .. }) => Some(DivergingFallbackBehavior::NoFallback),
+            Some(Ident { span, .. }) => {
+                cx.expected_specific_argument_strings(span, &[sym::unit, sym::never, sym::no]);
+                return None;
+            }
+        };
+
+        let diverging_block_default = match diverging_block_default {
+            None => None,
+            Some(Ident { name: sym::unit, .. }) => Some(DivergingBlockBehavior::Unit),
+            Some(Ident { name: sym::never, .. }) => Some(DivergingBlockBehavior::Never),
+            Some(Ident { span, .. }) => {
+                cx.expected_specific_argument_strings(span, &[sym::unit, sym::no]);
+                return None;
+            }
+        };
+
+        Some(AttributeKind::RustcNeverTypeOptions { fallback, diverging_block_default })
+    }
+}
+
 pub(crate) struct RustcLintQueryInstabilityParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcLintQueryInstabilityParser {
