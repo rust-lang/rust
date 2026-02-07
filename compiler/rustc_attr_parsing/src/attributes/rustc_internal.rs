@@ -411,6 +411,15 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcConversionSuggestionParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcConversionSuggestion;
 }
 
+pub(crate) struct RustcCaptureAnalysisParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcCaptureAnalysisParser {
+    const PATH: &[Symbol] = &[sym::rustc_capture_analysis];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Closure)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCaptureAnalysis;
+}
+
 pub(crate) struct RustcLintQueryInstabilityParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcLintQueryInstabilityParser {
