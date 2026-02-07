@@ -26,7 +26,6 @@ pub fn floor_status<F: Float>(x: F) -> FpResult<F> {
         return FpResult::ok(x);
     }
 
-    let status;
     let res = if e >= 0 {
         // |x| >= 1.0
         let m = F::SIG_MASK >> e.unsigned();
@@ -35,9 +34,6 @@ pub fn floor_status<F: Float>(x: F) -> FpResult<F> {
             return FpResult::ok(x);
         }
 
-        // Otherwise, raise an inexact exception.
-        status = Status::INEXACT;
-
         if x.is_sign_negative() {
             ix += m;
         }
@@ -45,26 +41,22 @@ pub fn floor_status<F: Float>(x: F) -> FpResult<F> {
         ix &= !m;
         F::from_bits(ix)
     } else {
-        // |x| < 1.0, raise an inexact exception since truncation will happen.
-        if ix & !F::SIGN_MASK == F::Int::ZERO {
-            status = Status::OK;
-        } else {
-            status = Status::INEXACT;
+        // |x| < 1.0, zero or inexact with truncation
+
+        if (ix & !F::SIGN_MASK) == F::Int::ZERO {
+            return FpResult::ok(x);
         }
 
         if x.is_sign_positive() {
             // 0.0 <= x < 1.0; rounding down goes toward +0.0.
             F::ZERO
-        } else if ix << 1 != zero {
+        } else {
             // -1.0 < x < 0.0; rounding down goes toward -1.0.
             F::NEG_ONE
-        } else {
-            // -0.0 remains unchanged
-            x
         }
     };
 
-    FpResult::new(res, status)
+    FpResult::new(res, Status::INEXACT)
 }
 
 #[cfg(test)]
