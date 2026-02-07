@@ -1695,7 +1695,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 | DefKind::Union
                 | DefKind::Enum
                 | DefKind::TyAlias
-                | DefKind::Trait,
+                | DefKind::Trait
+                | DefKind::TraitAlias,
                 def_id,
             ) if depth == 0 => Some(def_id),
             _ => None,
@@ -1865,7 +1866,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             if constraint.gen_args.parenthesized == hir::GenericArgsParentheses::ReturnTypeNotation
             {
                 let bound_vars = if let Some(type_def_id) = type_def_id
-                    && self.tcx.def_kind(type_def_id) == DefKind::Trait
+                    && let DefKind::Trait | DefKind::TraitAlias = self.tcx.def_kind(type_def_id)
                     && let Some((mut bound_vars, assoc_fn)) = BoundVarContext::supertrait_hrtb_vars(
                         self.tcx,
                         type_def_id,
