@@ -14,7 +14,6 @@
 #![crate_type = "lib"]
 
 extern crate rustc_errors;
-extern crate rustc_fluent_macro;
 extern crate rustc_macros;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -24,12 +23,10 @@ use rustc_errors::{Applicability, DiagMessage, SubdiagMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
 
-rustc_fluent_macro::fluent_messages! { "./example.ftl" }
-
 struct NotIntoDiagArg;
 
 #[derive(Diagnostic)]
-#[diag(no_crate_example)]
+#[diag("example message")]
 struct Test {
     #[primary_span]
     span: Span,
@@ -39,7 +36,7 @@ struct Test {
 }
 
 #[derive(Subdiagnostic)]
-#[label(no_crate_example)]
+#[label("example message")]
 struct SubTest {
     #[primary_span]
     span: Span,

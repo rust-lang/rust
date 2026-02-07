@@ -94,7 +94,6 @@ expression: test
     - Set({test::compiler/rustc_errors})
     - Set({test::compiler/rustc_expand})
     - Set({test::compiler/rustc_feature})
-    - Set({test::compiler/rustc_fluent_macro})
     - Set({test::compiler/rustc_fs_util})
     - Set({test::compiler/rustc_graphviz})
     - Set({test::compiler/rustc_hashes})
