@@ -169,20 +169,6 @@ attribute_parsers!(
         // tidy-alphabetical-end
 
         // tidy-alphabetical-start
-%%%%%%% Changes from base to side #1
-+        Single<WithoutArgs<RustcStrictCoherenceParser>>,
-+++++++ Contents of side #2
-        Single<WithoutArgs<RustcTrivialFieldReadsParser>>,
-<<<<<<< Conflict 1 of 1
->>>>>>> Conflict 1 of 1 ends
-        Single<WithoutArgs<RustcVarianceOfOpaquesParser>>,
-        Single<WithoutArgs<RustcVarianceParser>>,
-        Single<WithoutArgs<SpecializationTraitParser>>,
-        Single<WithoutArgs<StdInternalSymbolParser>>,
-        Single<WithoutArgs<ThreadLocalParser>>,
-        Single<WithoutArgs<TrackCallerParser>>,
-        Single<WithoutArgs<TypeConstParser>>,
-        Single<WithoutArgs<UnsafeSpecializationMarkerParser>>,
         Single<CfiEncodingParser>,
         Single<CollapseDebugInfoParser>,
         Single<CoverageParser>,
@@ -225,7 +211,7 @@ attribute_parsers!(
         Single<RustcLintOptDenyFieldAccessParser>,
         Single<RustcMustImplementOneOfParser>,
         Single<RustcNeverTypeOptionsParser>,
-        Single<RustcObjectLifetimeDefaultParser>,
+         Single<RustcNeverTypeOptionsParser>,
         Single<RustcScalableVectorParser>,
         Single<RustcSimdMonomorphizeLaneLimitParser>,
         Single<RustcSymbolName>,
@@ -303,6 +289,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcNoMirInlineParser>>,
         Single<WithoutArgs<RustcNonConstTraitMethodParser>>,
         Single<WithoutArgs<RustcNounwindParser>>,
+        Single<WithoutArgs<RustcObjectLifetimeDefaultParser>>,
         Single<WithoutArgs<RustcOffloadKernelParser>>,
         Single<WithoutArgs<RustcOutlivesParser>>,
         Single<WithoutArgs<RustcPassIndirectlyInNonRusticAbisParser>>,
@@ -310,6 +297,16 @@ attribute_parsers!(
         Single<WithoutArgs<RustcReallocatorParser>>,
         Single<WithoutArgs<RustcRegionsParser>>,
         Single<WithoutArgs<RustcShouldNotBeCalledOnConstItems>>,
+        Single<WithoutArgs<RustcStrictCoherenceParser>>,
+        Single<WithoutArgs<RustcTrivialFieldReadsParser>>,
+        Single<WithoutArgs<RustcVarianceOfOpaquesParser>>,
+        Single<WithoutArgs<RustcVarianceParser>>,
+        Single<WithoutArgs<SpecializationTraitParser>>,
+        Single<WithoutArgs<StdInternalSymbolParser>>,
+        Single<WithoutArgs<ThreadLocalParser>>,
+        Single<WithoutArgs<TrackCallerParser>>,
+        Single<WithoutArgs<TypeConstParser>>,
+        Single<WithoutArgs<UnsafeSpecializationMarkerParser>>,
         // tidy-alphabetical-end
     ];
 );

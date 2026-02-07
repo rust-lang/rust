@@ -575,21 +575,11 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcLintUntrackedQueryInformationPa
 
 pub(crate) struct RustcObjectLifetimeDefaultParser;
 
-impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {
+impl<S: Stage> NoArgsAttributeParser<S> for RustcObjectLifetimeDefaultParser {
     const PATH: &[Symbol] = &[sym::rustc_object_lifetime_default];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
-    const TEMPLATE: AttributeTemplate = template!(Word);
-
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        if let Err(span) = args.no_args() {
-            cx.expected_no_args(span);
-            return None;
-        }
-
-        Some(AttributeKind::RustcObjectLifetimeDefault)
-    }
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcObjectLifetimeDefault;
 }
 
 pub(crate) struct RustcSimdMonomorphizeLaneLimitParser;
