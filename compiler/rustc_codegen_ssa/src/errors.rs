@@ -59,7 +59,7 @@ pub(crate) struct MissingQueryDepGraph {
 
 #[derive(Diagnostic)]
 #[diag(
-    "found malformed codegen unit name `{$user_path}`. codegen units names must always start with the name of the crate (`{$crate_name}` in this case)."
+    "found malformed codegen unit name `{$user_path}`. codegen units names must always start with the name of the crate (`{$crate_name}` in this case)"
 )]
 pub(crate) struct MalformedCguName {
     #[primary_span]
@@ -562,12 +562,12 @@ pub(crate) struct SelfContainedLinkerMissing;
 
 #[derive(Diagnostic)]
 #[diag(
-    "please ensure that Visual Studio 2017 or later, or Build Tools for Visual Studio were installed with the Visual C++ option."
+    "please ensure that Visual Studio 2017 or later, or Build Tools for Visual Studio were installed with the Visual C++ option"
 )]
 pub(crate) struct CheckInstalledVisualStudio;
 
 #[derive(Diagnostic)]
-#[diag("VS Code is a different product, and is not sufficient.")]
+#[diag("VS Code is a different product, and is not sufficient")]
 pub(crate) struct InsufficientVSCodeProduct;
 
 #[derive(Diagnostic)]
@@ -610,13 +610,13 @@ pub(crate) struct LinkerFileStem;
 
 #[derive(Diagnostic)]
 #[diag(
-    "link against the following native artifacts when linking against this static library. The order and any duplication can be significant on some platforms."
+    "link against the following native artifacts when linking against this static library. The order and any duplication can be significant on some platforms"
 )]
 pub(crate) struct StaticLibraryNativeArtifacts;
 
 #[derive(Diagnostic)]
 #[diag(
-    "native artifacts to link against have been written to {$path}. The order and any duplication can be significant on some platforms."
+    "native artifacts to link against have been written to {$path}. The order and any duplication can be significant on some platforms"
 )]
 pub(crate) struct StaticLibraryNativeArtifactsToFile<'a> {
     pub path: &'a Path,
