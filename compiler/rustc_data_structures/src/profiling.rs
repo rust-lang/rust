@@ -85,12 +85,11 @@ use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::error::Error;
 use std::fmt::Display;
-use std::intrinsics::unlikely;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
-use std::{fs, process};
+use std::{fs, hint, process};
 
 pub use measureme::EventId;
 use measureme::{EventIdBuilder, Profiler, SerializableString, StringId};
@@ -427,7 +426,8 @@ impl SelfProfilerRef {
                     .unwrap()
                     .increment_query_cache_hit_counters(QueryInvocationId(query_invocation_id.0));
             }
-            if unlikely(profiler_ref.event_filter_mask.contains(EventFilter::QUERY_CACHE_HITS)) {
+            if profiler_ref.event_filter_mask.contains(EventFilter::QUERY_CACHE_HITS) {
+                hint::cold_path();
                 profiler_ref.instant_query_event(
                     |profiler| profiler.query_cache_hit_event_kind,
                     query_invocation_id,
@@ -437,7 +437,8 @@ impl SelfProfilerRef {
 
         // We check both kinds of query cache hit events at once, to reduce overhead in the
         // common case (with self-profile disabled).
-        if unlikely(self.event_filter_mask.intersects(EventFilter::QUERY_CACHE_HIT_COMBINED)) {
+        if self.event_filter_mask.intersects(EventFilter::QUERY_CACHE_HIT_COMBINED) {
+            hint::cold_path();
             cold_call(self, query_invocation_id);
         }
     }
