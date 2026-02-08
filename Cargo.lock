@@ -4392,6 +4392,7 @@ dependencies = [
 name = "rustc_passes"
 version = "0.0.0"
 dependencies = [
+ "rustc-demangle",
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_lowering",
@@ -4407,6 +4408,7 @@ dependencies = [
  "rustc_privacy",
  "rustc_session",
  "rustc_span",
+ "rustc_symbol_mangling",
  "rustc_target",
  "rustc_trait_selection",
  "tracing",

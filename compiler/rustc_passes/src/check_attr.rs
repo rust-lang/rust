@@ -38,7 +38,8 @@ use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, TyCtxt, TypingMode};
+use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::{self, GenericArgs, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint;
@@ -231,6 +232,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
                 Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
+                Attribute::Parsed(AttributeKind::RustcSymbolName(attr_span)) => {
+                    self.check_rustc_symbol_name(*attr_span, hir_id, target)
+                }
+                Attribute::Parsed(AttributeKind::RustcDefPath(attr_span)) => {
+                    self.check_rustc_def_path(*attr_span, hir_id, target);
+                }
                 Attribute::Parsed(
                     // tidy-alphabetical-start
                     AttributeKind::RustcAllowIncoherentImpl(..)
@@ -300,7 +307,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcConfusables { .. }
                     | AttributeKind::RustcConstStabilityIndirect
                     | AttributeKind::RustcDeallocator
-                    | AttributeKind::RustcDefPath(..)
                     | AttributeKind::RustcDelayedBugFromInsideQuery
                     | AttributeKind::RustcDenyExplicitImpl(..)
                     | AttributeKind::RustcDummy
@@ -347,7 +353,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcSkipDuringMethodDispatch { .. }
                     | AttributeKind::RustcSpecializationTrait(..)
                     | AttributeKind::RustcStdInternalSymbol (..)
-                    | AttributeKind::RustcSymbolName(..)
                     | AttributeKind::RustcThenThisWouldNeed(..)
                     | AttributeKind::RustcUnsafeSpecializationMarker(..)
                     | AttributeKind::RustcVariance
@@ -505,6 +510,64 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.check_repr(attrs, span, target, item, hir_id);
         self.check_rustc_force_inline(hir_id, attrs, target);
         self.check_mix_no_mangle_export(hir_id, attrs);
+    }
+
+    fn is_valid_symbol_attr(&self, target: &Target) -> bool {
+        self.tcx.sess.opts.output_types.should_codegen()
+            && [
+                Target::Fn,
+                Target::Method(MethodKind::TraitImpl),
+                Target::Method(MethodKind::Inherent),
+                Target::Method(MethodKind::Trait { body: true }),
+                Target::ForeignFn,
+                Target::ForeignStatic,
+                Target::Impl { of_trait: false },
+            ]
+            .contains(target)
+    }
+
+    fn check_rustc_symbol_name(&self, attr_span: Span, hir_id: HirId, target: Target) {
+        use rustc_symbol_mangling::errors::{Kind, TestOutput};
+        let tcx = self.tcx;
+        if !self.is_valid_symbol_attr(&target) {
+            return;
+        }
+        let def_id = hir_id.owner.def_id.to_def_id();
+        let instance = ty::Instance::new_raw(
+            def_id,
+            tcx.erase_and_anonymize_regions(GenericArgs::identity_for_item(tcx, def_id)),
+        );
+        let mangled = tcx.symbol_name(instance);
+        tcx.dcx().emit_err(TestOutput {
+            span: attr_span,
+            kind: Kind::SymbolName,
+            content: format!("{mangled}"),
+        });
+        if let Ok(demangling) = rustc_demangle::try_demangle(mangled.name) {
+            tcx.dcx().emit_err(TestOutput {
+                span: attr_span,
+                kind: Kind::Demangling,
+                content: format!("{demangling}"),
+            });
+            tcx.dcx().emit_err(TestOutput {
+                span: attr_span,
+                kind: Kind::DemanglingAlt,
+                content: format!("{demangling:#}"),
+            });
+        }
+    }
+
+    fn check_rustc_def_path(&self, attr_span: Span, hir_id: HirId, target: Target) {
+        use rustc_symbol_mangling::errors::{Kind, TestOutput};
+        let tcx = self.tcx;
+        if !self.is_valid_symbol_attr(&target) {
+            return;
+        }
+        tcx.dcx().emit_err(TestOutput {
+            span: attr_span,
+            kind: Kind::DefPath,
+            content: with_no_trimmed_paths!(tcx.def_path_str(hir_id.owner.def_id)),
+        });
     }
 
     fn check_rustc_must_implement_one_of(
