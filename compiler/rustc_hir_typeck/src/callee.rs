@@ -3,9 +3,10 @@ use std::iter;
 use rustc_abi::{CanonAbi, ExternAbi};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey, inline_fluent};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId, LangItem};
+use rustc_hir::{self as hir, HirId, LangItem, find_attr};
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
@@ -526,7 +527,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // `#[rustc_evaluate_where_clauses]` trigger special output
                 // to let us test the trait evaluation system.
                 if self.has_rustc_attrs
-                    && self.tcx.has_attr(def_id, sym::rustc_evaluate_where_clauses)
+                    && find_attr!(
+                        self.tcx.get_all_attrs(def_id),
+                        AttributeKind::RustcEvaluateWhereClauses
+                    )
                 {
                     let predicates = self.tcx.predicates_of(def_id);
                     let predicates = predicates.instantiate(self.tcx, args);

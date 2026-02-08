@@ -1084,6 +1084,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_def_path]`
     RustcDefPath(Span),
 
+    /// Represents `#[rustc_delayed_bug_from_inside_query]`
+    RustcDelayedBugFromInsideQuery,
+
     /// Represents `#[rustc_deny_explicit_impl]`.
     RustcDenyExplicitImpl(Span),
 
@@ -1110,6 +1113,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_effective_visibility]`.
     RustcEffectiveVisibility,
+
+    /// Represents `#[rustc_evaluate_where_clauses]`
+    RustcEvaluateWhereClauses,
 
     /// Represents `#[rustc_has_incoherent_inherent_impls]`
     RustcHasIncoherentInherentImpls,
@@ -1185,6 +1191,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_offload_kernel]`
     RustcOffloadKernel,
+
+    /// Represents `#[rustc_outlives]`
+    RustcOutlives,
 
     /// Represents `#[rustc_paren_sugar]`.
     RustcParenSugar(Span),
