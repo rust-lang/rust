@@ -153,10 +153,10 @@ impl Subdiagnostic for AdjustSignatureBorrow {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             AdjustSignatureBorrow::Borrow { to_borrow } => {
-                diag.arg("len", to_borrow.len());
+                diag.arg("borrow_len", to_borrow.len());
                 diag.multipart_suggestion_verbose(
                     inline_fluent!(
-                        "consider adjusting the signature so it borrows its {$len ->
+                        "consider adjusting the signature so it borrows its {$borrow_len ->
 [one] argument
 *[other] arguments
 }"
@@ -166,10 +166,10 @@ impl Subdiagnostic for AdjustSignatureBorrow {
                 );
             }
             AdjustSignatureBorrow::RemoveBorrow { remove_borrow } => {
-                diag.arg("len", remove_borrow.len());
+                diag.arg("remove_borrow_len", remove_borrow.len());
                 diag.multipart_suggestion_verbose(
                     inline_fluent!(
-                        "consider adjusting the signature so it does not borrow its {$len ->
+                        "consider adjusting the signature so it does not borrow its {$remove_borrow_len ->
 [one] argument
 *[other] arguments
 }"
