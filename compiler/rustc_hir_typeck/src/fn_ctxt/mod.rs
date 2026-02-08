@@ -536,7 +536,7 @@ fn parse_never_type_options_attr(
                 sym::never => fallback = Some(DivergingFallbackBehavior::ToNever),
                 sym::no => fallback = Some(DivergingFallbackBehavior::NoFallback),
                 _ => {
-                    tcx.dcx().span_err(item.span(), format!("unknown never type fallback mode: `{mode}` (supported: `unit`, `niko`, `never` and `no`)"));
+                    tcx.dcx().span_err(item.span(), format!("unknown never type fallback mode: `{mode}` (supported: `unit`, `never` and `no`)"));
                 }
             };
             continue;

@@ -1574,7 +1574,6 @@ symbols! {
         new_v1,
         new_v1_formatted,
         next,
-        niko,
         nll,
         no,
         no_builtins,

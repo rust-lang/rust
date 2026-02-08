@@ -1001,7 +1001,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: &[
             "",
             r#"fallback = "unit""#,
-            r#"fallback = "niko""#,
             r#"fallback = "never""#,
             r#"fallback = "no""#,
         ]),
