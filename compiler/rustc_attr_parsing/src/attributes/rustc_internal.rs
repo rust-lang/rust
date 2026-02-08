@@ -18,7 +18,7 @@ use crate::session_diagnostics::{
 pub(crate) struct RustcMainParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcMainParser {
-    const PATH: &'static [Symbol] = &[sym::rustc_main];
+    const PATH: &[Symbol] = &[sym::rustc_main];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcMain;
@@ -103,7 +103,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcNoImplicitAutorefsParser {
 pub(crate) struct RustcLayoutScalarValidRangeStartParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStartParser {
-    const PATH: &'static [Symbol] = &[sym::rustc_layout_scalar_valid_range_start];
+    const PATH: &[Symbol] = &[sym::rustc_layout_scalar_valid_range_start];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
@@ -118,7 +118,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStartPars
 pub(crate) struct RustcLayoutScalarValidRangeEndParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeEndParser {
-    const PATH: &'static [Symbol] = &[sym::rustc_layout_scalar_valid_range_end];
+    const PATH: &[Symbol] = &[sym::rustc_layout_scalar_valid_range_end];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
@@ -822,7 +822,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcMirParser {
 pub(crate) struct RustcNonConstTraitMethodParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNonConstTraitMethodParser {
-    const PATH: &'static [Symbol] = &[sym::rustc_non_const_trait_method];
+    const PATH: &[Symbol] = &[sym::rustc_non_const_trait_method];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Method(MethodKind::Trait { body: true })),
@@ -1067,7 +1067,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcInsignificantDtorParser {
 pub(crate) struct RustcEffectiveVisibilityParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcEffectiveVisibilityParser {
-    const PATH: &'static [Symbol] = &[sym::rustc_effective_visibility];
+    const PATH: &[Symbol] = &[sym::rustc_effective_visibility];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Use),
