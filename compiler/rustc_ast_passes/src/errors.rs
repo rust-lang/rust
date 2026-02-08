@@ -503,7 +503,7 @@ pub(crate) struct AutoTraitItems {
     #[primary_span]
     pub spans: Vec<Span>,
     #[suggestion(
-        "remove the super traits or lifetime bounds",
+        "remove the associated items",
         code = "",
         applicability = "machine-applicable",
         style = "tool-only"

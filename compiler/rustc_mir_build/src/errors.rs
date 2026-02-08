@@ -22,7 +22,7 @@ pub(crate) struct CallToDeprecatedSafeFnRequiresUnsafe {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    "you can wrap the call in an `unsafe` block if you can guarantee that the environment access only happens in single-threaded code",
+    "you can wrap the call in an `unsafe` block if you can guarantee {$guarantee}",
     applicability = "machine-applicable"
 )]
 pub(crate) struct CallToDeprecatedSafeFnRequiresUnsafeSub {

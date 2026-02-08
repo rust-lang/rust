@@ -26,7 +26,7 @@ LL |     ( $( $i:ident ),* ) => { count!(i) };
    |                                   +
 
 error: missing `fn` or `struct` for function or struct definition
-  --> $DIR/usage-errors.rs:35:23
+  --> $DIR/usage-errors.rs:36:23
    |
 LL |     ( $i:ident ) => { count(i) };
    |                       ^^^^^
@@ -41,13 +41,13 @@ LL |     ( $i:ident ) => { count!(i) };
    |                            +
 
 error: variable `i` is still repeating at this depth
-  --> $DIR/usage-errors.rs:42:36
+  --> $DIR/usage-errors.rs:44:36
    |
 LL |     ( $( $i:ident ),* ) => { count($i) };
    |                                    ^^
 
 error[E0425]: cannot find value `a` in this scope
-  --> $DIR/usage-errors.rs:52:49
+  --> $DIR/usage-errors.rs:54:49
    |
 LL |     ( $i:ident ) => { count($i) };
    |                             -- due to this macro variable
@@ -56,7 +56,7 @@ LL | const _: u32 = no_curly__rhs_dollar__no_round! (a);
    |                                                 ^ not found in this scope
 
 error[E0425]: cannot find function `count` in this scope
-  --> $DIR/usage-errors.rs:49:23
+  --> $DIR/usage-errors.rs:51:23
    |
 LL |     ( $i:ident ) => { count($i) };
    |                       ^^^^^ not found in this scope

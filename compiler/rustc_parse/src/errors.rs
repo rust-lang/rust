@@ -2266,7 +2266,9 @@ pub(crate) enum AmbiguousMissingKwForItemSub {
         span: Span,
         snippet: String,
     },
-    #[help("you likely meant to define an item, e.g., `{$vis} fn foo() {\"{}\"}`")]
+    #[help(
+        "if you meant to call a macro, remove the `pub` and add a trailing `!` after the identifier"
+    )]
     HelpMacro,
 }
 
