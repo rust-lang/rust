@@ -332,9 +332,6 @@ pub struct Config {
     /// bjorn3 for "hooking rust-analyzer's VFS into rustc at some point for
     /// running rustc without having to save". (See #102759.)
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
-    /// The list of fluent resources, used for lints declared with
-    /// [`Diagnostic`](rustc_errors::Diagnostic) and [`LintDiagnostic`](rustc_errors::LintDiagnostic).
-    pub locale_resources: Vec<&'static str>,
 
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
@@ -458,7 +455,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                     temps_dir,
                 },
                 bundle,
-                config.locale_resources,
                 config.lint_caps,
                 target,
                 util::rustc_version_str().unwrap_or("unknown"),

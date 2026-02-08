@@ -186,10 +186,10 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     fn identify_kind(
         &mut self,
     ) -> Result<Vec<(SubdiagnosticKind, Message)>, DiagnosticDeriveError> {
-        let mut kind_slugs = vec![];
+        let mut kind_messages = vec![];
 
         for attr in self.variant.ast().attrs {
-            let Some(SubdiagnosticVariant { kind, slug }) =
+            let Some(SubdiagnosticVariant { kind, message }) =
                 SubdiagnosticVariant::from_attr(attr, &self.fields)?
             else {
                 // Some attributes aren't errors - like documentation comments - but also aren't
@@ -197,22 +197,22 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 continue;
             };
 
-            let Some(slug) = slug else {
+            let Some(message) = message else {
                 let name = attr.path().segments.last().unwrap().ident.to_string();
                 let name = name.as_str();
 
                 throw_span_err!(
                     attr.span().unwrap(),
                     format!(
-                        "diagnostic slug must be first argument of a `#[{name}(...)]` attribute"
+                        "diagnostic message must be first argument of a `#[{name}(...)]` attribute"
                     )
                 );
             };
 
-            kind_slugs.push((kind, slug));
+            kind_messages.push((kind, message));
         }
 
-        Ok(kind_slugs)
+        Ok(kind_messages)
     }
 
     /// Generates the code for a field with no attributes.
@@ -498,9 +498,9 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     }
 
     pub(crate) fn into_tokens(&mut self) -> Result<TokenStream, DiagnosticDeriveError> {
-        let kind_slugs = self.identify_kind()?;
+        let kind_messages = self.identify_kind()?;
 
-        let kind_stats: KindsStatistics = kind_slugs.iter().map(|(kind, _slug)| kind).collect();
+        let kind_stats: KindsStatistics = kind_messages.iter().map(|(kind, _msg)| kind).collect();
 
         let init = if kind_stats.has_multipart_suggestion {
             quote! { let mut suggestions = Vec::new(); }
@@ -516,7 +516,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             .map(|binding| self.generate_field_attr_code(binding, kind_stats))
             .collect();
 
-        if kind_slugs.is_empty() && !self.has_subdiagnostic {
+        if kind_messages.is_empty() && !self.has_subdiagnostic {
             if self.is_enum {
                 // It's okay for a variant to not be a subdiagnostic at all..
                 return Ok(quote! {});
@@ -533,9 +533,9 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
         let diag = &self.parent.diag;
         let mut calls = TokenStream::new();
-        for (kind, slug) in kind_slugs {
+        for (kind, messages) in kind_messages {
             let message = format_ident!("__message");
-            let message_stream = slug.diag_message(None);
+            let message_stream = messages.diag_message(None);
             calls.extend(quote! { let #message = #diag.eagerly_translate(#message_stream); });
 
             let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);

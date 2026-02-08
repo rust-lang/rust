@@ -4,7 +4,7 @@ error: derive(Diagnostic): label without `#[primary_span]` field
 LL | #[label("example message")]
    | ^
 
-error: derive(Diagnostic): diagnostic slug must be first argument of a `#[label(...)]` attribute
+error: derive(Diagnostic): diagnostic message must be first argument of a `#[label(...)]` attribute
   --> $DIR/subdiagnostic-derive-inline.rs:56:1
    |
 LL | #[label]
@@ -28,7 +28,7 @@ error: derive(Diagnostic): no nested attribute expected here
 LL | #[label(bug = "...")]
    |         ^^^
 
-error: derive(Diagnostic): diagnostic slug must be first argument of a `#[label(...)]` attribute
+error: derive(Diagnostic): diagnostic message must be first argument of a `#[label(...)]` attribute
   --> $DIR/subdiagnostic-derive-inline.rs:84:1
    |
 LL | #[label(bug = "...")]
@@ -40,7 +40,7 @@ error: derive(Diagnostic): no nested attribute expected here
 LL | #[label(slug = 4)]
    |         ^^^^
 
-error: derive(Diagnostic): diagnostic slug must be first argument of a `#[label(...)]` attribute
+error: derive(Diagnostic): diagnostic message must be first argument of a `#[label(...)]` attribute
   --> $DIR/subdiagnostic-derive-inline.rs:94:1
    |
 LL | #[label(slug = 4)]
@@ -52,13 +52,13 @@ error: derive(Diagnostic): no nested attribute expected here
 LL | #[label(slug("..."))]
    |         ^^^^
 
-error: derive(Diagnostic): diagnostic slug must be first argument of a `#[label(...)]` attribute
+error: derive(Diagnostic): diagnostic message must be first argument of a `#[label(...)]` attribute
   --> $DIR/subdiagnostic-derive-inline.rs:104:1
    |
 LL | #[label(slug("..."))]
    | ^
 
-error: derive(Diagnostic): diagnostic slug must be first argument of a `#[label(...)]` attribute
+error: derive(Diagnostic): diagnostic message must be first argument of a `#[label(...)]` attribute
   --> $DIR/subdiagnostic-derive-inline.rs:114:1
    |
 LL | #[label()]
@@ -112,7 +112,7 @@ error: derive(Diagnostic): no nested attribute expected here
 LL |     #[label(code = "...")]
    |             ^^^^
 
-error: derive(Diagnostic): diagnostic slug must be first argument of a `#[label(...)]` attribute
+error: derive(Diagnostic): diagnostic message must be first argument of a `#[label(...)]` attribute
   --> $DIR/subdiagnostic-derive-inline.rs:203:5
    |
 LL |     #[label(code = "...")]
@@ -168,11 +168,11 @@ LL | |     b: u64,
 LL | | }
    | |_^
 
-error: derive(Diagnostic): a diagnostic slug must be the first argument to the attribute
+error: expected this path to be an identifier
   --> $DIR/subdiagnostic-derive-inline.rs:305:28
    |
 LL | #[label("example message", no_crate::example)]
-   |                            ^^^^^^^^
+   |                            ^^^^^^^^^^^^^^^^^
 
 error: derive(Diagnostic): attribute specified multiple times
   --> $DIR/subdiagnostic-derive-inline.rs:318:5
@@ -464,11 +464,11 @@ error: expected string literal
 LL | #[suggestion("example message", code = "", style = 42)]
    |                                                    ^^
 
-error: derive(Diagnostic): a diagnostic slug must be the first argument to the attribute
-  --> $DIR/subdiagnostic-derive-inline.rs:773:44
+error: expected `=`
+  --> $DIR/subdiagnostic-derive-inline.rs:773:49
    |
 LL | #[suggestion("example message", code = "", style)]
-   |                                            ^^^^^
+   |                                                 ^
 
 error: expected `=`
   --> $DIR/subdiagnostic-derive-inline.rs:781:49

@@ -64,7 +64,6 @@ fn compile(code: String, output: PathBuf, sysroot: Sysroot, linker: Option<&Path
         output_dir: None,
         ice_file: None,
         file_loader: None,
-        locale_resources: Vec::new(),
         lint_caps: Default::default(),
         psess_created: None,
         hash_untracked_state: None,

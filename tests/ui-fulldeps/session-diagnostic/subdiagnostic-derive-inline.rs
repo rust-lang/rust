@@ -54,7 +54,7 @@ struct C {
 
 #[derive(Subdiagnostic)]
 #[label]
-//~^ ERROR diagnostic slug must be first argument
+//~^ ERROR diagnostic message must be first argument
 struct D {
     #[primary_span]
     span: Span,
@@ -83,7 +83,7 @@ struct F {
 #[derive(Subdiagnostic)]
 #[label(bug = "...")]
 //~^ ERROR no nested attribute expected here
-//~| ERROR diagnostic slug must be first argument
+//~| ERROR diagnostic message must be first argument
 struct G {
     #[primary_span]
     span: Span,
@@ -93,7 +93,7 @@ struct G {
 #[derive(Subdiagnostic)]
 #[label(slug = 4)]
 //~^ ERROR no nested attribute expected here
-//~| ERROR diagnostic slug must be first argument
+//~| ERROR diagnostic message must be first argument
 struct J {
     #[primary_span]
     span: Span,
@@ -103,7 +103,7 @@ struct J {
 #[derive(Subdiagnostic)]
 #[label(slug("..."))]
 //~^ ERROR no nested attribute expected here
-//~| ERROR diagnostic slug must be first argument
+//~| ERROR diagnostic message must be first argument
 struct K {
     #[primary_span]
     span: Span,
@@ -112,7 +112,7 @@ struct K {
 
 #[derive(Subdiagnostic)]
 #[label()]
-//~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
+//~^ ERROR diagnostic message must be first argument of a `#[label(...)]` attribute
 struct M {
     #[primary_span]
     span: Span,
@@ -201,7 +201,7 @@ enum T {
 #[derive(Subdiagnostic)]
 enum U {
     #[label(code = "...")]
-    //~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
+    //~^ ERROR diagnostic message must be first argument of a `#[label(...)]` attribute
     //~| ERROR no nested attribute expected here
     A {
         #[primary_span]
@@ -303,7 +303,7 @@ struct AD {
 
 #[derive(Subdiagnostic)]
 #[label("example message", no_crate::example)]
-//~^ ERROR a diagnostic slug must be the first argument to the attribute
+//~^ ERROR expected this path to be an identifier
 struct AE {
     #[primary_span]
     span: Span,
@@ -771,7 +771,7 @@ struct SuggestionStyleInvalid2 {
 
 #[derive(Subdiagnostic)]
 #[suggestion("example message", code = "", style)]
-//~^ ERROR a diagnostic slug must be the first argument to the attribute
+//~^ ERROR expected `=`
 struct SuggestionStyleInvalid3 {
     #[primary_span]
     sub: Span,

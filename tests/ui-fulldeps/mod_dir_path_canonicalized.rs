@@ -29,7 +29,7 @@ pub fn main() {
 }
 
 fn parse() {
-    let psess = ParseSess::new(vec![]);
+    let psess = ParseSess::new();
 
     let path = Path::new(file!());
     let path = path.canonicalize().unwrap();

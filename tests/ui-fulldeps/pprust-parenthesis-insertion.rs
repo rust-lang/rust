@@ -196,7 +196,7 @@ fn main() -> ExitCode {
     };
 
     rustc_span::create_default_session_globals_then(|| {
-        let psess = &ParseSess::new(vec![]);
+        let psess = &ParseSess::new();
 
         for &source_code in EXPRS {
             let Some(expr) = parse_expr(psess, source_code) else {

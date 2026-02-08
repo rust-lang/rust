@@ -267,7 +267,7 @@ pub(super) type FieldMap = HashMap<String, TokenStream>;
 ///
 /// ```ignore (not-usage-example)
 /// /// Suggest `==` when users wrote `===`.
-/// #[suggestion(slug = "parser-not-javascript-eq", code = "{lhs} == {rhs}")]
+/// #[suggestion("example message", code = "{lhs} == {rhs}")]
 /// struct NotJavaScriptEq {
 ///     #[primary_span]
 ///     span: Span,
@@ -588,13 +588,13 @@ pub(super) enum SubdiagnosticKind {
 
 pub(super) struct SubdiagnosticVariant {
     pub(super) kind: SubdiagnosticKind,
-    pub(super) slug: Option<Message>,
+    pub(super) message: Option<Message>,
 }
 
 impl SubdiagnosticVariant {
     /// Constructs a `SubdiagnosticVariant` from a field or type attribute such as `#[note]`,
-    /// `#[error(parser::add_paren)]` or `#[suggestion(code = "...")]`. Returns the
-    /// `SubdiagnosticKind` and the diagnostic slug, if specified.
+    /// `#[error("add parenthesis")]` or `#[suggestion(code = "...")]`. Returns the
+    /// `SubdiagnosticKind` and the diagnostic message, if specified.
     pub(super) fn from_attr(
         attr: &Attribute,
         fields: &FieldMap,
@@ -660,11 +660,11 @@ impl SubdiagnosticVariant {
         let list = match &attr.meta {
             Meta::List(list) => {
                 // An attribute with properties, such as `#[suggestion(code = "...")]` or
-                // `#[error(some::slug)]`
+                // `#[error("message")]`
                 list
             }
             Meta::Path(_) => {
-                // An attribute without a slug or other properties, such as `#[note]` - return
+                // An attribute without a message or other properties, such as `#[note]` - return
                 // without further processing.
                 //
                 // Only allow this if there are no mandatory properties, such as `code = "..."` in
@@ -677,7 +677,7 @@ impl SubdiagnosticVariant {
                     | SubdiagnosticKind::HelpOnce
                     | SubdiagnosticKind::Warn
                     | SubdiagnosticKind::MultipartSuggestion { .. } => {
-                        return Ok(Some(SubdiagnosticVariant { kind, slug: None }));
+                        return Ok(Some(SubdiagnosticVariant { kind, message: None }));
                     }
                     SubdiagnosticKind::Suggestion { .. } => {
                         throw_span_err!(span, "suggestion without `code = \"...\"`")
@@ -692,45 +692,34 @@ impl SubdiagnosticVariant {
         let mut code = None;
         let mut suggestion_kind = None;
 
-        let mut slug = None;
+        let mut message = None;
 
         list.parse_args_with(|input: ParseStream<'_>| {
             let mut is_first = true;
             while !input.is_empty() {
                 // Try to parse an inline diagnostic message
                 if input.peek(LitStr) {
-                    let message = input.parse::<LitStr>()?;
-                    if !message.suffix().is_empty() {
+                    let inline_message = input.parse::<LitStr>()?;
+                    if !inline_message.suffix().is_empty() {
                         span_err(
-                            message.span().unwrap(),
+                            inline_message.span().unwrap(),
                             "Inline message is not allowed to have a suffix",
                         ).emit();
                     }
                     if !input.is_empty() { input.parse::<Token![,]>()?; }
                     if is_first {
-                        slug = Some(Message::Inline(message.span(), message.value()));
+                        message = Some(Message { message_span: inline_message.span(), value: inline_message.value() });
                         is_first = false;
                     } else {
-                        span_err(message.span().unwrap(), "a diagnostic message must be the first argument to the attribute").emit();
-                    }
-                    continue
-                }
-
-                // Try to parse a slug instead
-                let arg_name: Path = input.parse::<Path>()?;
-                let arg_name_span = arg_name.span().unwrap();
-                if input.is_empty() || input.parse::<Token![,]>().is_ok() {
-                    if is_first {
-                        slug = Some(Message::Slug(arg_name));
-                        is_first = false;
-                    } else {
-                        span_err(arg_name_span, "a diagnostic slug must be the first argument to the attribute").emit();
+                        span_err(inline_message.span().unwrap(), "a diagnostic message must be the first argument to the attribute").emit();
                     }
                     continue
                 }
                 is_first = false;
 
                 // Try to parse an argument
+                let arg_name: Path = input.parse::<Path>()?;
+                let arg_name_span = arg_name.span().unwrap();
                 match (arg_name.require_ident()?.to_string().as_str(), &mut kind) {
                     ("code", SubdiagnosticKind::Suggestion { code_field, .. }) => {
                         let code_init = build_suggestion_code(
@@ -836,7 +825,7 @@ impl SubdiagnosticVariant {
             | SubdiagnosticKind::Warn => {}
         }
 
-        Ok(Some(SubdiagnosticVariant { kind, slug }))
+        Ok(Some(SubdiagnosticVariant { kind, message }))
     }
 }
 

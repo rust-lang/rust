@@ -42,7 +42,7 @@ fn string_to_parser(psess: &ParseSess, source_str: String) -> Parser<'_> {
 fn create_test_handler(theme: OutputTheme) -> (DiagCtxt, Arc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
     let output = Arc::new(Mutex::new(Vec::new()));
     let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
-    let translator = Translator::with_fallback_bundle(vec![], false);
+    let translator = Translator::new();
     let shared: Box<dyn Write + Send> = Box::new(Shared { data: output.clone() });
     let auto_stream = AutoStream::never(shared);
     let dcx = DiagCtxt::new(Box::new(
@@ -89,7 +89,7 @@ where
 
 /// Maps a string to tts, using a made-up filename.
 pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
-    let psess = ParseSess::new(vec![]);
+    let psess = ParseSess::new();
     unwrap_or_emit_fatal(source_str_to_stream(
         &psess,
         filename(psess.source_map(), "bogofile"),
@@ -2239,12 +2239,12 @@ fn sp(a: u32, b: u32) -> Span {
 
 /// Parses a string, return an expression.
 fn string_to_expr(source_str: String) -> Box<ast::Expr> {
-    with_error_checking_parse(source_str, &ParseSess::new(vec![]), |p| p.parse_expr())
+    with_error_checking_parse(source_str, &ParseSess::new(), |p| p.parse_expr())
 }
 
 /// Parses a string, returns an item.
 fn string_to_item(source_str: String) -> Option<Box<ast::Item>> {
-    with_error_checking_parse(source_str, &ParseSess::new(vec![]), |p| {
+    with_error_checking_parse(source_str, &ParseSess::new(), |p| {
         p.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)
     })
 }
@@ -2480,7 +2480,7 @@ let mut fflags: c_int = wb();
 #[test]
 fn crlf_doc_comments() {
     create_default_session_globals_then(|| {
-        let psess = ParseSess::new(vec![]);
+        let psess = ParseSess::new();
 
         let name_1 = FileName::Custom("crlf_source_1".to_string());
         let source = "/// doc comment\r\nfn foo() {}".to_string();
@@ -2515,7 +2515,7 @@ fn ttdelim_span() {
     }
 
     create_default_session_globals_then(|| {
-        let psess = ParseSess::new(vec![]);
+        let psess = ParseSess::new();
         let expr = parse_expr_from_source_str(
             filename(psess.source_map(), "foo"),
             "foo!( fn main() { body } )".to_string(),
@@ -2551,7 +2551,7 @@ fn look_ahead() {
         let sym_S = Symbol::intern("S");
         let raw_no = IdentIsRaw::No;
 
-        let psess = ParseSess::new(vec![]);
+        let psess = ParseSess::new();
         let mut p = string_to_parser(&psess, "fn f(x: u32) { x } struct S;".to_string());
 
         // Current position is the `fn`.
@@ -2626,7 +2626,7 @@ fn look_ahead_non_outermost_stream() {
         let sym_S = Symbol::intern("S");
         let raw_no = IdentIsRaw::No;
 
-        let psess = ParseSess::new(vec![]);
+        let psess = ParseSess::new();
         let mut p = string_to_parser(&psess, "mod m { fn f(x: u32) { x } struct S; }".to_string());
 
         // Move forward to the `fn`, which is not within the outermost token
@@ -2658,7 +2658,7 @@ fn look_ahead_non_outermost_stream() {
 #[test]
 fn debug_lookahead() {
     create_default_session_globals_then(|| {
-        let psess = ParseSess::new(vec![]);
+        let psess = ParseSess::new();
         let mut p = string_to_parser(&psess, "fn f(x: u32) { x } struct S;".to_string());
 
         // Current position is the `fn`.
@@ -2879,7 +2879,7 @@ fn debug_lookahead() {
 #[test]
 fn out_of_line_mod() {
     create_default_session_globals_then(|| {
-        let psess = ParseSess::new(vec![]);
+        let psess = ParseSess::new();
         let item = parse_item_from_source_str(
             filename(psess.source_map(), "foo"),
             "mod foo { struct S; mod this_does_not_exist; }".to_owned(),
