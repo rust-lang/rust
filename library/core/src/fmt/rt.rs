@@ -73,10 +73,10 @@ macro_rules! argument_new {
                 },
                 #[cfg(any(sanitize = "cfi", sanitize = "kcfi"))]
                 formatter: |ptr: NonNull<()>, fmt: &mut Formatter<'_>| {
-                    let func = $f;
+                    let f: fn(&$t, &mut Formatter<'_>) -> Result = $f;
                     // SAFETY: This is the same type as the `value` field.
                     let r = unsafe { ptr.cast::<$t>().as_ref() };
-                    (func)(r, fmt)
+                    f(r, fmt)
                 },
                 _lifetime: PhantomData,
             },
@@ -84,47 +84,39 @@ macro_rules! argument_new {
     };
 }
 
+macro_rules! argument_constructor {
+    ($name:ident => $trait:path) => {
+        #[inline]
+        pub const fn $name<T: $trait>(x: &T) -> Argument<'_> {
+            argument_new!(T, x, <T as $trait>::fmt)
+        }
+
+        #[inline]
+        pub const fn ${concat($name, _simple)}<T: $trait>(x: &T) -> Argument<'_> {
+            argument_new!(T, x, |x, f| {
+                let mut f = f.with_options(FormattingOptions::new());
+                <T as $trait>::fmt(x, &mut f)
+            })
+        }
+    };
+}
+
 impl Argument<'_> {
-    #[inline]
-    pub const fn new_display<T: Display>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as Display>::fmt)
-    }
-    #[inline]
-    pub const fn new_debug<T: Debug>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as Debug>::fmt)
-    }
+    argument_constructor!(new_display => Display);
+    argument_constructor!(new_debug => Debug);
+    argument_constructor!(new_octal => Octal);
+    argument_constructor!(new_lower_hex => LowerHex);
+    argument_constructor!(new_upper_hex => UpperHex);
+    argument_constructor!(new_pointer => Pointer);
+    argument_constructor!(new_binary => Binary);
+    argument_constructor!(new_lower_exp => LowerExp);
+    argument_constructor!(new_upper_exp => UpperExp);
+
     #[inline]
     pub const fn new_debug_noop<T: Debug>(x: &T) -> Argument<'_> {
         argument_new!(T, x, |_: &T, _| Ok(()))
     }
-    #[inline]
-    pub const fn new_octal<T: Octal>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as Octal>::fmt)
-    }
-    #[inline]
-    pub const fn new_lower_hex<T: LowerHex>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as LowerHex>::fmt)
-    }
-    #[inline]
-    pub const fn new_upper_hex<T: UpperHex>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as UpperHex>::fmt)
-    }
-    #[inline]
-    pub const fn new_pointer<T: Pointer>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as Pointer>::fmt)
-    }
-    #[inline]
-    pub const fn new_binary<T: Binary>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as Binary>::fmt)
-    }
-    #[inline]
-    pub const fn new_lower_exp<T: LowerExp>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as LowerExp>::fmt)
-    }
-    #[inline]
-    pub const fn new_upper_exp<T: UpperExp>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as UpperExp>::fmt)
-    }
+
     #[inline]
     #[track_caller]
     pub const fn from_usize(x: &usize) -> Argument<'_> {

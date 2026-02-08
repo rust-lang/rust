@@ -218,7 +218,7 @@ fn flatten_format_args(mut fmt: Cow<'_, FormatArgs>) -> Cow<'_, FormatArgs> {
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 enum ArgumentType {
-    Format(FormatTrait),
+    Format { how: FormatTrait, simple: bool },
     Usize,
 }
 
@@ -241,18 +241,32 @@ fn make_argument<'hir>(
         sp,
         hir::LangItem::FormatArgument,
         match ty {
-            Format(Display) => sym::new_display,
-            Format(Debug) => match ctx.tcx.sess.opts.unstable_opts.fmt_debug {
-                FmtDebug::Full | FmtDebug::Shallow => sym::new_debug,
+            Format { how: Display, simple: false } => sym::new_display,
+            Format { how: Display, simple: true } => sym::new_display_simple,
+            Format { how: Debug, simple } => match ctx.tcx.sess.opts.unstable_opts.fmt_debug {
+                FmtDebug::Full | FmtDebug::Shallow => {
+                    if simple {
+                        sym::new_debug_simple
+                    } else {
+                        sym::new_debug
+                    }
+                }
                 FmtDebug::None => sym::new_debug_noop,
             },
-            Format(LowerExp) => sym::new_lower_exp,
-            Format(UpperExp) => sym::new_upper_exp,
-            Format(Octal) => sym::new_octal,
-            Format(Pointer) => sym::new_pointer,
-            Format(Binary) => sym::new_binary,
-            Format(LowerHex) => sym::new_lower_hex,
-            Format(UpperHex) => sym::new_upper_hex,
+            Format { how: LowerExp, simple: false } => sym::new_lower_exp,
+            Format { how: LowerExp, simple: true } => sym::new_lower_exp_simple,
+            Format { how: UpperExp, simple: false } => sym::new_upper_exp,
+            Format { how: UpperExp, simple: true } => sym::new_upper_exp_simple,
+            Format { how: Octal, simple: false } => sym::new_octal,
+            Format { how: Octal, simple: true } => sym::new_octal_simple,
+            Format { how: Pointer, simple: false } => sym::new_pointer,
+            Format { how: Pointer, simple: true } => sym::new_pointer_simple,
+            Format { how: Binary, simple: false } => sym::new_binary,
+            Format { how: Binary, simple: true } => sym::new_binary_simple,
+            Format { how: LowerHex, simple: false } => sym::new_lower_hex,
+            Format { how: LowerHex, simple: true } => sym::new_lower_hex_simple,
+            Format { how: UpperHex, simple: false } => sym::new_upper_hex,
+            Format { how: UpperHex, simple: true } => sym::new_upper_hex_simple,
             Usize => sym::from_usize,
         },
     ));
@@ -360,16 +374,6 @@ fn expand_format_args<'hir>(
                 let i = bytecode.len();
                 bytecode.push(0xC0);
 
-                let position = argmap
-                    .insert_full(
-                        (
-                            p.argument.index.unwrap_or(usize::MAX),
-                            ArgumentType::Format(p.format_trait),
-                        ),
-                        p.span,
-                    )
-                    .0 as u64;
-
                 // This needs to match the constants in library/core/src/fmt/mod.rs.
                 let o = &p.format_options;
                 let align = match o.alignment {
@@ -389,6 +393,18 @@ fn expand_format_args<'hir>(
                     | (o.width.is_some() as u32) << 27
                     | (o.precision.is_some() as u32) << 28
                     | align << 29;
+
+                let is_simple = flags == default_flags;
+                let position = argmap
+                    .insert_full(
+                        (
+                            p.argument.index.unwrap_or(usize::MAX),
+                            ArgumentType::Format { how: p.format_trait, simple: is_simple },
+                        ),
+                        p.span,
+                    )
+                    .0 as u64;
+
                 if flags != default_flags {
                     bytecode[i] |= 1;
                     bytecode.extend_from_slice(&flags.to_le_bytes());
