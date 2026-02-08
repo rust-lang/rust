@@ -72,7 +72,6 @@ where
             sessopts,
             io,
             None,
-            vec![],
             Default::default(),
             target,
             "",

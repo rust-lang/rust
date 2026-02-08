@@ -83,8 +83,6 @@ pub mod error;
 pub mod json;
 mod lock;
 pub mod markdown;
-#[cfg(test)]
-mod tests;
 pub mod timings;
 pub mod translation;
 

@@ -2,16 +2,15 @@ use fluent_bundle::FluentResource;
 use fluent_syntax::ast::{Expression, InlineExpression, Pattern, PatternElement};
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::Path;
 use syn::ext::IdentExt;
-use synstructure::{Structure, VariantInfo};
+use synstructure::VariantInfo;
 
 use crate::diagnostics::error::span_err;
 
 #[derive(Clone)]
-pub(crate) enum Message {
-    Slug(Path),
-    Inline(Span, String),
+pub(crate) struct Message {
+    pub message_span: Span,
+    pub value: String,
 }
 
 impl Message {
@@ -19,69 +18,9 @@ impl Message {
     /// The passed `variant` is used to check whether all variables in the message are used.
     /// For subdiagnostics, we cannot check this.
     pub(crate) fn diag_message(&self, variant: Option<&VariantInfo<'_>>) -> TokenStream {
-        match self {
-            Message::Slug(slug) => {
-                quote! { crate::fluent_generated::#slug }
-            }
-            Message::Inline(message_span, message) => {
-                verify_fluent_message(*message_span, &message, variant);
-                quote! { rustc_errors::DiagMessage::Inline(std::borrow::Cow::Borrowed(#message)) }
-            }
-        }
-    }
-
-    /// Generates a `#[test]` that verifies that all referenced variables
-    /// exist on this structure.
-    pub(crate) fn generate_test(&self, structure: &Structure<'_>) -> TokenStream {
-        match self {
-            Message::Slug(slug) => {
-                // FIXME: We can't identify variables in a subdiagnostic
-                for field in structure.variants().iter().flat_map(|v| v.ast().fields.iter()) {
-                    for attr_name in field.attrs.iter().filter_map(|at| at.path().get_ident()) {
-                        if attr_name == "subdiagnostic" {
-                            return quote!();
-                        }
-                    }
-                }
-                use std::sync::atomic::{AtomicUsize, Ordering};
-                // We need to make sure that the same diagnostic slug can be used multiple times without
-                // causing an error, so just have a global counter here.
-                static COUNTER: AtomicUsize = AtomicUsize::new(0);
-                let slug = slug.get_ident().unwrap();
-                let ident = quote::format_ident!(
-                    "verify_{slug}_{}",
-                    COUNTER.fetch_add(1, Ordering::Relaxed)
-                );
-                let ref_slug = quote::format_ident!("{slug}_refs");
-                let struct_name = &structure.ast().ident;
-                let variables: Vec<_> = structure
-                    .variants()
-                    .iter()
-                    .flat_map(|v| {
-                        v.ast()
-                            .fields
-                            .iter()
-                            .filter_map(|f| f.ident.as_ref().map(|i| i.to_string()))
-                    })
-                    .collect();
-                // tidy errors on `#[test]` outside of test files, so we use `#[test ]` to work around this
-                quote! {
-                    #[cfg(test)]
-                    #[test ]
-                    fn #ident() {
-                        let variables = [#(#variables),*];
-                        for vref in crate::fluent_generated::#ref_slug {
-                            assert!(variables.contains(vref), "{}: variable `{vref}` not found ({})", stringify!(#struct_name), stringify!(#slug));
-                        }
-                    }
-                }
-            }
-            Message::Inline(..) => {
-                // We don't generate a test for inline diagnostics, we can verify these at compile-time!
-                // This verification is done in the `diag_message` function above
-                quote! {}
-            }
-        }
+        let message = &self.value;
+        verify_fluent_message(self.message_span, &message, variant);
+        quote! { rustc_errors::DiagMessage::Inline(std::borrow::Cow::Borrowed(#message)) }
     }
 }
 

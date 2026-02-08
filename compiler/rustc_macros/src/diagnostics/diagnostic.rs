@@ -1,7 +1,5 @@
 #![deny(unused_must_use)]
 
-use std::cell::RefCell;
-
 use proc_macro2::TokenStream;
 use quote::quote;
 use synstructure::Structure;
@@ -22,7 +20,6 @@ impl<'a> DiagnosticDerive<'a> {
     pub(crate) fn into_tokens(self) -> TokenStream {
         let DiagnosticDerive { mut structure } = self;
         let kind = DiagnosticDeriveKind::Diagnostic;
-        let messages = RefCell::new(Vec::new());
         let implementation = kind.each_variant(&mut structure, |mut builder, variant| {
             let preamble = builder.preamble(variant);
             let body = builder.body(variant);
@@ -30,7 +27,6 @@ impl<'a> DiagnosticDerive<'a> {
             let Some(message) = builder.primary_message() else {
                 return DiagnosticDeriveError::ErrorHandled.to_compile_error();
             };
-            messages.borrow_mut().push(message.clone());
             let message = message.diag_message(Some(variant));
 
             let init = quote! {
@@ -52,9 +48,7 @@ impl<'a> DiagnosticDerive<'a> {
         });
 
         // A lifetime of `'a` causes conflicts, but `_sess` is fine.
-        // FIXME(edition_2024): Fix the `keyword_idents_2024` lint to not trigger here?
-        #[allow(keyword_idents_2024)]
-        let mut imp = structure.gen_impl(quote! {
+        structure.gen_impl(quote! {
             gen impl<'_sess, G> rustc_errors::Diagnostic<'_sess, G> for @Self
                 where G: rustc_errors::EmissionGuarantee
             {
@@ -67,11 +61,7 @@ impl<'a> DiagnosticDerive<'a> {
                     #implementation
                 }
             }
-        });
-        for test in messages.borrow().iter().map(|s| s.generate_test(&structure)) {
-            imp.extend(test);
-        }
-        imp
+        })
     }
 }
 
@@ -88,7 +78,6 @@ impl<'a> LintDiagnosticDerive<'a> {
     pub(crate) fn into_tokens(self) -> TokenStream {
         let LintDiagnosticDerive { mut structure } = self;
         let kind = DiagnosticDeriveKind::LintDiagnostic;
-        let messages = RefCell::new(Vec::new());
         let implementation = kind.each_variant(&mut structure, |mut builder, variant| {
             let preamble = builder.preamble(variant);
             let body = builder.body(variant);
@@ -96,7 +85,6 @@ impl<'a> LintDiagnosticDerive<'a> {
             let Some(message) = builder.primary_message() else {
                 return DiagnosticDeriveError::ErrorHandled.to_compile_error();
             };
-            messages.borrow_mut().push(message.clone());
             let message = message.diag_message(Some(variant));
             let primary_message = quote! {
                 diag.primary_message(#message);
@@ -112,9 +100,7 @@ impl<'a> LintDiagnosticDerive<'a> {
             }
         });
 
-        // FIXME(edition_2024): Fix the `keyword_idents_2024` lint to not trigger here?
-        #[allow(keyword_idents_2024)]
-        let mut imp = structure.gen_impl(quote! {
+        structure.gen_impl(quote! {
             gen impl<'__a> rustc_errors::LintDiagnostic<'__a, ()> for @Self {
                 #[track_caller]
                 fn decorate_lint<'__b>(
@@ -124,11 +110,6 @@ impl<'a> LintDiagnosticDerive<'a> {
                     #implementation;
                 }
             }
-        });
-        for test in messages.borrow().iter().map(|s| s.generate_test(&structure)) {
-            imp.extend(test);
-        }
-
-        imp
+        })
     }
 }
