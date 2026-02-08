@@ -118,7 +118,3 @@ impl<T: [const] Destruct, const N: usize, F> const Drop for Drain<'_, '_, T, N, 
         }
     }
 }
-
-
-
-
