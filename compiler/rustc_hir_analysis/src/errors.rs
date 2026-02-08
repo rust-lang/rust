@@ -1857,6 +1857,20 @@ pub(crate) struct LifetimesOrBoundsMismatchOnEii {
 }
 
 #[derive(Diagnostic)]
+#[diag("externally implementable item declaration must be a function")]
+#[help("externally implementable items only apply to function declarations")]
+pub(crate) struct EiiDeclarationNotFn {
+    #[primary_span]
+    pub span: Span,
+    #[label("required by this attribute")]
+    pub attr: Span,
+    #[label("`{$decl_name}` is a {$kind_descr}, not a function")]
+    pub decl_span: Span,
+    pub decl_name: Symbol,
+    pub kind_descr: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag("`{$impl_name}` cannot have generic parameters other than lifetimes")]
 #[help("`#[{$eii_name}]` marks the implementation of an \"externally implementable item\"")]
 pub(crate) struct EiiWithGenerics {

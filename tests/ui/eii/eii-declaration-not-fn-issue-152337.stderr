@@ -1,0 +1,26 @@
+error[E0428]: the name `A` is defined multiple times
+  --> $DIR/eii-declaration-not-fn-issue-152337.rs:8:1
+   |
+LL | const A: () = ();
+   | ----------------- previous definition of the value `A` here
+LL | #[eii]
+LL | fn A() {}
+   | ^^^^^^ `A` redefined here
+   |
+   = note: `A` must be defined only once in the value namespace of this module
+
+error: externally implementable item declaration must be a function
+  --> $DIR/eii-declaration-not-fn-issue-152337.rs:8:1
+   |
+LL | const A: () = ();
+   | ----------- `A` is a constant, not a function
+LL | #[eii]
+   | ------ required by this attribute
+LL | fn A() {}
+   | ^^^^^^
+   |
+   = help: externally implementable items only apply to function declarations
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0428`.

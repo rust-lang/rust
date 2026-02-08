@@ -9,6 +9,7 @@ use std::iter;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, E0806, struct_span_code_err};
 use rustc_hir::attrs::{AttributeKind, EiiImplResolution};
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, FnSig, HirId, ItemKind, find_attr};
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
@@ -25,7 +26,7 @@ use super::potentially_plural_count;
 use crate::check::compare_impl_item::{
     CheckNumberOfEarlyBoundRegionsError, check_number_of_early_bound_regions,
 };
-use crate::errors::{EiiWithGenerics, LifetimesOrBoundsMismatchOnEii};
+use crate::errors::{EiiDeclarationNotFn, EiiWithGenerics, LifetimesOrBoundsMismatchOnEii};
 
 /// Checks whether the signature of some `external_impl`, matches
 /// the signature of `declaration`, which it is supposed to be compatible
@@ -37,6 +38,20 @@ pub(crate) fn compare_eii_function_types<'tcx>(
     eii_name: Symbol,
     eii_attr_span: Span,
 ) -> Result<(), ErrorGuaranteed> {
+    // EII only applies to function declarations; name resolution may have given us a const/static/etc.
+    let decl_kind = tcx.def_kind(foreign_item);
+    let is_fn =
+        matches!(decl_kind, DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn));
+    if !is_fn {
+        return Err(tcx.dcx().emit_err(EiiDeclarationNotFn {
+            span: tcx.def_span(external_impl),
+            attr: eii_attr_span,
+            decl_span: tcx.def_span(foreign_item),
+            decl_name: tcx.item_name(foreign_item),
+            kind_descr: tcx.def_descr(foreign_item),
+        }));
+    }
+
     check_is_structurally_compatible(tcx, external_impl, foreign_item, eii_name, eii_attr_span)?;
 
     let external_impl_span = tcx.def_span(external_impl);
