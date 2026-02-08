@@ -27,6 +27,7 @@ curly__rhs_dollar__no_round !(a);
 macro_rules! no_curly__no_rhs_dollar__round {
     ( $( $i:ident ),* ) => { count(i) };
     //~^ ERROR missing `fn` or `struct` for function or struct definition
+    //~| HELP if you meant to call a macro, try
 }
 no_curly__no_rhs_dollar__round !(a, b, c);
 
@@ -34,6 +35,7 @@ no_curly__no_rhs_dollar__round !(a, b, c);
 macro_rules! no_curly__no_rhs_dollar__no_round {
     ( $i:ident ) => { count(i) };
     //~^ ERROR missing `fn` or `struct` for function or struct definition
+    //~| HELP if you meant to call a macro, try
 }
 no_curly__no_rhs_dollar__no_round !(a);
 
