@@ -364,11 +364,11 @@ impl<'cx> ParseCxImpl<'cx> {
 
         let mut cursor = Cursor::new(&file.contents);
         let mut captures = [Capture::EMPTY; 3];
-        while let Some(mac_name) = cursor.find_any_ident() {
+        while let Some(mac_name) = cursor.find_capture_ident() {
             captures[1] = Capture::EMPTY;
             match cursor.get_text(mac_name) {
                 "declare_clippy_lint"
-                    if cursor.match_all(LINT_DECL_TOKENS, &mut captures) && cursor.find_pat(CloseBrace) =>
+                    if cursor.match_all(LINT_DECL_TOKENS, &mut captures) && cursor.find_close_brace() =>
                 {
                     assert!(
                         data.lints
@@ -401,14 +401,14 @@ impl<'cx> ParseCxImpl<'cx> {
                     let lints = self.str_list_buf.with(|buf| {
                         // Parses a comma separated list of paths and converts each path
                         // to a string with whitespace removed.
-                        while !cursor.match_pat(CloseBracket) {
+                        while !cursor.eat_close_bracket() {
                             buf.push(self.str_buf.with(|buf| {
-                                if cursor.match_pat(DoubleColon) {
+                                if cursor.eat_double_colon() {
                                     buf.push_str("::");
                                 }
                                 let capture = cursor.capture_ident()?;
                                 buf.push_str(cursor.get_text(capture));
-                                while cursor.match_pat(DoubleColon) {
+                                while cursor.eat_double_colon() {
                                     buf.push_str("::");
                                     let capture = cursor.capture_ident()?;
                                     buf.push_str(cursor.get_text(capture));
@@ -416,8 +416,8 @@ impl<'cx> ParseCxImpl<'cx> {
                                 Some(self.arena.alloc_str(buf))
                             })?);
 
-                            if !cursor.match_pat(Comma) {
-                                if !cursor.match_pat(CloseBracket) {
+                            if !cursor.eat_comma() {
+                                if !cursor.eat_close_bracket() {
                                     return None;
                                 }
                                 break;
@@ -482,11 +482,11 @@ impl<'cx> ParseCxImpl<'cx> {
 
         // First instance is the macro definition.
         assert!(
-            cursor.find_ident("declare_with_version").is_some(),
+            cursor.find_ident("declare_with_version"),
             "error reading deprecated lints"
         );
 
-        if cursor.find_ident("declare_with_version").is_some() && cursor.match_all(DEPRECATED_TOKENS, &mut []) {
+        if cursor.find_ident("declare_with_version") && cursor.match_all(DEPRECATED_TOKENS, &mut []) {
             while cursor.match_all(DECL_TOKENS, &mut captures) {
                 assert!(
                     data.lints
@@ -504,7 +504,7 @@ impl<'cx> ParseCxImpl<'cx> {
             panic!("error reading deprecated lints");
         }
 
-        if cursor.find_ident("declare_with_version").is_some() && cursor.match_all(RENAMED_TOKENS, &mut []) {
+        if cursor.find_ident("declare_with_version") && cursor.match_all(RENAMED_TOKENS, &mut []) {
             while cursor.match_all(DECL_TOKENS, &mut captures) {
                 assert!(
                     data.lints

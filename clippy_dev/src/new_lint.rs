@@ -529,9 +529,9 @@ fn parse_mod_file(path: &Path, contents: &str) -> (&'static str, usize) {
     let mut decl_end = None;
     let mut cursor = Cursor::new(contents);
     let mut captures = [Capture::EMPTY];
-    while let Some(name) = cursor.find_any_ident() {
+    while let Some(name) = cursor.find_capture_ident() {
         match cursor.get_text(name) {
-            "declare_clippy_lint" if cursor.match_all(&[Bang, OpenBrace], &mut []) && cursor.find_pat(CloseBrace) => {
+            "declare_clippy_lint" if cursor.match_all(&[Bang, OpenBrace], &mut []) && cursor.find_close_brace() => {
                 decl_end = Some(cursor.pos());
             },
             "impl" if cursor.match_all(&[Lt, Lifetime, Gt, CaptureIdent], &mut captures) => {

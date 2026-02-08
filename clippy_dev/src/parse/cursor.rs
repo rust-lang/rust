@@ -16,7 +16,6 @@ pub enum Pat {
     CaptureLifetime,
     CaptureLitStr,
     Bang,
-    CloseBrace,
     CloseBracket,
     CloseParen,
     Comma,
@@ -126,12 +125,6 @@ impl<'txt> Cursor<'txt> {
         self.pos
     }
 
-    /// Gets whether the cursor has exhausted its input.
-    #[must_use]
-    pub fn at_end(&self) -> bool {
-        self.next_token.kind == TokenKind::Eof
-    }
-
     /// Advances the cursor to the next token. If the stream is exhausted this will set
     /// the next token to [`TokenKind::Eof`].
     pub fn step(&mut self) {
@@ -154,8 +147,10 @@ impl<'txt> Cursor<'txt> {
                     Pat::AnyComments,
                     TokenKind::BlockComment { terminated: true, .. } | TokenKind::LineComment { .. },
                 ) => self.step(),
+                (Pat::AnyComments, _) => return true,
+
+                (Pat::Ident(x), TokenKind::Ident) if x.as_str() == self.peek_text() => break,
                 (Pat::Bang, TokenKind::Bang)
-                | (Pat::CloseBrace, TokenKind::CloseBrace)
                 | (Pat::CloseBracket, TokenKind::CloseBracket)
                 | (Pat::CloseParen, TokenKind::CloseParen)
                 | (Pat::Comma, TokenKind::Comma)
@@ -174,30 +169,17 @@ impl<'txt> Cursor<'txt> {
                         kind: LiteralKind::Str { terminated: true } | LiteralKind::RawStr { .. },
                         ..
                     },
-                ) => {
+                ) => break,
+
+                (Pat::DoubleColon, TokenKind::Colon) if self.inner.as_str().starts_with(':') => {
                     self.step();
-                    return true;
+                    break;
                 },
-                (Pat::Ident(x), TokenKind::Ident) if x.as_str() == self.peek_text() => {
+                (Pat::FatArrow, TokenKind::Eq) if self.inner.as_str().starts_with('>') => {
                     self.step();
-                    return true;
+                    break;
                 },
-                (Pat::DoubleColon, TokenKind::Colon) => {
-                    self.step();
-                    if matches!(self.next_token.kind, TokenKind::Colon) {
-                        self.step();
-                        return true;
-                    }
-                    return false;
-                },
-                (Pat::FatArrow, TokenKind::Eq) => {
-                    self.step();
-                    if matches!(self.next_token.kind, TokenKind::Gt) {
-                        self.step();
-                        return true;
-                    }
-                    return false;
-                },
+
                 #[rustfmt::skip]
                 (
                     Pat::CaptureLitStr,
@@ -214,6 +196,7 @@ impl<'txt> Cursor<'txt> {
                     self.step();
                     return true;
                 },
+
                 (Pat::CaptureDocLines, TokenKind::LineComment { doc_style: Some(_) }) => {
                     let pos = self.pos;
                     loop {
@@ -231,43 +214,26 @@ impl<'txt> Cursor<'txt> {
                     };
                     return true;
                 },
+
                 (Pat::CaptureDocLines, _) => {
                     *captures.next().unwrap() = Capture::EMPTY;
                     return true;
                 },
-                (Pat::AnyComments, _) => return true,
                 _ => return false,
             }
         }
+
+        self.step();
+        true
     }
 
-    /// Consumes all tokens until the specified identifier is found and returns its
-    /// position. Returns `None` if the identifier could not be found.
-    ///
-    /// The cursor will be positioned immediately after the identifier, or at the end if
-    /// it is not.
-    pub fn find_ident(&mut self, ident: &str) -> Option<u32> {
+    /// Consumes and captures the next non-whitespace token if it's an identifier. Returns
+    /// `None` otherwise.
+    #[must_use]
+    pub fn capture_ident(&mut self) -> Option<Capture> {
         loop {
             match self.next_token.kind {
-                TokenKind::Ident if self.peek_text() == ident => {
-                    let pos = self.pos;
-                    self.step();
-                    return Some(pos);
-                },
-                TokenKind::Eof => return None,
-                _ => self.step(),
-            }
-        }
-    }
-
-    /// Consumes all tokens until the next identifier is found and captures it. Returns
-    /// `None` if no identifier could be found.
-    ///
-    /// The cursor will be positioned immediately after the identifier, or at the end if
-    /// it is not.
-    pub fn find_any_ident(&mut self) -> Option<Capture> {
-        loop {
-            match self.next_token.kind {
+                TokenKind::Whitespace => self.step(),
                 TokenKind::Ident => {
                     let res = Capture {
                         pos: self.pos,
@@ -276,60 +242,29 @@ impl<'txt> Cursor<'txt> {
                     self.step();
                     return Some(res);
                 },
+                _ => return None,
+            }
+        }
+    }
+
+    /// Consumes all tokens up to and including the next identifier. Returns either the
+    /// captured identifier or `None` if one was not found.
+    #[must_use]
+    pub fn find_capture_ident(&mut self) -> Option<Capture> {
+        loop {
+            match self.next_token.kind {
                 TokenKind::Eof => return None,
+                TokenKind::Ident => {
+                    let res = Capture {
+                        pos: self.pos,
+                        len: self.next_token.len,
+                    };
+                    self.step();
+                    return Some(res);
+                },
                 _ => self.step(),
             }
         }
-    }
-
-    /// Consume the returns the position of the next non-whitespace token if it's the
-    /// specified identifier. Returns `None` otherwise.
-    pub fn match_ident(&mut self, s: &str) -> Option<u32> {
-        loop {
-            match self.next_token.kind {
-                TokenKind::Ident if s == self.peek_text() => {
-                    let pos = self.pos;
-                    self.step();
-                    return Some(pos);
-                },
-                TokenKind::Whitespace => self.step(),
-                _ => return None,
-            }
-        }
-    }
-
-    /// Consumes and captures the next non-whitespace token if it's an identifier. Returns
-    /// `None` otherwise.
-    pub fn capture_ident(&mut self) -> Option<Capture> {
-        loop {
-            match self.next_token.kind {
-                TokenKind::Ident => {
-                    let pos = self.pos;
-                    let len = self.next_token.len;
-                    self.step();
-                    return Some(Capture { pos, len });
-                },
-                TokenKind::Whitespace => self.step(),
-                _ => return None,
-            }
-        }
-    }
-
-    /// Continually attempt to match the pattern on subsequent tokens until a match is
-    /// found. Returns whether the pattern was successfully matched.
-    ///
-    /// Not generally suitable for multi-token patterns or patterns that can match
-    /// nothing.
-    #[must_use]
-    pub fn find_pat(&mut self, pat: Pat) -> bool {
-        let mut capture = [].iter_mut();
-        while !self.match_impl(pat, &mut capture) {
-            self.step();
-            if self.at_end() {
-                return false;
-            }
-        }
-        true
     }
 
     /// Attempts to match a sequence of patterns at the current position. Returns whether
@@ -364,14 +299,65 @@ impl<'txt> Cursor<'txt> {
             .err()
             .is_none_or(|p| ptr::addr_eq(pats.as_ptr(), p))
     }
+}
 
-    /// Attempts to match a single pattern at the current position. Returns whether the
-    /// pattern was successfully matched.
-    ///
-    /// If the pattern attempts to capture anything this will panic. If the match fails
-    /// the cursor will be positioned at the first failing token.
-    #[must_use]
-    pub fn match_pat(&mut self, pat: Pat) -> bool {
-        self.match_impl(pat, &mut [].iter_mut())
+macro_rules! mk_tk_methods {
+    ($(
+        [$desc:literal]
+        $name:ident(&mut $self:tt $($params:tt)*)
+            { $pat:pat $(if $guard:expr)? $(=> $extra:block)? }
+    )*) => {
+        #[allow(dead_code)]
+        impl Cursor<'_> {$(
+            #[doc = "Consumes the next non-whitespace token if it's "]
+            #[doc = $desc]
+            #[doc = " and returns whether the token was found."]
+            #[must_use]
+            pub fn ${concat(eat_, $name)}(&mut $self $($params)*) -> bool {
+                loop {
+                    match $self.next_token.kind {
+                        TokenKind::Whitespace => $self.step(),
+                        $pat $(if $guard)? => {
+                            $self.step();
+                            return true;
+                        },
+                        _ => return false,
+                    }
+                }
+            }
+
+            #[doc = "Consumes all tokens up to and including "]
+            #[doc = $desc]
+            #[doc = " and returns whether the token was found."]
+            #[must_use]
+            pub fn ${concat(find_, $name)}(&mut $self $($params)*) -> bool {
+                loop {
+                    match $self.next_token.kind {
+                        TokenKind::Eof => return false,
+                        $pat $(if $guard)? => {
+                            $self.step();
+                            return true;
+                        },
+                        _ => $self.step(),
+                    }
+                }
+            }
+        )*}
     }
+}
+mk_tk_methods! {
+    ["`}`"]
+    close_brace(&mut self) { TokenKind::CloseBrace }
+    ["`]`"]
+    close_bracket(&mut self) { TokenKind::CloseBracket }
+    ["`,`"]
+    comma(&mut self) { TokenKind::Comma }
+    ["`::`"]
+    double_colon(&mut self) {
+        TokenKind::Colon if self.inner.as_str().starts_with(':') => { self.step(); }
+    }
+    ["the specified identifier"]
+    ident(&mut self, s: &str) { TokenKind::Ident if self.peek_text() == s }
+    ["`;`"]
+    semi(&mut self) { TokenKind::Semi }
 }

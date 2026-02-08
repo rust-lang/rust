@@ -330,11 +330,9 @@ fn uplift_update_fn<'a>(
         let mut copy_pos = 0u32;
         let mut changed = false;
         let mut cursor = Cursor::new(src);
-        while let Some(ident) = cursor.find_any_ident() {
+        while let Some(ident) = cursor.find_capture_ident() {
             match cursor.get_text(ident) {
-                "mod"
-                    if remove_mod && cursor.match_ident(old_name).is_some() && cursor.match_pat(cursor::Pat::Semi) =>
-                {
+                "mod" if remove_mod && cursor.eat_ident(old_name) && cursor.eat_semi() => {
                     dst.push_str(&src[copy_pos as usize..ident.pos as usize]);
                     dst.push_str(new_name);
                     copy_pos = cursor.pos();
@@ -343,7 +341,7 @@ fn uplift_update_fn<'a>(
                     }
                     changed = true;
                 },
-                "clippy" if cursor.match_pat(cursor::Pat::DoubleColon) && cursor.match_ident(old_name).is_some() => {
+                "clippy" if cursor.eat_double_colon() && cursor.eat_ident(old_name) => {
                     dst.push_str(&src[copy_pos as usize..ident.pos as usize]);
                     dst.push_str(new_name);
                     copy_pos = cursor.pos();
@@ -393,8 +391,11 @@ fn rename_update_fn<'a>(
                         },
                         // mod lint_name
                         "mod" => {
-                            if rename_mod && let Some(pos) = cursor.match_ident(old_name) {
-                                dst.push_str(&src[copy_pos as usize..pos as usize]);
+                            if rename_mod
+                                && let Some(mod_name) = cursor.capture_ident()
+                                && cursor.get_text(mod_name) == old_name
+                            {
+                                dst.push_str(&src[copy_pos as usize..mod_name.pos as usize]);
                                 dst.push_str(new_name);
                                 copy_pos = cursor.pos();
                                 changed = true;
@@ -403,7 +404,7 @@ fn rename_update_fn<'a>(
                         // lint_name::
                         name if rename_mod && name == old_name => {
                             let name_end = cursor.pos();
-                            if cursor.match_pat(cursor::Pat::DoubleColon) {
+                            if cursor.eat_double_colon() {
                                 dst.push_str(&src[copy_pos as usize..match_start as usize]);
                                 dst.push_str(new_name);
                                 copy_pos = name_end;
