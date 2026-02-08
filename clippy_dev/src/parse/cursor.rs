@@ -1,4 +1,4 @@
-use core::slice;
+use core::{ptr, slice};
 use rustc_lexer::{self as lex, LiteralKind, Token, TokenKind};
 
 /// A token pattern used for searching and matching by the [`Cursor`].
@@ -9,12 +9,11 @@ use rustc_lexer::{self as lex, LiteralKind, Token, TokenKind};
 /// the `*`.
 #[derive(Clone, Copy)]
 pub enum Pat {
-    Ident(IdentPat),
     /// Matches any number of comments and doc comments.
-    AnyComment,
+    AnyComments,
     CaptureDocLines,
     CaptureIdent,
-    LitStr,
+    CaptureLifetime,
     CaptureLitStr,
     Bang,
     CloseBrace,
@@ -24,13 +23,14 @@ pub enum Pat {
     DoubleColon,
     Eq,
     FatArrow,
-    Lifetime,
-    Lt,
     Gt,
+    Ident(IdentPat),
+    Lifetime,
+    LitStr,
+    Lt,
     OpenBrace,
     OpenBracket,
     OpenParen,
-    CaptureOptLifetimeArg,
     Pound,
     Semi,
 }
@@ -145,14 +145,13 @@ impl<'txt> Cursor<'txt> {
     ///
     /// For each capture made by the pattern one item will be taken from the capture
     /// sequence with the result placed inside.
-    #[expect(clippy::too_many_lines)]
     fn match_impl(&mut self, pat: Pat, captures: &mut slice::IterMut<'_, Capture>) -> bool {
         loop {
             match (pat, self.next_token.kind) {
                 #[rustfmt::skip] // rustfmt bug: https://github.com/rust-lang/rustfmt/issues/6697
                 (_, TokenKind::Whitespace)
                 | (
-                    Pat::AnyComment,
+                    Pat::AnyComments,
                     TokenKind::BlockComment { terminated: true, .. } | TokenKind::LineComment { .. },
                 ) => self.step(),
                 (Pat::Bang, TokenKind::Bang)
@@ -199,34 +198,6 @@ impl<'txt> Cursor<'txt> {
                     }
                     return false;
                 },
-                (Pat::CaptureOptLifetimeArg, TokenKind::Lt) => {
-                    self.step();
-                    loop {
-                        match self.next_token.kind {
-                            TokenKind::Lifetime { .. } => break,
-                            TokenKind::Whitespace => self.step(),
-                            _ => return false,
-                        }
-                    }
-                    *captures.next().unwrap() = Capture {
-                        pos: self.pos,
-                        len: self.next_token.len,
-                    };
-                    self.step();
-                    loop {
-                        match self.next_token.kind {
-                            TokenKind::Gt => break,
-                            TokenKind::Whitespace => self.step(),
-                            _ => return false,
-                        }
-                    }
-                    self.step();
-                    return true;
-                },
-                (Pat::CaptureOptLifetimeArg, _) => {
-                    *captures.next().unwrap() = Capture { pos: 0, len: 0 };
-                    return true;
-                },
                 #[rustfmt::skip]
                 (
                     Pat::CaptureLitStr,
@@ -237,7 +208,8 @@ impl<'txt> Cursor<'txt> {
                         ..
                     },
                 )
-                | (Pat::CaptureIdent, TokenKind::Ident) => {
+                | (Pat::CaptureIdent, TokenKind::Ident)
+                | (Pat::CaptureLifetime, TokenKind::Lifetime { .. }) => {
                     *captures.next().unwrap() = Capture { pos: self.pos, len: self.next_token.len };
                     self.step();
                     return true;
@@ -263,7 +235,7 @@ impl<'txt> Cursor<'txt> {
                     *captures.next().unwrap() = Capture::EMPTY;
                     return true;
                 },
-                (Pat::AnyComment, _) => return true,
+                (Pat::AnyComments, _) => return true,
                 _ => return false,
             }
         }
@@ -373,6 +345,24 @@ impl<'txt> Cursor<'txt> {
     pub fn match_all(&mut self, pats: &[Pat], captures: &mut [Capture]) -> bool {
         let mut captures = captures.iter_mut();
         pats.iter().all(|&p| self.match_impl(p, &mut captures))
+    }
+
+    /// Attempts to match a sequence of patterns at the current position. Returns whether
+    /// all patterns were successfully matched.
+    ///
+    /// Captures will be written to the given slice in the order they're matched. If a
+    /// capture is matched, but there are no more capture slots this will panic. If the
+    /// match is completed without filling all the capture slots they will be left
+    /// unmodified.
+    ///
+    /// If the match fails the cursor will be positioned at the first failing token.
+    #[must_use]
+    pub fn opt_match_all(&mut self, pats: &[Pat], captures: &mut [Capture]) -> bool {
+        let mut captures = captures.iter_mut();
+        pats.iter()
+            .try_for_each(|p| self.match_impl(*p, &mut captures).ok_or(p))
+            .err()
+            .is_none_or(|p| ptr::addr_eq(pats.as_ptr(), p))
     }
 
     /// Attempts to match a single pattern at the current position. Returns whether the

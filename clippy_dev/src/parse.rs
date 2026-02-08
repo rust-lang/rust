@@ -354,22 +354,18 @@ impl<'cx> ParseCxImpl<'cx> {
         #[rustfmt::skip]
         static LINT_DECL_TOKENS: &[cursor::Pat] = &[
             // !{ /// docs
-            Bang, OpenBrace, AnyComment,
+            Bang, OpenBrace, AnyComments,
             // #[clippy::version = "version"]
             Pound, OpenBracket, Ident(IdentPat::clippy), DoubleColon,
             Ident(IdentPat::version), Eq, LitStr, CloseBracket,
             // pub NAME, GROUP,
-            Ident(IdentPat::r#pub), CaptureIdent, Comma, AnyComment, CaptureIdent, Comma,
-        ];
-        #[rustfmt::skip]
-        static PASS_DECL_TOKENS: &[cursor::Pat] = &[
-            // !( NAME <'lt> => [
-            Bang, OpenParen, CaptureDocLines, CaptureIdent, CaptureOptLifetimeArg, FatArrow, OpenBracket,
+            Ident(IdentPat::r#pub), CaptureIdent, Comma, AnyComments, CaptureIdent, Comma,
         ];
 
         let mut cursor = Cursor::new(&file.contents);
         let mut captures = [Capture::EMPTY; 3];
         while let Some(mac_name) = cursor.find_any_ident() {
+            captures[1] = Capture::EMPTY;
             match cursor.get_text(mac_name) {
                 "declare_clippy_lint"
                     if cursor.match_all(LINT_DECL_TOKENS, &mut captures) && cursor.find_pat(CloseBrace) =>
@@ -387,7 +383,11 @@ impl<'cx> ParseCxImpl<'cx> {
                             .is_none()
                     );
                 },
-                mac @ ("declare_lint_pass" | "impl_lint_pass") if cursor.match_all(PASS_DECL_TOKENS, &mut captures) => {
+                mac @ ("declare_lint_pass" | "impl_lint_pass")
+                    if cursor.match_all(&[Bang, OpenParen, CaptureDocLines, CaptureIdent], &mut captures)
+                        && cursor.opt_match_all(&[Lt, CaptureLifetime, Gt], &mut captures[2..])
+                        && cursor.match_all(&[FatArrow, OpenBracket], &mut captures) =>
+                {
                     let mac = if matches!(mac, "declare_lint_pass") {
                         LintPassMac::Declare
                     } else {
