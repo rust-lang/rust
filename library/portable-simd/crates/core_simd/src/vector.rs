@@ -363,7 +363,7 @@ where
     /// corresponding element in `enable` is `true`.
     ///
     /// When the element is disabled or out of bounds for the slice, that memory location
-    /// is not accessed and the corresponding value from `or` is passed through.
+    /// is not accessed and the default value for the element type is returned.
     ///
     /// # Examples
     /// ```
@@ -371,12 +371,11 @@ where
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
     /// # use simd::{Simd, Mask};
-    /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
+    /// let vec: Vec<i32> = vec![10, 11];
     /// let enable = Mask::from_array([true, true, false, true]);
-    /// let or = Simd::from_array([-5, -4, -3, -2]);
     ///
-    /// let result = Simd::load_select(&vec, enable, or);
-    /// assert_eq!(result, Simd::from_array([10, 11, -3, 13]));
+    /// let result = Simd::load_select_or_default(&vec, enable);
+    /// assert_eq!(result, Simd::from_array([10, 11, 0, 0]));
     /// ```
     #[must_use]
     #[inline]
