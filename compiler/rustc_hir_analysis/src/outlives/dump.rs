@@ -1,10 +1,12 @@
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::sym;
 
 pub(crate) fn inferred_outlives(tcx: TyCtxt<'_>) {
     for id in tcx.hir_free_items() {
-        if !tcx.has_attr(id.owner_id, sym::rustc_outlives) {
+        if !find_attr!(tcx.get_all_attrs(id.owner_id), AttributeKind::RustcOutlives) {
             continue;
         }
 

@@ -18,11 +18,11 @@ use rustc_errors::timings::TimingSection;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
-use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::limit::Limit;
+use rustc_hir::{Attribute, find_attr};
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::EncodedMetadata;
@@ -1227,7 +1227,7 @@ pub(crate) fn start_codegen<'tcx>(
 
     // Hook for tests.
     if let Some((def_id, _)) = tcx.entry_fn(())
-        && tcx.has_attr(def_id, sym::rustc_delayed_bug_from_inside_query)
+        && find_attr!(tcx.get_all_attrs(def_id), AttributeKind::RustcDelayedBugFromInsideQuery)
     {
         tcx.ensure_ok().trigger_delayed_bug(def_id);
     }
