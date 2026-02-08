@@ -800,6 +800,7 @@ pub enum AttributeLintKind {
         attr_name: Symbol,
     },
     DocInvalid,
+    AmbiguousDeriveHelpers,
     DocUnknownInclude {
         span: Span,
         inner: &'static str,

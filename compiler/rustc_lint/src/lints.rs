@@ -3753,6 +3753,10 @@ pub(crate) struct DocAliasDuplicated {
 pub(crate) struct DocAutoCfgExpectsHideOrShow;
 
 #[derive(LintDiagnostic)]
+#[diag("there exists a built-in attribute with the same name")]
+pub(crate) struct AmbiguousDeriveHelpers;
+
+#[derive(LintDiagnostic)]
 #[diag("`#![doc(auto_cfg({$attr_name}(...)))]` only accepts identifiers or key/value items")]
 pub(crate) struct DocAutoCfgHideShowUnexpectedItem {
     pub attr_name: Symbol,
