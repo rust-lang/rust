@@ -34,6 +34,7 @@ fn arm_rhs_expr_3() -> i32 {
         any(true) => 1,
         any(false) => 2,
         any(true) => { 42 }
+        any(true) => { 42 },
         any(false) => -1 as i32,
         any(true) => 2 + 2,
         any(false) => "",
@@ -62,7 +63,7 @@ fn expand_to_statements() -> i32 {
 }
 
 type ExpandToType = cfg_select! {
-    unix => u32,
+    unix => { u32 },
     _ => i32,
 };
 
@@ -113,7 +114,7 @@ impl T for S {
     cfg_select! {
         false => {
             fn a() {}
-        }
+        },
         _ => {
             fn b() {}
         }
@@ -145,7 +146,7 @@ cfg_select! {
 
 cfg_select! {
     unix => {}
-    not(unix) => {}
+    not(unix) => {},
     _ => {}
     //~^ WARN unreachable configuration predicate
 }
