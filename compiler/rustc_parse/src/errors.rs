@@ -574,6 +574,24 @@ pub(crate) struct ExpectedExpressionFoundLet {
 }
 
 #[derive(Diagnostic)]
+#[diag("let-chain with missing `let`")]
+pub(crate) struct LetChainMissingLet {
+    #[primary_span]
+    pub span: Span,
+    #[label("expected `let` expression, found assignment")]
+    pub label_span: Span,
+    #[label("let expression later in the condition")]
+    pub rhs_span: Span,
+    #[suggestion(
+        "add `let` before the expression",
+        applicability = "maybe-incorrect",
+        code = "let ",
+        style = "verbose"
+    )]
+    pub sug_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`||` operators are not supported in let chain conditions")]
 pub(crate) struct OrInLetChain {
     #[primary_span]

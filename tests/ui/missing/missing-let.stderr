@@ -1,5 +1,5 @@
 error: expected expression, found `let` statement
-  --> $DIR/missing-let.rs:3:8
+  --> $DIR/missing-let.rs:5:8
    |
 LL |     if let Some(_) = x
    |        ^^^^^^^^^^^^^^^
@@ -14,5 +14,29 @@ help: you might have meant to compare for equality
 LL |         && Some(x) == x
    |                     +
 
-error: aborting due to 1 previous error
+error: expected expression, found `let` statement
+  --> $DIR/missing-let.rs:13:9
+   |
+LL |         let Some(_) = z
+   |         ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: let-chain with missing `let`
+  --> $DIR/missing-let.rs:10:8
+   |
+LL |     if Some(_) = y &&
+   |        ^^^^^^^----
+   |        |
+   |        expected `let` expression, found assignment
+...
+LL |         let Some(_) = z
+   |         --------------- let expression later in the condition
+   |
+help: add `let` before the expression
+   |
+LL |     if let Some(_) = y &&
+   |        +++
+
+error: aborting due to 3 previous errors
 
