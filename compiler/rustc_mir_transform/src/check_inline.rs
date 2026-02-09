@@ -8,7 +8,6 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::{Body, TerminatorKind};
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::sym;
 
 use crate::pass_manager::MirLint;
 
@@ -42,7 +41,8 @@ pub(super) fn is_inline_valid_on_fn<'tcx>(
     def_id: DefId,
 ) -> Result<(), &'static str> {
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
-    if tcx.has_attr(def_id, sym::rustc_no_mir_inline) {
+
+    if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::RustcNoMirInline) {
         return Err("#[rustc_no_mir_inline]");
     }
 

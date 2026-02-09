@@ -1,7 +1,8 @@
 use rustc_errors::{Applicability, Diag, MultiSpan, listify};
-use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::bug;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
@@ -1081,19 +1082,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir_id,
             |m| {
                 self.has_only_self_parameter(m)
-                    && self
-                        .tcx
-                        // This special internal attribute is used to permit
-                        // "identity-like" conversion methods to be suggested here.
-                        //
-                        // FIXME (#46459 and #46460): ideally
-                        // `std::convert::Into::into` and `std::borrow:ToOwned` would
-                        // also be `#[rustc_conversion_suggestion]`, if not for
-                        // method-probing false-positives and -negatives (respectively).
-                        //
-                        // FIXME? Other potential candidate methods: `as_ref` and
-                        // `as_mut`?
-                        .has_attr(m.def_id, sym::rustc_conversion_suggestion)
+                // This special internal attribute is used to permit
+                // "identity-like" conversion methods to be suggested here.
+                //
+                // FIXME (#46459 and #46460): ideally
+                // `std::convert::Into::into` and `std::borrow:ToOwned` would
+                // also be `#[rustc_conversion_suggestion]`, if not for
+                // method-probing false-positives and -negatives (respectively).
+                //
+                // FIXME? Other potential candidate methods: `as_ref` and
+                // `as_mut`?
+                && find_attr!(self.tcx.get_all_attrs(m.def_id), AttributeKind::RustcConversionSuggestion)
             },
         );
 

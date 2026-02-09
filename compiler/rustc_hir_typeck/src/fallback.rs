@@ -7,6 +7,7 @@ use rustc_data_structures::graph::{self};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::HirId;
+use rustc_hir::attrs::DivergingFallbackBehavior;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{InferKind, Visitor};
@@ -18,17 +19,6 @@ use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::debug;
 
 use crate::{FnCtxt, errors};
-
-#[derive(Copy, Clone)]
-pub(crate) enum DivergingFallbackBehavior {
-    /// Always fallback to `()` (aka "always spontaneous decay")
-    ToUnit,
-    /// Always fallback to `!` (which should be equivalent to never falling back + not making
-    /// never-to-any coercions unless necessary)
-    ToNever,
-    /// Don't fallback at all
-    NoFallback,
-}
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
     /// Performs type inference fallback, setting [`FnCtxt::diverging_fallback_has_occurred`]

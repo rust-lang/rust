@@ -10,7 +10,7 @@ use super::prelude::*;
 pub(crate) struct InlineParser;
 
 impl<S: Stage> SingleAttributeParser<S> for InlineParser {
-    const PATH: &'static [Symbol] = &[sym::inline];
+    const PATH: &[Symbol] = &[sym::inline];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
@@ -67,7 +67,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
 pub(crate) struct RustcForceInlineParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
-    const PATH: &'static [Symbol] = &[sym::rustc_force_inline];
+    const PATH: &[Symbol] = &[sym::rustc_force_inline];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[

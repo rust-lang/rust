@@ -2,7 +2,7 @@
 //! The `rustc_*` attribute is malformed, but ICEing without a `feature(rustc_attrs)` is still bad.
 
 #![rustc_never_type_options(: Unsize<U> = "hi")]
-//~^ ERROR expected unsuffixed literal, found `:`
+//~^ ERROR expected a literal
 //~| ERROR use of an internal attribute
 
 fn main() {}

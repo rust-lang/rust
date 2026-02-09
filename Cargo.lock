@@ -3687,7 +3687,6 @@ dependencies = [
  "serde_json",
  "smallvec",
  "tempfile",
- "thin-vec",
  "thorin-dwp",
  "tracing",
  "wasm-encoder 0.219.2",
