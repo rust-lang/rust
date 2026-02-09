@@ -58,12 +58,12 @@ struct Dispatcher<S: Server> {
     server: S,
 }
 
-macro_rules! define_server_dispatcher_impl {
+macro_rules! define_server {
     (
         $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
     ) => {
         pub trait Server {
-            type TokenStream: 'static + Clone;
+            type TokenStream: 'static + Clone + Default;
             type Span: 'static + Copy + Eq + Hash;
             type Symbol: 'static;
 
@@ -77,22 +77,20 @@ macro_rules! define_server_dispatcher_impl {
 
             $(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?;)*
         }
+    }
+}
+with_api!(define_server, Self::TokenStream, Self::Span, Self::Symbol);
 
+macro_rules! define_dispatcher {
+    (
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+    ) => {
         // FIXME(eddyb) `pub` only for `ExecutionStrategy` below.
         pub trait DispatcherTrait {
-            // HACK(eddyb) these are here to allow `Self::$name` to work below.
-            type TokenStream;
-            type Span;
-            type Symbol;
-
             fn dispatch(&mut self, buf: Buffer) -> Buffer;
         }
 
         impl<S: Server> DispatcherTrait for Dispatcher<S> {
-            type TokenStream = MarkedTokenStream<S>;
-            type Span = MarkedSpan<S>;
-            type Symbol = MarkedSymbol<S>;
-
             fn dispatch(&mut self, mut buf: Buffer) -> Buffer {
                 let Dispatcher { handle_store, server } = self;
 
@@ -127,7 +125,7 @@ macro_rules! define_server_dispatcher_impl {
         }
     }
 }
-with_api!(Self, define_server_dispatcher_impl);
+with_api!(define_dispatcher, MarkedTokenStream<S>, MarkedSpan<S>, MarkedSymbol<S>);
 
 pub trait ExecutionStrategy {
     fn run_bridge_and_client(
@@ -312,7 +310,6 @@ impl client::Client<crate::TokenStream, crate::TokenStream> {
     ) -> Result<S::TokenStream, PanicMessage>
     where
         S: Server,
-        S::TokenStream: Default,
     {
         let client::Client { handle_counters, run, _marker } = *self;
         run_server(
@@ -338,7 +335,6 @@ impl client::Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream
     ) -> Result<S::TokenStream, PanicMessage>
     where
         S: Server,
-        S::TokenStream: Default,
     {
         let client::Client { handle_counters, run, _marker } = *self;
         run_server(
