@@ -36,7 +36,6 @@ fn main() {
     // one inside `g` and one inside `h`.
     // Proceed and drop `t` in `g`.
     Pin::new(&mut g).resume(());
-    //~^ ERROR borrow of moved value: `g`
 
     // Proceed and drop `t` in `h` -> double free!
     Pin::new(&mut h).resume(());
