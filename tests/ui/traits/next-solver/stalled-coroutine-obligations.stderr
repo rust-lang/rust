@@ -1,0 +1,62 @@
+error[E0277]: the trait bound `{async block@$DIR/stalled-coroutine-obligations.rs:18:18: 18:23}: Copy` is not satisfied
+  --> $DIR/stalled-coroutine-obligations.rs:18:14
+   |
+LL |     let foo: T = async {};
+   |              ^ the trait `Copy` is not implemented for `{async block@$DIR/stalled-coroutine-obligations.rs:18:18: 18:23}`
+
+error[E0277]: the trait bound `{async block@$DIR/stalled-coroutine-obligations.rs:22:18: 22:23}: Clone` is not satisfied
+  --> $DIR/stalled-coroutine-obligations.rs:22:14
+   |
+LL |     let bar: U = async {};
+   |              ^ the trait `Clone` is not implemented for `{async block@$DIR/stalled-coroutine-obligations.rs:22:18: 22:23}`
+
+error[E0277]: the trait bound `False: Valid` is not satisfied in `{async block@$DIR/stalled-coroutine-obligations.rs:33:18: 33:23}`
+  --> $DIR/stalled-coroutine-obligations.rs:33:14
+   |
+LL |     let foo: T = async { a };
+   |              ^   ----- within this `{async block@$DIR/stalled-coroutine-obligations.rs:33:18: 33:23}`
+   |              |
+   |              unsatisfied trait bound
+   |
+help: within `{async block@$DIR/stalled-coroutine-obligations.rs:33:18: 33:23}`, the trait `Valid` is not implemented for `False`
+  --> $DIR/stalled-coroutine-obligations.rs:27:1
+   |
+LL | struct False;
+   | ^^^^^^^^^^^^
+note: captured value does not implement `Valid`
+  --> $DIR/stalled-coroutine-obligations.rs:33:26
+   |
+LL |     let foo: T = async { a };
+   |                          ^ has type `False` which does not implement `Valid`
+
+error[E0271]: type mismatch resolving `impl Future + Send == {async block@$DIR/stalled-coroutine-obligations.rs:42:9: 42:19}`
+  --> $DIR/stalled-coroutine-obligations.rs:39:5
+   |
+LL |     fn stalled_send(&self, b: *mut ()) -> impl Future + Send {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error[E0271]: type mismatch resolving `impl Future + Send == {async block@$DIR/stalled-coroutine-obligations.rs:42:9: 42:19}`
+  --> $DIR/stalled-coroutine-obligations.rs:42:9
+   |
+LL | /         async move {
+LL | |
+LL | |             b
+LL | |         }
+   | |_________^ types differ
+
+error[E0271]: type mismatch resolving `{async block@$DIR/stalled-coroutine-obligations.rs:42:9: 42:19} <: impl Future + Send`
+  --> $DIR/stalled-coroutine-obligations.rs:39:62
+   |
+LL |       fn stalled_send(&self, b: *mut ()) -> impl Future + Send {
+   |  ______________________________________________________________^
+LL | |
+LL | |
+LL | |         async move {
+...  |
+LL | |     }
+   | |_____^ types differ
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0271, E0277.
+For more information about an error, try `rustc --explain E0271`.
