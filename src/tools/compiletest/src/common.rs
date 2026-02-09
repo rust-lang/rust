@@ -949,7 +949,9 @@ impl TargetCfgs {
         // actually be changed with `-C` flags.
         for config in query_rustc_output(
             config,
-            &["--print=cfg", "--target", &config.target],
+            // `-Zunstable-options` is necessary when compiletest is running with custom targets
+            // (such as synthetic targets used to bless mir-opt tests).
+            &["-Zunstable-options", "--print=cfg", "--target", &config.target],
             Default::default(),
         )
         .trim()
