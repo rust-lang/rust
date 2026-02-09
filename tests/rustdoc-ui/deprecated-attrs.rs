@@ -1,13 +1,11 @@
 //@ compile-flags: --passes unknown-pass
 
-#![deny(invalid_doc_attributes)]
-//~^ NOTE
-
 #![doc(no_default_passes)]
 //~^ ERROR unknown `doc` attribute `no_default_passes`
 //~| NOTE no longer functions
 //~| NOTE see issue #44136
 //~| NOTE `doc(no_default_passes)` is now a no-op
+//~| NOTE `#[deny(invalid_doc_attributes)]` on by default
 #![doc(passes = "collapse-docs unindent-comments")]
 //~^ ERROR unknown `doc` attribute `passes`
 //~| NOTE no longer functions

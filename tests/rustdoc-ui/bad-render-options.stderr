@@ -1,79 +1,76 @@
-error: expected this to be of the form `... = "..."`
-  --> $DIR/bad-render-options.rs:4:8
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:3:1
    |
 LL | #![doc(html_favicon_url)]
-   |        ^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-note: the lint level is defined here
-  --> $DIR/bad-render-options.rs:2:9
-   |
-LL | #![deny(invalid_doc_attributes)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^----------------^^
+   |        |
+   |        expected this to be of the form `html_favicon_url = "..."`
 
-error: expected this to be of the form `... = "..."`
-  --> $DIR/bad-render-options.rs:7:8
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:6:1
    |
 LL | #![doc(html_logo_url)]
-   |        ^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   | ^^^^^^^-------------^^
+   |        |
+   |        expected this to be of the form `html_logo_url = "..."`
 
-error: expected this to be of the form `... = "..."`
-  --> $DIR/bad-render-options.rs:10:8
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:9:1
    |
 LL | #![doc(html_playground_url)]
-   |        ^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   | ^^^^^^^-------------------^^
+   |        |
+   |        expected this to be of the form `html_playground_url = "..."`
 
-error: expected this to be of the form `... = "..."`
-  --> $DIR/bad-render-options.rs:13:8
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:12:1
    |
 LL | #![doc(issue_tracker_base_url)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   | ^^^^^^^----------------------^^
+   |        |
+   |        expected this to be of the form `issue_tracker_base_url = "..."`
 
-error: malformed `doc` attribute input
-  --> $DIR/bad-render-options.rs:16:27
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:15:1
    |
 LL | #![doc(html_favicon_url = 1)]
-   |                           ^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^-^^
+   |                           |
+   |                           expected a string literal here
 
-error: malformed `doc` attribute input
-  --> $DIR/bad-render-options.rs:19:24
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:18:1
    |
 LL | #![doc(html_logo_url = 2)]
-   |                        ^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   | ^^^^^^^^^^^^^^^^^^^^^^^-^^
+   |                        |
+   |                        expected a string literal here
 
-error: malformed `doc` attribute input
-  --> $DIR/bad-render-options.rs:22:30
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:21:1
    |
 LL | #![doc(html_playground_url = 3)]
-   |                              ^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^^
+   |                              |
+   |                              expected a string literal here
 
-error: malformed `doc` attribute input
-  --> $DIR/bad-render-options.rs:25:33
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:24:1
    |
 LL | #![doc(issue_tracker_base_url = 4)]
-   |                                 ^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^^
+   |                                 |
+   |                                 expected a string literal here
 
-error: didn't expect any arguments here
-  --> $DIR/bad-render-options.rs:28:23
+error[E0565]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:27:1
    |
 LL | #![doc(html_no_source = "asdf")]
-   |                       ^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   | ^^^^^^^^^^^^^^^^^^^^^^--------^^
+   |                       |
+   |                       didn't expect any arguments here
 
 error: aborting due to 9 previous errors
 
+Some errors have detailed explanations: E0539, E0565.
+For more information about an error, try `rustc --explain E0539`.

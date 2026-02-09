@@ -1,4 +1,3 @@
-#![deny(invalid_doc_attributes)]
 #![crate_type = "lib"]
 #![doc(as_ptr)]
 //~^ ERROR unknown `doc` attribute
@@ -8,13 +7,10 @@
 pub fn foo() {}
 
 #[doc(123)]
-//~^ ERROR
-//~| WARN
+//~^ ERROR malformed `doc` attribute
 #[doc("hello", "bar")]
-//~^ ERROR
-//~| ERROR
-//~| WARN
-//~| WARN
+//~^ ERROR malformed `doc` attribute
+//~| ERROR malformed `doc` attribute
 #[doc(foo::bar, crate::bar::baz = "bye")]
 //~^ ERROR unknown `doc` attribute
 //~| ERROR unknown `doc` attribute

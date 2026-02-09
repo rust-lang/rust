@@ -1,0 +1,52 @@
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/doc-attr-errors.rs:2:1
+   |
+LL | #![doc("a")]
+   | ^^^^^^^---^^
+   |        |
+   |        expected this to be of the form `... = "..."`
+
+error[E0565]: malformed `doc` attribute input
+  --> $DIR/doc-attr-errors.rs:5:1
+   |
+LL | #![doc(hidden = "a")]
+   | ^^^^^^^^^^^^^^-----^^
+   |               |
+   |               didn't expect any arguments here
+
+error[E0565]: malformed `doc` attribute input
+  --> $DIR/doc-attr-errors.rs:6:1
+   |
+LL | #![doc(hidden = 12)]
+   | ^^^^^^^^^^^^^^----^^
+   |               |
+   |               didn't expect any arguments here
+
+error[E0565]: malformed `doc` attribute input
+  --> $DIR/doc-attr-errors.rs:7:1
+   |
+LL | #![doc(hidden())]
+   | ^^^^^^^^^^^^^--^^
+   |              |
+   |              didn't expect any arguments here
+
+error[E0565]: malformed `doc` attribute input
+  --> $DIR/doc-attr-errors.rs:8:1
+   |
+LL | #![doc(hidden("a"))]
+   | ^^^^^^^^^^^^^-----^^
+   |              |
+   |              didn't expect any arguments here
+
+error[E0538]: malformed `doc` attribute input
+  --> $DIR/doc-attr-errors.rs:12:1
+   |
+LL | #![doc(test(no_crate_inject))]
+   | ^^^^^^^^^^^^---------------^^^
+   |             |
+   |             found `no_crate_inject` used as a key more than once
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0538, E0539, E0565.
+For more information about an error, try `rustc --explain E0538`.

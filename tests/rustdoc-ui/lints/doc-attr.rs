@@ -1,12 +1,8 @@
 #![crate_type = "lib"]
-#![deny(invalid_doc_attributes)]
 
 #[doc(123)]
-//~^ ERROR
-//~| WARN
+//~^ ERROR malformed `doc` attribute
 #[doc("hello", "bar")]
-//~^ ERROR
-//~| ERROR
-//~| WARN
-//~| WARN
+//~^ ERROR malformed `doc` attribute
+//~| ERROR malformed `doc` attribute
 fn bar() {}

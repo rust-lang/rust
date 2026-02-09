@@ -1,5 +1,5 @@
 error[E0805]: malformed `doc` attribute input
-  --> $DIR/doc-cfg.rs:4:1
+  --> $DIR/doc-cfg.rs:3:1
    |
 LL | #[doc(cfg(), cfg(foo, bar))]
    | ^^^^^^^^^--^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | #[doc(cfg(), cfg(foo, bar))]
    |          expected a single argument here
 
 error[E0805]: malformed `doc` attribute input
-  --> $DIR/doc-cfg.rs:4:1
+  --> $DIR/doc-cfg.rs:3:1
    |
 LL | #[doc(cfg(), cfg(foo, bar))]
    | ^^^^^^^^^^^^^^^^----------^^
@@ -15,7 +15,7 @@ LL | #[doc(cfg(), cfg(foo, bar))]
    |                 expected a single argument here
 
 error[E0805]: malformed `doc` attribute input
-  --> $DIR/doc-cfg.rs:7:1
+  --> $DIR/doc-cfg.rs:6:1
    |
 LL | #[doc(cfg())]
    | ^^^^^^^^^--^^
@@ -23,13 +23,22 @@ LL | #[doc(cfg())]
    |          expected a single argument here
 
 error[E0805]: malformed `doc` attribute input
-  --> $DIR/doc-cfg.rs:8:1
+  --> $DIR/doc-cfg.rs:7:1
    |
 LL | #[doc(cfg(foo, bar))]
    | ^^^^^^^^^----------^^
    |          |
    |          expected a single argument here
 
-error: aborting due to 4 previous errors
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/doc-cfg.rs:8:1
+   |
+LL | #[doc(auto_cfg(hide(foo::bar)))]
+   | ^^^^^^^^^^^^^^^^^^^^--------^^^^
+   |                     |
+   |                     expected a valid identifier here
 
-For more information about this error, try `rustc --explain E0805`.
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0539, E0805.
+For more information about an error, try `rustc --explain E0539`.

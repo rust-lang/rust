@@ -3690,27 +3690,6 @@ pub(crate) struct UnusedDuplicate {
 }
 
 #[derive(LintDiagnostic)]
-#[diag("malformed `doc` attribute input")]
-#[warning(
-    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-)]
-pub(crate) struct MalformedDoc;
-
-#[derive(LintDiagnostic)]
-#[diag("didn't expect any arguments here")]
-#[warning(
-    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-)]
-pub(crate) struct ExpectedNoArgs;
-
-#[derive(LintDiagnostic)]
-#[diag("expected this to be of the form `... = \"...\"`")]
-#[warning(
-    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-)]
-pub(crate) struct ExpectedNameValue;
-
-#[derive(LintDiagnostic)]
 #[diag("unsafe attribute used without unsafe")]
 pub(crate) struct UnsafeAttrOutsideUnsafeLint {
     #[label("usage of unsafe attribute")]
