@@ -1693,15 +1693,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // `CleanupPostBorrowck` MIR transform pass (for non-coroutines only), and empty
                 // cleanup blocks are removed by `RemoveNoopLandingPads`, so they don't affect codegen.
                 // This is codegen backend agnostic. They only affect static analysis (borrow-checking).
-                let should_add = if is_coroutine {
-                    true
-                } else if drop.kind == DropKind::Value || drop.kind == DropKind::ForLint {
-                    true
-                } else if drop.kind == DropKind::Storage && has_value_or_forlint_drops {
-                    true
-                } else {
-                    false
-                };
+                let should_add = is_coroutine
+                    || drop.kind == DropKind::Value
+                    || drop.kind == DropKind::ForLint
+                    || (drop.kind == DropKind::Storage && has_value_or_forlint_drops);
 
                 if should_add {
                     cached_drop = self.scopes.unwind_drops.add_drop(*drop, cached_drop);
@@ -2164,17 +2159,10 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                 // These StorageDead statements in cleanup blocks are removed by the
                 // `CleanupPostBorrowck` MIR transform pass (for non-coroutines only), and empty
                 // cleanup blocks are removed by `RemoveNoopLandingPads`, so they don't affect codegen.
-                let should_add = if is_coroutine {
-                    true
-                } else if drop_node.data.kind == DropKind::Value
+                let should_add = is_coroutine
+                    || drop_node.data.kind == DropKind::Value
                     || drop_node.data.kind == DropKind::ForLint
-                {
-                    true
-                } else if drop_node.data.kind == DropKind::Storage && has_value_or_forlint_drops {
-                    true
-                } else {
-                    false
-                };
+                    || (drop_node.data.kind == DropKind::Storage && has_value_or_forlint_drops);
 
                 if should_add {
                     match drop_node.data.kind {
