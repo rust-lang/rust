@@ -7,9 +7,10 @@ use std::ops::Deref;
 
 use rustc_data_structures::assert_matches;
 use rustc_errors::{Diag, ErrorGuaranteed};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::Visitor;
@@ -215,7 +216,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             return;
         }
 
-        if !tcx.has_attr(def_id, sym::rustc_do_not_const_check) {
+        if !find_attr!(tcx.get_all_attrs(def_id), AttributeKind::RustcDoNotConstCheck) {
             self.visit_body(body);
         }
 

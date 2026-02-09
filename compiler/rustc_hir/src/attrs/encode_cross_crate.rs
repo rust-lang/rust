@@ -108,6 +108,7 @@ impl AttributeKind {
             RustcDefPath(..) => No,
             RustcDelayedBugFromInsideQuery => No,
             RustcDenyExplicitImpl(..) => No,
+            RustcDoNotConstCheck => Yes,
             RustcDummy => No,
             RustcDumpDefParents => No,
             RustcDumpItemBounds => No,
@@ -137,6 +138,7 @@ impl AttributeKind {
             RustcNeverReturnsNullPointer => Yes,
             RustcNoImplicitAutorefs => Yes,
             RustcNonConstTraitMethod => No, // should be reported via other queries like `constness`
+            RustcNonnullOptimizationGuaranteed => Yes,
             RustcNounwind => No,
             RustcObjcClass { .. } => No,
             RustcObjcSelector { .. } => No,
