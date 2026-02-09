@@ -1,4 +1,5 @@
-use super::{SourceFile, Span, StrBuf};
+use crate::utils::{StrBuf, VecBuf};
+use crate::{DiagCx, SourceFile, Span};
 use core::{ptr, slice};
 use rustc_arena::DroplessArena;
 use rustc_lexer::{self as lex, LiteralKind, Token, TokenKind};
@@ -17,6 +18,8 @@ pub enum Pat {
     CaptureIdent,
     CaptureLifetime,
     CaptureLitStr,
+    AnyIdent,
+    At,
     Bang,
     CloseBracket,
     CloseParen,
@@ -27,6 +30,7 @@ pub enum Pat {
     Gt,
     Ident(IdentPat),
     Lifetime,
+    Lit,
     LitStr,
     Lt,
     OpenBrace,
@@ -34,6 +38,34 @@ pub enum Pat {
     OpenParen,
     Pound,
     Semi,
+}
+impl Pat {
+    pub fn desc(self) -> &'static str {
+        match self {
+            Self::AnyComments => "comments",
+            Self::CaptureDocLines => "doc line comments",
+            Self::AnyIdent | Self::CaptureIdent => "an identifier",
+            Self::At => "`@`",
+            Self::Bang => "`!`",
+            Self::CloseBracket => "`]`",
+            Self::CloseParen => "`)`",
+            Self::Comma => "`,`",
+            Self::DoubleColon => "`::`",
+            Self::Eq => "`=`",
+            Self::FatArrow => "`=>`",
+            Self::Gt => "`>`",
+            Self::Ident(x) => x.desc(),
+            Self::Lifetime | Self::CaptureLifetime => "a lifetime",
+            Self::Lit => "a literal",
+            Self::LitStr | Self::CaptureLitStr => "a string literal",
+            Self::Lt => "`<`",
+            Self::OpenBrace => "`{`",
+            Self::OpenBracket => "`[`",
+            Self::OpenParen => "`(`",
+            Self::Pound => "`#`",
+            Self::Semi => "`;`",
+        }
+    }
 }
 
 macro_rules! ident_or_lit {
@@ -52,6 +84,10 @@ macro_rules! decl_ident_pats {
         impl IdentPat {
             pub fn as_str(self) -> &'static str {
                 match self { $(Self::$ident => ident_or_lit!($ident $($s)?)),* }
+            }
+
+            pub fn desc(self) -> &'static str {
+                match self { $(Self::$ident => concat!("`", ident_or_lit!($ident $($s)?), "`")),* }
             }
         }
     }
@@ -142,6 +178,17 @@ impl<'txt> Cursor<'txt> {
         self.next_token = self.inner.advance_token();
     }
 
+    #[track_caller]
+    pub fn emit_unexpected<'cx>(&self, dcx: &mut DiagCx, file: &'cx SourceFile<'cx>, expected: &'static str) {
+        let sp = Span::new(file, self.pos..self.pos + self.next_token.len);
+        let msg = if matches!(self.next_token.kind, TokenKind::Eof) {
+            "end of file"
+        } else {
+            "token"
+        };
+        dcx.emit_spanned_err(sp, format!("unexpected {msg}, expected {expected}"));
+    }
+
     /// Consumes tokens until the given pattern is either fully matched of fails to match.
     /// Returns whether the pattern was fully matched.
     ///
@@ -159,12 +206,16 @@ impl<'txt> Cursor<'txt> {
                 (Pat::AnyComments, _) => return true,
 
                 (Pat::Ident(x), TokenKind::Ident) if x.as_str() == self.peek_text() => break,
-                (Pat::Bang, TokenKind::Bang)
+                (Pat::Lit, TokenKind::Ident) if matches!(self.peek_text(), "true" | "false") => break,
+                (Pat::At, TokenKind::At)
+                | (Pat::AnyIdent, TokenKind::Ident | TokenKind::RawIdent)
+                | (Pat::Bang, TokenKind::Bang)
                 | (Pat::CloseBracket, TokenKind::CloseBracket)
                 | (Pat::CloseParen, TokenKind::CloseParen)
                 | (Pat::Comma, TokenKind::Comma)
                 | (Pat::Eq, TokenKind::Eq)
                 | (Pat::Lifetime, TokenKind::Lifetime { .. })
+                | (Pat::Lit, TokenKind::Literal { .. })
                 | (Pat::Lt, TokenKind::Lt)
                 | (Pat::Gt, TokenKind::Gt)
                 | (Pat::OpenBrace, TokenKind::OpenBrace)
@@ -223,11 +274,11 @@ impl<'txt> Cursor<'txt> {
                     };
                     return true;
                 },
-
                 (Pat::CaptureDocLines, _) => {
                     *captures.next().unwrap() = Capture::EMPTY;
                     return true;
                 },
+
                 _ => return false,
             }
         }
@@ -282,7 +333,11 @@ impl<'txt> Cursor<'txt> {
     ///
     /// Only paths containing identifiers separated by `::` with a possible leading `::`.
     /// Generic arguments and qualified paths are not considered.
-    pub fn capture_opt_path(&mut self, buf: &mut StrBuf, arena: &'txt DroplessArena) -> Result<Option<&'txt str>, ()> {
+    pub fn capture_opt_path(
+        &mut self,
+        buf: &mut StrBuf,
+        arena: &'txt DroplessArena,
+    ) -> Result<Option<&'txt str>, &'static str> {
         #[derive(Clone, Copy)]
         enum State {
             Start,
@@ -309,7 +364,7 @@ impl<'txt> Cursor<'txt> {
                     },
                     (State::Ident, _) => break,
                     (State::Start, _) => return Ok(None),
-                    (State::Sep, _) => return Err(()),
+                    (State::Sep, _) => return Err(Pat::AnyIdent.desc()),
                 }
             }
             let text = self.text[start as usize..self.pos as usize].trim();
@@ -318,6 +373,36 @@ impl<'txt> Cursor<'txt> {
             } else {
                 arena.alloc_str(buf)
             }))
+        })
+    }
+
+    pub fn eat_list(&mut self, mut f: impl FnMut(&mut Self) -> Result<bool, &'static str>) -> Result<(), &'static str> {
+        while f(self)? {
+            if !self.eat_comma() {
+                break;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn capture_list<'cx, T: Copy>(
+        &mut self,
+        buf: &mut VecBuf<T>,
+        arena: &'cx DroplessArena,
+        mut f: impl FnMut(&mut Self) -> Result<Option<T>, &'static str>,
+    ) -> Result<&'cx mut [T], &'static str> {
+        buf.with(|buf| {
+            while let Some(x) = f(self)? {
+                buf.push(x);
+                if !self.eat_comma() {
+                    break;
+                }
+            }
+            Ok(if buf.is_empty() {
+                &mut []
+            } else {
+                arena.alloc_slice(buf)
+            })
         })
     }
 
@@ -330,10 +415,10 @@ impl<'txt> Cursor<'txt> {
     /// unmodified.
     ///
     /// If the match fails the cursor will be positioned at the first failing token.
-    #[must_use]
-    pub fn match_all(&mut self, pats: &[Pat], captures: &mut [Capture]) -> bool {
+    pub fn match_all(&mut self, pats: &[Pat], captures: &mut [Capture]) -> Result<(), &'static str> {
         let mut captures = captures.iter_mut();
-        pats.iter().all(|&p| self.match_impl(p, &mut captures))
+        pats.iter()
+            .try_for_each(|&pat| self.match_impl(pat, &mut captures).ok_or(pat.desc()))
     }
 
     /// Attempts to match a sequence of patterns at the current position. Returns whether
@@ -345,13 +430,16 @@ impl<'txt> Cursor<'txt> {
     /// unmodified.
     ///
     /// If the match fails the cursor will be positioned at the first failing token.
-    #[must_use]
-    pub fn opt_match_all(&mut self, pats: &[Pat], captures: &mut [Capture]) -> bool {
+    pub fn opt_match_all(&mut self, pats: &[Pat], captures: &mut [Capture]) -> Result<bool, &'static str> {
         let mut captures = captures.iter_mut();
-        pats.iter()
+        match pats
+            .iter()
             .try_for_each(|p| self.match_impl(*p, &mut captures).ok_or(p))
-            .err()
-            .is_none_or(|p| ptr::addr_eq(pats.as_ptr(), p))
+        {
+            Ok(()) => Ok(true),
+            Err(p) if ptr::addr_eq(pats.as_ptr(), p) => Ok(false),
+            Err(p) => Err(p.desc()),
+        }
     }
 }
 
@@ -400,6 +488,8 @@ macro_rules! mk_tk_methods {
     }
 }
 mk_tk_methods! {
+    ["`!`"]
+    bang(&mut self) { TokenKind::Bang }
     ["`}`"]
     close_brace(&mut self) { TokenKind::CloseBrace }
     ["`]`"]

@@ -336,6 +336,7 @@ pub fn run(update_mode: UpdateMode) {
 
     new_parse_cx(|cx| {
         let mut data = cx.parse_lint_decls();
+        cx.dcx.exit_on_err();
 
         let mut updater = FileUpdater::default();
 

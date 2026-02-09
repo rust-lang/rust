@@ -1,4 +1,4 @@
-use core::cell::Cell;
+use core::cell::{Cell, OnceCell};
 use core::fmt::{self, Display, Write as _};
 use core::hash::{Hash, Hasher};
 use core::marker::PhantomData;
@@ -8,6 +8,7 @@ use core::range::Range;
 use core::str::FromStr;
 use core::str::pattern::Pattern;
 use core::{mem, ptr};
+use memchr::memchr_iter;
 use rustc_arena::DroplessArena;
 use std::ffi::OsStr;
 use std::fs::{self, OpenOptions};
@@ -799,16 +800,29 @@ impl<T> VecBuf<T> {
 pub struct SourceFile<'cx> {
     // `cargo dev rename_lint` needs to be able to rename files.
     pub path: Cell<&'cx str>,
+    pub line_starts: OnceCell<Vec<u32>>,
     pub contents: String,
 }
 impl<'cx> SourceFile<'cx> {
+    #[must_use]
     pub fn load(path: &'cx str) -> Self {
         let mut contents = String::new();
         File::open_read(path).read_append_to_string(&mut contents);
         SourceFile {
             path: Cell::new(path),
+            line_starts: OnceCell::new(),
             contents,
         }
+    }
+
+    pub fn line_starts(&self) -> &[u32] {
+        self.line_starts.get_or_init(|| {
+            let mut line_starts = Vec::with_capacity(self.contents.len() / 32 + 4);
+            line_starts.push(0);
+            #[expect(clippy::cast_possible_truncation)]
+            line_starts.extend(memchr_iter(b'\n', self.contents.as_bytes()).map(|x| x as u32 + 1));
+            line_starts
+        })
     }
 
     /// Splits the file's path into the crate it's a part of and the module it implements.

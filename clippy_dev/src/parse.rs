@@ -1,13 +1,13 @@
 pub mod cursor;
 
 use self::cursor::{Capture, Cursor, IdentPat};
-use crate::utils::{
-    ErrAction, Scoped, SourceFile, Span, StrBuf, VecBuf, expect_action, slice_groups_mut, walk_dir_no_dot_or_target,
-};
+use crate::utils::{ErrAction, Scoped, StrBuf, VecBuf, expect_action, slice_groups_mut, walk_dir_no_dot_or_target};
+use crate::{DiagCx, SourceFile, Span};
 use core::fmt::{self, Display};
 use core::range::Range;
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_data_structures::fx::FxHashMap;
+use std::collections::hash_map::{Entry, VacantEntry};
 use std::{fs, path};
 
 pub struct ParseCxImpl<'cx> {
@@ -15,6 +15,7 @@ pub struct ParseCxImpl<'cx> {
     pub source_files: &'cx TypedArena<SourceFile<'cx>>,
     pub str_buf: StrBuf,
     pub str_list_buf: VecBuf<&'cx str>,
+    pub dcx: DiagCx,
 }
 pub type ParseCx<'cx> = &'cx mut ParseCxImpl<'cx>;
 
@@ -27,6 +28,7 @@ pub fn new_parse_cx<'env, T>(f: impl for<'cx> FnOnce(&'cx mut Scoped<'cx, 'env, 
         source_files: &source_files,
         str_buf: StrBuf::with_capacity(128),
         str_list_buf: VecBuf::with_capacity(128),
+        dcx: DiagCx::default(),
     }))
 }
 
@@ -43,25 +45,29 @@ impl LintTool {
             Self::Clippy => "clippy::",
         }
     }
+
+    pub fn from_prefix(s: &str) -> Option<Self> {
+        (s == "clippy").then_some(Self::Clippy)
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LintName<'cx> {
-    pub name: &'cx str,
     pub tool: LintTool,
+    pub name: &'cx str,
 }
 impl<'cx> LintName<'cx> {
     pub fn new_rustc(name: &'cx str) -> Self {
         Self {
-            name,
             tool: LintTool::Rustc,
+            name,
         }
     }
 
     pub fn new_clippy(name: &'cx str) -> Self {
         Self {
-            name,
             tool: LintTool::Clippy,
+            name,
         }
     }
 }
@@ -149,11 +155,26 @@ impl<'cx> ParsedLints<'cx> {
             tail.iter().take_while(|&x| x.decl_sp.file == head.decl_sp.file).count()
         })
     }
+
+    #[track_caller]
+    fn get_vacant_lint<'a>(
+        &'a mut self,
+        dcx: &mut DiagCx,
+        name: &'cx str,
+        name_sp: Span<'cx>,
+    ) -> Option<VacantEntry<'a, &'cx str, Lint<'cx>>> {
+        match self.lints.entry(name) {
+            Entry::Vacant(e) => Some(e),
+            Entry::Occupied(e) => {
+                dcx.emit_duplicate_lint(name_sp, e.get().name_sp);
+                None
+            },
+        }
+    }
 }
 
 impl<'cx> ParseCxImpl<'cx> {
     /// Finds and parses all lint declarations.
-    #[must_use]
     pub fn parse_lint_decls(&mut self) -> ParsedLints<'cx> {
         let mut data = ParsedLints {
             #[expect(clippy::default_trait_access)]
@@ -209,83 +230,87 @@ impl<'cx> ParseCxImpl<'cx> {
     fn parse_lint_src_file(&mut self, data: &mut ParsedLints<'cx>, file: &'cx SourceFile<'cx>) {
         #[allow(clippy::enum_glob_use)]
         use cursor::Pat::*;
-        #[rustfmt::skip]
-        static LINT_DECL_TOKENS: &[cursor::Pat] = &[
-            // !{ /// docs
-            Bang, OpenBrace, AnyComments,
-            // #[clippy::version = "version"]
-            Pound, OpenBracket, Ident(IdentPat::clippy), DoubleColon,
-            Ident(IdentPat::version), Eq, LitStr, CloseBracket,
-            // pub NAME, GROUP,
-            Ident(IdentPat::r#pub), CaptureIdent, Comma, AnyComments, CaptureIdent, Comma,
-        ];
 
         let mut cursor = Cursor::new(&file.contents);
         let mut captures = [Capture::EMPTY; 3];
         while let Some(mac_name) = cursor.find_capture_ident() {
-            captures[1] = Capture::EMPTY;
+            if !cursor.eat_bang() {
+                continue;
+            }
             match cursor.get_text(mac_name) {
-                "declare_clippy_lint"
-                    if cursor.match_all(LINT_DECL_TOKENS, &mut captures) && cursor.find_close_brace() =>
-                {
-                    assert!(
-                        data.lints
-                            .insert(
-                                self.str_buf.alloc_ascii_lower(self.arena, cursor.get_text(captures[0])),
-                                Lint {
-                                    name_sp: captures[0].mk_sp(file),
-                                    data: LintData::Active(ActiveLint {
-                                        group: cursor.get_text(captures[1]),
-                                        decl_range: mac_name.pos..cursor.pos(),
-                                    }),
-                                },
-                            )
-                            .is_none()
-                    );
-                },
-                mac @ ("declare_lint_pass" | "impl_lint_pass")
-                    if cursor.match_all(&[Bang, OpenParen, CaptureDocLines, CaptureIdent], &mut captures)
-                        && cursor.opt_match_all(&[Lt, CaptureLifetime, Gt], &mut captures[2..])
-                        && cursor.match_all(&[FatArrow, OpenBracket], &mut captures) =>
-                {
-                    let mac = if matches!(mac, "declare_lint_pass") {
-                        LintPassMac::Declare
-                    } else {
-                        LintPassMac::Impl
-                    };
-                    let docs = cursor.get_text(captures[0]);
-                    let name = cursor.get_text(captures[1]);
-                    let lt = cursor.get_text(captures[2]);
-                    let lt = if lt.is_empty() { None } else { Some(lt) };
+                "declare_clippy_lint" => {
+                    #[rustfmt::skip]
+                    static DECL_START: &[cursor::Pat] = &[
+                        // { /// docs
+                        OpenBrace, AnyComments,
+                        // #[clippy::version = "version"]
+                        Pound, OpenBracket, Ident(IdentPat::clippy), DoubleColon,
+                        Ident(IdentPat::version), Eq, CaptureLitStr, CloseBracket,
+                        // pub NAME, GROUP, "desc",
+                        Ident(IdentPat::r#pub), CaptureIdent, Comma,
+                        AnyComments, CaptureIdent, Comma, AnyComments, LitStr,
+                    ];
+                    #[rustfmt::skip]
+                    static OPTION: &[cursor::Pat] = &[
+                        // @option = value
+                        AnyComments, At, AnyIdent, Eq, Lit,
+                    ];
 
-                    let lints = self.str_list_buf.with(|buf| {
-                        loop {
-                            match cursor.capture_opt_path(&mut self.str_buf, self.arena) {
-                                Ok(None) => break,
-                                Ok(Some(p)) => buf.push(p),
-                                Err(()) => panic!("error parsing path"),
-                            }
-                            if !cursor.eat_comma() {
-                                break;
-                            }
-                        }
-
-                        // The arena panics when allocating a size of zero.
-                        Some(if buf.is_empty() {
-                            &mut []
-                        } else {
-                            self.arena.alloc_slice(buf)
+                    if let Err(expected) = cursor
+                        .match_all(DECL_START, &mut captures)
+                        .and_then(|()| {
+                            (!cursor.eat_comma()).ok_or(()).or_else(|()| {
+                                cursor.eat_list(|cursor| cursor.match_all(OPTION, &mut []).map(|()| true))
+                            })
                         })
-                    });
-
-                    if let Some(lints) = lints
-                        && cursor.match_all(&[CloseBracket, CloseParen, Semi], &mut [])
+                        .and_then(|()| cursor.eat_close_brace().ok_or("`}`"))
                     {
+                        cursor.emit_unexpected(&mut self.dcx, file, expected);
+                    } else if let name = self.str_buf.alloc_ascii_lower(self.arena, cursor.get_text(captures[1]))
+                        && let name_sp = captures[1].mk_sp(file)
+                        && let Some(e) = data.get_vacant_lint(&mut self.dcx, name, name_sp)
+                    {
+                        let _ = self.parse_version(cursor.get_text(captures[0]), captures[0].mk_sp(file));
+                        e.insert(Lint {
+                            name_sp,
+                            data: LintData::Active(ActiveLint {
+                                group: cursor.get_text(captures[2]),
+                                decl_range: mac_name.pos..cursor.pos(),
+                            }),
+                        });
+                    }
+                },
+                mac @ ("declare_lint_pass" | "impl_lint_pass") => {
+                    let mut has_lt = false;
+                    let mut lints: &mut [_] = &mut [];
+                    if let Err(expected) = cursor
+                        .match_all(&[OpenParen, CaptureDocLines, CaptureIdent], &mut captures)
+                        .and_then(|()| cursor.opt_match_all(&[Lt, CaptureLifetime, Gt], &mut captures[2..]))
+                        .and_then(|res| {
+                            has_lt = res;
+                            cursor.match_all(&[FatArrow, OpenBracket], &mut [])
+                        })
+                        .and_then(|()| {
+                            cursor.capture_list(&mut self.str_list_buf, self.arena, |cursor| {
+                                cursor.capture_opt_path(&mut self.str_buf, self.arena)
+                            })
+                        })
+                        .and_then(|res| {
+                            lints = res;
+                            cursor.match_all(&[CloseBracket, CloseParen, Semi], &mut [])
+                        })
+                    {
+                        cursor.emit_unexpected(&mut self.dcx, file, expected);
+                    } else {
                         data.lint_passes.push(LintPass {
-                            docs,
-                            name,
-                            lt,
-                            mac,
+                            docs: cursor.get_text(captures[0]),
+                            name: cursor.get_text(captures[1]),
+                            lt: has_lt.then(|| cursor.get_text(captures[2])),
+                            mac: if matches!(mac, "declare_lint_pass") {
+                                LintPassMac::Declare
+                            } else {
+                                LintPassMac::Impl
+                            },
                             decl_sp: Span::new(file, mac_name.pos..cursor.pos()),
                             lints,
                         });
@@ -305,8 +330,8 @@ impl<'cx> ParseCxImpl<'cx> {
             // #[clippy::version = "version"]
             Pound, OpenBracket, Ident(IdentPat::clippy), DoubleColon,
             Ident(IdentPat::version), Eq, CaptureLitStr, CloseBracket,
-            // ("first", "second"),
-            OpenParen, CaptureLitStr, Comma, CaptureLitStr, CloseParen, Comma,
+            // ("first", "second")
+            OpenParen, CaptureLitStr, Comma, CaptureLitStr, CloseParen,
         ];
         #[rustfmt::skip]
         static DEPRECATED_TOKENS: &[cursor::Pat] = &[
@@ -325,113 +350,163 @@ impl<'cx> ParseCxImpl<'cx> {
         let mut cursor = Cursor::new(&file.contents);
         let mut captures = [Capture::EMPTY; 3];
 
-        // First instance is the macro definition.
-        assert!(
-            cursor.find_ident("declare_with_version"),
-            "error reading deprecated lints"
-        );
-
-        if cursor.find_ident("declare_with_version") && cursor.match_all(DEPRECATED_TOKENS, &mut []) {
-            while cursor.match_all(DECL_TOKENS, &mut captures) {
-                assert!(
-                    data.lints
-                        .insert(
-                            self.parse_clippy_lint_name(file, cursor.get_text(captures[1])),
-                            Lint {
-                                name_sp: captures[1].mk_sp(file),
-                                data: LintData::Deprecated(DeprecatedLint {
-                                    reason: self.parse_str_single_line(file, cursor.get_text(captures[2])),
-                                    version: self.parse_str_single_line(file, cursor.get_text(captures[0])),
-                                }),
-                            },
+        if let Err(expected) = cursor
+            .find_ident("declare_with_version")
+            .ok_or("`declare_with_version`")
+            .and_then(|()| {
+                cursor
+                    .find_ident("declare_with_version")
+                    .ok_or("`declare_with_version`")
+            })
+            .and_then(|()| cursor.match_all(DEPRECATED_TOKENS, &mut []))
+            .and_then(|()| {
+                cursor.eat_list(|cursor| {
+                    let parsed = cursor.opt_match_all(DECL_TOKENS, &mut captures)?;
+                    if parsed
+                        && let [version, name, reason] = captures
+                        && let name_sp = name.mk_sp(file)
+                        && let (Some(version), Some(name), Some(reason)) = (
+                            self.parse_version(cursor.get_text(version), version.mk_sp(file)),
+                            self.parse_clippy_lint_name(cursor.get_text(name), name_sp),
+                            self.parse_str_lit(cursor.get_text(reason), reason.mk_sp(file)),
                         )
-                        .is_none()
-                );
-            }
-        } else {
-            panic!("error reading deprecated lints");
-        }
-
-        if cursor.find_ident("declare_with_version") && cursor.match_all(RENAMED_TOKENS, &mut []) {
-            while cursor.match_all(DECL_TOKENS, &mut captures) {
-                assert!(
-                    data.lints
-                        .insert(
-                            self.parse_clippy_lint_name(file, cursor.get_text(captures[1])),
-                            Lint {
-                                name_sp: captures[1].mk_sp(file),
-                                data: LintData::Renamed(RenamedLint {
-                                    new_name: self.parse_lint_name(file, cursor.get_text(captures[2])),
-                                    version: self.parse_str_single_line(file, cursor.get_text(captures[0])),
-                                }),
-                            },
+                        && let Some(e) = data.get_vacant_lint(&mut self.dcx, name, name_sp)
+                    {
+                        e.insert(Lint {
+                            name_sp,
+                            data: LintData::Deprecated(DeprecatedLint { reason, version }),
+                        });
+                    }
+                    Ok(parsed)
+                })
+            })
+            .and_then(|()| {
+                cursor
+                    .find_ident("declare_with_version")
+                    .ok_or("`declare_with_version`")
+            })
+            .and_then(|()| cursor.match_all(RENAMED_TOKENS, &mut []))
+            .and_then(|()| {
+                cursor.eat_list(|cursor| {
+                    let parsed = cursor.opt_match_all(DECL_TOKENS, &mut captures)?;
+                    if parsed
+                        && let [version, name, new_name] = captures
+                        && let name_sp = name.mk_sp(file)
+                        && let (Some(version), Some(name), Some(new_name)) = (
+                            self.parse_version(cursor.get_text(version), version.mk_sp(file)),
+                            self.parse_clippy_lint_name(cursor.get_text(name), name_sp),
+                            self.parse_lint_name(cursor.get_text(new_name), new_name.mk_sp(file)),
                         )
-                        .is_none()
-                );
-            }
-        } else {
-            panic!("error reading renamed lints");
+                        && let Some(e) = data.get_vacant_lint(&mut self.dcx, name, name_sp)
+                    {
+                        e.insert(Lint {
+                            name_sp,
+                            data: LintData::Renamed(RenamedLint { new_name, version }),
+                        });
+                    }
+                    Ok(parsed)
+                })
+            })
+        {
+            cursor.emit_unexpected(&mut self.dcx, file, expected);
         }
     }
 
-    /// Removes the line splices and surrounding quotes from a string literal
-    fn parse_str_lit(&mut self, s: &'cx str) -> &'cx str {
-        let (s, is_raw) = if let Some(s) = s.strip_prefix("r") {
-            (s.trim_matches('#'), true)
+    /// Removes the line splices and surrounding quotes from a string literal.
+    fn parse_str_lit(&mut self, s: &'cx str, sp: Span<'cx>) -> Option<&'cx str> {
+        let (s, is_raw, sp_base) = if let Some(trimmed) = s.strip_prefix("r") {
+            let trimmed = trimmed.trim_start_matches('#');
+            #[expect(clippy::cast_possible_truncation)]
+            let sp_base = (s.len() - trimmed.len() + 1) as u32;
+            (trimmed.trim_end_matches('#'), true, sp_base)
         } else {
-            (s, false)
+            (s, false, 1)
         };
+        let sp_base = sp.range.start + sp_base;
         let s = s
             .strip_prefix('"')
             .and_then(|s| s.strip_suffix('"'))
             .unwrap_or_else(|| panic!("expected quoted string, found `{s}`"));
 
+        let mut is_ok = true;
         if is_raw {
-            s
+            rustc_literal_escaper::check_raw_str(s, |range, c| {
+                if c.is_err_and(|e| e.is_fatal()) {
+                    #[expect(clippy::cast_possible_truncation)]
+                    let range = range.start as u32 + sp_base..range.end as u32 + sp_base;
+                    self.dcx
+                        .emit_spanned_err(Span::new(sp.file, range), "invalid string escape sequence");
+                    is_ok = false;
+                }
+            });
+            is_ok.then_some(s)
         } else {
             self.str_buf.with(|buf| {
-                rustc_literal_escaper::unescape_str(s, &mut |_, ch| {
-                    if let Ok(ch) = ch {
-                        buf.push(ch);
-                    }
+                rustc_literal_escaper::unescape_str(s, |range, c| match c {
+                    Ok(c) => buf.push(c),
+                    Err(e) if e.is_fatal() => {
+                        #[expect(clippy::cast_possible_truncation)]
+                        let range = range.start as u32 + sp_base..range.end as u32 + sp_base;
+                        self.dcx
+                            .emit_spanned_err(Span::new(sp.file, range), "invalid string escape sequence");
+                        is_ok = false;
+                    },
+                    Err(_) => {},
                 });
-                if buf == s {
-                    s
-                } else if buf.is_empty() {
-                    ""
-                } else {
-                    self.arena.alloc_str(buf)
-                }
+                is_ok.then(|| {
+                    if buf == s {
+                        s
+                    } else if buf.is_empty() {
+                        ""
+                    } else {
+                        self.arena.alloc_str(buf)
+                    }
+                })
             })
         }
     }
 
-    fn parse_str_single_line(&mut self, file: &SourceFile<'_>, s: &'cx str) -> &'cx str {
-        let value = self.parse_str_lit(s);
-        assert!(
-            !value.contains('\n'),
-            "error parsing `{}`: `{s}` should be a single line string",
-            file.path.get(),
-        );
-        value
-    }
-
-    fn parse_clippy_lint_name(&mut self, file: &SourceFile<'_>, s: &'cx str) -> &'cx str {
-        match self.parse_str_single_line(file, s).strip_prefix("clippy::") {
-            Some(x) => x,
-            None => panic!(
-                "error parsing `{}`: `{s}` should be a string starting with `clippy::`",
-                file.path.get(),
-            ),
+    #[track_caller]
+    fn parse_lint_name(&mut self, s: &'cx str, sp: Span<'cx>) -> Option<LintName<'cx>> {
+        let s = self.parse_str_lit(s, sp)?;
+        let (tool, name) = match s.split_once("::") {
+            Some((tool, name)) if let Some(tool) = LintTool::from_prefix(tool) => (tool, name),
+            Some(..) => {
+                self.dcx.emit_spanned_err(sp, "unknown lint tool");
+                return None;
+            },
+            None => (LintTool::Rustc, s),
+        };
+        if name
+            .bytes()
+            .all(|c| matches!(c, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_'))
+        {
+            Some(LintName { tool, name })
+        } else {
+            self.dcx.emit_spanned_err(sp, "unparsable lint name");
+            None
         }
     }
 
-    fn parse_lint_name(&mut self, file: &SourceFile<'_>, s: &'cx str) -> LintName<'cx> {
-        let s = self.parse_str_single_line(file, s);
-        let (name, tool) = match s.strip_prefix("clippy::") {
-            Some(s) => (s, LintTool::Clippy),
-            None => (s, LintTool::Rustc),
-        };
-        LintName { name, tool }
+    #[track_caller]
+    fn parse_clippy_lint_name(&mut self, s: &'cx str, sp: Span<'cx>) -> Option<&'cx str> {
+        let name = self.parse_lint_name(s, sp)?;
+        if name.tool == LintTool::Clippy {
+            Some(name.name)
+        } else {
+            self.dcx.emit_not_clippy_lint_name(sp);
+            None
+        }
+    }
+
+    #[track_caller]
+    fn parse_version(&mut self, s: &'cx str, sp: Span<'cx>) -> Option<&'cx str> {
+        let s = self.parse_str_lit(s, sp)?;
+        if s.bytes().all(|c| matches!(c, b'0'..=b'9' | b'.')) || matches!(s, "pre 1.29.0" | "CURRENT_RUSTC_VERSION") {
+            Some(s)
+        } else {
+            self.dcx.emit_spanned_err(sp, "unparsable version number");
+            None
+        }
     }
 }
