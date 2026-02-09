@@ -155,6 +155,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
                             &scope,
                             mod_path_to_ast(&import_path, edition),
                             &ctx.config.insert_use,
+                            edition,
                         );
                     },
                 );

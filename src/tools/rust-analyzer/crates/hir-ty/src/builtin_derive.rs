@@ -133,7 +133,7 @@ pub fn impl_trait<'db>(
     }
 }
 
-#[salsa::tracked(returns(ref), unsafe(non_update_types))]
+#[salsa::tracked(returns(ref))]
 pub fn predicates<'db>(db: &'db dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPredicates {
     let loc = impl_.loc(db);
     let generic_params = GenericParams::new(db, loc.adt.into());

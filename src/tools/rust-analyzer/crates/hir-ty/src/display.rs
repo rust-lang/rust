@@ -12,7 +12,6 @@ use either::Either;
 use hir_def::{
     FindPathConfig, GenericDefId, GenericParamId, HasModule, LocalFieldId, Lookup, ModuleDefId,
     ModuleId, TraitId,
-    db::DefDatabase,
     expr_store::{ExpressionStore, path::Path},
     find_path::{self, PrefixKind},
     hir::generics::{TypeOrConstParamData, TypeParamProvenance, WherePredicate},
@@ -100,6 +99,9 @@ pub struct HirFormatter<'a, 'db> {
     display_kind: DisplayKind,
     display_target: DisplayTarget,
     bounds_formatting_ctx: BoundsFormattingCtx<'db>,
+    /// Whether formatting `impl Trait1 + Trait2` or `dyn Trait1 + Trait2` needs parentheses around it,
+    /// for example when formatting `&(impl Trait1 + Trait2)`.
+    trait_bounds_need_parens: bool,
 }
 
 // FIXME: To consider, ref and dyn trait lifetimes can be omitted if they are `'_`, path args should
@@ -331,6 +333,7 @@ pub trait HirDisplay<'db> {
             show_container_bounds: false,
             display_lifetimes: DisplayLifetime::OnlyNamedOrStatic,
             bounds_formatting_ctx: Default::default(),
+            trait_bounds_need_parens: false,
         }) {
             Ok(()) => {}
             Err(HirDisplayError::FmtError) => panic!("Writing to String can't fail!"),
@@ -566,6 +569,7 @@ impl<'db, T: HirDisplay<'db>> HirDisplayWrapper<'_, 'db, T> {
             show_container_bounds: self.show_container_bounds,
             display_lifetimes: self.display_lifetimes,
             bounds_formatting_ctx: Default::default(),
+            trait_bounds_need_parens: false,
         })
     }
 
@@ -612,7 +616,11 @@ impl<'db, T: HirDisplay<'db> + Internable> HirDisplay<'db> for Interned<T> {
     }
 }
 
-fn write_projection<'db>(f: &mut HirFormatter<'_, 'db>, alias: &AliasTy<'db>) -> Result {
+fn write_projection<'db>(
+    f: &mut HirFormatter<'_, 'db>,
+    alias: &AliasTy<'db>,
+    needs_parens_if_multi: bool,
+) -> Result {
     if f.should_truncate() {
         return write!(f, "{TYPE_HINT_TRUNCATION}");
     }
@@ -650,6 +658,7 @@ fn write_projection<'db>(f: &mut HirFormatter<'_, 'db>, alias: &AliasTy<'db>) ->
                     Either::Left(Ty::new_alias(f.interner, AliasTyKind::Projection, *alias)),
                     &bounds,
                     SizedByDefault::NotSized,
+                    needs_parens_if_multi,
                 )
             });
         }
@@ -1056,7 +1065,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
             return write!(f, "{TYPE_HINT_TRUNCATION}");
         }
 
-        use TyKind;
+        let trait_bounds_need_parens = mem::replace(&mut f.trait_bounds_need_parens, false);
         match self.kind() {
             TyKind::Never => write!(f, "!")?,
             TyKind::Str => write!(f, "str")?,
@@ -1077,103 +1086,34 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 c.hir_fmt(f)?;
                 write!(f, "]")?;
             }
-            kind @ (TyKind::RawPtr(t, m) | TyKind::Ref(_, t, m)) => {
-                if let TyKind::Ref(l, _, _) = kind {
-                    f.write_char('&')?;
-                    if f.render_region(l) {
-                        l.hir_fmt(f)?;
-                        f.write_char(' ')?;
-                    }
+            TyKind::Ref(l, t, m) => {
+                f.write_char('&')?;
+                if f.render_region(l) {
+                    l.hir_fmt(f)?;
+                    f.write_char(' ')?;
+                }
+                match m {
+                    rustc_ast_ir::Mutability::Not => (),
+                    rustc_ast_ir::Mutability::Mut => f.write_str("mut ")?,
+                }
+
+                f.trait_bounds_need_parens = true;
+                t.hir_fmt(f)?;
+                f.trait_bounds_need_parens = false;
+            }
+            TyKind::RawPtr(t, m) => {
+                write!(
+                    f,
+                    "*{}",
                     match m {
-                        rustc_ast_ir::Mutability::Not => (),
-                        rustc_ast_ir::Mutability::Mut => f.write_str("mut ")?,
+                        rustc_ast_ir::Mutability::Not => "const ",
+                        rustc_ast_ir::Mutability::Mut => "mut ",
                     }
-                } else {
-                    write!(
-                        f,
-                        "*{}",
-                        match m {
-                            rustc_ast_ir::Mutability::Not => "const ",
-                            rustc_ast_ir::Mutability::Mut => "mut ",
-                        }
-                    )?;
-                }
+                )?;
 
-                // FIXME: all this just to decide whether to use parentheses...
-                let (preds_to_print, has_impl_fn_pred) = match t.kind() {
-                    TyKind::Dynamic(bounds, region) => {
-                        let contains_impl_fn =
-                            bounds.iter().any(|bound| match bound.skip_binder() {
-                                ExistentialPredicate::Trait(trait_ref) => {
-                                    let trait_ = trait_ref.def_id.0;
-                                    fn_traits(f.lang_items()).any(|it| it == trait_)
-                                }
-                                _ => false,
-                            });
-                        let render_lifetime = f.render_region(region);
-                        (bounds.len() + render_lifetime as usize, contains_impl_fn)
-                    }
-                    TyKind::Alias(AliasTyKind::Opaque, ty) => {
-                        let opaque_ty_id = match ty.def_id {
-                            SolverDefId::InternedOpaqueTyId(id) => id,
-                            _ => unreachable!(),
-                        };
-                        let impl_trait_id = db.lookup_intern_impl_trait_id(opaque_ty_id);
-                        if let ImplTraitId::ReturnTypeImplTrait(func, _) = impl_trait_id {
-                            let data = impl_trait_id.predicates(db);
-                            let bounds =
-                                || data.iter_instantiated_copied(f.interner, ty.args.as_slice());
-                            let mut len = bounds().count();
-
-                            // Don't count Sized but count when it absent
-                            // (i.e. when explicit ?Sized bound is set).
-                            let default_sized = SizedByDefault::Sized { anchor: func.krate(db) };
-                            let sized_bounds = bounds()
-                                .filter(|b| {
-                                    matches!(
-                                        b.kind().skip_binder(),
-                                        ClauseKind::Trait(trait_ref)
-                                            if default_sized.is_sized_trait(
-                                                trait_ref.def_id().0,
-                                                db,
-                                            ),
-                                    )
-                                })
-                                .count();
-                            match sized_bounds {
-                                0 => len += 1,
-                                _ => {
-                                    len = len.saturating_sub(sized_bounds);
-                                }
-                            }
-
-                            let contains_impl_fn = bounds().any(|bound| {
-                                if let ClauseKind::Trait(trait_ref) = bound.kind().skip_binder() {
-                                    let trait_ = trait_ref.def_id().0;
-                                    fn_traits(f.lang_items()).any(|it| it == trait_)
-                                } else {
-                                    false
-                                }
-                            });
-                            (len, contains_impl_fn)
-                        } else {
-                            (0, false)
-                        }
-                    }
-                    _ => (0, false),
-                };
-
-                if has_impl_fn_pred && preds_to_print <= 2 {
-                    return t.hir_fmt(f);
-                }
-
-                if preds_to_print > 1 {
-                    write!(f, "(")?;
-                    t.hir_fmt(f)?;
-                    write!(f, ")")?;
-                } else {
-                    t.hir_fmt(f)?;
-                }
+                f.trait_bounds_need_parens = true;
+                t.hir_fmt(f)?;
+                f.trait_bounds_need_parens = false;
             }
             TyKind::Tuple(tys) => {
                 if tys.len() == 1 {
@@ -1328,7 +1268,9 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
 
                 hir_fmt_generics(f, parameters.as_slice(), Some(def.def_id().0.into()), None)?;
             }
-            TyKind::Alias(AliasTyKind::Projection, alias_ty) => write_projection(f, &alias_ty)?,
+            TyKind::Alias(AliasTyKind::Projection, alias_ty) => {
+                write_projection(f, &alias_ty, trait_bounds_need_parens)?
+            }
             TyKind::Foreign(alias) => {
                 let type_alias = db.type_alias_signature(alias.0);
                 f.start_location_link(alias.0.into());
@@ -1363,6 +1305,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     Either::Left(*self),
                     &bounds,
                     SizedByDefault::Sized { anchor: krate },
+                    trait_bounds_need_parens,
                 )?;
             }
             TyKind::Closure(id, substs) => {
@@ -1525,6 +1468,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                                 Either::Left(*self),
                                 &bounds,
                                 SizedByDefault::Sized { anchor: krate },
+                                trait_bounds_need_parens,
                             )?;
                         }
                     },
@@ -1567,6 +1511,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     Either::Left(*self),
                     &bounds_to_display,
                     SizedByDefault::NotSized,
+                    trait_bounds_need_parens,
                 )?;
             }
             TyKind::Error(_) => {
@@ -1806,11 +1751,11 @@ pub enum SizedByDefault {
 }
 
 impl SizedByDefault {
-    fn is_sized_trait(self, trait_: TraitId, db: &dyn DefDatabase) -> bool {
+    fn is_sized_trait(self, trait_: TraitId, interner: DbInterner<'_>) -> bool {
         match self {
             Self::NotSized => false,
-            Self::Sized { anchor } => {
-                let sized_trait = hir_def::lang_item::lang_items(db, anchor).Sized;
+            Self::Sized { .. } => {
+                let sized_trait = interner.lang_items().Sized;
                 Some(trait_) == sized_trait
             }
         }
@@ -1823,16 +1768,62 @@ pub fn write_bounds_like_dyn_trait_with_prefix<'db>(
     this: Either<Ty<'db>, Region<'db>>,
     predicates: &[Clause<'db>],
     default_sized: SizedByDefault,
+    needs_parens_if_multi: bool,
 ) -> Result {
+    let needs_parens =
+        needs_parens_if_multi && trait_bounds_need_parens(f, this, predicates, default_sized);
+    if needs_parens {
+        write!(f, "(")?;
+    }
     write!(f, "{prefix}")?;
     if !predicates.is_empty()
         || predicates.is_empty() && matches!(default_sized, SizedByDefault::Sized { .. })
     {
         write!(f, " ")?;
-        write_bounds_like_dyn_trait(f, this, predicates, default_sized)
-    } else {
-        Ok(())
+        write_bounds_like_dyn_trait(f, this, predicates, default_sized)?;
     }
+    if needs_parens {
+        write!(f, ")")?;
+    }
+    Ok(())
+}
+
+fn trait_bounds_need_parens<'db>(
+    f: &mut HirFormatter<'_, 'db>,
+    this: Either<Ty<'db>, Region<'db>>,
+    predicates: &[Clause<'db>],
+    default_sized: SizedByDefault,
+) -> bool {
+    // This needs to be kept in sync with `write_bounds_like_dyn_trait()`.
+    let mut distinct_bounds = 0usize;
+    let mut is_sized = false;
+    for p in predicates {
+        match p.kind().skip_binder() {
+            ClauseKind::Trait(trait_ref) => {
+                let trait_ = trait_ref.def_id().0;
+                if default_sized.is_sized_trait(trait_, f.interner) {
+                    is_sized = true;
+                    if matches!(default_sized, SizedByDefault::Sized { .. }) {
+                        // Don't print +Sized, but rather +?Sized if absent.
+                        continue;
+                    }
+                }
+
+                distinct_bounds += 1;
+            }
+            ClauseKind::TypeOutlives(to) if Either::Left(to.0) == this => distinct_bounds += 1,
+            ClauseKind::RegionOutlives(lo) if Either::Right(lo.0) == this => distinct_bounds += 1,
+            _ => {}
+        }
+    }
+
+    if let SizedByDefault::Sized { .. } = default_sized
+        && !is_sized
+    {
+        distinct_bounds += 1;
+    }
+
+    distinct_bounds > 1
 }
 
 fn write_bounds_like_dyn_trait<'db>(
@@ -1855,7 +1846,7 @@ fn write_bounds_like_dyn_trait<'db>(
         match p.kind().skip_binder() {
             ClauseKind::Trait(trait_ref) => {
                 let trait_ = trait_ref.def_id().0;
-                if default_sized.is_sized_trait(trait_, f.db) {
+                if default_sized.is_sized_trait(trait_, f.interner) {
                     is_sized = true;
                     if matches!(default_sized, SizedByDefault::Sized { .. }) {
                         // Don't print +Sized, but rather +?Sized if absent.

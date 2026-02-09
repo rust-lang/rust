@@ -893,6 +893,24 @@ impl ItemScope {
             self.macros.get_mut(name).expect("tried to update visibility of non-existent macro");
         res.vis = vis;
     }
+
+    pub(crate) fn update_def_types(&mut self, name: &Name, def: ModuleDefId, vis: Visibility) {
+        let res = self.types.get_mut(name).expect("tried to update def of non-existent type");
+        res.def = def;
+        res.vis = vis;
+    }
+
+    pub(crate) fn update_def_values(&mut self, name: &Name, def: ModuleDefId, vis: Visibility) {
+        let res = self.values.get_mut(name).expect("tried to update def of non-existent value");
+        res.def = def;
+        res.vis = vis;
+    }
+
+    pub(crate) fn update_def_macros(&mut self, name: &Name, def: MacroId, vis: Visibility) {
+        let res = self.macros.get_mut(name).expect("tried to update def of non-existent macro");
+        res.def = def;
+        res.vis = vis;
+    }
 }
 
 impl PerNs {

@@ -49,7 +49,9 @@ Alternatively, download a VSIX corresponding to your platform from the
 Install the extension with the `Extensions: Install from VSIX` command
 within VS Code, or from the command line via:
 
-    $ code --install-extension /path/to/rust-analyzer.vsix
+```bash
+code --install-extension /path/to/rust-analyzer.vsix
+```
 
 If you are running an unsupported platform, you can install
 `rust-analyzer-no-server.vsix` and compile or obtain a server binary.
@@ -64,8 +66,10 @@ example:
 
 Both the server and the Code plugin can be installed from source:
 
-    $ git clone https://github.com/rust-lang/rust-analyzer.git && cd rust-analyzer
-    $ cargo xtask install
+```bash
+git clone https://github.com/rust-lang/rust-analyzer.git && cd rust-analyzer
+cargo xtask install
+```
 
 You’ll need Cargo, nodejs (matching a supported version of VS Code) and
 npm for this.
@@ -76,7 +80,9 @@ Remote, instead you’ll need to install the `.vsix` manually.
 If you’re not using Code, you can compile and install only the LSP
 server:
 
-    $ cargo xtask install --server
+```bash
+cargo xtask install --server
+```
 
 Make sure that `.cargo/bin` is in `$PATH` and precedes paths where
 `rust-analyzer` may also be installed. Specifically, `rustup` includes a
@@ -118,4 +124,3 @@ steps might help:
 
 A C compiler should already be available via `org.freedesktop.Sdk`. Any
 other tools or libraries you will need to acquire from Flatpak.
-

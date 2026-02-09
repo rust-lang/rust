@@ -22,7 +22,6 @@ use serde_derive::Deserialize;
 pub(crate) use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
 };
-use toolchain::DISPLAY_COMMAND_IGNORE_ENVS;
 use toolchain::Tool;
 use triomphe::Arc;
 
@@ -144,6 +143,7 @@ impl FlycheckConfig {
 }
 
 impl fmt::Display for FlycheckConfig {
+    /// Show a shortened version of the check command.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             FlycheckConfig::Automatic { cargo_options, .. } => {
@@ -153,12 +153,23 @@ impl fmt::Display for FlycheckConfig {
                 // Don't show `my_custom_check --foo $saved_file` literally to the user, as it
                 // looks like we've forgotten to substitute $saved_file.
                 //
+                // `my_custom_check --foo /home/user/project/src/dir/foo.rs` is too verbose.
+                //
                 // Instead, show `my_custom_check --foo ...`. The
                 // actual path is often too long to be worth showing
                 // in the IDE (e.g. in the VS Code status bar).
                 let display_args = args
                     .iter()
-                    .map(|arg| if arg == SAVED_FILE_PLACEHOLDER_DOLLAR { "..." } else { arg })
+                    .map(|arg| {
+                        if (arg == SAVED_FILE_PLACEHOLDER_DOLLAR)
+                            || (arg == SAVED_FILE_INLINE)
+                            || arg.ends_with(".rs")
+                        {
+                            "..."
+                        } else {
+                            arg
+                        }
+                    })
                     .collect::<Vec<_>>();
 
                 write!(f, "{command} {}", display_args.join(" "))
@@ -403,24 +414,30 @@ struct FlycheckActor {
     /// doesn't provide a way to read sub-process output without blocking, so we
     /// have to wrap sub-processes output handling in a thread and pass messages
     /// back over a channel.
-    command_handle: Option<CommandHandle<CargoCheckMessage>>,
+    command_handle: Option<CommandHandle<CheckMessage>>,
     /// The receiver side of the channel mentioned above.
-    command_receiver: Option<Receiver<CargoCheckMessage>>,
+    command_receiver: Option<Receiver<CheckMessage>>,
     diagnostics_cleared_for: FxHashSet<PackageSpecifier>,
     diagnostics_received: DiagnosticsReceived,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum DiagnosticsReceived {
-    Yes,
-    No,
-    YesAndClearedForAll,
+    /// We started a flycheck, but we haven't seen any diagnostics yet.
+    NotYet,
+    /// We received a non-zero number of diagnostics from rustc or clippy (via
+    /// cargo or custom check command). This means there were errors or
+    /// warnings.
+    AtLeastOne,
+    /// We received a non-zero number of diagnostics, and the scope is
+    /// workspace, so we've discarded the previous workspace diagnostics.
+    AtLeastOneAndClearedWorkspace,
 }
 
 #[allow(clippy::large_enum_variant)]
 enum Event {
     RequestStateChange(StateChange),
-    CheckEvent(Option<CargoCheckMessage>),
+    CheckEvent(Option<CheckMessage>),
 }
 
 /// This is stable behaviour. Don't change.
@@ -511,7 +528,7 @@ impl FlycheckActor {
             command_handle: None,
             command_receiver: None,
             diagnostics_cleared_for: Default::default(),
-            diagnostics_received: DiagnosticsReceived::No,
+            diagnostics_received: DiagnosticsReceived::NotYet,
         }
     }
 
@@ -563,23 +580,13 @@ impl FlycheckActor {
                     };
 
                     let debug_command = format!("{command:?}");
-                    let user_facing_command = match origin {
-                        // Don't show all the --format=json-with-blah-blah args, just the simple
-                        // version
-                        FlycheckCommandOrigin::Cargo => self.config.to_string(),
-                        // show them the full command but pretty printed. advanced user
-                        FlycheckCommandOrigin::ProjectJsonRunnable
-                        | FlycheckCommandOrigin::CheckOverrideCommand => display_command(
-                            &command,
-                            Some(std::path::Path::new(self.root.as_path())),
-                        ),
-                    };
+                    let user_facing_command = self.config.to_string();
 
                     tracing::debug!(?origin, ?command, "will restart flycheck");
                     let (sender, receiver) = unbounded();
                     match CommandHandle::spawn(
                         command,
-                        CargoCheckParser,
+                        CheckParser,
                         sender,
                         match &self.config {
                             FlycheckConfig::Automatic { cargo_options, .. } => {
@@ -640,7 +647,7 @@ impl FlycheckActor {
                             error
                         );
                     }
-                    if self.diagnostics_received == DiagnosticsReceived::No {
+                    if self.diagnostics_received == DiagnosticsReceived::NotYet {
                         tracing::trace!(flycheck_id = self.id, "clearing diagnostics");
                         // We finished without receiving any diagnostics.
                         // Clear everything for good measure
@@ -699,7 +706,7 @@ impl FlycheckActor {
                     self.report_progress(Progress::DidFinish(res));
                 }
                 Event::CheckEvent(Some(message)) => match message {
-                    CargoCheckMessage::CompilerArtifact(msg) => {
+                    CheckMessage::CompilerArtifact(msg) => {
                         tracing::trace!(
                             flycheck_id = self.id,
                             artifact = msg.target.name,
@@ -729,46 +736,75 @@ impl FlycheckActor {
                             });
                         }
                     }
-                    CargoCheckMessage::Diagnostic { diagnostic, package_id } => {
+                    CheckMessage::Diagnostic { diagnostic, package_id } => {
                         tracing::trace!(
                             flycheck_id = self.id,
                             message = diagnostic.message,
                             package_id = package_id.as_ref().map(|it| it.as_str()),
+                            scope = ?self.scope,
                             "diagnostic received"
                         );
-                        if self.diagnostics_received == DiagnosticsReceived::No {
-                            self.diagnostics_received = DiagnosticsReceived::Yes;
-                        }
-                        if let Some(package_id) = &package_id {
-                            if self.diagnostics_cleared_for.insert(package_id.clone()) {
-                                tracing::trace!(
-                                    flycheck_id = self.id,
-                                    package_id = package_id.as_str(),
-                                    "clearing diagnostics"
-                                );
-                                self.send(FlycheckMessage::ClearDiagnostics {
+
+                        match &self.scope {
+                            FlycheckScope::Workspace => {
+                                if self.diagnostics_received == DiagnosticsReceived::NotYet {
+                                    self.send(FlycheckMessage::ClearDiagnostics {
+                                        id: self.id,
+                                        kind: ClearDiagnosticsKind::All(ClearScope::Workspace),
+                                    });
+
+                                    self.diagnostics_received =
+                                        DiagnosticsReceived::AtLeastOneAndClearedWorkspace;
+                                }
+
+                                if let Some(package_id) = package_id {
+                                    tracing::warn!(
+                                        "Ignoring package label {:?} and applying diagnostics to the whole workspace",
+                                        package_id
+                                    );
+                                }
+
+                                self.send(FlycheckMessage::AddDiagnostic {
                                     id: self.id,
-                                    kind: ClearDiagnosticsKind::All(ClearScope::Package(
-                                        package_id.clone(),
-                                    )),
+                                    generation: self.generation,
+                                    package_id: None,
+                                    workspace_root: self.root.clone(),
+                                    diagnostic,
                                 });
                             }
-                        } else if self.diagnostics_received
-                            != DiagnosticsReceived::YesAndClearedForAll
-                        {
-                            self.diagnostics_received = DiagnosticsReceived::YesAndClearedForAll;
-                            self.send(FlycheckMessage::ClearDiagnostics {
-                                id: self.id,
-                                kind: ClearDiagnosticsKind::All(ClearScope::Workspace),
-                            });
+                            FlycheckScope::Package { package: flycheck_package, .. } => {
+                                if self.diagnostics_received == DiagnosticsReceived::NotYet {
+                                    self.diagnostics_received = DiagnosticsReceived::AtLeastOne;
+                                }
+
+                                // If the package has been set in the diagnostic JSON, respect that. Otherwise, use the
+                                // package that the current flycheck is scoped to. This is useful when a project is
+                                // directly using rustc for its checks (e.g. custom check commands in rust-project.json).
+                                let package_id = package_id.unwrap_or(flycheck_package.clone());
+
+                                if self.diagnostics_cleared_for.insert(package_id.clone()) {
+                                    tracing::trace!(
+                                        flycheck_id = self.id,
+                                        package_id = package_id.as_str(),
+                                        "clearing diagnostics"
+                                    );
+                                    self.send(FlycheckMessage::ClearDiagnostics {
+                                        id: self.id,
+                                        kind: ClearDiagnosticsKind::All(ClearScope::Package(
+                                            package_id.clone(),
+                                        )),
+                                    });
+                                }
+
+                                self.send(FlycheckMessage::AddDiagnostic {
+                                    id: self.id,
+                                    generation: self.generation,
+                                    package_id: Some(package_id),
+                                    workspace_root: self.root.clone(),
+                                    diagnostic,
+                                });
+                            }
                         }
-                        self.send(FlycheckMessage::AddDiagnostic {
-                            id: self.id,
-                            generation: self.generation,
-                            package_id,
-                            workspace_root: self.root.clone(),
-                            diagnostic,
-                        });
                     }
                 },
             }
@@ -792,7 +828,7 @@ impl FlycheckActor {
 
     fn clear_diagnostics_state(&mut self) {
         self.diagnostics_cleared_for.clear();
-        self.diagnostics_received = DiagnosticsReceived::No;
+        self.diagnostics_received = DiagnosticsReceived::NotYet;
     }
 
     fn explicit_check_command(
@@ -942,15 +978,18 @@ impl FlycheckActor {
 }
 
 #[allow(clippy::large_enum_variant)]
-enum CargoCheckMessage {
+enum CheckMessage {
+    /// A message from `cargo check`, including details like the path
+    /// to the relevant `Cargo.toml`.
     CompilerArtifact(cargo_metadata::Artifact),
+    /// A diagnostic message from rustc itself.
     Diagnostic { diagnostic: Diagnostic, package_id: Option<PackageSpecifier> },
 }
 
-struct CargoCheckParser;
+struct CheckParser;
 
-impl JsonLinesParser<CargoCheckMessage> for CargoCheckParser {
-    fn from_line(&self, line: &str, error: &mut String) -> Option<CargoCheckMessage> {
+impl JsonLinesParser<CheckMessage> for CheckParser {
+    fn from_line(&self, line: &str, error: &mut String) -> Option<CheckMessage> {
         let mut deserializer = serde_json::Deserializer::from_str(line);
         deserializer.disable_recursion_limit();
         if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
@@ -958,10 +997,10 @@ impl JsonLinesParser<CargoCheckMessage> for CargoCheckParser {
                 // Skip certain kinds of messages to only spend time on what's useful
                 JsonMessage::Cargo(message) => match message {
                     cargo_metadata::Message::CompilerArtifact(artifact) if !artifact.fresh => {
-                        Some(CargoCheckMessage::CompilerArtifact(artifact))
+                        Some(CheckMessage::CompilerArtifact(artifact))
                     }
                     cargo_metadata::Message::CompilerMessage(msg) => {
-                        Some(CargoCheckMessage::Diagnostic {
+                        Some(CheckMessage::Diagnostic {
                             diagnostic: msg.message,
                             package_id: Some(PackageSpecifier::Cargo {
                                 package_id: Arc::new(msg.package_id),
@@ -971,7 +1010,7 @@ impl JsonLinesParser<CargoCheckMessage> for CargoCheckParser {
                     _ => None,
                 },
                 JsonMessage::Rustc(message) => {
-                    Some(CargoCheckMessage::Diagnostic { diagnostic: message, package_id: None })
+                    Some(CheckMessage::Diagnostic { diagnostic: message, package_id: None })
                 }
             };
         }
@@ -981,7 +1020,7 @@ impl JsonLinesParser<CargoCheckMessage> for CargoCheckParser {
         None
     }
 
-    fn from_eof(&self) -> Option<CargoCheckMessage> {
+    fn from_eof(&self) -> Option<CheckMessage> {
         None
     }
 }
@@ -993,63 +1032,13 @@ enum JsonMessage {
     Rustc(Diagnostic),
 }
 
-/// Not good enough to execute in a shell, but good enough to show the user without all the noisy
-/// quotes
-///
-/// Pass implicit_cwd if there is one regarded as the obvious by the user, so we can skip showing it.
-/// Compactness is the aim of the game, the output typically gets truncated quite a lot.
-fn display_command(c: &Command, implicit_cwd: Option<&std::path::Path>) -> String {
-    let mut o = String::new();
-    use std::fmt::Write;
-    let lossy = std::ffi::OsStr::to_string_lossy;
-    if let Some(dir) = c.get_current_dir() {
-        if Some(dir) == implicit_cwd.map(std::path::Path::new) {
-            // pass
-        } else if dir.to_string_lossy().contains(" ") {
-            write!(o, "cd {:?} && ", dir).unwrap();
-        } else {
-            write!(o, "cd {} && ", dir.display()).unwrap();
-        }
-    }
-    for (env, val) in c.get_envs() {
-        let (env, val) = (lossy(env), val.map(lossy).unwrap_or(std::borrow::Cow::Borrowed("")));
-        if DISPLAY_COMMAND_IGNORE_ENVS.contains(&env.as_ref()) {
-            continue;
-        }
-        if env.contains(" ") {
-            write!(o, "\"{}={}\" ", env, val).unwrap();
-        } else if val.contains(" ") {
-            write!(o, "{}=\"{}\" ", env, val).unwrap();
-        } else {
-            write!(o, "{}={} ", env, val).unwrap();
-        }
-    }
-    let prog = lossy(c.get_program());
-    if prog.contains(" ") {
-        write!(o, "{:?}", prog).unwrap();
-    } else {
-        write!(o, "{}", prog).unwrap();
-    }
-    for arg in c.get_args() {
-        let arg = lossy(arg);
-        if arg.contains(" ") {
-            write!(o, " \"{}\"", arg).unwrap();
-        } else {
-            write!(o, " {}", arg).unwrap();
-        }
-    }
-    o
-}
-
 #[cfg(test)]
 mod tests {
+    use super::*;
     use ide_db::FxHashMap;
     use itertools::Itertools;
     use paths::Utf8Path;
     use project_model::project_json;
-
-    use crate::flycheck::Substitutions;
-    use crate::flycheck::display_command;
 
     #[test]
     fn test_substitutions() {
@@ -1139,34 +1128,47 @@ mod tests {
     }
 
     #[test]
-    fn test_display_command() {
-        use std::path::Path;
-        let workdir = Path::new("workdir");
-        let mut cmd = toolchain::command("command", workdir, &FxHashMap::default());
-        assert_eq!(display_command(cmd.arg("--arg"), Some(workdir)), "command --arg");
-        assert_eq!(
-            display_command(cmd.arg("spaced arg"), Some(workdir)),
-            "command --arg \"spaced arg\""
-        );
-        assert_eq!(
-            display_command(cmd.env("ENVIRON", "yeah"), Some(workdir)),
-            "ENVIRON=yeah command --arg \"spaced arg\""
-        );
-        assert_eq!(
-            display_command(cmd.env("OTHER", "spaced env"), Some(workdir)),
-            "ENVIRON=yeah OTHER=\"spaced env\" command --arg \"spaced arg\""
-        );
-        assert_eq!(
-            display_command(cmd.current_dir("/tmp"), Some(workdir)),
-            "cd /tmp && ENVIRON=yeah OTHER=\"spaced env\" command --arg \"spaced arg\""
-        );
-        assert_eq!(
-            display_command(cmd.current_dir("/tmp and/thing"), Some(workdir)),
-            "cd \"/tmp and/thing\" && ENVIRON=yeah OTHER=\"spaced env\" command --arg \"spaced arg\""
-        );
-        assert_eq!(
-            display_command(cmd.current_dir("/tmp and/thing"), Some(Path::new("/tmp and/thing"))),
-            "ENVIRON=yeah OTHER=\"spaced env\" command --arg \"spaced arg\""
-        );
+    fn test_flycheck_config_display() {
+        let clippy = FlycheckConfig::Automatic {
+            cargo_options: CargoOptions {
+                subcommand: "clippy".to_owned(),
+                target_tuples: vec![],
+                all_targets: false,
+                set_test: false,
+                no_default_features: false,
+                all_features: false,
+                features: vec![],
+                extra_args: vec![],
+                extra_test_bin_args: vec![],
+                extra_env: FxHashMap::default(),
+                target_dir_config: TargetDirectoryConfig::default(),
+            },
+            ansi_color_output: true,
+        };
+        assert_eq!(clippy.to_string(), "cargo clippy");
+
+        let custom_dollar = FlycheckConfig::CustomCommand {
+            command: "check".to_owned(),
+            args: vec!["--input".to_owned(), "$saved_file".to_owned()],
+            extra_env: FxHashMap::default(),
+            invocation_strategy: InvocationStrategy::Once,
+        };
+        assert_eq!(custom_dollar.to_string(), "check --input ...");
+
+        let custom_inline = FlycheckConfig::CustomCommand {
+            command: "check".to_owned(),
+            args: vec!["--input".to_owned(), "{saved_file}".to_owned()],
+            extra_env: FxHashMap::default(),
+            invocation_strategy: InvocationStrategy::Once,
+        };
+        assert_eq!(custom_inline.to_string(), "check --input ...");
+
+        let custom_rs = FlycheckConfig::CustomCommand {
+            command: "check".to_owned(),
+            args: vec!["--input".to_owned(), "/path/to/file.rs".to_owned()],
+            extra_env: FxHashMap::default(),
+            invocation_strategy: InvocationStrategy::Once,
+        };
+        assert_eq!(custom_rs.to_string(), "check --input ...");
     }
 }

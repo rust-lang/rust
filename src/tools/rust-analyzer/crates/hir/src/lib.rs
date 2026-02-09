@@ -4233,6 +4233,10 @@ impl Local {
         self.parent(db).module(db)
     }
 
+    pub fn as_id(self) -> u32 {
+        self.binding_id.into_raw().into_u32()
+    }
+
     pub fn ty(self, db: &dyn HirDatabase) -> Type<'_> {
         let def = self.parent;
         let infer = InferenceResult::for_body(db, def);

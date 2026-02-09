@@ -206,17 +206,18 @@ impl NameGenerator {
         expr: &ast::Expr,
         sema: &Semantics<'_, RootDatabase>,
     ) -> Option<SmolStr> {
+        let edition = sema.scope(expr.syntax())?.krate().edition(sema.db);
         // `from_param` does not benefit from stripping it need the largest
         // context possible so we check firstmost
-        if let Some(name) = from_param(expr, sema) {
+        if let Some(name) = from_param(expr, sema, edition) {
             return Some(self.suggest_name(&name));
         }
 
         let mut next_expr = Some(expr.clone());
         while let Some(expr) = next_expr {
-            let name = from_call(&expr)
-                .or_else(|| from_type(&expr, sema))
-                .or_else(|| from_field_name(&expr));
+            let name = from_call(&expr, edition)
+                .or_else(|| from_type(&expr, sema, edition))
+                .or_else(|| from_field_name(&expr, edition));
             if let Some(name) = name {
                 return Some(self.suggest_name(&name));
             }
@@ -270,7 +271,7 @@ impl NameGenerator {
     }
 }
 
-fn normalize(name: &str) -> Option<SmolStr> {
+fn normalize(name: &str, edition: syntax::Edition) -> Option<SmolStr> {
     let name = to_lower_snake_case(name).to_smolstr();
 
     if USELESS_NAMES.contains(&name.as_str()) {
@@ -281,16 +282,16 @@ fn normalize(name: &str) -> Option<SmolStr> {
         return None;
     }
 
-    if !is_valid_name(&name) {
+    if !is_valid_name(&name, edition) {
         return None;
     }
 
     Some(name)
 }
 
-fn is_valid_name(name: &str) -> bool {
+fn is_valid_name(name: &str, edition: syntax::Edition) -> bool {
     matches!(
-        super::LexedStr::single_token(syntax::Edition::CURRENT_FIXME, name),
+        super::LexedStr::single_token(edition, name),
         Some((syntax::SyntaxKind::IDENT, _error))
     )
 }
@@ -304,11 +305,11 @@ fn is_useless_method(method: &ast::MethodCallExpr) -> bool {
     }
 }
 
-fn from_call(expr: &ast::Expr) -> Option<SmolStr> {
-    from_func_call(expr).or_else(|| from_method_call(expr))
+fn from_call(expr: &ast::Expr, edition: syntax::Edition) -> Option<SmolStr> {
+    from_func_call(expr, edition).or_else(|| from_method_call(expr, edition))
 }
 
-fn from_func_call(expr: &ast::Expr) -> Option<SmolStr> {
+fn from_func_call(expr: &ast::Expr, edition: syntax::Edition) -> Option<SmolStr> {
     let call = match expr {
         ast::Expr::CallExpr(call) => call,
         _ => return None,
@@ -318,10 +319,10 @@ fn from_func_call(expr: &ast::Expr) -> Option<SmolStr> {
         _ => return None,
     };
     let ident = func.path()?.segment()?.name_ref()?.ident_token()?;
-    normalize(ident.text())
+    normalize(ident.text(), edition)
 }
 
-fn from_method_call(expr: &ast::Expr) -> Option<SmolStr> {
+fn from_method_call(expr: &ast::Expr, edition: syntax::Edition) -> Option<SmolStr> {
     let method = match expr {
         ast::Expr::MethodCallExpr(call) => call,
         _ => return None,
@@ -340,10 +341,14 @@ fn from_method_call(expr: &ast::Expr) -> Option<SmolStr> {
         }
     }
 
-    normalize(name)
+    normalize(name, edition)
 }
 
-fn from_param(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<SmolStr> {
+fn from_param(
+    expr: &ast::Expr,
+    sema: &Semantics<'_, RootDatabase>,
+    edition: Edition,
+) -> Option<SmolStr> {
     let arg_list = expr.syntax().parent().and_then(ast::ArgList::cast)?;
     let args_parent = arg_list.syntax().parent()?;
     let func = match_ast! {
@@ -362,7 +367,7 @@ fn from_param(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<Sm
     let param = func.params().into_iter().nth(idx)?;
     let pat = sema.source(param)?.value.right()?.pat()?;
     let name = var_name_from_pat(&pat)?;
-    normalize(&name.to_smolstr())
+    normalize(&name.to_smolstr(), edition)
 }
 
 fn var_name_from_pat(pat: &ast::Pat) -> Option<ast::Name> {
@@ -374,10 +379,13 @@ fn var_name_from_pat(pat: &ast::Pat) -> Option<ast::Name> {
     }
 }
 
-fn from_type(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<SmolStr> {
+fn from_type(
+    expr: &ast::Expr,
+    sema: &Semantics<'_, RootDatabase>,
+    edition: Edition,
+) -> Option<SmolStr> {
     let ty = sema.type_of_expr(expr)?.adjusted();
     let ty = ty.remove_ref().unwrap_or(ty);
-    let edition = sema.scope(expr.syntax())?.krate().edition(sema.db);
 
     name_of_type(&ty, sema.db, edition)
 }
@@ -417,7 +425,7 @@ fn name_of_type<'db>(
     } else {
         return None;
     };
-    normalize(&name)
+    normalize(&name, edition)
 }
 
 fn sequence_name<'db>(
@@ -450,13 +458,13 @@ fn trait_name(trait_: &hir::Trait, db: &RootDatabase, edition: Edition) -> Optio
     Some(name)
 }
 
-fn from_field_name(expr: &ast::Expr) -> Option<SmolStr> {
+fn from_field_name(expr: &ast::Expr, edition: syntax::Edition) -> Option<SmolStr> {
     let field = match expr {
         ast::Expr::FieldExpr(field) => field,
         _ => return None,
     };
     let ident = field.name_ref()?.ident_token()?;
-    normalize(ident.text())
+    normalize(ident.text(), edition)
 }
 
 #[cfg(test)]

@@ -226,15 +226,15 @@ fn generate_getter_from_info(
         )
     } else {
         (|| {
-            let krate = ctx.sema.scope(record_field_info.field_ty.syntax())?.krate();
-            let famous_defs = &FamousDefs(&ctx.sema, krate);
+            let module = ctx.sema.scope(record_field_info.field_ty.syntax())?.module();
+            let famous_defs = &FamousDefs(&ctx.sema, module.krate(ctx.db()));
             ctx.sema
                 .resolve_type(&record_field_info.field_ty)
                 .and_then(|ty| convert_reference_type(ty, ctx.db(), famous_defs))
                 .map(|conversion| {
                     cov_mark::hit!(convert_reference_type);
                     (
-                        conversion.convert_type(ctx.db(), krate.to_display_target(ctx.db())),
+                        conversion.convert_type(ctx.db(), module),
                         conversion.getter(record_field_info.field_name.to_string()),
                     )
                 })

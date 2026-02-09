@@ -135,13 +135,13 @@ rayon = "1.10.0"
 rowan = "=0.15.17"
 # Ideally we'd not enable the macros feature but unfortunately the `tracked` attribute does not work
 # on impls without it
-salsa = { version = "0.25.2", default-features = false, features = [
+salsa = { version = "0.26", default-features = false, features = [
     "rayon",
     "salsa_unstable",
     "macros",
     "inventory",
 ] }
-salsa-macros = "0.25.2"
+salsa-macros = "0.26"
 semver = "1.0.26"
 serde = { version = "1.0.219" }
 serde_derive = { version = "1.0.219" }
@@ -192,8 +192,6 @@ unused_lifetimes = "warn"
 unreachable_pub = "warn"
 
 [workspace.lints.clippy]
-# FIXME Remove the tidy test once the lint table is stable
-
 ## lint groups
 complexity = { level = "warn", priority = -1 }
 correctness = { level = "deny", priority = -1 }

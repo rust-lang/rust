@@ -323,6 +323,8 @@ impl BlockExpr {
     #[inline]
     pub fn stmt_list(&self) -> Option<StmtList> { support::child(&self.syntax) }
     #[inline]
+    pub fn try_block_modifier(&self) -> Option<TryBlockModifier> { support::child(&self.syntax) }
+    #[inline]
     pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
     #[inline]
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
@@ -330,8 +332,6 @@ impl BlockExpr {
     pub fn gen_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![gen]) }
     #[inline]
     pub fn move_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![move]) }
-    #[inline]
-    pub fn try_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![try]) }
     #[inline]
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
 }
@@ -1629,6 +1629,19 @@ impl Trait {
     pub fn trait_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![trait]) }
     #[inline]
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
+}
+pub struct TryBlockModifier {
+    pub(crate) syntax: SyntaxNode,
+}
+impl TryBlockModifier {
+    #[inline]
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
+    #[inline]
+    pub fn bikeshed_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![bikeshed])
+    }
+    #[inline]
+    pub fn try_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![try]) }
 }
 pub struct TryExpr {
     pub(crate) syntax: SyntaxNode,
@@ -6320,6 +6333,38 @@ impl fmt::Debug for Trait {
         f.debug_struct("Trait").field("syntax", &self.syntax).finish()
     }
 }
+impl AstNode for TryBlockModifier {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        TRY_BLOCK_MODIFIER
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TRY_BLOCK_MODIFIER }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for TryBlockModifier {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for TryBlockModifier {}
+impl PartialEq for TryBlockModifier {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for TryBlockModifier {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for TryBlockModifier {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TryBlockModifier").field("syntax", &self.syntax).finish()
+    }
+}
 impl AstNode for TryExpr {
     #[inline]
     fn kind() -> SyntaxKind
@@ -9975,6 +10020,11 @@ impl std::fmt::Display for TokenTree {
     }
 }
 impl std::fmt::Display for Trait {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TryBlockModifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

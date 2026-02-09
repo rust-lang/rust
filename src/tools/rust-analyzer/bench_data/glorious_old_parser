@@ -724,7 +724,7 @@ impl<'a> Parser<'a> {
                 //  {foo(bar {}}
                 //      -      ^
                 //      |      |
-                //      |      help: `)` may belong here (FIXME: #58270)
+                //      |      help: `)` may belong here
                 //      |
                 //      unclosed delimiter
                 if let Some(sp) = unmatched.unclosed_span {
@@ -3217,7 +3217,6 @@ impl<'a> Parser<'a> {
 
                   }
                   _ => {
-                    // FIXME Could factor this out into non_fatal_unexpected or something.
                     let actual = self.this_token_to_string();
                     self.span_err(self.span, &format!("unexpected token: `{}`", actual));
                   }
@@ -5250,7 +5249,6 @@ impl<'a> Parser<'a> {
                 }
             }
         } else {
-            // FIXME: Bad copy of attrs
             let old_directory_ownership =
                 mem::replace(&mut self.directory.ownership, DirectoryOwnership::UnownedViaBlock);
             let item = self.parse_item_(attrs.clone(), false, true)?;
@@ -5953,23 +5951,14 @@ impl<'a> Parser<'a> {
                 });
                 assoc_ty_bindings.push(span);
             } else if self.check_const_arg() {
-                // FIXME(const_generics): to distinguish between idents for types and consts,
-                // we should introduce a GenericArg::Ident in the AST and distinguish when
-                // lowering to the HIR. For now, idents for const args are not permitted.
-
                 // Parse const argument.
                 let expr = if let token::OpenDelim(token::Brace) = self.token {
                     self.parse_block_expr(None, self.span, BlockCheckMode::Default, ThinVec::new())?
                 } else if self.token.is_ident() {
-                    // FIXME(const_generics): to distinguish between idents for types and consts,
-                    // we should introduce a GenericArg::Ident in the AST and distinguish when
-                    // lowering to the HIR. For now, idents for const args are not permitted.
                     return Err(
                         self.fatal("identifiers may currently not be used for const generics")
                     );
                 } else {
-                    // FIXME(const_generics): this currently conflicts with emplacement syntax
-                    // with negative integer literals.
                     self.parse_literal_maybe_minus()?
                 };
                 let value = AnonConst {
@@ -5991,9 +5980,6 @@ impl<'a> Parser<'a> {
             }
         }
 
-        // FIXME: we would like to report this in ast_validation instead, but we currently do not
-        // preserve ordering of generic parameters with respect to associated type binding, so we
-        // lose that information after parsing.
         if misplaced_assoc_ty_bindings.len() > 0 {
             let mut err = self.struct_span_err(
                 args_lo.to(self.prev_span),
@@ -6079,8 +6065,6 @@ impl<'a> Parser<'a> {
                             bounds,
                         }
                     ));
-                // FIXME: Decide what should be used here, `=` or `==`.
-                // FIXME: We are just dropping the binders in lifetime_defs on the floor here.
                 } else if self.eat(&token::Eq) || self.eat(&token::EqEq) {
                     let rhs_ty = self.parse_ty()?;
                     where_clause.predicates.push(ast::WherePredicate::EqPredicate(

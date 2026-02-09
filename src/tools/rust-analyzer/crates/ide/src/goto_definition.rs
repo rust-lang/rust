@@ -332,7 +332,7 @@ pub(crate) fn find_fn_or_blocks(
                     ast::BlockExpr(blk) => {
                         match blk.modifier() {
                             Some(ast::BlockModifier::Async(_)) => blk.syntax().clone(),
-                            Some(ast::BlockModifier::Try(_)) if token_kind != T![return] => blk.syntax().clone(),
+                            Some(ast::BlockModifier::Try { .. }) if token_kind != T![return] => blk.syntax().clone(),
                             _ => continue,
                         }
                     },
@@ -404,8 +404,8 @@ fn nav_for_exit_points(
                                 let blk_in_file = InFile::new(file_id, blk.into());
                                 Some(expr_to_nav(db, blk_in_file, Some(async_tok)))
                             },
-                            Some(ast::BlockModifier::Try(_)) if token_kind != T![return] => {
-                                let try_tok = blk.try_token()?.text_range();
+                            Some(ast::BlockModifier::Try { .. }) if token_kind != T![return] => {
+                                let try_tok = blk.try_block_modifier()?.try_token()?.text_range();
                                 let blk_in_file = InFile::new(file_id, blk.into());
                                 Some(expr_to_nav(db, blk_in_file, Some(try_tok)))
                             },
