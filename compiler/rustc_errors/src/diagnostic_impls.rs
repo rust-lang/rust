@@ -60,11 +60,13 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetDataLayoutErrors<'_> {
                     .with_arg("cause", cause)
             }
             TargetDataLayoutErrors::InvalidAlignment { cause, err } => {
-                Diag::new(dcx, level, inline_fluent!("invalid alignment for `{$cause}` in \"data-layout\": `{$align}` is {$err_kind ->
-                    [not_power_of_two] not a power of 2
-                    [too_large] too large
-                    *[other] {\"\"}
-                }"))
+                Diag::new(dcx, level, inline_fluent!(
+                    "invalid alignment for `{$cause}` in \"data-layout\": `{$align}` is {$err_kind ->
+                        [not_power_of_two] not a power of 2
+                        [too_large] too large
+                        *[other] {\"\"}
+                    }"
+                ))
                 .with_arg("cause", cause)
                 .with_arg("err_kind", err.diag_ident())
                 .with_arg("align", err.align())

@@ -393,16 +393,17 @@ impl Subdiagnostic for FrameNote {
         }
         let msg = diag.eagerly_translate(inline_fluent!(
             r#"{$times ->
-    [0] {const_eval_frame_note_inner}
-    *[other] [... {$times} additional calls {const_eval_frame_note_inner} ...]
-}
-
-const_eval_frame_note_inner = inside {$where_ ->
-    [closure] closure
-    [instance] `{$instance}`
-    *[other] {""}
-}
-"#
+                [0] inside {$where_ ->
+                    [closure] closure
+                    [instance] `{$instance}`
+                    *[other] {""}
+                }
+                *[other] [... {$times} additional calls inside {$where_ ->
+                    [closure] closure
+                    [instance] `{$instance}`
+                    *[other] {""}
+                } ...]
+            }"#
         ));
         diag.remove_arg("times");
         diag.remove_arg("where_");
@@ -663,89 +664,96 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             InvalidMeta(InvalidMetaKind::SliceTooBig) => "invalid metadata in wide pointer: slice is bigger than largest supported object".into(),
             InvalidMeta(InvalidMetaKind::TooBig) => "invalid metadata in wide pointer: total size is bigger than largest supported object".into(),
             UnterminatedCString(_) => "reading a null-terminated string starting at {$pointer} with no null found before end of allocation".into(),
-            PointerUseAfterFree(_, _) => inline_fluent!("{$operation ->
-  [MemoryAccess] memory access failed
-  [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
-  *[Dereferenceable] pointer not dereferenceable
-}: {$alloc_id} has been freed, so this pointer is dangling"),
-            PointerOutOfBounds { .. } => inline_fluent!("{$operation ->
-  [MemoryAccess] memory access failed
-  [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
-  *[Dereferenceable] pointer not dereferenceable
-}: {$operation ->
-    [MemoryAccess] attempting to access {$inbounds_size ->
-        [1] 1 byte
-        *[x] {$inbounds_size} bytes
-    }
-    [InboundsPointerArithmetic] attempting to offset pointer by {$inbounds_size ->
-        [1] 1 byte
-        *[x] {$inbounds_size} bytes
-    }
-    *[Dereferenceable] pointer must {$inbounds_size ->
-        [0] point to some allocation
-        [1] be dereferenceable for 1 byte
-        *[x] be dereferenceable for {$inbounds_size} bytes
-    }
-}, but got {$pointer} which {$ptr_offset_is_neg ->
-    [true] points to before the beginning of the allocation
-    *[false] {$inbounds_size_is_neg ->
-        [false] {$alloc_size_minus_ptr_offset ->
-            [0] is at or beyond the end of the allocation of size {$alloc_size ->
-                [1] 1 byte
-                *[x] {$alloc_size} bytes
-            }
-            [1] is only 1 byte from the end of the allocation
-            *[x] is only {$alloc_size_minus_ptr_offset} bytes from the end of the allocation
-        }
-        *[true] {$ptr_offset_abs ->
-            [0] is at the beginning of the allocation
-            *[other] is only {$ptr_offset_abs} bytes from the beginning of the allocation
-        }
-    }
-}
-"),
-            DanglingIntPointer { addr: 0, .. } => inline_fluent!("{$operation ->
-  [MemoryAccess] memory access failed
-  [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
-  *[Dereferenceable] pointer not dereferenceable
-}: {$operation ->
-    [MemoryAccess] attempting to access {$inbounds_size ->
-        [1] 1 byte
-        *[x] {$inbounds_size} bytes
-    }
-    [InboundsPointerArithmetic] attempting to offset pointer by {$inbounds_size ->
-        [1] 1 byte
-        *[x] {$inbounds_size} bytes
-    }
-    *[Dereferenceable] pointer must {$inbounds_size ->
-        [0] point to some allocation
-        [1] be dereferenceable for 1 byte
-        *[x] be dereferenceable for {$inbounds_size} bytes
-    }
-}, but got null pointer"),
-            DanglingIntPointer { .. } => inline_fluent!("{$operation ->
-  [MemoryAccess] memory access failed
-  [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
-  *[Dereferenceable] pointer not dereferenceable
-}: {$operation ->
-    [MemoryAccess] attempting to access {$inbounds_size ->
-        [1] 1 byte
-        *[x] {$inbounds_size} bytes
-    }
-    [InboundsPointerArithmetic] attempting to offset pointer by {$inbounds_size ->
-        [1] 1 byte
-        *[x] {$inbounds_size} bytes
-    }
-    *[Dereferenceable] pointer must {$inbounds_size ->
-        [0] point to some allocation
-        [1] be dereferenceable for 1 byte
-        *[x] be dereferenceable for {$inbounds_size} bytes
-    }
-}, but got {$pointer} which is a dangling pointer (it has no provenance)"),
-            AlignmentCheckFailed { .. } => inline_fluent!("{$msg ->
-    [AccessedPtr] accessing memory
-    *[other] accessing memory based on pointer
-} with alignment {$has}, but alignment {$required} is required"),
+            PointerUseAfterFree(_, _) => inline_fluent!(
+                "{$operation ->
+                    [MemoryAccess] memory access failed
+                    [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
+                    *[Dereferenceable] pointer not dereferenceable
+                }: {$alloc_id} has been freed, so this pointer is dangling"
+            ),
+            PointerOutOfBounds { .. } => inline_fluent!(
+                "{$operation ->
+                    [MemoryAccess] memory access failed
+                    [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
+                    *[Dereferenceable] pointer not dereferenceable
+                }: {$operation ->
+                    [MemoryAccess] attempting to access {$inbounds_size ->
+                        [1] 1 byte
+                        *[x] {$inbounds_size} bytes
+                    }
+                    [InboundsPointerArithmetic] attempting to offset pointer by {$inbounds_size ->
+                        [1] 1 byte
+                        *[x] {$inbounds_size} bytes
+                    }
+                    *[Dereferenceable] pointer must {$inbounds_size ->
+                        [0] point to some allocation
+                        [1] be dereferenceable for 1 byte
+                        *[x] be dereferenceable for {$inbounds_size} bytes
+                    }
+                }, but got {$pointer} which {$ptr_offset_is_neg ->
+                    [true] points to before the beginning of the allocation
+                    *[false] {$inbounds_size_is_neg ->
+                        [false] {$alloc_size_minus_ptr_offset ->
+                            [0] is at or beyond the end of the allocation of size {$alloc_size ->
+                                [1] 1 byte
+                                *[x] {$alloc_size} bytes
+                            }
+                            [1] is only 1 byte from the end of the allocation
+                            *[x] is only {$alloc_size_minus_ptr_offset} bytes from the end of the allocation
+                        }
+                        *[true] {$ptr_offset_abs ->
+                            [0] is at the beginning of the allocation
+                            *[other] is only {$ptr_offset_abs} bytes from the beginning of the allocation
+                        }
+                    }
+                }"
+            ),
+            DanglingIntPointer { addr: 0, .. } => inline_fluent!(
+                "{$operation ->
+                    [MemoryAccess] memory access failed
+                    [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
+                    *[Dereferenceable] pointer not dereferenceable
+                }: {$operation ->
+                    [MemoryAccess] attempting to access {$inbounds_size ->
+                        [1] 1 byte
+                        *[x] {$inbounds_size} bytes
+                    }
+                    [InboundsPointerArithmetic] attempting to offset pointer by {$inbounds_size ->
+                        [1] 1 byte
+                        *[x] {$inbounds_size} bytes
+                    }
+                    *[Dereferenceable] pointer must {$inbounds_size ->
+                        [0] point to some allocation
+                        [1] be dereferenceable for 1 byte
+                        *[x] be dereferenceable for {$inbounds_size} bytes
+                    }
+                }, but got null pointer"),
+            DanglingIntPointer { .. } => inline_fluent!(
+                "{$operation ->
+                    [MemoryAccess] memory access failed
+                    [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
+                    *[Dereferenceable] pointer not dereferenceable
+                }: {$operation ->
+                    [MemoryAccess] attempting to access {$inbounds_size ->
+                        [1] 1 byte
+                        *[x] {$inbounds_size} bytes
+                    }
+                    [InboundsPointerArithmetic] attempting to offset pointer by {$inbounds_size ->
+                        [1] 1 byte
+                        *[x] {$inbounds_size} bytes
+                    }
+                    *[Dereferenceable] pointer must {$inbounds_size ->
+                        [0] point to some allocation
+                        [1] be dereferenceable for 1 byte
+                        *[x] be dereferenceable for {$inbounds_size} bytes
+                    }
+                }, but got {$pointer} which is a dangling pointer (it has no provenance)"),
+            AlignmentCheckFailed { .. } => inline_fluent!(
+                "{$msg ->
+                    [AccessedPtr] accessing memory
+                    *[other] accessing memory based on pointer
+                } with alignment {$has}, but alignment {$required} is required"
+            ),
             WriteToReadOnly(_) => inline_fluent!("writing to {$allocation} which is read-only"),
             DerefFunctionPointer(_) => inline_fluent!("accessing {$allocation} which contains a function"),
             DerefVTablePointer(_) => inline_fluent!("accessing {$allocation} which contains a vtable"),
@@ -936,9 +944,9 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             NullFnPtr { .. } => {
                 inline_fluent!(
                     "{$front_matter}: encountered a {$maybe ->
-    [true] maybe-null
-    *[false] null
-} function pointer"
+                        [true] maybe-null
+                        *[false] null
+                    } function pointer"
                 )
             }
             NeverVal => {
@@ -1021,17 +1029,17 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             NullPtr { ptr_kind: PointerKind::Box, .. } => {
                 inline_fluent!(
                     "{$front_matter}: encountered a {$maybe ->
-    [true] maybe-null
-    *[false] null
-} box"
+                        [true] maybe-null
+                        *[false] null
+                    } box"
                 )
             }
             NullPtr { ptr_kind: PointerKind::Ref(_), .. } => {
                 inline_fluent!(
                     "{$front_matter}: encountered a {$maybe ->
-    [true] maybe-null
-    *[false] null
-} reference"
+                        [true] maybe-null
+                        *[false] null
+                    } reference"
                 )
             }
             DanglingPtrNoProvenance { ptr_kind: PointerKind::Box, .. } => {

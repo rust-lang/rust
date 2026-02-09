@@ -471,9 +471,9 @@ fn report_eval_error<'tcx>(
                 span,
                 inline_fluent!(
                     "evaluation of `{$instance}` failed {$num_frames ->
-    [0] here
-    *[other] inside this call
-}"
+                        [0] here
+                        *[other] inside this call
+                    }"
                 ),
             );
             for frame in frames {

@@ -353,8 +353,10 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
             self.label,
             inline_fluent!("will not be checked at usage sites of the type alias"),
         );
-        diag.note(inline_fluent!("this is a known limitation of the type checker that may be lifted in a future edition.
-            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information"));
+        diag.note(inline_fluent!(
+            "this is a known limitation of the type checker that may be lifted in a future edition.
+            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information"
+        ));
         if self.enable_feat_help {
             diag.help(inline_fluent!("add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics"));
         }
@@ -1748,10 +1750,12 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 if doctest {
                     diag.help(inline_fluent!(r#"remove the `#[macro_export]` or make this doc-test a standalone test with its own `fn main() {"{"} ... {"}"}`"#));
                 } else {
-                    diag.help(inline_fluent!("remove the `#[macro_export]` or move this `macro_rules!` outside the of the current {$body_kind_descr} {$depth ->
-                        [one] `{$body_name}`
-                       *[other] `{$body_name}` and up {$depth} bodies
-                    }"));
+                    diag.help(inline_fluent!(
+                        "remove the `#[macro_export]` or move this `macro_rules!` outside the of the current {$body_kind_descr} {$depth ->
+                            [one] `{$body_name}`
+                            *[other] `{$body_name}` and up {$depth} bodies
+                        }"
+                    ));
                 }
 
                 diag.note(inline_fluent!("a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute"));

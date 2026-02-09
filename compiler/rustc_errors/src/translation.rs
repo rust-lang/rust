@@ -90,14 +90,3 @@ impl Translator {
         }
     }
 }
-
-/// This macro creates a translatable `DiagMessage` from a literal string.
-/// It should be used in places where a translatable message is needed, but struct diagnostics are undesired.
-///
-/// This is a macro because in the future we may want to globally register these messages.
-#[macro_export]
-macro_rules! inline_fluent {
-    ($inline: literal) => {
-        rustc_errors::DiagMessage::Inline(std::borrow::Cow::Borrowed($inline))
-    };
-}
