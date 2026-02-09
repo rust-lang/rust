@@ -56,8 +56,7 @@ fn try_eagerly_normalize_alias<'a, 'tcx>(
     let cause = ObligationCause::dummy_with_span(span);
     let obligation = Obligation::new(
         tcx,
-        // we ignore the error anyway
-        ObligationCause::dummy_with_span(span),
+        cause,
         param_env,
         ty::PredicateKind::AliasRelate(
             alias.to_ty(tcx).into(),
@@ -68,7 +67,8 @@ fn try_eagerly_normalize_alias<'a, 'tcx>(
 
     ocx.register_obligation(obligation);
 
-    // This only tries to eagerly resolve, if it errors we don't care.
+    // We only use this to constrain inference variables.
+    // We don't care if it errors.
     let _ = ocx.try_evaluate_obligations();
 
     infcx.resolve_vars_if_possible(infer_term)
