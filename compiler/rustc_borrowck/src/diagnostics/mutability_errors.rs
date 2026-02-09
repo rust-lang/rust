@@ -1695,7 +1695,7 @@ fn suggest_ampmut<'tcx>(
                 && let Either::Left(rhs_stmt_new) = body.stmt_at(*assign)
                 && let StatementKind::Assign(box (_, rvalue_new)) = &rhs_stmt_new.kind
                 && let rhs_span_new = rhs_stmt_new.source_info.span
-                && let Ok(rhs_str_new) = tcx.sess.source_map().span_to_snippet(rhs_span)
+                && let Ok(rhs_str_new) = tcx.sess.source_map().span_to_snippet(rhs_span_new)
             {
                 (rvalue, rhs_span, rhs_str) = (rvalue_new, rhs_span_new, rhs_str_new);
             }
