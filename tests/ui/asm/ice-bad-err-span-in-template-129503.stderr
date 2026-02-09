@@ -1,13 +1,24 @@
 error: invalid asm template string: unmatched `}` found
-  --> $DIR/ice-bad-err-span-in-template-129503.rs:12:10
+  --> $DIR/ice-bad-err-span-in-template-129503.rs:13:10
    |
 LL |     asm!(concat!(r#"lJ𐏿Æ�.𐏿�"#, "r} {}"));
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unmatched `}` in asm template string
    |
    = note: if you intended to print `}`, you can escape it using `}}`
 
+error: invalid asm template string: expected `}`, found `0`
+  --> $DIR/ice-bad-err-span-in-template-129503.rs:17:10
+   |
+LL |     asm!(concat!(r#"lJ𐏿Æ�.𐏿�"#, "{}/day{:02}.txt"));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          expected `}` in asm template string
+   |          because of this opening brace
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
 error: invalid asm template string: unmatched `}` found
-  --> $DIR/ice-bad-err-span-in-template-129503.rs:18:10
+  --> $DIR/ice-bad-err-span-in-template-129503.rs:23:10
    |
 LL |     asm!(concat!("abc", "r} {}"));
    |          ^^^^^^^^^^^^^^^^^^^^^^^ unmatched `}` in asm template string
@@ -15,12 +26,12 @@ LL |     asm!(concat!("abc", "r} {}"));
    = note: if you intended to print `}`, you can escape it using `}}`
 
 error: invalid asm template string: unmatched `}` found
-  --> $DIR/ice-bad-err-span-in-template-129503.rs:24:19
+  --> $DIR/ice-bad-err-span-in-template-129503.rs:29:19
    |
 LL |     asm!("abc", "r} {}");
    |                   ^ unmatched `}` in asm template string
    |
    = note: if you intended to print `}`, you can escape it using `}}`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

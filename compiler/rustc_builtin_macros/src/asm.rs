@@ -288,6 +288,18 @@ fn expand_preparsed_asm(
         let msg = "asm template must be a string literal";
         let template_sp = template_expr.span;
         let template_is_mac_call = matches!(template_expr.kind, ast::ExprKind::MacCall(_));
+
+        // Gets the span inside `template_sp` corresponding to the given range
+        let span_in_template = |range: std::ops::Range<usize>| -> Span {
+            if template_is_mac_call {
+                // When the template is a macro call we can't reliably get inner spans
+                // so just use the entire template span (see ICEs #129503, #131292)
+                template_sp
+            } else {
+                template_sp.from_inner(InnerSpan::new(range.start, range.end))
+            }
+        };
+
         let ExprToSpannedString {
             symbol: template_str,
             style: template_style,
@@ -382,13 +394,8 @@ fn expand_preparsed_asm(
 
         if !parser.errors.is_empty() {
             let err = parser.errors.remove(0);
-            let err_sp = if template_is_mac_call {
-                // If the template is a macro call we can't reliably point to the error's
-                // span so just use the template's span as the error span (fixes #129503)
-                template_span
-            } else {
-                template_span.from_inner(InnerSpan::new(err.span.start, err.span.end))
-            };
+
+            let err_sp = span_in_template(err.span);
 
             let msg = format!("invalid asm template string: {}", err.description);
             let mut e = ecx.dcx().struct_span_err(err_sp, msg);
@@ -397,8 +404,7 @@ fn expand_preparsed_asm(
                 e.note(note);
             }
             if let Some((label, span)) = err.secondary_label {
-                let err_sp = template_span.from_inner(InnerSpan::new(span.start, span.end));
-                e.span_label(err_sp, label);
+                e.span_label(span_in_template(span), label);
             }
             let guar = e.emit();
             return ExpandResult::Ready(Err(guar));
@@ -477,8 +483,7 @@ fn expand_preparsed_asm(
                                     ecx.dcx()
                                         .create_err(errors::AsmNoMatchedArgumentName {
                                             name: name.to_owned(),
-                                            span: template_span
-                                                .from_inner(InnerSpan::new(span.start, span.end)),
+                                            span: span_in_template(span),
                                         })
                                         .emit();
                                     None
@@ -490,11 +495,7 @@ fn expand_preparsed_asm(
                     let mut chars = arg.format.ty.chars();
                     let mut modifier = chars.next();
                     if chars.next().is_some() {
-                        let span = arg
-                            .format
-                            .ty_span
-                            .map(|sp| template_sp.from_inner(InnerSpan::new(sp.start, sp.end)))
-                            .unwrap_or(template_sp);
+                        let span = arg.format.ty_span.map(span_in_template).unwrap_or(template_sp);
                         ecx.dcx().emit_err(errors::AsmModifierInvalid { span });
                         modifier = None;
                     }
