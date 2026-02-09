@@ -121,7 +121,7 @@ macro_rules! define_client_side {
         }
     }
 }
-with_api!(self, define_client_side);
+with_api!(define_client_side, TokenStream, Span, Symbol);
 
 struct Bridge<'a> {
     /// Reusable buffer (only `clear`-ed, never shrunk), primarily
@@ -129,7 +129,7 @@ struct Bridge<'a> {
     cached_buffer: Buffer,
 
     /// Server-side function that the client uses to make requests.
-    dispatch: closure::Closure<'a, Buffer, Buffer>,
+    dispatch: closure::Closure<'a>,
 
     /// Provided globals for this macro expansion.
     globals: ExpnGlobals<Span>,
