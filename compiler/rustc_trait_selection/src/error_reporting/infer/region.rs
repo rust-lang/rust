@@ -1020,7 +1020,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let Some((sup_expected, sup_found)) =
                 self.values_str(sup_trace.values, &sup_trace.cause, err.long_ty_path())
             && let Some((sub_expected, sub_found)) =
-                self.values_str(sub_trace.values, &sup_trace.cause, err.long_ty_path())
+                self.values_str(sub_trace.values, &sub_trace.cause, err.long_ty_path())
             && sub_expected == sup_expected
             && sub_found == sup_found
         {
