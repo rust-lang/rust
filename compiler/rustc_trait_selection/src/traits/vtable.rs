@@ -12,7 +12,7 @@ use rustc_span::DUMMY_SP;
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
-use crate::traits::{impossible_predicates, is_vtable_safe_method};
+use crate::traits::is_vtable_safe_method;
 
 #[derive(Clone, Debug)]
 pub enum VtblSegment<'tcx> {
@@ -271,11 +271,7 @@ fn vtable_entries<'tcx>(
                     // do not hold for this particular set of type parameters.
                     // Note that this method could then never be called, so we
                     // do not want to try and codegen it, in that case (see #23435).
-                    let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, args);
-                    if impossible_predicates(
-                        tcx,
-                        predicates.map(|(predicate, _)| predicate).collect(),
-                    ) {
+                    if tcx.instantiate_and_check_impossible_predicates((def_id, args)) {
                         debug!("vtable_entries: predicates do not hold");
                         return VtblEntry::Vacant;
                     }
