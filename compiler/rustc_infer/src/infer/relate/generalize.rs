@@ -99,7 +99,10 @@ impl<'tcx> InferCtxt<'tcx> {
             // `?1 <: ?3`.
             let Generalization { value_may_be_infer: generalized_ty } = self.generalize(
                 relation.span(),
-                relation.structurally_relate_aliases().into(),
+                match relation.structurally_relate_aliases() {
+                    StructurallyRelateAliases::No => GeneralizerState::Default,
+                    StructurallyRelateAliases::Yes => GeneralizerState::StructurallyRelateAliases,
+                },
                 target_vid,
                 instantiation_variance,
                 source_ty,
@@ -236,7 +239,10 @@ impl<'tcx> InferCtxt<'tcx> {
         // constants and generic expressions are not yet handled correctly.
         let Generalization { value_may_be_infer: generalized_ct } = self.generalize(
             relation.span(),
-            relation.structurally_relate_aliases().into(),
+            match relation.structurally_relate_aliases() {
+                StructurallyRelateAliases::No => GeneralizerState::Default,
+                StructurallyRelateAliases::Yes => GeneralizerState::StructurallyRelateAliases,
+            },
             target_vid,
             ty::Invariant,
             source_ct,
@@ -357,15 +363,6 @@ enum GeneralizerState {
     /// Only one layer
     ShallowStructurallyRelateAliases,
     StructurallyRelateAliases,
-}
-
-impl From<StructurallyRelateAliases> for GeneralizerState {
-    fn from(structurally_relate_aliases: StructurallyRelateAliases) -> Self {
-        match structurally_relate_aliases {
-            StructurallyRelateAliases::No => GeneralizerState::Default,
-            StructurallyRelateAliases::Yes => GeneralizerState::StructurallyRelateAliases,
-        }
-    }
 }
 
 /// The "generalizer" is used when handling inference variables.
