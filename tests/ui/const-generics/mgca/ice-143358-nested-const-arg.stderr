@@ -1,0 +1,40 @@
+error: free function without a body
+  --> $DIR/ice-143358-nested-const-arg.rs:13:1
+   |
+LL | fn identity<const T: identity<{ identity::<{ identity::<{}> }>() }>>();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                                                                       |
+   |                                                                       help: provide a definition for the function: `{ <body> }`
+
+error[E0573]: expected type, found function `identity`
+  --> $DIR/ice-143358-nested-const-arg.rs:13:22
+   |
+LL | fn identity<const T: identity<{ identity::<{ identity::<{}> }>() }>>();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a type
+
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/ice-143358-nested-const-arg.rs:8:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: the feature `min_generic_const_args` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/ice-143358-nested-const-arg.rs:10:12
+   |
+LL | #![feature(min_generic_const_args)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/ice-143358-nested-const-arg.rs:13:57
+   |
+LL | fn identity<const T: identity<{ identity::<{ identity::<{}> }>() }>>();
+   |                                                         ^^
+
+error: aborting due to 3 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0573`.
