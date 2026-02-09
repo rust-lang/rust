@@ -258,8 +258,19 @@ impl Scope {
     /// Whether there's anything to do for the cleanup path, that is,
     /// when unwinding through this scope. This includes destructors
     /// (Value and ForLint drops). StorageDead drops are not included
-    /// here because they don't require cleanup blocks - they're only
-    /// needed for borrow-checking and are removed before codegen.
+    /// here because they don't require cleanup blocks.
+    ///
+    /// StorageDead statements are only needed for borrow-checking consistency:
+    /// they ensure the borrow-checker treats locals as dead at the same point on
+    /// all paths (normal and unwind). We only include StorageDead in cleanup blocks
+    /// when there are also Value or ForLint drops present, because:
+    /// - StorageDead is only relevant for borrow-checking when there are destructors
+    ///   that might reference the dead variable
+    /// - We don't create cleanup blocks with only StorageDead (no destructors to run)
+    /// - StorageDead in cleanup blocks is removed by `CleanupPostBorrowck` after
+    ///   borrow-checking, so it doesn't affect codegen
+    /// - StorageDead on normal paths may be used by codegen backends and by the
+    ///   coroutine-to-state-machine transform, so it's preserved there
     fn needs_cleanup(&self) -> bool {
         self.drops.iter().any(|drop| match drop.kind {
             DropKind::Value | DropKind::ForLint => true,
@@ -1143,15 +1154,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // `unwind_to` should drop the value that we're about to
                         // schedule. If dropping this value panics, then we continue
                         // with the *next* value on the unwind path.
-                        if unwind_to != DropIdx::MAX {
-                            debug_assert_eq!(
-                                unwind_drops.drop_nodes[unwind_to].data.local,
-                                drop_data.local
-                            );
-                            debug_assert_eq!(
-                                unwind_drops.drop_nodes[unwind_to].data.kind,
-                                drop_data.kind
-                            );
+                        // Only adjust if the drop matches what unwind_to is pointing to
+                        // (since we process drops in reverse order, unwind_to might not
+                        // match the current drop if there are StorageDead or ForLint drops
+                        // between Value drops).
+                        if unwind_to != DropIdx::MAX
+                            && unwind_drops.drop_nodes[unwind_to].data.local == drop_data.local
+                            && unwind_drops.drop_nodes[unwind_to].data.kind == drop_data.kind
+                        {
                             unwind_to = unwind_drops.drop_nodes[unwind_to].next;
                         }
 
@@ -1251,6 +1261,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // diverge cleanup pads ready in case that drop panics.
         let needs_cleanup = self.scopes.scopes.last().is_some_and(|scope| scope.needs_cleanup());
         let is_coroutine = self.coroutine.is_some();
+        // `unwind_to` tracks the position in the unwind drop tree, not just whether cleanup
+        // is needed. It's used by `build_scope_drops` to correctly position drops in the
+        // unwind tree. We use `needs_cleanup` to determine if we need to initialize it.
         let unwind_to = if needs_cleanup { self.diverge_cleanup() } else { DropIdx::MAX };
 
         let scope = self.scopes.scopes.last().expect("leave_top_scope called with no scopes");
@@ -1259,9 +1272,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let dropline_to = if has_async_drops { Some(self.diverge_dropline()) } else { None };
         let scope = self.scopes.scopes.last().expect("leave_top_scope called with no scopes");
         let typing_env = self.typing_env();
-        let has_storage_drops = scope.drops.iter().any(|d| d.kind == DropKind::Storage);
-        // Only emit StorageDead on unwind paths when there's actually an unwind path
-        let storage_dead_on_unwind = has_storage_drops && unwind_to != DropIdx::MAX;
         build_scope_drops(
             &mut self.cfg,
             &mut self.scopes.unwind_drops,
@@ -1270,7 +1280,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             unwind_to,
             dropline_to,
-            storage_dead_on_unwind,
+            needs_cleanup,
             self.arg_count,
             |v: Local| Self::is_async_drop_impl(self.tcx, &self.local_decls, typing_env, v),
         )
@@ -1654,37 +1664,46 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let is_coroutine = self.coroutine.is_some();
-        // Check if there's a cleanup path (i.e., Value or ForLint drops that require cleanup)
-        let has_cleanup_path = self.scopes.scopes[uncached_scope..=target].iter().any(|scope| {
-            scope.drops.iter().any(|d| d.kind == DropKind::Value || d.kind == DropKind::ForLint)
-        });
+        // Check if there are Value or ForLint drops present. We only add StorageDead drops
+        // when there are Value/ForLint drops, since StorageDead is only relevant for
+        // borrow-checking when there are destructors that might reference the dead variable.
+        let has_value_or_forlint_drops =
+            self.scopes.scopes[uncached_scope..=target].iter().any(|scope| scope.needs_cleanup());
+
         for scope in &mut self.scopes.scopes[uncached_scope..=target] {
             for drop in &scope.drops {
                 // We add drops to unwind_drops to ensure the borrow-checker treats locals as dead
                 // at the same point on all paths (normal and unwind). This is for static semantics
                 // (borrow-checking), not runtime drop order.
                 //
-                // StorageDead drops are only needed when there are Value or ForLint drops present,
-                // because:
-                // 1. StorageDead is only relevant for borrow-checking when there are destructors
-                //    that might reference the dead variable
-                // 2. If there are no drops, there's no unwind path to emit StorageDead on
-                // 3. StorageDead on unwind paths ensures the borrow-checker correctly tracks
-                //    when variables are dead for the purpose of checking whether they might be
-                //    referenced by destructors
+                // For coroutines, we always add all drops (including StorageDead) because the
+                // coroutine-to-state-machine transform (which runs after CleanupPostBorrowck) needs
+                // StorageDead statements to determine storage liveness at suspension points.
                 //
-                // These StorageDead statements are removed by the `RemoveStorageMarkers` MIR
-                // transform pass before codegen, so they don't affect LLVM output. They only
-                // affect static analysis (borrow-checking).
+                // For other functions, we add:
+                // - Value drops (always, as they require cleanup - running destructors)
+                // - ForLint drops (for future-compatibility linting, though they don't run code)
+                // - StorageDead drops (when there are Value or ForLint drops present)
                 //
-                // For coroutines, we always add all drops. For other functions, we add:
-                // - Value and ForLint drops (always, as they require cleanup)
-                // - StorageDead drops (only when there's a cleanup path, for borrow-checking)
-                if is_coroutine
-                    || drop.kind == DropKind::Value
-                    || drop.kind == DropKind::ForLint
-                    || (drop.kind == DropKind::Storage && has_cleanup_path)
-                {
+                // Note: ForLint drops don't actually run code - they turn into
+                // `BackwardIncompatibleDropHint` statements for future-compatibility linting.
+                // They don't require cleanup, but we include them for more precise linting.
+                //
+                // These StorageDead statements in cleanup blocks are removed by the
+                // `CleanupPostBorrowck` MIR transform pass (for non-coroutines only), and empty
+                // cleanup blocks are removed by `RemoveNoopLandingPads`, so they don't affect codegen.
+                // This is codegen backend agnostic. They only affect static analysis (borrow-checking).
+                let should_add = if is_coroutine {
+                    true
+                } else if drop.kind == DropKind::Value || drop.kind == DropKind::ForLint {
+                    true
+                } else if drop.kind == DropKind::Storage && has_value_or_forlint_drops {
+                    true
+                } else {
+                    false
+                };
+
+                if should_add {
                     cached_drop = self.scopes.unwind_drops.add_drop(*drop, cached_drop);
                 }
             }
@@ -1869,8 +1888,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 ///   panic occurred (a subset of the drops in `scope`)
 /// * `dropline_to`, describes the drops that would occur at this point in the code if a
 ///    coroutine drop occurred.
-/// * `storage_dead_on_unwind`, if true, then we emit `StorageDead` on the unwind path
-///   and adjust `unwind_to` accordingly (used for all functions with StorageDead drops)
+/// * `needs_cleanup`, if true, indicates there's a cleanup block (i.e., Value or ForLint drops
+///   that require cleanup). When true and there are StorageDead drops, we emit `StorageDead` on
+///   the unwind path and adjust `unwind_to` accordingly.
 /// * `arg_count`, number of MIR local variables corresponding to fn arguments (used to assert that we don't drop those)
 fn build_scope_drops<'tcx, F>(
     cfg: &mut CFG<'tcx>,
@@ -1880,7 +1900,7 @@ fn build_scope_drops<'tcx, F>(
     block: BasicBlock,
     unwind_to: DropIdx,
     dropline_to: Option<DropIdx>,
-    storage_dead_on_unwind: bool,
+    needs_cleanup: bool,
     arg_count: usize,
     is_async_drop: F,
 ) -> BlockAnd<()>
@@ -1888,6 +1908,12 @@ where
     F: Fn(Local) -> bool,
 {
     debug!("build_scope_drops({:?} -> {:?}), dropline_to={:?}", block, scope, dropline_to);
+
+    // Compute whether we should emit StorageDead on unwind paths.
+    // We only emit StorageDead on unwind paths when there's a cleanup block (needs_cleanup)
+    // and there are StorageDead drops in the scope.
+    let has_storage_drops = scope.drops.iter().any(|d| d.kind == DropKind::Storage);
+    let storage_dead_on_unwind = has_storage_drops && needs_cleanup;
 
     // Build up the drops in evaluation order. The end result will
     // look like:
@@ -1909,8 +1935,8 @@ where
     // (borrow-checking), not runtime drop order. The drops for the unwind path
     // should have already been generated by `diverge_cleanup_gen`.
     //
-    // Note: StorageDead statements are removed by the `RemoveStorageMarkers` MIR
-    // transform pass before codegen, so they don't affect LLVM output.
+    // Note: StorageDead statements in cleanup blocks are removed by the `CleanupPostBorrowck` MIR
+    // transform pass, so they don't affect codegen.
 
     // `unwind_to` indicates what needs to be dropped should unwinding occur.
     // This is a subset of what needs to be dropped when exiting the scope.
@@ -1939,13 +1965,33 @@ where
                 //
                 // We adjust this BEFORE we create the drop (e.g., `drops[n]`)
                 // because `drops[n]` should unwind to `drops[n-1]`.
+                //
+                // Since we process drops in reverse order and the unwind tree may contain
+                // StorageDead/ForLint drops interleaved with Value drops, `unwind_to` might
+                // not initially point to the current Value drop. We skip over non-matching
+                // drops in the unwind tree until we find the matching Value drop.
                 if unwind_to != DropIdx::MAX {
-                    debug_assert_eq!(
-                        unwind_drops.drop_nodes[unwind_to].data.local,
-                        drop_data.local
-                    );
-                    debug_assert_eq!(unwind_drops.drop_nodes[unwind_to].data.kind, drop_data.kind);
-                    unwind_to = unwind_drops.drop_nodes[unwind_to].next;
+                    // Skip over any non-matching drops (e.g., StorageDead/ForLint) until we
+                    // find the matching Value drop in the unwind tree.
+                    while unwind_to != DropIdx::MAX
+                        && (unwind_drops.drop_nodes[unwind_to].data.local != drop_data.local
+                            || unwind_drops.drop_nodes[unwind_to].data.kind != drop_data.kind)
+                    {
+                        unwind_to = unwind_drops.drop_nodes[unwind_to].next;
+                    }
+                    // Now `unwind_to` should point to the matching Value drop, or be MAX if
+                    // we've reached the end of the unwind chain.
+                    if unwind_to != DropIdx::MAX {
+                        debug_assert_eq!(
+                            unwind_drops.drop_nodes[unwind_to].data.local, drop_data.local,
+                            "unwind_to should point to the current Value drop"
+                        );
+                        debug_assert_eq!(
+                            unwind_drops.drop_nodes[unwind_to].data.kind, drop_data.kind,
+                            "unwind_to should point to the current Value drop"
+                        );
+                        unwind_to = unwind_drops.drop_nodes[unwind_to].next;
+                    }
                 }
 
                 if let Some(idx) = dropline_to {
@@ -1962,6 +2008,8 @@ where
                     continue;
                 }
 
+                // Only add an entry point if there are more drops in the unwind path.
+                // `DropIdx::MAX` indicates the end of the unwind drop chain.
                 if unwind_to != DropIdx::MAX {
                     unwind_drops.add_entry_point(block, unwind_to);
                 }
@@ -1990,14 +2038,33 @@ where
                 // As in the `DropKind::Storage` case below:
                 // we emit lint-related drops on the unwind path when `storage_dead_on_unwind`
                 // is true, so we need to adjust `unwind_to` in that case.
-                // Only adjust if the drop matches what unwind_to is pointing to (since we process
-                // drops in reverse order, unwind_to might not match the current drop).
-                if storage_dead_on_unwind
-                    && unwind_to != DropIdx::MAX
-                    && unwind_drops.drop_nodes[unwind_to].data.local == drop_data.local
-                    && unwind_drops.drop_nodes[unwind_to].data.kind == drop_data.kind
-                {
-                    unwind_to = unwind_drops.drop_nodes[unwind_to].next;
+                //
+                // Since we process drops in reverse order and the unwind tree may contain
+                // StorageDead/Value drops interleaved with ForLint drops, `unwind_to` might
+                // not initially point to the current ForLint drop. We skip over non-matching
+                // drops in the unwind tree until we find the matching ForLint drop.
+                if storage_dead_on_unwind && unwind_to != DropIdx::MAX {
+                    // Skip over any non-matching drops (e.g., StorageDead/Value) until we
+                    // find the matching ForLint drop in the unwind tree.
+                    while unwind_to != DropIdx::MAX
+                        && (unwind_drops.drop_nodes[unwind_to].data.local != drop_data.local
+                            || unwind_drops.drop_nodes[unwind_to].data.kind != drop_data.kind)
+                    {
+                        unwind_to = unwind_drops.drop_nodes[unwind_to].next;
+                    }
+                    // Now `unwind_to` should point to the matching ForLint drop, or be MAX if
+                    // we've reached the end of the unwind chain.
+                    if unwind_to != DropIdx::MAX {
+                        debug_assert_eq!(
+                            unwind_drops.drop_nodes[unwind_to].data.local, drop_data.local,
+                            "unwind_to should point to the current ForLint drop"
+                        );
+                        debug_assert_eq!(
+                            unwind_drops.drop_nodes[unwind_to].data.kind, drop_data.kind,
+                            "unwind_to should point to the current ForLint drop"
+                        );
+                        unwind_to = unwind_drops.drop_nodes[unwind_to].next;
+                    }
                 }
 
                 // If the operand has been moved, and we are not on an unwind
@@ -2026,10 +2093,11 @@ where
                 // are Value or ForLint drops present, because:
                 // 1. StorageDead is only relevant for borrow-checking when there are destructors
                 //    that might reference the dead variable
-                // 2. If there are no drops, there's no unwind path to emit StorageDead on
+                // 2. If there are no drops, we don't need a cleanup block (unwinding still occurs,
+                //    but there are no destructors to run before popping the stack frame)
                 //
-                // These StorageDead statements are removed by the `RemoveStorageMarkers` MIR
-                // transform pass before codegen, so they don't affect LLVM output.
+                // These StorageDead statements are removed by the `CleanupPostBorrowck` MIR
+                // transform pass, so they don't affect codegen.
                 //
                 // When `storage_dead_on_unwind` is true, we need to adjust the `unwind_to` pointer
                 // now that the storage-dead has completed, so that any future drops we emit will
@@ -2075,26 +2143,59 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         // Link the exit drop tree to unwind drop tree.
         if drops.drop_nodes.iter().any(|drop_node| drop_node.data.kind == DropKind::Value) {
             let unwind_target = self.diverge_cleanup_target(else_scope, span);
+
+            // Check if there are Value or ForLint drops present. We only add StorageDead drops
+            // when there are Value/ForLint drops, since StorageDead is only relevant for
+            // borrow-checking when there are destructors that might reference the dead variable.
+            let has_value_or_forlint_drops = drops.drop_nodes.iter().any(|drop_node| {
+                drop_node.data.kind == DropKind::Value || drop_node.data.kind == DropKind::ForLint
+            });
+
             let mut unwind_indices = IndexVec::from_elem_n(unwind_target, 1);
             for (drop_idx, drop_node) in drops.drop_nodes.iter_enumerated().skip(1) {
-                match drop_node.data.kind {
-                    DropKind::Storage | DropKind::ForLint => {
-                        let unwind_drop = self
-                            .scopes
-                            .unwind_drops
-                            .add_drop(drop_node.data, unwind_indices[drop_node.next]);
-                        unwind_indices.push(unwind_drop);
-                    }
-                    DropKind::Value => {
-                        let unwind_drop = self
-                            .scopes
-                            .unwind_drops
-                            .add_drop(drop_node.data, unwind_indices[drop_node.next]);
-                        self.scopes.unwind_drops.add_entry_point(
-                            blocks[drop_idx].unwrap(),
-                            unwind_indices[drop_node.next],
-                        );
-                        unwind_indices.push(unwind_drop);
+                // For coroutines, we always add all drops (including StorageDead) because the
+                // coroutine-to-state-machine transform needs StorageDead statements.
+                //
+                // For other functions, we add:
+                // - Value drops (always, as they require cleanup - running destructors)
+                // - ForLint drops (for future-compatibility linting, though they don't run code)
+                // - StorageDead drops (when there are Value or ForLint drops present)
+                //
+                // These StorageDead statements in cleanup blocks are removed by the
+                // `CleanupPostBorrowck` MIR transform pass (for non-coroutines only), and empty
+                // cleanup blocks are removed by `RemoveNoopLandingPads`, so they don't affect codegen.
+                let should_add = if is_coroutine {
+                    true
+                } else if drop_node.data.kind == DropKind::Value
+                    || drop_node.data.kind == DropKind::ForLint
+                {
+                    true
+                } else if drop_node.data.kind == DropKind::Storage && has_value_or_forlint_drops {
+                    true
+                } else {
+                    false
+                };
+
+                if should_add {
+                    match drop_node.data.kind {
+                        DropKind::Storage | DropKind::ForLint => {
+                            let unwind_drop = self
+                                .scopes
+                                .unwind_drops
+                                .add_drop(drop_node.data, unwind_indices[drop_node.next]);
+                            unwind_indices.push(unwind_drop);
+                        }
+                        DropKind::Value => {
+                            let unwind_drop = self
+                                .scopes
+                                .unwind_drops
+                                .add_drop(drop_node.data, unwind_indices[drop_node.next]);
+                            self.scopes.unwind_drops.add_entry_point(
+                                blocks[drop_idx].unwrap(),
+                                unwind_indices[drop_node.next],
+                            );
+                            unwind_indices.push(unwind_drop);
+                        }
                     }
                 }
             }
