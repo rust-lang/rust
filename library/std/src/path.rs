@@ -19,6 +19,20 @@
 //! matter the platform or filesystem. An exception to this is made for Windows
 //! drive letters.
 //!
+//! ## Path normalization
+//!
+//! Several methods in this module perform basic path normalization by disregarding
+//! repeated separators, non-leading `.` components, and trailing separators. These include:
+//! - Methods for iteration, such as [`Path::components`] and [`Path::iter`]
+//! - Methods for inspection, such as [`Path::has_root`]
+//! - Comparisons using [`PartialEq`], [`PartialOrd`], and [`Ord`]
+//!
+//! [`Path::join`] and [`PathBuf::push`] also disregard trailing slashes.
+//!
+// FIXME(normalize_lexically): mention normalize_lexically once stable
+//! These methods **do not** resolve `..` components or symlinks. For full normalization
+//! including `..` resolution, use [`Path::canonicalize`] (which does access the filesystem).
+//!
 //! ## Simple usage
 //!
 //! Path manipulation includes both parsing components from slices and building
