@@ -18,71 +18,67 @@ use crate::{Delimiter, Level};
 /// Higher-order macro describing the server RPC API, allowing automatic
 /// generation of type-safe Rust APIs, both client-side and server-side.
 ///
-/// `with_api!(MySelf, my_macro)` expands to:
+/// `with_api!(my_macro, MyTokenStream, MySpan, MySymbol)` expands to:
 /// ```rust,ignore (pseudo-code)
 /// my_macro! {
-///     fn lit_character(ch: char) -> MySelf::Literal;
-///     fn lit_span(lit: &MySelf::Literal) -> MySelf::Span;
-///     fn lit_set_span(lit: &mut MySelf::Literal, span: MySelf::Span);
+///     fn ts_clone(stream: &MyTokenStream) -> MyTokenStream;
+///     fn span_debug(span: &MySpan) -> String;
 ///     // ...
 /// }
 /// ```
 ///
-/// The first argument serves to customize the argument/return types,
-/// to enable several different usecases:
-///
-/// If `MySelf` is just `Self`, then the types are only valid inside
-/// a trait or a trait impl, where the trait has associated types
-/// for each of the API types. If non-associated types are desired,
-/// a module name (`self` in practice) can be used instead of `Self`.
+/// The second (`TokenStream`), third (`Span`) and fourth (`Symbol`)
+/// argument serve to customize the argument/return types that need
+/// special handling, to enable several different representations of
+/// these types.
 macro_rules! with_api {
-    ($S:ident, $m:ident) => {
+    ($m:ident, $TokenStream: path, $Span: path, $Symbol: path) => {
         $m! {
             fn injected_env_var(var: &str) -> Option<String>;
             fn track_env_var(var: &str, value: Option<&str>);
             fn track_path(path: &str);
-            fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, ()>;
-            fn emit_diagnostic(diagnostic: Diagnostic<$S::Span>);
+            fn literal_from_str(s: &str) -> Result<Literal<$Span, $Symbol>, ()>;
+            fn emit_diagnostic(diagnostic: Diagnostic<$Span>);
 
-            fn ts_drop(stream: $S::TokenStream);
-            fn ts_clone(stream: &$S::TokenStream) -> $S::TokenStream;
-            fn ts_is_empty(stream: &$S::TokenStream) -> bool;
-            fn ts_expand_expr(stream: &$S::TokenStream) -> Result<$S::TokenStream, ()>;
-            fn ts_from_str(src: &str) -> $S::TokenStream;
-            fn ts_to_string(stream: &$S::TokenStream) -> String;
+            fn ts_drop(stream: $TokenStream);
+            fn ts_clone(stream: &$TokenStream) -> $TokenStream;
+            fn ts_is_empty(stream: &$TokenStream) -> bool;
+            fn ts_expand_expr(stream: &$TokenStream) -> Result<$TokenStream, ()>;
+            fn ts_from_str(src: &str) -> $TokenStream;
+            fn ts_to_string(stream: &$TokenStream) -> String;
             fn ts_from_token_tree(
-                tree: TokenTree<$S::TokenStream, $S::Span, $S::Symbol>,
-            ) -> $S::TokenStream;
+                tree: TokenTree<$TokenStream, $Span, $Symbol>,
+            ) -> $TokenStream;
             fn ts_concat_trees(
-                base: Option<$S::TokenStream>,
-                trees: Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>,
-            ) -> $S::TokenStream;
+                base: Option<$TokenStream>,
+                trees: Vec<TokenTree<$TokenStream, $Span, $Symbol>>,
+            ) -> $TokenStream;
             fn ts_concat_streams(
-                base: Option<$S::TokenStream>,
-                streams: Vec<$S::TokenStream>,
-            ) -> $S::TokenStream;
+                base: Option<$TokenStream>,
+                streams: Vec<$TokenStream>,
+            ) -> $TokenStream;
             fn ts_into_trees(
-                stream: $S::TokenStream
-            ) -> Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>;
+                stream: $TokenStream
+            ) -> Vec<TokenTree<$TokenStream, $Span, $Symbol>>;
 
-            fn span_debug(span: $S::Span) -> String;
-            fn span_parent(span: $S::Span) -> Option<$S::Span>;
-            fn span_source(span: $S::Span) -> $S::Span;
-            fn span_byte_range(span: $S::Span) -> Range<usize>;
-            fn span_start(span: $S::Span) -> $S::Span;
-            fn span_end(span: $S::Span) -> $S::Span;
-            fn span_line(span: $S::Span) -> usize;
-            fn span_column(span: $S::Span) -> usize;
-            fn span_file(span: $S::Span) -> String;
-            fn span_local_file(span: $S::Span) -> Option<String>;
-            fn span_join(span: $S::Span, other: $S::Span) -> Option<$S::Span>;
-            fn span_subspan(span: $S::Span, start: Bound<usize>, end: Bound<usize>) -> Option<$S::Span>;
-            fn span_resolved_at(span: $S::Span, at: $S::Span) -> $S::Span;
-            fn span_source_text(span: $S::Span) -> Option<String>;
-            fn span_save_span(span: $S::Span) -> usize;
-            fn span_recover_proc_macro_span(id: usize) -> $S::Span;
+            fn span_debug(span: $Span) -> String;
+            fn span_parent(span: $Span) -> Option<$Span>;
+            fn span_source(span: $Span) -> $Span;
+            fn span_byte_range(span: $Span) -> Range<usize>;
+            fn span_start(span: $Span) -> $Span;
+            fn span_end(span: $Span) -> $Span;
+            fn span_line(span: $Span) -> usize;
+            fn span_column(span: $Span) -> usize;
+            fn span_file(span: $Span) -> String;
+            fn span_local_file(span: $Span) -> Option<String>;
+            fn span_join(span: $Span, other: $Span) -> Option<$Span>;
+            fn span_subspan(span: $Span, start: Bound<usize>, end: Bound<usize>) -> Option<$Span>;
+            fn span_resolved_at(span: $Span, at: $Span) -> $Span;
+            fn span_source_text(span: $Span) -> Option<String>;
+            fn span_save_span(span: $Span) -> usize;
+            fn span_recover_proc_macro_span(id: usize) -> $Span;
 
-            fn symbol_normalize_and_validate_ident(string: &str) -> Result<$S::Symbol, ()>;
+            fn symbol_normalize_and_validate_ident(string: &str) -> Result<$Symbol, ()>;
         }
     };
 }
@@ -126,7 +122,7 @@ pub struct BridgeConfig<'a> {
     input: Buffer,
 
     /// Server-side function that the client uses to make requests.
-    dispatch: closure::Closure<'a, Buffer, Buffer>,
+    dispatch: closure::Closure<'a>,
 
     /// If 'true', always invoke the default panic hook
     force_show_panics: bool,
@@ -146,7 +142,7 @@ macro_rules! declare_tags {
         rpc_encode_decode!(enum ApiTags { $($method),* });
     }
 }
-with_api!(self, declare_tags);
+with_api!(declare_tags, __, __, __);
 
 /// Helper to wrap associated types to allow trait impl dispatch.
 /// That is, normally a pair of impls for `T::Foo` and `T::Bar`
@@ -173,7 +169,7 @@ impl<T, M> Mark for Marked<T, M> {
         self.value
     }
 }
-impl<'a, T, M> Mark for &'a Marked<T, M> {
+impl<'a, T> Mark for &'a Marked<T, client::TokenStream> {
     type Unmarked = &'a T;
     fn mark(_: Self::Unmarked) -> Self {
         unreachable!()
@@ -220,6 +216,8 @@ mark_noop! {
     Delimiter,
     LitKind,
     Level,
+    Bound<usize>,
+    Range<usize>,
 }
 
 rpc_encode_decode!(
@@ -318,7 +316,7 @@ macro_rules! compound_traits {
     };
 }
 
-compound_traits!(
+rpc_encode_decode!(
     enum Bound<T> {
         Included(x),
         Excluded(x),
@@ -390,7 +388,7 @@ pub struct Literal<Span, Symbol> {
     pub span: Span,
 }
 
-compound_traits!(struct Literal<Sp, Sy> { kind, symbol, suffix, span });
+compound_traits!(struct Literal<Span, Symbol> { kind, symbol, suffix, span });
 
 #[derive(Clone)]
 pub enum TokenTree<TokenStream, Span, Symbol> {
@@ -434,6 +432,6 @@ compound_traits!(
     struct ExpnGlobals<Span> { def_site, call_site, mixed_site }
 );
 
-compound_traits!(
+rpc_encode_decode!(
     struct Range<T> { start, end }
 );

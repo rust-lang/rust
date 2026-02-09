@@ -52,45 +52,37 @@ macro_rules! rpc_encode_decode {
         }
     };
     (enum $name:ident $(<$($T:ident),+>)? { $($variant:ident $(($field:ident))*),* $(,)? }) => {
-        impl<S, $($($T: Encode<S>),+)?> Encode<S> for $name $(<$($T),+>)? {
-            fn encode(self, w: &mut Buffer, s: &mut S) {
-                // HACK(eddyb): `Tag` enum duplicated between the
-                // two impls as there's no other place to stash it.
-                #[allow(non_camel_case_types)]
-                #[repr(u8)]
-                enum Tag { $($variant),* }
+        #[allow(non_upper_case_globals, non_camel_case_types)]
+        const _: () = {
+            #[repr(u8)] enum Tag { $($variant),* }
 
-                match self {
-                    $($name::$variant $(($field))* => {
-                        (Tag::$variant as u8).encode(w, s);
-                        $($field.encode(w, s);)*
-                    })*
+            $(const $variant: u8 = Tag::$variant as u8;)*
+
+            impl<S, $($($T: Encode<S>),+)?> Encode<S> for $name $(<$($T),+>)? {
+                fn encode(self, w: &mut Buffer, s: &mut S) {
+                    match self {
+                        $($name::$variant $(($field))* => {
+                            $variant.encode(w, s);
+                            $($field.encode(w, s);)*
+                        })*
+                    }
                 }
             }
-        }
 
-        impl<'a, S, $($($T: for<'s> Decode<'a, 's, S>),+)?> Decode<'a, '_, S>
-            for $name $(<$($T),+>)?
-        {
-            fn decode(r: &mut &'a [u8], s: &mut S) -> Self {
-                // HACK(eddyb): `Tag` enum duplicated between the
-                // two impls as there's no other place to stash it.
-                #[allow(non_upper_case_globals, non_camel_case_types)]
-                mod tag {
-                    #[repr(u8)] enum Tag { $($variant),* }
-
-                    $(pub(crate) const $variant: u8 = Tag::$variant as u8;)*
-                }
-
-                match u8::decode(r, s) {
-                    $(tag::$variant => {
-                        $(let $field = Decode::decode(r, s);)*
-                        $name::$variant $(($field))*
-                    })*
-                    _ => unreachable!(),
+            impl<'a, S, $($($T: for<'s> Decode<'a, 's, S>),+)?> Decode<'a, '_, S>
+                for $name $(<$($T),+>)?
+            {
+                fn decode(r: &mut &'a [u8], s: &mut S) -> Self {
+                    match u8::decode(r, s) {
+                        $($variant => {
+                            $(let $field = Decode::decode(r, s);)*
+                            $name::$variant $(($field))*
+                        })*
+                        _ => unreachable!(),
+                    }
                 }
             }
-        }
+        };
     }
 }
 
