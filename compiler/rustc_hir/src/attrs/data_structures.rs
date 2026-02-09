@@ -1177,6 +1177,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_no_implicit_autorefs]`
     RustcNoImplicitAutorefs,
 
+    /// Represents `#[rustc_no_implicit_bounds]`
+    RustcNoImplicitBounds,
+
     /// Represents `#[rustc_non_const_trait_method]`.
     RustcNonConstTraitMethod,
 
