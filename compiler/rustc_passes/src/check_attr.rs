@@ -330,6 +330,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcMir(_)
                     | AttributeKind::RustcNeverReturnsNullPointer
                     | AttributeKind::RustcNoImplicitAutorefs
+                    | AttributeKind::RustcNoImplicitBounds
                     | AttributeKind::RustcNonConstTraitMethod
                     | AttributeKind::RustcNounwind
                     | AttributeKind::RustcObjcClass { .. }
@@ -413,7 +414,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             // crate-level attrs, are checked below
                             | sym::feature
                             | sym::register_tool
-                            | sym::rustc_no_implicit_bounds
                             | sym::test_runner,
                             ..
                         ] => {}
