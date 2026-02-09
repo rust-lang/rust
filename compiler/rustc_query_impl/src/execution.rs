@@ -94,6 +94,7 @@ where
 {
     state: &'tcx QueryState<'tcx, K>,
     key: K,
+    key_hash: u64,
 }
 
 #[cold]
@@ -148,14 +149,13 @@ where
 {
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter, and forgets the guard so it won't poison the query.
-    fn complete<C>(self, cache: &C, key_hash: u64, result: C::Value, dep_node_index: DepNodeIndex)
+    fn complete<C>(self, cache: &C, result: C::Value, dep_node_index: DepNodeIndex)
     where
         C: QueryCache<Key = K>,
     {
-        let key = self.key;
-        let state = self.state;
-
-        // Forget ourself so our destructor won't poison the query
+        // Forget ourself so our destructor won't poison the query.
+        // (Extract fields by value first to make sure we don't leak anything.)
+        let Self { state, key, key_hash }: Self = self;
         mem::forget(self);
 
         // Mark as complete before we remove the job from the active state
@@ -187,11 +187,10 @@ where
     #[cold]
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic.
-        let state = self.state;
+        let Self { state, key, key_hash } = *self;
         let job = {
-            let key_hash = sharded::make_hash(&self.key);
             let mut shard = state.active.lock_shard_by_hash(key_hash);
-            match shard.find_entry(key_hash, equivalent_key(&self.key)) {
+            match shard.find_entry(key_hash, equivalent_key(&key)) {
                 Err(_) => panic!(),
                 Ok(occupied) => {
                     let ((key, value), vacant) = occupied.remove();
@@ -361,7 +360,7 @@ where
 {
     // Set up a guard object that will automatically poison the query if a
     // panic occurs while executing the query (or any intermediate plumbing).
-    let job_guard = ActiveJobGuard { state, key };
+    let job_guard = ActiveJobGuard { state, key, key_hash };
 
     debug_assert_eq!(qcx.tcx.dep_graph.is_fully_enabled(), INCR);
 
@@ -409,7 +408,7 @@ where
     }
 
     // Tell the guard to perform completion bookkeeping, and also to not poison the query.
-    job_guard.complete(cache, key_hash, result, dep_node_index);
+    job_guard.complete(cache, result, dep_node_index);
 
     (result, Some(dep_node_index))
 }
