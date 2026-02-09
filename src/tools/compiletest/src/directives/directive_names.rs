@@ -249,6 +249,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-unix",
     "only-visionos",
     "only-wasm32",
+    "only-wasm32-unknown-emscripten",
     "only-wasm32-unknown-unknown",
     "only-wasm32-wasip1",
     "only-watchos",
