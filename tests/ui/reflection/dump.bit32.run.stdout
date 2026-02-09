@@ -188,9 +188,7 @@ Type {
     ),
 }
 Type {
-    kind: Str(
-        Str,
-    ),
+    kind: Other,
     size: None,
 }
 Type {

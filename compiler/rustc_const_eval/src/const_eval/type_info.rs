@@ -74,14 +74,6 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
 
                             variant
                         }
-                        ty::Bool => {
-                            let (variant, _variant_place) = downcast(sym::Bool)?;
-                            variant
-                        }
-                        ty::Char => {
-                            let (variant, _variant_place) = downcast(sym::Char)?;
-                            variant
-                        }
                         ty::Int(int_ty) => {
                             let (variant, variant_place) = downcast(sym::Int)?;
                             let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
@@ -108,10 +100,6 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                             self.write_float_type_info(place, float_ty.bit_width())?;
                             variant
                         }
-                        ty::Str => {
-                            let (variant, _variant_place) = downcast(sym::Str)?;
-                            variant
-                        }
                         ty::Ref(_, ty, mutability) => {
                             let (variant, variant_place) = downcast(sym::Reference)?;
                             let reference_place =
@@ -136,6 +124,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                             variant
                         }
                         ty::Adt(_, _)
+                        | ty::Bool
+                        | ty::Char
+                        | ty::Str
                         | ty::Foreign(_)
                         | ty::Pat(_, _)
                         | ty::FnDef(..)

@@ -49,16 +49,10 @@ pub enum TypeKind {
     Slice(Slice),
     /// Dynamic Traits.
     DynTrait(DynTrait),
-    /// Primitive boolean type.
-    Bool(Bool),
-    /// Primitive character type.
-    Char(Char),
     /// Primitive signed and unsigned integer type.
     Int(Int),
     /// Primitive floating-point type.
     Float(Float),
-    /// String slice type.
-    Str(Str),
     /// References.
     Reference(Reference),
     /// Pointers.
@@ -137,22 +131,6 @@ pub struct Trait {
     pub is_auto: bool,
 }
 
-/// Compile-time type information about `bool`.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Bool {
-    // No additional information to provide for now.
-}
-
-/// Compile-time type information about `char`.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Char {
-    // No additional information to provide for now.
-}
-
 /// Compile-time type information about signed and unsigned integer types.
 #[derive(Debug)]
 #[non_exhaustive]
@@ -171,14 +149,6 @@ pub struct Int {
 pub struct Float {
     /// The bit width of the floating-point type.
     pub bits: u32,
-}
-
-/// Compile-time type information about string slice types.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Str {
-    // No additional information to provide for now.
 }
 
 /// Compile-time type information about references.

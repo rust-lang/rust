@@ -70,10 +70,10 @@ fn test_tuples() {
 fn test_primitives() {
     use TypeKind::*;
 
-    let Type { kind: Bool(_ty), size, .. } = (const { Type::of::<bool>() }) else { panic!() };
+    let Type { kind: Other, size, .. } = (const { Type::of::<bool>() }) else { panic!() };
     assert_eq!(size, Some(1));
 
-    let Type { kind: Char(_ty), size, .. } = (const { Type::of::<char>() }) else { panic!() };
+    let Type { kind: Other, size, .. } = (const { Type::of::<char>() }) else { panic!() };
     assert_eq!(size, Some(4));
 
     let Type { kind: Int(ty), size, .. } = (const { Type::of::<i32>() }) else { panic!() };
@@ -100,7 +100,7 @@ fn test_primitives() {
     assert_eq!(size, Some(4));
     assert_eq!(ty.bits, 32);
 
-    let Type { kind: Str(_ty), size, .. } = (const { Type::of::<str>() }) else { panic!() };
+    let Type { kind: Other, size, .. } = (const { Type::of::<str>() }) else { panic!() };
     assert_eq!(size, None);
 }
 
