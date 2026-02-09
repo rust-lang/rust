@@ -83,14 +83,18 @@ pub(crate) fn gather_active_jobs_inner<'tcx, K: Copy>(
     Some(())
 }
 
-/// A type representing the responsibility to execute the job in the `job` field.
-/// This will poison the relevant query if dropped.
-struct JobOwner<'tcx, K>
+/// Guard object representing the responsibility to execute a query job and
+/// mark it as completed.
+///
+/// This will poison the relevant query key if it is dropped without calling
+/// [`Self::complete`].
+struct ActiveJobGuard<'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
     state: &'tcx QueryState<'tcx, K>,
     key: K,
+    key_hash: u64,
 }
 
 #[cold]
@@ -137,20 +141,19 @@ fn handle_cycle_error<'tcx, C: QueryCache, const FLAGS: QueryFlags>(
     }
 }
 
-impl<'tcx, K> JobOwner<'tcx, K>
+impl<'tcx, K> ActiveJobGuard<'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
     /// Completes the query by updating the query cache with the `result`,
-    /// signals the waiter and forgets the JobOwner, so it won't poison the query
-    fn complete<C>(self, cache: &C, key_hash: u64, result: C::Value, dep_node_index: DepNodeIndex)
+    /// signals the waiter, and forgets the guard so it won't poison the query.
+    fn complete<C>(self, cache: &C, result: C::Value, dep_node_index: DepNodeIndex)
     where
         C: QueryCache<Key = K>,
     {
-        let key = self.key;
-        let state = self.state;
-
-        // Forget ourself so our destructor won't poison the query
+        // Forget ourself so our destructor won't poison the query.
+        // (Extract fields by value first to make sure we don't leak anything.)
+        let Self { state, key, key_hash }: Self = self;
         mem::forget(self);
 
         // Mark as complete before we remove the job from the active state
@@ -174,7 +177,7 @@ where
     }
 }
 
-impl<'tcx, K> Drop for JobOwner<'tcx, K>
+impl<'tcx, K> Drop for ActiveJobGuard<'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
@@ -182,11 +185,10 @@ where
     #[cold]
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic.
-        let state = self.state;
+        let Self { state, key, key_hash } = *self;
         let job = {
-            let key_hash = sharded::make_hash(&self.key);
             let mut shard = state.active.lock_shard_by_hash(key_hash);
-            match shard.find_entry(key_hash, equivalent_key(&self.key)) {
+            match shard.find_entry(key_hash, equivalent_key(&key)) {
                 Err(_) => panic!(),
                 Ok(occupied) => {
                     let ((key, value), vacant) = occupied.remove();
@@ -342,11 +344,13 @@ fn execute_job<'tcx, C: QueryCache, const FLAGS: QueryFlags, const INCR: bool>(
     id: QueryJobId,
     dep_node: Option<DepNode>,
 ) -> (C::Value, Option<DepNodeIndex>) {
-    // Use `JobOwner` so the query will be poisoned if executing it panics.
-    let job_owner = JobOwner { state, key };
+    // Set up a guard object that will automatically poison the query if a
+    // panic occurs while executing the query (or any intermediate plumbing).
+    let job_guard = ActiveJobGuard { state, key, key_hash };
 
     debug_assert_eq!(qcx.tcx.dep_graph.is_fully_enabled(), INCR);
 
+    // Delegate to another function to actually execute the query job.
     let (result, dep_node_index) = if INCR {
         execute_job_incr(query, qcx, qcx.tcx.dep_graph.data().unwrap(), key, dep_node, id)
     } else {
@@ -388,7 +392,9 @@ fn execute_job<'tcx, C: QueryCache, const FLAGS: QueryFlags, const INCR: bool>(
             }
         }
     }
-    job_owner.complete(cache, key_hash, result, dep_node_index);
+
+    // Tell the guard to perform completion bookkeeping, and also to not poison the query.
+    job_guard.complete(cache, result, dep_node_index);
 
     (result, Some(dep_node_index))
 }
