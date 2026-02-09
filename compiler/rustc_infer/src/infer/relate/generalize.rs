@@ -613,26 +613,30 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                             // of each other. This is currently only used for diagnostics.
                             // To see why, see the docs in the `type_variables` module.
                             inner.type_variables().sub_unify(vid, new_var_id);
-                            // If we're in the new solver and create a new inference
-                            // variable inside of an alias we eagerly constrain that
-                            // inference variable to prevent unexpected ambiguity errors.
-                            //
-                            // This is incomplete as it pulls down the universe of the
-                            // original inference variable, even though the alias could
-                            // normalize to a type which does not refer to that type at
-                            // all. I don't expect this to cause unexpected errors in
-                            // practice.
-                            //
-                            // We only need to do so for type and const variables, as
-                            // region variables do not impact normalization, and will get
-                            // correctly constrained by `AliasRelate` later on.
-                            //
-                            // cc trait-system-refactor-initiative#108
-                            if self.infcx.next_trait_solver()
-                                && !matches!(self.infcx.typing_mode(), TypingMode::Coherence)
-                            {
-                                match self.state {
-                                    GeneralizerState::IncompletelyRelateHigherRankedAlias => {
+
+                            match self.state {
+                                GeneralizerState::IncompletelyRelateHigherRankedAlias => {
+                                    if self.infcx.next_trait_solver()
+                                        && !matches!(
+                                            self.infcx.typing_mode(),
+                                            TypingMode::Coherence
+                                        )
+                                    {
+                                        // If we're in the new solver and create a new inference
+                                        // variable inside of an alias we eagerly constrain that
+                                        // inference variable to prevent unexpected ambiguity errors.
+                                        //
+                                        // This is incomplete as it pulls down the universe of the
+                                        // original inference variable, even though the alias could
+                                        // normalize to a type which does not refer to that type at
+                                        // all. I don't expect this to cause unexpected errors in
+                                        // practice.
+                                        //
+                                        // We only need to do so for type and const variables, as
+                                        // region variables do not impact normalization, and will get
+                                        // correctly constrained by `AliasRelate` later on.
+                                        //
+                                        // cc trait-system-refactor-initiative#108
                                         inner.type_variables().equate(vid, new_var_id);
                                     }
                                 }
@@ -759,13 +763,16 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                                 })
                                 .vid;
 
-                            // See the comment for type inference variables
-                            // for more details.
-                            if self.infcx.next_trait_solver()
-                                && !matches!(self.infcx.typing_mode(), TypingMode::Coherence)
-                            {
-                                match self.state {
-                                    GeneralizerState::IncompletelyRelateHigherRankedAlias => {
+                            match self.state {
+                                GeneralizerState::IncompletelyRelateHigherRankedAlias => {
+                                    // See the comment for type inference variables
+                                    // for more details.
+                                    if self.infcx.next_trait_solver()
+                                        && !matches!(
+                                            self.infcx.typing_mode(),
+                                            TypingMode::Coherence
+                                        )
+                                    {
                                         variable_table.union(vid, new_var_id);
                                     }
                                 }
