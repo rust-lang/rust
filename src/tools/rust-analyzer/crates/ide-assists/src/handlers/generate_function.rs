@@ -1147,14 +1147,7 @@ fn fn_arg_type(
         if ty.is_reference() || ty.is_mutable_reference() {
             let famous_defs = &FamousDefs(&ctx.sema, ctx.sema.scope(fn_arg.syntax())?.krate());
             convert_reference_type(ty.strip_references(), ctx.db(), famous_defs)
-                .map(|conversion| {
-                    conversion
-                        .convert_type(
-                            ctx.db(),
-                            target_module.krate(ctx.db()).to_display_target(ctx.db()),
-                        )
-                        .to_string()
-                })
+                .map(|conversion| conversion.convert_type(ctx.db(), target_module).to_string())
                 .or_else(|| ty.display_source_code(ctx.db(), target_module.into(), true).ok())
         } else {
             ty.display_source_code(ctx.db(), target_module.into(), true).ok()
@@ -3187,6 +3180,28 @@ fn main() {
             r#"
 fn main() {
     s.self$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn regression_21288() {
+        check_assist(
+            generate_function,
+            r#"
+//- minicore: copy
+fn foo() {
+    $0bar(&|x| true)
+}
+        "#,
+            r#"
+fn foo() {
+    bar(&|x| true)
+}
+
+fn bar(arg: impl Fn(_) -> bool) {
+    ${0:todo!()}
 }
         "#,
         );

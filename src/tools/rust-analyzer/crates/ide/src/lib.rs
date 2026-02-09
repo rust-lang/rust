@@ -67,7 +67,7 @@ use ide_db::{
     FxHashMap, FxIndexSet, LineIndexDatabase,
     base_db::{
         CrateOrigin, CrateWorkspaceData, Env, FileSet, RootQueryDb, SourceDatabase, VfsPath,
-        salsa::{Cancelled, Database},
+        salsa::{CancellationToken, Cancelled, Database},
     },
     prime_caches, symbol_index,
 };
@@ -946,6 +946,10 @@ impl Analysis {
     {
         // We use `attach_db_allow_change()` and not `attach_db()` because fixture injection can change the database.
         hir::attach_db_allow_change(&self.db, || Cancelled::catch(|| f(&self.db)))
+    }
+
+    pub fn cancellation_token(&self) -> CancellationToken {
+        self.db.cancellation_token()
     }
 }
 

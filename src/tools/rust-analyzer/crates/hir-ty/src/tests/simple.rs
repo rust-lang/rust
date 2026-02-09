@@ -2152,10 +2152,11 @@ async fn main() {
     let z: core::ops::ControlFlow<(), _> = try { () };
     let w = const { 92 };
     let t = 'a: { 92 };
+    let u = try bikeshed core::ops::ControlFlow<(), _> { () };
 }
         "#,
         expect![[r#"
-            16..193 '{     ...2 }; }': ()
+            16..256 '{     ...) }; }': ()
             26..27 'x': i32
             30..43 'unsafe { 92 }': i32
             39..41 '92': i32
@@ -2176,6 +2177,13 @@ async fn main() {
             176..177 't': i32
             180..190 ''a: { 92 }': i32
             186..188 '92': i32
+            200..201 'u': ControlFlow<(), ()>
+            204..253 'try bi...{ () }': ControlFlow<(), ()>
+            204..253 'try bi...{ () }': fn from_output<ControlFlow<(), ()>>(<ControlFlow<(), ()> as Try>::Output) -> ControlFlow<(), ()>
+            204..253 'try bi...{ () }': ControlFlow<(), ()>
+            204..253 'try bi...{ () }': ControlFlow<(), ()>
+            204..253 'try bi...{ () }': ControlFlow<(), ()>
+            249..251 '()': ()
         "#]],
     )
 }
@@ -4054,5 +4062,15 @@ fn foo() {
             264..281 '&VALUE...Y_LOCK': &'? LazyLock<[u32; _]>
             265..281 'VALUES...Y_LOCK': LazyLock<[u32; _]>
         "#]],
+    );
+}
+
+#[test]
+fn include_bytes_len_mismatch() {
+    check_no_mismatches(
+        r#"
+//- minicore: include_bytes
+static S: &[u8; 158] = include_bytes!("/foo/bar/baz.txt");
+    "#,
     );
 }

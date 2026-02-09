@@ -60,7 +60,7 @@ const _: () = {
         }
     }
 
-    impl zalsa_struct_::HashEqLike<WithoutCrate> for EditionedFileIdData {
+    impl zalsa_::HashEqLike<WithoutCrate> for EditionedFileIdData {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             Hash::hash(self, state);

@@ -219,14 +219,16 @@ fn test() {
 
 #[test]
 fn infer_try_block() {
-    // FIXME: We should test more cases, but it currently doesn't work, since
-    // our labeled block type inference is broken.
     check_types(
         r#"
-//- minicore: try, option
+//- minicore: try, option, result, from
 fn test() {
     let x: Option<_> = try { Some(2)?; };
       //^ Option<()>
+    let homogeneous = try { Ok::<(), u32>(())?; "hi" };
+      //^^^^^^^^^^^ Result<&'? str, u32>
+    let heterogeneous = try bikeshed Result<_, u64> { 1 };
+      //^^^^^^^^^^^^^ Result<i32, u64>
 }
 "#,
     );
@@ -4819,7 +4821,7 @@ fn allowed3(baz: impl Baz<Assoc = Qux<impl Foo>>) {}
             431..433 '{}': ()
             447..450 'baz': impl Baz<Assoc = impl Foo>
             480..482 '{}': ()
-            500..503 'baz': impl Baz<Assoc = &'a impl Foo + 'a>
+            500..503 'baz': impl Baz<Assoc = &'a (impl Foo + 'a)>
             544..546 '{}': ()
             560..563 'baz': impl Baz<Assoc = Qux<impl Foo>>
             598..600 '{}': ()

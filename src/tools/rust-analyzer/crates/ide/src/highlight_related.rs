@@ -473,7 +473,7 @@ pub(crate) fn highlight_exit_points(
                 },
                 ast::BlockExpr(blk) => match blk.modifier() {
                     Some(ast::BlockModifier::Async(t)) => hl_exit_points(sema, Some(t), blk.into()),
-                    Some(ast::BlockModifier::Try(t)) if token.kind() != T![return] => {
+                    Some(ast::BlockModifier::Try { try_token: t, .. }) if token.kind() != T![return] => {
                         hl_exit_points(sema, Some(t), blk.into())
                     },
                     _ => continue,

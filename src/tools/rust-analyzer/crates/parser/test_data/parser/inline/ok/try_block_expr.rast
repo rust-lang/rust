@@ -21,7 +21,42 @@ SOURCE_FILE
           EQ "="
           WHITESPACE " "
           BLOCK_EXPR
-            TRY_KW "try"
+            TRY_BLOCK_MODIFIER
+              TRY_KW "try"
+            WHITESPACE " "
+            STMT_LIST
+              L_CURLY "{"
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          WILDCARD_PAT
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          BLOCK_EXPR
+            TRY_BLOCK_MODIFIER
+              TRY_KW "try"
+              WHITESPACE " "
+              BIKESHED_KW "bikeshed"
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "T"
+                    GENERIC_ARG_LIST
+                      L_ANGLE "<"
+                      TYPE_ARG
+                        PATH_TYPE
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "U"
+                      R_ANGLE ">"
             WHITESPACE " "
             STMT_LIST
               L_CURLY "{"

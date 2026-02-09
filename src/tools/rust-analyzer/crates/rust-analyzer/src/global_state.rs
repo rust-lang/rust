@@ -14,7 +14,7 @@ use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
 use ide_db::{
     MiniCore,
-    base_db::{Crate, ProcMacroPaths, SourceDatabase, salsa::Revision},
+    base_db::{Crate, ProcMacroPaths, SourceDatabase, salsa::CancellationToken, salsa::Revision},
 };
 use itertools::Itertools;
 use load_cargo::SourceRootConfig;
@@ -88,6 +88,7 @@ pub(crate) struct GlobalState {
     pub(crate) task_pool: Handle<TaskPool<Task>, Receiver<Task>>,
     pub(crate) fmt_pool: Handle<TaskPool<Task>, Receiver<Task>>,
     pub(crate) cancellation_pool: thread::Pool,
+    pub(crate) cancellation_tokens: FxHashMap<lsp_server::RequestId, CancellationToken>,
 
     pub(crate) config: Arc<Config>,
     pub(crate) config_errors: Option<ConfigErrors>,
@@ -265,6 +266,7 @@ impl GlobalState {
             task_pool,
             fmt_pool,
             cancellation_pool,
+            cancellation_tokens: Default::default(),
             loader,
             config: Arc::new(config.clone()),
             analysis_host,
@@ -617,6 +619,7 @@ impl GlobalState {
     }
 
     pub(crate) fn respond(&mut self, response: lsp_server::Response) {
+        self.cancellation_tokens.remove(&response.id);
         if let Some((method, start)) = self.req_queue.incoming.complete(&response.id) {
             if let Some(err) = &response.error
                 && err.message.starts_with("server panicked")
@@ -631,6 +634,9 @@ impl GlobalState {
     }
 
     pub(crate) fn cancel(&mut self, request_id: lsp_server::RequestId) {
+        if let Some(token) = self.cancellation_tokens.remove(&request_id) {
+            token.cancel();
+        }
         if let Some(response) = self.req_queue.incoming.cancel(request_id) {
             self.send(response.into());
         }

@@ -472,8 +472,11 @@ RefExpr =
 TryExpr =
   Attr* Expr '?'
 
+TryBlockModifier =
+  'try' ('bikeshed' Type)?
+
 BlockExpr =
-  Attr* Label? ('try' | 'unsafe' | ('async' 'move'?) | ('gen' 'move'?) | 'const') StmtList
+  Attr* Label? (TryBlockModifier | 'unsafe' | ('async' 'move'?) | ('gen' 'move'?) | 'const') StmtList
 
 PrefixExpr =
   Attr* op:('-' | '!' | '*') Expr

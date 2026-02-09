@@ -1382,4 +1382,21 @@ fn f<'a>() {
             "#]],
         );
     }
+
+    #[test]
+    fn ref_multi_trait_impl_trait() {
+        check_with_config(
+            InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },
+            r#"
+//- minicore: sized
+trait Eq {}
+trait Ord {}
+
+fn foo(argument: &(impl Eq + Ord)) {
+    let x = argument;
+     // ^ &(impl Eq + Ord)
+}
+        "#,
+        );
+    }
 }
