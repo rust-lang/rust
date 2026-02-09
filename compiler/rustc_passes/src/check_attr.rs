@@ -279,6 +279,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Fundamental => (),
             AttributeKind::Ignore { .. } => (),
             AttributeKind::InstructionSet(..) => (),
+            AttributeKind::InstrumentFn(..) => (),
             AttributeKind::Lang(..) => (),
             AttributeKind::LinkName { .. } => (),
             AttributeKind::LinkOrdinal { .. } => (),

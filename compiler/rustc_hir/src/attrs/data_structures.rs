@@ -1060,6 +1060,9 @@ pub enum AttributeKind {
     /// Represents `#[instruction_set]`
     InstructionSet(InstructionSetAttr),
 
+    /// Represents `#[instrument_fn]`
+    InstrumentFn(Option<bool>),
+
     /// Represents `#[lang]`
     Lang(LangItem),
 
