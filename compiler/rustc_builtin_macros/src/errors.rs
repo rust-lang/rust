@@ -678,6 +678,18 @@ pub(crate) enum InvalidFormatStringSuggestion {
         #[primary_span]
         span: Span,
     },
+
+    #[suggestion(
+        "use rust debug printing macro",
+        code = "{replacement}",
+        style = "verbose",
+        applicability = "machine-applicable"
+    )]
+    UseRustDebugPrintingMacro {
+        #[primary_span]
+        macro_span: Span,
+        replacement: String,
+    },
 }
 
 #[derive(Diagnostic)]

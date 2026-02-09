@@ -160,6 +160,7 @@ fn make_format_args(
     ecx: &mut ExtCtxt<'_>,
     input: MacroInput,
     append_newline: bool,
+    macro_span: Span,
 ) -> ExpandResult<Result<FormatArgs, ErrorGuaranteed>, ()> {
     let msg = "format argument must be a string literal";
     let unexpanded_fmt_span = input.fmtstr.span;
@@ -332,6 +333,23 @@ fn make_format_args(
             parse::Suggestion::AddMissingColon(span) => {
                 let span = fmt_span.from_inner(InnerSpan::new(span.start, span.end));
                 e.sugg_ = Some(errors::InvalidFormatStringSuggestion::AddMissingColon { span });
+            }
+            parse::Suggestion::UseRustDebugPrintingMacro => {
+                // This targets `println!("{=}", x);` and `println!("{0=}", x);`
+                if let [arg] = args.all_args() {
+                    let expr_span = arg.expr.span;
+                    if let Ok(expr_snippet) = ecx.source_map().span_to_snippet(expr_span) {
+                        let replacement = format!("{}!({})", "dbg", expr_snippet);
+
+                        let call_span = macro_span.source_callsite();
+                        e.sugg_ = Some(
+                            errors::InvalidFormatStringSuggestion::UseRustDebugPrintingMacro {
+                                macro_span: call_span,
+                                replacement,
+                            },
+                        );
+                    }
+                }
             }
         }
         let guar = ecx.dcx().emit_err(e);
@@ -1048,7 +1066,7 @@ fn expand_format_args_impl<'cx>(
     sp = ecx.with_def_site_ctxt(sp);
     ExpandResult::Ready(match parse_args(ecx, sp, tts) {
         Ok(input) => {
-            let ExpandResult::Ready(mac) = make_format_args(ecx, input, nl) else {
+            let ExpandResult::Ready(mac) = make_format_args(ecx, input, nl, sp) else {
                 return ExpandResult::Retry(());
             };
             match mac {
