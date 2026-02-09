@@ -831,6 +831,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             let mut ordered_associated_types = vec![];
 
             if let Some(principal_trait) = principal {
+                // Generally we should not elaborate in lowering as this can lead to cycles, but
+                // here rustc cycles as well.
                 for clause in elaborate::elaborate(
                     interner,
                     [Clause::upcast_from(
@@ -1897,13 +1899,27 @@ impl<'db> GenericPredicates {
     /// Resolve the where clause(s) of an item with generics.
     ///
     /// Diagnostics are computed only for this item's predicates, not for parents.
-    #[salsa::tracked(returns(ref))]
+    #[salsa::tracked(returns(ref), cycle_result=generic_predicates_cycle_result)]
     pub fn query_with_diagnostics(
         db: &'db dyn HirDatabase,
         def: GenericDefId,
     ) -> (GenericPredicates, Diagnostics) {
         generic_predicates_filtered_by(db, def, PredicateFilter::All, |_| true)
     }
+}
+
+/// A cycle can occur from malformed code.
+fn generic_predicates_cycle_result(
+    _db: &dyn HirDatabase,
+    _: salsa::Id,
+    _def: GenericDefId,
+) -> (GenericPredicates, Diagnostics) {
+    (
+        GenericPredicates::from_explicit_own_predicates(StoredEarlyBinder::bind(
+            Clauses::default().store(),
+        )),
+        None,
+    )
 }
 
 impl GenericPredicates {
@@ -2590,11 +2606,13 @@ pub(crate) fn associated_type_by_name_including_super_traits<'db>(
 ) -> Option<(TraitRef<'db>, TypeAliasId)> {
     let module = trait_ref.def_id.0.module(db);
     let interner = DbInterner::new_with(db, module.krate(db));
-    rustc_type_ir::elaborate::supertraits(interner, Binder::dummy(trait_ref)).find_map(|t| {
-        let trait_id = t.as_ref().skip_binder().def_id.0;
-        let assoc_type = trait_id.trait_items(db).associated_type_by_name(name)?;
-        Some((t.skip_binder(), assoc_type))
-    })
+    all_supertraits_trait_refs(db, trait_ref.def_id.0)
+        .map(|t| t.instantiate(interner, trait_ref.args))
+        .find_map(|t| {
+            let trait_id = t.def_id.0;
+            let assoc_type = trait_id.trait_items(db).associated_type_by_name(name)?;
+            Some((t, assoc_type))
+        })
 }
 
 pub fn associated_type_shorthand_candidates(
@@ -2721,5 +2739,98 @@ fn named_associated_type_shorthand_candidates<'db, R>(
                 })
         }
         _ => None,
+    }
+}
+
+/// During lowering, elaborating supertraits can cause cycles. To avoid that, we have a separate query
+/// to only collect supertraits.
+///
+/// Technically, it is possible to avoid even more cycles by only collecting the `TraitId` of supertraits
+/// without their args. However rustc doesn't do that, so we don't either.
+pub(crate) fn all_supertraits_trait_refs(
+    db: &dyn HirDatabase,
+    trait_: TraitId,
+) -> impl ExactSizeIterator<Item = EarlyBinder<'_, TraitRef<'_>>> {
+    let interner = DbInterner::new_no_crate(db);
+    return all_supertraits_trait_refs_query(db, trait_).iter().map(move |trait_ref| {
+        trait_ref.get_with(|(trait_, args)| {
+            TraitRef::new_from_args(interner, (*trait_).into(), args.as_ref())
+        })
+    });
+
+    #[salsa_macros::tracked(returns(deref), cycle_result = all_supertraits_trait_refs_cycle_result)]
+    pub(crate) fn all_supertraits_trait_refs_query(
+        db: &dyn HirDatabase,
+        trait_: TraitId,
+    ) -> Box<[StoredEarlyBinder<(TraitId, StoredGenericArgs)>]> {
+        let resolver = trait_.resolver(db);
+        let signature = db.trait_signature(trait_);
+        let mut ctx = TyLoweringContext::new(
+            db,
+            &resolver,
+            &signature.store,
+            trait_.into(),
+            LifetimeElisionKind::AnonymousReportError,
+        );
+        let interner = ctx.interner;
+
+        let self_param_ty = Ty::new_param(
+            interner,
+            TypeParamId::from_unchecked(TypeOrConstParamId {
+                parent: trait_.into(),
+                local_id: Idx::from_raw(la_arena::RawIdx::from_u32(0)),
+            }),
+            0,
+        );
+
+        let mut supertraits = FxHashSet::default();
+        supertraits.insert(StoredEarlyBinder::bind((
+            trait_,
+            GenericArgs::identity_for_item(interner, trait_.into()).store(),
+        )));
+
+        for pred in signature.generic_params.where_predicates() {
+            let WherePredicate::TypeBound { target, bound } = pred else {
+                continue;
+            };
+            let target = &signature.store[*target];
+            if let TypeRef::TypeParam(param_id) = target
+                && param_id.local_id().into_raw().into_u32() == 0
+            {
+                // This is `Self`.
+            } else if let TypeRef::Path(path) = target
+                && path.is_self_type()
+            {
+                // Also `Self`.
+            } else {
+                // Not `Self`!
+                continue;
+            }
+
+            ctx.lower_type_bound(bound, self_param_ty, true).for_each(|(clause, _)| {
+                if let ClauseKind::Trait(trait_ref) = clause.kind().skip_binder() {
+                    supertraits.extend(
+                        all_supertraits_trait_refs(db, trait_ref.trait_ref.def_id.0).map(|t| {
+                            let trait_ref = t.instantiate(interner, trait_ref.trait_ref.args);
+                            StoredEarlyBinder::bind((trait_ref.def_id.0, trait_ref.args.store()))
+                        }),
+                    );
+                }
+            });
+        }
+
+        Box::from_iter(supertraits)
+    }
+
+    pub(crate) fn all_supertraits_trait_refs_cycle_result(
+        db: &dyn HirDatabase,
+        _: salsa::Id,
+        trait_: TraitId,
+    ) -> Box<[StoredEarlyBinder<(TraitId, StoredGenericArgs)>]> {
+        let interner = DbInterner::new_no_crate(db);
+        Box::new([StoredEarlyBinder::bind((
+            trait_,
+            GenericArgs::identity_for_item(interner, trait_.into()).store(),
+        ))])
     }
 }

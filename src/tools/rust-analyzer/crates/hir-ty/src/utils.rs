@@ -22,6 +22,7 @@ use crate::{
     TargetFeatures,
     db::HirDatabase,
     layout::{Layout, TagEncoding},
+    lower::all_supertraits_trait_refs,
     mir::pad16,
 };
 
@@ -62,23 +63,13 @@ pub fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[T
 
 /// Returns an iterator over the whole super trait hierarchy (including the
 /// trait itself).
-pub fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[TraitId; 4]> {
-    // we need to take care a bit here to avoid infinite loops in case of cycles
-    // (i.e. if we have `trait A: B; trait B: A;`)
-
-    let mut result = smallvec![trait_];
-    let mut i = 0;
-    while let Some(&t) = result.get(i) {
-        // yeah this is quadratic, but trait hierarchies should be flat
-        // enough that this doesn't matter
-        direct_super_traits_cb(db, t, |tt| {
-            if !result.contains(&tt) {
-                result.push(tt);
-            }
-        });
-        i += 1;
-    }
-    result
+pub fn all_super_traits(db: &dyn HirDatabase, trait_: TraitId) -> SmallVec<[TraitId; 4]> {
+    let mut supertraits = all_supertraits_trait_refs(db, trait_)
+        .map(|trait_ref| trait_ref.skip_binder().def_id.0)
+        .collect::<SmallVec<[_; _]>>();
+    supertraits.sort_unstable();
+    supertraits.dedup();
+    supertraits
 }
 
 fn direct_super_traits_cb(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {

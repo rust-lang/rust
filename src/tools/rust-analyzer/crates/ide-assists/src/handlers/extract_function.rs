@@ -859,7 +859,7 @@ impl FunctionBody {
                     ast::BlockExpr(block_expr) => {
                         let (constness, block) = match block_expr.modifier() {
                             Some(ast::BlockModifier::Const(_)) => (true, block_expr),
-                            Some(ast::BlockModifier::Try(_)) => (false, block_expr),
+                            Some(ast::BlockModifier::Try { .. }) => (false, block_expr),
                             Some(ast::BlockModifier::Label(label)) if label.lifetime().is_some() => (false, block_expr),
                             _ => continue,
                         };

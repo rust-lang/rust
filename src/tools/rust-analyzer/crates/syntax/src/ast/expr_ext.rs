@@ -375,7 +375,11 @@ impl ast::Literal {
 pub enum BlockModifier {
     Async(SyntaxToken),
     Unsafe(SyntaxToken),
-    Try(SyntaxToken),
+    Try {
+        try_token: SyntaxToken,
+        bikeshed_token: Option<SyntaxToken>,
+        result_type: Option<ast::Type>,
+    },
     Const(SyntaxToken),
     AsyncGen(SyntaxToken),
     Gen(SyntaxToken),
@@ -394,7 +398,13 @@ impl ast::BlockExpr {
             })
             .or_else(|| self.async_token().map(BlockModifier::Async))
             .or_else(|| self.unsafe_token().map(BlockModifier::Unsafe))
-            .or_else(|| self.try_token().map(BlockModifier::Try))
+            .or_else(|| {
+                let modifier = self.try_block_modifier()?;
+                let try_token = modifier.try_token()?;
+                let bikeshed_token = modifier.bikeshed_token();
+                let result_type = modifier.ty();
+                Some(BlockModifier::Try { try_token, bikeshed_token, result_type })
+            })
             .or_else(|| self.const_token().map(BlockModifier::Const))
             .or_else(|| self.label().map(BlockModifier::Label))
     }

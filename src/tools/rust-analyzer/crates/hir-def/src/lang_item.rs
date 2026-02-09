@@ -456,6 +456,7 @@ language_item_table! { LangItems =>
     TryTraitFromOutput,      sym::from_output,         FunctionId;
     TryTraitBranch,          sym::branch,              FunctionId;
     TryTraitFromYeet,        sym::from_yeet,           FunctionId;
+    ResidualIntoTryType,     sym::into_try_type,       FunctionId;
 
     PointerLike,             sym::pointer_like,        TraitId;
 

@@ -2363,6 +2363,7 @@ fn test() {
 }
 "#,
         expect![[r#"
+            46..49 'Foo': Foo<N>
             93..97 'self': Foo<N>
             108..125 '{     ...     }': usize
             118..119 'N': usize
@@ -2643,5 +2644,47 @@ where
     }
 }
         "#,
+    );
+}
+
+#[test]
+fn issue_21560() {
+    check_no_mismatches(
+        r#"
+mod bindings {
+    use super::*;
+    pub type HRESULT = i32;
+}
+use bindings::*;
+
+
+mod error {
+    use super::*;
+    pub fn nonzero_hresult(hr: HRESULT) -> crate::HRESULT {
+        hr
+    }
+}
+pub use error::*;
+
+mod hresult {
+    use super::*;
+    pub struct HRESULT(pub i32);
+}
+pub use hresult::HRESULT;
+
+        "#,
+    );
+}
+
+#[test]
+fn regression_21577() {
+    check_no_mismatches(
+        r#"
+pub trait FilterT<F: FilterT<F, V = Self::V> = Self> {
+    type V;
+
+    fn foo() {}
+}
+    "#,
     );
 }

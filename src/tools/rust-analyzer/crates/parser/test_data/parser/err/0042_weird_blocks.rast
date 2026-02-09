@@ -45,7 +45,8 @@ SOURCE_FILE
               WHITESPACE " "
               EXPR_STMT
                 BLOCK_EXPR
-                  TRY_KW "try"
+                  TRY_BLOCK_MODIFIER
+                    TRY_KW "try"
               WHITESPACE " "
               LITERAL
                 INT_NUMBER "92"

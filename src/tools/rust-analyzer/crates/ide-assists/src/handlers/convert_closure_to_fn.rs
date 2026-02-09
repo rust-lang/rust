@@ -132,7 +132,7 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
             );
         }
 
-        if block.try_token().is_none()
+        if block.try_block_modifier().is_none()
             && block.unsafe_token().is_none()
             && block.label().is_none()
             && block.const_token().is_none()

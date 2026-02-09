@@ -587,6 +587,7 @@ impl<'db> HirDisplay<'db> for TypeParam {
                         Either::Left(ty),
                         &predicates,
                         SizedByDefault::Sized { anchor: krate },
+                        false,
                     );
                 }
             },
@@ -614,6 +615,7 @@ impl<'db> HirDisplay<'db> for TypeParam {
                 Either::Left(ty),
                 &predicates,
                 default_sized,
+                false,
             )?;
         }
         Ok(())
