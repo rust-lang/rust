@@ -19,8 +19,15 @@ pub(crate) fn target() -> Target {
         pre_link_args,
         post_link_args,
         relocation_model: RelocModel::Pic,
+        // crt_static should always be true for an executable and always false
+        // for a shared library. There is no easy way to indicate this and it
+        // doesn't seem to matter much so we set crt_static_allows_dylibs to
+        // true and leave crt_static as true when linking dynamic libraries.
+        // wasi also sets crt_static_allows_dylibs: true so this is at least
+        // aligned between wasm targets.
         crt_static_respected: true,
         crt_static_default: true,
+        crt_static_allows_dylibs: true,
         panic_strategy: PanicStrategy::Unwind,
         no_default_libraries: false,
         families: cvs!["unix", "wasm"],
