@@ -1670,6 +1670,11 @@ impl<'test> TestCx<'test> {
                 if self.props.force_host { &*self.config.host } else { &*self.config.target };
 
             compiler.arg(&format!("--target={}", target));
+            if target.ends_with(".json") {
+                // `-Zunstable-options` is necessary when compiletest is running with custom targets
+                // (such as synthetic targets used to bless mir-opt tests).
+                compiler.arg("-Zunstable-options");
+            }
         }
         self.set_revision_flags(&mut compiler);
 
