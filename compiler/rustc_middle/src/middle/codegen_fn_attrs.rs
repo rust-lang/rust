@@ -109,6 +109,24 @@ pub struct CodegenFnAttrs {
     pub objc_class: Option<Symbol>,
     /// The `#[rustc_objc_selector = "..."]` attribute.
     pub objc_selector: Option<Symbol>,
+    /// The `#[instrument_fn]` attribute.
+    pub instrument_fn: InstrumentFnAttr,
+}
+
+#[derive(Copy, Clone, TyEncodable, TyDecodable, StableHash, Debug)]
+pub enum InstrumentFnAttr {
+    /// Always instrument function
+    On,
+    /// Never instrument function
+    Off,
+    /// Instrument based on command line options, if any.
+    Default,
+}
+
+const impl Default for InstrumentFnAttr {
+    fn default() -> Self {
+        InstrumentFnAttr::Default
+    }
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, StableHash, PartialEq, Eq)]
@@ -236,6 +254,7 @@ impl CodegenFnAttrs {
             patchable_function_entry: None,
             objc_class: None,
             objc_selector: None,
+            instrument_fn: InstrumentFnAttr::default(),
         }
     }
 

@@ -1,5 +1,7 @@
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::{CoverageAttrKind, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy};
+use rustc_hir::attrs::{
+    CoverageAttrKind, InstrumentFnAttr, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy,
+};
 use rustc_session::errors::feature_err;
 use rustc_span::edition::Edition::Edition2024;
 
@@ -560,6 +562,44 @@ impl CombineAttributeParser for ForceTargetFeatureParser {
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         parse_tf_attribute(cx, args)
+    }
+}
+
+pub(crate) struct InstrumentFnParser;
+
+impl SingleAttributeParser for InstrumentFnParser {
+    const PATH: &[Symbol] = &[sym::instrument_fn];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "on|off");
+    const STABILITY: AttributeStability = unstable!(instrument_fn);
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let instrument = match args {
+            ArgParser::NameValue(nv) => match nv.value_as_str() {
+                Some(sym::on) => Some(AttributeKind::InstrumentFn(InstrumentFnAttr::On)),
+                Some(sym::off) => Some(AttributeKind::InstrumentFn(InstrumentFnAttr::Off)),
+                _ => {
+                    cx.adcx()
+                        .expected_specific_argument_strings(nv.value_span, &[sym::on, sym::off]);
+                    None
+                }
+            },
+            ArgParser::List(l) => {
+                cx.adcx().expected_single_argument(l.span, l.len());
+                None
+            }
+            ArgParser::NoArgs => {
+                let span = cx.attr_span;
+                cx.adcx().expected_specific_argument_strings(span, &[sym::on, sym::off]);
+                None
+            }
+        };
+        instrument
     }
 }
 
