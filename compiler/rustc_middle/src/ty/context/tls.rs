@@ -16,8 +16,7 @@ pub struct ImplicitCtxt<'a, 'tcx> {
     /// The current `TyCtxt`.
     pub tcx: TyCtxt<'tcx>,
 
-    /// The current query job, if any. This is updated by `JobOwner::start` in
-    /// `ty::query::plumbing` when executing a query.
+    /// The current query job, if any.
     pub query: Option<QueryJobId>,
 
     /// Used to prevent queries from calling too deeply.
