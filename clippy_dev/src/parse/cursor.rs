@@ -1,4 +1,6 @@
+use super::StrBuf;
 use core::{ptr, slice};
+use rustc_arena::DroplessArena;
 use rustc_lexer::{self as lex, LiteralKind, Token, TokenKind};
 
 /// A token pattern used for searching and matching by the [`Cursor`].
@@ -265,6 +267,51 @@ impl<'txt> Cursor<'txt> {
                 _ => self.step(),
             }
         }
+    }
+
+    /// Consumes and captures the text of a path without any internal whitespace. Returns
+    /// `Err` if the path ends with `::`, and `None` if no path component exists at the
+    /// current position.
+    ///
+    /// Only paths containing identifiers separated by `::` with a possible leading `::`.
+    /// Generic arguments and qualified paths are not considered.
+    pub fn capture_opt_path(&mut self, buf: &mut StrBuf, arena: &'txt DroplessArena) -> Result<Option<&'txt str>, ()> {
+        #[derive(Clone, Copy)]
+        enum State {
+            Start,
+            Sep,
+            Ident,
+        }
+
+        buf.with(|buf| {
+            let start = self.pos;
+            let mut state = State::Start;
+            loop {
+                match (state, self.next_token.kind) {
+                    (_, TokenKind::Whitespace) => self.step(),
+                    (State::Start | State::Ident, TokenKind::Colon) if self.inner.first() == ':' => {
+                        state = State::Sep;
+                        buf.push_str("::");
+                        self.step();
+                        self.step();
+                    },
+                    (State::Start | State::Sep, TokenKind::Ident) => {
+                        state = State::Ident;
+                        buf.push_str(self.peek_text());
+                        self.step();
+                    },
+                    (State::Ident, _) => break,
+                    (State::Start, _) => return Ok(None),
+                    (State::Sep, _) => return Err(()),
+                }
+            }
+            let text = self.text[start as usize..self.pos as usize].trim();
+            Ok(Some(if text.len() == buf.len() {
+                text
+            } else {
+                arena.alloc_str(buf)
+            }))
+        })
     }
 
     /// Attempts to match a sequence of patterns at the current position. Returns whether

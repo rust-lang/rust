@@ -399,27 +399,13 @@ impl<'cx> ParseCxImpl<'cx> {
                     let lt = if lt.is_empty() { None } else { Some(lt) };
 
                     let lints = self.str_list_buf.with(|buf| {
-                        // Parses a comma separated list of paths and converts each path
-                        // to a string with whitespace removed.
-                        while !cursor.eat_close_bracket() {
-                            buf.push(self.str_buf.with(|buf| {
-                                if cursor.eat_double_colon() {
-                                    buf.push_str("::");
-                                }
-                                let capture = cursor.capture_ident()?;
-                                buf.push_str(cursor.get_text(capture));
-                                while cursor.eat_double_colon() {
-                                    buf.push_str("::");
-                                    let capture = cursor.capture_ident()?;
-                                    buf.push_str(cursor.get_text(capture));
-                                }
-                                Some(self.arena.alloc_str(buf))
-                            })?);
-
+                        loop {
+                            match cursor.capture_opt_path(&mut self.str_buf, self.arena) {
+                                Ok(None) => break,
+                                Ok(Some(p)) => buf.push(p),
+                                Err(()) => panic!("error parsing path"),
+                            }
                             if !cursor.eat_comma() {
-                                if !cursor.eat_close_bracket() {
-                                    return None;
-                                }
                                 break;
                             }
                         }
@@ -433,7 +419,7 @@ impl<'cx> ParseCxImpl<'cx> {
                     });
 
                     if let Some(lints) = lints
-                        && cursor.match_all(&[CloseParen, Semi], &mut [])
+                        && cursor.match_all(&[CloseBracket, CloseParen, Semi], &mut [])
                     {
                         data.lint_passes.push(LintPass {
                             docs,
