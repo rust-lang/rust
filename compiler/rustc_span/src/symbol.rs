@@ -1088,6 +1088,7 @@ symbols! {
         inout,
         inputs,
         instruction_set,
+        instrument_fn,
         integer_: "integer", // underscore to avoid clashing with the function `sym::integer` below
         integral,
         internal,
