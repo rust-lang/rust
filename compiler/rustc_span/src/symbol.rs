@@ -1362,6 +1362,7 @@ symbols! {
         link_section,
         linkage,
         linker,
+        linker_info,
         linker_messages,
         linkonce,
         linkonce_odr,
