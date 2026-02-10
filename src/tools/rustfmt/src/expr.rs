@@ -385,8 +385,33 @@ pub(crate) fn format_expr(
                 ))
             }
         }
-        // FIXME: heterogeneous try blocks, which include a type so are harder to format
-        ast::ExprKind::TryBlock(_, Some(_)) => Err(RewriteError::Unknown),
+        ast::ExprKind::TryBlock(ref block, Some(ref ty)) => {
+            let keyword = "try bikeshed ";
+            // 2 = " {".len()
+            let ty_shape = shape
+                .shrink_left(keyword.len())
+                .and_then(|shape| shape.sub_width(2))
+                .max_width_error(shape.width, expr.span)?;
+            let ty_str = ty.rewrite_result(context, ty_shape)?;
+            let prefix = format!("{keyword}{ty_str} ");
+            if let rw @ Ok(_) =
+                rewrite_single_line_block(context, &prefix, block, Some(&expr.attrs), None, shape)
+            {
+                rw
+            } else {
+                let budget = shape.width.saturating_sub(prefix.len());
+                Ok(format!(
+                    "{prefix}{}",
+                    rewrite_block(
+                        block,
+                        Some(&expr.attrs),
+                        None,
+                        context,
+                        Shape::legacy(budget, shape.indent)
+                    )?
+                ))
+            }
+        }
         ast::ExprKind::Gen(capture_by, ref block, ref kind, _) => {
             let mover = if matches!(capture_by, ast::CaptureBy::Value { .. }) {
                 "move "
