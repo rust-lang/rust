@@ -460,7 +460,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 // Parent lifetime must have failed to resolve. Don't emit a redundant error.
                                 RegionInferReason::ExplicitObjectLifetime
                             } else {
-                                RegionInferReason::ObjectLifetimeDefault
+                                RegionInferReason::ObjectLifetimeDefault(span.shrink_to_hi())
                             }
                         } else {
                             RegionInferReason::ExplicitObjectLifetime
