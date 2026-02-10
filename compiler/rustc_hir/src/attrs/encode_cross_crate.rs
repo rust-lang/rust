@@ -169,6 +169,7 @@ impl AttributeKind {
             ShouldPanic { .. } => No,
             Stability { .. } => Yes,
             TargetFeature { .. } => No,
+            TestRunner(..) => Yes,
             ThreadLocal => No,
             TrackCaller(..) => Yes,
             TypeLengthLimit { .. } => No,
