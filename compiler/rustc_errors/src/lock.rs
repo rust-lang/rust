@@ -27,8 +27,10 @@ pub(crate) fn acquire_global_lock(name: &str) -> Box<dyn Any> {
     impl Drop for Handle {
         fn drop(&mut self) {
             unsafe {
-                // FIXME can panic here
-                CloseHandle(self.0).unwrap();
+                // Ignore errors during drop to avoid panicking in a destructor.
+                // If CloseHandle fails, the handle will be leaked, but this is
+                // preferable to aborting the process.
+                let _ = CloseHandle(self.0);
             }
         }
     }
@@ -38,8 +40,10 @@ pub(crate) fn acquire_global_lock(name: &str) -> Box<dyn Any> {
     impl Drop for Guard {
         fn drop(&mut self) {
             unsafe {
-                // FIXME can panic here
-                ReleaseMutex((self.0).0).unwrap();
+                // Ignore errors during drop to avoid panicking in a destructor.
+                // If ReleaseMutex fails, the mutex will remain locked, but this is
+                // preferable to aborting the process.
+                let _ = ReleaseMutex((self.0).0);
             }
         }
     }
