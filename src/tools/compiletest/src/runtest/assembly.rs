@@ -42,6 +42,7 @@ impl TestCx<'_> {
             AllowUnused::No,
             LinkToAux::Yes,
             Vec::new(),
+            false,
         );
 
         let proc_res = self.compose_and_run_compiler(rustc, None);

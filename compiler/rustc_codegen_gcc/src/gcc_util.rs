@@ -7,6 +7,7 @@ use rustc_target::spec::Arch;
 
 fn gcc_features_by_flags(sess: &Session, features: &mut Vec<String>) {
     target_features::retpoline_features_by_flags(sess, features);
+    target_features::sls_features_by_flags(sess, features);
     // FIXME: LLVM also sets +reserve-x18 here under some conditions.
 }
 
