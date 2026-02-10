@@ -2767,6 +2767,10 @@ fn add_order_independent_options(
         cmd.pgo_gen();
     }
 
+    if sess.opts.unstable_opts.instrument_mcount {
+        cmd.enable_profiling();
+    }
+
     if sess.opts.cg.control_flow_guard != CFGuard::Disabled {
         cmd.control_flow_guard();
     }
