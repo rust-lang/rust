@@ -190,8 +190,8 @@ impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
             }
 
             Some(rbv::ResolvedArg::LateBound(debruijn_index, _, id)) => {
-                debug!("FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}", debruijn_index,);
-                debug!("id={:?}", id);
+                debug!("FindNestedTypeVisitor::visit_ty: LateBound depth = {debruijn_index:?}");
+                debug!("id={id:?}");
                 if debruijn_index == self.current_index && id.to_def_id() == self.region_def_id {
                     return ControlFlow::Break(());
                 }
