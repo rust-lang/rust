@@ -1546,7 +1546,7 @@ Compatibility Notes
 - [Check well-formedness of the source type's signature in fn pointer casts.](https://github.com/rust-lang/rust/pull/129021) This partly closes a soundness hole that comes when casting a function item to function pointer
 - [Use equality instead of subtyping when resolving type dependent paths.](https://github.com/rust-lang/rust/pull/129073)
 - Linking on macOS now correctly includes Rust's default deployment target. Due to a linker bug, you might have to pass `MACOSX_DEPLOYMENT_TARGET` or fix your `#[link]` attributes to point to the correct frameworks. See <https://github.com/rust-lang/rust/pull/129369>.
-- [Rust will now correctly raise an error for `repr(Rust)` written on non-`struct`/`enum`/`union` items, since it previous did not have any effect.](https://github.com/rust-lang/rust/pull/129422)
+- [Rust will now correctly raise an error for `repr(Rust)` written on non-`struct`/`enum`/`union` items, since it previously did not have any effect.](https://github.com/rust-lang/rust/pull/129422)
 - The future incompatibility lint `deprecated_cfg_attr_crate_type_name` [has been made into a hard error](https://github.com/rust-lang/rust/pull/129670). It was used to deny usage of `#![crate_type]` and `#![crate_name]` attributes in `#![cfg_attr]`, which required a hack in the compiler to be able to change the used crate type and crate name after cfg expansion.
   Users can use `--crate-type` instead of `#![cfg_attr(..., crate_type = "...")]` and `--crate-name` instead of `#![cfg_attr(..., crate_name = "...")]` when running `rustc`/`cargo rustc` on the command line.
   Use of those two attributes outside of `#![cfg_attr]` continue to be fully supported.
@@ -1722,7 +1722,7 @@ Cargo
 Compatibility Notes
 -------------------
  - We now [disallow setting some built-in cfgs via the command-line](https://github.com/rust-lang/rust/pull/126158) with the newly added [`explicit_builtin_cfgs_in_flags`](https://doc.rust-lang.org/rustc/lints/listing/deny-by-default.html#explicit-builtin-cfgs-in-flags) lint in order to prevent incoherent state, eg. `windows` cfg active but target is Linux based. The appropriate [`rustc` flag](https://doc.rust-lang.org/rustc/command-line-arguments.html) should be used instead.
-- The standard library has a new implementation of `binary_search` which is significantly improves performance ([#128254](https://github.com/rust-lang/rust/pull/128254)). However when a sorted slice has multiple values which compare equal, the new implementation may select a different value among the equal ones than the old implementation.
+- The standard library has a new implementation of `binary_search` which significantly improves performance ([#128254](https://github.com/rust-lang/rust/pull/128254)). However when a sorted slice has multiple values which compare equal, the new implementation may select a different value among the equal ones than the old implementation.
 - [illumos/Solaris now sets `MSG_NOSIGNAL` when writing to sockets](https://github.com/rust-lang/rust/pull/128259). This avoids killing the process with SIGPIPE when writing to a closed socket, which matches the existing behavior on other UNIX targets.
 - [Removes a problematic hack that always passed the --whole-archive linker flag for tests, which may cause linker errors for code accidentally relying on it.](https://github.com/rust-lang/rust/pull/128400)
 - The WebAssembly target features `multivalue` and `reference-types` are now
@@ -1872,7 +1872,7 @@ These changes do not affect any public interfaces of Rust, but they represent
 significant improvements to the performance or internals of rustc and related
 tools.
 
-- [Add a Rust-for Linux `auto` CI job to check kernel builds.](https://github.com/rust-lang/rust/pull/125209/)
+- [Add a Rust-for-Linux `auto` CI job to check kernel builds.](https://github.com/rust-lang/rust/pull/125209/)
 
 Version 1.80.1 (2024-08-08)
 ===========================
@@ -4510,7 +4510,7 @@ Compatibility Notes
   saturating to `0` instead][89926]. In the real world the panic happened mostly
   on platforms with buggy monotonic clock implementations rather than catching
   programming errors like reversing the start and end times. Such programming
-  errors will now results in `0` rather than a panic.
+  errors will now result in `0` rather than a panic.
 - In a future release we're planning to increase the baseline requirements for
   the Linux kernel to version 3.2, and for glibc to version 2.17. We'd love
   your feedback in [PR #95026][95026].
