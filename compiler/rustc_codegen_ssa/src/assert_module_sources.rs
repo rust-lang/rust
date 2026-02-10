@@ -28,13 +28,13 @@ use std::fmt;
 
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{DiagArgValue, IntoDiagArg};
-use rustc_hir as hir;
+use rustc_hir::attrs::{AttributeKind, CguFields, CguKind};
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::{self as hir, find_attr};
 use rustc_middle::mir::mono::CodegenUnitNameBuilder;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::{Span, Symbol, sym};
-use thin_vec::ThinVec;
+use rustc_span::{Span, Symbol};
 use tracing::debug;
 
 use crate::errors;
@@ -63,9 +63,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&mut CguReuseTr
             },
         };
 
-        for attr in tcx.hir_attrs(rustc_hir::CRATE_HIR_ID) {
-            ams.check_attr(attr);
-        }
+        ams.check_attrs(tcx.hir_attrs(rustc_hir::CRATE_HIR_ID));
 
         set_reuse(&mut ams.cgu_reuse_tracker);
 
@@ -89,109 +87,91 @@ struct AssertModuleSource<'tcx> {
 }
 
 impl<'tcx> AssertModuleSource<'tcx> {
-    fn check_attr(&mut self, attr: &hir::Attribute) {
-        let (expected_reuse, comp_kind) = if attr.has_name(sym::rustc_partition_reused) {
-            (CguReuse::PreLto, ComparisonKind::AtLeast)
-        } else if attr.has_name(sym::rustc_partition_codegened) {
-            (CguReuse::No, ComparisonKind::Exact)
-        } else if attr.has_name(sym::rustc_expected_cgu_reuse) {
-            match self.field(attr, sym::kind) {
-                sym::no => (CguReuse::No, ComparisonKind::Exact),
-                sym::pre_dash_lto => (CguReuse::PreLto, ComparisonKind::Exact),
-                sym::post_dash_lto => (CguReuse::PostLto, ComparisonKind::Exact),
-                sym::any => (CguReuse::PreLto, ComparisonKind::AtLeast),
-                other => {
-                    self.tcx
-                        .dcx()
-                        .emit_fatal(errors::UnknownReuseKind { span: attr.span(), kind: other });
-                }
+    fn check_attrs(&mut self, attrs: &[hir::Attribute]) {
+        for &(span, cgu_fields) in find_attr!(attrs,
+            AttributeKind::RustcCguTestAttr(e) => e)
+        .into_iter()
+        .flatten()
+        {
+            let (expected_reuse, comp_kind) = match cgu_fields {
+                CguFields::PartitionReused { .. } => (CguReuse::PreLto, ComparisonKind::AtLeast),
+                CguFields::PartitionCodegened { .. } => (CguReuse::No, ComparisonKind::Exact),
+                CguFields::ExpectedCguReuse { kind, .. } => match kind {
+                    CguKind::No => (CguReuse::No, ComparisonKind::Exact),
+                    CguKind::PreDashLto => (CguReuse::PreLto, ComparisonKind::Exact),
+                    CguKind::PostDashLto => (CguReuse::PostLto, ComparisonKind::Exact),
+                    CguKind::Any => (CguReuse::PreLto, ComparisonKind::AtLeast),
+                },
+            };
+            let (CguFields::ExpectedCguReuse { cfg, module, .. }
+            | CguFields::PartitionCodegened { cfg, module }
+            | CguFields::PartitionReused { cfg, module }) = cgu_fields;
+
+            if !self.tcx.sess.opts.unstable_opts.query_dep_graph {
+                self.tcx.dcx().emit_fatal(errors::MissingQueryDepGraph { span });
             }
-        } else {
-            return;
-        };
 
-        if !self.tcx.sess.opts.unstable_opts.query_dep_graph {
-            self.tcx.dcx().emit_fatal(errors::MissingQueryDepGraph { span: attr.span() });
-        }
+            if !self.check_config(cfg) {
+                debug!("check_attr: config does not match, ignoring attr");
+                return;
+            }
 
-        if !self.check_config(attr) {
-            debug!("check_attr: config does not match, ignoring attr");
-            return;
-        }
+            let user_path = module.as_str();
+            let crate_name = self.tcx.crate_name(LOCAL_CRATE);
+            let crate_name = crate_name.as_str();
 
-        let user_path = self.field(attr, sym::module).to_string();
-        let crate_name = self.tcx.crate_name(LOCAL_CRATE).to_string();
+            if !user_path.starts_with(&crate_name) {
+                self.tcx.dcx().emit_fatal(errors::MalformedCguName { span, user_path, crate_name });
+            }
 
-        if !user_path.starts_with(&crate_name) {
-            self.tcx.dcx().emit_fatal(errors::MalformedCguName {
-                span: attr.span(),
-                user_path,
-                crate_name,
-            });
-        }
+            // Split of the "special suffix" if there is one.
+            let (user_path, cgu_special_suffix) = if let Some(index) = user_path.rfind('.') {
+                (&user_path[..index], Some(&user_path[index + 1..]))
+            } else {
+                (&user_path[..], None)
+            };
 
-        // Split of the "special suffix" if there is one.
-        let (user_path, cgu_special_suffix) = if let Some(index) = user_path.rfind('.') {
-            (&user_path[..index], Some(&user_path[index + 1..]))
-        } else {
-            (&user_path[..], None)
-        };
+            let mut iter = user_path.split('-');
 
-        let mut iter = user_path.split('-');
+            // Remove the crate name
+            assert_eq!(iter.next().unwrap(), crate_name);
 
-        // Remove the crate name
-        assert_eq!(iter.next().unwrap(), crate_name);
+            let cgu_path_components = iter.collect::<Vec<_>>();
 
-        let cgu_path_components = iter.collect::<Vec<_>>();
+            let cgu_name_builder = &mut CodegenUnitNameBuilder::new(self.tcx);
+            let cgu_name = cgu_name_builder.build_cgu_name(
+                LOCAL_CRATE,
+                cgu_path_components,
+                cgu_special_suffix,
+            );
 
-        let cgu_name_builder = &mut CodegenUnitNameBuilder::new(self.tcx);
-        let cgu_name =
-            cgu_name_builder.build_cgu_name(LOCAL_CRATE, cgu_path_components, cgu_special_suffix);
+            debug!("mapping '{user_path}' to cgu name '{cgu_name}'");
 
-        debug!("mapping '{}' to cgu name '{}'", self.field(attr, sym::module), cgu_name);
+            if !self.available_cgus.contains(&cgu_name) {
+                let cgu_names: Vec<&str> =
+                    self.available_cgus.items().map(|cgu| cgu.as_str()).into_sorted_stable_ord();
+                self.tcx.dcx().emit_err(errors::NoModuleNamed {
+                    span,
+                    user_path,
+                    cgu_name,
+                    cgu_names: cgu_names.join(", "),
+                });
+            }
 
-        if !self.available_cgus.contains(&cgu_name) {
-            let cgu_names: Vec<&str> =
-                self.available_cgus.items().map(|cgu| cgu.as_str()).into_sorted_stable_ord();
-            self.tcx.dcx().emit_err(errors::NoModuleNamed {
-                span: attr.span(),
-                user_path,
+            self.cgu_reuse_tracker.set_expectation(
                 cgu_name,
-                cgu_names: cgu_names.join(", "),
-            });
+                user_path,
+                span,
+                expected_reuse,
+                comp_kind,
+            );
         }
-
-        self.cgu_reuse_tracker.set_expectation(
-            cgu_name,
-            user_path,
-            attr.span(),
-            expected_reuse,
-            comp_kind,
-        );
-    }
-
-    fn field(&self, attr: &hir::Attribute, name: Symbol) -> Symbol {
-        for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
-            if item.has_name(name) {
-                if let Some(value) = item.value_str() {
-                    return value;
-                } else {
-                    self.tcx.dcx().emit_fatal(errors::FieldAssociatedValueExpected {
-                        span: item.span(),
-                        name,
-                    });
-                }
-            }
-        }
-
-        self.tcx.dcx().emit_fatal(errors::NoField { span: attr.span(), name });
     }
 
     /// Scan for a `cfg="foo"` attribute and check whether we have a
     /// cfg flag called `foo`.
-    fn check_config(&self, attr: &hir::Attribute) -> bool {
+    fn check_config(&self, value: Symbol) -> bool {
         let config = &self.tcx.sess.psess.config;
-        let value = self.field(attr, sym::cfg);
         debug!("check_config(config={:?}, value={:?})", config, value);
         if config.iter().any(|&(name, _)| name == value) {
             debug!("check_config: matched");

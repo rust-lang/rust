@@ -36,10 +36,10 @@ use rustc_abi::FIRST_VARIANT;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir as hir;
-use rustc_hir::HirId;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{self as hir, HirId, find_attr};
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::traits::ObligationCauseCode;
@@ -1743,7 +1743,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn should_log_capture_analysis(&self, closure_def_id: LocalDefId) -> bool {
-        self.has_rustc_attrs && self.tcx.has_attr(closure_def_id, sym::rustc_capture_analysis)
+        self.has_rustc_attrs
+            && find_attr!(
+                self.tcx.get_all_attrs(closure_def_id),
+                AttributeKind::RustcCaptureAnalysis
+            )
     }
 
     fn log_capture_analysis_first_pass(

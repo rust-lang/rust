@@ -46,6 +46,15 @@ pub(crate) struct DocAliasStartEnd<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[{$name})]` is missing a `{$field}` argument")]
+pub(crate) struct CguFieldsMissing<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub name: &'a AttrPath,
+    pub field: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#![doc({$attr_name} = \"...\")]` isn't allowed as a crate-level attribute")]
 pub(crate) struct DocAttrNotCrateLevel {
     #[primary_span]

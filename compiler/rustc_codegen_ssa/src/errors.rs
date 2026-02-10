@@ -43,14 +43,6 @@ pub(crate) struct CguNotRecorded<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("unknown cgu-reuse-kind `{$kind}` specified")]
-pub(crate) struct UnknownReuseKind {
-    #[primary_span]
-    pub span: Span,
-    pub kind: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag("found CGU-reuse attribute but `-Zquery-dep-graph` was not specified")]
 pub(crate) struct MissingQueryDepGraph {
     #[primary_span]
@@ -61,11 +53,11 @@ pub(crate) struct MissingQueryDepGraph {
 #[diag(
     "found malformed codegen unit name `{$user_path}`. codegen units names must always start with the name of the crate (`{$crate_name}` in this case)"
 )]
-pub(crate) struct MalformedCguName {
+pub(crate) struct MalformedCguName<'a> {
     #[primary_span]
     pub span: Span,
-    pub user_path: String,
-    pub crate_name: String,
+    pub user_path: &'a str,
+    pub crate_name: &'a str,
 }
 
 #[derive(Diagnostic)]
@@ -76,22 +68,6 @@ pub(crate) struct NoModuleNamed<'a> {
     pub user_path: &'a str,
     pub cgu_name: Symbol,
     pub cgu_names: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("associated value expected for `{$name}`")]
-pub(crate) struct FieldAssociatedValueExpected {
-    #[primary_span]
-    pub span: Span,
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag("no field `{$name}`")]
-pub(crate) struct NoField {
-    #[primary_span]
-    pub span: Span,
-    pub name: Symbol,
 }
 
 #[derive(Diagnostic)]

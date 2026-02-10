@@ -10,10 +10,11 @@ use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, Node, PatKind, QPath};
+use rustc_hir::{self as hir, Node, PatKind, QPath, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
@@ -380,7 +381,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             && let impl_of = self.tcx.parent(impl_item.owner_id.to_def_id())
             && self.tcx.is_automatically_derived(impl_of)
             && let trait_ref = self.tcx.impl_trait_ref(impl_of).instantiate_identity()
-            && self.tcx.has_attr(trait_ref.def_id, sym::rustc_trivial_field_reads)
+            && find_attr!(
+                self.tcx.get_all_attrs(trait_ref.def_id),
+                AttributeKind::RustcTrivialFieldReads
+            )
         {
             if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
                 && let Some(adt_def_id) = adt_def.did().as_local()
