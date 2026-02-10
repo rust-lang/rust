@@ -9,13 +9,13 @@ use rustc_middle::dep_graph::DepsType;
 use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::{DepGraphData, DepNodeKey, HasDepContext};
 use rustc_query_system::query::{
-    ActiveKeyStatus, CycleError, CycleErrorHandling, QueryCache, QueryContext, QueryJob,
-    QueryJobId, QueryJobInfo, QueryLatch, QueryMap, QueryMode, QueryStackDeferred, QueryStackFrame,
-    QueryState, incremental_verify_ich, report_cycle,
+    ActiveKeyStatus, CycleError, CycleErrorHandling, QueryCache, QueryJob, QueryJobId, QueryLatch,
+    QueryMode, QueryStackDeferred, QueryStackFrame, QueryState, incremental_verify_ich,
 };
 use rustc_span::{DUMMY_SP, Span};
 
 use crate::dep_graph::{DepContext, DepNode, DepNodeIndex};
+use crate::job::{QueryJobInfo, QueryMap, find_cycle_in_stack, report_cycle};
 use crate::{QueryCtxt, QueryFlags, SemiDynamicQueryDispatcher};
 
 #[inline]
@@ -218,7 +218,7 @@ fn cycle_error<'tcx, C: QueryCache, const FLAGS: QueryFlags>(
         .ok()
         .expect("failed to collect active queries");
 
-    let error = try_execute.find_cycle_in_stack(query_map, &qcx.current_query_job(), span);
+    let error = find_cycle_in_stack(try_execute, query_map, &qcx.current_query_job(), span);
     (mk_cycle(query, qcx, error.lift()), None)
 }
 
