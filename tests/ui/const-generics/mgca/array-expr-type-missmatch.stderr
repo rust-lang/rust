@@ -1,0 +1,8 @@
+error: the constant `Bar` is not of type `Foo`
+  --> $DIR/array-expr-type-missmatch.rs:13:21
+   |
+LL |     takes_array::<{ [Bar] }>();
+   |                     ^^^^^ expected `Foo`, found `Bar`
+
+error: aborting due to 1 previous error
+

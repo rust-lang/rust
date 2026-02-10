@@ -1094,6 +1094,23 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                                 },
                             ));
                         }
+                        ty::Array(elem_ty, _len) => {
+                            let field_vals = val.to_branch();
+                            let cause = self.cause(ObligationCauseCode::WellFormed(None));
+
+                            self.out.extend(field_vals.iter().map(|&field_val| {
+                                let predicate = ty::PredicateKind::Clause(
+                                    ty::ClauseKind::ConstArgHasType(field_val, *elem_ty),
+                                );
+                                traits::Obligation::with_depth(
+                                    tcx,
+                                    cause.clone(),
+                                    self.recursion_depth,
+                                    self.param_env,
+                                    predicate,
+                                )
+                            }));
+                        }
                         _ => {}
                     }
                 }
