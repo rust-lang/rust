@@ -104,7 +104,7 @@ pub enum RegionInferReason<'a> {
     /// Lifetime on a trait object that is spelled explicitly, e.g. `+ 'a` or `+ '_`.
     ExplicitObjectLifetime,
     /// A trait object's lifetime when it is elided, e.g. `dyn Any`.
-    ObjectLifetimeDefault,
+    ObjectLifetimeDefault(Span),
     /// Generic lifetime parameter
     Param(&'a ty::GenericParamDef),
     RegionPredicate,

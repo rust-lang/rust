@@ -22,9 +22,7 @@ use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
 use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, E0228, ErrorGuaranteed, StashKey, struct_span_code_err,
-};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, E0228, ErrorGuaranteed, StashKey};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -318,16 +316,24 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {
-        if let RegionInferReason::ObjectLifetimeDefault = reason {
-            let e = struct_span_code_err!(
-                self.dcx(),
-                span,
-                E0228,
-                "the lifetime bound for this object type cannot be deduced \
-                from context; please supply an explicit bound"
-            )
-            .emit();
-            ty::Region::new_error(self.tcx(), e)
+        if let RegionInferReason::ObjectLifetimeDefault(sugg_sp) = reason {
+            // FIXME: Account for trailing plus `dyn Trait+`, the need of parens in
+            //        `*const dyn Trait` and `Fn() -> *const dyn Trait`.
+            let guar = self
+                .dcx()
+                .struct_span_err(
+                    span,
+                    "cannot deduce the lifetime bound for this trait object type from context",
+                )
+                .with_code(E0228)
+                .with_span_suggestion_verbose(
+                    sugg_sp,
+                    "please supply an explicit bound",
+                    " + /* 'a */",
+                    Applicability::HasPlaceholders,
+                )
+                .emit();
+            ty::Region::new_error(self.tcx(), guar)
         } else {
             // This indicates an illegal lifetime in a non-assoc-trait position
             ty::Region::new_error_with_message(self.tcx(), span, "unelided lifetime in signature")
