@@ -63,7 +63,6 @@
 #![allow(unused_parens)]
 
 use std::ffi::OsStr;
-use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
 
