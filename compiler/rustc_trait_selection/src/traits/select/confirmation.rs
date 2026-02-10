@@ -1246,6 +1246,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })
     }
 
+    /// This trait is indirectly exposed on stable, so do *not* extend the set of types that
+    /// implement the trait without FCP!
     fn confirm_bikeshed_guaranteed_no_drop_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
