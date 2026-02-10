@@ -513,13 +513,13 @@ pub(crate) fn make_dep_kind_vtable_for_query<
     Q,
     C: QueryCache + 'tcx,
     const FLAGS: QueryFlags,
->(
-    is_eval_always: bool,
-) -> DepKindVTable<'tcx>
+>() -> DepKindVTable<'tcx>
 where
     Q: QueryDispatcherUnerased<'tcx, C, FLAGS>,
 {
     let is_anon = FLAGS.is_anon;
+    let is_eval_always = FLAGS.is_eval_always;
+
     let fingerprint_style = if is_anon {
         FingerprintStyle::Opaque
     } else {
@@ -662,7 +662,6 @@ macro_rules! define_queries {
             {
                 QueryVTable {
                     name: stringify!($name),
-                    eval_always: is_eval_always!([$($modifiers)*]),
                     dep_kind: dep_graph::dep_kinds::$name,
                     cycle_error_handling: cycle_error_handling!([$($modifiers)*]),
                     query_state: std::mem::offset_of!(QueryStates<'tcx>, $name),
@@ -716,6 +715,7 @@ macro_rules! define_queries {
             const FLAGS: QueryFlags = QueryFlags {
                 is_anon: is_anon!([$($modifiers)*]),
                 is_depth_limit: depth_limit!([$($modifiers)*]),
+                is_eval_always: is_eval_always!([$($modifiers)*]),
                 is_feedable: feedable!([$($modifiers)*]),
             };
 
@@ -970,9 +970,7 @@ macro_rules! define_queries {
 
             $(pub(crate) fn $name<'tcx>() -> DepKindVTable<'tcx> {
                 use $crate::query_impl::$name::QueryType;
-                $crate::plumbing::make_dep_kind_vtable_for_query::<QueryType<'tcx>, _, _>(
-                    is_eval_always!([$($modifiers)*]),
-                )
+                $crate::plumbing::make_dep_kind_vtable_for_query::<QueryType<'tcx>, _, _>()
             })*
         }
 

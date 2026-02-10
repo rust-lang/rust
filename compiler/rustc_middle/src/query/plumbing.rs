@@ -40,7 +40,6 @@ pub type HashResult<V> = Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerp
 /// and also used directly by query plumbing in `rustc_query_impl`.
 pub struct QueryVTable<'tcx, C: QueryCache> {
     pub name: &'static str,
-    pub eval_always: bool,
     pub dep_kind: DepKind,
     /// How this query deals with query cycle errors.
     pub cycle_error_handling: CycleErrorHandling,
