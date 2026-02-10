@@ -49,10 +49,6 @@ impl<'tcx> rustc_type_ir::inherent::Predicate<TyCtxt<'tcx>> for Predicate<'tcx> 
     fn as_clause(self) -> Option<ty::Clause<'tcx>> {
         self.as_clause()
     }
-
-    fn allow_normalization(self) -> bool {
-        self.allow_normalization()
-    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::IntoKind for Predicate<'tcx> {
@@ -121,25 +117,7 @@ impl<'tcx> Predicate<'tcx> {
     /// unsoundly accept some programs. See #91068.
     #[inline]
     pub fn allow_normalization(self) -> bool {
-        match self.kind().skip_binder() {
-            PredicateKind::Clause(ClauseKind::WellFormed(_)) | PredicateKind::AliasRelate(..) => {
-                false
-            }
-            PredicateKind::Clause(ClauseKind::Trait(_))
-            | PredicateKind::Clause(ClauseKind::HostEffect(..))
-            | PredicateKind::Clause(ClauseKind::RegionOutlives(_))
-            | PredicateKind::Clause(ClauseKind::TypeOutlives(_))
-            | PredicateKind::Clause(ClauseKind::Projection(_))
-            | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
-            | PredicateKind::Clause(ClauseKind::UnstableFeature(_))
-            | PredicateKind::DynCompatible(_)
-            | PredicateKind::Subtype(_)
-            | PredicateKind::Coerce(_)
-            | PredicateKind::Clause(ClauseKind::ConstEvaluatable(_))
-            | PredicateKind::ConstEquate(_, _)
-            | PredicateKind::NormalizesTo(..)
-            | PredicateKind::Ambiguous => true,
-        }
+        rustc_type_ir::inherent::Predicate::allow_normalization(self)
     }
 }
 
