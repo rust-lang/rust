@@ -858,9 +858,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 self.eval_outlives(r_vid, lower_bound)
             }
 
-            VerifyBound::AnyBound(verify_bounds) => verify_bounds.iter().any(|verify_bound| {
-                self.eval_verify_bound(infcx, generic_ty, lower_bound, verify_bound)
-            }),
+            VerifyBound::AnyBound(verify_bounds) => {
+                !verify_bounds.is_empty()
+                    && verify_bounds.iter().any(|verify_bound| {
+                        self.eval_verify_bound(infcx, generic_ty, lower_bound, verify_bound)
+                    })
+            }
 
             VerifyBound::AllBounds(verify_bounds) => verify_bounds.iter().all(|verify_bound| {
                 self.eval_verify_bound(infcx, generic_ty, lower_bound, verify_bound)

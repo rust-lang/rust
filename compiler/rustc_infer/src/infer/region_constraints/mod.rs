@@ -687,7 +687,7 @@ impl<'tcx> VerifyBound<'tcx> {
         match self {
             VerifyBound::IfEq(..) => false,
             VerifyBound::OutlivedBy(re) => re.is_static(),
-            VerifyBound::AnyBound(bs) => bs.iter().any(|b| b.must_hold()),
+            VerifyBound::AnyBound(bs) => !bs.is_empty() && bs.iter().any(|b| b.must_hold()),
             VerifyBound::AllBounds(bs) => bs.iter().all(|b| b.must_hold()),
         }
     }
