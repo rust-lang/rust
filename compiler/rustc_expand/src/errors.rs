@@ -81,16 +81,6 @@ pub(crate) struct ResolveRelativePath {
 }
 
 #[derive(Diagnostic)]
-#[diag("macros cannot have const stability attributes")]
-pub(crate) struct MacroConstStability {
-    #[primary_span]
-    #[label("invalid const stability attribute")]
-    pub span: Span,
-    #[label("const stability attribute affects this macro")]
-    pub head_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("macros cannot have body stability attributes")]
 pub(crate) struct MacroBodyStability {
     #[primary_span]
