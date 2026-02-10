@@ -47,8 +47,7 @@ use rustc_type_ir::TyKind::*;
 use tracing::instrument;
 
 use crate::query::Providers;
-use crate::ty::context::TyCtxt;
-use crate::ty::{self, DefId, Ty, TypeVisitableExt, VariantDef, Visibility};
+use crate::ty::{self, DefId, Ty, TyCtxt, TypeVisitableExt, VariantDef, Visibility};
 
 pub mod inhabited_predicate;
 
