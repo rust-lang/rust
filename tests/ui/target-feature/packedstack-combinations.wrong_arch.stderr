@@ -1,0 +1,4 @@
+error: `-Zpacked-stack` is only supported on s390x
+
+error: aborting due to 1 previous error
+

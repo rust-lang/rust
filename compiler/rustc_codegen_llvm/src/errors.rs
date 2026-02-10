@@ -206,3 +206,10 @@ pub(crate) struct FixedX18InvalidArch<'a> {
 #[derive(Diagnostic)]
 #[diag("`-Zsanitizer-kcfi-arity` requires LLVM 21.0.0 or later")]
 pub(crate) struct SanitizerKcfiArityRequiresLLVM2100;
+
+#[derive(Diagnostic)]
+#[diag("packedstack with backchain needs softfloat")]
+#[note(
+    "enabling both `-Zpacked-stack` and the `backchain` target feature is incompatible with the default s390x ABI. Switch to s390x-unknown-none-softfloat if you need both attributes"
+)]
+pub(crate) struct PackedStackBackchainNeedsSoftfloat;
