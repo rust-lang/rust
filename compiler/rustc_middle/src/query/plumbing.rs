@@ -295,36 +295,28 @@ macro_rules! define_callbacks {
                 ($V)
             );
 
-            /// This function takes `ProvidedValue` and converts it to an erased `Value` by
-            /// allocating it on an arena if the query has the `arena_cache` modifier. The
-            /// value is then erased and returned. This will happen when computing the query
-            /// using a provider or decoding a stored result.
+            /// This helper function takes a value returned by the query provider
+            /// (or loaded from disk, or supplied by query feeding), allocates
+            /// it in an arena if requested by the `arena_cache` modifier, and
+            /// then returns an erased copy of it.
             #[inline(always)]
             pub fn provided_to_erased<'tcx>(
-                _tcx: TyCtxt<'tcx>,
+                tcx: TyCtxt<'tcx>,
                 provided_value: ProvidedValue<'tcx>,
             ) -> Erased<Value<'tcx>> {
-                // Store the provided value in an arena and get a reference
-                // to it, for queries with `arena_cache`.
-                let value: Value<'tcx> = query_if_arena!([$($modifiers)*]
-                    {
-                        use $crate::query::arena_cached::ArenaCached;
-
-                        if mem::needs_drop::<<$V as ArenaCached<'tcx>>::Allocated>() {
-                            <$V as ArenaCached>::alloc_in_arena(
-                                |v| _tcx.query_system.arenas.$name.alloc(v),
-                                provided_value,
-                            )
-                        } else {
-                            <$V as ArenaCached>::alloc_in_arena(
-                                |v| _tcx.arena.dropless.alloc(v),
-                                provided_value,
-                            )
-                        }
-                    }
-                    // Otherwise, the provided value is the value.
-                    (provided_value)
-                );
+                // For queries with the `arena_cache` modifier, store the
+                // provided value in an arena and get a reference to it.
+                let value: Value<'tcx> = query_if_arena!([$($modifiers)*] {
+                    <$V as $crate::query::arena_cached::ArenaCached>::alloc_in_arena(
+                        tcx,
+                        &tcx.query_system.arenas.$name,
+                        provided_value,
+                    )
+                } {
+                    // Otherwise, the provided value is the value (and `tcx` is unused).
+                    let _ = tcx;
+                    provided_value
+                });
                 erase::erase_val(value)
             }
 
