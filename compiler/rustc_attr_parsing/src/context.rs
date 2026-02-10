@@ -216,6 +216,7 @@ attribute_parsers!(
         Single<SanitizeParser>,
         Single<ShouldPanicParser>,
         Single<SkipDuringMethodDispatchParser>,
+        Single<TestRunnerParser>,
         Single<TransparencyParser>,
         Single<TypeLengthLimitParser>,
         Single<WindowsSubsystemParser>,
