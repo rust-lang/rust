@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::ffi::CString;
 
 use rustc_abi::AddressSpace;
@@ -6,13 +7,17 @@ use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, Instance, TypeVisitableExt};
+use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
 use rustc_session::config::CrateType;
+use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{Arch, RelocModel};
 use tracing::debug;
 
+use crate::abi::FnAbiLlvmExt;
+use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::errors::SymbolAlreadyDefined;
 use crate::type_of::LayoutLlvmExt;
@@ -45,7 +50,7 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         self.assume_dso_local(g, false);
 
         let attrs = self.tcx.codegen_instance_attrs(instance.def);
-        self.add_aliases(g, &attrs.foreign_item_symbol_aliases);
+        self.add_static_aliases(g, &attrs.foreign_item_symbol_aliases);
 
         self.instances.borrow_mut().insert(instance, g);
     }
@@ -59,11 +64,29 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
     ) {
         assert!(!instance.args.has_infer());
 
-        let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
+        let attrs = self.tcx.codegen_instance_attrs(instance.def);
+
+        let lldecl =
+            self.predefine_without_aliases(instance, &attrs, linkage, visibility, symbol_name);
+        self.add_function_aliases(instance, lldecl, &attrs, &attrs.foreign_item_symbol_aliases);
+
+        self.instances.borrow_mut().insert(instance, lldecl);
+    }
+}
+
+impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
+    fn predefine_without_aliases(
+        &self,
+        instance: Instance<'tcx>,
+        attrs: &Cow<'_, CodegenFnAttrs>,
+        linkage: Linkage,
+        visibility: Visibility,
+        symbol_name: &str,
+    ) -> &'ll llvm::Value {
+        let fn_abi: &FnAbi<'tcx, Ty<'tcx>> = self.fn_abi_of_instance(instance, ty::List::empty());
         let lldecl = self.declare_fn(symbol_name, fn_abi, Some(instance));
         llvm::set_linkage(lldecl, base::linkage_to_llvm(linkage));
-        let attrs = self.tcx.codegen_instance_attrs(instance.def);
-        base::set_link_section(lldecl, &attrs);
+        base::set_link_section(lldecl, attrs);
         if (linkage == Linkage::LinkOnceODR || linkage == Linkage::WeakODR)
             && self.tcx.sess.target.supports_comdat()
         {
@@ -84,20 +107,45 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
 
         self.assume_dso_local(lldecl, false);
 
-        self.add_aliases(lldecl, &attrs.foreign_item_symbol_aliases);
-
-        self.instances.borrow_mut().insert(instance, lldecl);
+        lldecl
     }
-}
 
-impl CodegenCx<'_, '_> {
-    fn add_aliases(&self, aliasee: &llvm::Value, aliases: &[(DefId, Linkage, Visibility)]) {
+    /// LLVM has the concept of an `alias`.
+    /// We need this for the "externally implementable items" feature,
+    /// though it's generally useful.
+    ///
+    /// On macos, though this might be a more general problem, function symbols
+    /// have a fixed target architecture. This is necessary, since macos binaries
+    /// may contain code for both ARM and x86 macs.
+    ///
+    /// LLVM *can* add attributes for target architecture to function symbols,
+    /// cannot do so for statics, but importantly, also cannot for aliases
+    /// *even* when aliases may refer to a function symbol.
+    ///
+    /// This is not a problem: instead of using LLVM aliases, we can just generate
+    /// a new function symbol (with target architecture!) which effectively comes down to:
+    ///
+    /// ```ignore (illustrative example)
+    /// fn alias_name(...args) {
+    ///     original_name(...args)
+    /// }
+    /// ```
+    ///
+    /// That's also an alias.
+    ///
+    /// This does mean that the alias symbol has a different address than the original symbol
+    /// (assuming no optimizations by LLVM occur). This is unacceptable for statics.
+    /// So for statics we do want to use LLVM aliases, which is fine,
+    /// since for those we don't care about target architecture anyway.
+    ///
+    /// So, this function is for static aliases. See [`add_function_aliases`](Self::add_function_aliases) for the alternative.
+    fn add_static_aliases(&self, aliasee: &llvm::Value, aliases: &[(DefId, Linkage, Visibility)]) {
         let ty = self.get_type_of_global(aliasee);
 
         for (alias, linkage, visibility) in aliases {
             let symbol_name = self.tcx.symbol_name(Instance::mono(self.tcx, *alias));
+            tracing::debug!("STATIC ALIAS: {alias:?} {linkage:?} {visibility:?}");
 
-            tracing::debug!("ALIAS: {alias:?} {linkage:?} {visibility:?}");
             let lldecl = llvm::add_alias(
                 self.llmod,
                 ty,
@@ -108,6 +156,54 @@ impl CodegenCx<'_, '_> {
 
             llvm::set_visibility(lldecl, base::visibility_to_llvm(*visibility));
             llvm::set_linkage(lldecl, base::linkage_to_llvm(*linkage));
+        }
+    }
+
+    /// See [`add_static_aliases`](Self::add_static_aliases) for docs.
+    fn add_function_aliases(
+        &self,
+        aliasee_instance: Instance<'tcx>,
+        aliasee: &'ll llvm::Value,
+        attrs: &Cow<'_, CodegenFnAttrs>,
+        aliases: &[(DefId, Linkage, Visibility)],
+    ) {
+        for (alias, linkage, visibility) in aliases {
+            let symbol_name = self.tcx.symbol_name(Instance::mono(self.tcx, *alias));
+            tracing::debug!("FUNCTION ALIAS: {alias:?} {linkage:?} {visibility:?}");
+
+            // predefine another copy of the original instance
+            // with a new symbol name
+            let alias_lldecl = self.predefine_without_aliases(
+                aliasee_instance,
+                attrs,
+                *linkage,
+                *visibility,
+                symbol_name.name,
+            );
+
+            let fn_abi: &FnAbi<'tcx, Ty<'tcx>> =
+                self.fn_abi_of_instance(aliasee_instance, ty::List::empty());
+
+            // both the alias and the aliasee have the same ty
+            let fn_ty = fn_abi.llvm_type(self);
+            let start_llbb = Builder::append_block(self, alias_lldecl, "start");
+            let mut start_bx = Builder::build(self, start_llbb);
+
+            let num_params = llvm::count_params(alias_lldecl);
+            let mut args = Vec::with_capacity(num_params as usize);
+            for index in 0..num_params {
+                args.push(llvm::get_param(alias_lldecl, index));
+            }
+
+            start_bx.tail_call(
+                fn_ty,
+                Some(attrs),
+                fn_abi,
+                aliasee,
+                &args,
+                None,
+                Some(aliasee_instance),
+            );
         }
     }
 
