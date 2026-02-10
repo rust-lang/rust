@@ -3,16 +3,17 @@ use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr, RtsanSettin
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs, TargetFeature,
 };
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};
+use rustc_span::sym;
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{Arch, FramePointer, SanitizerSet, StackProbeType, StackProtector};
 use smallvec::SmallVec;
 
 use crate::context::SimpleCx;
-use crate::errors::SanitizerMemtagRequiresMte;
+use crate::errors::{PackedStackBackchainNeedsSoftfloat, SanitizerMemtagRequiresMte};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{
     self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects, Value,
@@ -301,6 +302,36 @@ fn stackprotector_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll A
     Some(sspattr.create_attr(cx.llcx))
 }
 
+fn packed_stack_attr<'ll>(
+    cx: &SimpleCx<'ll>,
+    sess: &Session,
+    function_attributes: &Vec<TargetFeature>,
+) -> Option<&'ll Attribute> {
+    if sess.target.arch != Arch::S390x {
+        return None;
+    }
+    if !sess.opts.unstable_opts.packed_stack {
+        return None;
+    }
+
+    // The backchain and softfloat flags can be set via -Ctarget-features=...
+    // or via #[target_features(enable = ...)] so we have to check both possibilities
+    let have_backchain = sess.unstable_target_features.contains(&sym::backchain)
+        || function_attributes.iter().any(|feature| feature.name == sym::backchain);
+    let have_softfloat = sess.unstable_target_features.contains(&sym::soft_float)
+        || function_attributes.iter().any(|feature| feature.name == sym::soft_float);
+
+    // If both, backchain and packedstack, are enabled LLVM cannot generate valid function entry points
+    // with the default ABI. However if the softfloat flag is set LLVM will switch to the softfloat
+    // ABI, where this works.
+    if have_backchain && !have_softfloat {
+        sess.dcx().emit_err(PackedStackBackchainNeedsSoftfloat);
+        return None;
+    }
+
+    Some(llvm::CreateAttrString(cx.llcx, "packed-stack"))
+}
+
 pub(crate) fn target_cpu_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> &'ll Attribute {
     let target_cpu = llvm_util::target_cpu(sess);
     llvm::CreateAttrStringValue(cx.llcx, "target-cpu", target_cpu)
@@ -515,6 +546,9 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     }
     if let Some(align) = codegen_fn_attrs.alignment {
         llvm::set_alignment(llfn, align);
+    }
+    if let Some(packed_stack) = packed_stack_attr(cx, sess, &codegen_fn_attrs.target_features) {
+        to_add.push(packed_stack);
     }
     to_add.extend(patchable_function_entry_attrs(
         cx,
