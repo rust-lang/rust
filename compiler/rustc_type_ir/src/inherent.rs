@@ -13,7 +13,7 @@ use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{self as ty, CollectAndApply, Interner, UpcastFrom};
+use crate::{self as ty, ClauseKind, CollectAndApply, Interner, PredicateKind, UpcastFrom};
 
 pub trait Ty<I: Interner<Ty = Self>>:
     Copy
@@ -478,8 +478,27 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
         }
     }
 
-    // FIXME: Eventually uplift the impl out of rustc and make this defaulted.
-    fn allow_normalization(self) -> bool;
+    fn allow_normalization(self) -> bool {
+        match self.kind().skip_binder() {
+            PredicateKind::Clause(ClauseKind::WellFormed(_)) | PredicateKind::AliasRelate(..) => {
+                false
+            }
+            PredicateKind::Clause(ClauseKind::Trait(_))
+            | PredicateKind::Clause(ClauseKind::HostEffect(..))
+            | PredicateKind::Clause(ClauseKind::RegionOutlives(_))
+            | PredicateKind::Clause(ClauseKind::TypeOutlives(_))
+            | PredicateKind::Clause(ClauseKind::Projection(_))
+            | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
+            | PredicateKind::Clause(ClauseKind::UnstableFeature(_))
+            | PredicateKind::DynCompatible(_)
+            | PredicateKind::Subtype(_)
+            | PredicateKind::Coerce(_)
+            | PredicateKind::Clause(ClauseKind::ConstEvaluatable(_))
+            | PredicateKind::ConstEquate(_, _)
+            | PredicateKind::NormalizesTo(..)
+            | PredicateKind::Ambiguous => true,
+        }
+    }
 }
 
 pub trait Clause<I: Interner<Clause = Self>>:
