@@ -952,7 +952,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 self.sub_region_values(a, b)
             }
 
-            VerifyBound::IsEmpty => match min.kind() {
+            // An empty bound holds for an empty variable.
+            VerifyBound::AnyBound(bs) if bs.is_empty() => match min.kind() {
                 ty::ReVar(rid) => match var_values.values[rid] {
                     VarValue::ErrorValue => false,
                     VarValue::Empty(_) => true,

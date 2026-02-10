@@ -853,11 +853,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 self.eval_if_eq(infcx, generic_ty, lower_bound, *verify_if_eq_b)
             }
 
-            VerifyBound::IsEmpty => {
-                let lower_bound_scc = self.constraint_sccs.scc(lower_bound);
-                self.scc_values.elements_contained_in(lower_bound_scc).next().is_none()
-            }
-
             VerifyBound::OutlivedBy(r) => {
                 let r_vid = self.to_region_vid(*r);
                 self.eval_outlives(r_vid, lower_bound)
