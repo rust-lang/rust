@@ -15,10 +15,7 @@ use rustc_span::def_id::DefId;
 pub use self::caches::{
     DefIdCache, DefaultCache, QueryCache, QueryCacheKey, SingleCache, VecCache,
 };
-pub use self::job::{
-    QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryLatch, QueryMap, break_query_cycles,
-    print_query_stack, report_cycle,
-};
+pub use self::job::{QueryInfo, QueryJob, QueryJobId, QueryLatch, QueryWaiter};
 pub use self::plumbing::*;
 use crate::dep_graph::{DepKind, DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
 
@@ -52,7 +49,7 @@ pub struct QueryStackFrame<I> {
     pub dep_kind: DepKind,
     /// This hash is used to deterministically pick
     /// a query to remove cycles in the parallel compiler.
-    hash: Hash64,
+    pub hash: Hash64,
     pub def_id: Option<DefId>,
     /// A def-id that is extracted from a `Ty` in a query key
     pub def_id_for_ty_in_cycle: Option<DefId>,
@@ -160,11 +157,6 @@ pub trait QueryContext<'tcx>: HasDepContext {
     /// Gets a jobserver reference which is used to release then acquire
     /// a token while waiting on a query.
     fn jobserver_proxy(&self) -> &Proxy;
-
-    fn collect_active_jobs_from_all_queries(
-        self,
-        require_complete: bool,
-    ) -> Result<QueryMap<'tcx>, QueryMap<'tcx>>;
 
     /// Load a side effect associated to the node in the previous session.
     fn load_side_effect(

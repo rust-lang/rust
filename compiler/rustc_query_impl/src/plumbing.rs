@@ -28,14 +28,15 @@ use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::{DepNodeKey, FingerprintStyle, HasDepContext};
 use rustc_query_system::query::{
-    QueryCache, QueryContext, QueryJobId, QueryMap, QuerySideEffect, QueryStackDeferred,
-    QueryStackFrame, QueryStackFrameExtra,
+    QueryCache, QueryContext, QueryJobId, QuerySideEffect, QueryStackDeferred, QueryStackFrame,
+    QueryStackFrameExtra,
 };
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::def_id::LOCAL_CRATE;
 
 use crate::error::{QueryOverflow, QueryOverflowNote};
 use crate::execution::{all_inactive, force_query};
+use crate::job::{QueryMap, find_dep_kind_root};
 use crate::{QueryDispatcherUnerased, QueryFlags, SemiDynamicQueryDispatcher};
 
 /// Implements [`QueryContext`] for use by [`rustc_query_system`], since that
@@ -55,7 +56,7 @@ impl<'tcx> QueryCtxt<'tcx> {
         let query_map = self
             .collect_active_jobs_from_all_queries(true)
             .expect("failed to collect active queries");
-        let (info, depth) = job.find_dep_kind_root(query_map);
+        let (info, depth) = find_dep_kind_root(job, query_map);
 
         let suggested_limit = match self.tcx.recursion_limit() {
             Limit(0) => Limit(2),
@@ -116,6 +117,32 @@ impl<'tcx> QueryCtxt<'tcx> {
             tls::enter_context(&new_icx, compute)
         })
     }
+
+    /// Returns a map of currently active query jobs, collected from all queries.
+    ///
+    /// If `require_complete` is `true`, this function locks all shards of the
+    /// query results to produce a complete map, which always returns `Ok`.
+    /// Otherwise, it may return an incomplete map as an error if any shard
+    /// lock cannot be acquired.
+    ///
+    /// Prefer passing `false` to `require_complete` to avoid potential deadlocks,
+    /// especially when called from within a deadlock handler, unless a
+    /// complete map is needed and no deadlock is possible at this call site.
+    pub fn collect_active_jobs_from_all_queries(
+        self,
+        require_complete: bool,
+    ) -> Result<QueryMap<'tcx>, QueryMap<'tcx>> {
+        let mut jobs = QueryMap::default();
+        let mut complete = true;
+
+        for gather_fn in crate::PER_QUERY_GATHER_ACTIVE_JOBS_FNS.iter() {
+            if gather_fn(self.tcx, &mut jobs, require_complete).is_none() {
+                complete = false;
+            }
+        }
+
+        if complete { Ok(jobs) } else { Err(jobs) }
+    }
 }
 
 impl<'tcx> HasDepContext for QueryCtxt<'tcx> {
@@ -132,32 +159,6 @@ impl<'tcx> QueryContext<'tcx> for QueryCtxt<'tcx> {
     #[inline]
     fn jobserver_proxy(&self) -> &Proxy {
         &self.tcx.jobserver_proxy
-    }
-
-    /// Returns a map of currently active query jobs, collected from all queries.
-    ///
-    /// If `require_complete` is `true`, this function locks all shards of the
-    /// query results to produce a complete map, which always returns `Ok`.
-    /// Otherwise, it may return an incomplete map as an error if any shard
-    /// lock cannot be acquired.
-    ///
-    /// Prefer passing `false` to `require_complete` to avoid potential deadlocks,
-    /// especially when called from within a deadlock handler, unless a
-    /// complete map is needed and no deadlock is possible at this call site.
-    fn collect_active_jobs_from_all_queries(
-        self,
-        require_complete: bool,
-    ) -> Result<QueryMap<'tcx>, QueryMap<'tcx>> {
-        let mut jobs = QueryMap::default();
-        let mut complete = true;
-
-        for gather_fn in crate::PER_QUERY_GATHER_ACTIVE_JOBS_FNS.iter() {
-            if gather_fn(self.tcx, &mut jobs, require_complete).is_none() {
-                complete = false;
-            }
-        }
-
-        if complete { Ok(jobs) } else { Err(jobs) }
     }
 
     // Interactions with on_disk_cache
