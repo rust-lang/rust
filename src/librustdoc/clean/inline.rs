@@ -164,8 +164,8 @@ pub(crate) fn try_inline(
                 MacroKinds::BANG => ItemType::Macro,
                 MacroKinds::ATTR => ItemType::ProcAttribute,
                 MacroKinds::DERIVE => ItemType::ProcDerive,
-                _ if kinds.contains(MacroKinds::BANG) => ItemType::Macro,
-                _ => panic!("unsupported macro kind {kinds:?}"),
+                // Then it means it's more than one type so we default to "macro".
+                _ => ItemType::Macro,
             };
             record_extern_fqn(cx, did, type_kind);
             let first = try_inline_inner(cx, mac, did, name, import_def_id);
@@ -820,25 +820,25 @@ fn build_macro(
                 }),
                 None,
             ),
-            _ if macro_kinds.contains(MacroKinds::BANG) => {
-                let kind = clean::MacroItem(
+            _ => {
+                let mut kinds = Vec::new();
+                kinds.push(clean::MacroItem(
                     clean::Macro {
-                        source: utils::display_macro_source(cx, name, &def),
+                        source: utils::display_macro_source(tcx, name, &def),
                         macro_rules: def.macro_rules,
                     },
                     macro_kinds,
-                );
-                let mut ret = vec![];
+                ));
                 for kind in macro_kinds.iter().filter(|kind| *kind != MacroKinds::BANG) {
                     match kind {
-                        MacroKinds::ATTR => ret.push(clean::AttrMacroItem),
-                        MacroKinds::DERIVE => ret.push(clean::DeriveMacroItem),
+                        MacroKinds::ATTR => kinds.push(clean::AttrMacroItem),
+                        MacroKinds::DERIVE => kinds.push(clean::DeriveMacroItem),
                         _ => panic!("unsupported macro kind {kind:?}"),
                     }
                 }
-                (kind, Some(ret))
+                let kind = kinds.pop().expect("no supported macro kind found");
+                (kind, Some(kinds))
             }
-            _ => panic!("unsupported macro kind {macro_kinds:?}"),
         },
         LoadedMacro::ProcMacro(ext) => {
             // Proc macros can only have a single kind

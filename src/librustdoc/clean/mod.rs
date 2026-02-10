@@ -2869,7 +2869,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 ),
                 MacroKinds::ATTR => clean_proc_macro(item, &mut name, MacroKind::Attr, cx.tcx),
                 MacroKinds::DERIVE => clean_proc_macro(item, &mut name, MacroKind::Derive, cx.tcx),
-                _ if kinds.contains(MacroKinds::BANG) => {
+                _ => {
                     let kind = MacroItem(
                         Macro {
                             source: display_macro_source(cx.tcx, name, macro_def),
@@ -2905,7 +2905,6 @@ fn clean_maybe_renamed_item<'tcx>(
                     ret.push(mac);
                     return ret;
                 }
-                _ => panic!("unsupported macro kind {kinds:?}"),
             },
             // proc macros can have a name set by attributes
             ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
