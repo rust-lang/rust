@@ -228,3 +228,32 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcOutlivesParser {
     ]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcOutlives;
 }
+
+pub(crate) struct TestRunnerParser;
+
+impl<S: Stage> SingleAttributeParser<S> for TestRunnerParser {
+    const PATH: &[Symbol] = &[sym::test_runner];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const TEMPLATE: AttributeTemplate = template!(List: &["path"]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(list) = args.list() else {
+            cx.expected_list(cx.attr_span, args);
+            return None;
+        };
+
+        let Some(single) = list.single() else {
+            cx.expected_single_argument(list.span);
+            return None;
+        };
+
+        let Some(meta) = single.meta_item() else {
+            cx.unexpected_literal(single.span());
+            return None;
+        };
+
+        Some(AttributeKind::TestRunner(meta.path().0.clone()))
+    }
+}
