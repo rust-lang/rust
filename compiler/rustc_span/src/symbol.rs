@@ -373,7 +373,6 @@ symbols! {
         Str,
         String,
         StructuralPartialEq,
-        SubdiagMessage,
         Subdiagnostic,
         SymbolIntern,
         Sync,

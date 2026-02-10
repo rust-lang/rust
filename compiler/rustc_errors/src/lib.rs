@@ -57,8 +57,8 @@ use rustc_data_structures::sync::{DynSend, Lock};
 use rustc_data_structures::{AtomicRef, assert_matches};
 pub use rustc_error_messages::{
     DiagArg, DiagArgFromDisplay, DiagArgName, DiagArgValue, DiagMessage, FluentBundle, IntoDiagArg,
-    LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagMessage,
-    fallback_fluent_bundle, fluent_bundle, into_diag_arg_using_display,
+    LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, fallback_fluent_bundle,
+    fluent_bundle, into_diag_arg_using_display,
 };
 use rustc_hashes::Hash128;
 use rustc_lint_defs::LintExpectationId;
@@ -488,12 +488,12 @@ impl DiagCtxt {
         self.inner.borrow_mut().emitter = emitter;
     }
 
-    /// Translate `message` eagerly with `args` to `SubdiagMessage::Eager`.
+    /// Translate `message` eagerly with `args` to `DiagMessage::Eager`.
     pub fn eagerly_translate<'a>(
         &self,
         message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> SubdiagMessage {
+    ) -> DiagMessage {
         let inner = self.inner.borrow();
         inner.eagerly_translate(message, args)
     }
@@ -1423,13 +1423,13 @@ impl DiagCtxtInner {
         self.has_errors().or_else(|| self.delayed_bugs.get(0).map(|(_, guar)| guar).copied())
     }
 
-    /// Translate `message` eagerly with `args` to `SubdiagMessage::Eager`.
+    /// Translate `message` eagerly with `args` to `DiagMessage::Eager`.
     fn eagerly_translate<'a>(
         &self,
         message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
-    ) -> SubdiagMessage {
-        SubdiagMessage::Str(Cow::from(self.eagerly_translate_to_string(message, args)))
+    ) -> DiagMessage {
+        DiagMessage::Str(Cow::from(self.eagerly_translate_to_string(message, args)))
     }
 
     /// Translate `message` eagerly with `args` to `String`.
@@ -1450,10 +1450,9 @@ impl DiagCtxtInner {
     fn eagerly_translate_for_subdiag(
         &self,
         diag: &DiagInner,
-        msg: impl Into<SubdiagMessage>,
-    ) -> SubdiagMessage {
-        let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
-        self.eagerly_translate(msg, diag.args.iter())
+        msg: impl Into<DiagMessage>,
+    ) -> DiagMessage {
+        self.eagerly_translate(msg.into(), diag.args.iter())
     }
 
     fn flush_delayed(&mut self) {

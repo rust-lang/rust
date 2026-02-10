@@ -7,7 +7,7 @@ mod prelude_edition_lints;
 pub(crate) mod probe;
 mod suggest;
 
-use rustc_errors::{Applicability, Diag, SubdiagMessage};
+use rustc_errors::{Applicability, Diag, DiagMessage};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
@@ -127,7 +127,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn suggest_method_call(
         &self,
         err: &mut Diag<'_>,
-        msg: impl Into<SubdiagMessage> + std::fmt::Debug,
+        msg: impl Into<DiagMessage> + std::fmt::Debug,
         method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr: &hir::Expr<'tcx>,

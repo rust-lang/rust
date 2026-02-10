@@ -19,7 +19,7 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate core;
 
-use rustc_errors::{Applicability, DiagMessage, SubdiagMessage};
+use rustc_errors::{Applicability, DiagMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
 

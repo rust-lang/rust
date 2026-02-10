@@ -8,7 +8,7 @@
 //! Thank you!
 //! ~The `INTERNAL_METADATA_COLLECTOR` lint
 
-use rustc_errors::{Applicability, Diag, DiagMessage, MultiSpan, SubdiagMessage};
+use rustc_errors::{Applicability, Diag, DiagMessage, MultiSpan};
 #[cfg(debug_assertions)]
 use rustc_errors::{EmissionGuarantee, SubstitutionPart, Suggestions};
 use rustc_hir::HirId;
@@ -155,7 +155,7 @@ pub fn span_lint_and_help<T: LintContext>(
     span: impl Into<MultiSpan>,
     msg: impl Into<DiagMessage>,
     help_span: Option<Span>,
-    help: impl Into<SubdiagMessage>,
+    help: impl Into<DiagMessage>,
 ) {
     #[expect(clippy::disallowed_methods)]
     cx.span_lint(lint, span, |diag| {
@@ -216,7 +216,7 @@ pub fn span_lint_and_note<T: LintContext>(
     span: impl Into<MultiSpan>,
     msg: impl Into<DiagMessage>,
     note_span: Option<Span>,
-    note: impl Into<SubdiagMessage>,
+    note: impl Into<DiagMessage>,
 ) {
     #[expect(clippy::disallowed_methods)]
     cx.span_lint(lint, span, |diag| {
@@ -390,7 +390,7 @@ pub fn span_lint_and_sugg<T: LintContext>(
     lint: &'static Lint,
     sp: Span,
     msg: impl Into<DiagMessage>,
-    help: impl Into<SubdiagMessage>,
+    help: impl Into<DiagMessage>,
     sugg: String,
     applicability: Applicability,
 ) {

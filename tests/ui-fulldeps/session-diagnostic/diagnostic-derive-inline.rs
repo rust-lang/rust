@@ -26,7 +26,7 @@ extern crate rustc_middle;
 use rustc_middle::ty::Ty;
 
 extern crate rustc_errors;
-use rustc_errors::{Applicability, DiagMessage, ErrCode, MultiSpan, SubdiagMessage};
+use rustc_errors::{Applicability, DiagMessage, ErrCode, MultiSpan};
 
 extern crate rustc_session;
 
