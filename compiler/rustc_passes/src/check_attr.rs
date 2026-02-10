@@ -364,6 +364,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcVariance
                     | AttributeKind::RustcVarianceOfOpaques
                     | AttributeKind::ShouldPanic { .. }
+                    | AttributeKind::TestRunner(..)
                     | AttributeKind::ThreadLocal
                     | AttributeKind::TypeLengthLimit { .. }
                     | AttributeKind::UnstableFeatureBound(..)
@@ -411,9 +412,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_mir
                             // crate-level attrs, are checked below
                             | sym::feature
-                            | sym::register_tool
-                            | sym::test_runner,
-                            ..
+                            | sym::register_tool,                            ..
                         ] => {}
                         [name, rest@..] => {
                             match BUILTIN_ATTRIBUTE_MAP.get(name) {

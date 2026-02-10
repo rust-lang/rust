@@ -1003,20 +1003,6 @@ pub(crate) struct AsmUnsupportedClobberAbi {
 }
 
 #[derive(Diagnostic)]
-#[diag("`test_runner` argument must be a path")]
-pub(crate) struct TestRunnerInvalid {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#![test_runner(..)]` accepts exactly 1 argument")]
-pub(crate) struct TestRunnerNargs {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("expected token: `,`")]
 pub(crate) struct ExpectedCommaInList {
     #[primary_span]
