@@ -135,8 +135,7 @@ translation.
 ### Messages
 
 All of rustc's traditional diagnostic APIs (e.g. `struct_span_err` or `note`)
-take any message that can be converted into a `DiagMessage` (or
-`SubdiagMessage`).
+take any message that can be converted into a `DiagMessage`.
 
 [`rustc_error_messages::DiagMessage`] can represent legacy non-translatable
 diagnostic messages and translatable messages. Non-translatable messages are
@@ -149,14 +148,7 @@ with an attribute).
 Fluent resource (described in more detail below), or `DiagMessage`s will
 either be created in the macro-generated code of a diagnostic derive.
 
-`rustc_error_messages::SubdiagMessage` is similar, it can correspond to a
-legacy non-translatable diagnostic message or the name of an attribute to a
-Fluent message. Translatable `SubdiagMessage`s must be combined with a
-`DiagMessage` (using `DiagMessage::with_subdiagnostic_message`) to
-be emitted (an attribute name on its own is meaningless without a corresponding
-message identifier, which is what `DiagMessage` provides).
-
-Both `DiagMessage` and `SubdiagMessage` implement `Into` for any
+`DiagMessage`  implements `Into` for any
 type that can be converted into a string, and converts these into
 non-translatable diagnostics - this keeps all existing diagnostic calls
 working.
