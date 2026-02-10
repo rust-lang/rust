@@ -272,7 +272,7 @@ fn parse_alignment(node: &LitKind) -> Result<Align, &'static str> {
 pub(crate) struct AlignParser(Option<(Align, Span)>);
 
 impl AlignParser {
-    const PATH: &'static [Symbol] = &[sym::rustc_align];
+    const PATH: &[Symbol] = &[sym::rustc_align];
     const TEMPLATE: AttributeTemplate = template!(List: &["<alignment in bytes>"]);
 
     fn parse<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {
@@ -329,7 +329,7 @@ impl<S: Stage> AttributeParser<S> for AlignParser {
 pub(crate) struct AlignStaticParser(AlignParser);
 
 impl AlignStaticParser {
-    const PATH: &'static [Symbol] = &[sym::rustc_align_static];
+    const PATH: &[Symbol] = &[sym::rustc_align_static];
     const TEMPLATE: AttributeTemplate = AlignParser::TEMPLATE;
 
     fn parse<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {

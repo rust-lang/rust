@@ -5,6 +5,7 @@ use itertools::Itertools;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, a_or_an, listify, pluralize};
+use rustc_hir::attrs::DivergingBlockBehavior;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -45,29 +46,6 @@ rustc_index::newtype_index! {
     #[orderable]
     #[debug_format = "GenericIdx({})"]
     pub(crate) struct GenericIdx {}
-}
-
-#[derive(Clone, Copy, Default)]
-pub(crate) enum DivergingBlockBehavior {
-    /// This is the current stable behavior:
-    ///
-    /// ```rust
-    /// {
-    ///     return;
-    /// } // block has type = !, even though we are supposedly dropping it with `;`
-    /// ```
-    #[default]
-    Never,
-
-    /// Alternative behavior:
-    ///
-    /// ```ignore (very-unstable-new-attribute)
-    /// #![rustc_never_type_options(diverging_block_default = "unit")]
-    /// {
-    ///     return;
-    /// } // block has type = (), since we are dropping `!` from `return` with `;`
-    /// ```
-    Unit,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
