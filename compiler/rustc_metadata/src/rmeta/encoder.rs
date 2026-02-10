@@ -701,6 +701,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 )
             });
 
+        let exported_generic_symbol_hashes = stat!("exported-symbol-hashes", || {
+            self.encode_exported_generic_symbol_hashes(tcx.exported_generic_symbols(LOCAL_CRATE))
+        });
+
         // Encode the hygiene data.
         // IMPORTANT: this *must* be the last thing that we encode (other than `SourceMap`). The
         // process of encoding other items (e.g. `optimized_mir`) may cause us to load data from
@@ -768,6 +772,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 stable_order_of_exportable_impls,
                 exported_non_generic_symbols,
                 exported_generic_symbols,
+                exported_generic_symbol_hashes,
                 interpret_alloc_index,
                 tables,
                 syntax_contexts,
@@ -2256,6 +2261,30 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         empty_proc_macro!(self);
 
         self.lazy_array(exported_symbols.iter().cloned())
+    }
+
+    fn encode_exported_generic_symbol_hashes(
+        &mut self,
+        exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportInfo)],
+    ) -> LazyValue<exported_symbol_hash_map::ExportedSymbolHashTableRef> {
+        use exported_symbol_hash_map::{ExportedSymbolHashTable, ExportedSymbolHashTableRef};
+        use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+
+        let tcx = self.tcx;
+        let mut table = ExportedSymbolHashTable::with_capacity(exported_symbols.len(), 87);
+
+        for (sym, _) in exported_symbols {
+            if let Some(instance) = sym.to_instance(tcx) {
+                let hash = tcx.with_stable_hashing_context(|mut hcx| {
+                    let mut hasher = StableHasher::new();
+                    instance.hash_stable(&mut hcx, &mut hasher);
+                    hasher.finish()
+                });
+                table.insert(&hash, &());
+            }
+        }
+
+        self.lazy(ExportedSymbolHashTableRef::Owned(table))
     }
 
     fn encode_dylib_dependency_formats(&mut self) -> LazyArray<Option<LinkagePreference>> {

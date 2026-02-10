@@ -4205,6 +4205,7 @@ dependencies = [
  "rustc_expand",
  "rustc_feature",
  "rustc_fs_util",
+ "rustc_hashes",
  "rustc_hir",
  "rustc_hir_pretty",
  "rustc_incremental",

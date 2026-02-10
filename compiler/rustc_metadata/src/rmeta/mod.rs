@@ -6,6 +6,7 @@ pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob, TargetModifie
 use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
 pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
+use exported_symbol_hash_map::ExportedSymbolHashTableRef;
 pub(crate) use parameterized::ParameterizedOverTcx;
 use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
@@ -49,6 +50,7 @@ use crate::eii::EiiMapEncodedKeyValue;
 mod decoder;
 mod def_path_hash_map;
 mod encoder;
+mod exported_symbol_hash_map;
 mod parameterized;
 mod table;
 
@@ -276,6 +278,7 @@ pub(crate) struct CrateRoot {
     stable_order_of_exportable_impls: LazyArray<(DefIndex, usize)>,
     exported_non_generic_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
     exported_generic_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
+    exported_generic_symbol_hashes: LazyValue<ExportedSymbolHashTableRef>,
 
     syntax_contexts: SyntaxContextTable,
     expn_data: ExpnDataTable,

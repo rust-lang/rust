@@ -407,6 +407,7 @@ provide! { tcx, def_id, other, cdata,
     stable_order_of_exportable_impls => { tcx.arena.alloc(cdata.get_stable_order_of_exportable_impls(tcx).collect()) }
     exported_non_generic_symbols => { cdata.exported_non_generic_symbols(tcx) }
     exported_generic_symbols => { cdata.exported_generic_symbols(tcx) }
+    exported_generic_symbol_hashes => { cdata.exported_generic_symbol_hashes(tcx) }
 
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(tcx, def_id.index) }

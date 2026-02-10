@@ -1,7 +1,7 @@
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_macros::{Decodable, Encodable, HashStable, TyDecodable, TyEncodable};
 
-use crate::ty::{self, GenericArgsRef, Ty, TyCtxt};
+use crate::ty::{self, GenericArgsRef, Instance, InstanceKind, Ty, TyCtxt};
 
 /// The SymbolExportLevel of a symbols specifies from which kinds of crates
 /// the symbol will be exported. `C` symbols will be exported from any
@@ -57,6 +57,39 @@ pub enum ExportedSymbol<'tcx> {
 }
 
 impl<'tcx> ExportedSymbol<'tcx> {
+    /// Convert to the corresponding [`Instance`], if this is a generic symbol.
+    ///
+    /// Returns `None` for `NonGeneric`, `ThreadLocalShim`, `NoDefId`, and when
+    /// required lang items are unavailable.
+    pub fn to_instance(&self, tcx: TyCtxt<'tcx>) -> Option<Instance<'tcx>> {
+        match *self {
+            ExportedSymbol::Generic(def_id, args) => {
+                Some(Instance { def: InstanceKind::Item(def_id), args })
+            }
+            ExportedSymbol::DropGlue(ty) => {
+                let def_id = tcx.lang_items().drop_in_place_fn()?;
+                Some(Instance {
+                    def: InstanceKind::DropGlue(def_id, Some(ty)),
+                    args: tcx.mk_args(&[ty.into()]),
+                })
+            }
+            ExportedSymbol::AsyncDropGlueCtorShim(ty) => {
+                let def_id = tcx.lang_items().async_drop_in_place_fn()?;
+                Some(Instance {
+                    def: InstanceKind::AsyncDropGlueCtorShim(def_id, ty),
+                    args: tcx.mk_args(&[ty.into()]),
+                })
+            }
+            ExportedSymbol::AsyncDropGlue(def_id, ty) => Some(Instance {
+                def: InstanceKind::AsyncDropGlue(def_id, ty),
+                args: tcx.mk_args(&[ty.into()]),
+            }),
+            ExportedSymbol::NonGeneric(..)
+            | ExportedSymbol::ThreadLocalShim(..)
+            | ExportedSymbol::NoDefId(..) => None,
+        }
+    }
+
     /// This is the symbol name of an instance if it is instantiated in the
     /// local crate.
     pub fn symbol_name_for_local_instance(&self, tcx: TyCtxt<'tcx>) -> ty::SymbolName<'tcx> {

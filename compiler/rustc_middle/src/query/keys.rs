@@ -3,6 +3,7 @@
 use std::ffi::OsStr;
 
 use rustc_ast::tokenstream::TokenStream;
+use rustc_hashes::Hash128;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_query_system::dep_graph::DepNodeIndex;
@@ -293,6 +294,12 @@ impl<'tcx, T: Key> Key for ty::PseudoCanonicalInput<'tcx, T> {
 }
 
 impl Key for Symbol {
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
+impl Key for Hash128 {
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }

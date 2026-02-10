@@ -77,6 +77,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::ErrorGuaranteed;
+use rustc_hashes::Hash128;
 use rustc_hir::attrs::{EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{
@@ -2009,6 +2010,33 @@ rustc_queries! {
     ///       (like `Clone::clone` for example).
     query upstream_async_drop_glue_for(args: GenericArgsRef<'tcx>) -> Option<CrateNum> {
         desc { "available upstream async-drop-glue for `{:?}`", args }
+    }
+
+    /// Per-crate set of hashes of exported generic monomorphizations.
+    /// Built from a zero-copy odht table in rmeta — no `ExportedSymbol`
+    /// deserialization is needed to produce this.
+    query exported_generic_symbol_hashes(cnum: CrateNum) -> &'tcx [Hash128] {
+        desc { "getting exported generic symbol hashes for crate `{}`", cnum }
+        separate_provide_extern
+    }
+
+    /// Hash → candidate crates aggregate, built from all upstream crates'
+    /// odht hash tables. Only touches fixed-size `Hash128` data — no
+    /// `ExportedSymbol` deserialization.
+    query upstream_monomorphization_hashes(_: ())
+        -> &'tcx FxIndexMap<Hash128, smallvec::SmallVec<[CrateNum; 1]>>
+    {
+        arena_cache
+        desc { "collecting available upstream monomorphization hashes" }
+    }
+
+    /// Projection query (dep-tracking firewall) for hash-based upstream
+    /// monomorphization lookup. Projects a single hash from the aggregate
+    /// built by `upstream_monomorphization_hashes`.
+    query upstream_monomorphization_for_hash(hash: Hash128)
+        -> Option<&'tcx smallvec::SmallVec<[CrateNum; 1]>>
+    {
+        desc { "looking up upstream monomorphization candidates by hash" }
     }
 
     /// Returns a list of all `extern` blocks of a crate.
