@@ -45,6 +45,11 @@ pub(crate) fn inline_attr<'ll, 'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,
 ) -> Option<&'ll Attribute> {
+    if tcx.has_inline_always_override(instance) {
+        eprintln!("Applying override");
+        return Some(AttributeKind::AlwaysInline.create_attr(cx.llcx));
+    }
+
     // `optnone` requires `noinline`
     let codegen_fn_attrs = tcx.codegen_fn_attrs(instance.def_id());
     let inline = match (codegen_fn_attrs.inline, &codegen_fn_attrs.optimize) {
