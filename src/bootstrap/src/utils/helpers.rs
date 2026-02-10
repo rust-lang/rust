@@ -185,6 +185,17 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
     }
 }
 
+/// Detects a symlink or a junction on Windows
+pub fn is_symlink_dir(_metadata: &fs::Metadata) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::FileTypeExt;
+        _metadata.file_type().is_symlink_dir()
+    }
+    #[cfg(not(windows))]
+    false
+}
+
 /// Return the host target on which we are currently running.
 pub fn get_host_target() -> TargetSelection {
     TargetSelection::from_user(env!("BUILD_TRIPLE"))
