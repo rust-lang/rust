@@ -49,6 +49,12 @@ pub enum TypeKind {
     Slice(Slice),
     /// Dynamic Traits.
     DynTrait(DynTrait),
+    /// Structs.
+    Struct(Struct),
+    /// Enums.
+    Enum(Enum),
+    /// Unions.
+    Union(Union),
     /// Primitive boolean type.
     Bool(Bool),
     /// Primitive character type.
@@ -81,6 +87,8 @@ pub struct Tuple {
 #[non_exhaustive]
 #[unstable(feature = "type_info", issue = "146922")]
 pub struct Field {
+    /// The name of the field.
+    pub name: &'static str,
     /// The field's type.
     pub ty: TypeId,
     /// Offset in bytes from the parent type
@@ -135,6 +143,95 @@ pub struct Trait {
     pub ty: TypeId,
     /// Whether the trait is an auto trait
     pub is_auto: bool,
+}
+
+/// Compile-time type information about arrays.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Struct {
+    /// Instantiated generics of the struct.
+    pub generics: &'static [Generic],
+    /// All fields of the struct.
+    pub fields: &'static [Field],
+    /// Whether the struct field list is non-exhaustive.
+    pub non_exhaustive: bool,
+}
+
+/// Compile-time type information about unions.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Union {
+    /// Instantiated generics of the union.
+    pub generics: &'static [Generic],
+    /// All fields of the union.
+    pub fields: &'static [Field],
+}
+
+/// Compile-time type information about enums.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Enum {
+    /// Instantiated generics of the enum.
+    pub generics: &'static [Generic],
+    /// All variants of the enum.
+    pub variants: &'static [Variant],
+    /// Whether the enum variant list is non-exhaustive.
+    pub non_exhaustive: bool,
+}
+
+/// Compile-time type information about variants of enums.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Variant {
+    /// The name of the variant.
+    pub name: &'static str,
+    /// All fields of the variant.
+    pub fields: &'static [Field],
+    /// Whether the enum variant fields is non-exhaustive.
+    pub non_exhaustive: bool,
+}
+
+/// Compile-time type information about instantiated generics of structs, enum and union variants.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub enum Generic {
+    /// Lifetimes.
+    Lifetime(Lifetime),
+    /// Types.
+    Type(GenericType),
+    /// Const parameters.
+    Const(Const),
+}
+
+/// Compile-time type information about generic lifetimes.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Lifetime {
+    // No additional information to provide for now.
+}
+
+/// Compile-time type information about instantiated generic types.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct GenericType {
+    /// The type itself.
+    pub ty: TypeId,
+}
+
+/// Compile-time type information about generic const parameters.
+#[derive(Debug)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Const {
+    /// The const's type.
+    pub ty: TypeId,
 }
 
 /// Compile-time type information about `bool`.

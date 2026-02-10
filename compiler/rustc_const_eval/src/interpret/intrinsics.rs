@@ -13,7 +13,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{FloatTy, PolyExistentialPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{FloatTy, PolyExistentialPredicate, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_span::{Symbol, sym};
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
@@ -73,6 +73,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         ty: Ty<'tcx>,
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()> {
+        debug_assert!(
+            !ty.has_erasable_regions(),
+            "type {ty:?} has regions that need erasing before writing a TypeId",
+        );
+
         let tcx = self.tcx;
         let type_id_hash = tcx.type_id_hash(ty).as_u128();
         let op = self.const_val_to_op(
