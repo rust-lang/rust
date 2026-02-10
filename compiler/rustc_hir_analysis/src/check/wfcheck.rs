@@ -1569,11 +1569,40 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
 
     let predicates = predicates.instantiate_identity(tcx);
 
+    let assoc_const_obligations: Vec<_> = predicates
+        .predicates
+        .iter()
+        .copied()
+        .zip(predicates.spans.iter().copied())
+        .filter_map(|(clause, sp)| {
+            let proj = clause.as_projection_clause()?;
+            let pred_binder = proj
+                .map_bound(|pred| {
+                    pred.term.as_const().map(|ct| {
+                        let assoc_const_ty = tcx
+                            .type_of(pred.projection_term.def_id)
+                            .instantiate(tcx, pred.projection_term.args);
+                        ty::ClauseKind::ConstArgHasType(ct, assoc_const_ty)
+                    })
+                })
+                .transpose();
+            pred_binder.map(|pred_binder| {
+                let cause = traits::ObligationCause::new(
+                    sp,
+                    wfcx.body_def_id,
+                    ObligationCauseCode::WhereClause(def_id.to_def_id(), sp),
+                );
+                Obligation::new(tcx, cause, wfcx.param_env, pred_binder)
+            })
+        })
+        .collect();
+
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
         traits::wf::clause_obligations(infcx, wfcx.param_env, wfcx.body_def_id, p, sp)
     });
-    let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();
+    let obligations: Vec<_> =
+        wf_obligations.chain(default_obligations).chain(assoc_const_obligations).collect();
     wfcx.register_obligations(obligations);
 }
 
