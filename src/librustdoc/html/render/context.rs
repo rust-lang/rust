@@ -10,6 +10,7 @@ use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
+use rustc_hir::def::MacroKinds;
 use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -905,7 +906,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let buf = self.render_item(item, false);
         // buf will be empty if the item is stripped and there is no redirect for it
         if !buf.is_empty() {
-            if !self.info.render_redirect_pages {
+            if !self.info.render_redirect_pages
+                && !matches!(item.kind, clean::ItemKind::MacroItem(_, kinds) if !kinds.contains(MacroKinds::BANG))
+            {
                 self.shared.all.borrow_mut().append(full_path(self, item), &item);
             }
 
