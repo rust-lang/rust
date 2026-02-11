@@ -962,15 +962,6 @@ impl SyntaxExtension {
 
         let stability = find_attr!(attrs, AttributeKind::Stability { stability, .. } => *stability);
 
-        // FIXME(jdonszelmann): make it impossible to miss the or_else in the typesystem
-        if let Some(sp) =
-            find_attr!(attrs, AttributeKind::RustcConstStability { span, .. } => *span)
-        {
-            sess.dcx().emit_err(errors::MacroConstStability {
-                span: sp,
-                head_span: sess.source_map().guess_head_span(span),
-            });
-        }
         if let Some(sp) = find_attr!(attrs, AttributeKind::RustcBodyStability{ span, .. } => *span)
         {
             sess.dcx().emit_err(errors::MacroBodyStability {
