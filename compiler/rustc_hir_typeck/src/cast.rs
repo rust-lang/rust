@@ -572,6 +572,17 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 let metadata = known_metadata.unwrap_or("type-specific metadata");
                 let known_wide = known_metadata.is_some();
                 let span = self.cast_span;
+                let param_note = (!known_wide)
+                    .then(|| match cast_ty.kind() {
+                        ty::RawPtr(pointee, _) => match pointee.kind() {
+                            ty::Param(param) => {
+                                Some(errors::IntToWideParamNote { param: param.name })
+                            }
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .flatten();
                 fcx.dcx().emit_err(errors::IntToWide {
                     span,
                     metadata,
@@ -579,6 +590,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     cast_ty,
                     expr_if_nightly,
                     known_wide,
+                    param_note,
                 });
             }
             CastError::UnknownCastPtrKind | CastError::UnknownExprPtrKind => {
