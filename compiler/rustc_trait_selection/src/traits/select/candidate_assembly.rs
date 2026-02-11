@@ -312,7 +312,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // `async`/`gen` constructs get lowered to a special kind of coroutine that
             // should *not* `impl Coroutine`.
             ty::Coroutine(did, ..) if self.tcx().is_general_coroutine(*did) => {
-                debug!(?self_ty, ?obligation, "assemble_coroutine_candidates",);
+                debug!(?self_ty, ?obligation, "assemble_coroutine_candidates");
 
                 candidates.vec.push(CoroutineCandidate);
             }
@@ -334,7 +334,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // async constructs get lowered to a special kind of coroutine that
             // should directly `impl Future`.
             if self.tcx().coroutine_is_async(*did) {
-                debug!(?self_ty, ?obligation, "assemble_future_candidates",);
+                debug!(?self_ty, ?obligation, "assemble_future_candidates");
 
                 candidates.vec.push(FutureCandidate);
             }
@@ -352,7 +352,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if let ty::Coroutine(did, ..) = self_ty.kind()
             && self.tcx().coroutine_is_gen(*did)
         {
-            debug!(?self_ty, ?obligation, "assemble_iterator_candidates",);
+            debug!(?self_ty, ?obligation, "assemble_iterator_candidates");
 
             candidates.vec.push(IteratorCandidate);
         }
@@ -378,7 +378,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // gen constructs get lowered to a special kind of coroutine that
             // should directly `impl AsyncIterator`.
             if self.tcx().coroutine_is_async_gen(did) {
-                debug!(?self_ty, ?obligation, "assemble_iterator_candidates",);
+                debug!(?self_ty, ?obligation, "assemble_iterator_candidates");
 
                 // Can only confirm this candidate if we have constrained
                 // the `Yield` type to at least `Poll<Option<?0>>`..
