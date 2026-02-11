@@ -1,8 +1,11 @@
 error[E0277]: the trait bound `String: Borrow<&str>` is not satisfied
-  --> $DIR/point-at-index-for-obligation-failure.rs:5:9
+  --> $DIR/point-at-index-for-obligation-failure.rs:4:14
    |
-LL |         &s
-   |         ^^ the trait `Borrow<&str>` is not implemented for `String`
+LL |       let _b = a[
+   |  ______________^
+LL | |         &s
+LL | |     ];
+   | |_____^ the trait `Borrow<&str>` is not implemented for `String`
    |
 help: the trait `Borrow<&_>` is not implemented for `String`
       but trait `Borrow<_>` is implemented for it
