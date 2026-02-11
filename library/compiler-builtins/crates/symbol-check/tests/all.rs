@@ -2,7 +2,6 @@ use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::LazyLock;
 
 use assert_cmd::assert::Assert;
 use assert_cmd::cargo::cargo_bin_cmd;
@@ -13,6 +12,7 @@ trait AssertExt {
 }
 
 impl AssertExt for Assert {
+    #[track_caller]
     fn stderr_contains(self, s: &str) -> Self {
         let out = String::from_utf8_lossy(&self.get_output().stderr);
         assert!(out.contains(s), "looking for: `{s}`\nout:\n```\n{out}\n```");
@@ -22,18 +22,19 @@ impl AssertExt for Assert {
 
 #[test]
 fn test_duplicates() {
+    let t = TestTarget::from_env();
     let dir = tempdir().unwrap();
     let dup_out = dir.path().join("dup.o");
     let lib_out = dir.path().join("libfoo.rlib");
 
     // For the "bad" file, we need duplicate symbols from different object files in the archive. Do
     // this reliably by building an archive and a separate object file then merging them.
-    rustc_build(&input_dir().join("duplicates.rs"), &lib_out, |cmd| cmd);
-    rustc_build(&input_dir().join("duplicates.rs"), &dup_out, |cmd| {
+    t.rustc_build(&input_dir().join("duplicates.rs"), &lib_out, |cmd| cmd);
+    t.rustc_build(&input_dir().join("duplicates.rs"), &dup_out, |cmd| {
         cmd.arg("--emit=obj")
     });
 
-    let mut ar = cc_build().get_archiver();
+    let mut ar = t.cc_build().get_archiver();
 
     if ar.get_program().to_string_lossy().contains("lib.exe") {
         let mut out_arg = OsString::from("-out:");
@@ -48,10 +49,10 @@ fn test_duplicates() {
             .stderr(Stdio::null())
             .arg(&lib_out);
     }
-    let status = ar.arg(&dup_out).status().unwrap();
-    assert!(status.success());
 
-    let assert = cargo_bin_cmd!().arg("--check").arg(&lib_out).assert();
+    run(ar.arg(&dup_out));
+
+    let assert = t.symcheck_exe().arg(&lib_out).assert();
     assert
         .failure()
         .stderr_contains("duplicate symbols")
@@ -62,10 +63,11 @@ fn test_duplicates() {
 
 #[test]
 fn test_core_symbols() {
+    let t = TestTarget::from_env();
     let dir = tempdir().unwrap();
     let lib_out = dir.path().join("libfoo.rlib");
-    rustc_build(&input_dir().join("core_symbols.rs"), &lib_out, |cmd| cmd);
-    let assert = cargo_bin_cmd!().arg("--check").arg(&lib_out).assert();
+    t.rustc_build(&input_dir().join("core_symbols.rs"), &lib_out, |cmd| cmd);
+    let assert = t.symcheck_exe().arg(&lib_out).assert();
     assert
         .failure()
         .stderr_contains("found 1 undefined symbols from core")
@@ -73,40 +75,24 @@ fn test_core_symbols() {
 }
 
 #[test]
-fn test_good() {
+fn test_good_lib() {
+    let t = TestTarget::from_env();
     let dir = tempdir().unwrap();
     let lib_out = dir.path().join("libfoo.rlib");
-    rustc_build(&input_dir().join("good.rs"), &lib_out, |cmd| cmd);
-    let assert = cargo_bin_cmd!().arg("--check").arg(&lib_out).assert();
+    t.rustc_build(&input_dir().join("good.rs"), &lib_out, |cmd| cmd);
+    let assert = t.symcheck_exe().arg(&lib_out).assert();
     assert.success();
 }
 
-/// Build i -> o with optional additional configuration.
-fn rustc_build(i: &Path, o: &Path, mut f: impl FnMut(&mut Command) -> &mut Command) {
-    let mut cmd = Command::new("rustc");
-    cmd.arg(i)
-        .arg("--target")
-        .arg(target())
-        .arg("--crate-type=lib")
-        .arg("-o")
-        .arg(o);
-    f(&mut cmd);
-    let status = cmd.status().unwrap();
-    assert!(status.success());
+/// Since symcheck is a hostprog, the target we want to build and test symcheck for may not be the
+/// same as the host target.
+struct TestTarget {
+    triple: String,
 }
 
-/// Configure `cc` with the host and target.
-fn cc_build() -> cc::Build {
-    let mut b = cc::Build::new();
-    b.host(env!("HOST")).target(&target());
-    b
-}
-
-/// Symcheck runs on the host but we want to verify that we find issues on all targets, so
-/// the cross target may be specified.
-fn target() -> String {
-    static TARGET: LazyLock<String> = LazyLock::new(|| {
-        let target = match env::var("SYMCHECK_TEST_TARGET") {
+impl TestTarget {
+    fn from_env() -> Self {
+        let triple = match env::var("SYMCHECK_TEST_TARGET") {
             Ok(t) => t,
             // Require on CI so we don't accidentally always test the native target
             _ if env::var("CI").is_ok() => panic!("SYMCHECK_TEST_TARGET must be set in CI"),
@@ -114,13 +100,50 @@ fn target() -> String {
             Err(_) => env!("HOST").to_string(),
         };
 
-        println!("using target {target}");
-        target
-    });
+        println!("using target {triple}");
+        Self { triple }
+    }
 
-    TARGET.clone()
+    /// Build i -> o with optional additional configuration.
+    fn rustc_build(&self, i: &Path, o: &Path, mut f: impl FnMut(&mut Command) -> &mut Command) {
+        let mut cmd = Command::new("rustc");
+        cmd.arg(i)
+            .arg("--target")
+            .arg(&self.triple)
+            .arg("--crate-type=lib")
+            .arg("-o")
+            .arg(o);
+        f(&mut cmd);
+        run(&mut cmd);
+    }
+
+    /// Configure `cc` with the host and target.
+    fn cc_build(&self) -> cc::Build {
+        let mut b = cc::Build::new();
+        b.host(env!("HOST"))
+            .target(&self.triple)
+            .opt_level(0)
+            .cargo_debug(true)
+            .cargo_metadata(false);
+        b
+    }
+
+    fn symcheck_exe(&self) -> assert_cmd::Command {
+        let mut cmd = cargo_bin_cmd!();
+        cmd.arg("--check");
+        cmd
+    }
 }
 
 fn input_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/input")
+}
+
+#[track_caller]
+fn run(cmd: &mut Command) {
+    eprintln!("+ {cmd:?}");
+    let out = cmd.output().unwrap();
+    println!("{}", String::from_utf8_lossy(&out.stdout));
+    eprintln!("{}", String::from_utf8_lossy(&out.stderr));
+    assert!(out.status.success(), "{:?}", out.status);
 }
