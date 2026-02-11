@@ -1,0 +1,30 @@
+error[E0120]: the `Drop` trait may only be implemented for local structs, enums, and unions
+  --> $DIR/weird-impls.rs:10:15
+   |
+LL | impl Drop for field_of!(MyStruct, 0) {
+   |               ^^^^^^^^^^^^^^^^^^^^^^ must be a struct, enum, or union in the current crate
+   |
+   = note: this error originates in the macro `field_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0321]: cross-crate traits with a default impl, like `Send`, can only be implemented for a struct/enum type, not `field_of!(MyStruct, 0)`
+  --> $DIR/weird-impls.rs:15:1
+   |
+LL | unsafe impl Send for field_of!(MyStruct, 0) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
+
+error[E0322]: explicit impls for the `Field` trait are not permitted
+  --> $DIR/weird-impls.rs:21:1
+   |
+LL | unsafe impl Field for field_of!(MyStruct2, 0) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `Field` not allowed
+
+error[E0322]: explicit impls for the `Field` trait are not permitted
+  --> $DIR/weird-impls.rs:30:1
+   |
+LL | unsafe impl Field for MyField {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `Field` not allowed
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0120, E0321, E0322.
+For more information about an error, try `rustc --explain E0120`.

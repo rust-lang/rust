@@ -298,6 +298,7 @@ fn type_trailing_braced_mac_call(mut ty: &ast::Ty) -> Option<&ast::MacCall> {
             | ast::TyKind::ImplicitSelf
             | ast::TyKind::CVarArgs
             | ast::TyKind::Pat(..)
+            | ast::TyKind::FieldOf(..)
             | ast::TyKind::Dummy
             | ast::TyKind::Err(..) => break None,
         }

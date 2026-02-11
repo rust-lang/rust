@@ -1047,6 +1047,13 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v, AmbigArg>) -
             try_visit!(visitor.visit_ty_unambig(ty));
             try_visit!(visitor.visit_pattern_type_pattern(pat));
         }
+        TyKind::FieldOf(ty, TyFieldPath { variant, field }) => {
+            try_visit!(visitor.visit_ty_unambig(ty));
+            if let Some(variant) = *variant {
+                try_visit!(visitor.visit_ident(variant));
+            }
+            try_visit!(visitor.visit_ident(*field));
+        }
     }
     V::Result::output()
 }

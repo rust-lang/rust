@@ -1867,6 +1867,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 Infer,
                 Alias,
                 Pat,
+                FRT,
                 Foreign
             )?;
 

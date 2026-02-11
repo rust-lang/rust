@@ -216,6 +216,8 @@ fn push_debuginfo_type_name<'tcx>(
                 write!(output, "{:?}", t).unwrap();
             }
         }
+        // FIXME(FRTs): implement debuginfo for field representing types
+        ty::FRT(..) => todo!(),
         ty::Slice(inner_type) => {
             if cpp_like_debuginfo {
                 output.push_str("slice2$<");

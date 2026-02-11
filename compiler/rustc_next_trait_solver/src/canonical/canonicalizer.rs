@@ -381,6 +381,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::Pat(_, _)
+            | ty::FRT(_, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(..)
             | ty::UnsafeBinder(_)

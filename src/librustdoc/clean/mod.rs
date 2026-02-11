@@ -1808,6 +1808,14 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         }
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
         TyKind::Pat(ty, pat) => Type::Pat(Box::new(clean_ty(ty, cx)), format!("{pat:?}").into()),
+        TyKind::FieldOf(ty, hir::TyFieldPath { variant, field }) => {
+            let field_str = if let Some(variant) = variant {
+                format!("{variant}.{field}")
+            } else {
+                format!("{field}")
+            };
+            Type::FRT(Box::new(clean_ty(ty, cx)), field_str.into())
+        }
         TyKind::Array(ty, const_arg) => {
             // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
             // as we currently do not supply the parent generics to anonymous constants
@@ -2049,6 +2057,26 @@ pub(crate) fn clean_middle_ty<'tcx>(
             Box::new(clean_middle_ty(bound_ty.rebind(ty), cx, None, None)),
             format!("{pat:?}").into_boxed_str(),
         ),
+        ty::FRT(ty, field) => {
+            let field_str = match ty.kind() {
+                ty::Adt(def, _) => {
+                    if def.is_enum() {
+                        let variant = &def.variants()[field.variant];
+                        format!("{}.{}", variant.name, variant.fields[field.field].name)
+                    } else {
+                        format!("{}", def.non_enum_variant().fields[field.field].name)
+                    }
+                }
+                ty::Tuple(_) => {
+                    format!("{}", field.field.index())
+                }
+                _ => bug!("unexpected ty in resolved FRT: {ty}"),
+            };
+            Type::FRT(
+                Box::new(clean_middle_ty(bound_ty.rebind(ty), cx, None, None)),
+                field_str.into_boxed_str(),
+            )
+        }
         ty::Array(ty, n) => {
             let n = cx.tcx.normalize_erasing_regions(cx.typing_env(), n);
             let n = print_const(cx, n);

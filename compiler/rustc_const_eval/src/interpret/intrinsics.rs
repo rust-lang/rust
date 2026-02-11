@@ -222,6 +222,27 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 self.write_scalar(Scalar::from_target_usize(offset, self), dest)?;
             }
+            sym::field_offset => {
+                let frt_ty = instance.args.type_at(0);
+
+                let (ty, field) = match frt_ty.kind() {
+                    &ty::FRT(ty, field) => (ty, field),
+                    ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) | ty::Infer(..) => {
+                        // This can happen in code which is generic over the field type.
+                        throw_inval!(TooGeneric)
+                    }
+                    _ => {
+                        span_bug!(self.cur_span(), "expected field representing type, got {frt_ty}")
+                    }
+                };
+                let layout = self.layout_of(ty)?;
+                let cx = ty::layout::LayoutCx::new(*self.tcx, self.typing_env);
+
+                let layout = layout.for_variant(&cx, field.variant);
+                let offset = layout.fields.offset(field.field.index()).bytes();
+
+                self.write_scalar(Scalar::from_target_usize(offset, self), dest)?;
+            }
             sym::vtable_for => {
                 let tp_ty = instance.args.type_at(0);
                 let result_ty = instance.args.type_at(1);
@@ -300,6 +321,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     | ty::UnsafeBinder(_)
                     | ty::Never
                     | ty::Tuple(_)
+                    | ty::FRT(..)
                     | ty::Error(_) => ConstValue::from_target_usize(0u64, &tcx),
                 };
                 let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
