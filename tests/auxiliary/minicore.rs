@@ -229,6 +229,10 @@ impl_marker_trait!(
     ]
 );
 
+#[lang = "allow_shared_static"]
+trait AllowSharedStatic {}
+impl<T: PointeeSized + Sync> AllowSharedStatic for T {}
+
 #[lang = "drop_in_place"]
 fn drop_in_place<T>(_: *mut T) {}
 

@@ -9,6 +9,7 @@ help: the trait `Sync` is not implemented for `Foo`
    |
 LL | struct Foo;
    | ^^^^^^^^^^
+   = note: required for `Foo` to implement `AllowSharedStatic`
    = note: shared static variables must have a type that implements `Sync`
 
 error: aborting due to 1 previous error

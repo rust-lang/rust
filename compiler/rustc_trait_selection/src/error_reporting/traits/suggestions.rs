@@ -3400,6 +3400,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ));
             }
             ObligationCauseCode::SharedStatic => {
+                // TODO: Add note about `UnsafeCell` here too?
                 err.note("shared static variables must have a type that implements `Sync`");
             }
             ObligationCauseCode::BuiltinDerived(ref data) => {

@@ -11,9 +11,9 @@ pub trait PointeeSized {}
 pub trait MetaSized: PointeeSized {}
 #[lang = "sized"]
 pub trait Sized: MetaSized {}
-#[lang = "sync"]
-trait Sync {}
-impl Sync for i32 {}
+#[lang = "allow_shared_static"]
+trait AllowSharedStatic {}
+impl AllowSharedStatic for i32 {}
 #[lang = "copy"]
 pub trait Copy {}
 impl Copy for i32 {}

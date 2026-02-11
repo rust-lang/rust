@@ -17,9 +17,9 @@ pub trait MetaSized: PointeeSized {}
 #[lang = "sized"]
 pub trait Sized: MetaSized {}
 
-#[lang = "sync"]
-trait Sync {}
-impl<T> Sync for T {}
+#[lang = "allow_shared_static"]
+trait AllowSharedStatic {}
+impl<T: PointeeSized> AllowSharedStatic for T {}
 #[lang = "copy"]
 trait Copy {}
 #[lang = "freeze"]

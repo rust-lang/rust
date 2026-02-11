@@ -111,6 +111,10 @@ unsafe impl Sync for char {}
 unsafe impl<'a, T: PointeeSized> Sync for &'a T {}
 unsafe impl Sync for [u8; 16] {}
 
+#[lang = "allow_shared_static"]
+unsafe trait AllowSharedStatic {}
+unsafe impl<T: PointeeSized + Sync> AllowSharedStatic for T {}
+
 #[lang = "freeze"]
 unsafe auto trait Freeze {}
 

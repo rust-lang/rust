@@ -104,6 +104,10 @@ unsafe impl Sync for f32 {}
 unsafe impl<'a, T: PointeeSized> Sync for &'a T {}
 unsafe impl<T: Sync, const N: usize> Sync for [T; N] {}
 
+#[lang = "allow_shared_static"]
+unsafe trait AllowSharedStatic {}
+unsafe impl<T: PointeeSized + Sync> AllowSharedStatic for T {}
+
 #[lang = "freeze"]
 unsafe auto trait Freeze {}
 

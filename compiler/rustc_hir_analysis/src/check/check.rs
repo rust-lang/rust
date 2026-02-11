@@ -770,7 +770,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             check_static_linkage(tcx, def_id);
             let ty = tcx.type_of(def_id).instantiate_identity();
             res = res.and(wfcheck::check_static_item(
-                tcx, def_id, ty, /* should_check_for_sync */ true,
+                tcx, def_id, ty, /* should_check_allow_in_shared_static */ true,
             ));
 
             // Only `Node::Item` and `Node::ForeignItem` still have HIR based
