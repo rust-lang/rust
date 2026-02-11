@@ -951,6 +951,34 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                         ty::Binder::dummy(ty::PredicateKind::DynCompatible(principal)),
                     ));
                 }
+
+                if !t.has_escaping_bound_vars() {
+                    for projection in data.projection_bounds() {
+                        let pred_binder = projection
+                            .with_self_ty(tcx, t)
+                            .map_bound(|p| {
+                                p.term.as_const().map(|ct| {
+                                    let assoc_const_ty = tcx
+                                        .type_of(p.projection_term.def_id)
+                                        .instantiate(tcx, p.projection_term.args);
+                                    ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(
+                                        ct,
+                                        assoc_const_ty,
+                                    ))
+                                })
+                            })
+                            .transpose();
+                        if let Some(pred_binder) = pred_binder {
+                            self.out.push(traits::Obligation::with_depth(
+                                tcx,
+                                self.cause(ObligationCauseCode::WellFormed(None)),
+                                self.recursion_depth,
+                                self.param_env,
+                                pred_binder,
+                            ));
+                        }
+                    }
+                }
             }
 
             // Inference variables are the complicated case, since we don't
