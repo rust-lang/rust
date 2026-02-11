@@ -34,46 +34,46 @@ fn main() {
     {
         let _x = format_args!("{Foo:?}{Foo:?}");
     }
-    // TODO: Increased by 2, as `Foo` is constructed for each captured `Foo`.
-    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 3);
+    // Increased by 2, as `Foo` is constructed for each captured `Foo`.
+    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 4);
     {
         let _x = format_args!("{FOO:?}{FOO:?}");
     }
-    // TODO: Increased by 2, as `Foo` is constructed for each captured `FOO`.
-    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 4);
+    // Increased by 2, as `Foo` is constructed for each captured `FOO`.
+    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 6);
 
     {
         let _x = format_args!("{:?}{0:?}", Foo);
     }
     // Increased by 1, as `Foo` is constructed just once as an explicit argument.
-    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 5);
+    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 7);
     {
         let _x = format_args!("{:?}{0:?}", FOO);
     }
     // Increased by 1, as `Foo` is constructed just once as an explicit argument.
-    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 6);
+    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 8);
 
     {
         let _x = format_args!("{foo:?}{foo:?}{bar:?}{Foo:?}{Foo:?}", foo = Foo, bar = Foo);
     }
-    // TODO: Increased by 4, as `Foo` is constructed twice for captured `Foo`, and once for each
+    // Increased by 4, as `Foo` is constructed twice for captured `Foo`, and once for each
     // `foo` and `bar`.
-    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 9);
+    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 12);
     {
         let _x = format_args!("{foo:?}{foo:?}{bar:?}{FOO:?}{FOO:?}", foo = FOO, bar = FOO);
     }
-    // TODO: Increased by 4, as `Foo` is constructed twice for captured `FOO`, and once for each
+    // Increased by 4, as `Foo` is constructed twice for captured `FOO`, and once for each
     // `foo` and `bar`.
-    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 12);
+    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 16);
 
     {
         let _x = format_args!("{Foo:?}{Foo:?}", Foo = Foo);
     }
     // Increased by 1, as `Foo` is shadowed by an explicit argument.
-    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 13);
+    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 17);
     {
         let _x = format_args!("{FOO:?}{FOO:?}", FOO = FOO);
     }
     // Increased by 1, as `FOO` is shadowed by an explicit argument.
-    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 14);
+    assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 18);
 }

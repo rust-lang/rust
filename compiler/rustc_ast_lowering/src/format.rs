@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 
 use rustc_ast::*;
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_hir as hir;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::{self as hir};
 use rustc_session::config::FmtDebug;
 use rustc_span::{ByteSymbol, DesugaringKind, Ident, Span, Symbol, sym};
 
@@ -26,6 +27,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             fmt = flatten_format_args(fmt);
             fmt = self.inline_literals(fmt);
         }
+        fmt = self.dedup_captured_places(fmt);
         expand_format_args(self, sp, &fmt, allow_const)
     }
 
@@ -117,6 +119,80 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
             // Don't remove anything that's still used.
             for_all_argument_indexes(&mut fmt.template, |index| remove[*index] = false);
+
+            // Drop all the arguments that are marked for removal.
+            let mut remove_it = remove.iter();
+            fmt.arguments.all_args_mut().retain(|_| remove_it.next() != Some(&true));
+
+            // Calculate the mapping of old to new indexes for the remaining arguments.
+            let index_map: Vec<usize> = remove
+                .into_iter()
+                .scan(0, |i, remove| {
+                    let mapped = *i;
+                    *i += !remove as usize;
+                    Some(mapped)
+                })
+                .collect();
+
+            // Correct the indexes that refer to arguments that have shifted position.
+            for_all_argument_indexes(&mut fmt.template, |index| *index = index_map[*index]);
+        }
+
+        fmt
+    }
+
+    /// De-duplicate implicit captures of identifiers that refer to places.
+    ///
+    /// Turns
+    ///
+    /// `format_args!("Hello, {hello}, {hello}!")`
+    ///
+    /// into
+    ///
+    /// `format_args!("Hello, {hello}, {hello}!", hello=hello)`.
+    fn dedup_captured_places<'fmt>(&self, mut fmt: Cow<'fmt, FormatArgs>) -> Cow<'fmt, FormatArgs> {
+        use std::collections::hash_map::Entry;
+
+        let mut deduped_arg_indices: FxHashMap<Symbol, usize> = FxHashMap::default();
+        let mut remove = vec![false; fmt.arguments.all_args().len()];
+        let mut deduped_anything = false;
+
+        // Re-use arguments for placeholders capturing the same local/static identifier.
+        for i in 0..fmt.template.len() {
+            if let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i]
+                && let Ok(arg_index) = placeholder.argument.index
+                && let arg = &fmt.arguments.all_args()[arg_index]
+                && let FormatArgumentKind::Captured(ident) = arg.kind
+            {
+                match deduped_arg_indices.entry(ident.name) {
+                    Entry::Occupied(occupied_entry) => {
+                        // We've seen this identifier before, and it's dedupable. Point the
+                        // placeholder at the recorded arg index, cloning `fmt` if necessary.
+                        let piece = &mut fmt.to_mut().template[i];
+                        let FormatArgsPiece::Placeholder(placeholder) = piece else {
+                            unreachable!();
+                        };
+                        placeholder.argument.index = Ok(*occupied_entry.get());
+                        remove[arg_index] = true;
+                        deduped_anything = true;
+                    }
+                    Entry::Vacant(vacant_entry) => {
+                        // This is the first time we've seen a captured identifier. If it's a local
+                        // or static, note the argument index so other occurrences can be deduped.
+                        if let Some(partial_res) = self.resolver.get_partial_res(arg.expr.id)
+                            && let Some(res) = partial_res.full_res()
+                            && matches!(res, Res::Local(_) | Res::Def(DefKind::Static { .. }, _))
+                        {
+                            vacant_entry.insert(arg_index);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Remove the arguments that were de-duplicated.
+        if deduped_anything {
+            let fmt = fmt.to_mut();
 
             // Drop all the arguments that are marked for removal.
             let mut remove_it = remove.iter();

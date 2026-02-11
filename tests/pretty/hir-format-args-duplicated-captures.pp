@@ -19,19 +19,19 @@ fn main() {
     // once can be observed in some cases, so we don't de-duplicate them.
     let _ =
         {
-            super let args = (&X,);
-            super let args = [format_argument::new_display(args.0)];
-            unsafe {
-                format_arguments::new(b"\xc0\x01 \xc8\x00\x00\x00", &args)
-            }
+            super let args = (&X, &X);
+            super let args =
+                [format_argument::new_display(args.0),
+                        format_argument::new_display(args.1)];
+            unsafe { format_arguments::new(b"\xc0\x01 \xc0\x00", &args) }
         };
     let _ =
         {
-            super let args = (&Struct,);
-            super let args = [format_argument::new_display(args.0)];
-            unsafe {
-                format_arguments::new(b"\xc0\x01 \xc8\x00\x00\x00", &args)
-            }
+            super let args = (&Struct, &Struct);
+            super let args =
+                [format_argument::new_display(args.0),
+                        format_argument::new_display(args.1)];
+            unsafe { format_arguments::new(b"\xc0\x01 \xc0\x00", &args) }
         };
 
     // Variables and statics refer to places. We can de-duplicate without an observable difference.
@@ -56,23 +56,25 @@ fn main() {
     // We don't de-duplicate widths or precisions since de-duplication can be observed.
     let _ =
         {
-            super let args = (&x,);
+            super let args = (&x, &x, &x);
             super let args =
                 [format_argument::new_display(args.0),
-                        format_argument::from_usize(args.0)];
+                        format_argument::from_usize(args.1),
+                        format_argument::from_usize(args.2)];
             unsafe {
-                format_arguments::new(b"\xd3 \x00\x00h\x01\x00\x01 \xdb \x00\x00h\x01\x00\x00\x00\x00",
+                format_arguments::new(b"\xd3 \x00\x00h\x01\x00\x01 \xdb \x00\x00h\x02\x00\x00\x00\x00",
                     &args)
             }
         };
     let _ =
         {
-            super let args = (&0.0, &x);
+            super let args = (&0.0, &x, &x);
             super let args =
                 [format_argument::new_display(args.0),
-                        format_argument::from_usize(args.1)];
+                        format_argument::from_usize(args.1),
+                        format_argument::from_usize(args.2)];
             unsafe {
-                format_arguments::new(b"\xe5 \x00\x00p\x01\x00\x01 \xed \x00\x00p\x01\x00\x00\x00\x00",
+                format_arguments::new(b"\xe5 \x00\x00p\x01\x00\x01 \xed \x00\x00p\x02\x00\x00\x00\x00",
                     &args)
             }
         };
