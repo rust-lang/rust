@@ -1223,7 +1223,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     && self.match_fresh_trait_preds(stack.fresh_trait_pred, prev.fresh_trait_pred)
             })
         {
-            debug!("evaluate_stack --> unbound argument, recursive --> giving up",);
+            debug!("evaluate_stack --> unbound argument, recursive --> giving up");
             return Ok(EvaluatedToAmbigStackDependent);
         }
 

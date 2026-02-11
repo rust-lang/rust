@@ -888,7 +888,7 @@ impl<'tcx> OnUnimplementedFormatString {
                     }
                 } else {
                     let reported =
-                        struct_span_code_err!(tcx.dcx(), self.span, E0231, "{}", e.description,)
+                        struct_span_code_err!(tcx.dcx(), self.span, E0231, "{}", e.description)
                             .emit();
                     result = Err(reported);
                 }
