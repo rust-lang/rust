@@ -466,10 +466,34 @@ auto:
 
   - name: dist-apple-various
     env:
-      SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim,aarch64-apple-ios-macabi,x86_64-apple-ios-macabi
+      # Build and distribute the standard library for these targets.
+      TARGETS: "aarch64-apple-ios,\
+        aarch64-apple-ios-sim,\
+        x86_64-apple-ios,\
+        aarch64-apple-ios-macabi,\
+        x86_64-apple-ios-macabi,\
+        aarch64-apple-tvos,\
+        aarch64-apple-tvos-sim,\
+        aarch64-apple-visionos,\
+        aarch64-apple-visionos-sim,\
+        aarch64-apple-watchos,\
+        aarch64-apple-watchos-sim"
+      SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=$TARGETS
       # Mac Catalyst cannot currently compile the sanitizer:
       # https://github.com/rust-lang/rust/issues/129069
-      RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc --set target.aarch64-apple-ios-macabi.sanitizers=false --set target.x86_64-apple-ios-macabi.sanitizers=false
+      #
+      # And tvOS and watchOS don't currently support the profiler runtime:
+      # https://github.com/rust-lang/rust/issues/152426
+      RUST_CONFIGURE_ARGS: >-
+        --enable-sanitizers
+        --enable-profiler
+        --set rust.jemalloc
+        --set target.aarch64-apple-ios-macabi.sanitizers=false
+        --set target.x86_64-apple-ios-macabi.sanitizers=false
+        --set target.aarch64-apple-tvos.profiler=false
+        --set target.aarch64-apple-tvos-sim.profiler=false
+        --set target.aarch64-apple-watchos.profiler=false
+        --set target.aarch64-apple-watchos-sim.profiler=false
       # Ensure that host tooling is built to support our minimum support macOS version.
       # FIXME(madsmtm): This might be redundant, as we're not building host tooling here (?)
       MACOSX_DEPLOYMENT_TARGET: 10.12
