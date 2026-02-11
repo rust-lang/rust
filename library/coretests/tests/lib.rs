@@ -99,6 +99,7 @@
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
+#![feature(reentrant_lock)]
 #![feature(result_option_map_or_default)]
 #![feature(signed_bigint_helpers)]
 #![feature(slice_from_ptr_range)]
