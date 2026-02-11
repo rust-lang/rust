@@ -1329,12 +1329,7 @@ fn codegen_autodiff<'ll, 'tcx>(
         bug!("could not find autodiff attrs")
     };
 
-    adjust_activity_to_abi(
-        tcx,
-        fn_source,
-        TypingEnv::fully_monomorphized(),
-        &mut diff_attrs.input_activity,
-    );
+    adjust_activity_to_abi(tcx, fn_source.ty(tcx, bx.typing_env()), &mut diff_attrs.input_activity);
 
     let fnc_tree =
         rustc_middle::ty::fnc_typetrees(tcx, fn_source.ty(tcx, TypingEnv::fully_monomorphized()));
