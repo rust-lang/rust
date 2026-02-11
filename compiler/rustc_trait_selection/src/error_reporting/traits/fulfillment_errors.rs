@@ -2263,7 +2263,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 err.highlighted_span_help(
                     self.tcx.def_span(def_id),
                     vec![
-                        StringPart::normal(format!("the trait `{trait_}` ",)),
+                        StringPart::normal(format!("the trait `{trait_}` ")),
                         StringPart::highlighted("is"),
                         StringPart::normal(desc),
                         StringPart::highlighted(self_ty),
