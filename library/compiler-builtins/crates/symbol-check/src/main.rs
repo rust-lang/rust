@@ -13,8 +13,8 @@ use std::sync::LazyLock;
 
 use object::read::archive::ArchiveFile;
 use object::{
-    File as ObjFile, Object, ObjectSection, ObjectSymbol, Result as ObjResult, Symbol, SymbolKind,
-    SymbolScope,
+    BinaryFormat, File as ObjFile, Object, ObjectSection, ObjectSymbol, Result as ObjResult,
+    Symbol, SymbolKind, SymbolScope,
 };
 use regex::Regex;
 use serde_json::Value;
@@ -259,7 +259,9 @@ fn verify_no_duplicates(archive: &BinFile) {
         found_any = true;
     });
 
-    assert!(found_any, "no symbols found");
+    if archive.has_symbol_tables() {
+        assert!(found_any, "no symbols found");
+    }
 
     if !dups.is_empty() {
         let count = dups.iter().map(|x| &x.name).collect::<HashSet<_>>().len();
@@ -300,7 +302,9 @@ fn verify_core_symbols(archive: &BinFile) {
         }
     });
 
-    assert!(has_symbols, "no symbols found");
+    if archive.has_symbol_tables() {
+        assert!(has_symbols, "no symbols found");
+    }
 
     // Discard any symbols that are defined somewhere in the archive
     undefined.retain(|sym| !defined.contains(&sym.name));
@@ -375,5 +379,24 @@ impl BinFile {
         self.for_each_object(|obj, obj_path| {
             obj.symbols().for_each(|sym| f(sym, &obj, obj_path));
         });
+    }
+
+    /// PE executable files don't have the same kind of symbol tables. This isn't a perfectly
+    /// accurate check, but at least tells us whether we can skip erroring if we don't find any
+    /// symbols.
+    fn has_symbol_tables(&self) -> bool {
+        let mut empty = true;
+        let mut ret = false;
+
+        self.for_each_object(|obj, _obj_path| {
+            if !matches!(obj.format(), BinaryFormat::Pe) {
+                // Any non-PE objects should have symbol tables.
+                ret = true;
+            }
+            empty = false;
+        });
+
+        // If empty, assume there should be tables.
+        empty || ret
     }
 }
