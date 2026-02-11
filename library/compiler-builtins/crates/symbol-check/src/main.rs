@@ -67,10 +67,17 @@ fn main() {
     }
 
     let free_args = m.free.iter().map(String::as_str).collect::<Vec<_>>();
+    for arg in &free_args {
+        assert!(
+            !arg.contains("--target"),
+            "target must be passed to symbol-check"
+        );
+    }
 
     if m.opt_present("build-and-check") {
         let target = m.opt_str("target").unwrap_or(env!("HOST").to_string());
-        run_build_and_check(&target, &free_args);
+        let paths = exec_cargo_with_args(&target, &free_args);
+        check_paths(&paths);
     } else if m.opt_present("check") {
         if free_args.is_empty() {
             print_usage_and_exit(1);
@@ -79,20 +86,6 @@ fn main() {
     } else {
         print_usage_and_exit(1);
     }
-}
-
-fn run_build_and_check(target: &str, args: &[&str]) {
-    // Make sure `--target` isn't passed to avoid confusion (since it should be
-    // proivded only once, positionally).
-    for arg in args {
-        assert!(
-            !arg.contains("--target"),
-            "target must be passed to symbol-check"
-        );
-    }
-
-    let paths = exec_cargo_with_args(target, args);
-    check_paths(&paths);
 }
 
 fn check_paths<P: AsRef<Path>>(paths: &[P]) {
