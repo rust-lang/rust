@@ -218,7 +218,6 @@ impl Neg for i8 {
     }
 }
 
-#[lang = "sync"]
 pub trait Sync {}
 impl_marker_trait!(
     Sync => [

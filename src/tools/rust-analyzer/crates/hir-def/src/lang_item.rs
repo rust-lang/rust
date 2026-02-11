@@ -308,7 +308,6 @@ language_item_table! { LangItems =>
     Copy,                    sym::copy,                TraitId;
     Clone,                   sym::clone,               TraitId;
     TrivialClone,            sym::trivial_clone,       TraitId;
-    Sync,                    sym::sync,                TraitId;
     DiscriminantKind,        sym::discriminant_kind,   TraitId;
     /// The associated item of the `DiscriminantKind` trait.
     Discriminant,            sym::discriminant_type,   TypeAliasId;

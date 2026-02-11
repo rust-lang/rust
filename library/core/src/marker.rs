@@ -583,7 +583,6 @@ pub trait BikeshedGuaranteedNoDrop {}
 /// [nomicon-send-and-sync]: ../../nomicon/send-and-sync.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Sync"]
-#[lang = "sync"]
 #[rustc_on_unimplemented(
     on(
         Self = "core::cell::once::OnceCell<T>",

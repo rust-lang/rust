@@ -725,10 +725,10 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                 ident.span,
                 "named constant with interior mutability",
                 |diag| {
-                    let Some(sync_trait) = cx.tcx.lang_items().sync_trait() else {
+                    let Some(sync) = cx.tcx.get_diagnostic_item(sym::Sync) else {
                         return;
                     };
-                    if implements_trait(cx, ty, sync_trait, &[]) {
+                    if implements_trait(cx, ty, sync, &[]) {
                         diag.help("did you mean to make this a `static` item");
                     } else {
                         diag.help("did you mean to make this a `thread_local!` item");

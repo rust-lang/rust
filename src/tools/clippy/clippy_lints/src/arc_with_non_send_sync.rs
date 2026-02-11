@@ -54,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for ArcWithNonSendSync {
                 !matches!(arg.kind(), GenericArgKind::Type(ty) if matches!(ty.kind(), ty::Param(_)))
             })
             && let Some(send) = cx.tcx.get_diagnostic_item(sym::Send)
-            && let Some(sync) = cx.tcx.lang_items().sync_trait()
+            && let Some(sync) = cx.tcx.get_diagnostic_item(sym::Sync)
             && let [is_send, is_sync] = [send, sync].map(|id| implements_trait(cx, arg_ty, id, &[]))
             && let reason = match (is_send, is_sync) {
                 (false, false) => "neither `Send` nor `Sync`",

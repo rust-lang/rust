@@ -86,7 +86,6 @@ impl<T: PointeeSized> Copy for *const T {}
 impl<T: PointeeSized> Copy for *mut T {}
 impl<T: Copy> Copy for Option<T> {}
 
-#[lang = "sync"]
 pub unsafe trait Sync {}
 
 unsafe impl Sync for bool {}

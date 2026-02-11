@@ -94,7 +94,6 @@ impl<'a, T: PointeeSized> Copy for &'a T {}
 impl<T: PointeeSized> Copy for *const T {}
 impl<T: PointeeSized> Copy for *mut T {}
 
-#[lang = "sync"]
 pub unsafe trait Sync {}
 
 unsafe impl Sync for bool {}
