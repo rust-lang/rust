@@ -1310,6 +1310,13 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().type_variables().root_var(var)
     }
 
+    /// If `ty` is an unresolved type variable, returns its root vid.
+    pub fn root_vid(&self, ty: Ty<'tcx>) -> Option<ty::TyVid> {
+        let (root, value) =
+            self.inner.borrow_mut().type_variables().inlined_probe_with_vid(ty.ty_vid()?);
+        value.is_unknown().then_some(root)
+    }
+
     pub fn sub_unify_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
         self.inner.borrow_mut().type_variables().sub_unify(a, b);
     }
