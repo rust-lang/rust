@@ -1,5 +1,8 @@
+#![allow(dead_code)]
+
 use std::any::{Any, TypeId};
-use std::mem::type_info::{Type, TypeKind};
+use std::mem::offset_of;
+use std::mem::type_info::{Const, Generic, GenericType, Type, TypeKind};
 
 #[test]
 fn test_arrays() {
@@ -63,6 +66,155 @@ fn test_tuples() {
             }
             _ => unreachable!(),
         }
+    }
+}
+
+#[test]
+fn test_structs() {
+    use TypeKind::*;
+
+    const {
+        struct TestStruct {
+            first: u8,
+            second: u16,
+            reference: &'static u16,
+        }
+
+        let Type { kind: Struct(ty), size, .. } = Type::of::<TestStruct>() else { panic!() };
+        assert!(size == Some(size_of::<TestStruct>()));
+        assert!(!ty.non_exhaustive);
+        assert!(ty.fields.len() == 3);
+        assert!(ty.fields[0].name == "first");
+        assert!(ty.fields[0].ty == TypeId::of::<u8>());
+        assert!(ty.fields[0].offset == offset_of!(TestStruct, first));
+        assert!(ty.fields[1].name == "second");
+        assert!(ty.fields[1].ty == TypeId::of::<u16>());
+        assert!(ty.fields[1].offset == offset_of!(TestStruct, second));
+        assert!(ty.fields[2].name == "reference");
+        assert!(ty.fields[2].ty == TypeId::of::<&'static u16>());
+        assert!(ty.fields[2].offset == offset_of!(TestStruct, reference));
+    }
+
+    const {
+        #[non_exhaustive]
+        struct NonExhaustive {
+            a: u8,
+        }
+
+        let Type { kind: Struct(ty), .. } = Type::of::<NonExhaustive>() else { panic!() };
+        assert!(ty.non_exhaustive);
+    }
+
+    const {
+        struct TupleStruct(u8, u16);
+
+        let Type { kind: Struct(ty), .. } = Type::of::<TupleStruct>() else { panic!() };
+        assert!(ty.fields.len() == 2);
+        assert!(ty.fields[0].name == "0");
+        assert!(ty.fields[0].ty == TypeId::of::<u8>());
+        assert!(ty.fields[1].name == "1");
+        assert!(ty.fields[1].ty == TypeId::of::<u16>());
+    }
+
+    const {
+        struct Generics<'a, T, const C: u64> {
+            a: &'a T,
+        }
+
+        let Type { kind: Struct(ty), .. } = Type::of::<Generics<'static, i32, 1_u64>>() else {
+            panic!()
+        };
+        assert!(ty.fields.len() == 1);
+        assert!(ty.generics.len() == 3);
+
+        let Generic::Lifetime(_) = ty.generics[0] else { panic!() };
+        let Generic::Type(GenericType { ty: generic_ty, .. }) = ty.generics[1] else { panic!() };
+        assert!(generic_ty == TypeId::of::<i32>());
+        let Generic::Const(Const { ty: const_ty, .. }) = ty.generics[2] else { panic!() };
+        assert!(const_ty == TypeId::of::<u64>());
+    }
+}
+
+#[test]
+fn test_unions() {
+    use TypeKind::*;
+
+    const {
+        union TestUnion {
+            first: i16,
+            second: u16,
+        }
+
+        let Type { kind: Union(ty), size, .. } = Type::of::<TestUnion>() else { panic!() };
+        assert!(size == Some(size_of::<TestUnion>()));
+        assert!(ty.fields.len() == 2);
+        assert!(ty.fields[0].name == "first");
+        assert!(ty.fields[0].offset == offset_of!(TestUnion, first));
+        assert!(ty.fields[1].name == "second");
+        assert!(ty.fields[1].offset == offset_of!(TestUnion, second));
+    }
+
+    const {
+        union Generics<'a, T: Copy, const C: u64> {
+            a: T,
+            z: &'a (),
+        }
+
+        let Type { kind: Union(ty), .. } = Type::of::<Generics<'static, i32, 1_u64>>() else {
+            panic!()
+        };
+        assert!(ty.fields.len() == 2);
+        assert!(ty.fields[0].offset == offset_of!(Generics<'static, i32, 1_u64>, a));
+        assert!(ty.fields[1].offset == offset_of!(Generics<'static, i32, 1_u64>, z));
+
+        assert!(ty.generics.len() == 3);
+        let Generic::Lifetime(_) = ty.generics[0] else { panic!() };
+        let Generic::Type(GenericType { ty: generic_ty, .. }) = ty.generics[1] else { panic!() };
+        assert!(generic_ty == TypeId::of::<i32>());
+        let Generic::Const(Const { ty: const_ty, .. }) = ty.generics[2] else { panic!() };
+        assert!(const_ty == TypeId::of::<u64>());
+    }
+}
+
+#[test]
+fn test_enums() {
+    use TypeKind::*;
+
+    const {
+        enum E {
+            Some(u32),
+            None,
+            #[non_exhaustive]
+            Foomp {
+                a: (),
+                b: &'static str,
+            },
+        }
+
+        let Type { kind: Enum(ty), size, .. } = Type::of::<E>() else { panic!() };
+        assert!(size == Some(size_of::<E>()));
+        assert!(ty.variants.len() == 3);
+
+        assert!(ty.variants[0].name == "Some");
+        assert!(!ty.variants[0].non_exhaustive);
+        assert!(ty.variants[0].fields.len() == 1);
+
+        assert!(ty.variants[1].name == "None");
+        assert!(!ty.variants[1].non_exhaustive);
+        assert!(ty.variants[1].fields.len() == 0);
+
+        assert!(ty.variants[2].name == "Foomp");
+        assert!(ty.variants[2].non_exhaustive);
+        assert!(ty.variants[2].fields.len() == 2);
+    }
+
+    const {
+        let Type { kind: Enum(ty), size, .. } = Type::of::<Option<i32>>() else { panic!() };
+        assert!(size == Some(size_of::<Option<i32>>()));
+        assert!(ty.variants.len() == 2);
+        assert!(ty.generics.len() == 1);
+        let Generic::Type(GenericType { ty: generic_ty, .. }) = ty.generics[0] else { panic!() };
+        assert!(generic_ty == TypeId::of::<i32>());
     }
 }
 
