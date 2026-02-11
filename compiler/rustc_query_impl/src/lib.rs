@@ -107,15 +107,18 @@ impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> SemiDynamicQueryDispatcher<'t
         }
     }
 
-    // Don't use this method to compute query results, instead use the methods on TyCtxt.
+    /// Calls `tcx.$query(key)` for this query, and discards the returned value.
+    /// See [`QueryVTable::call_query_method_fn`] for details of this strange operation.
     #[inline(always)]
-    fn execute_query(self, tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value {
-        (self.vtable.execute_query)(tcx, key)
+    fn call_query_method(self, tcx: TyCtxt<'tcx>, key: C::Key) {
+        (self.vtable.call_query_method_fn)(tcx, key)
     }
 
+    /// Calls the actual provider function for this query.
+    /// See [`QueryVTable::invoke_provider_fn`] for more details.
     #[inline(always)]
-    fn compute(self, qcx: QueryCtxt<'tcx>, key: C::Key) -> C::Value {
-        (self.vtable.compute_fn)(qcx.tcx, key)
+    fn invoke_provider(self, qcx: QueryCtxt<'tcx>, key: C::Key) -> C::Value {
+        (self.vtable.invoke_provider_fn)(qcx.tcx, key)
     }
 
     #[inline(always)]

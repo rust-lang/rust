@@ -457,7 +457,9 @@ fn try_load_from_on_disk_cache<'tcx, C: QueryCache, const FLAGS: QueryFlags>(
         panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash)
     });
     if query.will_cache_on_disk_for_key(tcx, &key) {
-        let _ = query.execute_query(tcx, key);
+        // Call `tcx.$query(key)` for its side-effect of loading the disk-cached
+        // value into memory.
+        query.call_query_method(tcx, key);
     }
 }
 
@@ -625,14 +627,15 @@ macro_rules! define_queries {
                 }
             }
 
-            /// Defines a `compute` function for this query, to be used as a
-            /// function pointer in the query's vtable.
-            mod compute_fn {
+            /// Defines an `invoke_provider` function that calls the query's provider,
+            /// to be used as a function pointer in the query's vtable.
+            ///
+            /// To mark a short-backtrace boundary, the function's actual name
+            /// (after demangling) must be `__rust_begin_short_backtrace`.
+            mod invoke_provider_fn {
                 use super::*;
                 use ::rustc_middle::queries::$name::{Key, Value, provided_to_erased};
 
-                /// This function would be named `compute`, but we also want it
-                /// to mark the boundaries of an omitted region in backtraces.
                 #[inline(never)]
                 pub(crate) fn __rust_begin_short_backtrace<'tcx>(
                     tcx: TyCtxt<'tcx>,
@@ -643,10 +646,13 @@ macro_rules! define_queries {
 
                     // Call the actual provider function for this query.
                     let provided_value = call_provider!([$($modifiers)*][tcx, $name, key]);
+
                     rustc_middle::ty::print::with_reduced_queries!({
                         tracing::trace!(?provided_value);
                     });
 
+                    // Erase the returned value, because `QueryVTable` uses erased values.
+                    // For queries with `arena_cache`, this also arena-allocates the value.
                     provided_to_erased(tcx, provided_value)
                 }
             }
@@ -666,8 +672,12 @@ macro_rules! define_queries {
                     } {
                         None
                     }),
-                    execute_query: |tcx, key| erase::erase_val(tcx.$name(key)),
-                    compute_fn: self::compute_fn::__rust_begin_short_backtrace,
+                    call_query_method_fn: |tcx, key| {
+                        // Call the query method for its side-effect of loading a value
+                        // from disk-cache; the caller doesn't need the value.
+                        let _ = tcx.$name(key);
+                    },
+                    invoke_provider_fn: self::invoke_provider_fn::__rust_begin_short_backtrace,
                     try_load_from_disk_fn: if_cache_on_disk!([$($modifiers)*] {
                         Some(|tcx, key, prev_index, index| {
                             // Check the `cache_on_disk_if` condition for this key.
