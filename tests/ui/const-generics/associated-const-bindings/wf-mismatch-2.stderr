@@ -1,0 +1,8 @@
+error: the constant `N` is not of type `bool`
+  --> $DIR/wf-mismatch-2.rs:10:12
+   |
+LL |     let _: dyn Trait<CT = { N }>;
+   |            ^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `i32`
+
+error: aborting due to 1 previous error
+

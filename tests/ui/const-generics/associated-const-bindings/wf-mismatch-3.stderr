@@ -1,0 +1,20 @@
+error: the constant `0` is not of type `bool`
+  --> $DIR/wf-mismatch-3.rs:14:20
+   |
+LL | fn g(_: impl Trait<CT = { <() as Bound>::N }>) {}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `u32`
+   |
+note: required by a const generic parameter in `g`
+  --> $DIR/wf-mismatch-3.rs:14:20
+   |
+LL | fn g(_: impl Trait<CT = { <() as Bound>::N }>) {}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this const generic parameter in `g`
+
+error: the constant `0` is not of type `bool`
+  --> $DIR/wf-mismatch-3.rs:12:17
+   |
+LL | fn f() { let _: dyn Trait<CT = { <() as Bound>::N }>; }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `u32`
+
+error: aborting due to 2 previous errors
+
