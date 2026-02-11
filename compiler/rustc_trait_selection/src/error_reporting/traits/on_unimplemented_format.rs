@@ -304,12 +304,12 @@ fn slice_span(input: Span, Range { start, end }: Range<usize>, is_source_literal
 }
 
 pub mod errors {
-    use rustc_macros::LintDiagnostic;
+    use rustc_macros::Diagnostic;
     use rustc_span::Ident;
 
     use super::*;
 
-    #[derive(LintDiagnostic)]
+    #[derive(Diagnostic)]
     #[diag("there is no parameter `{$argument_name}` on trait `{$trait_name}`")]
     #[help("expect either a generic argument name or {\"`{Self}`\"} as format argument")]
     pub struct UnknownFormatParameterForOnUnimplementedAttr {
@@ -317,19 +317,19 @@ pub mod errors {
         pub trait_name: Ident,
     }
 
-    #[derive(LintDiagnostic)]
+    #[derive(Diagnostic)]
     #[diag("positional format arguments are not allowed here")]
     #[help(
         "only named format arguments with the name of one of the generic types are allowed in this context"
     )]
     pub struct DisallowedPositionalArgument;
 
-    #[derive(LintDiagnostic)]
+    #[derive(Diagnostic)]
     #[diag("invalid format specifier")]
     #[help("no format specifier are supported in this position")]
     pub struct InvalidFormatSpecifier;
 
-    #[derive(LintDiagnostic)]
+    #[derive(Diagnostic)]
     #[diag("missing options for `on_unimplemented` attribute")]
     #[help("at least one of the `message`, `note` and `label` options are expected")]
     pub struct MissingOptionsForOnUnimplementedAttr;

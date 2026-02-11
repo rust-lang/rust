@@ -1,5 +1,5 @@
 use rustc_errors::{Diag, EmissionGuarantee, Subdiagnostic};
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
 
@@ -46,7 +46,7 @@ impl Uncovered {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("multiple patterns overlap on their endpoints")]
 #[note("you likely meant to write mutually exclusive ranges")]
 pub struct OverlappingRangeEndpoints {
@@ -56,15 +56,23 @@ pub struct OverlappingRangeEndpoints {
     pub overlap: Vec<Overlap>,
 }
 
-#[derive(Subdiagnostic)]
-#[label("this range overlaps on `{$range}`...")]
 pub struct Overlap {
-    #[primary_span]
     pub span: Span,
     pub range: String, // a printed pattern
 }
 
-#[derive(LintDiagnostic)]
+impl Subdiagnostic for Overlap {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        let Overlap { span, range } = self;
+
+        // FIXME(mejrs) unfortunately `#[derive(Diagnostic)]`
+        // does not support `#[subdiagnostic(eager)]`...
+        let message = format!("this range overlaps on `{range}`...");
+        diag.span_label(span, message);
+    }
+}
+
+#[derive(Diagnostic)]
 #[diag("exclusive range missing `{$max}`")]
 pub struct ExclusiveRangeMissingMax {
     #[label("this range doesn't match `{$max}` because `..` is an exclusive range")]
@@ -80,7 +88,7 @@ pub struct ExclusiveRangeMissingMax {
     pub max: String, // a printed pattern
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("multiple ranges are one apart")]
 pub struct ExclusiveRangeMissingGap {
     #[label("this range doesn't match `{$gap}` because `..` is an exclusive range")]
@@ -109,7 +117,7 @@ impl Subdiagnostic for GappedRange {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let GappedRange { span, gap, first_range } = self;
 
-        // FIXME(mejrs) unfortunately `#[derive(LintDiagnostic)]`
+        // FIXME(mejrs) unfortunately `#[derive(Diagnostic)]`
         // does not support `#[subdiagnostic(eager)]`...
         let message = format!(
             "this could appear to continue range `{first_range}`, but `{gap}` isn't matched by \
@@ -119,7 +127,7 @@ impl Subdiagnostic for GappedRange {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("some variants are not matched explicitly")]
 #[help("ensure that all variants are matched explicitly by adding the suggested match arms")]
 #[note(
@@ -131,7 +139,7 @@ pub(crate) struct NonExhaustiveOmittedPattern<'tcx> {
     pub uncovered: Uncovered,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("the lint level must be set on the whole match")]
 #[help("it no longer has any effect to set the lint level on an individual match arm")]
 pub(crate) struct NonExhaustiveOmittedPatternLintOnArm {

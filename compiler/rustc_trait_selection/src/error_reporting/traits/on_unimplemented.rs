@@ -8,7 +8,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{AttrArgs, Attribute};
-use rustc_macros::LintDiagnostic;
+use rustc_macros::Diagnostic;
 use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, GenericArgsRef, GenericParamDef, GenericParamDefKind, TyCtxt};
@@ -359,7 +359,7 @@ pub enum AppendConstMessage {
     Custom(Symbol, Span),
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("malformed `on_unimplemented` attribute")]
 #[help("only `message`, `note` and `label` are allowed as options")]
 pub struct MalformedOnUnimplementedAttrLint {
@@ -373,12 +373,12 @@ impl MalformedOnUnimplementedAttrLint {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("missing options for `on_unimplemented` attribute")]
 #[help("at least one of the `message`, `note` and `label` options are expected")]
 pub struct MissingOptionsForOnUnimplementedAttr;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("`{$option_name}` is ignored due to previous definition of `{$option_name}`")]
 pub struct IgnoredDiagnosticOption {
     pub option_name: &'static str,
@@ -409,7 +409,7 @@ impl IgnoredDiagnosticOption {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("{$description}")]
 pub struct WrappedParserError {
     pub description: String,

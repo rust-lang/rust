@@ -1,6 +1,6 @@
 use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{GenericArg, Ty};
 use rustc_span::Span;
 
@@ -47,7 +47,7 @@ pub(crate) struct GenericDoesNotLiveLongEnough {
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("variable does not need to be mutable")]
 pub(crate) struct VarNeedNotMut {
     #[suggestion(
@@ -595,7 +595,7 @@ pub(crate) struct SimdIntrinsicArgConst {
     pub intrinsic: String,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("relative drop order changing in Rust 2024")]
 pub(crate) struct TailExprDropOrder {
     #[label("this temporary value will be dropped at the end of the block")]

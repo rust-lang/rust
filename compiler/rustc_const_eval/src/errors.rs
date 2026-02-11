@@ -9,7 +9,7 @@ use rustc_errors::{
     Subdiagnostic, msg,
 };
 use rustc_hir::ConstContext;
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::mir::interpret::{
     CtfeProvenance, ExpectedKind, InterpErrorKind, InvalidMetaKind, InvalidProgramInfo,
     Misalignment, Pointer, PointerKind, ResourceExhaustionInfo, UndefinedBehaviorInfo,
@@ -318,7 +318,7 @@ pub(crate) struct InteriorMutableBorrowEscaping {
     pub kind: ConstContext,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("constant evaluation is taking a long time")]
 #[note(
     "this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.

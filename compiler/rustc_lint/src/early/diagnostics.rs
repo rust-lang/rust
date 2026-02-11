@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, LintDiagnostic, elided_lifetime_in_path_suggestion,
+    Applicability, Diag, DiagArgValue, Diagnostic, elided_lifetime_in_path_suggestion,
 };
 use rustc_hir::lints::AttributeLintKind;
 use rustc_middle::middle::stability;
@@ -41,13 +41,14 @@ pub fn decorate_builtin_lint(
                 spans: spans.iter().map(|(_c, span)| *span).collect(),
             });
 
-            lints::UnicodeTextFlow {
+            let diag2: Diag<'_, ()> = lints::UnicodeTextFlow {
                 comment_span,
                 characters,
                 suggestions,
                 num_codepoints: spans.len(),
             }
-            .decorate_lint(diag);
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::AbsPathWithModule(mod_span) => {
             let (replacement, applicability) = match sess.source_map().span_to_snippet(mod_span) {
@@ -60,13 +61,14 @@ pub fn decorate_builtin_lint(
                 }
                 Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
             };
-            lints::AbsPathWithModule {
+            let diag2: Diag<'_, ()> = lints::AbsPathWithModule {
                 sugg: lints::AbsPathWithModuleSugg { span: mod_span, applicability, replacement },
             }
-            .decorate_lint(diag);
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::ElidedLifetimesInPaths(n, path_span, incl_angl_brckt, insertion_span) => {
-            lints::ElidedLifetimesInPaths {
+            let diag2: Diag<'_, ()> = lints::ElidedLifetimesInPaths {
                 subdiag: elided_lifetime_in_path_suggestion(
                     sess.source_map(),
                     n,
@@ -75,7 +77,8 @@ pub fn decorate_builtin_lint(
                     insertion_span,
                 ),
             }
-            .decorate_lint(diag);
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::UnusedImports {
             remove_whole_use,
@@ -92,7 +95,7 @@ pub fn decorate_builtin_lint(
             let test_module_span =
                 test_module_span.map(|span| sess.source_map().guess_head_span(span));
 
-            lints::UnusedImports {
+            let diag2: Diag<'_, ()> = lints::UnusedImports {
                 sugg,
                 test_module_span,
                 num_snippets: span_snippets.len(),
@@ -100,7 +103,8 @@ pub fn decorate_builtin_lint(
                     span_snippets.into_iter().map(Cow::Owned).collect(),
                 ),
             }
-            .decorate_lint(diag);
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::RedundantImport(spans, ident) => {
             let subs = spans
@@ -114,7 +118,9 @@ pub fn decorate_builtin_lint(
                     })(span)
                 })
                 .collect();
-            lints::RedundantImport { subs, ident }.decorate_lint(diag);
+            let diag2: Diag<'_, ()> =
+                lints::RedundantImport { subs, ident }.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::DeprecatedMacro {
             suggestion,
@@ -129,45 +135,53 @@ pub fn decorate_builtin_lint(
                 suggestion,
             });
 
-            stability::Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind }
-                .decorate_lint(diag);
+            let diag2: Diag<'_, ()> =
+                stability::Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind }
+                    .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::PatternsInFnsWithoutBody { span: remove_span, ident, is_foreign } => {
             let sub = lints::PatternsInFnsWithoutBodySub { ident, span: remove_span };
-            if is_foreign {
+            let diag2: Diag<'_, ()> = if is_foreign {
                 lints::PatternsInFnsWithoutBody::Foreign { sub }
             } else {
                 lints::PatternsInFnsWithoutBody::Bodiless { sub }
             }
-            .decorate_lint(diag);
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::ReservedPrefix(label_span, prefix) => {
-            lints::ReservedPrefix {
+            let diag2: Diag<'_, ()> = lints::ReservedPrefix {
                 label: label_span,
                 suggestion: label_span.shrink_to_hi(),
                 prefix,
             }
-            .decorate_lint(diag);
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::RawPrefix(label_span) => {
-            lints::RawPrefix { label: label_span, suggestion: label_span.shrink_to_hi() }
-                .decorate_lint(diag);
+            let diag2: Diag<'_, ()> =
+                lints::RawPrefix { label: label_span, suggestion: label_span.shrink_to_hi() }
+                    .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::ReservedString { is_string, suggestion } => {
-            if is_string {
-                lints::ReservedString { suggestion }.decorate_lint(diag);
+            let diag2: Diag<'_, ()> = if is_string {
+                lints::ReservedString { suggestion }.into_diag(diag.dcx, diag.level())
             } else {
-                lints::ReservedMultihash { suggestion }.decorate_lint(diag);
-            }
+                lints::ReservedMultihash { suggestion }.into_diag(diag.dcx, diag.level())
+            };
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::BreakWithLabelAndLoop(sugg_span) => {
-            lints::BreakWithLabelAndLoop {
+            let diag2: Diag<'_, ()> = lints::BreakWithLabelAndLoop {
                 sub: lints::BreakWithLabelAndLoopSub {
                     left: sugg_span.shrink_to_lo(),
                     right: sugg_span.shrink_to_hi(),
                 },
             }
-            .decorate_lint(diag);
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::DeprecatedWhereclauseLocation(left_sp, sugg) => {
             let suggestion = match sugg {
@@ -178,7 +192,9 @@ pub fn decorate_builtin_lint(
                 },
                 None => lints::DeprecatedWhereClauseLocationSugg::RemoveWhere { span: left_sp },
             };
-            lints::DeprecatedWhereClauseLocation { suggestion }.decorate_lint(diag);
+            let diag2: Diag<'_, ()> = lints::DeprecatedWhereClauseLocation { suggestion }
+                .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::SingleUseLifetime {
             param_span,
@@ -205,11 +221,15 @@ pub fn decorate_builtin_lint(
                 None
             };
 
-            lints::SingleUseLifetime { suggestion, param_span, use_span, ident }
-                .decorate_lint(diag);
+            let diag2: Diag<'_, ()> =
+                lints::SingleUseLifetime { suggestion, param_span, use_span, ident }
+                    .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::SingleUseLifetime { use_span: None, deletion_span, ident, .. } => {
-            lints::UnusedLifetime { deletion_span, ident }.decorate_lint(diag);
+            let diag2: Diag<'_, ()> =
+                lints::UnusedLifetime { deletion_span, ident }.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::NamedArgumentUsedPositionally {
             position_sp_to_replace,
@@ -237,14 +257,15 @@ pub fn decorate_builtin_lint(
                 (None, String::new())
             };
 
-            lints::NamedArgumentUsedPositionally {
+            let diag2: Diag<'_, ()> = lints::NamedArgumentUsedPositionally {
                 named_arg_sp,
                 position_label_sp: position_sp_for_msg,
                 suggestion,
                 name,
                 named_arg_name,
             }
-            .decorate_lint(diag);
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::AmbiguousGlobReexports {
             name,
@@ -252,13 +273,14 @@ pub fn decorate_builtin_lint(
             first_reexport_span,
             duplicate_reexport_span,
         } => {
-            lints::AmbiguousGlobReexports {
+            let diag2: Diag<'_, ()> = lints::AmbiguousGlobReexports {
                 first_reexport: first_reexport_span,
                 duplicate_reexport: duplicate_reexport_span,
                 name,
                 namespace,
             }
-            .decorate_lint(diag);
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::HiddenGlobReexports {
             name,
@@ -266,17 +288,20 @@ pub fn decorate_builtin_lint(
             glob_reexport_span,
             private_item_span,
         } => {
-            lints::HiddenGlobReexports {
+            let diag2: Diag<'_, ()> = lints::HiddenGlobReexports {
                 glob_reexport: glob_reexport_span,
                 private_item: private_item_span,
 
                 name,
                 namespace,
             }
-            .decorate_lint(diag);
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::UnusedQualifications { removal_span } => {
-            lints::UnusedQualifications { removal_span }.decorate_lint(diag);
+            let diag2: Diag<'_, ()> =
+                lints::UnusedQualifications { removal_span }.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::AssociatedConstElidedLifetime {
             elided,
@@ -285,27 +310,38 @@ pub fn decorate_builtin_lint(
         } => {
             let lt_span = if elided { lt_span.shrink_to_hi() } else { lt_span };
             let code = if elided { "'static " } else { "'static" };
-            lints::AssociatedConstElidedLifetime {
+            let diag2: Diag<'_, ()> = lints::AssociatedConstElidedLifetime {
                 span: lt_span,
                 code,
                 elided,
                 lifetimes_in_scope,
             }
-            .decorate_lint(diag);
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::UnreachableCfg { span, wildcard_span } => match wildcard_span {
             Some(wildcard_span) => {
-                lints::UnreachableCfgSelectPredicateWildcard { span, wildcard_span }
-                    .decorate_lint(diag)
+                let diag2: Diag<'_, ()> =
+                    lints::UnreachableCfgSelectPredicateWildcard { span, wildcard_span }
+                        .into_diag(diag.dcx, diag.level());
+                diag.merge_with_other_diag(diag2);
             }
-            None => lints::UnreachableCfgSelectPredicate { span }.decorate_lint(diag),
+            None => {
+                let diag2: Diag<'_, ()> =
+                    lints::UnreachableCfgSelectPredicate { span }.into_diag(diag.dcx, diag.level());
+                diag.merge_with_other_diag(diag2);
+            }
         },
 
         BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
-            lints::UnusedCrateDependency { extern_crate, local_crate }.decorate_lint(diag)
+            let diag2: Diag<'_, ()> = lints::UnusedCrateDependency { extern_crate, local_crate }
+                .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::UnusedVisibility(span) => {
-            lints::UnusedVisibility { span }.decorate_lint(diag)
+            let diag2: Diag<'_, ()> =
+                lints::UnusedVisibility { span }.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         BuiltinLintDiag::AttributeLint(kind) => decorate_attribute_lint(sess, tcx, &kind, diag),
     }
@@ -319,10 +355,12 @@ pub fn decorate_attribute_lint(
 ) {
     match kind {
         &AttributeLintKind::UnusedDuplicate { this, other, warning } => {
-            lints::UnusedDuplicate { this, other, warning }.decorate_lint(diag)
+            let diag2: Diag<'_, ()> =
+                lints::UnusedDuplicate { this, other, warning }.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         AttributeLintKind::IllFormedAttributeInput { suggestions, docs } => {
-            lints::IllFormedAttributeInput {
+            let diag2: Diag<'_, ()> = lints::IllFormedAttributeInput {
                 num_suggestions: suggestions.len(),
                 suggestions: DiagArgValue::StrListSepByAnd(
                     suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
@@ -330,18 +368,20 @@ pub fn decorate_attribute_lint(
                 has_docs: docs.is_some(),
                 docs: docs.unwrap_or(""),
             }
-            .decorate_lint(diag)
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         AttributeLintKind::EmptyAttribute { first_span, attr_path, valid_without_list } => {
-            lints::EmptyAttributeList {
+            let diag2: Diag<'_, ()> = lints::EmptyAttributeList {
                 attr_span: *first_span,
                 attr_path: attr_path.clone(),
                 valid_without_list: *valid_without_list,
             }
-            .decorate_lint(diag)
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         AttributeLintKind::InvalidTarget { name, target, applied, only, attr_span } => {
-            lints::InvalidTargetLint {
+            let diag2: Diag<'_, ()> = lints::InvalidTargetLint {
                 name: name.clone(),
                 target,
                 applied: DiagArgValue::StrListSepByAnd(
@@ -350,101 +390,161 @@ pub fn decorate_attribute_lint(
                 only,
                 attr_span: *attr_span,
             }
-            .decorate_lint(diag)
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         &AttributeLintKind::InvalidStyle { ref name, is_used_as_inner, target, target_span } => {
-            lints::InvalidAttrStyle {
+            let diag2: Diag<'_, ()> = lints::InvalidAttrStyle {
                 name: name.clone(),
                 is_used_as_inner,
                 target_span: (!is_used_as_inner).then_some(target_span),
                 target,
             }
-            .decorate_lint(diag)
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         &AttributeLintKind::UnsafeAttrOutsideUnsafe { attribute_name_span, sugg_spans } => {
-            lints::UnsafeAttrOutsideUnsafeLint {
+            let diag2: Diag<'_, ()> = lints::UnsafeAttrOutsideUnsafeLint {
                 span: attribute_name_span,
                 suggestion: sugg_spans
                     .map(|(left, right)| lints::UnsafeAttrOutsideUnsafeSuggestion { left, right }),
             }
-            .decorate_lint(diag)
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         &AttributeLintKind::UnexpectedCfgName(name, value) => {
-            check_cfg::unexpected_cfg_name(sess, tcx, name, value).decorate_lint(diag)
+            let diag2: Diag<'_, ()> = check_cfg::unexpected_cfg_name(sess, tcx, name, value)
+                .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         &AttributeLintKind::UnexpectedCfgValue(name, value) => {
-            check_cfg::unexpected_cfg_value(sess, tcx, name, value).decorate_lint(diag)
+            let diag2: Diag<'_, ()> = check_cfg::unexpected_cfg_value(sess, tcx, name, value)
+                .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
         &AttributeLintKind::DuplicateDocAlias { first_definition } => {
-            lints::DocAliasDuplicated { first_defn: first_definition }.decorate_lint(diag)
+            let diag2: Diag<'_, ()> = lints::DocAliasDuplicated { first_defn: first_definition }
+                .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
 
         &AttributeLintKind::DocAutoCfgExpectsHideOrShow => {
-            lints::DocAutoCfgExpectsHideOrShow.decorate_lint(diag)
+            let diag2: Diag<'_, ()> =
+                lints::DocAutoCfgExpectsHideOrShow.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
 
         &AttributeLintKind::AmbiguousDeriveHelpers => {
-            lints::AmbiguousDeriveHelpers.decorate_lint(diag)
+            let diag2: Diag<'_, ()> =
+                lints::AmbiguousDeriveHelpers.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
 
         &AttributeLintKind::DocAutoCfgHideShowUnexpectedItem { attr_name } => {
-            lints::DocAutoCfgHideShowUnexpectedItem { attr_name }.decorate_lint(diag)
+            let diag2: Diag<'_, ()> = lints::DocAutoCfgHideShowUnexpectedItem { attr_name }
+                .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
 
         &AttributeLintKind::DocAutoCfgHideShowExpectsList { attr_name } => {
-            lints::DocAutoCfgHideShowExpectsList { attr_name }.decorate_lint(diag)
+            let diag2: Diag<'_, ()> = lints::DocAutoCfgHideShowExpectsList { attr_name }
+                .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
 
-        &AttributeLintKind::DocInvalid => { lints::DocInvalid }.decorate_lint(diag),
+        &AttributeLintKind::DocInvalid => {
+            let diag2: Diag<'_, ()> = lints::DocInvalid.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
+        }
 
         &AttributeLintKind::DocUnknownInclude { span, inner, value } => {
-            lints::DocUnknownInclude { inner, value, sugg: (span, Applicability::MaybeIncorrect) }
+            let diag2: Diag<'_, ()> = lints::DocUnknownInclude {
+                inner,
+                value,
+                sugg: (span, Applicability::MaybeIncorrect),
+            }
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
-        .decorate_lint(diag),
 
         &AttributeLintKind::DocUnknownSpotlight { span } => {
-            lints::DocUnknownSpotlight { sugg_span: span }.decorate_lint(diag)
+            let diag2: Diag<'_, ()> =
+                lints::DocUnknownSpotlight { sugg_span: span }.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
 
         &AttributeLintKind::DocUnknownPasses { name, span } => {
-            lints::DocUnknownPasses { name, note_span: span }.decorate_lint(diag)
+            let diag2: Diag<'_, ()> =
+                lints::DocUnknownPasses { name, note_span: span }.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
 
         &AttributeLintKind::DocUnknownPlugins { span } => {
-            lints::DocUnknownPlugins { label_span: span }.decorate_lint(diag)
+            let diag2: Diag<'_, ()> =
+                lints::DocUnknownPlugins { label_span: span }.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
 
         &AttributeLintKind::DocUnknownAny { name } => {
-            lints::DocUnknownAny { name }.decorate_lint(diag)
+            let diag2: Diag<'_, ()> =
+                lints::DocUnknownAny { name }.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
 
         &AttributeLintKind::DocAutoCfgWrongLiteral => {
-            lints::DocAutoCfgWrongLiteral.decorate_lint(diag)
+            let diag2: Diag<'_, ()> =
+                lints::DocAutoCfgWrongLiteral.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
 
-        &AttributeLintKind::DocTestTakesList => lints::DocTestTakesList.decorate_lint(diag),
+        &AttributeLintKind::DocTestTakesList => {
+            let diag2: Diag<'_, ()> = lints::DocTestTakesList.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
+        }
 
         &AttributeLintKind::DocTestUnknown { name } => {
-            lints::DocTestUnknown { name }.decorate_lint(diag)
+            let diag2: Diag<'_, ()> =
+                lints::DocTestUnknown { name }.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
 
-        &AttributeLintKind::DocTestLiteral => lints::DocTestLiteral.decorate_lint(diag),
+        &AttributeLintKind::DocTestLiteral => {
+            let diag2: Diag<'_, ()> = lints::DocTestLiteral.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
+        }
 
-        &AttributeLintKind::AttrCrateLevelOnly => lints::AttrCrateLevelOnly.decorate_lint(diag),
+        &AttributeLintKind::AttrCrateLevelOnly => {
+            let diag2: Diag<'_, ()> = lints::AttrCrateLevelOnly.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
+        }
 
         &AttributeLintKind::DoNotRecommendDoesNotExpectArgs => {
-            lints::DoNotRecommendDoesNotExpectArgs.decorate_lint(diag)
+            let diag2: Diag<'_, ()> =
+                lints::DoNotRecommendDoesNotExpectArgs.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
 
-        &AttributeLintKind::CrateTypeUnknown { span, suggested } => lints::UnknownCrateTypes {
-            sugg: suggested.map(|s| lints::UnknownCrateTypesSuggestion { span, snippet: s }),
+        &AttributeLintKind::CrateTypeUnknown { span, suggested } => {
+            let diag2: Diag<'_, ()> = lints::UnknownCrateTypes {
+                sugg: suggested.map(|s| lints::UnknownCrateTypesSuggestion { span, snippet: s }),
+            }
+            .into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
         }
-        .decorate_lint(diag),
 
-        &AttributeLintKind::MalformedDoc => lints::MalformedDoc.decorate_lint(diag),
+        &AttributeLintKind::MalformedDoc => {
+            let diag2: Diag<'_, ()> = lints::MalformedDoc.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
+        }
 
-        &AttributeLintKind::ExpectedNoArgs => lints::ExpectedNoArgs.decorate_lint(diag),
+        &AttributeLintKind::ExpectedNoArgs => {
+            let diag2: Diag<'_, ()> = lints::ExpectedNoArgs.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
+        }
 
-        &AttributeLintKind::ExpectedNameValue => lints::ExpectedNameValue.decorate_lint(diag),
+        &AttributeLintKind::ExpectedNameValue => {
+            let diag2: Diag<'_, ()> = lints::ExpectedNameValue.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
+        }
     }
 }

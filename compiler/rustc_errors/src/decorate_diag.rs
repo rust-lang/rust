@@ -4,12 +4,12 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::MultiSpan;
 use rustc_lint_defs::{BuiltinLintDiag, Lint, LintId};
 
-use crate::{DynSend, LintDiagnostic, LintDiagnosticBox};
+use crate::{Diagnostic, DynSend};
 
 /// We can't implement `LintDiagnostic` for `BuiltinLintDiag`, because decorating some of its
 /// variants requires types we don't have yet. So, handle that case separately.
 pub enum DecorateDiagCompat {
-    Dynamic(Box<dyn for<'a> LintDiagnosticBox<'a, ()> + DynSend + 'static>),
+    Dynamic(Box<dyn for<'a, 'b> FnOnce(&'a mut crate::Diag<'b, ()>) + DynSend + 'static>),
     Builtin(BuiltinLintDiag),
 }
 
@@ -19,12 +19,13 @@ impl std::fmt::Debug for DecorateDiagCompat {
     }
 }
 
-impl !LintDiagnostic<'_, ()> for BuiltinLintDiag {}
-
-impl<D: for<'a> LintDiagnostic<'a, ()> + DynSend + 'static> From<D> for DecorateDiagCompat {
+impl<D: for<'a> Diagnostic<'a, ()> + DynSend + 'static> From<D> for DecorateDiagCompat {
     #[inline]
     fn from(d: D) -> Self {
-        Self::Dynamic(Box::new(d))
+        Self::Dynamic(Box::new(|diag| {
+            let diag2 = d.into_diag(diag.dcx, diag.level());
+            diag.merge_with_other_diag(diag2);
+        }))
     }
 }
 

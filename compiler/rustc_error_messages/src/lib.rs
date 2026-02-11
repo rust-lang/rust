@@ -316,6 +316,10 @@ impl MultiSpan {
         MultiSpan { primary_spans: vec, span_labels: vec![] }
     }
 
+    pub fn push_primary_span(&mut self, primary_span: Span) {
+        self.primary_spans.push(primary_span);
+    }
+
     pub fn push_span_label(&mut self, span: Span, label: impl Into<DiagMessage>) {
         self.span_labels.push((span, label.into()));
     }
@@ -357,6 +361,10 @@ impl MultiSpan {
             }
         }
         replacements_occurred
+    }
+
+    pub fn span_labels_raw(&self) -> &[(Span, DiagMessage)] {
+        &self.span_labels
     }
 
     /// Returns the strings to highlight. We always ensure that there

@@ -2,7 +2,7 @@ use rustc_ast::attr::AttributeExt;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{Diag, LintDiagnostic, MultiSpan, msg};
+use rustc_errors::{Diag, Diagnostic, MultiSpan, msg};
 use rustc_feature::{Features, GateIssue};
 use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -985,19 +985,21 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         &self,
         lint: &'static Lint,
         span: MultiSpan,
-        decorate: impl for<'a> LintDiagnostic<'a, ()>,
+        decorate: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level(lint);
         lint_level(self.sess, lint, level, Some(span), |lint| {
-            decorate.decorate_lint(lint);
+            let diag = decorate.into_diag(lint.dcx, lint.level());
+            lint.merge_with_other_diag(diag);
         });
     }
 
     #[track_caller]
-    pub fn emit_lint(&self, lint: &'static Lint, decorate: impl for<'a> LintDiagnostic<'a, ()>) {
+    pub fn emit_lint(&self, lint: &'static Lint, decorate: impl for<'a> Diagnostic<'a, ()>) {
         let level = self.lint_level(lint);
         lint_level(self.sess, lint, level, None, |lint| {
-            decorate.decorate_lint(lint);
+            let diag = decorate.into_diag(lint.dcx, lint.level());
+            lint.merge_with_other_diag(diag);
         });
     }
 }

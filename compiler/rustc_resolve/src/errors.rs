@@ -1,9 +1,9 @@
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagMessage, Diagnostic, ElidedLifetimeInPathSubdiag,
-    EmissionGuarantee, IntoDiagArg, Level, LintDiagnostic, MultiSpan, Subdiagnostic, msg,
+    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::source_map::Spanned;
 use rustc_span::{Ident, Span, Symbol};
 
@@ -620,7 +620,7 @@ pub(crate) struct ProcMacroSameCrate {
     pub(crate) is_test: bool,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("cannot find {$ns_descr} `{$ident}` in this scope")]
 pub(crate) struct ProcMacroDeriveResolutionFallback {
     #[label("names from parent modules are not accessible without an explicit import")]
@@ -629,7 +629,7 @@ pub(crate) struct ProcMacroDeriveResolutionFallback {
     pub ident: Symbol,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "macro-expanded `macro_export` macros from the current crate cannot be referred to by absolute paths"
 )]
@@ -836,7 +836,7 @@ pub(crate) struct CannotBeReexportedCratePublicNS {
     pub(crate) ident: Ident,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("extern crate `{$ident}` is private and cannot be re-exported", code = E0365)]
 pub(crate) struct PrivateExternCrateReexport {
     pub ident: Ident,
@@ -1397,14 +1397,14 @@ pub(crate) struct TraitImplMismatch {
     pub(crate) trait_item_span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("derive helper attribute is used before it is introduced")]
 pub(crate) struct LegacyDeriveHelpers {
     #[label("the attribute is introduced here")]
     pub span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unused extern crate")]
 pub(crate) struct UnusedExternCrate {
     #[label("unused")]
@@ -1418,7 +1418,7 @@ pub(crate) struct UnusedExternCrate {
     pub removal_span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("{$kind} `{$name}` from private dependency '{$krate}' is re-exported")]
 pub(crate) struct ReexportPrivateDependency {
     pub name: Symbol,
@@ -1426,32 +1426,32 @@ pub(crate) struct ReexportPrivateDependency {
     pub krate: Symbol,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unused label")]
 pub(crate) struct UnusedLabel;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unused `#[macro_use]` import")]
 pub(crate) struct UnusedMacroUse;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("applying the `#[macro_use]` attribute to an `extern crate` item is deprecated")]
 #[help("remove it and import macros at use sites with a `use` item instead")]
 pub(crate) struct MacroUseDeprecated;
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("macro `{$ident}` is private")]
 pub(crate) struct MacroIsPrivate {
     pub ident: Ident,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unused macro definition: `{$name}`")]
 pub(crate) struct UnusedMacroDefinition {
     pub name: Symbol,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("rule #{$n} of macro `{$name}` is never used")]
 pub(crate) struct MacroRuleNeverUsed {
     pub n: usize,
@@ -1462,13 +1462,13 @@ pub(crate) struct UnstableFeature {
     pub msg: DiagMessage,
 }
 
-impl<'a> LintDiagnostic<'a, ()> for UnstableFeature {
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        diag.primary_message(self.msg);
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for UnstableFeature {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+        Diag::new(dcx, level, self.msg)
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("`extern crate` is not idiomatic in the new edition")]
 pub(crate) struct ExternCrateNotIdiomatic {
     #[suggestion(
@@ -1481,7 +1481,7 @@ pub(crate) struct ExternCrateNotIdiomatic {
     pub code: &'static str,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("cannot find macro `{$path}` in the current scope when looking from {$location}")]
 #[help("import `macro_rules` with `use` to make it callable above its definition")]
 pub(crate) struct OutOfScopeMacroCalls {
@@ -1491,7 +1491,7 @@ pub(crate) struct OutOfScopeMacroCalls {
     pub location: String,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(
     "glob import doesn't reexport anything with visibility `{$import_vis}` because no imported item is public enough"
 )]
@@ -1504,7 +1504,7 @@ pub(crate) struct RedundantImportVisibility {
     pub max_vis: String,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unknown diagnostic attribute")]
 pub(crate) struct UnknownDiagnosticAttribute {
     #[subdiagnostic]
@@ -1566,11 +1566,5 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for Ambiguity {
         let mut diag = Diag::new(dcx, level, "").with_span(self.ident.span).with_code(E0659);
         self.decorate(&mut diag);
         diag
-    }
-}
-
-impl<'a> LintDiagnostic<'a, ()> for Ambiguity {
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        self.decorate(diag);
     }
 }

@@ -125,9 +125,13 @@ pub struct Deprecated {
     pub since_kind: DeprecatedSinceKind,
 }
 
-impl<'a, G: EmissionGuarantee> rustc_errors::LintDiagnostic<'a, G> for Deprecated {
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
-        diag.primary_message(match &self.since_kind {
+impl<'a, G: EmissionGuarantee> rustc_errors::Diagnostic<'a, G> for Deprecated {
+    fn into_diag(
+        self,
+        dcx: rustc_errors::DiagCtxtHandle<'a>,
+        level: rustc_errors::Level,
+    ) -> Diag<'a, G> {
+        let msg = match &self.since_kind {
             DeprecatedSinceKind::InEffect => msg!(
                 "use of deprecated {$kind} `{$path}`{$has_note ->
                     [true] : {$note}
@@ -140,15 +144,14 @@ impl<'a, G: EmissionGuarantee> rustc_errors::LintDiagnostic<'a, G> for Deprecate
                     *[other] {\"\"}
                 }"
             ),
-            DeprecatedSinceKind::InVersion(_) => {
-                msg!(
-                    "use of {$kind} `{$path}` that will be deprecated in future version {$version}{$has_note ->
-                        [true] : {$note}
-                        *[other] {\"\"}
-                    }"
-                )
-            }
-        });
+            DeprecatedSinceKind::InVersion(_) => msg!(
+                "use of {$kind} `{$path}` that will be deprecated in future version {$version}{$has_note ->
+                    [true] : {$note}
+                    *[other] {\"\"}
+                }"
+            ),
+        };
+        let mut diag = Diag::new(dcx, level, msg);
         diag.arg("kind", self.kind);
         diag.arg("path", self.path);
         if let DeprecatedSinceKind::InVersion(version) = self.since_kind {
@@ -163,6 +166,7 @@ impl<'a, G: EmissionGuarantee> rustc_errors::LintDiagnostic<'a, G> for Deprecate
         if let Some(sub) = self.sub {
             diag.subdiagnostic(sub);
         }
+        diag
     }
 }
 

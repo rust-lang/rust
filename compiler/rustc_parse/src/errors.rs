@@ -11,7 +11,7 @@ use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg,
     Level, Subdiagnostic, SuggestionStyle, msg,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::{Ident, Span, Symbol};
@@ -4267,7 +4267,7 @@ pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
     pub(crate) span: Span,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("unicode codepoint changing visible direction of text present in {$label}")]
 #[note(
     "these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen"
@@ -4350,7 +4350,7 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("missing pattern for `...` argument")]
 pub(crate) struct VarargsWithoutPattern {
     #[suggestion(

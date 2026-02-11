@@ -40,7 +40,9 @@ impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
                 DecorateDiagCompat::Builtin(b) => {
                     diagnostics::decorate_builtin_lint(self.context.sess(), self.tcx, b, diag);
                 }
-                DecorateDiagCompat::Dynamic(d) => d.decorate_lint_box(diag),
+                DecorateDiagCompat::Dynamic(d) => {
+                    d(diag);
+                }
             });
         }
     }

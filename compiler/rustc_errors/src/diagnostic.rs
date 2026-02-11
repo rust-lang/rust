@@ -132,24 +132,6 @@ where
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>);
 }
 
-/// Trait implemented by lint types. This should not be implemented manually. Instead, use
-/// `#[derive(LintDiagnostic)]` -- see [rustc_macros::LintDiagnostic].
-#[rustc_diagnostic_item = "LintDiagnostic"]
-pub trait LintDiagnostic<'a, G: EmissionGuarantee> {
-    /// Decorate a lint with the information from this type.
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>);
-}
-
-pub trait LintDiagnosticBox<'a, G: EmissionGuarantee> {
-    fn decorate_lint_box<'b>(self: Box<Self>, diag: &'b mut Diag<'a, G>);
-}
-
-impl<'a, G: EmissionGuarantee, D: LintDiagnostic<'a, G>> LintDiagnosticBox<'a, G> for D {
-    fn decorate_lint_box<'b>(self: Box<Self>, diag: &'b mut Diag<'a, G>) {
-        self.decorate_lint(diag);
-    }
-}
-
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub(crate) struct DiagLocation {
     file: Cow<'static, str>,
@@ -1350,6 +1332,45 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         if let Some(diag) = self.diag.as_mut() {
             diag.remove_arg(name);
         }
+    }
+
+    /// Merges messages, suggestions, code, children diagnostics and args, ignores the rest.
+    pub fn merge_with_other_diag<G2: EmissionGuarantee>(&mut self, other: Diag<'_, G2>) {
+        if let Some(inner) = &mut self.diag {
+            let DiagInner {
+                level: _,
+                sort_span: _,
+                is_lint: _,
+                long_ty_path: _,
+                lint_id: _,
+                reserved_args: _,
+
+                ref mut messages,
+                ref mut code,
+                ref mut children,
+                ref mut suggestions,
+                ref mut args,
+                ref mut emitted_at,
+                ref mut span,
+            } = **inner;
+            if let Some(other) = &other.diag {
+                messages.extend_from_slice(&other.messages);
+                *code = other.code;
+                children.extend_from_slice(&other.children);
+                *suggestions = other.suggestions.clone();
+                for (arg, value) in &other.args {
+                    args.insert(arg.clone(), value.clone());
+                }
+                *emitted_at = other.emitted_at.clone();
+            }
+            for primary_span in other.span.primary_spans() {
+                span.push_primary_span(*primary_span);
+            }
+            for (new_span, label) in other.span.span_labels_raw() {
+                span.push_span_label(*new_span, label.clone());
+            }
+        }
+        other.cancel();
     }
 }
 

@@ -18,16 +18,16 @@ use crate::diagnostics::utils::{
     should_generate_arg, type_is_bool, type_is_unit, type_matches_path,
 };
 
+// FIXME: Remove this enum.
 /// What kind of diagnostic is being derived - a fatal/error/warning or a lint?
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DiagnosticDeriveKind {
     Diagnostic,
-    LintDiagnostic,
 }
 
 /// Tracks persistent information required for a specific variant when building up individual calls
 /// to diagnostic methods for generated diagnostic derives - both `Diagnostic` for
-/// fatal/errors/warnings and `LintDiagnostic` for lints.
+/// fatal/errors/warnings and `Diagnostic` for lints.
 pub(crate) struct DiagnosticDeriveVariantBuilder {
     /// The kind for the entire type.
     pub kind: DiagnosticDeriveKind,
@@ -357,22 +357,15 @@ impl DiagnosticDeriveVariantBuilder {
             // Don't need to do anything - by virtue of the attribute existing, the
             // `arg` call will not be generated.
             (Meta::Path(_), "skip_arg") => return Ok(quote! {}),
-            (Meta::Path(_), "primary_span") => {
-                match self.kind {
-                    DiagnosticDeriveKind::Diagnostic => {
-                        report_error_if_not_applied_to_span(attr, &info)?;
+            (Meta::Path(_), "primary_span") => match self.kind {
+                DiagnosticDeriveKind::Diagnostic => {
+                    report_error_if_not_applied_to_span(attr, &info)?;
 
-                        return Ok(quote! {
-                            diag.span(#binding);
-                        });
-                    }
-                    DiagnosticDeriveKind::LintDiagnostic => {
-                        throw_invalid_attr!(attr, |diag| {
-                            diag.help("the `primary_span` field attribute is not valid for lint diagnostics")
-                        })
-                    }
+                    return Ok(quote! {
+                        diag.span(#binding);
+                    });
                 }
-            }
+            },
             (Meta::Path(_), "subdiagnostic") => {
                 return Ok(quote! { diag.subdiagnostic(#binding); });
             }

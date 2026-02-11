@@ -99,9 +99,11 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'p, 'tcx>(
                     lint_name: "non_exhaustive_omitted_patterns",
                 };
 
-                use rustc_errors::LintDiagnostic;
+                use rustc_errors::Diagnostic;
                 let mut err = rcx.tcx.dcx().struct_span_warn(arm.pat.data().span, "");
-                decorator.decorate_lint(&mut err);
+                let diag: rustc_errors::Diag<'_, ()> =
+                    decorator.into_diag(rcx.tcx.dcx(), err.level());
+                err.merge_with_other_diag(diag);
                 err.emit();
             }
         }

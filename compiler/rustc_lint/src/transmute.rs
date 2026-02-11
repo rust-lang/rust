@@ -3,7 +3,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir};
-use rustc_macros::LintDiagnostic;
+use rustc_macros::Diagnostic;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::sym;
@@ -368,7 +368,7 @@ fn check_unnecessary_transmute<'tcx>(
     });
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("pointers cannot be transmuted to integers during const eval")]
 #[note("at compile-time, pointers do not have an integer value")]
 #[note(

@@ -300,7 +300,6 @@ symbols! {
         Left,
         Lifetime,
         LinkedList,
-        LintDiagnostic,
         LintPass,
         LocalKey,
         Mutex,

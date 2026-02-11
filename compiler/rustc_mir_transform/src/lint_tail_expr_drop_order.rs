@@ -10,7 +10,7 @@ use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::MixedBitSet;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_macros::{LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::bug;
 use rustc_middle::mir::{
     self, BasicBlock, Body, ClearCrossCrate, Local, Location, MirDumper, Place, StatementKind,
@@ -498,7 +498,7 @@ fn assign_observables_names(
     names
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("relative drop order changing in Rust 2024")]
 struct TailExprDropOrderLint<'a> {
     #[subdiagnostic]

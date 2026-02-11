@@ -27,7 +27,7 @@ use rustc_abi::FieldIdx;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_errors::LintDiagnostic;
+use rustc_errors::{Diag, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
@@ -1433,7 +1433,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     CRATE_HIR_ID,
                     borrowed,
                     |diag| {
-                        session_diagnostics::TailExprDropOrder { borrowed }.decorate_lint(diag);
+                        let diag2: Diag<'_, ()> =
+                            session_diagnostics::TailExprDropOrder { borrowed }
+                                .into_diag(diag.dcx, diag.level());
+                        diag.merge_with_other_diag(diag2);
                         explain.add_explanation_to_diagnostic(&this, diag, "", None, None);
                     },
                 );
