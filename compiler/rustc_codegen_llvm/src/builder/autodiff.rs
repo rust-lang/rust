@@ -20,7 +20,7 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
     da: &mut Vec<DiffActivity>,
 ) {
     if !matches!(fn_ty.kind(), ty::FnPtr(..)) {
-        // TODO: We may need to support FnDef here for non-`rlib` scenarios.
+        // FIXME: We may need to support FnDef here for non-`rlib` scenarios.
         bug!("expected fn ptr for autodiff, got {:?}", fn_ty);
     }
 
@@ -29,9 +29,10 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
     let sig = fn_ty.fn_sig(tcx).skip_binder();
 
     // FIXME(Sa4dUs): pass proper varargs once we have support for differentiating variadic functions
-    let Ok(fn_abi) =
-        tcx.fn_abi_of_fn_ptr(PseudoCanonicalInput { typing_env: TypingEnv::fully_monomorphized(), value: (ty::Binder::dummy(sig), ty::List::empty()) })
-    else {
+    let Ok(fn_abi) = tcx.fn_abi_of_fn_ptr(PseudoCanonicalInput {
+        typing_env: TypingEnv::fully_monomorphized(),
+        value: (ty::Binder::dummy(sig), ty::List::empty()),
+    }) else {
         bug!("failed to get fn_abi of fn_ptr with empty varargs");
     };
 
