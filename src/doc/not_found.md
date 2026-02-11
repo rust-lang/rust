@@ -41,7 +41,7 @@ Some things that might be helpful to you though:
     <input type="submit" value="Search" id="search-but">
     <!--
       Don't show the options by default,
-      since "From the Standary Library" doesn't work without JavaScript
+      since "From the Standard Library" doesn't work without JavaScript
     -->
     <fieldset id="search-from" style="display:none">
       <label><input name="from" value="library" type="radio"> From the Standard Library</label>
