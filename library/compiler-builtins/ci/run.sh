@@ -50,6 +50,9 @@ SYMCHECK_TEST_TARGET="$target" cargo test -p symbol-check --release
 symcheck=(cargo run -p symbol-check --release)
 symcheck+=(-- --build-and-check --target "$target")
 
+# Executable section checks are meaningless on no-std targets
+[[ "$target" == *"-none"* ]] && symcheck+=(--no-os)
+
 "${symcheck[@]}" -- -p compiler_builtins
 "${symcheck[@]}" -- -p compiler_builtins --release
 "${symcheck[@]}" -- -p compiler_builtins --features c

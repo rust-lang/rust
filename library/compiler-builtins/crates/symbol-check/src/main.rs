@@ -5,26 +5,27 @@
 //! actual target is cross compiled.
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
-use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio, exit};
 use std::sync::LazyLock;
+use std::{env, fs};
 
 use object::read::archive::ArchiveFile;
 use object::{
-    BinaryFormat, File as ObjFile, Object, ObjectSection, ObjectSymbol, Result as ObjResult,
-    Symbol, SymbolKind, SymbolScope,
+    Architecture, BinaryFormat, Endianness, File as ObjFile, Object, ObjectSection, ObjectSymbol,
+    Result as ObjResult, SectionFlags, Symbol, SymbolKind, SymbolScope, U32, elf,
 };
 use regex::Regex;
 use serde_json::Value;
 
 const CHECK_LIBRARIES: &[&str] = &["compiler_builtins", "builtins_test_intrinsics"];
 const CHECK_EXTENSIONS: &[Option<&str>] = &[Some("rlib"), Some("a"), Some("exe"), None];
+const GNU_STACK: &str = ".note.GNU-stack";
 
 const USAGE: &str = "Usage:
 
-    symbol-check --build-and-check [--target TARGET] -- CARGO_BUILD_ARGS ...
+    symbol-check --build-and-check [--target TARGET] [--no-os] -- CARGO_BUILD_ARGS ...
     symbol-check --check PATHS ...\
 ";
 
@@ -51,6 +52,12 @@ fn main() {
         "Run checks on the given set of paths, without invoking Cargo. Paths \
         may be either archives or object files.",
     );
+    opts.optflag(
+        "",
+        "no-os",
+        "The binaries will not be checked for executable stacks. Used for embedded targets which \
+        don't set `.note.GNU-stack` since there is no protection.",
+    );
 
     let print_usage_and_exit = |code: i32| -> ! {
         eprintln!("{}", opts.usage(USAGE));
@@ -66,6 +73,7 @@ fn main() {
         print_usage_and_exit(0);
     }
 
+    let no_os_target = m.opt_present("no-os");
     let free_args = m.free.iter().map(String::as_str).collect::<Vec<_>>();
     for arg in &free_args {
         assert!(
@@ -77,18 +85,18 @@ fn main() {
     if m.opt_present("build-and-check") {
         let target = m.opt_str("target").unwrap_or(env!("HOST").to_string());
         let paths = exec_cargo_with_args(&target, &free_args);
-        check_paths(&paths);
+        check_paths(&paths, no_os_target);
     } else if m.opt_present("check") {
         if free_args.is_empty() {
             print_usage_and_exit(1);
         }
-        check_paths(&free_args);
+        check_paths(&free_args, no_os_target);
     } else {
         print_usage_and_exit(1);
     }
 }
 
-fn check_paths<P: AsRef<Path>>(paths: &[P]) {
+fn check_paths<P: AsRef<Path>>(paths: &[P], no_os_target: bool) {
     for path in paths {
         let path = path.as_ref();
         println!("Checking {}", path.display());
@@ -96,6 +104,7 @@ fn check_paths<P: AsRef<Path>>(paths: &[P]) {
 
         verify_no_duplicates(&archive);
         verify_core_symbols(&archive);
+        verify_no_exec_stack(&archive, no_os_target);
     }
 }
 
@@ -318,6 +327,177 @@ fn verify_core_symbols(archive: &BinFile) {
     }
 
     println!("    success: no undefined references to core found");
+}
+
+/// Reasons a binary is considered to have an executable stack.
+enum ExeStack {
+    MissingGnuStackSec,
+    ExeGnuStackSec,
+    ExePtGnuStack,
+}
+
+/// Ensure that the object/archive will not require an executable stack.
+fn verify_no_exec_stack(archive: &BinFile, no_os_target: bool) {
+    if no_os_target {
+        // We don't really have a good way of knowing whether or not an elf file is for a
+        // no-os environment so we rely on a CLI arg (note.GNU-stack doesn't get emitted if
+        // there is no OS to protect the stack).
+        println!("    skipping check for writeable+executable stack on no-os target");
+        return;
+    }
+
+    let mut problem_objfiles = Vec::new();
+
+    archive.for_each_object(|obj, obj_path| match check_obj_exe_stack(&obj) {
+        Ok(()) => (),
+        Err(exe) => problem_objfiles.push((obj_path.to_owned(), exe)),
+    });
+
+    if problem_objfiles.is_empty() {
+        println!("    success: no writeable+executable stack indicators found");
+        return;
+    }
+
+    eprintln!("the following object files require an executable stack:");
+
+    for (obj, exe) in problem_objfiles {
+        let reason = match exe {
+            ExeStack::MissingGnuStackSec => "no .note.GNU-stack section",
+            ExeStack::ExeGnuStackSec => ".note.GNU-stack section marked SHF_EXECINSTR",
+            ExeStack::ExePtGnuStack => "PT_GNU_STACK program header marked PF_X",
+        };
+        eprintln!("    {obj} ({reason})");
+    }
+
+    exit(1);
+}
+
+/// `Err` if the section/flag combination indicates that the object file should be linked with an
+/// executable stack.
+fn check_obj_exe_stack(obj: &ObjFile) -> Result<(), ExeStack> {
+    match obj.format() {
+        BinaryFormat::Elf => check_elf_exe_stack(obj),
+        // Technically has the `MH_ALLOW_STACK_EXECUTION` flag but I can't get the compiler to
+        // emit it (`-allow_stack_execute` doesn't seem to work in recent versions).
+        BinaryFormat::MachO => Ok(()),
+        // Can't find much information about Windows stack executability.
+        BinaryFormat::Coff | BinaryFormat::Pe => Ok(()),
+        // Also not sure about wasm.
+        BinaryFormat::Wasm => Ok(()),
+        BinaryFormat::Xcoff | _ => {
+            unimplemented!("binary format {:?} is not supported", obj.format())
+        }
+    }
+}
+
+/// Check for an executable stack in elf binaries.
+///
+/// If the `PT_GNU_STACK` header on a binary is present and marked executable, the binary will
+/// have an executable stack (RWE rather than the desired RW). If any object file has the right
+/// `.note.GNU-stack` logic, the final binary will get `PT_GNU_STACK`.
+///
+/// Individual object file logic is as follows, paraphrased from [1]:
+///
+/// - A `.note.GNU-stack` section with the exe flag means this needs an executable stack
+/// - A `.note.GNU-stack` section without the exe flag means there is no executable stack needed
+/// - Without the section, behavior is target-specific. Historically it usually means an executable
+///   stack is required.
+///
+/// Per [2], it is now deprecated behavior for a missing `.note.GNU-stack` section to imply an
+/// executable stack. However, we shouldn't assume that tooling has caught up to this.
+///
+/// [1]: https://www.man7.org/linux/man-pages/man1/ld.1.html
+/// [2]: https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;h=0d38576a34ec64a1b4500c9277a8e9d0f07e6774>
+fn check_elf_exe_stack(obj: &ObjFile) -> Result<(), ExeStack> {
+    let end = obj.endianness();
+
+    // Check for PT_GNU_STACK marked executable
+    let mut is_obj_exe = false;
+    let mut found_gnu_stack = false;
+    let mut check_ph = |p_type: U32<Endianness>, p_flags: U32<Endianness>| {
+        let ty = p_type.get(end);
+        let flags = p_flags.get(end);
+
+        // Presence of PT_INTERP indicates that this is an executable rather than a standalone
+        // object file.
+        if ty == elf::PT_INTERP {
+            is_obj_exe = true;
+        }
+
+        if ty == elf::PT_GNU_STACK {
+            assert!(!found_gnu_stack, "multiple PT_GNU_STACK sections");
+            found_gnu_stack = true;
+            if flags & elf::PF_X != 0 {
+                return Err(ExeStack::ExePtGnuStack);
+            }
+        }
+
+        Ok(())
+    };
+
+    match obj {
+        ObjFile::Elf32(f) => {
+            for ph in f.elf_program_headers() {
+                check_ph(ph.p_type, ph.p_flags)?;
+            }
+        }
+        ObjFile::Elf64(f) => {
+            for ph in f.elf_program_headers() {
+                check_ph(ph.p_type, ph.p_flags)?;
+            }
+        }
+        _ => panic!("should only be called with elf objects"),
+    }
+
+    if is_obj_exe {
+        return Ok(());
+    }
+
+    // The remaining are checks for individual object files, which wind up controlling PT_GNU_STACK
+    // in the final binary.
+    let mut gnu_stack_exe = None;
+    let mut has_exe_sections = false;
+    for sec in obj.sections() {
+        let SectionFlags::Elf { sh_flags } = sec.flags() else {
+            unreachable!("only elf files are being checked");
+        };
+
+        let is_sec_exe = sh_flags & u64::from(elf::SHF_EXECINSTR) != 0;
+
+        // If the magic section is present, its exe bit tells us whether or not the object
+        // file requires an executable stack.
+        if sec.name().unwrap_or_default() == GNU_STACK {
+            assert!(gnu_stack_exe.is_none(), "multiple {GNU_STACK} sections");
+            if is_sec_exe {
+                gnu_stack_exe = Some(Err(ExeStack::ExeGnuStackSec));
+            } else {
+                gnu_stack_exe = Some(Ok(()));
+            }
+        }
+
+        // Otherwise, just keep track of whether or not we have exeuctable sections
+        has_exe_sections |= is_sec_exe;
+    }
+
+    // GNU_STACK sets the executability if specified.
+    if let Some(exe) = gnu_stack_exe {
+        return exe;
+    }
+
+    // Ignore object files that have no executable sections, like rmeta.
+    if !has_exe_sections {
+        return Ok(());
+    }
+
+    // If there is no `.note.GNU-stack` and no executable sections, behavior differs by platform.
+    match obj.architecture() {
+        // PPC64 doesn't set `.note.GNU-stack` since GNU nested functions don't need a trampoline,
+        // <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=21098>. From experimentation, it seems
+        // like this only applies to big endian.
+        Architecture::PowerPc64 if obj.endianness() == Endianness::Big => Ok(()),
+
+        _ => Err(ExeStack::MissingGnuStackSec),
+    }
 }
 
 /// Thin wrapper for owning data used by `object`.
