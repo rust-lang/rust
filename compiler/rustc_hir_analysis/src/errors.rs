@@ -1223,11 +1223,27 @@ pub(crate) struct InherentTyOutsideRelevant {
 
 #[derive(Diagnostic)]
 #[diag("cannot define inherent `impl` for a type outside of the crate where the type is defined", code = E0116)]
-#[note("define and implement a trait or new type instead")]
+#[help(
+    "consider defining a trait and implementing it for the type or using a newtype wrapper like `struct MyType(ExternalType);` and implement it"
+)]
+#[note(
+    "for more details about the orphan rules, see <https://doc.rust-lang.org/reference/items/implementations.html?highlight=orphan#orphan-rules>"
+)]
 pub(crate) struct InherentTyOutsideNew {
     #[primary_span]
     #[label("impl for type defined outside of crate")]
     pub span: Span,
+    #[subdiagnostic]
+    pub note: Option<InherentTyOutsideNewAliasNote>,
+}
+
+#[derive(Subdiagnostic)]
+#[note("`{$ty_name}` does not define a new type, only an alias of `{$alias_ty_name}` defined here")]
+pub(crate) struct InherentTyOutsideNewAliasNote {
+    #[primary_span]
+    pub span: Span,
+    pub ty_name: String,
+    pub alias_ty_name: String,
 }
 
 #[derive(Diagnostic)]
