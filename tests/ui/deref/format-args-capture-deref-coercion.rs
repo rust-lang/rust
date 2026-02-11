@@ -24,14 +24,14 @@ fn main() {
     let x = 0.0;
 
     let _ = format_args!("{x:LogDeref$} {x:LogDeref$}");
-    // TODO: Increased by 2, as `&LogDeref` is coerced to a `&usize` twice.
-    assert_eq!(DEREF_COUNTER.load(Ordering::Relaxed), 1);
-
-    let _ = format_args!("{x:.LogDeref$} {x:.LogDeref$}");
-    // TODO: Increased by 2, as `&LogDeref` is coerced to a `&usize` twice.
+    // Increased by 2, as `&LogDeref` is coerced to a `&usize` twice.
     assert_eq!(DEREF_COUNTER.load(Ordering::Relaxed), 2);
 
+    let _ = format_args!("{x:.LogDeref$} {x:.LogDeref$}");
+    // Increased by 2, as `&LogDeref` is coerced to a `&usize` twice.
+    assert_eq!(DEREF_COUNTER.load(Ordering::Relaxed), 4);
+
     let _ = format_args!("{x:LogDeref$} {x:.LogDeref$}");
-    // TODO: Increased by 2, as `&LogDeref` is coerced to a `&usize` twice.
-    assert_eq!(DEREF_COUNTER.load(Ordering::Relaxed), 3);
+    // Increased by 2, as `&LogDeref` is coerced to a `&usize` twice.
+    assert_eq!(DEREF_COUNTER.load(Ordering::Relaxed), 6);
 }
