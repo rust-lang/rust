@@ -7,15 +7,17 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_query_system::query::{CycleError, report_cycle};
+use rustc_middle::dep_graph::dep_kinds;
+use rustc_middle::query::plumbing::CyclePlaceholder;
+use rustc_middle::ty::{self, Representability, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
+use rustc_query_system::query::CycleError;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span};
 
-use crate::dep_graph::dep_kinds;
-use crate::query::plumbing::CyclePlaceholder;
-use crate::ty::{self, Representability, Ty, TyCtxt};
+use crate::job::report_cycle;
 
-pub trait Value<'tcx>: Sized {
+pub(crate) trait Value<'tcx>: Sized {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle_error: &CycleError, guar: ErrorGuaranteed)
     -> Self;
 }

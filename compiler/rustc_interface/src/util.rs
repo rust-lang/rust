@@ -184,8 +184,7 @@ pub(crate) fn run_in_thread_pool_with_globals<
     use rustc_data_structures::defer;
     use rustc_data_structures::sync::FromDyn;
     use rustc_middle::ty::tls;
-    use rustc_query_impl::QueryCtxt;
-    use rustc_query_system::query::{QueryContext, break_query_cycles};
+    use rustc_query_impl::{QueryCtxt, break_query_cycles};
 
     let thread_stack_size = init_stack_size(thread_builder_diag);
 
