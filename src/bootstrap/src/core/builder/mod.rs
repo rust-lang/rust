@@ -1363,6 +1363,25 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         }
     }
 
+    /// Returns the compiler's relative runtime libdir where shared libraries are found for a
+    /// compiler's sysroot.
+    ///
+    /// For example this returns `lib` on Unix and `bin` on Windows.
+    pub fn sysroot_runtime_libdir_relative(&self, compiler: Compiler) -> PathBuf {
+        let adjust_path = |path: &Path| -> PathBuf {
+            if compiler.host.is_windows() || compiler.host.contains("cygwin") {
+                path.parent().expect("original path should point to `lib` already").join("bin")
+            } else {
+                path.to_owned()
+            }
+        };
+        match self.config.libdir_relative() {
+            Some(relative_libdir) if compiler.stage >= 1 => adjust_path(relative_libdir),
+            _ if compiler.stage == 0 => adjust_path(&self.build.initial_relative_libdir),
+            _ => PathBuf::from(libdir(compiler.host)),
+        }
+    }
+
     pub fn rustc_lib_paths(&self, compiler: Compiler) -> Vec<PathBuf> {
         let mut dylib_dirs = vec![self.rustc_libdir(compiler)];
 

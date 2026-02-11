@@ -35,7 +35,7 @@ use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::channel::{self, Info};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
-    exe, is_dylib, move_file, t, target_supports_cranelift_backend, timeit,
+    exe, is_dylib, libdir, move_file, t, target_supports_cranelift_backend, timeit,
 };
 use crate::utils::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::{CodegenBackendKind, Compiler, DependencyType, FileType, LLVM_TOOLS, Mode, trace};
@@ -2518,7 +2518,7 @@ fn maybe_install_llvm(
     }
 }
 
-/// Maybe add libLLVM.so to the target lib-dir for linking.
+/// Maybe add libLLVM.so to the target runtime lib-dir.
 #[cfg_attr(
     feature = "tracing",
     instrument(
@@ -2533,7 +2533,7 @@ fn maybe_install_llvm(
     ),
 )]
 pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
-    let dst_libdir = sysroot.join("lib/rustlib").join(target).join("lib");
+    let dst_libdir = sysroot.join("lib/rustlib").join(target).join(libdir(target));
     // We do not need to copy LLVM files into the sysroot if it is not
     // dynamically linked; it is already included into librustc_llvm
     // statically.
@@ -2557,7 +2557,8 @@ pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection,
     ),
 )]
 pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
-    let dst_libdir = sysroot.join(builder.sysroot_libdir_relative(Compiler::new(1, target)));
+    let dst_libdir =
+        sysroot.join(builder.sysroot_runtime_libdir_relative(Compiler::new(1, target)));
     // We do not need to copy LLVM files into the sysroot if it is not
     // dynamically linked; it is already included into librustc_llvm
     // statically.
