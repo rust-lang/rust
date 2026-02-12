@@ -10,7 +10,7 @@ pub fn trunc<F: Float>(x: F) -> F {
 
 #[inline]
 pub fn trunc_status<F: Float>(x: F) -> FpResult<F> {
-    let mut xi: F::Int = x.to_bits();
+    let xi: F::Int = x.to_bits();
     let e: i32 = x.exp_unbiased();
 
     // The represented value has no fractional part, so no truncation is needed
@@ -18,24 +18,26 @@ pub fn trunc_status<F: Float>(x: F) -> FpResult<F> {
         return FpResult::ok(x);
     }
 
-    let mask = if e < 0 {
-        // If the exponent is negative, the result will be zero so we mask out everything
+    let clear_mask = if e < 0 {
+        // If the exponent is negative, the result will be zero so we clear everything
         // except the sign.
-        F::SIGN_MASK
+        !F::SIGN_MASK
     } else {
-        // Otherwise, we mask out the last `e` bits of the significand.
-        !(F::SIG_MASK >> e.unsigned())
+        // Otherwise, we keep `e` fractional bits and clear the rest.
+        F::SIG_MASK >> e.unsigned()
     };
 
-    // If the to-be-masked-out portion is already zero, we have an exact result
-    if (xi & !mask) == IntTy::<F>::ZERO {
-        return FpResult::ok(x);
-    }
+    let cleared = xi & clear_mask;
+    let status = if cleared == IntTy::<F>::ZERO {
+        // If the to-be-zeroed portion is already zero, we have an exact result.
+        Status::OK
+    } else {
+        // Otherwise the result is inexact and we will truncate, so indicate `FE_INEXACT`.
+        Status::INEXACT
+    };
 
-    // Otherwise the result is inexact and we will truncate. Raise `FE_INEXACT`, mask the
-    // result, and return.
-    xi &= mask;
-    FpResult::new(F::from_bits(xi), Status::INEXACT)
+    // Now zero the bits we need to truncate and return.
+    FpResult::new(F::from_bits(xi ^ cleared), status)
 }
 
 #[cfg(test)]
