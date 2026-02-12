@@ -1,19 +1,21 @@
-use super::super::{CastFrom, Float, MinInt};
+use super::super::{CastFrom, Float};
 
 #[inline]
 pub fn frexp<F: Float>(x: F) -> (F, i32) {
     let mut ix = x.to_bits();
-    let ee = x.ex() as i32;
+    let mut ee = x.ex() as i32;
 
     if ee == 0 {
-        if x != F::ZERO {
-            // normalize via multiplication; 1p64 for `f64`
-            let magic = F::from_parts(false, F::EXP_BIAS + F::BITS, F::Int::ZERO);
-            let (x, e) = frexp(x * magic);
-            return (x, e - F::BITS as i32);
+        if x == F::ZERO {
+            return (x, 0);
         }
-        return (x, 0);
+
+        // Subnormals, needs to be normalized first
+        ix &= F::SIG_MASK;
+        (ee, ix) = F::normalize(ix);
+        ix |= x.to_bits() & F::SIGN_MASK;
     } else if ee == F::EXP_SAT as i32 {
+        // inf or  NaN
         return (x, 0);
     }
 

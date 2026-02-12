@@ -176,7 +176,6 @@ pub trait Float:
     fn fma(self, y: Self, z: Self) -> Self;
 
     /// Returns (normalized exponent, normalized significand)
-    #[allow(dead_code)]
     fn normalize(significand: Self::Int) -> (i32, Self::Int);
 
     /// Returns a number that represents the sign of self.
@@ -295,10 +294,7 @@ macro_rules! float_impl {
             }
             fn normalize(significand: Self::Int) -> (i32, Self::Int) {
                 let shift = significand.leading_zeros().wrapping_sub(Self::EXP_BITS);
-                (
-                    1i32.wrapping_sub(shift as i32),
-                    significand << shift as Self::Int,
-                )
+                (1i32.wrapping_sub(shift as i32), significand << shift)
             }
         }
     };
