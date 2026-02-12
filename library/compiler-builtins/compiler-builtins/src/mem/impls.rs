@@ -16,7 +16,8 @@
 // crate doing wrapping pointer arithmetic with a method that must not wrap won't be the problem if
 // something does go wrong at runtime.
 use core::ffi::c_int;
-use core::intrinsics::likely;
+
+use crate::support::cold_path;
 
 const WORD_SIZE: usize = core::mem::size_of::<usize>();
 const WORD_MASK: usize = WORD_SIZE - 1;
@@ -209,9 +210,10 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
 
         let n_words = n & !WORD_MASK;
         let src_misalignment = src as usize & WORD_MASK;
-        if likely(src_misalignment == 0) {
+        if src_misalignment == 0 {
             copy_forward_aligned_words(dest, src, n_words);
         } else {
+            cold_path();
             copy_forward_misaligned_words(dest, src, n_words);
         }
         dest = dest.wrapping_add(n_words);
@@ -327,9 +329,10 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
 
         let n_words = n & !WORD_MASK;
         let src_misalignment = src as usize & WORD_MASK;
-        if likely(src_misalignment == 0) {
+        if src_misalignment == 0 {
             copy_backward_aligned_words(dest, src, n_words);
         } else {
+            cold_path();
             copy_backward_misaligned_words(dest, src, n_words);
         }
         dest = dest.wrapping_sub(n_words);
@@ -368,7 +371,7 @@ pub unsafe fn set_bytes(mut s: *mut u8, c: u8, mut n: usize) {
         }
     }
 
-    if likely(n >= WORD_COPY_THRESHOLD) {
+    if n >= WORD_COPY_THRESHOLD {
         // Align s
         // Because of n >= 2 * WORD_SIZE, dst_misalignment < n
         let misalignment = (s as usize).wrapping_neg() & WORD_MASK;
@@ -380,6 +383,8 @@ pub unsafe fn set_bytes(mut s: *mut u8, c: u8, mut n: usize) {
         set_bytes_words(s, c, n_words);
         s = s.wrapping_add(n_words);
         n -= n_words;
+    } else {
+        cold_path();
     }
     set_bytes_bytes(s, c, n);
 }

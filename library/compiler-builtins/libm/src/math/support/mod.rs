@@ -35,5 +35,5 @@ pub use modular::linear_mul_reduction;
 /// Hint to the compiler that the current path is cold.
 pub fn cold_path() {
     #[cfg(intrinsics_enabled)]
-    core::intrinsics::cold_path();
+    core::hint::cold_path();
 }
