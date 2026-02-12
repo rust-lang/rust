@@ -56,20 +56,12 @@ pub struct OverlappingRangeEndpoints {
     pub overlap: Vec<Overlap>,
 }
 
+#[derive(Subdiagnostic)]
+#[label("this range overlaps on `{$range}`...")]
 pub struct Overlap {
+    #[primary_span]
     pub span: Span,
     pub range: String, // a printed pattern
-}
-
-impl Subdiagnostic for Overlap {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        let Overlap { span, range } = self;
-
-        // FIXME(mejrs) unfortunately `#[derive(LintDiagnostic)]`
-        // does not support `#[subdiagnostic(eager)]`...
-        let message = format!("this range overlaps on `{range}`...");
-        diag.span_label(span, message);
-    }
 }
 
 #[derive(LintDiagnostic)]

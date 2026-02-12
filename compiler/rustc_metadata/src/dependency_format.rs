@@ -68,8 +68,7 @@ use crate::creader::CStore;
 use crate::errors::{
     BadPanicStrategy, CrateDepMultiple, IncompatiblePanicInDropStrategy,
     IncompatibleWithImmediateAbort, IncompatibleWithImmediateAbortCore, LibRequired,
-    NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcDriverHelp, RustcLibRequired,
-    TwoPanicRuntimes,
+    NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
 };
 
 pub(crate) fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
@@ -318,7 +317,7 @@ fn add_library(
                         .drain(..)
                         .map(|cnum| NonStaticCrateDep { crate_name_: tcx.crate_name(cnum) })
                         .collect(),
-                    rustc_driver_help: linking_to_rustc_driver.then_some(RustcDriverHelp),
+                    rustc_driver_help: linking_to_rustc_driver,
                 });
             }
         }

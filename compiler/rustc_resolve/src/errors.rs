@@ -429,13 +429,9 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     pub(crate) name: Symbol,
     #[subdiagnostic]
     pub(crate) param_kind: ParamKindInNonTrivialAnonConst,
-    #[subdiagnostic]
-    pub(crate) help: Option<ParamInNonTrivialAnonConstHelp>,
+    #[help("add `#![feature(generic_const_exprs)]` to allow generic const expressions")]
+    pub(crate) help: bool,
 }
-
-#[derive(Subdiagnostic)]
-#[help("add `#![feature(generic_const_exprs)]` to allow generic const expressions")]
-pub(crate) struct ParamInNonTrivialAnonConstHelp;
 
 #[derive(Debug)]
 #[derive(Subdiagnostic)]

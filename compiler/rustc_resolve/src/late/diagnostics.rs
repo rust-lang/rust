@@ -3510,12 +3510,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         span: lifetime_ref.ident.span,
                         name: lifetime_ref.ident.name,
                         param_kind: errors::ParamKindInNonTrivialAnonConst::Lifetime,
-                        help: self
-                            .r
-                            .tcx
-                            .sess
-                            .is_nightly_build()
-                            .then_some(errors::ParamInNonTrivialAnonConstHelp),
+                        help: self.r.tcx.sess.is_nightly_build(),
                     })
                     .emit();
             }

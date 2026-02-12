@@ -1015,11 +1015,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     span,
                     name,
                     param_kind: is_type,
-                    help: self
-                        .tcx
-                        .sess
-                        .is_nightly_build()
-                        .then_some(errs::ParamInNonTrivialAnonConstHelp),
+                    help: self.tcx.sess.is_nightly_build(),
                 })
             }
             ResolutionError::ParamInEnumDiscriminant { name, param_kind: is_type } => self

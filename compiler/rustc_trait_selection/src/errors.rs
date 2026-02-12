@@ -1230,12 +1230,6 @@ impl Subdiagnostic for ConsiderBorrowingParamHelp {
     }
 }
 
-#[derive(Subdiagnostic)]
-#[help(
-    "verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output"
-)]
-pub struct RelationshipHelp;
-
 #[derive(Diagnostic)]
 #[diag("`impl` item signature doesn't match `trait` item signature")]
 pub struct TraitImplDiff {
@@ -1251,10 +1245,10 @@ pub struct TraitImplDiff {
     pub note: (),
     #[subdiagnostic]
     pub param_help: ConsiderBorrowingParamHelp,
-    #[subdiagnostic]
-    // Seems like subdiagnostics are always pushed to the end, so this one
-    // also has to be a subdiagnostic to maintain order.
-    pub rel_help: Option<RelationshipHelp>,
+    #[help(
+        "verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output"
+    )]
+    pub rel_help: bool,
     pub expected: String,
     pub found: String,
 }

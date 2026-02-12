@@ -16,7 +16,7 @@ use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlighted;
-use crate::errors::{ConsiderBorrowingParamHelp, RelationshipHelp, TraitImplDiff};
+use crate::errors::{ConsiderBorrowingParamHelp, TraitImplDiff};
 use crate::infer::{RegionResolutionError, ValuePairs};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
@@ -117,7 +117,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             trait_sp,
             note: (),
             param_help: ConsiderBorrowingParamHelp { spans: visitor.types.to_vec() },
-            rel_help: visitor.types.is_empty().then_some(RelationshipHelp),
+            rel_help: visitor.types.is_empty(),
             expected,
             found,
         };

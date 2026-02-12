@@ -43,8 +43,8 @@ pub struct CrateDepMultiple {
     pub crate_name: Symbol,
     #[subdiagnostic]
     pub non_static_deps: Vec<NonStaticCrateDep>,
-    #[subdiagnostic]
-    pub rustc_driver_help: Option<RustcDriverHelp>,
+    #[help("`feature(rustc_private)` is needed to link to the compiler's `rustc_driver` library")]
+    pub rustc_driver_help: bool,
 }
 
 #[derive(Subdiagnostic)]
@@ -53,10 +53,6 @@ pub struct NonStaticCrateDep {
     /// It's different from `crate_name` in main Diagnostic.
     pub crate_name_: Symbol,
 }
-
-#[derive(Subdiagnostic)]
-#[help("`feature(rustc_private)` is needed to link to the compiler's `rustc_driver` library")]
-pub struct RustcDriverHelp;
 
 #[derive(Diagnostic)]
 #[diag("cannot link together two panic runtimes: {$prev_name} and {$cur_name}")]

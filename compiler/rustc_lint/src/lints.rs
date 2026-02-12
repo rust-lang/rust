@@ -1975,25 +1975,15 @@ pub(crate) struct OverflowingBinHex<'a> {
     pub sign_bit_sub: Option<OverflowingBinHexSignBitSub<'a>>,
 }
 
+#[derive(Subdiagnostic)]
 pub(crate) enum OverflowingBinHexSign {
+    #[note(
+        "the literal `{$lit}` (decimal `{$dec}`) does not fit into the type `{$ty}` and will become `{$actually}{$ty}`"
+    )]
     Positive,
+    #[note("the literal `{$lit}` (decimal `{$dec}`) does not fit into the type `{$ty}`")]
+    #[note("and the value `-{$lit}` will become `{$actually}{$ty}`")]
     Negative,
-}
-
-impl Subdiagnostic for OverflowingBinHexSign {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        match self {
-            OverflowingBinHexSign::Positive => {
-                diag.note(inline_fluent!("the literal `{$lit}` (decimal `{$dec}`) does not fit into the type `{$ty}` and will become `{$actually}{$ty}`"));
-            }
-            OverflowingBinHexSign::Negative => {
-                diag.note(inline_fluent!(
-                    "the literal `{$lit}` (decimal `{$dec}`) does not fit into the type `{$ty}`"
-                ));
-                diag.note(inline_fluent!("and the value `-{$lit}` will become `{$actually}{$ty}`"));
-            }
-        }
-    }
 }
 
 #[derive(Subdiagnostic)]

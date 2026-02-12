@@ -2786,12 +2786,14 @@ pub(crate) struct UnknownTokenStart {
     pub escaped: String,
     #[subdiagnostic]
     pub sugg: Option<TokenSubstitution>,
-    #[subdiagnostic]
-    pub null: Option<UnknownTokenNull>,
+    #[help(
+        "source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used"
+    )]
+    pub null: bool,
     #[subdiagnostic]
     pub repeat: Option<UnknownTokenRepeat>,
-    #[subdiagnostic]
-    pub invisible: Option<InvisibleCharacter>,
+    #[help("invisible characters like '{$escaped}' are not usually visible in text editors")]
+    pub invisible: bool,
 }
 
 #[derive(Subdiagnostic)]
@@ -2836,16 +2838,6 @@ pub(crate) enum TokenSubstitution {
 pub(crate) struct UnknownTokenRepeat {
     pub repeats: usize,
 }
-
-#[derive(Subdiagnostic)]
-#[help("invisible characters like '{$escaped}' are not usually visible in text editors")]
-pub(crate) struct InvisibleCharacter;
-
-#[derive(Subdiagnostic)]
-#[help(
-    "source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used"
-)]
-pub(crate) struct UnknownTokenNull;
 
 #[derive(Diagnostic)]
 pub(crate) enum UnescapeError {

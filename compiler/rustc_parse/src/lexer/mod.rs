@@ -459,8 +459,8 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                         span: self.mk_sp(start, self.pos + Pos::from_usize(repeats * c.len_utf8())),
                         escaped: escaped_char(c),
                         sugg,
-                        null: if c == '\x00' { Some(errors::UnknownTokenNull) } else { None },
-                        invisible: if INVISIBLE_CHARACTERS.contains(&c) { Some(errors::InvisibleCharacter) } else { None },
+                        null: c == '\x00',
+                        invisible: INVISIBLE_CHARACTERS.contains(&c),
                         repeat: if repeats > 0 {
                             swallow_next_invalid = repeats;
                             Some(errors::UnknownTokenRepeat { repeats })
