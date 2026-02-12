@@ -416,7 +416,8 @@ fn execute_job_non_incr<'tcx, C: QueryCache, const FLAGS: QueryFlags>(
     }
 
     let prof_timer = qcx.tcx.prof.query_provider();
-    let result = qcx.start_query(job_id, query.depth_limit(), || query.compute(qcx, key));
+    // Call the query provider.
+    let result = qcx.start_query(job_id, query.depth_limit(), || query.invoke_provider(qcx, key));
     let dep_node_index = qcx.tcx.dep_graph.next_virtual_depnode_index();
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -459,18 +460,21 @@ fn execute_job_incr<'tcx, C: QueryCache, const FLAGS: QueryFlags>(
 
     let (result, dep_node_index) = qcx.start_query(job_id, query.depth_limit(), || {
         if query.anon() {
-            return dep_graph_data
-                .with_anon_task_inner(qcx.tcx, query.dep_kind(), || query.compute(qcx, key));
+            // Call the query provider inside an anon task.
+            return dep_graph_data.with_anon_task_inner(qcx.tcx, query.dep_kind(), || {
+                query.invoke_provider(qcx, key)
+            });
         }
 
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node = dep_node_opt.unwrap_or_else(|| query.construct_dep_node(qcx.tcx, &key));
 
+        // Call the query provider.
         dep_graph_data.with_task(
             dep_node,
             (qcx, query),
             key,
-            |(qcx, query), key| query.compute(qcx, key),
+            |(qcx, query), key| query.invoke_provider(qcx, key),
             query.hash_result(),
         )
     });
@@ -547,7 +551,8 @@ fn try_load_from_disk_and_cache_in_memory<'tcx, C: QueryCache, const FLAGS: Quer
     let prof_timer = qcx.tcx.prof.query_provider();
 
     // The dep-graph for this computation is already in-place.
-    let result = qcx.tcx.dep_graph.with_ignore(|| query.compute(qcx, *key));
+    // Call the query provider.
+    let result = qcx.tcx.dep_graph.with_ignore(|| query.invoke_provider(qcx, *key));
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 

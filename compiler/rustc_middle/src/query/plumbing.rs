@@ -49,8 +49,21 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     // Offset of this query's cache field in the QueryCaches struct
     pub query_cache: usize,
     pub will_cache_on_disk_for_key_fn: Option<WillCacheOnDiskForKeyFn<'tcx, C::Key>>,
-    pub execute_query: fn(tcx: TyCtxt<'tcx>, k: C::Key) -> C::Value,
-    pub compute_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
+
+    /// Function pointer that calls `tcx.$query(key)` for this query and
+    /// discards the returned value.
+    ///
+    /// This is a weird thing to be doing, and probably not what you want.
+    /// It is used for loading query results from disk-cache in some cases.
+    pub call_query_method_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key),
+
+    /// Function pointer that actually calls this query's provider.
+    /// Also performs some associated secondary tasks; see the macro-defined
+    /// implementation in `mod invoke_provider_fn` for more details.
+    ///
+    /// This should be the only code that calls the provider function.
+    pub invoke_provider_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
+
     pub try_load_from_disk_fn: Option<TryLoadFromDiskFn<'tcx, C::Key, C::Value>>,
     pub is_loadable_from_disk_fn: Option<IsLoadableFromDiskFn<'tcx, C::Key>>,
     pub hash_result: HashResult<C::Value>,
