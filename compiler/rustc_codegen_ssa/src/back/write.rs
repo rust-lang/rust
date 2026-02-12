@@ -397,9 +397,9 @@ fn generate_thin_lto_work<B: ExtraBackendMethods>(
         .collect()
 }
 
-struct CompiledModules {
-    modules: Vec<CompiledModule>,
-    allocator_module: Option<CompiledModule>,
+pub struct CompiledModules {
+    pub modules: Vec<CompiledModule>,
+    pub allocator_module: Option<CompiledModule>,
 }
 
 enum MaybeLtoModules<B: WriteBackendMethods> {
@@ -532,7 +532,7 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     work_products
 }
 
-fn produce_final_output_artifacts(
+pub fn produce_final_output_artifacts(
     sess: &Session,
     compiled_modules: &CompiledModules,
     crate_output: &OutputFilenames,

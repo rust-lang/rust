@@ -130,14 +130,14 @@ pub(crate) struct CopyPathBuf {
 // Reports Paths using `Debug` implementation rather than Path's `Display` implementation.
 #[derive(Diagnostic)]
 #[diag("could not copy {$from} to {$to}: {$error}")]
-pub struct CopyPath<'a> {
+pub(crate) struct CopyPath<'a> {
     from: DebugArgPath<'a>,
     to: DebugArgPath<'a>,
     error: Error,
 }
 
 impl<'a> CopyPath<'a> {
-    pub fn new(from: &'a Path, to: &'a Path, error: Error) -> CopyPath<'a> {
+    pub(crate) fn new(from: &'a Path, to: &'a Path, error: Error) -> CopyPath<'a> {
         CopyPath { from: DebugArgPath(from), to: DebugArgPath(to), error }
     }
 }
@@ -154,19 +154,19 @@ impl IntoDiagArg for DebugArgPath<'_> {
 #[diag(
     "option `-o` or `--emit` is used to write binary output type `{$shorthand}` to stdout, but stdout is a tty"
 )]
-pub struct BinaryOutputToTty {
+pub(crate) struct BinaryOutputToTty {
     pub shorthand: &'static str,
 }
 
 #[derive(Diagnostic)]
 #[diag("ignoring emit path because multiple .{$extension} files were produced")]
-pub struct IgnoringEmitPath {
+pub(crate) struct IgnoringEmitPath {
     pub extension: &'static str,
 }
 
 #[derive(Diagnostic)]
 #[diag("ignoring -o because multiple .{$extension} files were produced")]
-pub struct IgnoringOutput {
+pub(crate) struct IgnoringOutput {
     pub extension: &'static str,
 }
 
