@@ -355,12 +355,17 @@ impl DiagInner {
     pub(crate) fn arg(&mut self, name: impl Into<DiagArgName>, arg: impl IntoDiagArg) {
         let name = name.into();
         let value = arg.into_diag_arg(&mut self.long_ty_path);
-        // This assertion is to avoid subdiagnostics overwriting an existing diagnostic arg.
-        debug_assert!(
-            !self.args.contains_key(&name) || self.args.get(&name) == Some(&value),
-            "arg {} already exists",
-            name
-        );
+        // Only log debug info if the arg already exists and the value is different
+        if let Some(existing_value) = self.args.get(&name) {
+            if existing_value != &value {
+                debug!(
+                    "arg '{}' already exists with different value. Existing: {:?}, New: {:?}.",
+                    name,
+                    existing_value,
+                    value
+                );
+            }
+        }
         self.args.insert(name, value);
     }
 
