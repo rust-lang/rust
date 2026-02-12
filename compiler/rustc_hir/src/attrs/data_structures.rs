@@ -5,7 +5,7 @@ pub use ReprAttr::*;
 use rustc_abi::Align;
 pub use rustc_ast::attr::data_structures::*;
 use rustc_ast::token::DocFragmentKind;
-use rustc_ast::{AttrStyle, ast};
+use rustc_ast::{AttrStyle, Path, ast};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
@@ -1366,6 +1366,9 @@ pub enum AttributeKind {
     /// Represents `#[target_feature(enable = "...")]` and
     /// `#[unsafe(force_target_feature(enable = "...")]`.
     TargetFeature { features: ThinVec<(Symbol, Span)>, attr_span: Span, was_forced: bool },
+
+    /// Represents `#![test_runner(path)]`
+    TestRunner(Path),
 
     /// Represents `#[thread_local]`
     ThreadLocal,

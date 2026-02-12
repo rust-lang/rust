@@ -3,6 +3,7 @@ use std::ops::Deref;
 use std::path::PathBuf;
 
 use rustc_abi::Align;
+use rustc_ast::ast::{Path, join_path_idents};
 use rustc_ast::attr::data_structures::CfgEntry;
 use rustc_ast::attr::version::RustcVersion;
 use rustc_ast::token::{CommentKind, DocFragmentKind};
@@ -106,6 +107,16 @@ impl PrintAttribute for PathBuf {
         p.word(self.display().to_string());
     }
 }
+impl PrintAttribute for Path {
+    fn should_render(&self) -> bool {
+        true
+    }
+
+    fn print_attribute(&self, p: &mut Printer) {
+        p.word(join_path_idents(self.segments.iter().map(|seg| seg.ident)));
+    }
+}
+
 macro_rules! print_skip {
     ($($t: ty),* $(,)?) => {$(
         impl PrintAttribute for $t {
