@@ -232,11 +232,11 @@ macro_rules! impl_parse_tuple_via_rug {
     };
 }
 
+#[cfg(f16_enabled)]
+impl_parse_tuple!(f16);
 impl_parse_tuple!(f32);
 impl_parse_tuple!(f64);
 
-#[cfg(f16_enabled)]
-impl_parse_tuple_via_rug!(f16);
 #[cfg(f128_enabled)]
 impl_parse_tuple_via_rug!(f128);
 
