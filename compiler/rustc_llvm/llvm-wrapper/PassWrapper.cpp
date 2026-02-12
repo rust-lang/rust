@@ -812,12 +812,12 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   auto ThinLTOBuffer = std::make_unique<LLVMRustThinLTOBuffer>();
   raw_string_ostream ThinLTODataOS(ThinLTOBuffer->data);
   raw_string_ostream ThinLinkDataOS(ThinLTOBuffer->thin_link_data);
+  bool IsLTO = OptStage == LLVMRustOptStage::ThinLTO ||
+               OptStage == LLVMRustOptStage::FatLTO;
   if (!NoPrepopulatePasses) {
     // The pre-link pipelines don't support O0 and require using
     // buildO0DefaultPipeline() instead. At the same time, the LTO pipelines do
     // support O0 and using them is required.
-    bool IsLTO = OptStage == LLVMRustOptStage::ThinLTO ||
-                 OptStage == LLVMRustOptStage::FatLTO;
     if (OptLevel == OptimizationLevel::O0 && !IsLTO) {
       for (const auto &C : PipelineStartEPCallbacks)
         PB.registerPipelineStartEPCallback(C);
@@ -908,7 +908,10 @@ extern "C" LLVMRustResult LLVMRustOptimize(
 
   // now load "-enzyme" pass:
   // With dlopen, ENZYME macro may not be defined, so check EnzymePtr directly
-  if (EnzymePtr) {
+  // In the case of debug builds with multiple codegen units, we might not
+  // have all function definitions available during the early compiler
+  // invocations. We therefore wait for the final lto step to run Enzyme.
+  if (EnzymePtr && IsLTO) {
 
     if (PrintBeforeEnzyme) {
       // Handle the Rust flag `-Zautodiff=PrintModBefore`.
@@ -929,6 +932,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
       MPM.addPass(PrintModulePass(outs(), Banner, true, false));
     }
   }
+
   if (PrintPasses) {
     // Print all passes from the PM:
     std::string Pipeline;
