@@ -1524,7 +1524,7 @@ impl<'a> Parser<'a> {
                     },
                 )
             } else if this.check_inline_const(0) {
-                this.parse_const_block(lo)
+                this.parse_const_block(lo, false)
             } else if this.may_recover() && this.is_do_catch_block() {
                 this.recover_do_catch()
             } else if this.is_try_block() {
