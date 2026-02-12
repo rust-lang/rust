@@ -418,6 +418,20 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         public: true,
     },
     NestedOp {
+        // `(f16, &mut c_int) -> f16` as `(f16) -> (f16, i32)`
+        float_ty: FloatTy::F16,
+        rust_sig: Signature {
+            args: &[Ty::F16],
+            returns: &[Ty::F16, Ty::I32],
+        },
+        c_sig: Some(Signature {
+            args: &[Ty::F16, Ty::MutCInt],
+            returns: &[Ty::F16],
+        }),
+        fn_list: &["frexpf16"],
+        public: true,
+    },
+    NestedOp {
         // `(f32, &mut c_int) -> f32` as `(f32) -> (f32, i32)`
         float_ty: FloatTy::F32,
         rust_sig: Signature {

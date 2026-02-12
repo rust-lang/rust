@@ -163,6 +163,7 @@ libm_macros::for_each_function! {
         frexp,
         frexpf,
         frexpf128,
+        frexpf16,
         ilogb,
         ilogbf,
         ilogbf128,
@@ -327,20 +328,6 @@ macro_rules! impl_op_for_ty {
                 }
             }
 
-            impl MpOp for crate::op::[<frexp $suffix>]::Routine {
-                type MpTy = MpFloat;
-
-                fn new_mp() -> Self::MpTy {
-                    new_mpfloat::<Self::FTy>()
-                }
-
-                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
-                    this.assign(input.0);
-                    let exp = this.frexp_mut();
-                    (prep_retval::<Self::FTy>(this, Ordering::Equal), exp)
-                }
-            }
-
             impl MpOp for crate::op::[<jn $suffix>]::Routine {
                 type MpTy = MpFloat;
 
@@ -485,6 +472,20 @@ macro_rules! impl_op_for_ty_all {
                 }
             }
 
+            impl MpOp for crate::op::[<frexp $suffix>]::Routine {
+                type MpTy = MpFloat;
+
+                fn new_mp() -> Self::MpTy {
+                    new_mpfloat::<Self::FTy>()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+                    let exp = this.frexp_mut();
+                    (prep_retval::<Self::FTy>(this, Ordering::Equal), exp)
+                }
+            }
+
             impl MpOp for crate::op::[<ilogb $suffix>]::Routine {
                 type MpTy = MpFloat;
 
@@ -548,21 +549,6 @@ impl_op_for_ty_all!(f32, "f");
 impl_op_for_ty_all!(f64, "");
 #[cfg(f128_enabled)]
 impl_op_for_ty_all!(f128, "f128");
-
-#[cfg(f128_enabled)]
-impl MpOp for crate::op::frexpf128::Routine {
-    type MpTy = MpFloat;
-
-    fn new_mp() -> Self::MpTy {
-        new_mpfloat::<Self::FTy>()
-    }
-
-    fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
-        this.assign(input.0);
-        let exp = this.frexp_mut();
-        (prep_retval::<Self::FTy>(this, Ordering::Equal), exp)
-    }
-}
 
 // `lgamma_r` is not a simple suffix so we can't use the above macro.
 impl MpOp for crate::op::lgamma_r::Routine {

@@ -460,6 +460,11 @@ fn fmodf16_cases() -> Vec<TestCase<op::fmodf16::Routine>> {
     vec![]
 }
 
+#[cfg(f16_enabled)]
+fn frexpf16_cases() -> Vec<TestCase<op::frexpf16::Routine>> {
+    vec![]
+}
+
 fn frexpf_cases() -> Vec<TestCase<op::frexpf::Routine>> {
     vec![]
 }

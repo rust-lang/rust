@@ -332,6 +332,7 @@ main!(
     icount_bench_fmodf_group,
     icount_bench_frexp_group,
     icount_bench_frexpf128_group,
+    icount_bench_frexpf16_group,
     icount_bench_frexpf_group,
     icount_bench_hypot_group,
     icount_bench_hypotf_group,

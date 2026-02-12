@@ -85,6 +85,7 @@ fmodf16
 frexp
 frexpf
 frexpf128
+frexpf16
 hypot
 hypotf
 ilogb
