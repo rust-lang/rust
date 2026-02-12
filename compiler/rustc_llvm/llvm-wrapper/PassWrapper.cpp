@@ -566,7 +566,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     LLVMModuleRef ModuleRef, LLVMTargetMachineRef TMRef,
     LLVMRustPassBuilderOptLevel OptLevelRust, LLVMRustOptStage OptStage,
     bool IsLinkerPluginLTO, bool NoPrepopulatePasses, bool VerifyIR,
-    bool LintIR, LLVMRustThinLTOBuffer **ThinLTOBufferRef, bool EmitThinLTO,
+    bool LintIR, LLVMRustThinLTOBuffer **ThinLTOBufferRef,
     bool EmitThinLTOSummary, bool MergeFunctions, bool UnrollLoops,
     bool SLPVectorize, bool LoopVectorize, bool DisableSimplifyLibCalls,
     bool EmitLifetimeMarkers, registerEnzymeAndPassPipelineFn EnzymePtr,
@@ -808,7 +808,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   }
 
   ModulePassManager MPM;
-  bool NeedThinLTOBufferPasses = EmitThinLTO;
+  bool NeedThinLTOBufferPasses = true;
   auto ThinLTOBuffer = std::make_unique<LLVMRustThinLTOBuffer>();
   raw_string_ostream ThinLTODataOS(ThinLTOBuffer->data);
   raw_string_ostream ThinLinkDataOS(ThinLTOBuffer->thin_link_data);
@@ -840,12 +840,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
           // bitcode for embedding is obtained after performing
           // `ThinLTOPreLinkDefaultPipeline`.
           MPM.addPass(PB.buildThinLTOPreLinkDefaultPipeline(OptLevel));
-          if (EmitThinLTO) {
-            MPM.addPass(ThinLTOBitcodeWriterPass(
-                ThinLTODataOS, EmitThinLTOSummary ? &ThinLinkDataOS : nullptr));
-          } else {
-            MPM.addPass(BitcodeWriterPass(ThinLTODataOS));
-          }
+          MPM.addPass(ThinLTOBitcodeWriterPass(
+              ThinLTODataOS, EmitThinLTOSummary ? &ThinLinkDataOS : nullptr));
           *ThinLTOBufferRef = ThinLTOBuffer.release();
           MPM.addPass(PB.buildModuleOptimizationPipeline(
               OptLevel, ThinOrFullLTOPhase::None));
@@ -870,6 +866,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
         break;
       case LLVMRustOptStage::FatLTO:
         MPM = PB.buildLTODefaultPipeline(OptLevel, nullptr);
+        NeedThinLTOBufferPasses = false;
         break;
       }
     }
@@ -897,7 +894,9 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   }
   // For `-Copt-level=0`, ThinLTO, or LTO.
   if (ThinLTOBufferRef && *ThinLTOBufferRef == nullptr) {
-    if (EmitThinLTO) {
+    // thin lto summaries prevent fat lto, so do not emit them if fat
+    // lto is requested. See PR #136840 for background information.
+    if (OptStage != LLVMRustOptStage::PreLinkFatLTO) {
       MPM.addPass(ThinLTOBitcodeWriterPass(
           ThinLTODataOS, EmitThinLTOSummary ? &ThinLinkDataOS : nullptr));
     } else {
