@@ -49,27 +49,6 @@ LL | |         (ptr as *const u8).wrapping_add(10)
 LL | |     });
    | |______^ evaluation of `MAYBE_NULL_FN_PTR` failed here
 
-error[E0080]: constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
-  --> $DIR/detect-extra-ub.rs:67:13
-   |
-LL |     let v = *addr_of!(data).cast::<UninhDiscriminant>();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNINHABITED_VARIANT` failed here
-
-error[E0080]: constructing invalid value at [0]: encountered a partial pointer or a mix of pointers
-  --> $DIR/detect-extra-ub.rs:86:16
-   |
-LL |     let _val = *(&mem as *const Align as *const [*const u8; 2]);
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `PARTIAL_POINTER` failed here
-   |
-   = help: this code performed an operation that depends on the underlying bytes representing a pointer
-   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
-
-error[E0080]: constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
-  --> $DIR/detect-extra-ub.rs:100:16
-   |
-LL |     let _val = &*slice;
-   |                ^^^^^^^ evaluation of `OVERSIZED_REF` failed here
-
-error: aborting due to 9 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

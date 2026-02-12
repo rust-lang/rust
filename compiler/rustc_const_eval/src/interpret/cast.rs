@@ -150,6 +150,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
 
                 self.copy_op_allow_transmute(src, dest)?;
+
+                // Even if general validation is disabled, transmutes should always check their result.
+                if !M::enforce_validity(self, dest.layout) {
+                    self.validate_operand(
+                        &dest,
+                        M::enforce_validity_recursively(self, dest.layout),
+                        /*reset_provenance_and_padding*/ true,
+                    )?;
+                }
             }
         }
         interp_ok(())

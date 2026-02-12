@@ -1,72 +1,52 @@
 error[E0080]: constructing invalid value: encountered an unaligned reference (required 2 byte alignment but found 1)
-  --> $DIR/ub-ref-ptr.rs:18:1
+  --> $DIR/ub-ref-ptr.rs:18:34
    |
 LL | const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
-   | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNALIGNED` failed here
 
 error[E0080]: constructing invalid value: encountered an unaligned box (required 2 byte alignment but found 1)
-  --> $DIR/ub-ref-ptr.rs:21:1
+  --> $DIR/ub-ref-ptr.rs:21:42
    |
 LL | const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNALIGNED_BOX` failed here
 
 error[E0080]: constructing invalid value: encountered a null reference
-  --> $DIR/ub-ref-ptr.rs:24:1
+  --> $DIR/ub-ref-ptr.rs:24:29
    |
 LL | const NULL: &u16 = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                             ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NULL` failed here
 
 error[E0080]: constructing invalid value: encountered a null box
-  --> $DIR/ub-ref-ptr.rs:27:1
+  --> $DIR/ub-ref-ptr.rs:27:37
    |
 LL | const NULL_BOX: Box<u16> = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NULL_BOX` failed here
 
 error[E0080]: constructing invalid value: encountered a maybe-null box
-  --> $DIR/ub-ref-ptr.rs:30:1
+  --> $DIR/ub-ref-ptr.rs:30:42
    |
-LL | const MAYBE_NULL_BOX: Box<()> = unsafe { mem::transmute({
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+LL |   const MAYBE_NULL_BOX: Box<()> = unsafe { mem::transmute({
+   |  __________________________________________^
+LL | |
+LL | |     let ref_ = &0u8;
+LL | |     (ref_ as *const u8).wrapping_add(10)
+LL | | }) };
+   | |__^ evaluation of `MAYBE_NULL_BOX` failed here
 
-error[E0080]: unable to turn pointer into integer
-  --> $DIR/ub-ref-ptr.rs:39:1
+error[E0080]: constructing invalid value: encountered a pointer, but expected an integer
+  --> $DIR/ub-ref-ptr.rs:39:38
    |
 LL | const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `REF_AS_USIZE` failed here
+   |                                      ^^^^^^^^^^^^^^^^^^ evaluation of `REF_AS_USIZE` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error[E0080]: unable to turn pointer into integer
-  --> $DIR/ub-ref-ptr.rs:42:39
+error[E0080]: constructing invalid value: encountered a pointer, but expected an integer
+  --> $DIR/ub-ref-ptr.rs:42:49
    |
 LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `REF_AS_USIZE_SLICE` failed here
+   |                                                 ^^^^^^^^^^^^^^^^^^ evaluation of `REF_AS_USIZE_SLICE` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -77,11 +57,11 @@ note: erroneous constant encountered
 LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0080]: unable to turn pointer into integer
-  --> $DIR/ub-ref-ptr.rs:45:86
+error[E0080]: constructing invalid value: encountered a pointer, but expected an integer
+  --> $DIR/ub-ref-ptr.rs:45:87
    |
 LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
-   |                                                                                      ^^^^^^^^^^^^^^^^^^^^ evaluation of `REF_AS_USIZE_BOX_SLICE` failed here
+   |                                                                                       ^^^^^^^^^^^^^^^^^^ evaluation of `REF_AS_USIZE_BOX_SLICE` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -93,28 +73,18 @@ LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[us
    |                                                                                     ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: constructing invalid value: encountered a dangling reference (0x539[noalloc] has no provenance)
-  --> $DIR/ub-ref-ptr.rs:48:1
+  --> $DIR/ub-ref-ptr.rs:48:44
    |
 LL | const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `USIZE_AS_REF` failed here
 
 error[E0080]: constructing invalid value: encountered a dangling box (0x539[noalloc] has no provenance)
-  --> $DIR/ub-ref-ptr.rs:51:1
+  --> $DIR/ub-ref-ptr.rs:51:40
    |
 LL | const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `USIZE_AS_BOX` failed here
 
-error[E0080]: reading memory at ALLOC6[0x%..0x%], but memory is uninitialized at [0x%..0x%], and this operation requires initialized memory
+error[E0080]: reading memory at ALLOC1[0x%..0x%], but memory is uninitialized at [0x%..0x%], and this operation requires initialized memory
   --> $DIR/ub-ref-ptr.rs:54:41
    |
 LL | const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
@@ -124,18 +94,13 @@ LL | const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered null pointer, but expected a function pointer
-  --> $DIR/ub-ref-ptr.rs:57:1
+error[E0080]: constructing invalid value: encountered a null function pointer
+  --> $DIR/ub-ref-ptr.rs:57:36
    |
 LL | const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NULL_FN_PTR` failed here
 
-error[E0080]: reading memory at ALLOC7[0x%..0x%], but memory is uninitialized at [0x%..0x%], and this operation requires initialized memory
+error[E0080]: reading memory at ALLOC2[0x%..0x%], but memory is uninitialized at [0x%..0x%], and this operation requires initialized memory
   --> $DIR/ub-ref-ptr.rs:59:38
    |
 LL | const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
@@ -156,7 +121,7 @@ LL | const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered ALLOC3<imm>, but expected a function pointer
+error[E0080]: constructing invalid value: encountered ALLOC0<imm>, but expected a function pointer
   --> $DIR/ub-ref-ptr.rs:63:1
    |
 LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
@@ -167,16 +132,17 @@ LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value: encountered ALLOC4+0xa, but expected a function pointer
-  --> $DIR/ub-ref-ptr.rs:65:1
+error[E0080]: constructing invalid value: encountered a maybe-null function pointer
+  --> $DIR/ub-ref-ptr.rs:65:42
    |
-LL | const MAYBE_NULL_FN_PTR: fn() = unsafe { mem::transmute({
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+LL |   const MAYBE_NULL_FN_PTR: fn() = unsafe { mem::transmute({
+   |  __________________________________________^
+LL | |
+LL | |     fn fun() {}
+LL | |     let ptr = fun as fn();
+LL | |     (ptr as *const u8).wrapping_add(10)
+LL | | }) };
+   | |__^ evaluation of `MAYBE_NULL_FN_PTR` failed here
 
 error[E0080]: accessing memory based on pointer with alignment 1, but alignment 4 is required
   --> $DIR/ub-ref-ptr.rs:75:5
@@ -185,15 +151,10 @@ LL |     ptr.read();
    |     ^^^^^^^^^^ evaluation of `UNALIGNED_READ` failed here
 
 error[E0080]: constructing invalid value: encountered a pointer with unknown absolute address, but expected something that is definitely greater or equal to 1000
-  --> $DIR/ub-ref-ptr.rs:84:1
+  --> $DIR/ub-ref-ptr.rs:84:42
    |
 LL | const INVALID_VALUE_PTR: High = unsafe { mem::transmute(&S) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                          ^^^^^^^^^^^^^^^^^^ evaluation of `INVALID_VALUE_PTR` failed here
 
 error: aborting due to 18 previous errors
 

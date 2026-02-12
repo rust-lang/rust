@@ -1,90 +1,50 @@
 error[E0080]: constructing invalid value at .<enum-tag>: encountered 0x0000000000000001, but expected a valid enum tag
-  --> $DIR/raw-bytes.rs:23:1
+  --> $DIR/raw-bytes.rs:23:33
    |
 LL | const BAD_ENUM: Enum = unsafe { mem::transmute(1usize) };
-   | ^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               01 00 00 00 00 00 00 00                         │ ........
-           }
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_ENUM` failed here
 
 error[E0080]: constructing invalid value at .<enum-tag>: encountered 0x0000000000000000, but expected a valid enum tag
-  --> $DIR/raw-bytes.rs:31:1
+  --> $DIR/raw-bytes.rs:31:35
    |
 LL | const BAD_ENUM2: Enum2 = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               00 00 00 00 00 00 00 00                         │ ........
-           }
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_ENUM2` failed here
 
 error[E0080]: constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
-  --> $DIR/raw-bytes.rs:45:1
+  --> $DIR/raw-bytes.rs:45:62
    |
 LL | const BAD_UNINHABITED_VARIANT1: UninhDiscriminant = unsafe { mem::transmute(1u8) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 1, align: 1) {
-               01                                              │ .
-           }
+   |                                                              ^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_UNINHABITED_VARIANT1` failed here
 
 error[E0080]: constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
-  --> $DIR/raw-bytes.rs:47:1
+  --> $DIR/raw-bytes.rs:47:62
    |
 LL | const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(3u8) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 1, align: 1) {
-               03                                              │ .
-           }
+   |                                                              ^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_UNINHABITED_VARIANT2` failed here
 
-error[E0080]: constructing invalid value at .<enum-variant(Some)>.0.1: encountered 0xffffffff, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)
-  --> $DIR/raw-bytes.rs:53:1
+error[E0080]: constructing invalid value: encountered 0xffffffff, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)
+  --> $DIR/raw-bytes.rs:53:67
    |
 LL | const BAD_OPTION_CHAR: Option<(char, char)> = Some(('x', unsafe { mem::transmute(!0u32) }));
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 4) {
-               78 00 00 00 ff ff ff ff                         │ x.......
-           }
+   |                                                                   ^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_OPTION_CHAR` failed here
 
 error[E0080]: constructing invalid value: encountered 0, but expected something greater or equal to 1
-  --> $DIR/raw-bytes.rs:58:1
+  --> $DIR/raw-bytes.rs:58:40
    |
 LL | const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               00 00 00 00 00 00 00 00                         │ ........
-           }
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NULL_PTR` failed here
 
 error[E0080]: constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
-  --> $DIR/raw-bytes.rs:61:1
+  --> $DIR/raw-bytes.rs:61:39
    |
 LL | const NULL_U8: NonZero<u8> = unsafe { mem::transmute(0u8) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 1, align: 1) {
-               00                                              │ .
-           }
+   |                                       ^^^^^^^^^^^^^^^^^^^ evaluation of `NULL_U8` failed here
 
 error[E0080]: constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
-  --> $DIR/raw-bytes.rs:63:1
+  --> $DIR/raw-bytes.rs:63:45
    |
 LL | const NULL_USIZE: NonZero<usize> = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               00 00 00 00 00 00 00 00                         │ ........
-           }
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NULL_USIZE` failed here
 
 error[E0080]: constructing invalid value: encountered 42, but expected something in the range 10..=30
   --> $DIR/raw-bytes.rs:69:1
@@ -109,92 +69,52 @@ LL | const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
            }
 
 error[E0080]: constructing invalid value: encountered 0, but expected something greater or equal to 1
-  --> $DIR/raw-bytes.rs:78:1
+  --> $DIR/raw-bytes.rs:81:5
    |
-LL | const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               00 00 00 00 00 00 00 00 ╾ALLOC_ID╼ │ ........╾──────╼
-           }
+LL |     mem::transmute((0_usize, meta))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NULL_FAT_PTR` failed here
 
 error[E0080]: constructing invalid value: encountered an unaligned reference (required 2 byte alignment but found 1)
-  --> $DIR/raw-bytes.rs:85:1
+  --> $DIR/raw-bytes.rs:85:34
    |
 LL | const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
-   | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾ALLOC_ID╼                         │ ╾──────╼
-           }
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNALIGNED` failed here
 
 error[E0080]: constructing invalid value: encountered an unaligned box (required 2 byte alignment but found 1)
-  --> $DIR/raw-bytes.rs:88:1
+  --> $DIR/raw-bytes.rs:88:42
    |
 LL | const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾ALLOC_ID╼                         │ ╾──────╼
-           }
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNALIGNED_BOX` failed here
 
 error[E0080]: constructing invalid value: encountered a null reference
-  --> $DIR/raw-bytes.rs:91:1
+  --> $DIR/raw-bytes.rs:91:29
    |
 LL | const NULL: &u16 = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               00 00 00 00 00 00 00 00                         │ ........
-           }
+   |                             ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NULL` failed here
 
 error[E0080]: constructing invalid value: encountered a null box
-  --> $DIR/raw-bytes.rs:94:1
+  --> $DIR/raw-bytes.rs:94:37
    |
 LL | const NULL_BOX: Box<u16> = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               00 00 00 00 00 00 00 00                         │ ........
-           }
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NULL_BOX` failed here
 
 error[E0080]: constructing invalid value: encountered a dangling reference (0x539[noalloc] has no provenance)
-  --> $DIR/raw-bytes.rs:97:1
+  --> $DIR/raw-bytes.rs:97:44
    |
 LL | const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               39 05 00 00 00 00 00 00                         │ 9.......
-           }
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `USIZE_AS_REF` failed here
 
 error[E0080]: constructing invalid value: encountered a dangling box (0x539[noalloc] has no provenance)
-  --> $DIR/raw-bytes.rs:100:1
+  --> $DIR/raw-bytes.rs:100:40
    |
 LL | const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               39 05 00 00 00 00 00 00                         │ 9.......
-           }
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `USIZE_AS_BOX` failed here
 
-error[E0080]: constructing invalid value: encountered null pointer, but expected a function pointer
-  --> $DIR/raw-bytes.rs:103:1
+error[E0080]: constructing invalid value: encountered a null function pointer
+  --> $DIR/raw-bytes.rs:103:36
    |
 LL | const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               00 00 00 00 00 00 00 00                         │ ........
-           }
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NULL_FN_PTR` failed here
 
 error[E0080]: constructing invalid value: encountered 0xd[noalloc], but expected a function pointer
   --> $DIR/raw-bytes.rs:105:1
@@ -207,7 +127,7 @@ LL | const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
                0d 00 00 00 00 00 00 00                         │ ........
            }
 
-error[E0080]: constructing invalid value: encountered ALLOC3<imm>, but expected a function pointer
+error[E0080]: constructing invalid value: encountered ALLOC0<imm>, but expected a function pointer
   --> $DIR/raw-bytes.rs:107:1
    |
 LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
@@ -219,48 +139,28 @@ LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
            }
 
 error[E0080]: constructing invalid value: encountered a reference pointing to uninhabited type Bar
-  --> $DIR/raw-bytes.rs:113:1
+  --> $DIR/raw-bytes.rs:113:36
    |
 LL | const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               01 00 00 00 00 00 00 00                         │ ........
-           }
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_BAD_REF` failed here
 
 error[E0080]: constructing invalid value: encountered a dangling reference (going beyond the bounds of its allocation)
-  --> $DIR/raw-bytes.rs:137:1
+  --> $DIR/raw-bytes.rs:137:37
    |
 LL | const STR_TOO_LONG: &str = unsafe { mem::transmute((&42u8, 999usize)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾ALLOC_ID╼ e7 03 00 00 00 00 00 00 │ ╾──────╼........
-           }
-
-error[E0080]: constructing invalid value at .0: encountered invalid reference metadata: slice is bigger than largest supported object
-  --> $DIR/raw-bytes.rs:139:1
-   |
-LL | const NESTED_STR_MUCH_TOO_LONG: (&str,) = (unsafe { mem::transmute((&42, usize::MAX)) },);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾ALLOC_ID╼ ff ff ff ff ff ff ff ff │ ╾──────╼........
-           }
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `STR_TOO_LONG` failed here
 
 error[E0080]: constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
-  --> $DIR/raw-bytes.rs:141:1
+  --> $DIR/raw-bytes.rs:139:53
+   |
+LL | const NESTED_STR_MUCH_TOO_LONG: (&str,) = (unsafe { mem::transmute((&42, usize::MAX)) },);
+   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NESTED_STR_MUCH_TOO_LONG` failed here
+
+error[E0080]: constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
+  --> $DIR/raw-bytes.rs:141:47
    |
 LL | const MY_STR_MUCH_TOO_LONG: &MyStr = unsafe { mem::transmute((&42u8, usize::MAX)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾ALLOC_ID╼ ff ff ff ff ff ff ff ff │ ╾──────╼........
-           }
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `MY_STR_MUCH_TOO_LONG` failed here
 
 error[E0080]: constructing invalid value at .<deref>: encountered uninitialized memory, but expected a string
   --> $DIR/raw-bytes.rs:144:1
@@ -298,48 +198,28 @@ LL | const MYSTR_NO_INIT_ISSUE83182: &MyStr = unsafe { mem::transmute::<&[_], _>
            }
 
 error[E0080]: constructing invalid value: encountered a dangling reference (going beyond the bounds of its allocation)
-  --> $DIR/raw-bytes.rs:152:1
+  --> $DIR/raw-bytes.rs:152:40
    |
 LL | const SLICE_TOO_LONG: &[u8] = unsafe { mem::transmute((&42u8, 999usize)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾ALLOC_ID╼ e7 03 00 00 00 00 00 00 │ ╾──────╼........
-           }
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_TOO_LONG` failed here
 
 error[E0080]: constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
-  --> $DIR/raw-bytes.rs:154:1
+  --> $DIR/raw-bytes.rs:154:50
    |
 LL | const SLICE_TOO_LONG_OVERFLOW: &[u32] = unsafe { mem::transmute((&42u32, isize::MAX)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾ALLOC_ID╼ ff ff ff ff ff ff ff 7f │ ╾──────╼........
-           }
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_TOO_LONG_OVERFLOW` failed here
 
 error[E0080]: constructing invalid value: encountered a dangling box (going beyond the bounds of its allocation)
-  --> $DIR/raw-bytes.rs:157:1
+  --> $DIR/raw-bytes.rs:157:48
    |
 LL | const SLICE_TOO_LONG_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, 999usize)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾ALLOC_ID╼ e7 03 00 00 00 00 00 00 │ ╾──────╼........
-           }
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_TOO_LONG_BOX` failed here
 
-error[E0080]: constructing invalid value at .<deref>[0]: encountered 0x03, but expected a boolean
-  --> $DIR/raw-bytes.rs:160:1
+error[E0080]: constructing invalid value: encountered 0x03, but expected a boolean
+  --> $DIR/raw-bytes.rs:160:51
    |
 LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾ALLOC_ID╼                         │ ╾──────╼
-           }
+   |                                                   ^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_CONTENT_INVALID` failed here
 
 note: erroneous constant encountered
   --> $DIR/raw-bytes.rs:160:40
@@ -347,16 +227,11 @@ note: erroneous constant encountered
 LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0080]: constructing invalid value at .<deref>.0: encountered 0x03, but expected a boolean
-  --> $DIR/raw-bytes.rs:164:1
+error[E0080]: constructing invalid value: encountered 0x03, but expected a boolean
+  --> $DIR/raw-bytes.rs:164:60
    |
 LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾ALLOC_ID╼                         │ ╾──────╼
-           }
+   |                                                            ^^^^^^^^^^^^^^^^^^^ evaluation of `MYSLICE_PREFIX_BAD` failed here
 
 note: erroneous constant encountered
   --> $DIR/raw-bytes.rs:164:42
@@ -364,16 +239,11 @@ note: erroneous constant encountered
 LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0080]: constructing invalid value at .<deref>.1[0]: encountered 0x03, but expected a boolean
-  --> $DIR/raw-bytes.rs:167:1
+error[E0080]: constructing invalid value: encountered 0x03, but expected a boolean
+  --> $DIR/raw-bytes.rs:167:67
    |
 LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾ALLOC_ID╼                         │ ╾──────╼
-           }
+   |                                                                   ^^^^^^^^^^^^^^^^^^^ evaluation of `MYSLICE_SUFFIX_BAD` failed here
 
 note: erroneous constant encountered
   --> $DIR/raw-bytes.rs:167:42
@@ -381,49 +251,29 @@ note: erroneous constant encountered
 LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0080]: constructing invalid value at .0: encountered ALLOC17<imm>, but expected a vtable pointer
-  --> $DIR/raw-bytes.rs:171:1
+error[E0080]: constructing invalid value at .0: encountered ALLOC13<imm>, but expected a vtable pointer
+  --> $DIR/raw-bytes.rs:171:58
    |
 LL | const TRAIT_OBJ_SHORT_VTABLE_1: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u8))) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾ALLOC_ID╼ ╾ALLOC_ID╼ │ ╾──────╼╾──────╼
-           }
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TRAIT_OBJ_SHORT_VTABLE_1` failed here
 
-error[E0080]: constructing invalid value at .0: encountered ALLOC19<imm>, but expected a vtable pointer
-  --> $DIR/raw-bytes.rs:174:1
+error[E0080]: constructing invalid value at .0: encountered ALLOC14<imm>, but expected a vtable pointer
+  --> $DIR/raw-bytes.rs:174:58
    |
 LL | const TRAIT_OBJ_SHORT_VTABLE_2: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u64))) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾ALLOC_ID╼ ╾ALLOC_ID╼ │ ╾──────╼╾──────╼
-           }
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TRAIT_OBJ_SHORT_VTABLE_2` failed here
 
 error[E0080]: constructing invalid value at .0: encountered 0x4[noalloc], but expected a vtable pointer
-  --> $DIR/raw-bytes.rs:177:1
+  --> $DIR/raw-bytes.rs:177:54
    |
 LL | const TRAIT_OBJ_INT_VTABLE: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, 4usize))) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾ALLOC_ID╼ 04 00 00 00 00 00 00 00 │ ╾──────╼........
-           }
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TRAIT_OBJ_INT_VTABLE` failed here
 
-error[E0080]: constructing invalid value at .0: encountered ALLOC22<imm>, but expected a vtable pointer
-  --> $DIR/raw-bytes.rs:179:1
+error[E0080]: constructing invalid value at .0: encountered ALLOC15<imm>, but expected a vtable pointer
+  --> $DIR/raw-bytes.rs:179:66
    |
 LL | const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &[&42u8; 8]))) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾ALLOC_ID╼ ╾ALLOC_ID╼ │ ╾──────╼╾──────╼
-           }
+   |                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR` failed here
 
 error[E0080]: constructing invalid value at .<deref>.<dyn-downcast>: encountered 0x03, but expected a boolean
   --> $DIR/raw-bytes.rs:182:1
@@ -437,26 +287,16 @@ LL | const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, 
            }
 
 error[E0080]: constructing invalid value: encountered null pointer, but expected a vtable pointer
-  --> $DIR/raw-bytes.rs:185:1
+  --> $DIR/raw-bytes.rs:185:62
    |
 LL | const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾ALLOC_ID╼ 00 00 00 00 00 00 00 00 │ ╾──────╼........
-           }
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `RAW_TRAIT_OBJ_VTABLE_NULL` failed here
 
-error[E0080]: constructing invalid value: encountered ALLOC27<imm>, but expected a vtable pointer
-  --> $DIR/raw-bytes.rs:187:1
+error[E0080]: constructing invalid value: encountered ALLOC16<imm>, but expected a vtable pointer
+  --> $DIR/raw-bytes.rs:187:65
    |
 LL | const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾ALLOC_ID╼ ╾ALLOC_ID╼ │ ╾──────╼╾──────╼
-           }
+   |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `RAW_TRAIT_OBJ_VTABLE_INVALID` failed here
 
 error[E0080]: constructing invalid value: encountered a reference pointing to uninhabited type [!; 1]
   --> $DIR/raw-bytes.rs:191:1

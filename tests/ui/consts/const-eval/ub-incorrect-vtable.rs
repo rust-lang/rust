@@ -17,11 +17,11 @@ trait Trait {}
 
 const INVALID_VTABLE_ALIGNMENT: &dyn Trait =
     unsafe { std::mem::transmute((&92u8, &[0usize, 1usize, 1000usize])) };
-//~^^ ERROR vtable
+//~^ ERROR vtable
 
 const INVALID_VTABLE_SIZE: &dyn Trait =
     unsafe { std::mem::transmute((&92u8, &[1usize, usize::MAX, 1usize])) };
-//~^^ ERROR vtable
+//~^ ERROR vtable
 
 #[repr(transparent)]
 struct W<T>(T);
@@ -30,16 +30,16 @@ fn drop_me(_: *mut usize) {}
 
 const INVALID_VTABLE_ALIGNMENT_UB: W<&dyn Trait> =
     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), 1usize, 1000usize))) };
-//~^^ ERROR expected a vtable pointer
+//~^ ERROR expected a vtable pointer
 
 const INVALID_VTABLE_SIZE_UB: W<&dyn Trait> =
     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), usize::MAX, 1usize))) };
-//~^^ ERROR expected a vtable pointer
+//~^ ERROR expected a vtable pointer
 
 // Even if the vtable has a fn ptr and a reasonable size+align, it still does not work.
 const INVALID_VTABLE_UB: W<&dyn Trait> =
     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), 1usize, 1usize))) };
-//~^^ ERROR expected a vtable pointer
+//~^ ERROR expected a vtable pointer
 
 // Trying to access the data in a vtable does not work, either.
 

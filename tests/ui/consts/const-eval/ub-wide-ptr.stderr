@@ -1,53 +1,38 @@
 error[E0080]: constructing invalid value: encountered a dangling reference (going beyond the bounds of its allocation)
-  --> $DIR/ub-wide-ptr.rs:40:1
+  --> $DIR/ub-wide-ptr.rs:40:37
    |
 LL | const STR_TOO_LONG: &str = unsafe { mem::transmute((&42u8, 999usize)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `STR_TOO_LONG` failed here
 
-error[E0080]: constructing invalid value at .0: encountered invalid reference metadata: slice is bigger than largest supported object
-  --> $DIR/ub-wide-ptr.rs:42:1
+error[E0080]: constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
+  --> $DIR/ub-wide-ptr.rs:42:53
    |
 LL | const NESTED_STR_MUCH_TOO_LONG: (&str,) = (unsafe { mem::transmute((&42, usize::MAX)) },);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NESTED_STR_MUCH_TOO_LONG` failed here
 
-error[E0080]: unable to turn pointer into integer
-  --> $DIR/ub-wide-ptr.rs:45:1
+error[E0080]: constructing invalid value: encountered a pointer, but expected a reference
+  --> $DIR/ub-wide-ptr.rs:45:39
    |
 LL | const STR_LENGTH_PTR: &str = unsafe { mem::transmute((&42u8, &3)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `STR_LENGTH_PTR` failed here
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `STR_LENGTH_PTR` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error[E0080]: unable to turn pointer into integer
-  --> $DIR/ub-wide-ptr.rs:48:1
+error[E0080]: constructing invalid value: encountered a pointer, but expected a reference
+  --> $DIR/ub-wide-ptr.rs:48:44
    |
 LL | const MY_STR_LENGTH_PTR: &MyStr = unsafe { mem::transmute((&42u8, &3)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `MY_STR_LENGTH_PTR` failed here
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `MY_STR_LENGTH_PTR` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
-  --> $DIR/ub-wide-ptr.rs:50:1
+  --> $DIR/ub-wide-ptr.rs:50:47
    |
 LL | const MY_STR_MUCH_TOO_LONG: &MyStr = unsafe { mem::transmute((&42u8, usize::MAX)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `MY_STR_MUCH_TOO_LONG` failed here
 
 error[E0080]: constructing invalid value at .<deref>: encountered uninitialized memory, but expected a string
   --> $DIR/ub-wide-ptr.rs:54:1
@@ -71,77 +56,53 @@ LL | const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[MaybeUni
                HEX_DUMP
            }
 
-error[E0080]: reading memory at ALLOC32[0x%..0x%], but memory is uninitialized at [0x%..0x%], and this operation requires initialized memory
-  --> $DIR/ub-wide-ptr.rs:64:1
+error[E0080]: constructing invalid value: encountered uninitialized memory, but expected a reference
+  --> $DIR/ub-wide-ptr.rs:66:5
    |
-LL | const SLICE_LENGTH_UNINIT: &[u8] = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_LENGTH_UNINIT` failed here
-   |
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+LL |     mem::transmute((42, uninit_len))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_LENGTH_UNINIT` failed here
 
 error[E0080]: constructing invalid value: encountered a dangling reference (going beyond the bounds of its allocation)
-  --> $DIR/ub-wide-ptr.rs:70:1
+  --> $DIR/ub-wide-ptr.rs:70:40
    |
 LL | const SLICE_TOO_LONG: &[u8] = unsafe { mem::transmute((&42u8, 999usize)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_TOO_LONG` failed here
 
 error[E0080]: constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
-  --> $DIR/ub-wide-ptr.rs:73:1
+  --> $DIR/ub-wide-ptr.rs:73:50
    |
 LL | const SLICE_TOO_LONG_OVERFLOW: &[u32] = unsafe { mem::transmute((&42u32, isize::MAX)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_TOO_LONG_OVERFLOW` failed here
 
-error[E0080]: unable to turn pointer into integer
-  --> $DIR/ub-wide-ptr.rs:76:1
+error[E0080]: constructing invalid value: encountered a pointer, but expected a reference
+  --> $DIR/ub-wide-ptr.rs:76:42
    |
 LL | const SLICE_LENGTH_PTR: &[u8] = unsafe { mem::transmute((&42u8, &3)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_LENGTH_PTR` failed here
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_LENGTH_PTR` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: constructing invalid value: encountered a dangling box (going beyond the bounds of its allocation)
-  --> $DIR/ub-wide-ptr.rs:79:1
+  --> $DIR/ub-wide-ptr.rs:79:48
    |
 LL | const SLICE_TOO_LONG_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, 999usize)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_TOO_LONG_BOX` failed here
 
-error[E0080]: unable to turn pointer into integer
-  --> $DIR/ub-wide-ptr.rs:82:1
+error[E0080]: constructing invalid value: encountered a pointer, but expected a box
+  --> $DIR/ub-wide-ptr.rs:82:50
    |
 LL | const SLICE_LENGTH_PTR_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, &3)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_LENGTH_PTR_BOX` failed here
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_LENGTH_PTR_BOX` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error[E0080]: constructing invalid value at .<deref>[0]: encountered 0x03, but expected a boolean
-  --> $DIR/ub-wide-ptr.rs:86:1
+error[E0080]: constructing invalid value: encountered 0x03, but expected a boolean
+  --> $DIR/ub-wide-ptr.rs:86:51
    |
 LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                                   ^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_CONTENT_INVALID` failed here
 
 note: erroneous constant encountered
   --> $DIR/ub-wide-ptr.rs:86:40
@@ -149,16 +110,11 @@ note: erroneous constant encountered
 LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0080]: constructing invalid value at .<deref>.0: encountered 0x03, but expected a boolean
-  --> $DIR/ub-wide-ptr.rs:92:1
+error[E0080]: constructing invalid value: encountered 0x03, but expected a boolean
+  --> $DIR/ub-wide-ptr.rs:92:60
    |
 LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                                            ^^^^^^^^^^^^^^^^^^^ evaluation of `MYSLICE_PREFIX_BAD` failed here
 
 note: erroneous constant encountered
   --> $DIR/ub-wide-ptr.rs:92:42
@@ -166,16 +122,11 @@ note: erroneous constant encountered
 LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0080]: constructing invalid value at .<deref>.1[0]: encountered 0x03, but expected a boolean
-  --> $DIR/ub-wide-ptr.rs:95:1
+error[E0080]: constructing invalid value: encountered 0x03, but expected a boolean
+  --> $DIR/ub-wide-ptr.rs:95:67
    |
 LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                                                   ^^^^^^^^^^^^^^^^^^^ evaluation of `MYSLICE_SUFFIX_BAD` failed here
 
 note: erroneous constant encountered
   --> $DIR/ub-wide-ptr.rs:95:42
@@ -183,92 +134,53 @@ note: erroneous constant encountered
 LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0080]: reading memory at ALLOC33[0x%..0x%], but memory is uninitialized at [0x%..0x%], and this operation requires initialized memory
-  --> $DIR/ub-wide-ptr.rs:102:1
+error[E0080]: constructing invalid value: encountered uninitialized memory, but expected a raw pointer
+  --> $DIR/ub-wide-ptr.rs:104:5
    |
-LL | const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `RAW_SLICE_LENGTH_UNINIT` failed here
-   |
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+LL |     mem::transmute((42, uninit_len))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `RAW_SLICE_LENGTH_UNINIT` failed here
 
-error[E0080]: constructing invalid value at .0: encountered ALLOC12<imm>, but expected a vtable pointer
-  --> $DIR/ub-wide-ptr.rs:110:1
+error[E0080]: constructing invalid value at .0: encountered ALLOC4<imm>, but expected a vtable pointer
+  --> $DIR/ub-wide-ptr.rs:110:58
    |
 LL | const TRAIT_OBJ_SHORT_VTABLE_1: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u8))) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TRAIT_OBJ_SHORT_VTABLE_1` failed here
 
-error[E0080]: constructing invalid value at .0: encountered ALLOC14<imm>, but expected a vtable pointer
-  --> $DIR/ub-wide-ptr.rs:113:1
+error[E0080]: constructing invalid value at .0: encountered ALLOC5<imm>, but expected a vtable pointer
+  --> $DIR/ub-wide-ptr.rs:113:58
    |
 LL | const TRAIT_OBJ_SHORT_VTABLE_2: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u64))) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TRAIT_OBJ_SHORT_VTABLE_2` failed here
 
 error[E0080]: constructing invalid value at .0: encountered 0x4[noalloc], but expected a vtable pointer
-  --> $DIR/ub-wide-ptr.rs:116:1
+  --> $DIR/ub-wide-ptr.rs:116:54
    |
 LL | const TRAIT_OBJ_INT_VTABLE: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, 4usize))) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TRAIT_OBJ_INT_VTABLE` failed here
 
-error[E0080]: constructing invalid value: encountered ALLOC17<imm>, but expected a vtable pointer
-  --> $DIR/ub-wide-ptr.rs:118:1
+error[E0080]: constructing invalid value: encountered ALLOC6<imm>, but expected a vtable pointer
+  --> $DIR/ub-wide-ptr.rs:118:57
    |
 LL | const TRAIT_OBJ_UNALIGNED_VTABLE: &dyn Trait = unsafe { mem::transmute((&92u8, &[0u8; 128])) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TRAIT_OBJ_UNALIGNED_VTABLE` failed here
 
-error[E0080]: constructing invalid value: encountered ALLOC19<imm>, but expected a vtable pointer
-  --> $DIR/ub-wide-ptr.rs:120:1
+error[E0080]: constructing invalid value: encountered ALLOC7<imm>, but expected a vtable pointer
+  --> $DIR/ub-wide-ptr.rs:120:57
    |
 LL | const TRAIT_OBJ_BAD_DROP_FN_NULL: &dyn Trait = unsafe { mem::transmute((&92u8, &[0usize; 8])) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TRAIT_OBJ_BAD_DROP_FN_NULL` failed here
 
-error[E0080]: constructing invalid value: encountered ALLOC21<imm>, but expected a vtable pointer
-  --> $DIR/ub-wide-ptr.rs:122:1
+error[E0080]: constructing invalid value: encountered ALLOC8<imm>, but expected a vtable pointer
+  --> $DIR/ub-wide-ptr.rs:122:56
    |
 LL | const TRAIT_OBJ_BAD_DROP_FN_INT: &dyn Trait = unsafe { mem::transmute((&92u8, &[1usize; 8])) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TRAIT_OBJ_BAD_DROP_FN_INT` failed here
 
-error[E0080]: constructing invalid value at .0: encountered ALLOC23<imm>, but expected a vtable pointer
-  --> $DIR/ub-wide-ptr.rs:124:1
+error[E0080]: constructing invalid value at .0: encountered ALLOC9<imm>, but expected a vtable pointer
+  --> $DIR/ub-wide-ptr.rs:124:66
    |
 LL | const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &[&42u8; 8]))) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR` failed here
 
 error[E0080]: constructing invalid value at .<deref>.<dyn-downcast>: encountered 0x03, but expected a boolean
   --> $DIR/ub-wide-ptr.rs:128:1
@@ -282,48 +194,28 @@ LL | const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, 
            }
 
 error[E0080]: constructing invalid value: encountered null pointer, but expected a vtable pointer
-  --> $DIR/ub-wide-ptr.rs:132:1
+  --> $DIR/ub-wide-ptr.rs:132:62
    |
 LL | const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `RAW_TRAIT_OBJ_VTABLE_NULL` failed here
 
-error[E0080]: constructing invalid value: encountered ALLOC28<imm>, but expected a vtable pointer
-  --> $DIR/ub-wide-ptr.rs:134:1
+error[E0080]: constructing invalid value: encountered ALLOC10<imm>, but expected a vtable pointer
+  --> $DIR/ub-wide-ptr.rs:134:65
    |
 LL | const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `RAW_TRAIT_OBJ_VTABLE_INVALID` failed here
 
 error[E0080]: constructing invalid value: encountered null pointer, but expected a vtable pointer
-  --> $DIR/ub-wide-ptr.rs:141:1
+  --> $DIR/ub-wide-ptr.rs:142:5
    |
-LL | static mut RAW_TRAIT_OBJ_VTABLE_NULL_THROUGH_REF: *const dyn Trait = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+LL |     mem::transmute::<_, &dyn Trait>((&92u8, 0usize))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `RAW_TRAIT_OBJ_VTABLE_NULL_THROUGH_REF` failed here
 
-error[E0080]: constructing invalid value: encountered ALLOC31<imm>, but expected a vtable pointer
-  --> $DIR/ub-wide-ptr.rs:145:1
+error[E0080]: constructing invalid value: encountered ALLOC11<imm>, but expected a vtable pointer
+  --> $DIR/ub-wide-ptr.rs:146:5
    |
-LL | static mut RAW_TRAIT_OBJ_VTABLE_INVALID_THROUGH_REF: *const dyn Trait = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+LL |     mem::transmute::<_, &dyn Trait>((&92u8, &3u64))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `RAW_TRAIT_OBJ_VTABLE_INVALID_THROUGH_REF` failed here
 
 error: aborting due to 29 previous errors
 

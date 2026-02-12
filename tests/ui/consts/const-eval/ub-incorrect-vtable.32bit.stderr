@@ -1,57 +1,32 @@
-error[E0080]: constructing invalid value: encountered ALLOC1<imm>, but expected a vtable pointer
-  --> $DIR/ub-incorrect-vtable.rs:18:1
+error[E0080]: constructing invalid value: encountered ALLOC2<imm>, but expected a vtable pointer
+  --> $DIR/ub-incorrect-vtable.rs:19:14
    |
-LL | const INVALID_VTABLE_ALIGNMENT: &dyn Trait =
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾ALLOC0<imm>╼ ╾ALLOC1<imm>╼                         │ ╾──╼╾──╼
-           }
+LL |     unsafe { std::mem::transmute((&92u8, &[0usize, 1usize, 1000usize])) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `INVALID_VTABLE_ALIGNMENT` failed here
 
 error[E0080]: constructing invalid value: encountered ALLOC3<imm>, but expected a vtable pointer
-  --> $DIR/ub-incorrect-vtable.rs:22:1
+  --> $DIR/ub-incorrect-vtable.rs:23:14
    |
-LL | const INVALID_VTABLE_SIZE: &dyn Trait =
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+LL |     unsafe { std::mem::transmute((&92u8, &[1usize, usize::MAX, 1usize])) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `INVALID_VTABLE_SIZE` failed here
+
+error[E0080]: constructing invalid value at .0: encountered ALLOC4<imm>, but expected a vtable pointer
+  --> $DIR/ub-incorrect-vtable.rs:32:14
    |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾ALLOC2<imm>╼ ╾ALLOC3<imm>╼                         │ ╾──╼╾──╼
-           }
+LL |     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), 1usize, 1000usize))) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `INVALID_VTABLE_ALIGNMENT_UB` failed here
 
 error[E0080]: constructing invalid value at .0: encountered ALLOC5<imm>, but expected a vtable pointer
-  --> $DIR/ub-incorrect-vtable.rs:31:1
+  --> $DIR/ub-incorrect-vtable.rs:36:14
    |
-LL | const INVALID_VTABLE_ALIGNMENT_UB: W<&dyn Trait> =
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾ALLOC4<imm>╼ ╾ALLOC5<imm>╼                         │ ╾──╼╾──╼
-           }
+LL |     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), usize::MAX, 1usize))) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `INVALID_VTABLE_SIZE_UB` failed here
 
-error[E0080]: constructing invalid value at .0: encountered ALLOC7<imm>, but expected a vtable pointer
-  --> $DIR/ub-incorrect-vtable.rs:35:1
+error[E0080]: constructing invalid value at .0: encountered ALLOC6<imm>, but expected a vtable pointer
+  --> $DIR/ub-incorrect-vtable.rs:41:14
    |
-LL | const INVALID_VTABLE_SIZE_UB: W<&dyn Trait> =
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾ALLOC6<imm>╼ ╾ALLOC7<imm>╼                         │ ╾──╼╾──╼
-           }
-
-error[E0080]: constructing invalid value at .0: encountered ALLOC9<imm>, but expected a vtable pointer
-  --> $DIR/ub-incorrect-vtable.rs:40:1
-   |
-LL | const INVALID_VTABLE_UB: W<&dyn Trait> =
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾ALLOC8<imm>╼ ╾ALLOC9<imm>╼                         │ ╾──╼╾──╼
-           }
+LL |     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), 1usize, 1usize))) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `INVALID_VTABLE_UB` failed here
 
 error[E0080]: constructing invalid value at .1: encountered a dangling reference (going beyond the bounds of its allocation)
   --> $DIR/ub-incorrect-vtable.rs:86:1
@@ -61,7 +36,7 @@ LL | const G: Wide = unsafe { Transmute { t: FOO }.u };
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾ALLOC10<imm>╼ ╾ALLOC11╼                         │ ╾──╼╾──╼
+               ╾ALLOC0<imm>╼ ╾ALLOC1╼                         │ ╾──╼╾──╼
            }
 
 error: aborting due to 6 previous errors

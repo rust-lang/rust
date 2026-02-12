@@ -1107,6 +1107,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         MonoHashMap<AllocId, (MemoryKind, Allocation<Provenance, Self::AllocExtra, Self::Bytes>)>;
 
     const GLOBAL_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::Global);
+    const VALIDATE_UNSAFE_OUTPUTS: bool = false;
 
     const PANIC_ON_ALLOC_FAIL: bool = false;
 

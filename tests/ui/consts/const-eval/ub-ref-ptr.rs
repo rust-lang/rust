@@ -37,13 +37,13 @@ const MAYBE_NULL_BOX: Box<()> = unsafe { mem::transmute({
 // but that would fail to compile; so we ended up breaking user code that would
 // have worked fine had we not promoted.
 const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
-//~^ ERROR unable to turn pointer into integer
+//~^ ERROR encountered a pointer, but expected an integer
 
 const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
-//~^ ERROR unable to turn pointer into integer
+//~^ ERROR encountered a pointer, but expected an integer
 
 const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
-//~^ ERROR unable to turn pointer into integer
+//~^ ERROR encountered a pointer, but expected an integer
 
 const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
 //~^ ERROR invalid value

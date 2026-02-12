@@ -43,10 +43,10 @@ const NESTED_STR_MUCH_TOO_LONG: (&str,) = (unsafe { mem::transmute((&42, usize::
 //~^ ERROR slice is bigger than largest supported object
 // bad str
 const STR_LENGTH_PTR: &str = unsafe { mem::transmute((&42u8, &3)) };
-//~^ ERROR unable to turn pointer into integer
+//~^ ERROR encountered a pointer, but expected a reference
 // bad str in user-defined unsized type
 const MY_STR_LENGTH_PTR: &MyStr = unsafe { mem::transmute((&42u8, &3)) };
-//~^ ERROR unable to turn pointer into integer
+//~^ ERROR encountered a pointer, but expected a reference
 const MY_STR_MUCH_TOO_LONG: &MyStr = unsafe { mem::transmute((&42u8, usize::MAX)) };
 //~^ ERROR slice is bigger than largest supported object
 
@@ -62,9 +62,9 @@ const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::
 const SLICE_VALID: &[u8] = unsafe { mem::transmute((&42u8, 1usize)) };
 // bad slice: length uninit
 const SLICE_LENGTH_UNINIT: &[u8] = unsafe {
-    //~^ ERROR uninitialized
     let uninit_len = MaybeUninit::<usize> { uninit: () };
     mem::transmute((42, uninit_len))
+//~^ ERROR uninitialized
 };
 // bad slice: length too big
 const SLICE_TOO_LONG: &[u8] = unsafe { mem::transmute((&42u8, 999usize)) };
@@ -74,13 +74,13 @@ const SLICE_TOO_LONG_OVERFLOW: &[u32] = unsafe { mem::transmute((&42u32, isize::
 //~^ ERROR slice is bigger than largest supported object
 // bad slice: length not an int
 const SLICE_LENGTH_PTR: &[u8] = unsafe { mem::transmute((&42u8, &3)) };
-//~^ ERROR unable to turn pointer into integer
+//~^ ERROR encountered a pointer, but expected a reference
 // bad slice box: length too big
 const SLICE_TOO_LONG_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, 999usize)) };
 //~^ ERROR dangling box (going beyond the bounds of its allocation)
 // bad slice box: length not an int
 const SLICE_LENGTH_PTR_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, &3)) };
-//~^ ERROR unable to turn pointer into integer
+//~^ ERROR encountered a pointer, but expected a box
 
 // bad data *inside* the slice
 const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
@@ -100,9 +100,9 @@ const RAW_SLICE_VALID: *const [u8] = unsafe { mem::transmute((&42u8, 1usize)) };
 const RAW_SLICE_TOO_LONG: *const [u8] = unsafe { mem::transmute((&42u8, 999usize)) }; // ok because raw
 const RAW_SLICE_MUCH_TOO_LONG: *const [u8] = unsafe { mem::transmute((&42u8, usize::MAX)) }; // ok because raw
 const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {
-    //~^ ERROR uninitialized
     let uninit_len = MaybeUninit::<usize> { uninit: () };
     mem::transmute((42, uninit_len))
+//~^ ERROR uninitialized
 };
 
 // # trait object
@@ -140,11 +140,11 @@ const DYN_METADATA: ptr::DynMetadata<dyn Send> = ptr::metadata::<dyn Send>(ptr::
 
 static mut RAW_TRAIT_OBJ_VTABLE_NULL_THROUGH_REF: *const dyn Trait = unsafe {
     mem::transmute::<_, &dyn Trait>((&92u8, 0usize))
-    //~^^ ERROR null pointer
+    //~^ ERROR null pointer
 };
 static mut RAW_TRAIT_OBJ_VTABLE_INVALID_THROUGH_REF: *const dyn Trait = unsafe {
     mem::transmute::<_, &dyn Trait>((&92u8, &3u64))
-    //~^^ ERROR vtable
+    //~^ ERROR vtable
 };
 
 fn main() {}

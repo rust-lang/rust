@@ -5,15 +5,10 @@ LL | const BAD_BAD_BAD: Bar = unsafe { MaybeUninit { uninit: () }.init };
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_BAD_BAD` failed here
 
 error[E0080]: constructing invalid value: encountered a reference pointing to uninhabited type Bar
-  --> $DIR/ub-uninhabit.rs:23:1
+  --> $DIR/ub-uninhabit.rs:23:36
    |
 LL | const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_BAD_REF` failed here
 
 error[E0080]: constructing invalid value at [0]: encountered a value of uninhabited type `Bar`
   --> $DIR/ub-uninhabit.rs:26:42

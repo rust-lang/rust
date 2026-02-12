@@ -1,44 +1,29 @@
 error[E0080]: constructing invalid value: encountered 0, but expected something greater or equal to 1
-  --> $DIR/ub-nonnull.rs:16:1
+  --> $DIR/ub-nonnull.rs:16:40
    |
 LL | const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NULL_PTR` failed here
 
-error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by 255 bytes, but got ALLOC2 which is only 1 byte from the end of the allocation
-  --> $DIR/ub-nonnull.rs:22:29
+error[E0080]: constructing invalid value: encountered a dangling reference (going beyond the bounds of its allocation)
+  --> $DIR/ub-nonnull.rs:20:27
    |
-LL |     let out_of_bounds_ptr = &ptr[255];
-   |                             ^^^^^^^^^ evaluation of `OUT_OF_BOUNDS_PTR` failed here
+LL |     let ptr: &[u8; 256] = mem::transmute(&0u8); // &0 gets promoted so it does not dangle
+   |                           ^^^^^^^^^^^^^^^^^^^^ evaluation of `OUT_OF_BOUNDS_PTR` failed here
 
 error[E0080]: constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
-  --> $DIR/ub-nonnull.rs:26:1
+  --> $DIR/ub-nonnull.rs:27:39
    |
 LL | const NULL_U8: NonZero<u8> = unsafe { mem::transmute(0u8) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                       ^^^^^^^^^^^^^^^^^^^ evaluation of `NULL_U8` failed here
 
 error[E0080]: constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
-  --> $DIR/ub-nonnull.rs:28:1
+  --> $DIR/ub-nonnull.rs:29:45
    |
 LL | const NULL_USIZE: NonZero<usize> = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NULL_USIZE` failed here
 
-error[E0080]: reading memory at ALLOC3[0x0..0x1], but memory is uninitialized at [0x0..0x1], and this operation requires initialized memory
-  --> $DIR/ub-nonnull.rs:36:38
+error[E0080]: reading memory at ALLOC0[0x0..0x1], but memory is uninitialized at [0x0..0x1], and this operation requires initialized memory
+  --> $DIR/ub-nonnull.rs:37:38
    |
 LL | const UNINIT: NonZero<u8> = unsafe { MaybeUninit { uninit: () }.init };
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNINIT` failed here
@@ -48,7 +33,7 @@ LL | const UNINIT: NonZero<u8> = unsafe { MaybeUninit { uninit: () }.init };
            }
 
 error[E0080]: constructing invalid value: encountered 42, but expected something in the range 10..=30
-  --> $DIR/ub-nonnull.rs:44:1
+  --> $DIR/ub-nonnull.rs:45:1
    |
 LL | const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
@@ -59,7 +44,7 @@ LL | const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
            }
 
 error[E0080]: constructing invalid value: encountered 20, but expected something less or equal to 10, or greater or equal to 30
-  --> $DIR/ub-nonnull.rs:50:1
+  --> $DIR/ub-nonnull.rs:51:1
    |
 LL | const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
@@ -70,26 +55,16 @@ LL | const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
            }
 
 error[E0080]: constructing invalid value: encountered 0, but expected something greater or equal to 1
-  --> $DIR/ub-nonnull.rs:53:1
+  --> $DIR/ub-nonnull.rs:57:5
    |
-LL | const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+LL |     mem::transmute((0_usize, meta))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NULL_FAT_PTR` failed here
 
 error[E0080]: constructing invalid value: encountered a maybe-null pointer, but expected something that is definitely non-zero
-  --> $DIR/ub-nonnull.rs:61:1
+  --> $DIR/ub-nonnull.rs:62:46
    |
 LL | const MAYBE_NULL_PTR: NonNull<()> = unsafe { mem::transmute((&raw const S).wrapping_add(4)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `MAYBE_NULL_PTR` failed here
 
 error: aborting due to 9 previous errors
 
