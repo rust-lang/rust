@@ -644,7 +644,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 .infcx
                 .visit_proof_tree(
                     Goal::new(self.tcx, self.param_env, pred),
-                    &mut CoerceVisitor { fcx: self.fcx, span: self.cause.span },
+                    &mut CoerceVisitor { fcx: self.fcx, span: self.cause.span, errored: false },
                 )
                 .is_break()
             {
@@ -1961,6 +1961,10 @@ impl<'tcx> CoerceMany<'tcx> {
 struct CoerceVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     span: Span,
+    /// Whether the coercion is impossible. If so we sometimes still try to
+    /// coerce in these cases to emit better errors. This changes the behavior
+    /// when hitting the recursion limit.
+    errored: bool,
 }
 
 impl<'tcx> ProofTreeVisitor<'tcx> for CoerceVisitor<'_, 'tcx> {
@@ -1987,6 +1991,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for CoerceVisitor<'_, 'tcx> {
             // If we prove the `Unsize` or `CoerceUnsized` goal, continue recursing.
             Ok(Certainty::Yes) => ControlFlow::Continue(()),
             Err(NoSolution) => {
+                self.errored = true;
                 // Even if we find no solution, continue recursing if we find a single candidate
                 // for which we're shallowly certain it holds to get the right error source.
                 if let [only_candidate] = &goal.candidates()[..]
@@ -2017,6 +2022,17 @@ impl<'tcx> ProofTreeVisitor<'tcx> for CoerceVisitor<'_, 'tcx> {
                     ControlFlow::Break(())
                 }
             }
+        }
+    }
+
+    fn on_recursion_limit(&mut self) -> Self::Result {
+        if self.errored {
+            // This prevents accidentally committing unfulfilled unsized coercions while trying to
+            // find the error source for diagnostics.
+            // See https://github.com/rust-lang/trait-system-refactor-initiative/issues/266.
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
         }
     }
 }
