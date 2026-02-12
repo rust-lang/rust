@@ -815,24 +815,19 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   bool IsLTO = OptStage == LLVMRustOptStage::ThinLTO ||
                OptStage == LLVMRustOptStage::FatLTO;
   if (!NoPrepopulatePasses) {
+    for (const auto &C : PipelineStartEPCallbacks)
+      PB.registerPipelineStartEPCallback(C);
+    for (const auto &C : OptimizerLastEPCallbacks)
+      PB.registerOptimizerLastEPCallback(C);
+
     // The pre-link pipelines don't support O0 and require using
     // buildO0DefaultPipeline() instead. At the same time, the LTO pipelines do
     // support O0 and using them is required.
     if (OptLevel == OptimizationLevel::O0 && !IsLTO) {
-      for (const auto &C : PipelineStartEPCallbacks)
-        PB.registerPipelineStartEPCallback(C);
-      for (const auto &C : OptimizerLastEPCallbacks)
-        PB.registerOptimizerLastEPCallback(C);
-
       // We manually schedule ThinLTOBufferPasses below, so don't pass the value
       // to enable it here.
       MPM = PB.buildO0DefaultPipeline(OptLevel);
     } else {
-      for (const auto &C : PipelineStartEPCallbacks)
-        PB.registerPipelineStartEPCallback(C);
-      for (const auto &C : OptimizerLastEPCallbacks)
-        PB.registerOptimizerLastEPCallback(C);
-
       switch (OptStage) {
       case LLVMRustOptStage::PreLinkNoLTO:
         if (ThinLTOBufferRef) {
