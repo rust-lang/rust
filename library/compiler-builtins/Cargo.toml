@@ -35,6 +35,7 @@ exclude = [
 anyhow = "1.0.101"
 assert_cmd = "2.1.2"
 cc = "1.2.55"
+cfg-if = "1.0.4"
 compiler_builtins = { path = "builtins-shim", default-features = false }
 criterion = { version = "0.6.0", default-features = false, features = ["cargo_bench_support"] }
 getopts = "0.2.24"

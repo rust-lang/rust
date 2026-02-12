@@ -8,10 +8,11 @@ use std::env;
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use libm::support::{Hexf, hf32, hf64};
+use cfg_if::cfg_if;
+use libm::support::{Float, Hexf, hf32, hf64};
 #[cfg(feature = "build-mpfr")]
 use libm_test::mpfloat::MpOp;
-use libm_test::{MathOp, TupleCall};
+use libm_test::{Hex, MathOp, TupleCall};
 #[cfg(feature = "build-mpfr")]
 use rug::az::{self, Az};
 
@@ -26,6 +27,10 @@ SUBCOMMAND:
         running routines with a debugger, or quickly checking input. Examples:
         * eval musl sinf 1.234 # print the results of musl sinf(1.234f32)
         * eval mpfr pow 1.234 2.432 # print the results of mpfr pow(1.234, 2.432)
+
+    print inputs...
+        For each input, print it in different formats with various floating
+        point properties (normal, infinite, etc).
 ";
 
 fn main() {
@@ -34,6 +39,7 @@ fn main() {
 
     match &str_args.as_slice()[1..] {
         ["eval", basis, op, inputs @ ..] => do_eval(basis, op, inputs),
+        ["print" | "p", inputs @ ..] => do_classify(inputs),
         _ => {
             println!("{USAGE}\nunrecognized input `{str_args:?}`");
             std::process::exit(1);
@@ -104,6 +110,66 @@ fn do_eval(basis: &str, op: &str, inputs: &[&str]) {
     }
 
     panic!("no operation matching {op}");
+}
+
+/// Print basic float information to stdout.
+fn do_classify(inputs: &[&str]) {
+    for s in inputs {
+        if let Some(s) = s.strip_suffix("f16") {
+            cfg_if! {
+                if #[cfg(f16_enabled)] {
+                    let s = s.trim_end_matches("_");
+                    let x: f16 = parse(&[s], 0);
+                    classify_print(x);
+                    continue;
+                } else {
+                    panic!("parsing this type requires f16 support: `{s}`");
+                }
+            }
+        };
+        if let Some(s) = s.strip_suffix("f32") {
+            let s = s.trim_end_matches("_");
+            let x: f32 = parse(&[s], 0);
+            classify_print(x);
+            continue;
+        } else if let Some(s) = s.strip_suffix("f64") {
+            let s = s.trim_end_matches("_");
+            let x: f64 = parse(&[s], 0);
+            classify_print(x);
+            continue;
+        }
+        if let Some(s) = s.strip_suffix("f128") {
+            cfg_if! {
+                if #[cfg(all(f128_enabled, feature = "build-mpfr"))] {
+                    let s = s.trim_end_matches("_");
+                    let x: f128 = parse_rug(&[s], 0);
+                    classify_print(x);
+                    continue;
+                } else {
+                    panic!("parsing this type requires f128 support and \
+                            the `build-mpfr` feature: `{s}`");
+                }
+            }
+        };
+        panic!("float type must be specified with a `f*` suffix: `{s}`");
+    }
+}
+
+fn classify_print<F>(x: F)
+where
+    F: Float,
+    F::Int: Hex,
+{
+    println!("{x:?}");
+    println!("    hex:  {}", Hexf(x));
+    println!("    bits: {}", x.to_bits().hex());
+    println!("    nan:  {}", x.is_nan());
+    println!("    inf:  {}", x.is_infinite());
+    println!("    normal: {}", !x.is_subnormal());
+    println!("    pos:  {}", x.is_sign_positive());
+    println!("    exp:  {} {}", x.ex(), x.ex().hex());
+    println!("    exp unbiased: {}", x.exp_unbiased());
+    println!("    frac: {} {}", x.frac(), x.frac().hex());
 }
 
 /// Parse a tuple from a space-delimited string.
