@@ -2218,6 +2218,7 @@ impl FileTimes {
     }
 
     /// Set the last access time of a file.
+    #[must_use]
     #[stable(feature = "file_set_times", since = "1.75.0")]
     pub fn set_accessed(mut self, t: SystemTime) -> Self {
         self.0.set_accessed(t.into_inner());
@@ -2225,6 +2226,7 @@ impl FileTimes {
     }
 
     /// Set the last modified time of a file.
+    #[must_use]
     #[stable(feature = "file_set_times", since = "1.75.0")]
     pub fn set_modified(mut self, t: SystemTime) -> Self {
         self.0.set_modified(t.into_inner());
