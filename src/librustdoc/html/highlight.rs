@@ -1246,7 +1246,7 @@ impl<'src> Classifier<'src> {
                 LiteralKind::Float { .. } | LiteralKind::Int { .. } => Class::Number,
             },
             TokenKind::GuardedStrPrefix => return no_highlight(sink),
-            TokenKind::RawIdent if let Some((TokenKind::Bang, _)) = self.peek_non_trivia() => {
+            TokenKind::RawIdent if self.check_if_macro_call("") => {
                 self.new_macro_span(text, sink, before, file_span);
                 return;
             }
@@ -1268,9 +1268,7 @@ impl<'src> Classifier<'src> {
                         // So if it's not a keyword which can be followed by a value (like `if` or
                         // `return`) and the next non-whitespace token is a `!`, then we consider
                         // it's a macro.
-                        if !NON_MACRO_KEYWORDS.contains(&text)
-                            && matches!(self.peek_non_trivia(), Some((TokenKind::Bang, _)))
-                        {
+                        if !NON_MACRO_KEYWORDS.contains(&text) && self.check_if_macro_call(text) {
                             self.new_macro_span(text, sink, before, file_span);
                             return;
                         }
@@ -1278,7 +1276,7 @@ impl<'src> Classifier<'src> {
                     }
                     // If it's not a keyword and the next non whitespace token is a `!`, then
                     // we consider it's a macro.
-                    _ if matches!(self.peek_non_trivia(), Some((TokenKind::Bang, _))) => {
+                    _ if self.check_if_macro_call(text) => {
                         self.new_macro_span(text, sink, before, file_span);
                         return;
                     }
@@ -1338,6 +1336,37 @@ impl<'src> Classifier<'src> {
         }
         self.tokens.stop_peeking();
         None
+    }
+
+    fn check_if_macro_call(&mut self, ident: &str) -> bool {
+        let mut has_bang = false;
+        let is_macro_rule_ident = ident == "macro_rules";
+
+        while let Some((kind, _)) = self.tokens.peek_next() {
+            if let TokenKind::Whitespace
+            | TokenKind::LineComment { doc_style: None }
+            | TokenKind::BlockComment { doc_style: None, .. } = kind
+            {
+                continue;
+            }
+            if !has_bang {
+                if kind != TokenKind::Bang {
+                    break;
+                }
+                has_bang = true;
+                continue;
+            }
+            self.tokens.stop_peeking();
+            if is_macro_rule_ident {
+                return matches!(kind, TokenKind::Ident | TokenKind::RawIdent);
+            }
+            return matches!(
+                kind,
+                TokenKind::OpenParen | TokenKind::OpenBracket | TokenKind::OpenBrace
+            );
+        }
+        self.tokens.stop_peeking();
+        false
     }
 }
 
