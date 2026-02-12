@@ -23,12 +23,14 @@ cargo run -p util -- <SUBCOMMAND>
 
 SUBCOMMAND:
     eval <BASIS> <OP> inputs...
+    x <BASIS> <OP> inputs...
         Evaulate the expression with a given basis. This can be useful for
         running routines with a debugger, or quickly checking input. Examples:
         * eval musl sinf 1.234 # print the results of musl sinf(1.234f32)
         * eval mpfr pow 1.234 2.432 # print the results of mpfr pow(1.234, 2.432)
 
     print inputs...
+    p inputs...
         For each input, print it in different formats with various floating
         point properties (normal, infinite, etc).
 ";
@@ -38,7 +40,7 @@ fn main() {
     let str_args = args.iter().map(|s| s.as_str()).collect::<Vec<_>>();
 
     match &str_args.as_slice()[1..] {
-        ["eval", basis, op, inputs @ ..] => do_eval(basis, op, inputs),
+        ["eval" | "x", basis, op, inputs @ ..] => do_eval(basis, op, inputs),
         ["print" | "p", inputs @ ..] => do_classify(inputs),
         _ => {
             println!("{USAGE}\nunrecognized input `{str_args:?}`");
