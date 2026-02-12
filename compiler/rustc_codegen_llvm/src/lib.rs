@@ -25,7 +25,6 @@ use std::path::PathBuf;
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
 use context::SimpleCx;
-use errors::ParseTargetMachineConfig;
 use llvm_util::target_config;
 use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule};
@@ -152,7 +151,6 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     type Module = ModuleLlvm;
     type ModuleBuffer = back::lto::ModuleBuffer;
     type TargetMachine = OwnedTargetMachine;
-    type TargetMachineError = crate::errors::LlvmError<'static>;
     type ThinData = back::lto::ThinData;
     type ThinBuffer = back::lto::ThinBuffer;
     fn print_pass_timings(&self) {
@@ -164,8 +162,9 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         print!("{stats}");
     }
     fn run_and_optimize_fat_lto(
-        cgcx: &CodegenContext<Self>,
+        cgcx: &CodegenContext,
         shared_emitter: &SharedEmitter,
+        tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
@@ -173,6 +172,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         let mut module = back::lto::run_fat(
             cgcx,
             shared_emitter,
+            tm_factory,
             exported_symbols_for_lto,
             each_linked_rlib_for_lto,
             modules,
@@ -185,7 +185,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         module
     }
     fn run_thin_lto(
-        cgcx: &CodegenContext<Self>,
+        cgcx: &CodegenContext,
         dcx: DiagCtxtHandle<'_>,
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
@@ -202,7 +202,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         )
     }
     fn optimize(
-        cgcx: &CodegenContext<Self>,
+        cgcx: &CodegenContext,
         shared_emitter: &SharedEmitter,
         module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
@@ -210,14 +210,15 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         back::write::optimize(cgcx, shared_emitter, module, config)
     }
     fn optimize_thin(
-        cgcx: &CodegenContext<Self>,
+        cgcx: &CodegenContext,
         shared_emitter: &SharedEmitter,
+        tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
         thin: ThinModule<Self>,
     ) -> ModuleCodegen<Self::Module> {
-        back::lto::optimize_thin_module(cgcx, shared_emitter, thin)
+        back::lto::optimize_thin_module(cgcx, shared_emitter, tm_factory, thin)
     }
     fn codegen(
-        cgcx: &CodegenContext<Self>,
+        cgcx: &CodegenContext,
         shared_emitter: &SharedEmitter,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
@@ -440,22 +441,9 @@ impl ModuleLlvm {
         }
     }
 
-    fn tm_from_cgcx(
-        cgcx: &CodegenContext<LlvmCodegenBackend>,
-        name: &str,
-        dcx: DiagCtxtHandle<'_>,
-    ) -> OwnedTargetMachine {
-        let tm_factory_config = TargetMachineFactoryConfig::new(cgcx, name);
-        match (cgcx.tm_factory)(tm_factory_config) {
-            Ok(m) => m,
-            Err(e) => {
-                dcx.emit_fatal(ParseTargetMachineConfig(e));
-            }
-        }
-    }
-
     fn parse(
-        cgcx: &CodegenContext<LlvmCodegenBackend>,
+        cgcx: &CodegenContext,
+        tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
         name: &CStr,
         buffer: &[u8],
         dcx: DiagCtxtHandle<'_>,
@@ -464,7 +452,7 @@ impl ModuleLlvm {
             let llcx = llvm::LLVMContextCreate();
             llvm::LLVMContextSetDiscardValueNames(llcx, cgcx.fewer_names.to_llvm_bool());
             let llmod_raw = back::lto::parse_module(llcx, name, buffer, dcx);
-            let tm = ModuleLlvm::tm_from_cgcx(cgcx, name.to_str().unwrap(), dcx);
+            let tm = tm_factory(dcx, TargetMachineFactoryConfig::new(cgcx, name.to_str().unwrap()));
 
             ModuleLlvm { llmod_raw, llcx, tm: ManuallyDrop::new(tm) }
         }

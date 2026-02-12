@@ -14,10 +14,10 @@ use rustc_target::spec::SplitDebuginfo;
 
 use crate::base::add_pic_option;
 use crate::errors::CopyBitcode;
-use crate::{GccCodegenBackend, GccContext, LtoMode};
+use crate::{GccContext, LtoMode};
 
 pub(crate) fn codegen(
-    cgcx: &CodegenContext<GccCodegenBackend>,
+    cgcx: &CodegenContext,
     shared_emitter: &SharedEmitter,
     module: ModuleCodegen<GccContext>,
     config: &ModuleConfig,
@@ -227,7 +227,7 @@ pub(crate) fn codegen(
 }
 
 pub(crate) fn save_temp_bitcode(
-    cgcx: &CodegenContext<GccCodegenBackend>,
+    cgcx: &CodegenContext,
     _module: &ModuleCodegen<GccContext>,
     _name: &str,
 ) {

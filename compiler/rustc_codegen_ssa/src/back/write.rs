@@ -29,7 +29,8 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{
-    self, CrateType, Lto, OutFileName, OutputFilenames, OutputType, Passes, SwitchWithOptPath,
+    self, CrateType, Lto, OptLevel, OutFileName, OutputFilenames, OutputType, Passes,
+    SwitchWithOptPath,
 };
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileName, InnerSpan, Span, SpanData};
@@ -287,10 +288,7 @@ pub struct TargetMachineFactoryConfig {
 }
 
 impl TargetMachineFactoryConfig {
-    pub fn new(
-        cgcx: &CodegenContext<impl WriteBackendMethods>,
-        module_name: &str,
-    ) -> TargetMachineFactoryConfig {
+    pub fn new(cgcx: &CodegenContext, module_name: &str) -> TargetMachineFactoryConfig {
         let split_dwarf_file = if cgcx.target_can_use_split_dwarf {
             cgcx.output_filenames.split_dwarf_path(
                 cgcx.split_debuginfo,
@@ -313,17 +311,16 @@ impl TargetMachineFactoryConfig {
 
 pub type TargetMachineFactoryFn<B> = Arc<
     dyn Fn(
+            DiagCtxtHandle<'_>,
             TargetMachineFactoryConfig,
-        ) -> Result<
-            <B as WriteBackendMethods>::TargetMachine,
-            <B as WriteBackendMethods>::TargetMachineError,
-        > + Send
+        ) -> <B as WriteBackendMethods>::TargetMachine
+        + Send
         + Sync,
 >;
 
 /// Additional resources used by optimize_and_codegen (not module specific)
 #[derive(Clone)]
-pub struct CodegenContext<B: WriteBackendMethods> {
+pub struct CodegenContext {
     // Resources needed when running LTO
     pub prof: SelfProfilerRef,
     pub lto: Lto,
@@ -337,7 +334,8 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub output_filenames: Arc<OutputFilenames>,
     pub invocation_temp: Option<String>,
     pub module_config: Arc<ModuleConfig>,
-    pub tm_factory: TargetMachineFactoryFn<B>,
+    pub opt_level: OptLevel,
+    pub backend_features: Vec<String>,
     pub msvc_imps_needed: bool,
     pub is_pe_coff: bool,
     pub target_can_use_split_dwarf: bool,
@@ -364,7 +362,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
 }
 
 fn generate_thin_lto_work<B: ExtraBackendMethods>(
-    cgcx: &CodegenContext<B>,
+    cgcx: &CodegenContext,
     dcx: DiagCtxtHandle<'_>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
@@ -410,7 +408,7 @@ enum MaybeLtoModules<B: WriteBackendMethods> {
         allocator_module: Option<CompiledModule>,
     },
     FatLto {
-        cgcx: CodegenContext<B>,
+        cgcx: CodegenContext,
         exported_symbols_for_lto: Arc<Vec<String>>,
         each_linked_rlib_file_for_lto: Vec<PathBuf>,
         needs_fat_lto: Vec<FatLtoInput<B>>,
@@ -418,7 +416,7 @@ enum MaybeLtoModules<B: WriteBackendMethods> {
             Vec<(SerializedModule<<B as WriteBackendMethods>::ModuleBuffer>, WorkProduct)>,
     },
     ThinLto {
-        cgcx: CodegenContext<B>,
+        cgcx: CodegenContext,
         exported_symbols_for_lto: Arc<Vec<String>>,
         each_linked_rlib_file_for_lto: Vec<PathBuf>,
         needs_thin_lto: Vec<(String, <B as WriteBackendMethods>::ThinBuffer)>,
@@ -842,7 +840,7 @@ pub(crate) fn compute_per_cgu_lto_type(
 }
 
 fn execute_optimize_work_item<B: ExtraBackendMethods>(
-    cgcx: &CodegenContext<B>,
+    cgcx: &CodegenContext,
     shared_emitter: SharedEmitter,
     mut module: ModuleCodegen<B::Module>,
 ) -> WorkItemResult<B> {
@@ -897,8 +895,8 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     }
 }
 
-fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
-    cgcx: &CodegenContext<B>,
+fn execute_copy_from_cache_work_item(
+    cgcx: &CodegenContext,
     shared_emitter: SharedEmitter,
     module: CachedModuleCodegen,
 ) -> CompiledModule {
@@ -986,8 +984,9 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 }
 
 fn do_fat_lto<B: ExtraBackendMethods>(
-    cgcx: &CodegenContext<B>,
+    cgcx: &CodegenContext,
     shared_emitter: SharedEmitter,
+    tm_factory: TargetMachineFactoryFn<B>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
     mut needs_fat_lto: Vec<FatLtoInput<B>>,
@@ -1007,6 +1006,7 @@ fn do_fat_lto<B: ExtraBackendMethods>(
     let module = B::run_and_optimize_fat_lto(
         cgcx,
         &shared_emitter,
+        tm_factory,
         exported_symbols_for_lto,
         each_linked_rlib_for_lto,
         needs_fat_lto,
@@ -1015,8 +1015,9 @@ fn do_fat_lto<B: ExtraBackendMethods>(
 }
 
 fn do_thin_lto<'a, B: ExtraBackendMethods>(
-    cgcx: &'a CodegenContext<B>,
+    cgcx: &'a CodegenContext,
     shared_emitter: SharedEmitter,
+    tm_factory: TargetMachineFactoryFn<B>,
     exported_symbols_for_lto: Arc<Vec<String>>,
     each_linked_rlib_for_lto: Vec<PathBuf>,
     needs_thin_lto: Vec<(String, <B as WriteBackendMethods>::ThinBuffer)>,
@@ -1053,7 +1054,7 @@ fn do_thin_lto<'a, B: ExtraBackendMethods>(
     // bunch of work items onto our queue to do LTO. This all
     // happens on the coordinator thread but it's very quick so
     // we don't worry about tokens.
-    for (work, cost) in generate_thin_lto_work(
+    for (work, cost) in generate_thin_lto_work::<B>(
         cgcx,
         dcx,
         &exported_symbols_for_lto,
@@ -1097,7 +1098,13 @@ fn do_thin_lto<'a, B: ExtraBackendMethods>(
             while used_token_count < tokens.len() + 1
                 && let Some((item, _)) = work_items.pop()
             {
-                spawn_thin_lto_work(&cgcx, shared_emitter.clone(), coordinator_send.clone(), item);
+                spawn_thin_lto_work(
+                    &cgcx,
+                    shared_emitter.clone(),
+                    Arc::clone(&tm_factory),
+                    coordinator_send.clone(),
+                    item,
+                );
                 used_token_count += 1;
             }
         } else {
@@ -1158,13 +1165,14 @@ fn do_thin_lto<'a, B: ExtraBackendMethods>(
 }
 
 fn execute_thin_lto_work_item<B: ExtraBackendMethods>(
-    cgcx: &CodegenContext<B>,
+    cgcx: &CodegenContext,
     shared_emitter: SharedEmitter,
+    tm_factory: TargetMachineFactoryFn<B>,
     module: lto::ThinModule<B>,
 ) -> CompiledModule {
     let _timer = cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", module.name());
 
-    let module = B::optimize_thin(cgcx, &shared_emitter, module);
+    let module = B::optimize_thin(cgcx, &shared_emitter, tm_factory, module);
     B::codegen(cgcx, &shared_emitter, module, &cgcx.module_config)
 }
 
@@ -1292,8 +1300,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
         })
         .expect("failed to spawn helper thread");
 
-    let ol = tcx.backend_optimization_level(());
-    let backend_features = tcx.global_backend_features(());
+    let opt_level = tcx.backend_optimization_level(());
+    let backend_features = tcx.global_backend_features(()).clone();
+    let tm_factory = backend.target_machine_factory(tcx.sess, opt_level, &backend_features);
 
     let remark_dir = if let Some(ref dir) = sess.opts.unstable_opts.remark_dir {
         let result = fs::create_dir_all(dir).and_then(|_| dir.canonicalize());
@@ -1305,7 +1314,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         None
     };
 
-    let cgcx = CodegenContext::<B> {
+    let cgcx = CodegenContext {
         crate_types: tcx.crate_types().to_vec(),
         lto: sess.lto(),
         use_linker_plugin_lto: sess.opts.cg.linker_plugin_lto.enabled(),
@@ -1320,7 +1329,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
         incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
         output_filenames: Arc::clone(tcx.output_filenames(())),
         module_config: regular_config,
-        tm_factory: backend.target_machine_factory(tcx.sess, ol, backend_features),
+        opt_level,
+        backend_features,
         msvc_imps_needed: msvc_imps_needed(tcx),
         is_pe_coff: tcx.sess.target.is_like_windows,
         target_can_use_split_dwarf: tcx.sess.target_can_use_split_dwarf(),
@@ -1776,9 +1786,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
             assert!(needs_fat_lto.is_empty());
 
             if cgcx.lto == Lto::ThinLocal {
-                compiled_modules.extend(do_thin_lto(
+                compiled_modules.extend(do_thin_lto::<B>(
                     &cgcx,
                     shared_emitter.clone(),
+                    tm_factory,
                     exported_symbols_for_lto,
                     each_linked_rlib_file_for_lto,
                     needs_thin_lto,
@@ -1872,7 +1883,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
 pub(crate) struct WorkerFatalError;
 
 fn spawn_work<'a, B: ExtraBackendMethods>(
-    cgcx: &'a CodegenContext<B>,
+    cgcx: &'a CodegenContext,
     shared_emitter: SharedEmitter,
     coordinator_send: Sender<Message<B>>,
     llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
@@ -1910,8 +1921,9 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
 }
 
 fn spawn_thin_lto_work<'a, B: ExtraBackendMethods>(
-    cgcx: &'a CodegenContext<B>,
+    cgcx: &'a CodegenContext,
     shared_emitter: SharedEmitter,
+    tm_factory: TargetMachineFactoryFn<B>,
     coordinator_send: Sender<ThinLtoMessage>,
     work: ThinLtoWorkItem<B>,
 ) {
@@ -1922,7 +1934,9 @@ fn spawn_thin_lto_work<'a, B: ExtraBackendMethods>(
             ThinLtoWorkItem::CopyPostLtoArtifacts(m) => {
                 execute_copy_from_cache_work_item(&cgcx, shared_emitter, m)
             }
-            ThinLtoWorkItem::ThinLto(m) => execute_thin_lto_work_item(&cgcx, shared_emitter, m),
+            ThinLtoWorkItem::ThinLto(m) => {
+                execute_thin_lto_work_item(&cgcx, shared_emitter, tm_factory, m)
+            }
         }));
 
         let msg = match result {
@@ -2159,34 +2173,52 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
                 each_linked_rlib_file_for_lto,
                 needs_fat_lto,
                 lto_import_only_modules,
-            } => CompiledModules {
-                modules: vec![do_fat_lto(
-                    &cgcx,
-                    shared_emitter,
-                    &exported_symbols_for_lto,
-                    &each_linked_rlib_file_for_lto,
-                    needs_fat_lto,
-                    lto_import_only_modules,
-                )],
-                allocator_module: None,
-            },
+            } => {
+                let tm_factory = self.backend.target_machine_factory(
+                    sess,
+                    cgcx.opt_level,
+                    &cgcx.backend_features,
+                );
+
+                CompiledModules {
+                    modules: vec![do_fat_lto(
+                        &cgcx,
+                        shared_emitter,
+                        tm_factory,
+                        &exported_symbols_for_lto,
+                        &each_linked_rlib_file_for_lto,
+                        needs_fat_lto,
+                        lto_import_only_modules,
+                    )],
+                    allocator_module: None,
+                }
+            }
             MaybeLtoModules::ThinLto {
                 cgcx,
                 exported_symbols_for_lto,
                 each_linked_rlib_file_for_lto,
                 needs_thin_lto,
                 lto_import_only_modules,
-            } => CompiledModules {
-                modules: do_thin_lto(
-                    &cgcx,
-                    shared_emitter,
-                    exported_symbols_for_lto,
-                    each_linked_rlib_file_for_lto,
-                    needs_thin_lto,
-                    lto_import_only_modules,
-                ),
-                allocator_module: None,
-            },
+            } => {
+                let tm_factory = self.backend.target_machine_factory(
+                    sess,
+                    cgcx.opt_level,
+                    &cgcx.backend_features,
+                );
+
+                CompiledModules {
+                    modules: do_thin_lto::<B>(
+                        &cgcx,
+                        shared_emitter,
+                        tm_factory,
+                        exported_symbols_for_lto,
+                        each_linked_rlib_file_for_lto,
+                        needs_thin_lto,
+                        lto_import_only_modules,
+                    ),
+                    allocator_module: None,
+                }
+            }
         });
 
         shared_emitter_main.check(sess, true);

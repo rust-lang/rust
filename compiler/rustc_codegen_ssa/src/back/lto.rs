@@ -127,10 +127,7 @@ pub(super) fn exported_symbols_for_lto(
     symbols_below_threshold
 }
 
-pub(super) fn check_lto_allowed<B: WriteBackendMethods>(
-    cgcx: &CodegenContext<B>,
-    dcx: DiagCtxtHandle<'_>,
-) {
+pub(super) fn check_lto_allowed(cgcx: &CodegenContext, dcx: DiagCtxtHandle<'_>) {
     if cgcx.lto == Lto::ThinLocal {
         // Crate local LTO is always allowed
         return;

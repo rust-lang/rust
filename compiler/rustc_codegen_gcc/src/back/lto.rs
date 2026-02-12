@@ -50,7 +50,7 @@ struct LtoData {
 }
 
 fn prepare_lto(
-    cgcx: &CodegenContext<GccCodegenBackend>,
+    cgcx: &CodegenContext,
     each_linked_rlib_for_lto: &[PathBuf],
     dcx: DiagCtxtHandle<'_>,
 ) -> LtoData {
@@ -111,7 +111,7 @@ fn save_as_file(obj: &[u8], path: &Path) -> Result<(), LtoBitcodeFromRlib> {
 /// Performs fat LTO by merging all modules into a single one and returning it
 /// for further optimization.
 pub(crate) fn run_fat(
-    cgcx: &CodegenContext<GccCodegenBackend>,
+    cgcx: &CodegenContext,
     shared_emitter: &SharedEmitter,
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
@@ -132,7 +132,7 @@ pub(crate) fn run_fat(
 }
 
 fn fat_lto(
-    cgcx: &CodegenContext<GccCodegenBackend>,
+    cgcx: &CodegenContext,
     _dcx: DiagCtxtHandle<'_>,
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
@@ -283,7 +283,7 @@ impl ModuleBufferMethods for ModuleBuffer {
 /// lists, one of the modules that need optimization and another for modules that
 /// can simply be copied over from the incr. comp. cache.
 pub(crate) fn run_thin(
-    cgcx: &CodegenContext<GccCodegenBackend>,
+    cgcx: &CodegenContext,
     dcx: DiagCtxtHandle<'_>,
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<(String, ThinBuffer)>,
@@ -345,7 +345,7 @@ pub(crate) fn prepare_thin(module: ModuleCodegen<GccContext>) -> (String, ThinBu
 /// all of the `LtoModuleCodegen` units returned below and destroyed once
 /// they all go out of scope.
 fn thin_lto(
-    cgcx: &CodegenContext<GccCodegenBackend>,
+    cgcx: &CodegenContext,
     _dcx: DiagCtxtHandle<'_>,
     modules: Vec<(String, ThinBuffer)>,
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
@@ -520,11 +520,9 @@ fn thin_lto(
 
 pub fn optimize_thin_module(
     thin_module: ThinModule<GccCodegenBackend>,
-    _cgcx: &CodegenContext<GccCodegenBackend>,
+    _cgcx: &CodegenContext,
 ) -> ModuleCodegen<GccContext> {
     //let module_name = &thin_module.shared.module_names[thin_module.idx];
-    /*let tm_factory_config = TargetMachineFactoryConfig::new(cgcx, module_name.to_str().unwrap());
-    let tm = (cgcx.tm_factory)(tm_factory_config).map_err(|e| write::llvm_err(&dcx, e))?;*/
 
     // Right now the implementation we've got only works over serialized
     // modules, so we create a fresh new LLVM context and parse the module

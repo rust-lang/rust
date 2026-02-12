@@ -38,8 +38,8 @@ use crate::builder::SBuilder;
 use crate::builder::gpu_offload::scalar_width;
 use crate::common::AsCCharPtr;
 use crate::errors::{
-    CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
-    WithLlvmError, WriteBytecode,
+    CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, ParseTargetMachineConfig,
+    UnknownCompression, WithLlvmError, WriteBytecode,
 };
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
 use crate::llvm::{self, DiagnosticInfo};
@@ -111,8 +111,7 @@ pub(crate) fn create_informational_target_machine(
     // Can't use query system here quite yet because this function is invoked before the query
     // system/tcx is set up.
     let features = llvm_util::global_llvm_features(sess, only_base_features);
-    target_machine_factory(sess, config::OptLevel::No, &features)(config)
-        .unwrap_or_else(|err| llvm_err(sess.dcx(), err))
+    target_machine_factory(sess, config::OptLevel::No, &features)(sess.dcx(), config)
 }
 
 pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMachine {
@@ -138,8 +137,7 @@ pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTar
         tcx.sess,
         tcx.backend_optimization_level(()),
         tcx.global_backend_features(()),
-    )(config)
-    .unwrap_or_else(|err| llvm_err(tcx.dcx(), err))
+    )(tcx.dcx(), config)
 }
 
 fn to_llvm_opt_settings(cfg: config::OptLevel) -> (llvm::CodeGenOptLevel, llvm::CodeGenOptSize) {
@@ -278,7 +276,7 @@ pub(crate) fn target_machine_factory(
     let large_data_threshold = sess.opts.unstable_opts.large_data_threshold.unwrap_or(0);
 
     let prof = SelfProfilerRef::clone(&sess.prof);
-    Arc::new(move |config: TargetMachineFactoryConfig| {
+    Arc::new(move |dcx: DiagCtxtHandle<'_>, config: TargetMachineFactoryConfig| {
         // Self-profile timer for invoking a factory to create a target machine.
         let _prof_timer = prof.generic_activity("target_machine_factory_inner");
 
@@ -320,11 +318,12 @@ pub(crate) fn target_machine_factory(
             use_wasm_eh,
             large_data_threshold,
         )
+        .unwrap_or_else(|err| dcx.emit_fatal(ParseTargetMachineConfig(err)))
     })
 }
 
 pub(crate) fn save_temp_bitcode(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext,
     module: &ModuleCodegen<ModuleLlvm>,
     name: &str,
 ) {
@@ -359,14 +358,14 @@ pub(crate) enum CodegenDiagnosticsStage {
 }
 
 pub(crate) struct DiagnosticHandlers<'a> {
-    data: *mut (&'a CodegenContext<LlvmCodegenBackend>, &'a SharedEmitter),
+    data: *mut (&'a CodegenContext, &'a SharedEmitter),
     llcx: &'a llvm::Context,
     old_handler: Option<&'a llvm::DiagnosticHandler>,
 }
 
 impl<'a> DiagnosticHandlers<'a> {
     pub(crate) fn new(
-        cgcx: &'a CodegenContext<LlvmCodegenBackend>,
+        cgcx: &'a CodegenContext,
         shared_emitter: &'a SharedEmitter,
         llcx: &'a llvm::Context,
         module: &ModuleCodegen<ModuleLlvm>,
@@ -432,7 +431,7 @@ impl<'a> Drop for DiagnosticHandlers<'a> {
 }
 
 fn report_inline_asm(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext,
     msg: String,
     level: llvm::DiagnosticLevel,
     cookie: u64,
@@ -464,8 +463,7 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
     if user.is_null() {
         return;
     }
-    let (cgcx, shared_emitter) =
-        unsafe { *(user as *const (&CodegenContext<LlvmCodegenBackend>, &SharedEmitter)) };
+    let (cgcx, shared_emitter) = unsafe { *(user as *const (&CodegenContext, &SharedEmitter)) };
 
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
@@ -561,7 +559,7 @@ pub(crate) enum AutodiffStage {
 }
 
 pub(crate) unsafe fn llvm_optimize(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext,
     dcx: DiagCtxtHandle<'_>,
     module: &ModuleCodegen<ModuleLlvm>,
     thin_lto_buffer: Option<&mut *mut llvm::ThinLTOBuffer>,
@@ -893,7 +891,7 @@ pub(crate) unsafe fn llvm_optimize(
 
 // Unsafe due to LLVM calls.
 pub(crate) fn optimize(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext,
     shared_emitter: &SharedEmitter,
     module: &mut ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
@@ -984,7 +982,7 @@ pub(crate) fn optimize(
 }
 
 pub(crate) fn codegen(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext,
     shared_emitter: &SharedEmitter,
     module: ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
@@ -1239,7 +1237,7 @@ fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: 
     asm
 }
 
-pub(crate) fn bitcode_section_name(cgcx: &CodegenContext<LlvmCodegenBackend>) -> &'static CStr {
+pub(crate) fn bitcode_section_name(cgcx: &CodegenContext) -> &'static CStr {
     if cgcx.target_is_like_darwin {
         c"__LLVM,__bitcode"
     } else if cgcx.target_is_like_aix {
@@ -1251,7 +1249,7 @@ pub(crate) fn bitcode_section_name(cgcx: &CodegenContext<LlvmCodegenBackend>) ->
 
 /// Embed the bitcode of an LLVM module for LTO in the LLVM module itself.
 fn embed_bitcode(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext,
     llcx: &llvm::Context,
     llmod: &llvm::Module,
     bitcode: &[u8],
@@ -1335,11 +1333,7 @@ fn embed_bitcode(
 // when using MSVC linker. We do this only for data, as linker can fix up
 // code references on its own.
 // See #26591, #27438
-fn create_msvc_imps(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
-    llcx: &llvm::Context,
-    llmod: &llvm::Module,
-) {
+fn create_msvc_imps(cgcx: &CodegenContext, llcx: &llvm::Context, llmod: &llvm::Module) {
     if !cgcx.msvc_imps_needed {
         return;
     }

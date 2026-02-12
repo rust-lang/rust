@@ -94,15 +94,13 @@ pub(crate) struct LtoBitcodeFromRlib {
 }
 
 #[derive(Diagnostic)]
-pub enum LlvmError<'a> {
+pub(crate) enum LlvmError<'a> {
     #[diag("could not write output to {$path}")]
     WriteOutput { path: &'a Path },
     #[diag("could not create LLVM TargetMachine for triple: {$triple}")]
     CreateTargetMachine { triple: SmallCStr },
     #[diag("failed to run LLVM passes")]
     RunLlvmPasses,
-    #[diag("failed to serialize module {$name}")]
-    SerializeModule { name: &'a str },
     #[diag("failed to write LLVM IR to {$path}")]
     WriteIr { path: &'a Path },
     #[diag("failed to prepare thin LTO context")]
@@ -115,8 +113,6 @@ pub enum LlvmError<'a> {
     PrepareThinLtoModule,
     #[diag("failed to parse bitcode for LTO module")]
     ParseBitcode,
-    #[diag("failed to prepare autodiff: src: {$src}, target: {$target}, {$error}")]
-    PrepareAutoDiff { src: String, target: String, error: String },
 }
 
 pub(crate) struct WithLlvmError<'a>(pub LlvmError<'a>, pub String);
@@ -130,9 +126,6 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for WithLlvmError<'_> {
                 "could not create LLVM TargetMachine for triple: {$triple}: {$llvm_err}"
             ),
             RunLlvmPasses => inline_fluent!("failed to run LLVM passes: {$llvm_err}"),
-            SerializeModule { .. } => {
-                inline_fluent!("failed to serialize module {$name}: {$llvm_err}")
-            }
             WriteIr { .. } => inline_fluent!("failed to write LLVM IR to {$path}: {$llvm_err}"),
             PrepareThinLtoContext => {
                 inline_fluent!("failed to prepare thin LTO context: {$llvm_err}")
@@ -147,9 +140,6 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for WithLlvmError<'_> {
                 inline_fluent!("failed to prepare thin LTO module: {$llvm_err}")
             }
             ParseBitcode => inline_fluent!("failed to parse bitcode for LTO module: {$llvm_err}"),
-            PrepareAutoDiff { .. } => inline_fluent!(
-                "failed to prepare autodiff: {$llvm_err}, src: {$src}, target: {$target}, {$error}"
-            ),
         };
         self.0
             .into_diag(dcx, level)

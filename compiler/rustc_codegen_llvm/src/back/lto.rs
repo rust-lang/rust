@@ -9,7 +9,9 @@ use std::{io, iter, slice};
 use object::read::archive::ArchiveFile;
 use object::{Object, ObjectSection};
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule, ThinShared};
-use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, SharedEmitter};
+use rustc_codegen_ssa::back::write::{
+    CodegenContext, FatLtoInput, SharedEmitter, TargetMachineFactoryFn,
+};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::fx::FxHashMap;
@@ -33,7 +35,7 @@ use crate::{LlvmCodegenBackend, ModuleLlvm};
 const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
 
 fn prepare_lto(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
     dcx: DiagCtxtHandle<'_>,
@@ -123,7 +125,7 @@ fn prepare_lto(
 
 fn get_bitcode_slice_from_object_data<'a>(
     obj: &'a [u8],
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext,
 ) -> Result<&'a [u8], LtoBitcodeFromRlib> {
     // We're about to assume the data here is an object file with sections, but if it's raw LLVM IR
     // that won't work. Fortunately, if that's what we have we can just return the object directly,
@@ -149,8 +151,9 @@ fn get_bitcode_slice_from_object_data<'a>(
 /// Performs fat LTO by merging all modules into a single one and returning it
 /// for further optimization.
 pub(crate) fn run_fat(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext,
     shared_emitter: &SharedEmitter,
+    tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<FatLtoInput<LlvmCodegenBackend>>,
@@ -161,14 +164,22 @@ pub(crate) fn run_fat(
         prepare_lto(cgcx, exported_symbols_for_lto, each_linked_rlib_for_lto, dcx);
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
-    fat_lto(cgcx, dcx, shared_emitter, modules, upstream_modules, &symbols_below_threshold)
+    fat_lto(
+        cgcx,
+        dcx,
+        shared_emitter,
+        tm_factory,
+        modules,
+        upstream_modules,
+        &symbols_below_threshold,
+    )
 }
 
 /// Performs thin LTO by performing necessary global analysis and returning two
 /// lists, one of the modules that need optimization and another for modules that
 /// can simply be copied over from the incr. comp. cache.
 pub(crate) fn run_thin(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext,
     dcx: DiagCtxtHandle<'_>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
@@ -195,9 +206,10 @@ pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBu
 }
 
 fn fat_lto(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext,
     dcx: DiagCtxtHandle<'_>,
     shared_emitter: &SharedEmitter,
+    tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
     modules: Vec<FatLtoInput<LlvmCodegenBackend>>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     symbols_below_threshold: &[*const libc::c_char],
@@ -252,7 +264,7 @@ fn fat_lto(
             assert!(!serialized_modules.is_empty(), "must have at least one serialized module");
             let (buffer, name) = serialized_modules.remove(0);
             info!("no in-memory regular modules to choose from, parsing {:?}", name);
-            let llvm_module = ModuleLlvm::parse(cgcx, &name, buffer.data(), dcx);
+            let llvm_module = ModuleLlvm::parse(cgcx, tm_factory, &name, buffer.data(), dcx);
             ModuleCodegen::new_regular(name.into_string().unwrap(), llvm_module)
         }
     };
@@ -381,7 +393,7 @@ impl Drop for Linker<'_> {
 /// all of the `LtoModuleCodegen` units returned below and destroyed once
 /// they all go out of scope.
 fn thin_lto(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext,
     dcx: DiagCtxtHandle<'_>,
     modules: Vec<(String, ThinBuffer)>,
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
@@ -585,7 +597,7 @@ pub(crate) fn enable_autodiff_settings(ad: &[config::AutoDiff]) {
 }
 
 pub(crate) fn run_pass_manager(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext,
     dcx: DiagCtxtHandle<'_>,
     module: &mut ModuleCodegen<ModuleLlvm>,
     thin: bool,
@@ -726,8 +738,9 @@ impl Drop for ThinBuffer {
 }
 
 pub(crate) fn optimize_thin_module(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext,
     shared_emitter: &SharedEmitter,
+    tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
     thin_module: ThinModule<LlvmCodegenBackend>,
 ) -> ModuleCodegen<ModuleLlvm> {
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
@@ -740,7 +753,7 @@ pub(crate) fn optimize_thin_module(
     // into that context. One day, however, we may do this for upstream
     // crates but for locally codegened modules we may be able to reuse
     // that LLVM Context and Module.
-    let module_llvm = ModuleLlvm::parse(cgcx, module_name, thin_module.data(), dcx);
+    let module_llvm = ModuleLlvm::parse(cgcx, tm_factory, module_name, thin_module.data(), dcx);
     let mut module = ModuleCodegen::new_regular(thin_module.name(), module_llvm);
     // Given that the newly created module lacks a thinlto buffer for embedding, we need to re-add it here.
     if cgcx.module_config.embed_bitcode() {
