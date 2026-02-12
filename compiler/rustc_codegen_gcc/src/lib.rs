@@ -90,6 +90,7 @@ use rustc_codegen_ssa::target_features::cfg_target_feature;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::DiagCtxtHandle;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -427,6 +428,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn run_and_optimize_fat_lto(
         cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
         shared_emitter: &SharedEmitter,
         _tm_factory: TargetMachineFactoryFn<Self>,
         // FIXME(bjorn3): Limit LTO exports to these symbols
@@ -434,11 +436,12 @@ impl WriteBackendMethods for GccCodegenBackend {
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
     ) -> ModuleCodegen<Self::Module> {
-        back::lto::run_fat(cgcx, shared_emitter, each_linked_rlib_for_lto, modules)
+        back::lto::run_fat(cgcx, prof, shared_emitter, each_linked_rlib_for_lto, modules)
     }
 
     fn run_thin_lto(
         cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
         dcx: DiagCtxtHandle<'_>,
         // FIXME(bjorn3): Limit LTO exports to these symbols
         _exported_symbols_for_lto: &[String],
@@ -446,7 +449,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>) {
-        back::lto::run_thin(cgcx, dcx, each_linked_rlib_for_lto, modules, cached_modules)
+        back::lto::run_thin(cgcx, prof, dcx, each_linked_rlib_for_lto, modules, cached_modules)
     }
 
     fn print_pass_timings(&self) {
@@ -459,6 +462,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn optimize(
         _cgcx: &CodegenContext,
+        _prof: &SelfProfilerRef,
         _shared_emitter: &SharedEmitter,
         module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
@@ -468,6 +472,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn optimize_thin(
         cgcx: &CodegenContext,
+        _prof: &SelfProfilerRef,
         _shared_emitter: &SharedEmitter,
         _tm_factory: TargetMachineFactoryFn<Self>,
         thin: ThinModule<Self>,
@@ -477,11 +482,12 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn codegen(
         cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
         shared_emitter: &SharedEmitter,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> CompiledModule {
-        back::write::codegen(cgcx, shared_emitter, module, config)
+        back::write::codegen(cgcx, prof, shared_emitter, module, config)
     }
 
     fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
