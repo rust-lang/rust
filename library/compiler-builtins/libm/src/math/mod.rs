@@ -75,6 +75,8 @@ cfg_if! {
     }
 }
 
+pub mod approx;
+
 // Private modules
 mod arch;
 mod expo2;
