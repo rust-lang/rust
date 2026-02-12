@@ -79,6 +79,7 @@
  */
 
 use super::{floor, k_cos, k_sin, log};
+use crate::support::unchecked_div_i32;
 
 const PI: f64 = 3.14159265358979311600e+00; /* 0x400921FB, 0x54442D18 */
 const A0: f64 = 7.72156649015328655494e-02; /* 0x3FB3C467, 0xE37DB0C8 */
@@ -152,7 +153,8 @@ fn sin_pi(mut x: f64) -> f64 {
     x = 2.0 * (x * 0.5 - floor(x * 0.5)); /* x mod 2.0 */
 
     n = (x * 4.0) as i32;
-    n = div!(n + 1, 2);
+    // SAFETY: nonzero divisor, nonnegative dividend (`n < 8`).
+    n = unsafe { unchecked_div_i32(n + 1, 2) };
     x -= (n as f64) * 0.5;
     x *= PI;
 

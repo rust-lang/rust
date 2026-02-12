@@ -255,7 +255,7 @@ pub(crate) fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> 
 
     /* determine jx,jv,q0, note that 3>q0 */
     let jx = nx - 1;
-    let mut jv = div!(e0 - 3, 24);
+    let mut jv = (e0 - 3) / 24;
     if jv < 0 {
         jv = 0;
     }
