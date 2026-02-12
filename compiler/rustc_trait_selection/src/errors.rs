@@ -475,7 +475,7 @@ pub enum RegionOriginNote<'a> {
 
 impl Subdiagnostic for RegionOriginNote<'_> {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        let mut label_or_note = |span, msg: DiagMessage| {
+        let label_or_note = |diag: &mut Diag<'_, G>, span, msg: DiagMessage| {
             let sub_count = diag.children.iter().filter(|d| d.span.is_dummy()).count();
             let expanded_sub_count = diag.children.iter().filter(|d| !d.span.is_dummy()).count();
             let span_is_primary = diag.span.primary_spans().iter().all(|&sp| sp == span);
@@ -489,13 +489,13 @@ impl Subdiagnostic for RegionOriginNote<'_> {
         };
         match self {
             RegionOriginNote::Plain { span, msg } => {
-                label_or_note(span, msg);
+                label_or_note(diag, span, msg);
             }
             RegionOriginNote::WithName { span, msg, name, continues } => {
                 diag.store_args();
                 diag.arg("name", name);
                 diag.arg("continues", continues);
-                label_or_note(span, msg);
+                label_or_note(diag, span, msg);
                 diag.restore_args();
             }
             RegionOriginNote::WithRequirement {
@@ -506,6 +506,7 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                 diag.store_args();
                 diag.arg("requirement", requirement);
                 label_or_note(
+                    diag,
                     span,
                     inline_fluent!(
                         "...so that the {$requirement ->
@@ -533,6 +534,7 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                 diag.store_args();
                 diag.arg("requirement", requirement);
                 label_or_note(
+                    diag,
                     span,
                     inline_fluent!(
                         "...so that {$requirement ->
