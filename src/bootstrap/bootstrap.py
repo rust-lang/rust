@@ -1316,7 +1316,7 @@ def bootstrap(args):
     # Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
     # but not if `bootstrap.toml` hasn't been created.
     if not using_default_path or os.path.exists(toml_path):
-        with open(toml_path) as config:
+        with open(toml_path, encoding="utf-8") as config:
             config_toml = config.read()
     else:
         config_toml = ""
