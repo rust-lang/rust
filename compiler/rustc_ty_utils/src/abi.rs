@@ -12,7 +12,6 @@ use rustc_middle::ty::layout::{
     FnAbiError, HasTyCtxt, HasTypingEnv, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
 };
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
-use rustc_session::config::OptLevel;
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
 use rustc_target::callconv::{
@@ -24,7 +23,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         fn_abi_of_fn_ptr,
         fn_abi_of_instance_no_deduced_attrs,
-        fn_abi_of_instance,
+        fn_abi_of_instance_raw,
         ..*providers
     };
 }
@@ -325,10 +324,12 @@ fn fn_abi_of_instance_no_deduced_attrs<'tcx>(
     fn_abi_new_uncached(desc)
 }
 
-fn fn_abi_of_instance<'tcx>(
+fn fn_abi_of_instance_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
+    // The `fn_abi_of_instance_no_deduced_attrs` query may have been called during CTFE, so we
+    // delegate to it here in order to reuse (and, if necessary, augment) its result.
     tcx.fn_abi_of_instance_no_deduced_attrs(query).map(|fn_abi| {
         let params = FnAbiDesc::for_instance(tcx, query);
         // If the function's body can be used to deduce parameter attributes, then adjust such
@@ -689,17 +690,9 @@ fn fn_abi_adjust_for_deduced_attrs<'tcx>(
     fn_def_id: DefId,
 ) -> &'tcx FnAbi<'tcx, Ty<'tcx>> {
     let tcx = cx.tcx();
-    // Look up the deduced parameter attributes for this function, if we have its def ID and
-    // we're optimizing in non-incremental mode. We'll tag its parameters with those attributes
-    // as appropriate.
-    let deduced = if abi.is_rustic_abi()
-        && tcx.sess.opts.optimize != OptLevel::No
-        && tcx.sess.opts.incremental.is_none()
-    {
-        tcx.deduced_param_attrs(fn_def_id)
-    } else {
-        &[]
-    };
+    // Look up the deduced parameter attributes for this function, if we have its def ID.
+    // We'll tag its parameters with those attributes as appropriate.
+    let deduced = if abi.is_rustic_abi() { tcx.deduced_param_attrs(fn_def_id) } else { &[] };
     if deduced.is_empty() {
         fn_abi
     } else {

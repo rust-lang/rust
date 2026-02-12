@@ -1805,10 +1805,10 @@ rustc_queries! {
     /// to an `fn`. Indirectly-passed parameters in the returned ABI might not include all possible
     /// codegen optimization attributes (such as `ReadOnly` or `CapturesNone`), as deducing these
     /// requires inspection of function bodies that can lead to cycles when performed during typeck.
-    /// Post typeck, you should prefer the optimized ABI returned by `fn_abi_of_instance`.
+    /// Post typeck, you should prefer the optimized ABI returned by `TyCtxt::fn_abi_of_instance`.
     ///
     /// NB: the ABI returned by this query must not differ from that returned by
-    ///     `fn_abi_of_instance` in any other way.
+    ///     `fn_abi_of_instance_raw` in any other way.
     ///
     /// * that includes virtual calls, which are represented by "direct calls" to an
     ///   `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
@@ -1825,9 +1825,14 @@ rustc_queries! {
     /// typeck. During typeck, you should therefore use instead the unoptimized ABI returned by
     /// `fn_abi_of_instance_no_deduced_attrs`.
     ///
+    /// For performance reasons, you should prefer to call the inherent `TyCtxt::fn_abi_of_instance`
+    /// method rather than invoke this query: it delegates to this query if necessary, but where
+    /// possible delegates instead to the `fn_abi_of_instance_no_deduced_attrs` query (thus avoiding
+    /// unnecessary query system overhead).
+    ///
     /// * that includes virtual calls, which are represented by "direct calls" to an
     ///   `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
-    query fn_abi_of_instance(
+    query fn_abi_of_instance_raw(
         key: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
     ) -> Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
         desc { "computing call ABI of `{}`", key.value.0 }
