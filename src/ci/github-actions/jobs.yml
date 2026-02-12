@@ -526,9 +526,17 @@ auto:
 
   - name: aarch64-apple
     env:
-      SCRIPT: >
-        ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin &&
-        ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin src/tools/cargo
+      SCRIPT: >-
+        ./x.py test
+        --stage 2
+        --host=aarch64-apple-darwin
+        --target=aarch64-apple-darwin
+        &&
+        ./x.py test
+        --stage 2
+        --host=aarch64-apple-darwin
+        --target=aarch64-apple-darwin
+        src/tools/cargo
       RUST_CONFIGURE_ARGS: >-
         --enable-sanitizers
         --enable-profiler
