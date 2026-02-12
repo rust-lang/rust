@@ -36,7 +36,7 @@ pub enum Alignment {
     Center,
 }
 
-#[unstable(feature = "int_format_into", issue = "138215")]
+#[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
 pub use num_buffer::{NumBuffer, NumBufferTrait};
 
 #[stable(feature = "debug_builders", since = "1.2.0")]
