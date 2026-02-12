@@ -1264,13 +1264,16 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
     let mut each_linked_rlib_for_lto = Vec::new();
     let mut each_linked_rlib_file_for_lto = Vec::new();
-    drop(link::each_linked_rlib(crate_info, None, &mut |cnum, path| {
-        if link::ignored_for_lto(sess, crate_info, cnum) {
-            return;
-        }
-        each_linked_rlib_for_lto.push(cnum);
-        each_linked_rlib_file_for_lto.push(path.to_path_buf());
-    }));
+    if sess.lto() != Lto::No && sess.lto() != Lto::ThinLocal {
+        drop(link::each_linked_rlib(crate_info, None, &mut |cnum, path| {
+            if link::ignored_for_lto(sess, crate_info, cnum) {
+                return;
+            }
+
+            each_linked_rlib_for_lto.push(cnum);
+            each_linked_rlib_file_for_lto.push(path.to_path_buf());
+        }));
+    }
 
     // Compute the set of symbols we need to retain when doing LTO (if we need to)
     let exported_symbols_for_lto =

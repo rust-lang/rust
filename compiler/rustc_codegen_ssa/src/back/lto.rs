@@ -110,11 +110,9 @@ pub(super) fn exported_symbols_for_lto(
 
     // If we're performing LTO for the entire crate graph, then for each of our
     // upstream dependencies, include their exported symbols.
-    if tcx.sess.lto() != Lto::ThinLocal {
-        for &cnum in each_linked_rlib_for_lto {
-            let _timer = tcx.prof.generic_activity("lto_generate_symbols_below_threshold");
-            symbols_below_threshold.extend(copy_symbols(cnum));
-        }
+    for &cnum in each_linked_rlib_for_lto {
+        let _timer = tcx.prof.generic_activity("lto_generate_symbols_below_threshold");
+        symbols_below_threshold.extend(copy_symbols(cnum));
     }
 
     // Mark allocator shim symbols as exported only if they were generated.

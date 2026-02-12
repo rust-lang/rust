@@ -20,7 +20,7 @@ use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_hir::attrs::SanitizerSet;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_session::config::{self, Lto};
+use rustc_session::config;
 use tracing::{debug, info};
 
 use crate::back::write::{
@@ -90,33 +90,31 @@ fn prepare_lto(
     // We save off all the bytecode and LLVM module ids for later processing
     // with either fat or thin LTO
     let mut upstream_modules = Vec::new();
-    if cgcx.lto != Lto::ThinLocal {
-        for path in each_linked_rlib_for_lto {
-            let archive_data = unsafe {
-                Mmap::map(std::fs::File::open(&path).expect("couldn't open rlib"))
-                    .expect("couldn't map rlib")
-            };
-            let archive = ArchiveFile::parse(&*archive_data).expect("wanted an rlib");
-            let obj_files = archive
-                .members()
-                .filter_map(|child| {
-                    child.ok().and_then(|c| {
-                        std::str::from_utf8(c.name()).ok().map(|name| (name.trim(), c))
-                    })
-                })
-                .filter(|&(name, _)| looks_like_rust_object_file(name));
-            for (name, child) in obj_files {
-                info!("adding bitcode from {}", name);
-                match get_bitcode_slice_from_object_data(
-                    child.data(&*archive_data).expect("corrupt rlib"),
-                    cgcx,
-                ) {
-                    Ok(data) => {
-                        let module = SerializedModule::FromRlib(data.to_vec());
-                        upstream_modules.push((module, CString::new(name).unwrap()));
-                    }
-                    Err(e) => dcx.emit_fatal(e),
+    for path in each_linked_rlib_for_lto {
+        let archive_data = unsafe {
+            Mmap::map(std::fs::File::open(&path).expect("couldn't open rlib"))
+                .expect("couldn't map rlib")
+        };
+        let archive = ArchiveFile::parse(&*archive_data).expect("wanted an rlib");
+        let obj_files = archive
+            .members()
+            .filter_map(|child| {
+                child
+                    .ok()
+                    .and_then(|c| std::str::from_utf8(c.name()).ok().map(|name| (name.trim(), c)))
+            })
+            .filter(|&(name, _)| looks_like_rust_object_file(name));
+        for (name, child) in obj_files {
+            info!("adding bitcode from {}", name);
+            match get_bitcode_slice_from_object_data(
+                child.data(&*archive_data).expect("corrupt rlib"),
+                cgcx,
+            ) {
+                Ok(data) => {
+                    let module = SerializedModule::FromRlib(data.to_vec());
+                    upstream_modules.push((module, CString::new(name).unwrap()));
                 }
+                Err(e) => dcx.emit_fatal(e),
             }
         }
     }
