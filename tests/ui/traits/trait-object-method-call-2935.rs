@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/2935
+
 //@ run-pass
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
@@ -11,14 +13,14 @@ trait it {
 }
 
 impl it for t {
-    fn f(&self) { }
+    fn f(&self) {}
 }
 
 pub fn main() {
-  //    let x = ({a: 4} as it);
-  //   let y = box ({a: 4});
-  //    let z = box ({a: 4} as it);
-  //    let z = box ({a: true} as it);
+    //    let x = ({a: 4} as it);
+    //   let y = box ({a: 4});
+    //    let z = box ({a: 4} as it);
+    //    let z = box ({a: true} as it);
     let z: Box<_> = Box::new(Box::new(true) as Box<dyn it>);
     //  x.f();
     // y.f();
