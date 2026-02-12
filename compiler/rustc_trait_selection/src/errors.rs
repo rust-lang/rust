@@ -492,15 +492,19 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                 label_or_note(span, msg);
             }
             RegionOriginNote::WithName { span, msg, name, continues } => {
-                label_or_note(span, msg);
+                diag.store_args();
                 diag.arg("name", name);
                 diag.arg("continues", continues);
+                label_or_note(span, msg);
+                diag.restore_args();
             }
             RegionOriginNote::WithRequirement {
                 span,
                 requirement,
                 expected_found: Some((expected, found)),
             } => {
+                diag.store_args();
+                diag.arg("requirement", requirement);
                 label_or_note(
                     span,
                     inline_fluent!(
@@ -519,14 +523,15 @@ impl Subdiagnostic for RegionOriginNote<'_> {
 }"
                     ),
                 );
-                diag.arg("requirement", requirement);
-
+                diag.restore_args();
                 diag.note_expected_found("", expected, "", found);
             }
             RegionOriginNote::WithRequirement { span, requirement, expected_found: None } => {
                 // FIXME: this really should be handled at some earlier stage. Our
                 // handling of region checking when type errors are present is
                 // *terrible*.
+                diag.store_args();
+                diag.arg("requirement", requirement);
                 label_or_note(
                     span,
                     inline_fluent!(
@@ -545,7 +550,7 @@ impl Subdiagnostic for RegionOriginNote<'_> {
 }"
                     ),
                 );
-                diag.arg("requirement", requirement);
+                diag.restore_args();
             }
         };
     }
