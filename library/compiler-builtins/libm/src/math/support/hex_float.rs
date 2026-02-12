@@ -419,7 +419,7 @@ mod hex_fmt {
                     let _ = f;
                     unimplemented!()
                 } else {
-                    fmt::LowerHex::fmt(&self.0, f)
+                    write!(f, "{:#010x}", self.0)
                 }
             }
         }
