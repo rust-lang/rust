@@ -108,7 +108,7 @@ mod v0;
 pub mod errors;
 pub mod test;
 
-pub use v0::mangle_internal_symbol;
+pub use v0::{eh_personality_symbol, mangle_internal_symbol};
 
 /// This function computes the symbol name for the given `instance` and the
 /// given instantiating crate. That is, if you know that instance X is

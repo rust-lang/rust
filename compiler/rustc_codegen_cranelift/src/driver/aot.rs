@@ -322,8 +322,8 @@ fn produce_final_output_artifacts(
     // These are used in linking steps and will be cleaned up afterward.
 }
 
-fn make_module(sess: &Session, name: String) -> UnwindModule<ObjectModule> {
-    let isa = crate::build_isa(sess, false);
+fn make_module(tcx: TyCtxt<'_>, name: String) -> UnwindModule<ObjectModule> {
+    let isa = crate::build_isa(tcx.sess, false);
 
     let mut builder =
         ObjectBuilder::new(isa, name + ".o", cranelift_module::default_libcall_names()).unwrap();
@@ -333,12 +333,13 @@ fn make_module(sess: &Session, name: String) -> UnwindModule<ObjectModule> {
     // explicitly disable it on MinGW as rustc already disables it by default on MinGW and as such
     // isn't tested. If rustc enables it in the future on MinGW, we can re-enable it too once it has
     // been on MinGW.
-    let default_function_sections = sess.target.function_sections && !sess.target.is_like_windows;
+    let default_function_sections =
+        tcx.sess.target.function_sections && !tcx.sess.target.is_like_windows;
     builder.per_function_section(
-        sess.opts.unstable_opts.function_sections.unwrap_or(default_function_sections),
+        tcx.sess.opts.unstable_opts.function_sections.unwrap_or(default_function_sections),
     );
 
-    UnwindModule::new(ObjectModule::new(builder), true)
+    UnwindModule::new(ObjectModule::new(builder), tcx, true)
 }
 
 fn emit_cgu(
@@ -579,7 +580,7 @@ fn module_codegen(
         ConcurrencyLimiterToken,
     ),
 ) -> OngoingModuleCodegen {
-    let mut module = make_module(tcx.sess, cgu_name.as_str().to_string());
+    let mut module = make_module(tcx, cgu_name.as_str().to_string());
 
     let (mut debug_context, codegened_functions, mut global_asm) =
         codegen_cgu_content(tcx, &mut module, cgu_name);
@@ -643,7 +644,7 @@ fn module_codegen(
 }
 
 fn emit_allocator_module(tcx: TyCtxt<'_>) -> Option<CompiledModule> {
-    let mut allocator_module = make_module(tcx.sess, "allocator_shim".to_string());
+    let mut allocator_module = make_module(tcx, "allocator_shim".to_string());
     let created_alloc_shim = crate::allocator::codegen(tcx, &mut allocator_module);
 
     if created_alloc_shim {

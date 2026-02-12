@@ -10,22 +10,12 @@ use std::rc::Rc;
 use gimli::read::DebuggingInformationEntry;
 use gimli::{AttributeValue, EndianRcSlice, Reader, RunTimeEndian};
 use object::{Object, ObjectSection};
-use run_make_support::{gimli, object, rfs, rustc};
+use run_make_support::{gimli, llvm_version, object, rfs, rustc};
 
 fn main() {
     // Before LLVM 20, 128-bit enums with variants didn't emit debuginfo correctly.
     // This check can be removed once Rust no longer supports LLVM 18 and 19.
-    let llvm_version = rustc()
-        .verbose()
-        .arg("--version")
-        .run()
-        .stdout_utf8()
-        .lines()
-        .filter_map(|line| line.strip_prefix("LLVM version: "))
-        .map(|version| version.split(".").next().unwrap().parse::<u32>().unwrap())
-        .next()
-        .unwrap();
-    let is_old_llvm = llvm_version < 20;
+    let is_old_llvm = llvm_version() < (20, 0, 0);
 
     let output = PathBuf::from("repr128");
     let mut rustc = rustc();

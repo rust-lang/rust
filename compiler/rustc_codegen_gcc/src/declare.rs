@@ -180,7 +180,7 @@ fn declare_raw_fn<'gcc>(
         cx.functions.borrow_mut().insert(name.to_string(), func);
 
         #[cfg(feature = "master")]
-        if name == "rust_eh_personality" {
+        if name.ends_with("rust_eh_personality") {
             // NOTE: GCC will sometimes change the personality function set on a function from
             // rust_eh_personality to __gcc_personality_v0 as an optimization.
             // As such, we need to create a weak alias from __gcc_personality_v0 to
