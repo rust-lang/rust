@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/3052
+
 //@ run-pass
 #![allow(dead_code)]
 
@@ -8,5 +10,4 @@ fn f() -> Option<Connection> {
     Some(mock_connection)
 }
 
-pub fn main() {
-}
+pub fn main() {}

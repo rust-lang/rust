@@ -1,10 +1,12 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/2895
+
 //@ run-pass
 #![allow(dead_code)]
 
 use std::mem;
 
 struct Cat {
-    x: isize
+    x: isize,
 }
 
 struct Kitty {

@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/3026
+
 //@ run-pass
 
 use std::collections::HashMap;
