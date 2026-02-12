@@ -303,7 +303,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install Rust (rustup)
-      run: rustup update nightly --no-self-update && rustup default nightly
+      # FIXME(ci): not working in the 2026-02-11 nightly
+      # https://rust-lang.zulipchat.com/#narrow/channel/269128-miri/topic/build-script-build.20contains.20outdated.20or.20invalid.20JSON/with/573426109
+      run: rustup update nightly-2026-02-10 --no-self-update && rustup default nightly-2026-02-10
       shell: bash
     - run: rustup component add miri
     - run: cargo miri setup
