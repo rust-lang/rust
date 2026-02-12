@@ -360,9 +360,7 @@ impl DiagInner {
             if existing_value != &value {
                 debug!(
                     "arg '{}' already exists with different value. Existing: {:?}, New: {:?}.",
-                    name,
-                    existing_value,
-                    value
+                    name, existing_value, value
                 );
             }
         }
