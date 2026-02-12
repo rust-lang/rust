@@ -69,6 +69,17 @@ impl Hash for SourceFile<'_> {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct Span<'cx> {
+    pub file: &'cx SourceFile<'cx>,
+    pub range: Range<u32>,
+}
+impl<'cx> Span<'cx> {
+    pub fn new(file: &'cx SourceFile<'cx>, range: Range<u32>) -> Self {
+        Self { file, range }
+    }
+}
+
 pub struct ParseCxImpl<'cx> {
     pub arena: &'cx DroplessArena,
     pub source_files: &'cx TypedArena<SourceFile<'cx>>,
@@ -218,9 +229,8 @@ impl Display for LintName<'_> {
 }
 
 pub struct ActiveLint<'cx> {
-    pub file: &'cx SourceFile<'cx>,
     pub group: &'cx str,
-    pub declaration_range: Range<u32>,
+    pub decl_range: Range<u32>,
 }
 
 pub struct DeprecatedLint<'cx> {
@@ -233,10 +243,15 @@ pub struct RenamedLint<'cx> {
     pub version: &'cx str,
 }
 
-pub enum Lint<'cx> {
+pub enum LintData<'cx> {
     Active(ActiveLint<'cx>),
     Deprecated(DeprecatedLint<'cx>),
     Renamed(RenamedLint<'cx>),
+}
+
+pub struct Lint<'cx> {
+    pub name_sp: Span<'cx>,
+    pub data: LintData<'cx>,
 }
 
 #[derive(Clone, Copy)]
@@ -260,27 +275,26 @@ pub struct LintPass<'cx> {
     pub name: &'cx str,
     pub lt: Option<&'cx str>,
     pub mac: LintPassMac,
-    pub file: &'cx SourceFile<'cx>,
-    pub decl_range: Range<u32>,
+    pub decl_sp: Span<'cx>,
     pub lints: &'cx mut [&'cx str],
 }
 
-pub struct LintData<'cx> {
+pub struct ParsedLints<'cx> {
     pub lints: FxHashMap<&'cx str, Lint<'cx>>,
     pub lint_passes: Vec<LintPass<'cx>>,
     pub deprecated_file: &'cx SourceFile<'cx>,
 }
-impl<'cx> LintData<'cx> {
+impl<'cx> ParsedLints<'cx> {
     #[expect(clippy::mutable_key_type)]
     pub fn mk_file_to_lint_decl_map(&self) -> FxHashMap<&'cx SourceFile<'cx>, Vec<(&'cx str, Range<u32>)>> {
         #[expect(clippy::default_trait_access)]
         let mut lints = FxHashMap::with_capacity_and_hasher(500, Default::default());
         for (&name, lint) in &self.lints {
-            if let Lint::Active(lint) = lint {
+            if let LintData::Active(lint_data) = &lint.data {
                 lints
-                    .entry(lint.file)
+                    .entry(lint.name_sp.file)
                     .or_insert_with(|| Vec::with_capacity(8))
-                    .push((name, lint.declaration_range));
+                    .push((name, lint_data.decl_range));
             }
         }
         lints
@@ -288,7 +302,7 @@ impl<'cx> LintData<'cx> {
 
     pub fn iter_passes_by_file_mut<'s>(&'s mut self) -> impl Iterator<Item = &'s mut [LintPass<'cx>]> {
         slice_groups_mut(&mut self.lint_passes, |head, tail| {
-            tail.iter().take_while(|&x| x.file == head.file).count()
+            tail.iter().take_while(|&x| x.decl_sp.file == head.decl_sp.file).count()
         })
     }
 }
@@ -296,8 +310,8 @@ impl<'cx> LintData<'cx> {
 impl<'cx> ParseCxImpl<'cx> {
     /// Finds and parses all lint declarations.
     #[must_use]
-    pub fn parse_lint_decls(&mut self) -> LintData<'cx> {
-        let mut data = LintData {
+    pub fn parse_lint_decls(&mut self) -> ParsedLints<'cx> {
+        let mut data = ParsedLints {
             #[expect(clippy::default_trait_access)]
             lints: FxHashMap::with_capacity_and_hasher(1000, Default::default()),
             lint_passes: Vec::with_capacity(400),
@@ -348,7 +362,7 @@ impl<'cx> ParseCxImpl<'cx> {
     }
 
     /// Parse a source file looking for `declare_clippy_lint` macro invocations.
-    fn parse_lint_src_file(&mut self, data: &mut LintData<'cx>, file: &'cx SourceFile<'cx>) {
+    fn parse_lint_src_file(&mut self, data: &mut ParsedLints<'cx>, file: &'cx SourceFile<'cx>) {
         #[allow(clippy::enum_glob_use)]
         use cursor::Pat::*;
         #[rustfmt::skip]
@@ -374,11 +388,13 @@ impl<'cx> ParseCxImpl<'cx> {
                         data.lints
                             .insert(
                                 self.str_buf.alloc_ascii_lower(self.arena, cursor.get_text(captures[0])),
-                                Lint::Active(ActiveLint {
-                                    file,
-                                    group: cursor.get_text(captures[1]),
-                                    declaration_range: mac_name.pos..cursor.pos(),
-                                }),
+                                Lint {
+                                    name_sp: captures[0].mk_sp(file),
+                                    data: LintData::Active(ActiveLint {
+                                        group: cursor.get_text(captures[1]),
+                                        decl_range: mac_name.pos..cursor.pos(),
+                                    }),
+                                },
                             )
                             .is_none()
                     );
@@ -426,8 +442,7 @@ impl<'cx> ParseCxImpl<'cx> {
                             name,
                             lt,
                             mac,
-                            file,
-                            decl_range: mac_name.pos..cursor.pos(),
+                            decl_sp: Span::new(file, mac_name.pos..cursor.pos()),
                             lints,
                         });
                     }
@@ -437,7 +452,7 @@ impl<'cx> ParseCxImpl<'cx> {
         }
     }
 
-    fn parse_deprecated_lints(&mut self, data: &mut LintData<'cx>) {
+    fn parse_deprecated_lints(&mut self, data: &mut ParsedLints<'cx>) {
         #[allow(clippy::enum_glob_use)]
         use cursor::Pat::*;
 
@@ -478,10 +493,13 @@ impl<'cx> ParseCxImpl<'cx> {
                     data.lints
                         .insert(
                             self.parse_clippy_lint_name(file, cursor.get_text(captures[1])),
-                            Lint::Deprecated(DeprecatedLint {
-                                reason: self.parse_str_single_line(file, cursor.get_text(captures[2])),
-                                version: self.parse_str_single_line(file, cursor.get_text(captures[0])),
-                            }),
+                            Lint {
+                                name_sp: captures[1].mk_sp(file),
+                                data: LintData::Deprecated(DeprecatedLint {
+                                    reason: self.parse_str_single_line(file, cursor.get_text(captures[2])),
+                                    version: self.parse_str_single_line(file, cursor.get_text(captures[0])),
+                                }),
+                            },
                         )
                         .is_none()
                 );
@@ -496,10 +514,13 @@ impl<'cx> ParseCxImpl<'cx> {
                     data.lints
                         .insert(
                             self.parse_clippy_lint_name(file, cursor.get_text(captures[1])),
-                            Lint::Renamed(RenamedLint {
-                                new_name: self.parse_lint_name(file, cursor.get_text(captures[2])),
-                                version: self.parse_str_single_line(file, cursor.get_text(captures[0])),
-                            }),
+                            Lint {
+                                name_sp: captures[1].mk_sp(file),
+                                data: LintData::Renamed(RenamedLint {
+                                    new_name: self.parse_lint_name(file, cursor.get_text(captures[2])),
+                                    version: self.parse_str_single_line(file, cursor.get_text(captures[0])),
+                                }),
+                            },
                         )
                         .is_none()
                 );

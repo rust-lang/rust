@@ -344,7 +344,7 @@ pub fn run(update_mode: UpdateMode) {
         let mut lints = data.mk_file_to_lint_decl_map();
         let mut ranges = VecBuf::with_capacity(256);
         for passes in data.iter_passes_by_file_mut() {
-            let file = passes[0].file;
+            let file = passes[0].decl_sp.file;
             let mut lints = lints.remove(file);
             let lints = lints.as_deref_mut().unwrap_or_default();
             updater.update_loaded_file_checked("cargo dev fmt", update_mode, file, &mut |_, src, dst| {

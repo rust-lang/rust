@@ -1,4 +1,4 @@
-use super::StrBuf;
+use super::{SourceFile, Span, StrBuf};
 use core::{ptr, slice};
 use rustc_arena::DroplessArena;
 use rustc_lexer::{self as lex, LiteralKind, Token, TokenKind};
@@ -73,6 +73,13 @@ pub struct Capture {
 }
 impl Capture {
     pub const EMPTY: Self = Self { pos: 0, len: 0 };
+
+    pub fn mk_sp<'cx>(self, file: &'cx SourceFile<'cx>) -> Span<'cx> {
+        Span {
+            file,
+            range: self.pos..self.pos + self.len,
+        }
+    }
 }
 
 /// A unidirectional cursor over a token stream that is lexed on demand.
