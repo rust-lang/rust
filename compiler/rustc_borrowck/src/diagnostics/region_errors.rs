@@ -885,6 +885,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             for alias_ty in alias_tys {
                 if alias_ty.span.desugaring_kind().is_some() {
                     // Skip `async` desugaring `impl Future`.
+                    continue;
                 }
                 if let TyKind::TraitObject(_, lt) = alias_ty.kind {
                     if lt.kind == hir::LifetimeKind::ImplicitObjectLifetimeDefault {
