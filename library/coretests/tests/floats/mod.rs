@@ -1650,3 +1650,40 @@ float_test! {
 //         assert_biteq!(Float::from(i64::MAX), 9223372036854775807.0);
 //     }
 // }
+
+// Port of `test_exp` from `library/std/tests/floats/f*.rs`.
+float_test! {
+    name: exp,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
+        f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+    },
+    test<Float> {
+        assert_biteq!((0.0 as Float).exp(), 1.0 as Float);
+        assert_approx_eq!((1.0 as Float).exp(), 2.718281828459045 as Float);
+        assert_approx_eq!((5.0 as Float).exp(), 148.4131591025766 as Float);
+
+        assert_eq!(Float::INFINITY.exp(), Float::INFINITY);
+        assert_biteq!(Float::NEG_INFINITY.exp(), 0.0 as Float);
+        assert!(Float::NAN.exp().is_nan());
+    }
+}
+
+// Port of `test_exp2` from `library/std/tests/floats/f*.rs`.
+float_test! {
+    name: exp2,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
+        f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+    },
+    test<Float> {
+        assert_biteq!((0.0 as Float).exp2(), 1.0 as Float);
+        assert_biteq!((5.0 as Float).exp2(), 32.0 as Float);
+
+        assert_eq!(Float::INFINITY.exp2(), Float::INFINITY);
+        assert_biteq!(Float::NEG_INFINITY.exp2(), 0.0 as Float);
+        assert!(Float::NAN.exp2().is_nan());
+    }
+}
