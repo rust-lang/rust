@@ -590,6 +590,14 @@ pub(crate) struct IntToWide<'tcx> {
     )]
     pub expr_if_nightly: Option<Span>,
     pub known_wide: bool,
+    #[subdiagnostic]
+    pub param_note: Option<IntToWideParamNote>,
+}
+
+#[derive(Subdiagnostic)]
+#[note("the type parameter `{$param}` is not known to be `Sized`, so this pointer may be wide")]
+pub(crate) struct IntToWideParamNote {
+    pub param: Symbol,
 }
 
 #[derive(Subdiagnostic)]
