@@ -68,7 +68,7 @@ LL |     use self::m2::*;
    |         ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 
-warning: `foo` is ambiguous
+error: `foo` is ambiguous
   --> $DIR/duplicate.rs:36:8
    |
 LL |     g::foo();
@@ -89,14 +89,14 @@ note: `foo` could also refer to the function imported here
 LL |     pub use crate::f::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
-   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0252, E0659.
 For more information about an error, try `rustc --explain E0252`.
 Future incompatibility report: Future breakage diagnostic:
-warning: `foo` is ambiguous
+error: `foo` is ambiguous
   --> $DIR/duplicate.rs:36:8
    |
 LL |     g::foo();
@@ -117,5 +117,5 @@ note: `foo` could also refer to the function imported here
 LL |     pub use crate::f::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
-   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
 
