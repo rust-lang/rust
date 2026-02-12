@@ -581,6 +581,40 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     pub fn with_capacity_in(capacity: usize, alloc: A) -> BinaryHeap<T, A> {
         BinaryHeap { data: Vec::with_capacity_in(capacity, alloc) }
     }
+
+    /// Creates a `BinaryHeap` using the supplied `vec`. This does not rebuild the heap,
+    /// so `vec` must already be a max-heap.
+    ///
+    /// # Safety
+    ///
+    /// The supplied `vec` must be a max-heap, i.e. for all indices `0 < i < vec.len()`,
+    /// `vec[(i - 1) / 2] >= vec[i]`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(binary_heap_from_raw_vec)]
+    ///
+    /// use std::collections::BinaryHeap;
+    /// let heap = BinaryHeap::from([1, 2, 3]);
+    /// let vec = heap.into_vec();
+    ///
+    /// // Safety: vec is the output of heap.from_vec(), so is a max-heap.
+    /// let mut new_heap = unsafe {
+    ///     BinaryHeap::from_raw_vec(vec)
+    /// };
+    /// assert_eq!(new_heap.pop(), Some(3));
+    /// assert_eq!(new_heap.pop(), Some(2));
+    /// assert_eq!(new_heap.pop(), Some(1));
+    /// assert_eq!(new_heap.pop(), None);
+    /// ```
+    #[unstable(feature = "binary_heap_from_raw_vec", issue = "152500")]
+    #[must_use]
+    pub unsafe fn from_raw_vec(vec: Vec<T, A>) -> BinaryHeap<T, A> {
+        BinaryHeap { data: vec }
+    }
 }
 
 impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
