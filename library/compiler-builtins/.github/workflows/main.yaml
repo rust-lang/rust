@@ -70,14 +70,14 @@ jobs:
           os: ubuntu-24.04
         - target: powerpc64le-unknown-linux-gnu
           os: ubuntu-24.04
-        # - target: powerpc64le-unknown-linux-gnu
-        #   os: ubuntu-24.04-ppc64le
-        #   # FIXME(rust#151807): remove once PPC builds work again.
-        #   channel: nightly-2026-01-23
+        - target: powerpc64le-unknown-linux-gnu
+          os: ubuntu-24.04-ppc64le
+          # FIXME(rust#151807): remove once PPC builds work again.
+          channel: nightly-2026-01-23
         - target: riscv64gc-unknown-linux-gnu
           os: ubuntu-24.04
-        # - target: s390x-unknown-linux-gnu
-        #   os: ubuntu-24.04-s390x
+        - target: s390x-unknown-linux-gnu
+          os: ubuntu-24.04-s390x
         - target: thumbv6m-none-eabi
           os: ubuntu-24.04
         - target: thumbv7em-none-eabi
