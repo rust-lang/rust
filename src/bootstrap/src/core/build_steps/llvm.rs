@@ -1088,6 +1088,7 @@ impl Step for OmpOffload {
             } else {
                 // OpenMP provides some device libraries, so we also compile it for all gpu targets.
                 cfg.define("LLVM_USE_LINKER", "lld");
+                cfg.define("LIBC_INCLUDE_BENCHMARKS", "OFF");
                 cfg.define("LIBC_TARGET_TRIPLE", omp_target);
                 cfg.define("LLVM_LIBC_FULL_BUILD", "ON");
                 cfg.define("LLVM_ENABLE_RUNTIMES", "openmp;libc");
