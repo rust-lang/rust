@@ -6,7 +6,7 @@
 //@ [RISCV32] needs-llvm-components: riscv
 //@ [RISCV64] compile-flags: -Copt-level=3 --target riscv64gc-unknown-linux-gnu
 //@ [RISCV64] needs-llvm-components: riscv
-#![feature(c_variadic, no_core, lang_items, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, intrinsics, rustc_attrs)]
 #![no_core]
 #![crate_type = "lib"]
 
