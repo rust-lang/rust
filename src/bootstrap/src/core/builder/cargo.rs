@@ -339,6 +339,12 @@ impl Cargo {
             self.rustflags.arg("-Clink-arg=-gz");
         }
 
+        // Set the maximum page size to 32 MB to allow the code to be mapped at the
+        // PMD level, which significantly reduces iTLB misses on LoongArch64.
+        if target.starts_with("loongarch64-unknown-linux") {
+            self.rustflags.arg("-Clink-arg=-Wl,-z,max-page-size=0x2000000");
+        }
+
         // Throughout the build Cargo can execute a number of build scripts
         // compiling C/C++ code and we need to pass compilers, archivers, flags, etc
         // obtained previously to those build scripts.
