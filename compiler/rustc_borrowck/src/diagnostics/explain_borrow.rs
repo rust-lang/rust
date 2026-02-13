@@ -649,8 +649,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         // We want to focus on relevant live locals in diagnostics, so when polonius is enabled, we
         // ensure that we don't emit live boring locals as explanations.
         let is_local_boring = |local| {
-            if let Some(polonius_diagnostics) = self.polonius_diagnostics {
-                polonius_diagnostics.boring_nll_locals.contains(&local)
+            if let Some(polonius_context) = self.polonius_context {
+                polonius_context.boring_nll_locals.contains(&local)
             } else {
                 assert!(!tcx.sess.opts.unstable_opts.polonius.is_next_enabled());
 
