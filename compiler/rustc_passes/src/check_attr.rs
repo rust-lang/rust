@@ -282,6 +282,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::PatternComplexityLimit { .. }
                     | AttributeKind::PinV2(..)
                     | AttributeKind::Pointee(..)
+                    | AttributeKind::PreludeImport
                     | AttributeKind::ProfilerRuntime
                     | AttributeKind::RecursionLimit { .. }
                     | AttributeKind::ReexportTestHarnessMain(..)
@@ -394,7 +395,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             // need to be fixed
                             | sym::deprecated_safe // FIXME(deprecated_safe)
                             // internal
-                            | sym::prelude_import
                             | sym::panic_handler
                             | sym::lang
                             | sym::default_lib_allocator

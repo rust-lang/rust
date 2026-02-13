@@ -82,6 +82,7 @@ impl AttributeKind {
             PatternComplexityLimit { .. } => No,
             PinV2(..) => Yes,
             Pointee(..) => No,
+            PreludeImport => No,
             ProcMacro(..) => No,
             ProcMacroAttribute(..) => No,
             ProcMacroDerive { .. } => No,

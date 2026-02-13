@@ -258,6 +258,7 @@ attribute_parsers!(
         Single<WithoutArgs<PassByValueParser>>,
         Single<WithoutArgs<PinV2Parser>>,
         Single<WithoutArgs<PointeeParser>>,
+        Single<WithoutArgs<PreludeImportParser>>,
         Single<WithoutArgs<ProcMacroAttributeParser>>,
         Single<WithoutArgs<ProcMacroParser>>,
         Single<WithoutArgs<ProfilerRuntimeParser>>,

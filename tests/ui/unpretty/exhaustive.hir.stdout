@@ -31,7 +31,7 @@
 #![feature(yeet_expr)]
 #![allow(incomplete_features)]
 extern crate std;
-#[prelude_import]
+#[attr = PreludeImport]
 use std::prelude::rust_2024::*;
 
 mod prelude {
@@ -46,7 +46,7 @@ mod prelude {
     }
 }
 
-#[prelude_import]
+#[attr = PreludeImport]
 use self::prelude::*;
 
 /// inner single-line doc comment

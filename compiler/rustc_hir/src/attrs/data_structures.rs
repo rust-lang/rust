@@ -1053,6 +1053,9 @@ pub enum AttributeKind {
     /// Represents `#[pointee]`
     Pointee(Span),
 
+    /// Represents `#[prelude_import]`
+    PreludeImport,
+
     /// Represents `#[proc_macro]`
     ProcMacro(Span),
 

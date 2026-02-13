@@ -5,7 +5,7 @@
 #![allow(incomplete_features)]
 #![feature(fn_delegation)]
 extern crate std;
-#[prelude_import]
+#[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
 
 mod to_reuse {

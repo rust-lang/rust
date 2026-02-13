@@ -1211,3 +1211,12 @@ impl<S: Stage> SingleAttributeParser<S> for RustcReservationImplParser {
         Some(AttributeKind::RustcReservationImpl(cx.attr_span, value_str))
     }
 }
+
+pub(crate) struct PreludeImportParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for PreludeImportParser {
+    const PATH: &[Symbol] = &[sym::prelude_import];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Use)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::PreludeImport;
+}
