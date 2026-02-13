@@ -1557,6 +1557,14 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
             vis.visit_body(body);
         }
 
+        let mut self_referential_fields_finder =
+            SelfReferentialFieldsFinder::new(&liveness_info.saved_locals);
+        self_referential_fields_finder.visit_body(body);
+        debug!(
+            "self referential fields: {:?}",
+            self_referential_fields_finder.locals_requiring_unsafe_pinned
+        );
+
         // Extract locals which are live across suspension point into `layout`
         // `remap` gives a mapping from local indices onto coroutine struct indices
         // `storage_liveness` tells us which locals have live storage at suspension points
@@ -1808,6 +1816,36 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
             | TerminatorKind::CoroutineDrop
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {}
+        }
+    }
+}
+
+/// Visitor to find all fields in the coroutine struct that are self-referential.
+struct SelfReferentialFieldsFinder<'a> {
+    saved_locals: &'a CoroutineSavedLocals,
+    locals_requiring_unsafe_pinned: DenseBitSet<Local>,
+}
+
+impl<'a> SelfReferentialFieldsFinder<'a> {
+    fn new(saved_locals: &'a CoroutineSavedLocals) -> Self {
+        SelfReferentialFieldsFinder {
+            saved_locals,
+            locals_requiring_unsafe_pinned: DenseBitSet::new_empty(saved_locals.domain_size()),
+        }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for SelfReferentialFieldsFinder<'_> {
+    fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, _loc: Location) {
+        if let Some(_) = self.saved_locals.get(place.local) {
+            match rvalue {
+                Rvalue::Ref(_, _, borrowed_place) => {
+                    if let Some(_) = self.saved_locals.get(borrowed_place.local) {
+                        self.locals_requiring_unsafe_pinned.insert(borrowed_place.local);
+                    }
+                }
+                _ => {}
+            }
         }
     }
 }
