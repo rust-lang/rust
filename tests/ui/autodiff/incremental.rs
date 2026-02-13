@@ -1,6 +1,6 @@
 //@ revisions: DEBUG RELEASE
 //@[RELEASE] compile-flags: -Zautodiff=Enable,NoTT -C opt-level=3 -Clto=fat
-//@[DEBUG]   compile-flags: -Zautodiff=Enable,NoTT -C opt-level=0 -Clto=fat -C debuginfo=2
+//@[DEBUG] compile-flags: -Zautodiff=Enable,NoTT -Copt-level=0 -Clto=fat -Cdebuginfo=2 -Ccodegen-units=8
 //@ needs-enzyme
 //@ incremental
 //@ no-prefer-dynamic
@@ -13,6 +13,10 @@
 // dropped. We now use globals instead and add this test to verify that incremental
 // keeps working. Also testing debug mode while at it.
 
+// We extended this test to use 8 codegen-units in debug mode and call an intrinsic like powi,
+// rather than just simple arithmetic. This caused a compilation failure, since the definition of
+// the intrinsic was not available in the same cgu as the function being differentiated.
+
 use std::autodiff::autodiff_reverse;
 
 #[autodiff_reverse(bar, Duplicated, Duplicated)]
@@ -20,7 +24,7 @@ pub fn foo(r: &[f64; 10], res: &mut f64) {
     let mut output = [0.0; 10];
     output[0] = r[0];
     output[1] = r[1] * r[2];
-    output[2] = r[4] * r[5];
+    output[2] = r[4] * r[5].powi(2);
     output[3] = r[2] * r[6];
     output[4] = r[1] * r[7];
     output[5] = r[2] * r[8];
