@@ -1,6 +1,6 @@
 //@ run-pass
 //@ ignore-backends: gcc
-#![feature(c_variadic, const_c_variadic, const_destruct, const_raw_ptr_comparison)]
+#![feature(const_c_variadic, const_destruct, const_raw_ptr_comparison)]
 
 use std::ffi::*;
 

@@ -4,7 +4,7 @@
 //@ ignore-backends: gcc
 
 #![feature(no_core, lang_items, rustc_attrs)]
-#![feature(c_variadic, c_variadic_naked_functions, abi_x86_interrupt, naked_functions_rustic_abi)]
+#![feature(c_variadic_naked_functions, abi_x86_interrupt, naked_functions_rustic_abi)]
 #![crate_type = "rlib"]
 #![no_core]
 

@@ -1,5 +1,3 @@
-#![feature(c_variadic)]
-
 use std::ffi::{CStr, VaList, c_char, c_double, c_int, c_long};
 
 fn ignores_arguments() {

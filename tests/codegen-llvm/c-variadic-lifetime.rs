@@ -1,6 +1,5 @@
 //@ add-minicore
 //@ compile-flags: -Copt-level=3
-#![feature(c_variadic)]
 #![crate_type = "lib"]
 
 // Check that `%args` explicitly has its lifetime start and end. Being explicit can improve
