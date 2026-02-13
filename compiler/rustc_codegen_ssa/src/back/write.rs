@@ -359,8 +359,7 @@ fn generate_thin_lto_work<B: WriteBackendMethods>(
     dcx: DiagCtxtHandle<'_>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
-    needs_thin_lto: Vec<(String, B::ModuleBuffer)>,
-    import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
+    needs_thin_lto: Vec<ThinLtoInput<B>>,
 ) -> Vec<(ThinLtoWorkItem<B>, u64)> {
     let _prof_timer = prof.generic_activity("codegen_thin_generate_lto_work");
 
@@ -371,7 +370,6 @@ fn generate_thin_lto_work<B: WriteBackendMethods>(
         exported_symbols_for_lto,
         each_linked_rlib_for_lto,
         needs_thin_lto,
-        import_only_modules,
     );
     lto_modules
         .into_iter()
@@ -403,9 +401,7 @@ enum MaybeLtoModules<B: WriteBackendMethods> {
         cgcx: CodegenContext,
         exported_symbols_for_lto: Arc<Vec<String>>,
         each_linked_rlib_file_for_lto: Vec<PathBuf>,
-        needs_thin_lto: Vec<(String, <B as WriteBackendMethods>::ModuleBuffer)>,
-        lto_import_only_modules:
-            Vec<(SerializedModule<<B as WriteBackendMethods>::ModuleBuffer>, WorkProduct)>,
+        needs_thin_lto: Vec<ThinLtoInput<B>>,
     },
 }
 
@@ -785,6 +781,11 @@ pub enum FatLtoInput<B: WriteBackendMethods> {
     InMemory(ModuleCodegen<B::Module>),
 }
 
+pub enum ThinLtoInput<B: WriteBackendMethods> {
+    Red { name: String, buffer: SerializedModule<B::ModuleBuffer> },
+    Green { wp: WorkProduct, buffer: SerializedModule<B::ModuleBuffer> },
+}
+
 /// Actual LTO type we end up choosing based on multiple factors.
 pub(crate) enum ComputedLtoType {
     No,
@@ -998,11 +999,7 @@ fn do_thin_lto<B: WriteBackendMethods>(
     tm_factory: TargetMachineFactoryFn<B>,
     exported_symbols_for_lto: Arc<Vec<String>>,
     each_linked_rlib_for_lto: Vec<PathBuf>,
-    needs_thin_lto: Vec<(String, <B as WriteBackendMethods>::ModuleBuffer)>,
-    lto_import_only_modules: Vec<(
-        SerializedModule<<B as WriteBackendMethods>::ModuleBuffer>,
-        WorkProduct,
-    )>,
+    needs_thin_lto: Vec<ThinLtoInput<B>>,
 ) -> Vec<CompiledModule> {
     let _timer = prof.verbose_generic_activity("LLVM_thinlto");
 
@@ -1039,7 +1036,6 @@ fn do_thin_lto<B: WriteBackendMethods>(
         &exported_symbols_for_lto,
         &each_linked_rlib_for_lto,
         needs_thin_lto,
-        lto_import_only_modules,
     ) {
         let insertion_index =
             work_items.binary_search_by_key(&cost, |&(_, cost)| cost).unwrap_or_else(|e| e);
@@ -1719,7 +1715,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         }
                         Ok(WorkItemResult::NeedsThinLto(name, thin_buffer)) => {
                             assert!(needs_fat_lto.is_empty());
-                            needs_thin_lto.push((name, thin_buffer));
+                            needs_thin_lto.push(ThinLtoInput::Red {
+                                name,
+                                buffer: SerializedModule::Local(thin_buffer),
+                            });
                         }
                         Err(Some(WorkerFatalError)) => {
                             // Like `CodegenAborted`, wait for remaining work to finish.
@@ -1776,6 +1775,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
             assert!(compiled_modules.is_empty());
             assert!(needs_fat_lto.is_empty());
 
+            for (buffer, wp) in lto_import_only_modules {
+                needs_thin_lto.push(ThinLtoInput::Green { wp, buffer })
+            }
+
             if cgcx.lto == Lto::ThinLocal {
                 compiled_modules.extend(do_thin_lto::<B>(
                     &cgcx,
@@ -1785,12 +1788,14 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     exported_symbols_for_lto,
                     each_linked_rlib_file_for_lto,
                     needs_thin_lto,
-                    lto_import_only_modules,
                 ));
             } else {
                 if let Some(allocator_module) = allocator_module.take() {
                     let thin_buffer = B::serialize_module(allocator_module.module_llvm, true);
-                    needs_thin_lto.push((allocator_module.name, thin_buffer));
+                    needs_thin_lto.push(ThinLtoInput::Red {
+                        name: allocator_module.name,
+                        buffer: SerializedModule::Local(thin_buffer),
+                    });
                 }
 
                 return Ok(MaybeLtoModules::ThinLto {
@@ -1798,7 +1803,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     exported_symbols_for_lto,
                     each_linked_rlib_file_for_lto,
                     needs_thin_lto,
-                    lto_import_only_modules,
                 });
             }
         }
@@ -2197,7 +2201,6 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                 exported_symbols_for_lto,
                 each_linked_rlib_file_for_lto,
                 needs_thin_lto,
-                lto_import_only_modules,
             } => {
                 let tm_factory = self.backend.target_machine_factory(
                     sess,
@@ -2214,7 +2217,6 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                         exported_symbols_for_lto,
                         each_linked_rlib_file_for_lto,
                         needs_thin_lto,
-                        lto_import_only_modules,
                     ),
                     allocator_module: None,
                 }
