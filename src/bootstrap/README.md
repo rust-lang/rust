@@ -175,8 +175,8 @@ When you use bootstrap, you'll call it through the entry point script
 (`x`, `x.ps1`, or `x.py`). However, most of the code lives in `src/bootstrap`.
 `bootstrap` has a difficult problem: it is written in Rust, but yet it is run
 before the Rust compiler is built! To work around this, there are two components
-of bootstrap: the main one written in rust, and `bootstrap.py`. `bootstrap.py`
-is what gets run by entry point script. It takes care of downloading the prebuilt
+of bootstrap: the main one written in Rust, and `bootstrap.py`. `bootstrap.py`
+is what gets run by the entry point script. It takes care of downloading the prebuilt
 stage 0 compiler, std and Cargo binaries, which are then used to build the
 bootstrap binary.
 
