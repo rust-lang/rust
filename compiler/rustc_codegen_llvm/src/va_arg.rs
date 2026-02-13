@@ -1169,14 +1169,26 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             AllowHigherAlign::Yes,
             ForceRightAdjust::No,
         ),
+        Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            PassMode::Direct,
+            if target.llvm_abiname.starts_with("n32") || target.llvm_abiname.starts_with("n64") {
+                SlotSize::Bytes8
+            } else {
+                SlotSize::Bytes4
+            },
+            AllowHigherAlign::Yes,
+            match bx.tcx().sess.target.endian {
+                Endian::Big => ForceRightAdjust::Yes,
+                Endian::Little => ForceRightAdjust::No,
+            },
+        ),
 
         Arch::Bpf => bug!("bpf does not support c-variadic functions"),
         Arch::SpirV => bug!("spirv does not support c-variadic functions"),
 
-        Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => {
-            // FIXME: port MipsTargetLowering::lowerVAARG.
-            bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx))
-        }
         Arch::Sparc | Arch::Avr | Arch::M68k | Arch::Msp430 => {
             // Clang uses the LLVM implementation for these architectures.
             bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx))
