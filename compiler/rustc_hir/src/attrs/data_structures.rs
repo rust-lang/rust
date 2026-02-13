@@ -1329,6 +1329,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_symbol_name]`
     RustcSymbolName(Span),
 
+    /// Represents `#[rustc_test_marker]`
+    RustcTestMarker(Symbol),
+
     /// Represents `#[rustc_then_this_would_need]`
     RustcThenThisWouldNeed(Span, ThinVec<Ident>),
 
