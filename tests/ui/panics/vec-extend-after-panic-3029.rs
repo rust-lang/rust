@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/3029
+
 //@ run-fail
 //@ error-pattern:so long
 //@ needs-subprocess
