@@ -377,7 +377,7 @@ fn augment_references_with_imports(
 fn find_assignment_usage(name: &ast::NameLike) -> Option<ast::Expr> {
     let bin_expr = name.syntax().ancestors().find_map(ast::BinExpr::cast)?;
 
-    if !bin_expr.lhs()?.syntax().descendants().contains(name.syntax()) {
+    if !Itertools::contains(&mut bin_expr.lhs()?.syntax().descendants(), name.syntax()) {
         cov_mark::hit!(dont_assign_incorrect_ref);
         return None;
     }
@@ -443,7 +443,7 @@ fn find_method_call_expr_usage(name: &ast::NameLike) -> Option<ast::Expr> {
     let method_call = name.syntax().ancestors().find_map(ast::MethodCallExpr::cast)?;
     let receiver = method_call.receiver()?;
 
-    if !receiver.syntax().descendants().contains(name.syntax()) {
+    if !Itertools::contains(&mut receiver.syntax().descendants(), name.syntax()) {
         return None;
     }
 

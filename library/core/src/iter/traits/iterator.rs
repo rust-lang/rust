@@ -2875,6 +2875,43 @@ pub const trait Iterator {
         self.try_fold((), check(f)) == ControlFlow::Break(())
     }
 
+    /// Tests whether a value is contained in the iterator.
+    ///
+    /// `contains()` is short-circuiting; in other words, it will stop processing
+    /// as soon as the function finds the item in the `Iterator`.
+    ///
+    /// This method checks the whole iterator, which is O(n). If the iterator is a sorted
+    /// slice, [`binary_search`](slice::binary_search) may be faster. If this is an iterator
+    /// on collections that have a `.contains()` or `.contains_key()` method (such as
+    /// `HashMap` or `BtreeSet`), using those methods directly will be faster.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_contains)]
+    /// assert!([1, 2, 3].iter().contains(&2));
+    /// assert!(![1, 2, 3].iter().contains(&5));
+    /// ```
+    ///
+    /// [`Iterator::contains`] can be used where [`slice::contains`] cannot be used:
+    ///
+    /// ```
+    /// #![feature(iter_contains)]
+    /// let s = [String::from("a"), String::from("b"), String::from("c")];
+    /// assert!(s.iter().contains("b"));
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_contains", issue = "127494")]
+    fn contains<Q>(&mut self, item: Q) -> bool
+    where
+        Q: PartialEq<Self::Item> + ?Sized,
+        Self: Sized,
+    {
+        self.any(|elem| item == elem)
+    }
+
     /// Searches for an element of an iterator that satisfies a predicate.
     ///
     /// `find()` takes a closure that returns `true` or `false`. It applies
