@@ -462,10 +462,14 @@ macro_rules! define_callbacks {
         }
 
         pub struct Providers {
-            $(pub $name: for<'tcx> fn(
-                TyCtxt<'tcx>,
-                $name::LocalKey<'tcx>,
-            ) -> $name::ProvidedValue<'tcx>,)*
+            $(
+                /// This is the provider for the query. Use `Find references` on this to
+                /// navigate between the provider assignment and the query definition.
+                pub $name: for<'tcx> fn(
+                    TyCtxt<'tcx>,
+                    $name::LocalKey<'tcx>,
+                ) -> $name::ProvidedValue<'tcx>,
+            )*
         }
 
         pub struct ExternProviders {
