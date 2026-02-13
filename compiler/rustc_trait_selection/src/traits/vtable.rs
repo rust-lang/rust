@@ -430,7 +430,16 @@ pub(crate) fn supertrait_vtable_slot<'tcx>(
         }
     };
 
-    prepare_vtable_segments(tcx, source_principal, vtable_segment_callback).unwrap()
+    prepare_vtable_segments(tcx, source_principal, vtable_segment_callback).unwrap_or_else(|| {
+        // This can happen if the trait hierarchy is malformed (e.g., due to
+        // missing generics on a supertrait bound). There should already be an error
+        // emitted for this, so we just delay the ICE.
+        tcx.dcx().delayed_bug(format!(
+            "could not find the supertrait vtable slot for `{}` -> `{}`",
+            source, target
+        ));
+        None
+    })
 }
 
 pub(super) fn provide(providers: &mut Providers) {
