@@ -257,3 +257,36 @@ impl<S: Stage> SingleAttributeParser<S> for TestRunnerParser {
         Some(AttributeKind::TestRunner(meta.path().0.clone()))
     }
 }
+
+pub(crate) struct RustcTestMarkerParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcTestMarkerParser {
+    const PATH: &[Symbol] = &[sym::rustc_test_marker];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Const),
+        Allow(Target::Fn),
+        Allow(Target::Static),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "test_path");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(name_value) = args.name_value() else {
+            cx.expected_name_value(cx.attr_span, Some(sym::rustc_test_marker));
+            return None;
+        };
+
+        let Some(value_str) = name_value.value_as_str() else {
+            cx.expected_string_literal(name_value.value_span, None);
+            return None;
+        };
+
+        if value_str.as_str().trim().is_empty() {
+            cx.expected_non_empty_string_literal(name_value.value_span);
+            return None;
+        }
+
+        Some(AttributeKind::RustcTestMarker(value_str))
+    }
+}
