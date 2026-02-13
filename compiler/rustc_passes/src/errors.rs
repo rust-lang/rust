@@ -684,9 +684,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NoMainErr {
             // There were some functions named `main` though. Try to give the user a hint.
             inline_fluent!(
                 "the main function must be defined at the crate level{$has_filename ->
-                [true] {\" \"}(in `{$filename}`)
-                *[false] {\"\"}
-            }"
+                    [true] {\" \"}(in `{$filename}`)
+                    *[false] {\"\"}
+                }"
             )
         } else if self.has_filename {
             inline_fluent!("consider adding a `main` function to `{$filename}`")

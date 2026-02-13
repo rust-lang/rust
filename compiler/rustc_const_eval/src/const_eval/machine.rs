@@ -491,10 +491,10 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     Err(err) => throw_ub_custom!(
                         inline_fluent!(
                             "invalid align passed to `{$name}`: {$align} is {$err_kind ->
-    [not_power_of_two] not a power of 2
-    [too_large] too large
-    *[other] {\"\"}
-}"
+                                [not_power_of_two] not a power of 2
+                                [too_large] too large
+                                *[other] {\"\"}
+                            }"
                         ),
                         name = "const_allocate",
                         err_kind = err.diag_ident(),
@@ -521,10 +521,10 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     Err(err) => throw_ub_custom!(
                         inline_fluent!(
                             "invalid align passed to `{$name}`: {$align} is {$err_kind ->
-    [not_power_of_two] not a power of 2
-    [too_large] too large
-    *[other] {\"\"}
-}"
+                                [not_power_of_two] not a power of 2
+                                [too_large] too large
+                                *[other] {\"\"}
+                            }"
                         ),
                         name = "const_deallocate",
                         err_kind = err.diag_ident(),

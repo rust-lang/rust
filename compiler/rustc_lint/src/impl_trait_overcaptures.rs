@@ -446,7 +446,7 @@ impl<'a> LintDiagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
                     "specifically, {$num_captured ->
                         [one] this lifetime is
                         *[other] these lifetimes are
-                     } in scope but not mentioned in the type's bounds"
+                    } in scope but not mentioned in the type's bounds"
                 ),
             )
             .note(inline_fluent!(

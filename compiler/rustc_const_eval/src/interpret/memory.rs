@@ -293,10 +293,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             throw_ub_custom!(
                 inline_fluent!(
                     "{$kind ->
-    [dealloc] deallocating
-    [realloc] reallocating
-    *[other] {\"\"}
-} {$ptr} which does not point to the beginning of an object"
+                        [dealloc] deallocating
+                        [realloc] reallocating
+                        *[other] {\"\"}
+                    } {$ptr} which does not point to the beginning of an object"
                 ),
                 ptr = format!("{ptr:?}"),
                 kind = "realloc"
@@ -379,10 +379,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             throw_ub_custom!(
                 inline_fluent!(
                     "{$kind ->
-    [dealloc] deallocating
-    [realloc] reallocating
-    *[other] {\"\"}
-} {$ptr} which does not point to the beginning of an object"
+                        [dealloc] deallocating
+                        [realloc] reallocating
+                        *[other] {\"\"}
+                    } {$ptr} which does not point to the beginning of an object"
                 ),
                 ptr = format!("{ptr:?}"),
                 kind = "dealloc",
@@ -396,11 +396,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     err_ub_custom!(
                         inline_fluent!(
                             "deallocating {$alloc_id}, which is {$kind ->
-    [fn] a function
-    [vtable] a vtable
-    [static_mem] static memory
-    *[other] {\"\"}
-}"
+                                [fn] a function
+                                [vtable] a vtable
+                                [static_mem] static memory
+                                *[other] {\"\"}
+                            }"
                         ),
                         alloc_id = alloc_id,
                         kind = "fn",
@@ -410,11 +410,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     err_ub_custom!(
                         inline_fluent!(
                             "deallocating {$alloc_id}, which is {$kind ->
-    [fn] a function
-    [vtable] a vtable
-    [static_mem] static memory
-    *[other] {\"\"}
-}"
+                                [fn] a function
+                                [vtable] a vtable
+                                [static_mem] static memory
+                                *[other] {\"\"}
+                            }"
                         ),
                         alloc_id = alloc_id,
                         kind = "vtable",
@@ -424,11 +424,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     err_ub_custom!(
                         inline_fluent!(
                             "deallocating {$alloc_id}, which is {$kind ->
-    [fn] a function
-    [vtable] a vtable
-    [static_mem] static memory
-    *[other] {\"\"}
-}"
+                                [fn] a function
+                                [vtable] a vtable
+                                [static_mem] static memory
+                                *[other] {\"\"}
+                            }"
                         ),
                         alloc_id = alloc_id,
                         kind = "typeid",
@@ -438,11 +438,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     err_ub_custom!(
                         inline_fluent!(
                             "deallocating {$alloc_id}, which is {$kind ->
-    [fn] a function
-    [vtable] a vtable
-    [static_mem] static memory
-    *[other] {\"\"}
-}"
+                                [fn] a function
+                                [vtable] a vtable
+                                [static_mem] static memory
+                                *[other] {\"\"}
+                            }"
                         ),
                         alloc_id = alloc_id,
                         kind = "static_mem"

@@ -1,11 +1,13 @@
 mod diagnostic;
 mod diagnostic_builder;
 mod error;
+mod inline_fluent;
 mod message;
 mod subdiagnostic;
 mod utils;
 
 use diagnostic::{DiagnosticDerive, LintDiagnosticDerive};
+pub(super) use inline_fluent::inline_fluent;
 use proc_macro2::TokenStream;
 use subdiagnostic::SubdiagnosticDerive;
 use synstructure::Structure;
