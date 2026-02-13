@@ -547,13 +547,32 @@ fn report_conflicting_impls<'tcx>(
         }
     }
 
-    let msg = || {
+    fn msg(overlap: &OverlapError<'_>) -> String {
         format!(
             "conflicting implementations of trait `{}`{}",
             overlap.trait_ref.print_trait_sugared(),
             overlap.self_ty.map_or_else(String::new, |ty| format!(" for type `{ty}`")),
         )
-    };
+    }
+
+    struct Inner<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        overlap: OverlapError<'tcx>,
+        impl_span: Span,
+    }
+
+    impl<'a, 'tcx> rustc_errors::Diagnostic<'a, ()> for Inner<'tcx> {
+        fn into_diag(
+            self,
+            dcx: rustc_errors::DiagCtxtHandle<'a>,
+            level: rustc_errors::Level,
+        ) -> Diag<'a, ()> {
+            let Self { tcx, overlap, impl_span } = self;
+            let mut diag = Diag::new(dcx, level, msg(&overlap));
+            decorate(tcx, &overlap, impl_span, &mut diag);
+            diag
+        }
+    }
 
     // Don't report overlap errors if the header references error
     if let Err(err) = (overlap.trait_ref, overlap.self_ty).error_reported() {
@@ -565,7 +584,7 @@ fn report_conflicting_impls<'tcx>(
             let reported = if overlap.with_impl.is_local()
                 || tcx.ensure_ok().orphan_check_impl(impl_def_id).is_ok()
             {
-                let mut err = tcx.dcx().struct_span_err(impl_span, msg());
+                let mut err = tcx.dcx().struct_span_err(impl_span, msg(&overlap));
                 err.code(E0119);
                 decorate(tcx, &overlap, impl_span, &mut err);
                 err.emit()
@@ -578,10 +597,12 @@ fn report_conflicting_impls<'tcx>(
             let lint = match kind {
                 FutureCompatOverlapErrorKind::LeakCheck => COHERENCE_LEAK_CHECK,
             };
-            tcx.node_span_lint(lint, tcx.local_def_id_to_hir_id(impl_def_id), impl_span, |err| {
-                err.primary_message(msg());
-                decorate(tcx, &overlap, impl_span, err);
-            });
+            tcx.node_span_lint(
+                lint,
+                tcx.local_def_id_to_hir_id(impl_def_id),
+                impl_span,
+                Inner { tcx, overlap, impl_span },
+            );
             Ok(())
         }
     }

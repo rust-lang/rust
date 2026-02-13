@@ -34,16 +34,39 @@ pub struct EarlyContextAndPass<'ecx, 'tcx, T: EarlyLintPass> {
 
 impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
     fn check_id(&mut self, id: ast::NodeId) {
+        struct Inner<'tcx, 'b> {
+            diagnostic: DecorateDiagCompat,
+            tcx: Option<TyCtxt<'tcx>>,
+            sess: &'b Session,
+        }
+
+        impl<'a, 'b, 'tcx> rustc_errors::Diagnostic<'a, ()> for Inner<'tcx, 'b> {
+            fn into_diag(
+                self,
+                dcx: rustc_errors::DiagCtxtHandle<'a>,
+                level: rustc_errors::Level,
+            ) -> rustc_errors::Diag<'a, ()> {
+                let Self { diagnostic, tcx, sess } = self;
+                let mut diag = rustc_errors::Diag::new(dcx, level, "");
+                match diagnostic {
+                    DecorateDiagCompat::Builtin(b) => {
+                        diagnostics::decorate_builtin_lint(sess, tcx, b, &mut diag);
+                    }
+                    DecorateDiagCompat::Dynamic(d) => {
+                        d(&mut diag);
+                    }
+                }
+                diag
+            }
+        }
+
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, node_id: _, lint_id, diagnostic } = early_lint;
-            self.context.opt_span_lint(lint_id.lint, span, |diag| match diagnostic {
-                DecorateDiagCompat::Builtin(b) => {
-                    diagnostics::decorate_builtin_lint(self.context.sess(), self.tcx, b, diag);
-                }
-                DecorateDiagCompat::Dynamic(d) => {
-                    d(diag);
-                }
-            });
+            self.context.opt_span_lint(
+                lint_id.lint,
+                span,
+                Inner { diagnostic, tcx: self.tcx, sess: self.context.sess() },
+            );
         }
     }
 

@@ -523,6 +523,37 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         hir_id: hir::HirId,
         hir_bounds: &[hir::PolyTraitRef<'tcx>],
     ) -> Option<ErrorGuaranteed> {
+        struct TraitObjectWithoutDyn<'a, 'tcx> {
+            span: Span,
+            sugg: Vec<(Span, String)>,
+            hir_id: hir::HirId,
+            this: &'a dyn HirTyLowerer<'tcx>,
+        }
+
+        impl<'a, 'b, 'tcx> rustc_errors::Diagnostic<'a, ()> for TraitObjectWithoutDyn<'b, 'tcx> {
+            fn into_diag(
+                self,
+                dcx: rustc_errors::DiagCtxtHandle<'a>,
+                level: rustc_errors::Level,
+            ) -> rustc_errors::Diag<'a, ()> {
+                let Self { span, sugg, hir_id, this } = self;
+                let mut lint = rustc_errors::Diag::new(
+                    dcx,
+                    level,
+                    "trait objects without an explicit `dyn` are deprecated",
+                );
+                if span.can_be_used_for_suggestions() {
+                    lint.multipart_suggestion(
+                        "if this is a dyn-compatible trait, use `dyn`",
+                        sugg,
+                        Applicability::MachineApplicable,
+                    );
+                }
+                this.maybe_suggest_blanket_trait_impl(span, hir_id, &mut lint);
+                lint
+            }
+        }
+
         let tcx = self.tcx();
         let [poly_trait_ref, ..] = hir_bounds else { return None };
 
@@ -606,17 +637,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             Some(diag.emit())
         } else {
-            tcx.node_span_lint(BARE_TRAIT_OBJECTS, hir_id, span, |lint| {
-                lint.primary_message("trait objects without an explicit `dyn` are deprecated");
-                if span.can_be_used_for_suggestions() {
-                    lint.multipart_suggestion(
-                        "if this is a dyn-compatible trait, use `dyn`",
-                        sugg,
-                        Applicability::MachineApplicable,
-                    );
-                }
-                self.maybe_suggest_blanket_trait_impl(span, hir_id, lint);
-            });
+            tcx.node_span_lint(
+                BARE_TRAIT_OBJECTS,
+                hir_id,
+                span,
+                TraitObjectWithoutDyn { span, hir_id, sugg, this: self },
+            );
             None
         }
     }

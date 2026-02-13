@@ -9,6 +9,7 @@ use rustc_hir::attrs::{
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{self as hir, Attribute, find_attr};
+use rustc_macros::Diagnostic;
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
 };
@@ -393,6 +394,17 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
     }
 }
 
+#[derive(Diagnostic)]
+#[diag("non-default `sanitize` will have no effect after inlining")]
+struct NonDefaultSanitize {
+    #[note("inlining requested here")]
+    inline_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("the async executor can run blocking code, without realtime sanitizer catching it")]
+struct AsyncExecutorRunningBlockingCode;
+
 fn check_result(
     tcx: TyCtxt<'_>,
     did: LocalDefId,
@@ -433,10 +445,12 @@ fn check_result(
             (interesting_spans.sanitize, interesting_spans.inline)
     {
         let hir_id = tcx.local_def_id_to_hir_id(did);
-        tcx.node_span_lint(lint::builtin::INLINE_NO_SANITIZE, hir_id, sanitize_span, |lint| {
-            lint.primary_message("non-default `sanitize` will have no effect after inlining");
-            lint.span_note(inline_span, "inlining requested here");
-        })
+        tcx.node_span_lint(
+            lint::builtin::INLINE_NO_SANITIZE,
+            hir_id,
+            sanitize_span,
+            NonDefaultSanitize { inline_span },
+        );
     }
 
     // warn for nonblocking async functions, blocks and closures.
@@ -457,9 +471,7 @@ fn check_result(
             lint::builtin::RTSAN_NONBLOCKING_ASYNC,
             hir_id,
             sanitize_span,
-            |lint| {
-                lint.primary_message(r#"the async executor can run blocking code, without realtime sanitizer catching it"#);
-            }
+            AsyncExecutorRunningBlockingCode,
         );
     }
 

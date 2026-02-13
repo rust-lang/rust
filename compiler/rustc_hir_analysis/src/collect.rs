@@ -611,6 +611,23 @@ pub(super) fn lower_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     tcx.ensure_ok().predicates_of(def_id);
 }
 
+struct ReprCError {
+    msg: &'static str,
+}
+
+impl<'a> rustc_errors::Diagnostic<'a, ()> for ReprCError {
+    fn into_diag(
+        self,
+        dcx: rustc_errors::DiagCtxtHandle<'a>,
+        level: rustc_errors::Level,
+    ) -> rustc_errors::Diag<'a, ()> {
+        let mut diag = rustc_errors::Diag::new(dcx, level, self.msg);
+        diag.note("`repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C");
+        diag.help("use `repr($int_ty)` instead to explicitly set the size of this enum");
+        diag
+    }
+}
+
 pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr().discr_type();
@@ -665,11 +682,7 @@ pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     rustc_session::lint::builtin::REPR_C_ENUMS_LARGER_THAN_INT,
                     tcx.local_def_id_to_hir_id(def_id),
                     span,
-                    |d| {
-                        d.primary_message(msg)
-                        .note("`repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C")
-                        .help("use `repr($int_ty)` instead to explicitly set the size of this enum");
-                    }
+                    ReprCError { msg },
                 );
             }
         }

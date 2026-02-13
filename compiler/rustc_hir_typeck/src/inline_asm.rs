@@ -168,6 +168,49 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         is_input: bool,
         tied_input: Option<(&'tcx hir::Expr<'tcx>, Option<InlineAsmType>)>,
     ) -> Option<InlineAsmType> {
+        struct SugRegisterArgFormatError<'a, 'b> {
+            expr_span: Span,
+            idx: usize,
+            suggested_modifier: char,
+            suggested_result: &'a str,
+            suggested_size: u16,
+            default_modifier: char,
+            default_result: &'b str,
+            default_size: u16,
+        }
+
+        impl<'a, 'b, 'c> rustc_errors::Diagnostic<'a, ()> for SugRegisterArgFormatError<'b, 'c> {
+            fn into_diag(
+                self,
+                dcx: rustc_errors::DiagCtxtHandle<'a>,
+                level: rustc_errors::Level,
+            ) -> rustc_errors::Diag<'a, ()> {
+                let Self {
+                    expr_span,
+                    idx,
+                    suggested_modifier,
+                    suggested_result,
+                    suggested_size,
+                    default_modifier,
+                    default_result,
+                    default_size,
+                } = self;
+                let mut lint = rustc_errors::Diag::new(
+                    dcx,
+                    level,
+                    "formatting may not be suitable for sub-register argument",
+                );
+                lint.span_label(expr_span, "for this argument");
+                lint.help(format!(
+                    "use `{{{idx}:{suggested_modifier}}}` to have the register formatted as `{suggested_result}` (for {suggested_size}-bit values)",
+                ));
+                lint.help(format!(
+                    "or use `{{{idx}:{default_modifier}}}` to keep the default formatting of `{default_result}` (for {default_size}-bit values)",
+                ));
+                lint
+            }
+        }
+
         let ty = self.expr_ty(expr);
         if ty.has_non_region_infer() {
             bug!("inference variable in asm operand ty: {:?} {:?}", expr, ty);
@@ -366,15 +409,15 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     lint::builtin::ASM_SUB_REGISTER,
                     expr.hir_id,
                     spans,
-                    |lint| {
-                        lint.primary_message("formatting may not be suitable for sub-register argument");
-                        lint.span_label(expr.span, "for this argument");
-                        lint.help(format!(
-                            "use `{{{idx}:{suggested_modifier}}}` to have the register formatted as `{suggested_result}` (for {suggested_size}-bit values)",
-                        ));
-                        lint.help(format!(
-                            "or use `{{{idx}:{default_modifier}}}` to keep the default formatting of `{default_result}` (for {default_size}-bit values)",
-                        ));
+                    SugRegisterArgFormatError {
+                        expr_span: expr.span,
+                        idx,
+                        suggested_modifier,
+                        suggested_result,
+                        suggested_size,
+                        default_modifier,
+                        default_result,
+                        default_size,
                     },
                 );
             }

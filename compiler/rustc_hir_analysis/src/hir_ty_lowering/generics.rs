@@ -617,6 +617,21 @@ pub(crate) fn check_generic_arg_count(
     }
 }
 
+const ERR_MSG: &str = "cannot specify lifetime arguments explicitly \
+                       if late bound lifetime parameters are present";
+
+struct LifetimeArgumentsError;
+
+impl<'a> rustc_errors::Diagnostic<'a, ()> for LifetimeArgumentsError {
+    fn into_diag(
+        self,
+        dcx: rustc_errors::DiagCtxtHandle<'a>,
+        level: rustc_errors::Level,
+    ) -> rustc_errors::Diag<'a, ()> {
+        rustc_errors::Diag::new(dcx, level, ERR_MSG)
+    }
+}
+
 /// Prohibits explicit lifetime arguments if late-bound lifetime parameters
 /// are present. This is used both for datatypes and function calls.
 pub(crate) fn prohibit_explicit_late_bound_lifetimes(
@@ -630,15 +645,13 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
     if let Some(span_late) = def.has_late_bound_regions
         && args.has_lifetime_params()
     {
-        let msg = "cannot specify lifetime arguments explicitly \
-                       if late bound lifetime parameters are present";
         let note = "the late bound lifetime parameter is introduced here";
         let span = args.args[0].span();
 
         if position == GenericArgPosition::Value
             && args.num_lifetime_params() != param_counts.lifetimes
         {
-            struct_span_code_err!(cx.dcx(), span, E0794, "{}", msg)
+            struct_span_code_err!(cx.dcx(), span, E0794, "{}", ERR_MSG)
                 .with_span_note(span_late, note)
                 .emit();
         } else {
@@ -648,9 +661,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
                 LATE_BOUND_LIFETIME_ARGUMENTS,
                 args.args[0].hir_id(),
                 multispan,
-                |lint| {
-                    lint.primary_message(msg);
-                },
+                LifetimeArgumentsError,
             );
         }
 

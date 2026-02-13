@@ -268,7 +268,12 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     };
 
     own_params.extend(hir_generics.params.iter().filter_map(|param| {
+        #[derive(rustc_macros::Diagnostic)]
+        #[diag("defaults for generic parameters are not allowed here")]
+        struct GenericParametersDefaults;
+
         const MESSAGE: &str = "defaults for generic parameters are not allowed here";
+
         let kind = match param.kind {
             GenericParamKind::Lifetime { .. } => return None,
             GenericParamKind::Type { default, synthetic } => {
@@ -280,9 +285,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                                 lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                                 param.hir_id,
                                 param.span,
-                                |lint| {
-                                    lint.primary_message(MESSAGE);
-                                },
+                                GenericParametersDefaults,
                             );
                         }
                         ParamDefaultPolicy::Forbidden => {

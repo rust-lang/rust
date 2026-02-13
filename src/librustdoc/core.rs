@@ -332,6 +332,31 @@ pub(crate) fn run_global_ctxt(
     render_options: RenderOptions,
     output_format: OutputFormat,
 ) -> (clean::Crate, RenderOptions, Cache, FxHashMap<rustc_span::BytePos, Vec<ExpandedCode>>) {
+    struct MissingCrateLevelDoc {
+        help: String,
+        span: Option<rustc_span::Span>,
+    }
+
+    impl<'a> rustc_errors::Diagnostic<'a, ()> for MissingCrateLevelDoc {
+        fn into_diag(
+            self,
+            dcx: rustc_errors::DiagCtxtHandle<'a>,
+            level: rustc_errors::Level,
+        ) -> rustc_errors::Diag<'a, ()> {
+            let Self { help, span } = self;
+            let mut lint = rustc_errors::Diag::new(
+                dcx,
+                level,
+                "no documentation found for this crate's top-level module",
+            );
+            if let Some(span) = span {
+                lint.span(span);
+            }
+            lint.help(help);
+            lint
+        }
+    }
+
     // Certain queries assume that some checks were run elsewhere
     // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
     // so type-check everything other than function bodies in this crate before running lints.
@@ -398,15 +423,17 @@ pub(crate) fn run_global_ctxt(
             {}/rustdoc/how-to-write-documentation.html",
             crate::DOC_RUST_LANG_ORG_VERSION
         );
+
         tcx.node_lint(
             crate::lint::MISSING_CRATE_LEVEL_DOCS,
             DocContext::as_local_hir_id(tcx, krate.module.item_id).unwrap(),
-            |lint| {
-                if let Some(local_def_id) = krate.module.item_id.as_local_def_id() {
-                    lint.span(tcx.def_span(local_def_id));
-                }
-                lint.primary_message("no documentation found for this crate's top-level module");
-                lint.help(help);
+            MissingCrateLevelDoc {
+                span: krate
+                    .module
+                    .item_id
+                    .as_local_def_id()
+                    .map(|local_def_id| tcx.def_span(local_def_id)),
+                help,
             },
         );
     }

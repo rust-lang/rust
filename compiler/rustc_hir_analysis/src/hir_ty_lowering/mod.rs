@@ -1459,6 +1459,54 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
         mode: LowerTypeRelativePathMode,
     ) -> Result<TypeRelativePath<'tcx>, ErrorGuaranteed> {
+        struct AmbiguousAssocItemError<'tcx> {
+            segment: &'tcx hir::PathSegment<'tcx>,
+            tcx: TyCtxt<'tcx>,
+            mode: LowerTypeRelativePathMode,
+            variant_def_id: DefId,
+            item_def_id: DefId,
+            span: Span,
+            self_ty: Ty<'tcx>,
+            bound: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+        }
+
+        impl<'a, 'tcx> rustc_errors::Diagnostic<'a, ()> for AmbiguousAssocItemError<'tcx> {
+            fn into_diag(
+                self,
+                dcx: rustc_errors::DiagCtxtHandle<'a>,
+                level: rustc_errors::Level,
+            ) -> rustc_errors::Diag<'a, ()> {
+                let Self { segment, tcx, mode, variant_def_id, item_def_id, span, self_ty, bound } =
+                    self;
+                let mut lint = rustc_errors::Diag::new(dcx, level, "ambiguous associated item");
+                let mut could_refer_to = |kind: DefKind, def_id, also| {
+                    let note_msg = format!(
+                        "`{}` could{} refer to the {} defined here",
+                        segment.ident,
+                        also,
+                        tcx.def_kind_descr(kind, def_id)
+                    );
+                    lint.span_note(tcx.def_span(def_id), note_msg);
+                };
+
+                could_refer_to(DefKind::Variant, variant_def_id, "");
+                could_refer_to(mode.def_kind(), item_def_id, " also");
+
+                lint.span_suggestion(
+                    span,
+                    "use fully-qualified syntax",
+                    format!(
+                        "<{} as {}>::{}",
+                        self_ty,
+                        tcx.item_name(bound.def_id()),
+                        segment.ident
+                    ),
+                    Applicability::MachineApplicable,
+                );
+                lint
+            }
+        }
+
         debug!(%self_ty, ?segment.ident);
         let tcx = self.tcx();
 
@@ -1534,33 +1582,21 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let (item_def_id, args) = self.lower_assoc_item_path(span, item_def_id, segment, bound)?;
 
         if let Some(variant_def_id) = variant_def_id {
-            tcx.node_span_lint(AMBIGUOUS_ASSOCIATED_ITEMS, qpath_hir_id, span, |lint| {
-                lint.primary_message("ambiguous associated item");
-                let mut could_refer_to = |kind: DefKind, def_id, also| {
-                    let note_msg = format!(
-                        "`{}` could{} refer to the {} defined here",
-                        segment.ident,
-                        also,
-                        tcx.def_kind_descr(kind, def_id)
-                    );
-                    lint.span_note(tcx.def_span(def_id), note_msg);
-                };
-
-                could_refer_to(DefKind::Variant, variant_def_id, "");
-                could_refer_to(mode.def_kind(), item_def_id, " also");
-
-                lint.span_suggestion(
+            tcx.node_span_lint(
+                AMBIGUOUS_ASSOCIATED_ITEMS,
+                qpath_hir_id,
+                span,
+                AmbiguousAssocItemError {
+                    segment,
+                    tcx,
+                    mode,
+                    variant_def_id,
+                    item_def_id,
                     span,
-                    "use fully-qualified syntax",
-                    format!(
-                        "<{} as {}>::{}",
-                        self_ty,
-                        tcx.item_name(bound.def_id()),
-                        segment.ident
-                    ),
-                    Applicability::MachineApplicable,
-                );
-            });
+                    self_ty,
+                    bound,
+                },
+            );
         }
 
         Ok(TypeRelativePath::AssocItem(item_def_id, args))

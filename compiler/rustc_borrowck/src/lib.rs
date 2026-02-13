@@ -27,7 +27,7 @@ use rustc_abi::FieldIdx;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_errors::{Diag, Diagnostic};
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
@@ -1397,6 +1397,26 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         place: Place<'tcx>,
         state: &BorrowckDomain,
     ) {
+        struct Borrowed<'a, 'b, 'infcx, 'tcx> {
+            borrowed: Span,
+            this: &'a MirBorrowckCtxt<'b, 'infcx, 'tcx>,
+            explain: crate::diagnostics::BorrowExplanation<'tcx>,
+        }
+
+        impl<'a, 'b, 'c, 'infcx, 'tcx: 'c> Diagnostic<'a, ()> for Borrowed<'b, 'c, 'infcx, 'tcx> {
+            fn into_diag(
+                self,
+                dcx: rustc_errors::DiagCtxtHandle<'a>,
+                level: rustc_errors::Level,
+            ) -> rustc_errors::Diag<'a, ()> {
+                let Self { borrowed, this, explain } = self;
+                let mut diag =
+                    session_diagnostics::TailExprDropOrder { borrowed }.into_diag(dcx, level);
+                explain.add_explanation_to_diagnostic(this, &mut diag, "", None, None);
+                diag
+            }
+        }
+
         let tcx = self.infcx.tcx;
         // If this type does not need `Drop`, then treat it like a `StorageDead`.
         // This is needed because we track the borrows of refs to thread locals,
@@ -1432,13 +1452,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     TAIL_EXPR_DROP_ORDER,
                     CRATE_HIR_ID,
                     borrowed,
-                    |diag| {
-                        let diag2: Diag<'_, ()> =
-                            session_diagnostics::TailExprDropOrder { borrowed }
-                                .into_diag(diag.dcx, diag.level());
-                        diag.merge_with_other_diag(diag2);
-                        explain.add_explanation_to_diagnostic(&this, diag, "", None, None);
-                    },
+                    Borrowed { borrowed, this, explain },
                 );
                 // We may stop at the first case
                 ControlFlow::Break(())

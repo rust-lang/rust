@@ -18,7 +18,7 @@ use rustc_attr_parsing::eval_config_entry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic};
+use rustc_errors::DiagCtxtHandle;
 use rustc_fs_util::{TempDirBuilder, fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::attrs::NativeLibKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -937,13 +937,8 @@ fn link_natively(
             }
 
             let level = codegen_results.crate_info.lint_levels.linker_messages;
-            let lint = |msg| {
-                lint_level(sess, LINKER_MESSAGES, level, None, |diag| {
-                    let diag2: Diag<'_, ()> =
-                        LinkerOutput { inner: msg }.into_diag(sess.dcx(), diag.level());
-                    diag.merge_with_other_diag(diag2)
-                })
-            };
+            let lint =
+                |msg| lint_level(sess, LINKER_MESSAGES, level, None, LinkerOutput { inner: msg });
 
             if !prog.stderr.is_empty() {
                 // We already print `warning:` at the start of the diagnostic. Remove it from the linker output if present.

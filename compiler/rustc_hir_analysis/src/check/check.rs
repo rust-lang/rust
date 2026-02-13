@@ -54,6 +54,27 @@ fn add_abi_diag_help<T: EmissionGuarantee>(abi: ExternAbi, diag: &mut Diag<'_, T
     }
 }
 
+struct NotSupportedAbi {
+    abi: ExternAbi,
+}
+
+impl<'a> rustc_errors::Diagnostic<'a, ()> for NotSupportedAbi {
+    fn into_diag(
+        self,
+        dcx: rustc_errors::DiagCtxtHandle<'a>,
+        level: rustc_errors::Level,
+    ) -> rustc_errors::Diag<'a, ()> {
+        let Self { abi } = self;
+        let mut diag = rustc_errors::Diag::new(
+            dcx,
+            level,
+            format!("{abi} is not a supported ABI for the current target"),
+        );
+        add_abi_diag_help(abi, &mut diag);
+        diag
+    }
+}
+
 pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi) {
     // FIXME: This should be checked earlier, e.g. in `rustc_ast_lowering`, as this
     // currently only guards function imports, function definitions, and function pointer types.
@@ -66,12 +87,12 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi
             tcx.dcx().span_delayed_bug(span, format!("{abi} should be rejected in ast_lowering"));
         }
         AbiMapping::Deprecated(..) => {
-            tcx.node_span_lint(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
-                lint.primary_message(format!(
-                    "{abi} is not a supported ABI for the current target"
-                ));
-                add_abi_diag_help(abi, lint);
-            });
+            tcx.node_span_lint(
+                UNSUPPORTED_CALLING_CONVENTIONS,
+                hir_id,
+                span,
+                NotSupportedAbi { abi },
+            );
         }
     }
 }
@@ -174,6 +195,11 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
     true
 }
 
+#[derive(rustc_macros::Diagnostic)]
+#[diag("static of uninhabited type")]
+#[note("uninhabited statics cannot be initialized, and any access would be an immediate error")]
+struct UninhabitedStaticType;
+
 /// Check that a `static` is inhabited.
 fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // Make sure statics are inhabited.
@@ -210,11 +236,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             UNINHABITED_STATIC,
             tcx.local_def_id_to_hir_id(def_id),
             span,
-            |lint| {
-                lint.primary_message("static of uninhabited type");
-                lint
-                .note("uninhabited statics cannot be initialized, and any access would be an immediate error");
-            },
+            UninhabitedStaticType,
         );
     }
 }
@@ -1713,6 +1735,46 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         ReprC,
     }
 
+    struct UnsuitedError<'tcx> {
+        unsuited: UnsuitedInfo<'tcx>,
+    }
+
+    impl<'a, 'tcx> rustc_errors::Diagnostic<'a, ()> for UnsuitedError<'tcx> {
+        fn into_diag(
+            self,
+            dcx: rustc_errors::DiagCtxtHandle<'a>,
+            level: rustc_errors::Level,
+        ) -> rustc_errors::Diag<'a, ()> {
+            let Self { unsuited } = self;
+            let title = match unsuited.reason {
+                UnsuitedReason::NonExhaustive => "external non-exhaustive types",
+                UnsuitedReason::PrivateField => "external types with private fields",
+                UnsuitedReason::ReprC => "`repr(C)` types",
+            };
+            let mut lint = rustc_errors::Diag::new(
+                dcx,
+                level,
+                format!("zero-sized fields in `repr(transparent)` cannot contain {title}"),
+            );
+            let note = match unsuited.reason {
+                UnsuitedReason::NonExhaustive => {
+                    "is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future."
+                }
+                UnsuitedReason::PrivateField => {
+                    "contains private fields, so it could become non-zero-sized in the future."
+                }
+                UnsuitedReason::ReprC => {
+                    "is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets."
+                }
+            };
+            lint.note(format!(
+                "this field contains `{field_ty}`, which {note}",
+                field_ty = unsuited.ty,
+            ));
+            lint
+        }
+    }
+
     fn check_unsuited<'tcx>(
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
@@ -1767,25 +1829,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                     REPR_TRANSPARENT_NON_ZST_FIELDS,
                     tcx.local_def_id_to_hir_id(adt.did().expect_local()),
                     field.span,
-                    |lint| {
-                        let title = match unsuited.reason {
-                            UnsuitedReason::NonExhaustive => "external non-exhaustive types",
-                            UnsuitedReason::PrivateField => "external types with private fields",
-                            UnsuitedReason::ReprC => "`repr(C)` types",
-                        };
-                        lint.primary_message(
-                            format!("zero-sized fields in `repr(transparent)` cannot contain {title}"),
-                        );
-                        let note = match unsuited.reason {
-                            UnsuitedReason::NonExhaustive => "is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future.",
-                            UnsuitedReason::PrivateField => "contains private fields, so it could become non-zero-sized in the future.",
-                            UnsuitedReason::ReprC => "is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets.",
-                        };
-                        lint.note(format!(
-                            "this field contains `{field_ty}`, which {note}",
-                            field_ty = unsuited.ty,
-                        ));
-                    },
+                    UnsuitedError { unsuited },
                 );
             } else {
                 prev_unsuited_1zst = true;

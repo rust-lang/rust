@@ -80,6 +80,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
     pub(crate) fn warn_if_unreachable(&self, id: HirId, span: Span, kind: &str) {
+        struct UnreachableError<'a> {
+            msg: String,
+            span: Span,
+            orig_span: Span,
+            custom_note: Option<&'a str>,
+        }
+
+        impl<'a, 'b> rustc_errors::Diagnostic<'a, ()> for UnreachableError<'b> {
+            fn into_diag(
+                self,
+                dcx: rustc_errors::DiagCtxtHandle<'a>,
+                level: rustc_errors::Level,
+            ) -> rustc_errors::Diag<'a, ()> {
+                let Self { msg, span, orig_span, custom_note } = self;
+                let mut lint = rustc_errors::Diag::new(dcx, level, msg.clone());
+                lint.span_label(span, msg);
+                lint.span_label(
+                    orig_span,
+                    custom_note
+                        .unwrap_or("any code following this expression is unreachable")
+                        .to_string(),
+                );
+                lint
+            }
+        }
+
         let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() else {
             return;
         };
@@ -103,13 +129,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
         let msg = format!("unreachable {kind}");
-        self.tcx().node_span_lint(lint::builtin::UNREACHABLE_CODE, id, span, |lint| {
-            lint.primary_message(msg.clone());
-            lint.span_label(span, msg).span_label(
-                orig_span,
-                custom_note.unwrap_or("any code following this expression is unreachable"),
-            );
-        })
+        self.tcx().node_span_lint(
+            lint::builtin::UNREACHABLE_CODE,
+            id,
+            span,
+            UnreachableError { msg, span, orig_span, custom_note },
+        );
     }
 
     /// Resolves type and const variables in `t` if possible. Unlike the infcx

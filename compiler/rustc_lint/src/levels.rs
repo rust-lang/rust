@@ -2,7 +2,7 @@ use rustc_ast::attr::AttributeExt;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{Diag, Diagnostic, MultiSpan, msg};
+use rustc_errors::{Diagnostic, MultiSpan, msg};
 use rustc_feature::{Features, GateIssue};
 use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -928,6 +928,34 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// Returns `true` if the lint's feature is enabled.
     #[track_caller]
     fn check_gated_lint(&self, lint_id: LintId, span: Span, lint_from_cli: bool) -> bool {
+        struct Gated<'a> {
+            feature: Symbol,
+            sess: &'a Session,
+            lint_from_cli: bool,
+            lint_name: String,
+        }
+
+        impl<'a, 'b> rustc_errors::Diagnostic<'a, ()> for Gated<'b> {
+            fn into_diag(
+                self,
+                dcx: rustc_errors::DiagCtxtHandle<'a>,
+                level: rustc_errors::Level,
+            ) -> rustc_errors::Diag<'a, ()> {
+                let mut diag = rustc_errors::Diag::new(dcx, level, msg!("unknown lint: `{$name}`"));
+                diag.arg("name", self.lint_name);
+                diag.note(msg!("the `{$name}` lint is unstable"));
+                rustc_session::parse::add_feature_diagnostics_for_issue(
+                    &mut diag,
+                    self.sess,
+                    self.feature,
+                    GateIssue::Language,
+                    self.lint_from_cli,
+                    None,
+                );
+                diag
+            }
+        }
+
         let feature = if let Some(feature) = lint_id.lint.feature_gate
             && !self.features.enabled(feature)
             && !span.allows_unstable(feature)
@@ -942,19 +970,18 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         if self.lint_added_lints {
             let lint = builtin::UNKNOWN_LINTS;
             let level = self.lint_level(builtin::UNKNOWN_LINTS);
-            lint_level(self.sess, lint, level, Some(span.into()), |lint| {
-                lint.primary_message(msg!("unknown lint: `{$name}`"));
-                lint.arg("name", lint_id.lint.name_lower());
-                lint.note(msg!("the `{$name}` lint is unstable"));
-                rustc_session::parse::add_feature_diagnostics_for_issue(
-                    lint,
-                    &self.sess,
+            lint_level(
+                self.sess,
+                lint,
+                level,
+                Some(span.into()),
+                Gated {
                     feature,
-                    GateIssue::Language,
+                    sess: self.sess,
                     lint_from_cli,
-                    None,
-                );
-            });
+                    lint_name: lint_id.lint.name_lower(),
+                },
+            );
         }
 
         false
@@ -974,7 +1001,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
+        decorate: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level(lint);
         lint_level(self.sess, lint, level, span, decorate)
@@ -988,19 +1015,13 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         decorate: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level(lint);
-        lint_level(self.sess, lint, level, Some(span), |lint| {
-            let diag = decorate.into_diag(lint.dcx, lint.level());
-            lint.merge_with_other_diag(diag);
-        });
+        lint_level(self.sess, lint, level, Some(span), decorate);
     }
 
     #[track_caller]
     pub fn emit_lint(&self, lint: &'static Lint, decorate: impl for<'a> Diagnostic<'a, ()>) {
         let level = self.lint_level(lint);
-        lint_level(self.sess, lint, level, None, |lint| {
-            let diag = decorate.into_diag(lint.dcx, lint.level());
-            lint.merge_with_other_diag(diag);
-        });
+        lint_level(self.sess, lint, level, None, decorate);
     }
 }
 

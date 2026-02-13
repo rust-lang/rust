@@ -93,6 +93,10 @@ impl<'tcx> TyCtxt<'tcx> {
         ct: ty::UnevaluatedConst<'tcx>,
         span: Span,
     ) -> ConstToValTreeResult<'tcx> {
+        #[derive(rustc_macros::Diagnostic)]
+        #[diag("cannot use constants which depend on generic parameters in types")]
+        struct Inner;
+
         // Cannot resolve `Unevaluated` constants that contain inference
         // variables. We reject those here since `resolve`
         // would fail otherwise.
@@ -143,11 +147,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         lint::builtin::CONST_EVALUATABLE_UNCHECKED,
                         self.local_def_id_to_hir_id(local_def_id),
                         self.def_span(ct.def),
-                        |lint| {
-                            lint.primary_message(
-                                "cannot use constants which depend on generic parameters in types",
-                            );
-                        },
+                        Inner,
                     )
                 }
             }

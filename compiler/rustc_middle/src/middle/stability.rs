@@ -561,10 +561,14 @@ impl<'tcx> TyCtxt<'tcx> {
         allow_unstable: AllowUnstable,
         unmarked: impl FnOnce(Span, DefId),
     ) -> bool {
+        #[derive(rustc_macros::Diagnostic)]
+        #[diag("{$msg}")]
+        struct Inner {
+            msg: String,
+        }
+
         let soft_handler = |lint, span, msg: String| {
-            self.node_span_lint(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
-                lint.primary_message(msg);
-            })
+            self.node_span_lint(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, Inner { msg });
         };
         let eval_result =
             self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable);

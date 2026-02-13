@@ -85,49 +85,50 @@ impl<'tcx> LateLintPass<'tcx> for NonPanicFmt {
     }
 }
 
-fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tcx hir::Expr<'tcx>) {
-    if let hir::ExprKind::Lit(lit) = &arg.kind {
-        if let ast::LitKind::Str(sym, _) = lit.node {
-            // The argument is a string literal.
-            check_panic_str(cx, f, arg, sym.as_str());
-            return;
+struct PanicMessage<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    symbol: Symbol,
+    span: Span,
+    arg: &'tcx hir::Expr<'tcx>,
+    panic: Option<Symbol>,
+}
+
+impl<'a, 'b, 'tcx> rustc_errors::Diagnostic<'a, ()> for PanicMessage<'b, 'tcx> {
+    fn into_diag(
+        self,
+        dcx: rustc_errors::DiagCtxtHandle<'a>,
+        level: rustc_errors::Level,
+    ) -> rustc_errors::Diag<'a, ()> {
+        let Self { cx, symbol, span, arg, panic } = self;
+
+        // Find the span of the argument to `panic!()` or `unreachable!`, before expansion in the
+        // case of `panic!(some_macro!())` or `unreachable!(some_macro!())`.
+        // We don't use source_callsite(), because this `panic!(..)` might itself
+        // be expanded from another macro, in which case we want to stop at that
+        // expansion.
+        let mut arg_span = arg.span;
+        let mut arg_macro = None;
+        while !span.contains(arg_span) {
+            let ctxt = arg_span.ctxt();
+            if ctxt.is_root() {
+                break;
+            }
+            let expn = ctxt.outer_expn_data();
+            arg_macro = expn.macro_def_id;
+            arg_span = expn.call_site;
         }
-    }
 
-    // The argument is *not* a string literal.
-
-    let (span, panic, symbol) = panic_call(cx, f);
-
-    if span.in_external_macro(cx.sess().source_map()) {
-        // Nothing that can be done about it in the current crate.
-        return;
-    }
-
-    // Find the span of the argument to `panic!()` or `unreachable!`, before expansion in the
-    // case of `panic!(some_macro!())` or `unreachable!(some_macro!())`.
-    // We don't use source_callsite(), because this `panic!(..)` might itself
-    // be expanded from another macro, in which case we want to stop at that
-    // expansion.
-    let mut arg_span = arg.span;
-    let mut arg_macro = None;
-    while !span.contains(arg_span) {
-        let ctxt = arg_span.ctxt();
-        if ctxt.is_root() {
-            break;
-        }
-        let expn = ctxt.outer_expn_data();
-        arg_macro = expn.macro_def_id;
-        arg_span = expn.call_site;
-    }
-
-    cx.span_lint(NON_FMT_PANICS, arg_span, |lint| {
-        lint.primary_message(msg!("panic message is not a string literal"));
+        let mut lint = rustc_errors::Diag::new(dcx, level, "panic message is not a string literal");
         lint.arg("name", symbol);
-        lint.note(msg!("this usage of `{$name}!()` is deprecated; it will be a hard error in Rust 2021"));
-        lint.note(msg!("for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>"));
+        lint.note(msg!(
+            "this usage of `{$name}!()` is deprecated; it will be a hard error in Rust 2021"
+        ));
+        lint.note(msg!(
+            "for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>"
+        ));
         if !is_arg_inside_call(arg_span, span) {
             // No clue where this argument is coming from.
-            return;
+            return lint;
         }
         if arg_macro.is_some_and(|id| cx.tcx.is_diagnostic_item(sym::format_macro, id)) {
             // A case of `panic!(format!(..))`.
@@ -215,7 +216,29 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 }
             }
         }
-    });
+        lint
+    }
+}
+
+fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tcx hir::Expr<'tcx>) {
+    if let hir::ExprKind::Lit(lit) = &arg.kind {
+        if let ast::LitKind::Str(sym, _) = lit.node {
+            // The argument is a string literal.
+            check_panic_str(cx, f, arg, sym.as_str());
+            return;
+        }
+    }
+
+    // The argument is *not* a string literal.
+
+    let (span, panic, symbol) = panic_call(cx, f);
+
+    if span.in_external_macro(cx.sess().source_map()) {
+        // Nothing that can be done about it in the current crate.
+        return;
+    }
+
+    cx.span_lint(NON_FMT_PANICS, arg.span, PanicMessage { cx, symbol, span, arg, panic });
 }
 
 fn check_panic_str<'tcx>(

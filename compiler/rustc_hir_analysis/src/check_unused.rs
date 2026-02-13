@@ -5,6 +5,24 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
 use tracing::debug;
 
+struct UnusedImport {
+    snippet: Option<String>,
+}
+
+impl<'a> rustc_errors::Diagnostic<'a, ()> for UnusedImport {
+    fn into_diag(
+        self,
+        dcx: rustc_errors::DiagCtxtHandle<'a>,
+        level: rustc_errors::Level,
+    ) -> rustc_errors::Diag<'a, ()> {
+        if let Some(snippet) = self.snippet {
+            rustc_errors::Diag::new(dcx, level, format!("unused import: `{snippet}`"))
+        } else {
+            rustc_errors::Diag::new(dcx, level, "unused import")
+        }
+    }
+}
+
 pub(super) fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
     let mut used_trait_imports = UnordSet::<LocalDefId>::default();
 
@@ -31,12 +49,12 @@ pub(super) fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
             continue;
         }
         let (path, _) = item.expect_use();
-        tcx.node_span_lint(lint::builtin::UNUSED_IMPORTS, item.hir_id(), path.span, |lint| {
-            if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(path.span) {
-                lint.primary_message(format!("unused import: `{snippet}`"));
-            } else {
-                lint.primary_message("unused import");
-            }
-        });
+        let snippet = tcx.sess.source_map().span_to_snippet(path.span).ok();
+        tcx.node_span_lint(
+            lint::builtin::UNUSED_IMPORTS,
+            item.hir_id(),
+            path.span,
+            UnusedImport { snippet },
+        );
     }
 }

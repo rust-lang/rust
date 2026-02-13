@@ -390,6 +390,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     where
         OP: FnOnce(ProbeContext<'_, 'tcx>) -> Result<R, MethodError<'tcx>>,
     {
+        #[derive(rustc_macros::Diagnostic)]
+        #[diag("type annotations needed")]
+        struct TypeAnnotationNeededError;
+
         let mut orig_values = OriginalQueryValues::default();
         let predefined_opaques_in_body = if self.next_trait_solver() {
             self.tcx.mk_predefined_opaques_in_body_from_iter(
@@ -476,9 +480,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                     scope_expr_id,
                     span,
-                    |lint| {
-                        lint.primary_message("type annotations needed");
-                    },
+                    TypeAnnotationNeededError,
                 );
             } else {
                 // Ended up encountering a type variable when doing autoderef,
@@ -1824,47 +1826,72 @@ impl<'tcx> Pick<'tcx> {
         span: Span,
         scope_expr_id: HirId,
     ) {
+        struct FutureStdItemError<'a, 'tcx> {
+            this: &'a Pick<'tcx>,
+            tcx: TyCtxt<'tcx>,
+            span: Span,
+        }
+
+        impl<'a, 'b, 'tcx> rustc_errors::Diagnostic<'a, ()> for FutureStdItemError<'b, 'tcx> {
+            fn into_diag(
+                self,
+                dcx: rustc_errors::DiagCtxtHandle<'a>,
+                level: rustc_errors::Level,
+            ) -> rustc_errors::Diag<'a, ()> {
+                let Self { this, tcx, span } = self;
+                let def_kind = this.item.as_def_kind();
+                let mut lint = rustc_errors::Diag::new(
+                    dcx,
+                    level,
+                    format!(
+                        "{} {} with this name may be added to the standard library in the future",
+                        tcx.def_kind_descr_article(def_kind, this.item.def_id),
+                        tcx.def_kind_descr(def_kind, this.item.def_id),
+                    ),
+                );
+
+                match (this.item.kind, this.item.container) {
+                    (ty::AssocKind::Fn { .. }, _) => {
+                        // FIXME: This should be a `span_suggestion` instead of `help`
+                        // However `self.span` only
+                        // highlights the method name, so we can't use it. Also consider reusing
+                        // the code from `report_method_error()`.
+                        lint.help(format!(
+                            "call with fully qualified syntax `{}(...)` to keep using the current \
+                                 method",
+                            tcx.def_path_str(this.item.def_id),
+                        ));
+                    }
+                    (ty::AssocKind::Const { name }, ty::AssocContainer::Trait) => {
+                        let def_id = this.item.container_id(tcx);
+                        lint.span_suggestion(
+                            span,
+                            "use the fully qualified path to the associated const",
+                            format!("<{} as {}>::{}", this.self_ty, tcx.def_path_str(def_id), name),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    _ => {}
+                }
+                tcx.disabled_nightly_features(
+                    &mut lint,
+                    this.unstable_candidates.iter().map(|(candidate, feature)| {
+                        (format!(" `{}`", tcx.def_path_str(candidate.item.def_id)), *feature)
+                    }),
+                );
+                lint
+            }
+        }
+
         if self.unstable_candidates.is_empty() {
             return;
         }
-        let def_kind = self.item.as_def_kind();
-        tcx.node_span_lint(lint::builtin::UNSTABLE_NAME_COLLISIONS, scope_expr_id, span, |lint| {
-            lint.primary_message(format!(
-                "{} {} with this name may be added to the standard library in the future",
-                tcx.def_kind_descr_article(def_kind, self.item.def_id),
-                tcx.def_kind_descr(def_kind, self.item.def_id),
-            ));
-
-            match (self.item.kind, self.item.container) {
-                (ty::AssocKind::Fn { .. }, _) => {
-                    // FIXME: This should be a `span_suggestion` instead of `help`
-                    // However `self.span` only
-                    // highlights the method name, so we can't use it. Also consider reusing
-                    // the code from `report_method_error()`.
-                    lint.help(format!(
-                        "call with fully qualified syntax `{}(...)` to keep using the current \
-                             method",
-                        tcx.def_path_str(self.item.def_id),
-                    ));
-                }
-                (ty::AssocKind::Const { name }, ty::AssocContainer::Trait) => {
-                    let def_id = self.item.container_id(tcx);
-                    lint.span_suggestion(
-                        span,
-                        "use the fully qualified path to the associated const",
-                        format!("<{} as {}>::{}", self.self_ty, tcx.def_path_str(def_id), name),
-                        Applicability::MachineApplicable,
-                    );
-                }
-                _ => {}
-            }
-            tcx.disabled_nightly_features(
-                lint,
-                self.unstable_candidates.iter().map(|(candidate, feature)| {
-                    (format!(" `{}`", tcx.def_path_str(candidate.item.def_id)), *feature)
-                }),
-            );
-        });
+        tcx.node_span_lint(
+            lint::builtin::UNSTABLE_NAME_COLLISIONS,
+            scope_expr_id,
+            span,
+            FutureStdItemError { this: self, tcx, span },
+        );
     }
 }
 

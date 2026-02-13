@@ -229,6 +229,29 @@ fn check_ptr_transmute_in_const<'tcx>(
     }
 }
 
+struct UnnecessaryTransmute {
+    sugg: Option<Vec<(rustc_span::Span, String)>>,
+    help: Option<&'static str>,
+}
+
+impl<'a> rustc_errors::Diagnostic<'a, ()> for UnnecessaryTransmute {
+    fn into_diag(
+        self,
+        dcx: rustc_errors::DiagCtxtHandle<'a>,
+        level: rustc_errors::Level,
+    ) -> rustc_errors::Diag<'a, ()> {
+        let Self { sugg, help } = self;
+        let mut diag = rustc_errors::Diag::new(dcx, level, "unnecessary transmute");
+        if let Some(sugg) = sugg {
+            diag.multipart_suggestion("replace this with", sugg, Applicability::MachineApplicable);
+        }
+        if let Some(help) = help {
+            diag.help(help);
+        }
+        diag
+    }
+}
+
 /// Check for transmutes that overlap with stdlib methods.
 /// For example, transmuting `[u8; 4]` to `u32`.
 ///
@@ -357,15 +380,12 @@ fn check_unnecessary_transmute<'tcx>(
         _ => return,
     };
 
-    cx.tcx.node_span_lint(UNNECESSARY_TRANSMUTES, expr.hir_id, expr.span, |diag| {
-        diag.primary_message("unnecessary transmute");
-        if let Some(sugg) = sugg {
-            diag.multipart_suggestion("replace this with", sugg, Applicability::MachineApplicable);
-        }
-        if let Some(help) = help {
-            diag.help(help);
-        }
-    });
+    cx.tcx.node_span_lint(
+        UNNECESSARY_TRANSMUTES,
+        expr.hir_id,
+        expr.span,
+        UnnecessaryTransmute { sugg, help },
+    );
 }
 
 #[derive(Diagnostic)]

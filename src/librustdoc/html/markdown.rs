@@ -37,7 +37,7 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Weak};
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_errors::{Diag, DiagMessage};
+use rustc_errors::DiagMessage;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
 pub(crate) use rustc_resolve::rustdoc::main_body_opts;
@@ -798,30 +798,32 @@ impl<'tcx> ExtraInfo<'tcx> {
         ExtraInfo { def_id, sp, tcx }
     }
 
-    fn error_invalid_codeblock_attr(&self, msg: impl Into<DiagMessage>) {
-        self.tcx.node_span_lint(
-            crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
-            self.tcx.local_def_id_to_hir_id(self.def_id),
-            self.sp,
-            |lint| {
-                lint.primary_message(msg);
-            },
-        );
-    }
+    fn error_invalid_codeblock_attr(&self, msg: impl Into<DiagMessage>, help: Vec<String>) {
+        struct InvalidCodeblockAttr<D: Into<DiagMessage>> {
+            msg: D,
+            help: Vec<String>,
+        }
 
-    fn error_invalid_codeblock_attr_with_help(
-        &self,
-        msg: impl Into<DiagMessage>,
-        f: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
-    ) {
+        impl<'a, D: Into<DiagMessage>> rustc_errors::Diagnostic<'a, ()> for InvalidCodeblockAttr<D> {
+            fn into_diag(
+                self,
+                dcx: rustc_errors::DiagCtxtHandle<'a>,
+                level: rustc_errors::Level,
+            ) -> rustc_errors::Diag<'a, ()> {
+                let Self { msg, help } = self;
+                let mut diag = rustc_errors::Diag::new(dcx, level, msg);
+                for help in help {
+                    diag.help(help);
+                }
+                diag
+            }
+        }
+
         self.tcx.node_span_lint(
             crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
             self.tcx.local_def_id_to_hir_id(self.def_id),
             self.sp,
-            |lint| {
-                lint.primary_message(msg);
-                f(lint);
-            },
+            InvalidCodeblockAttr { msg, help },
         );
     }
 }
@@ -931,7 +933,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
 
     fn emit_error(&mut self, err: impl Into<DiagMessage>) {
         if let Some(extra) = self.extra {
-            extra.error_invalid_codeblock_attr(err);
+            extra.error_invalid_codeblock_attr(err, Vec::new());
         }
         self.is_error = true;
     }
@@ -1236,13 +1238,11 @@ impl LangString {
                             && edition.parse::<Edition>().is_ok()
                             && let Some(extra) = extra =>
                     {
-                        extra.error_invalid_codeblock_attr_with_help(
+                        extra.error_invalid_codeblock_attr(
                             format!("unknown attribute `{x}`"),
-                            |lint| {
-                                lint.help(format!(
-                                    "there is an attribute with a similar name: `edition{edition}`"
-                                ));
-                            },
+                            vec![format!(
+                                "there is an attribute with a similar name: `edition{edition}`"
+                            )],
                         );
                     }
                     LangStringToken::LangToken(x)
@@ -1285,16 +1285,16 @@ impl LangString {
                             }
                             _ => None,
                         } {
-                            extra.error_invalid_codeblock_attr_with_help(
+                            extra.error_invalid_codeblock_attr(
                                 format!("unknown attribute `{x}`"),
-                                |lint| {
-                                    lint.help(help).help(
-                                        "this code block may be skipped during testing, \
-                                            because unknown attributes are treated as markers for \
-                                            code samples written in other programming languages, \
-                                            unless it is also explicitly marked as `rust`",
-                                    );
-                                },
+                                vec![
+                                    help.to_owned(),
+                                    "this code block may be skipped during testing, \
+                                        because unknown attributes are treated as markers for \
+                                        code samples written in other programming languages, \
+                                        unless it is also explicitly marked as `rust`"
+                                        .to_owned(),
+                                ],
                             );
                         }
                         seen_other_tags = true;
@@ -1308,8 +1308,10 @@ impl LangString {
                         data.added_classes.push(value.to_owned());
                     }
                     LangStringToken::KeyValueAttribute(key, ..) if let Some(extra) = extra => {
-                        extra
-                            .error_invalid_codeblock_attr(format!("unsupported attribute `{key}`"));
+                        extra.error_invalid_codeblock_attr(
+                            format!("unsupported attribute `{key}`"),
+                            Vec::new(),
+                        );
                     }
                     LangStringToken::ClassAttribute(class) => {
                         data.added_classes.push(class.to_owned());

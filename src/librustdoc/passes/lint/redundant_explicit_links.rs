@@ -142,6 +142,42 @@ fn check_redundant_explicit_link<'md>(
     None
 }
 
+struct RedundantExplicitLinksError {
+    explicit_span: rustc_span::Span,
+    display_span: rustc_span::Span,
+    def_span: Option<rustc_span::Span>,
+    link_span: rustc_span::Span,
+    display_link: String,
+}
+
+impl<'a> rustc_errors::Diagnostic<'a, ()> for RedundantExplicitLinksError {
+    fn into_diag(
+        self,
+        dcx: rustc_errors::DiagCtxtHandle<'a>,
+        level: rustc_errors::Level,
+    ) -> rustc_errors::Diag<'a, ()> {
+        let Self { explicit_span, display_span, def_span, link_span, display_link } = self;
+        let mut diag = rustc_errors::Diag::new(dcx, level, "redundant explicit link target");
+        diag.span_label(explicit_span, "explicit target is redundant");
+        diag.span_label(
+            display_span,
+            "because label contains path that resolves to same destination",
+        );
+        if let Some(def_span) = def_span {
+            diag.span_note(def_span, "referenced explicit link target defined here");
+        }
+        diag.note("when a link's destination is not specified,\nthe label is used to resolve intra-doc links");
+        diag.span_suggestion_with_style(
+            link_span,
+            "remove explicit link target",
+            display_link,
+            Applicability::MaybeIncorrect,
+            SuggestionStyle::ShowAlways,
+        );
+        diag
+    }
+}
+
 /// FIXME(ChAoSUnItY): Too many arguments.
 fn check_inline_or_reference_unknown_redundancy(
     cx: &DocContext<'_>,
@@ -192,13 +228,18 @@ fn check_inline_or_reference_unknown_redundancy(
             return None;
         };
 
-        cx.tcx.node_span_lint(crate::lint::REDUNDANT_EXPLICIT_LINKS, hir_id, explicit_span, |lint| {
-            lint.primary_message("redundant explicit link target")
-                .span_label(explicit_span, "explicit target is redundant")
-                .span_label(display_span, "because label contains path that resolves to same destination")
-                .note("when a link's destination is not specified,\nthe label is used to resolve intra-doc links")
-                .span_suggestion_with_style(link_span, "remove explicit link target", format!("[{}]", link_data.display_link), Applicability::MaybeIncorrect, SuggestionStyle::ShowAlways);
-        });
+        cx.tcx.node_span_lint(
+            crate::lint::REDUNDANT_EXPLICIT_LINKS,
+            hir_id,
+            explicit_span,
+            RedundantExplicitLinksError {
+                explicit_span,
+                display_span,
+                def_span: None,
+                link_span,
+                display_link: format!("[{}]", link_data.display_link),
+            },
+        );
     }
 
     None
@@ -259,14 +300,18 @@ fn check_reference_redundancy(
             &item.attrs.doc_strings,
         )?;
 
-        cx.tcx.node_span_lint(crate::lint::REDUNDANT_EXPLICIT_LINKS, hir_id, explicit_span, |lint| {
-            lint.primary_message("redundant explicit link target")
-            .span_label(explicit_span, "explicit target is redundant")
-                .span_label(display_span, "because label contains path that resolves to same destination")
-                .span_note(def_span, "referenced explicit link target defined here")
-                .note("when a link's destination is not specified,\nthe label is used to resolve intra-doc links")
-                .span_suggestion_with_style(link_span, "remove explicit link target", format!("[{}]", link_data.display_link), Applicability::MaybeIncorrect, SuggestionStyle::ShowAlways);
-        });
+        cx.tcx.node_span_lint(
+            crate::lint::REDUNDANT_EXPLICIT_LINKS,
+            hir_id,
+            explicit_span,
+            RedundantExplicitLinksError {
+                explicit_span,
+                display_span,
+                def_span: Some(def_span),
+                link_span,
+                display_link: format!("[{}]", link_data.display_link),
+            },
+        );
     }
 
     None

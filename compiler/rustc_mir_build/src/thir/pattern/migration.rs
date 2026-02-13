@@ -41,6 +41,24 @@ impl<'a> PatMigration<'a> {
     /// On Rust 2024, this emits a hard error. On earlier Editions, this emits the
     /// future-incompatibility lint `rust_2024_incompatible_pat`.
     pub(super) fn emit<'tcx>(self, tcx: TyCtxt<'tcx>, pat_id: HirId) {
+        struct PatMigrationError<'a> {
+            msg: String,
+            pat_migration: PatMigration<'a>,
+        }
+
+        impl<'a, 'b> rustc_errors::Diagnostic<'a, ()> for PatMigrationError<'b> {
+            fn into_diag(
+                self,
+                dcx: rustc_errors::DiagCtxtHandle<'a>,
+                level: rustc_errors::Level,
+            ) -> rustc_errors::Diag<'a, ()> {
+                let Self { msg, pat_migration } = self;
+                let mut diag = rustc_errors::Diag::new(dcx, level, msg);
+                pat_migration.format_subdiagnostics(&mut diag);
+                diag
+            }
+        }
+
         let mut spans =
             MultiSpan::from_spans(self.info.primary_labels.iter().map(|(span, _)| *span).collect());
         for (span, label) in self.info.primary_labels.iter() {
@@ -55,10 +73,12 @@ impl<'a> PatMigration<'a> {
             self.format_subdiagnostics(&mut err);
             err.emit();
         } else {
-            tcx.node_span_lint(lint::builtin::RUST_2024_INCOMPATIBLE_PAT, pat_id, spans, |diag| {
-                diag.primary_message(primary_message);
-                self.format_subdiagnostics(diag);
-            });
+            tcx.node_span_lint(
+                lint::builtin::RUST_2024_INCOMPATIBLE_PAT,
+                pat_id,
+                spans,
+                PatMigrationError { msg: primary_message, pat_migration: self },
+            );
         }
     }
 

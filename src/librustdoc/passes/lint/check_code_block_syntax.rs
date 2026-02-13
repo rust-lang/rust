@@ -34,6 +34,59 @@ fn check_rust_syntax(
     dox: &str,
     code_block: RustCodeBlock,
 ) {
+    struct DiagError<'a> {
+        msg: &'static str,
+        precise_span: bool,
+        is_ignore: bool,
+        empty_block: bool,
+        sp: rustc_span::Span,
+        messages: &'a [String],
+    }
+
+    impl<'a, 'b> rustc_errors::Diagnostic<'a, ()> for DiagError<'b> {
+        fn into_diag(
+            self,
+            dcx: rustc_errors::DiagCtxtHandle<'a>,
+            level: rustc_errors::Level,
+        ) -> rustc_errors::Diag<'a, ()> {
+            let Self { msg, precise_span, is_ignore, empty_block, sp, messages } = self;
+            let mut lint = rustc_errors::Diag::new(dcx, level, msg);
+
+            let explanation = if is_ignore {
+                "`ignore` code blocks require valid Rust code for syntax highlighting; \
+                 mark blocks that do not contain Rust code as text"
+            } else {
+                "mark blocks that do not contain Rust code as text"
+            };
+
+            if precise_span {
+                if is_ignore {
+                    // giving an accurate suggestion is hard because `ignore` might not have come first in the list.
+                    // just give a `help` instead.
+                    lint.span_help(
+                        sp.from_inner(InnerSpan::new(0, 3)),
+                        format!("{explanation}: ```text"),
+                    );
+                } else if empty_block {
+                    lint.span_suggestion(
+                        sp.from_inner(InnerSpan::new(0, 3)).shrink_to_hi(),
+                        explanation,
+                        "text",
+                        Applicability::MachineApplicable,
+                    );
+                }
+            } else if empty_block || is_ignore {
+                lint.help(format!("{explanation}: ```text"));
+            }
+
+            // FIXME(#67563): Provide more context for these errors by displaying the spans inline.
+            for message in messages.iter() {
+                lint.note(message.clone());
+            }
+            lint
+        }
+    }
+
     let buffer = Arc::new(Lock::new(Buffer::default()));
     let translator = rustc_driver::default_translator();
     let emitter = BufferEmitter { buffer: Arc::clone(&buffer), translator };
@@ -100,41 +153,12 @@ fn check_rust_syntax(
     // All points of divergence have been handled earlier so this can be
     // done the same way whether the span is precise or not.
     let hir_id = cx.tcx.local_def_id_to_hir_id(local_id);
-    cx.tcx.node_span_lint(crate::lint::INVALID_RUST_CODEBLOCKS, hir_id, sp, |lint| {
-        lint.primary_message(msg);
-
-        let explanation = if is_ignore {
-            "`ignore` code blocks require valid Rust code for syntax highlighting; \
-                    mark blocks that do not contain Rust code as text"
-        } else {
-            "mark blocks that do not contain Rust code as text"
-        };
-
-        if precise_span {
-            if is_ignore {
-                // giving an accurate suggestion is hard because `ignore` might not have come first in the list.
-                // just give a `help` instead.
-                lint.span_help(
-                    sp.from_inner(InnerSpan::new(0, 3)),
-                    format!("{explanation}: ```text"),
-                );
-            } else if empty_block {
-                lint.span_suggestion(
-                    sp.from_inner(InnerSpan::new(0, 3)).shrink_to_hi(),
-                    explanation,
-                    "text",
-                    Applicability::MachineApplicable,
-                );
-            }
-        } else if empty_block || is_ignore {
-            lint.help(format!("{explanation}: ```text"));
-        }
-
-        // FIXME(#67563): Provide more context for these errors by displaying the spans inline.
-        for message in buffer.messages.iter() {
-            lint.note(message.clone());
-        }
-    });
+    cx.tcx.node_span_lint(
+        crate::lint::INVALID_RUST_CODEBLOCKS,
+        hir_id,
+        sp,
+        DiagError { msg, precise_span, is_ignore, empty_block, sp, messages: &buffer.messages },
+    );
 }
 
 #[derive(Default)]

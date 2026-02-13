@@ -1902,69 +1902,91 @@ fn report_diagnostic(
     DiagnosticInfo { item, ori_link: _, dox, link_range }: &DiagnosticInfo<'_>,
     decorate: impl FnOnce(&mut Diag<'_, ()>, Option<rustc_span::Span>, MarkdownLinkRange),
 ) {
+    struct DiagError<'a, D: Into<DiagMessage>, F> {
+        msg: D,
+        dox: &'a str,
+        link_range: MarkdownLinkRange,
+        span: Option<rustc_span::Span>,
+        decorate: F,
+    }
+
+    impl<
+        'a,
+        'b,
+        D: Into<DiagMessage>,
+        F: FnOnce(&mut Diag<'a, ()>, Option<rustc_span::Span>, MarkdownLinkRange),
+    > rustc_errors::Diagnostic<'a, ()> for DiagError<'b, D, F>
+    {
+        fn into_diag(
+            self,
+            dcx: rustc_errors::DiagCtxtHandle<'a>,
+            level: rustc_errors::Level,
+        ) -> rustc_errors::Diag<'a, ()> {
+            let Self { msg, dox, link_range, span, decorate } = self;
+            let mut lint = rustc_errors::Diag::new(dcx, level, msg);
+
+            if let Some(sp) = span {
+                lint.span(sp);
+            } else {
+                // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
+                //                       ^     ~~~~
+                //                       |     link_range
+                //                       last_new_line_offset
+                let md_range = link_range.inner_range().clone();
+                let last_new_line_offset = dox[..md_range.start].rfind('\n').map_or(0, |n| n + 1);
+                let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
+
+                // Print the line containing the `md_range` and manually mark it with '^'s.
+                lint.note(format!(
+                    "the link appears in this line:\n\n{line}\n\
+                         {indicator: <before$}{indicator:^<found$}",
+                    indicator = "",
+                    before = md_range.start - last_new_line_offset,
+                    found = md_range.len(),
+                ));
+            }
+
+            decorate(&mut lint, span, link_range);
+            lint
+        }
+    }
+
     let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id) else {
         // If non-local, no need to check anything.
         info!("ignoring warning from parent crate: {msg}");
         return;
     };
 
-    let sp = item.attr_span(tcx);
-
-    tcx.node_span_lint(lint, hir_id, sp, |lint| {
-        lint.primary_message(msg);
-
-        let (span, link_range) = match link_range {
-            MarkdownLinkRange::Destination(md_range) => {
-                let mut md_range = md_range.clone();
-                let sp =
-                    source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs.doc_strings)
-                        .map(|(mut sp, _)| {
-                            while dox.as_bytes().get(md_range.start) == Some(&b' ')
-                                || dox.as_bytes().get(md_range.start) == Some(&b'`')
-                            {
-                                md_range.start += 1;
-                                sp = sp.with_lo(sp.lo() + BytePos(1));
-                            }
-                            while dox.as_bytes().get(md_range.end - 1) == Some(&b' ')
-                                || dox.as_bytes().get(md_range.end - 1) == Some(&b'`')
-                            {
-                                md_range.end -= 1;
-                                sp = sp.with_hi(sp.hi() - BytePos(1));
-                            }
-                            sp
-                        });
-                (sp, MarkdownLinkRange::Destination(md_range))
-            }
-            MarkdownLinkRange::WholeLink(md_range) => (
-                source_span_for_markdown_range(tcx, dox, md_range, &item.attrs.doc_strings)
-                    .map(|(sp, _)| sp),
-                link_range.clone(),
-            ),
-        };
-
-        if let Some(sp) = span {
-            lint.span(sp);
-        } else {
-            // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
-            //                       ^     ~~~~
-            //                       |     link_range
-            //                       last_new_line_offset
-            let md_range = link_range.inner_range().clone();
-            let last_new_line_offset = dox[..md_range.start].rfind('\n').map_or(0, |n| n + 1);
-            let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
-
-            // Print the line containing the `md_range` and manually mark it with '^'s.
-            lint.note(format!(
-                "the link appears in this line:\n\n{line}\n\
-                     {indicator: <before$}{indicator:^<found$}",
-                indicator = "",
-                before = md_range.start - last_new_line_offset,
-                found = md_range.len(),
-            ));
+    let attr_span = item.attr_span(tcx);
+    let (span, link_range) = match link_range {
+        MarkdownLinkRange::Destination(md_range) => {
+            let mut md_range = md_range.clone();
+            let sp = source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs.doc_strings)
+                .map(|(mut sp, _)| {
+                    while dox.as_bytes().get(md_range.start) == Some(&b' ')
+                        || dox.as_bytes().get(md_range.start) == Some(&b'`')
+                    {
+                        md_range.start += 1;
+                        sp = sp.with_lo(sp.lo() + BytePos(1));
+                    }
+                    while dox.as_bytes().get(md_range.end - 1) == Some(&b' ')
+                        || dox.as_bytes().get(md_range.end - 1) == Some(&b'`')
+                    {
+                        md_range.end -= 1;
+                        sp = sp.with_hi(sp.hi() - BytePos(1));
+                    }
+                    sp
+                });
+            (sp, MarkdownLinkRange::Destination(md_range))
         }
+        MarkdownLinkRange::WholeLink(md_range) => (
+            source_span_for_markdown_range(tcx, dox, md_range, &item.attrs.doc_strings)
+                .map(|(sp, _)| sp),
+            link_range.clone(),
+        ),
+    };
 
-        decorate(lint, span, link_range);
-    });
+    tcx.node_span_lint(lint, hir_id, attr_span, DiagError { msg, dox, link_range, span, decorate });
 }
 
 /// Reports a link that failed to resolve.

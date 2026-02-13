@@ -56,6 +56,7 @@ mod opaque_types;
 mod region_errors;
 
 pub(crate) use bound_region_errors::{ToUniverseInfo, UniverseInfo};
+pub(crate) use explain_borrow::BorrowExplanation;
 pub(crate) use move_errors::{IllegalMoveOriginKind, MoveError};
 pub(crate) use mutability_errors::AccessKind;
 pub(crate) use outlives_suggestion::OutlivesSuggestionBuilder;

@@ -773,6 +773,24 @@ fn run_merge_finalize(opt: config::RenderOptions) -> Result<(), error::Error> {
 }
 
 fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
+    struct DiagError<'a, 'tcx> {
+        tcx: TyCtxt<'tcx>,
+        kind: &'a rustc_hir::lints::AttributeLintKind,
+    }
+
+    impl<'a, 'b, 'tcx> rustc_errors::Diagnostic<'a, ()> for DiagError<'b, 'tcx> {
+        fn into_diag(
+            self,
+            dcx: rustc_errors::DiagCtxtHandle<'a>,
+            level: rustc_errors::Level,
+        ) -> rustc_errors::Diag<'a, ()> {
+            let Self { tcx, kind } = self;
+            let mut diag = rustc_errors::Diag::new(dcx, level, "");
+            rustc_lint::decorate_attribute_lint(tcx.sess, Some(tcx), kind, &mut diag);
+            diag
+        }
+    }
+
     // Throw away the first argument, the name of the binary.
     // In case of at_args being empty, as might be the case by
     // passing empty argument array to execve under some platforms,
@@ -916,14 +934,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                                     attribute_lint.lint_id.lint,
                                     attribute_lint.id,
                                     attribute_lint.span,
-                                    |diag| {
-                                        rustc_lint::decorate_attribute_lint(
-                                            tcx.sess,
-                                            Some(tcx),
-                                            &attribute_lint.kind,
-                                            diag,
-                                        );
-                                    },
+                                    DiagError { tcx, kind: &attribute_lint.kind },
                                 );
                             }
                         }

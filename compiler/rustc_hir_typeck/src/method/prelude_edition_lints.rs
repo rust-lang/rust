@@ -7,14 +7,169 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::builtin::{RUST_2021_PRELUDE_COLLISIONS, RUST_2024_PRELUDE_COLLISIONS};
-use rustc_span::{Ident, STDLIB_STABLE_CRATES, Span, kw, sym};
+use rustc_span::source_map::SourceMap;
+use rustc_span::{Ident, STDLIB_STABLE_CRATES, Span, Symbol, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
 
 use crate::FnCtxt;
 use crate::method::probe::{self, Pick};
+
+struct TraitWillBecomeAmbiguousError<'a, 'b, 'tcx> {
+    segment_ident_name: Symbol,
+    self_expr_span: Span,
+    self_expr: Option<String>,
+    pick: &'a Pick<'tcx>,
+    edition: &'b str,
+}
+
+impl<'a, 'b, 'c, 'tcx> rustc_errors::Diagnostic<'a, ()>
+    for TraitWillBecomeAmbiguousError<'b, 'c, 'tcx>
+{
+    fn into_diag(
+        self,
+        dcx: rustc_errors::DiagCtxtHandle<'a>,
+        level: rustc_errors::Level,
+    ) -> rustc_errors::Diag<'a, ()> {
+        let Self { segment_ident_name, self_expr_span, self_expr, pick, edition } = self;
+        let mut lint = rustc_errors::Diag::new(
+            dcx,
+            level,
+            format!(
+                "trait method `{}` will become ambiguous in Rust {edition}",
+                segment_ident_name
+            ),
+        );
+
+        let derefs = "*".repeat(pick.autoderefs);
+
+        let autoref = match pick.autoref_or_ptr_adjustment {
+            Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, .. }) => mutbl.ref_prefix_str(),
+            Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
+            Some(probe::AutorefOrPtrAdjustment::ReborrowPin(mutbl)) => match mutbl {
+                hir::Mutability::Mut => "Pin<&mut ",
+                hir::Mutability::Not => "Pin<&",
+            },
+        };
+        if let Some(self_expr) = self_expr {
+            let mut self_adjusted = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
+                pick.autoref_or_ptr_adjustment
+            {
+                format!("{derefs}{self_expr} as *const _")
+            } else {
+                format!("{autoref}{derefs}{self_expr}")
+            };
+
+            if let Some(probe::AutorefOrPtrAdjustment::ReborrowPin(_)) =
+                pick.autoref_or_ptr_adjustment
+            {
+                self_adjusted.push('>');
+            }
+
+            lint.span_suggestion(
+                self_expr_span,
+                "disambiguate the method call",
+                format!("({self_adjusted})"),
+                Applicability::MachineApplicable,
+            );
+        } else {
+            let self_adjusted = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
+                pick.autoref_or_ptr_adjustment
+            {
+                format!("{derefs}(...) as *const _")
+            } else {
+                format!("{autoref}{derefs}...")
+            };
+            lint.span_help(
+                self_expr_span,
+                format!("disambiguate the method call with `({self_adjusted})`",),
+            );
+        }
+        lint
+    }
+}
+
+struct TraitMethodWillBecomeAmbiguousError<'a, 'b, 'c, 'hir, 'tcx> {
+    call_expr_span: Span,
+    trait_name: String,
+    source_map: &'a SourceMap,
+    args: &'tcx [hir::Expr<'tcx>],
+    self_adjusted: String,
+    precise: bool,
+    segment: &'b hir::PathSegment<'hir>,
+    edition: &'c str,
+}
+
+impl<'a, 'b, 'c, 'd, 'hir, 'tcx> rustc_errors::Diagnostic<'a, ()>
+    for TraitMethodWillBecomeAmbiguousError<'b, 'c, 'd, 'hir, 'tcx>
+{
+    fn into_diag(
+        self,
+        dcx: rustc_errors::DiagCtxtHandle<'a>,
+        level: rustc_errors::Level,
+    ) -> rustc_errors::Diag<'a, ()> {
+        let Self {
+            call_expr_span,
+            trait_name,
+            source_map,
+            args,
+            self_adjusted,
+            precise,
+            segment,
+            edition,
+        } = self;
+        let mut lint = rustc_errors::Diag::new(
+            dcx,
+            level,
+            format!(
+                "trait method `{}` will become ambiguous in Rust {edition}",
+                segment.ident.name
+            ),
+        );
+
+        if precise {
+            let args = args.iter().fold(String::new(), |mut string, arg| {
+                let span = arg.span.find_ancestor_inside(call_expr_span).unwrap_or_default();
+                write!(string, ", {}", source_map.span_to_snippet(span).unwrap()).unwrap();
+                string
+            });
+
+            lint.span_suggestion(
+                call_expr_span,
+                "disambiguate the associated function",
+                format!(
+                    "{}::{}{}({}{})",
+                    trait_name,
+                    segment.ident.name,
+                    if let Some(args) = segment
+                        .args
+                        .as_ref()
+                        .and_then(|args| source_map.span_to_snippet(args.span_ext).ok())
+                    {
+                        // Keep turbofish.
+                        format!("::{args}")
+                    } else {
+                        String::new()
+                    },
+                    self_adjusted,
+                    args,
+                ),
+                Applicability::MachineApplicable,
+            );
+        } else {
+            lint.span_help(
+                call_expr_span,
+                format!(
+                    "disambiguate the associated function with `{}::{}(...)`",
+                    trait_name, segment.ident,
+                ),
+            );
+        }
+        lint
+    }
+}
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(super) fn lint_edition_dependent_dot_call(
@@ -105,129 +260,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 prelude_or_array_lint,
                 self_expr.hir_id,
                 self_expr.span,
-                |lint| {
-                    lint.primary_message(format!(
-                        "trait method `{}` will become ambiguous in Rust {edition}",
-                        segment.ident.name
-                    ));
-
-                    let sp = self_expr.span;
-
-                    let derefs = "*".repeat(pick.autoderefs);
-
-                    let autoref = match pick.autoref_or_ptr_adjustment {
-                        Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, .. }) => {
-                            mutbl.ref_prefix_str()
-                        }
-                        Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
-                        Some(probe::AutorefOrPtrAdjustment::ReborrowPin(mutbl)) => match mutbl {
-                            hir::Mutability::Mut => "Pin<&mut ",
-                            hir::Mutability::Not => "Pin<&",
-                        },
-                    };
-                    if let Ok(self_expr) = self.sess().source_map().span_to_snippet(self_expr.span)
-                    {
-                        let mut self_adjusted =
-                            if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
-                                pick.autoref_or_ptr_adjustment
-                            {
-                                format!("{derefs}{self_expr} as *const _")
-                            } else {
-                                format!("{autoref}{derefs}{self_expr}")
-                            };
-
-                        if let Some(probe::AutorefOrPtrAdjustment::ReborrowPin(_)) =
-                            pick.autoref_or_ptr_adjustment
-                        {
-                            self_adjusted.push('>');
-                        }
-
-                        lint.span_suggestion(
-                            sp,
-                            "disambiguate the method call",
-                            format!("({self_adjusted})"),
-                            Applicability::MachineApplicable,
-                        );
-                    } else {
-                        let self_adjusted = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
-                            pick.autoref_or_ptr_adjustment
-                        {
-                            format!("{derefs}(...) as *const _")
-                        } else {
-                            format!("{autoref}{derefs}...")
-                        };
-                        lint.span_help(
-                            sp,
-                            format!("disambiguate the method call with `({self_adjusted})`",),
-                        );
-                    }
+                TraitWillBecomeAmbiguousError {
+                    segment_ident_name: segment.ident.name,
+                    self_expr_span: self_expr.span,
+                    self_expr: self.sess().source_map().span_to_snippet(self_expr.span).ok(),
+                    pick,
+                    edition,
                 },
             );
         } else {
             // trait implementations require full disambiguation to not clash with the new prelude
             // additions (i.e. convert from dot-call to fully-qualified call)
+            let (self_adjusted, precise) = self.adjust_expr(pick, self_expr, call_expr.span);
             self.tcx.node_span_lint(
                 prelude_or_array_lint,
                 call_expr.hir_id,
                 call_expr.span,
-                |lint| {
-                    lint.primary_message(format!(
-                        "trait method `{}` will become ambiguous in Rust {edition}",
-                        segment.ident.name
-                    ));
-
-                    let sp = call_expr.span;
-                    let trait_name = self.trait_path_or_bare_name(
+                TraitMethodWillBecomeAmbiguousError {
+                    trait_name: self.trait_path_or_bare_name(
                         span,
                         call_expr.hir_id,
                         pick.item.container_id(self.tcx),
-                    );
-
-                    let (self_adjusted, precise) = self.adjust_expr(pick, self_expr, sp);
-                    if precise {
-                        let args = args.iter().fold(String::new(), |mut string, arg| {
-                            let span = arg.span.find_ancestor_inside(sp).unwrap_or_default();
-                            write!(
-                                string,
-                                ", {}",
-                                self.sess().source_map().span_to_snippet(span).unwrap()
-                            )
-                            .unwrap();
-                            string
-                        });
-
-                        lint.span_suggestion(
-                            sp,
-                            "disambiguate the associated function",
-                            format!(
-                                "{}::{}{}({}{})",
-                                trait_name,
-                                segment.ident.name,
-                                if let Some(args) = segment.args.as_ref().and_then(|args| self
-                                    .sess()
-                                    .source_map()
-                                    .span_to_snippet(args.span_ext)
-                                    .ok())
-                                {
-                                    // Keep turbofish.
-                                    format!("::{args}")
-                                } else {
-                                    String::new()
-                                },
-                                self_adjusted,
-                                args,
-                            ),
-                            Applicability::MachineApplicable,
-                        );
-                    } else {
-                        lint.span_help(
-                            sp,
-                            format!(
-                                "disambiguate the associated function with `{}::{}(...)`",
-                                trait_name, segment.ident,
-                            ),
-                        );
-                    }
+                    ),
+                    args,
+                    self_adjusted,
+                    precise,
+                    call_expr_span: call_expr.span,
+                    source_map: self.sess().source_map(),
+                    segment,
+                    edition,
                 },
             );
         }
@@ -242,6 +303,62 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_id: hir::HirId,
         pick: &Pick<'tcx>,
     ) {
+        struct AmbiguousTraitAssociatedFunctionError<'tcx> {
+            method_name: Symbol,
+            self_ty_name: String,
+            tcx: TyCtxt<'tcx>,
+            self_ty: Ty<'tcx>,
+            trait_name: String,
+            span: Span,
+        }
+
+        impl<'a, 'tcx> rustc_errors::Diagnostic<'a, ()> for AmbiguousTraitAssociatedFunctionError<'tcx> {
+            fn into_diag(
+                self,
+                dcx: rustc_errors::DiagCtxtHandle<'a>,
+                level: rustc_errors::Level,
+            ) -> rustc_errors::Diag<'a, ()> {
+                let Self { method_name, mut self_ty_name, tcx, self_ty, trait_name, span } = self;
+                let mut lint = rustc_errors::Diag::new(
+                    dcx,
+                    level,
+                    format!(
+                        "trait-associated function `{}` will become ambiguous in Rust 2021",
+                        method_name
+                    ),
+                );
+
+                // Get the number of generics the self type has (if an Adt) unless we can determine that
+                // the user has written the self type with generics already which we (naively) do by looking
+                // for a "<" in `self_ty_name`.
+                if !self_ty_name.contains('<') {
+                    if let ty::Adt(def, _) = self_ty.kind() {
+                        let generics = tcx.generics_of(def.did());
+                        if !generics.is_own_empty() {
+                            let counts = generics.own_counts();
+                            self_ty_name += &format!(
+                                "<{}>",
+                                std::iter::repeat("'_")
+                                    .take(counts.lifetimes)
+                                    .chain(
+                                        std::iter::repeat("_").take(counts.types + counts.consts)
+                                    )
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            );
+                        }
+                    }
+                }
+                lint.span_suggestion(
+                    span,
+                    "disambiguate the associated function",
+                    format!("<{} as {}>::{}", self_ty_name, trait_name, method_name),
+                    Applicability::MachineApplicable,
+                );
+                lint
+            }
+        }
+
         // Rust 2021 and later is already using the new prelude
         if span.at_least_rust_2021() {
             return;
@@ -278,67 +395,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        self.tcx.node_span_lint(RUST_2021_PRELUDE_COLLISIONS, expr_id, span, |lint| {
-            lint.primary_message(format!(
-                "trait-associated function `{}` will become ambiguous in Rust 2021",
-                method_name.name
-            ));
+        // "type" refers to either a type or, more likely, a trait from which
+        // the associated function or method is from.
+        let container_id = pick.item.container_id(self.tcx);
+        let trait_path = self.trait_path_or_bare_name(span, expr_id, container_id);
+        let trait_generics = self.tcx.generics_of(container_id);
 
-            // "type" refers to either a type or, more likely, a trait from which
-            // the associated function or method is from.
-            let container_id = pick.item.container_id(self.tcx);
-            let trait_path = self.trait_path_or_bare_name(span, expr_id, container_id);
-            let trait_generics = self.tcx.generics_of(container_id);
+        let self_ty_name = self_ty_span
+            .find_ancestor_inside(span)
+            .and_then(|span| self.sess().source_map().span_to_snippet(span).ok())
+            .unwrap_or_else(|| self_ty.to_string());
 
-            let trait_name =
-                if trait_generics.own_params.len() <= trait_generics.has_self as usize {
-                    trait_path
-                } else {
-                    let counts = trait_generics.own_counts();
-                    format!(
-                        "{}<{}>",
-                        trait_path,
-                        std::iter::repeat("'_")
-                            .take(counts.lifetimes)
-                            .chain(std::iter::repeat("_").take(
-                                counts.types + counts.consts - trait_generics.has_self as usize
-                            ))
-                            .collect::<Vec<_>>()
-                            .join(", ")
+        let trait_name = if trait_generics.own_params.len() <= trait_generics.has_self as usize {
+            trait_path
+        } else {
+            let counts = trait_generics.own_counts();
+            format!(
+                "{}<{}>",
+                trait_path,
+                std::iter::repeat("'_")
+                    .take(counts.lifetimes)
+                    .chain(
+                        std::iter::repeat("_")
+                            .take(counts.types + counts.consts - trait_generics.has_self as usize)
                     )
-                };
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        };
 
-            let mut self_ty_name = self_ty_span
-                .find_ancestor_inside(span)
-                .and_then(|span| self.sess().source_map().span_to_snippet(span).ok())
-                .unwrap_or_else(|| self_ty.to_string());
-
-            // Get the number of generics the self type has (if an Adt) unless we can determine that
-            // the user has written the self type with generics already which we (naively) do by looking
-            // for a "<" in `self_ty_name`.
-            if !self_ty_name.contains('<') {
-                if let ty::Adt(def, _) = self_ty.kind() {
-                    let generics = self.tcx.generics_of(def.did());
-                    if !generics.is_own_empty() {
-                        let counts = generics.own_counts();
-                        self_ty_name += &format!(
-                            "<{}>",
-                            std::iter::repeat("'_")
-                                .take(counts.lifetimes)
-                                .chain(std::iter::repeat("_").take(counts.types + counts.consts))
-                                .collect::<Vec<_>>()
-                                .join(", ")
-                        );
-                    }
-                }
-            }
-            lint.span_suggestion(
+        self.tcx.node_span_lint(
+            RUST_2021_PRELUDE_COLLISIONS,
+            expr_id,
+            span,
+            AmbiguousTraitAssociatedFunctionError {
+                method_name: method_name.name,
+                self_ty_name,
+                tcx: self.tcx,
+                self_ty,
+                trait_name,
                 span,
-                "disambiguate the associated function",
-                format!("<{} as {}>::{}", self_ty_name, trait_name, method_name.name,),
-                Applicability::MachineApplicable,
-            );
-        });
+            },
+        );
     }
 
     fn trait_path_or_bare_name(

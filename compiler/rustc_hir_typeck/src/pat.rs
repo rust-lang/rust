@@ -2469,6 +2469,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unmentioned_fields: &[(&ty::FieldDef, Ident)],
         ty: Ty<'tcx>,
     ) {
+        struct NotExplicitlyListedFieldsError<'tcx> {
+            pat_span: Span,
+            unmentioned_fields_len: usize,
+            joined_patterns: String,
+            ty: Ty<'tcx>,
+        }
+
+        impl<'a, 'tcx> rustc_errors::Diagnostic<'a, ()> for NotExplicitlyListedFieldsError<'tcx> {
+            fn into_diag(
+                self,
+                dcx: rustc_errors::DiagCtxtHandle<'a>,
+                level: rustc_errors::Level,
+            ) -> rustc_errors::Diag<'a, ()> {
+                let Self { pat_span, unmentioned_fields_len, joined_patterns, ty } = self;
+                let mut lint =
+                    rustc_errors::Diag::new(dcx, level, "some fields are not explicitly listed");
+                lint.span_label(
+                    pat_span,
+                    format!(
+                        "field{} {} not listed",
+                        rustc_errors::pluralize!(unmentioned_fields_len),
+                        joined_patterns
+                    ),
+                );
+                lint.help(
+                    "ensure that all fields are mentioned explicitly by adding the suggested fields",
+                );
+                lint.note(format!(
+                    "the pattern is of type `{ty}` and the `non_exhaustive_omitted_patterns` attribute was found",
+                ));
+                lint
+            }
+        }
+
         fn joined_uncovered_patterns(witnesses: &[&Ident]) -> String {
             const LIMIT: usize = 3;
             match witnesses {
@@ -2493,16 +2527,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &unmentioned_fields.iter().map(|(_, i)| i).collect::<Vec<_>>(),
         );
 
-        self.tcx.node_span_lint(NON_EXHAUSTIVE_OMITTED_PATTERNS, pat.hir_id, pat.span, |lint| {
-            lint.primary_message("some fields are not explicitly listed");
-            lint.span_label(pat.span, format!("field{} {} not listed", rustc_errors::pluralize!(unmentioned_fields.len()), joined_patterns));
-            lint.help(
-                "ensure that all fields are mentioned explicitly by adding the suggested fields",
-            );
-            lint.note(format!(
-                "the pattern is of type `{ty}` and the `non_exhaustive_omitted_patterns` attribute was found",
-            ));
-        });
+        self.tcx.node_span_lint(
+            NON_EXHAUSTIVE_OMITTED_PATTERNS,
+            pat.hir_id,
+            pat.span,
+            NotExplicitlyListedFieldsError {
+                pat_span: pat.span,
+                unmentioned_fields_len: unmentioned_fields.len(),
+                joined_patterns,
+                ty,
+            },
+        );
     }
 
     /// Returns a diagnostic reporting a struct pattern which does not mention some fields.

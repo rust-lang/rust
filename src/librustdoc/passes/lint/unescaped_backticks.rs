@@ -13,6 +13,124 @@ use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
 
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &str) {
+    struct UnescapedBacktickError<'a, 'tcx> {
+        cx: &'a DocContext<'tcx>,
+        item: &'a Item,
+        dox: &'a str,
+        element: Element,
+        backtick_index: usize,
+    }
+
+    impl<'a, 'b, 'tcx> rustc_errors::Diagnostic<'a, ()> for UnescapedBacktickError<'b, 'tcx> {
+        fn into_diag(
+            self,
+            dcx: rustc_errors::DiagCtxtHandle<'a>,
+            level: rustc_errors::Level,
+        ) -> rustc_errors::Diag<'a, ()> {
+            let Self { cx, item, dox, element, backtick_index } = self;
+            let mut lint = rustc_errors::Diag::new(dcx, level, "unescaped backtick");
+
+            let mut help_emitted = false;
+
+            match element.prev_code_guess {
+                PrevCodeGuess::None => {}
+                PrevCodeGuess::Start { guess, .. } => {
+                    // "foo` `bar`" -> "`foo` `bar`"
+                    if let Some(suggest_index) = clamp_start(guess, &element.suggestible_ranges)
+                        && can_suggest_backtick(dox, suggest_index)
+                    {
+                        suggest_insertion(
+                            cx,
+                            item,
+                            dox,
+                            &mut lint,
+                            suggest_index,
+                            '`',
+                            "the opening backtick of a previous inline code may be missing",
+                        );
+                        help_emitted = true;
+                    }
+                }
+                PrevCodeGuess::End { guess, .. } => {
+                    // "`foo `bar`" -> "`foo` `bar`"
+                    // Don't `clamp_end` here, because the suggestion is guaranteed to be inside
+                    // an inline code node and we intentionally "break" the inline code here.
+                    let suggest_index = guess;
+                    if can_suggest_backtick(dox, suggest_index) {
+                        suggest_insertion(
+                            cx,
+                            item,
+                            dox,
+                            &mut lint,
+                            suggest_index,
+                            '`',
+                            "a previous inline code might be longer than expected",
+                        );
+                        help_emitted = true;
+                    }
+                }
+            }
+
+            if !element.prev_code_guess.is_confident() {
+                // "`foo` bar`" -> "`foo` `bar`"
+                if let Some(guess) =
+                    guess_start_of_code(dox, element.element_range.start..backtick_index)
+                    && let Some(suggest_index) = clamp_start(guess, &element.suggestible_ranges)
+                    && can_suggest_backtick(dox, suggest_index)
+                {
+                    suggest_insertion(
+                        cx,
+                        item,
+                        dox,
+                        &mut lint,
+                        suggest_index,
+                        '`',
+                        "the opening backtick of an inline code may be missing",
+                    );
+                    help_emitted = true;
+                }
+
+                // "`foo` `bar" -> "`foo` `bar`"
+                // Don't suggest closing backtick after single trailing char,
+                // if we already suggested opening backtick. For example:
+                // "foo`." -> "`foo`." or "foo`s" -> "`foo`s".
+                if let Some(guess) =
+                    guess_end_of_code(dox, backtick_index + 1..element.element_range.end)
+                    && let Some(suggest_index) = clamp_end(guess, &element.suggestible_ranges)
+                    && can_suggest_backtick(dox, suggest_index)
+                    && (!help_emitted || suggest_index - backtick_index > 2)
+                {
+                    suggest_insertion(
+                        cx,
+                        item,
+                        dox,
+                        &mut lint,
+                        suggest_index,
+                        '`',
+                        "the closing backtick of an inline code may be missing",
+                    );
+                    help_emitted = true;
+                }
+            }
+
+            if !help_emitted {
+                lint.help("the opening or closing backtick of an inline code may be missing");
+            }
+
+            suggest_insertion(
+                cx,
+                item,
+                dox,
+                &mut lint,
+                backtick_index,
+                '\\',
+                "if you meant to use a literal backtick, escape it",
+            );
+
+            lint
+        }
+    }
+
     let tcx = cx.tcx;
 
     let link_names = item.link_names(&cx.cache);
@@ -52,111 +170,12 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                     None => item.attr_span(tcx),
                 };
 
-                tcx.node_span_lint(crate::lint::UNESCAPED_BACKTICKS, hir_id, span, |lint| {
-                    lint.primary_message("unescaped backtick");
-
-                    let mut help_emitted = false;
-
-                    match element.prev_code_guess {
-                        PrevCodeGuess::None => {}
-                        PrevCodeGuess::Start { guess, .. } => {
-                            // "foo` `bar`" -> "`foo` `bar`"
-                            if let Some(suggest_index) =
-                                clamp_start(guess, &element.suggestible_ranges)
-                                && can_suggest_backtick(dox, suggest_index)
-                            {
-                                suggest_insertion(
-                                    cx,
-                                    item,
-                                    dox,
-                                    lint,
-                                    suggest_index,
-                                    '`',
-                                    "the opening backtick of a previous inline code may be missing",
-                                );
-                                help_emitted = true;
-                            }
-                        }
-                        PrevCodeGuess::End { guess, .. } => {
-                            // "`foo `bar`" -> "`foo` `bar`"
-                            // Don't `clamp_end` here, because the suggestion is guaranteed to be inside
-                            // an inline code node and we intentionally "break" the inline code here.
-                            let suggest_index = guess;
-                            if can_suggest_backtick(dox, suggest_index) {
-                                suggest_insertion(
-                                    cx,
-                                    item,
-                                    dox,
-                                    lint,
-                                    suggest_index,
-                                    '`',
-                                    "a previous inline code might be longer than expected",
-                                );
-                                help_emitted = true;
-                            }
-                        }
-                    }
-
-                    if !element.prev_code_guess.is_confident() {
-                        // "`foo` bar`" -> "`foo` `bar`"
-                        if let Some(guess) =
-                            guess_start_of_code(dox, element.element_range.start..backtick_index)
-                            && let Some(suggest_index) =
-                                clamp_start(guess, &element.suggestible_ranges)
-                            && can_suggest_backtick(dox, suggest_index)
-                        {
-                            suggest_insertion(
-                                cx,
-                                item,
-                                dox,
-                                lint,
-                                suggest_index,
-                                '`',
-                                "the opening backtick of an inline code may be missing",
-                            );
-                            help_emitted = true;
-                        }
-
-                        // "`foo` `bar" -> "`foo` `bar`"
-                        // Don't suggest closing backtick after single trailing char,
-                        // if we already suggested opening backtick. For example:
-                        // "foo`." -> "`foo`." or "foo`s" -> "`foo`s".
-                        if let Some(guess) =
-                            guess_end_of_code(dox, backtick_index + 1..element.element_range.end)
-                            && let Some(suggest_index) =
-                                clamp_end(guess, &element.suggestible_ranges)
-                            && can_suggest_backtick(dox, suggest_index)
-                            && (!help_emitted || suggest_index - backtick_index > 2)
-                        {
-                            suggest_insertion(
-                                cx,
-                                item,
-                                dox,
-                                lint,
-                                suggest_index,
-                                '`',
-                                "the closing backtick of an inline code may be missing",
-                            );
-                            help_emitted = true;
-                        }
-                    }
-
-                    if !help_emitted {
-                        lint.help(
-                            "the opening or closing backtick of an inline code may be missing",
-                        );
-                    }
-
-                    suggest_insertion(
-                        cx,
-                        item,
-                        dox,
-                        lint,
-                        backtick_index,
-                        '\\',
-                        "if you meant to use a literal backtick, escape it",
-                    );
-                });
+                tcx.node_span_lint(
+                    crate::lint::UNESCAPED_BACKTICKS,
+                    hir_id,
+                    span,
+                    UnescapedBacktickError { cx, item, dox, element, backtick_index },
+                );
             }
             Event::Code(_) => {
                 let element = element_stack

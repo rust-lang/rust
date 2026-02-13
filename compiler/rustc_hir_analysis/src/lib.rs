@@ -149,20 +149,36 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn emit_delayed_lint(lint: &DelayedLint, tcx: TyCtxt<'_>) {
+    struct DelayedLintError<'a, 'tcx> {
+        tcx: TyCtxt<'tcx>,
+        attribute_lint: &'a rustc_hir::lints::AttributeLint<rustc_hir::HirId>,
+    }
+
+    impl<'a, 'b, 'tcx> rustc_errors::Diagnostic<'a, ()> for DelayedLintError<'b, 'tcx> {
+        fn into_diag(
+            self,
+            dcx: rustc_errors::DiagCtxtHandle<'a>,
+            level: rustc_errors::Level,
+        ) -> rustc_errors::Diag<'a, ()> {
+            let Self { tcx, attribute_lint } = self;
+            let mut diag = rustc_errors::Diag::new(dcx, level, "");
+            rustc_lint::decorate_attribute_lint(
+                tcx.sess,
+                Some(tcx),
+                &attribute_lint.kind,
+                &mut diag,
+            );
+            diag
+        }
+    }
+
     match lint {
         DelayedLint::AttributeParsing(attribute_lint) => {
             tcx.node_span_lint(
                 attribute_lint.lint_id.lint,
                 attribute_lint.id,
                 attribute_lint.span,
-                |diag| {
-                    rustc_lint::decorate_attribute_lint(
-                        tcx.sess,
-                        Some(tcx),
-                        &attribute_lint.kind,
-                        diag,
-                    );
-                },
+                DelayedLintError { tcx, attribute_lint },
             );
         }
     }

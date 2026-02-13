@@ -905,6 +905,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         kind: CallKind,
         mergeable_succ: bool,
     ) -> MergingSucc {
+        #[derive(rustc_macros::Diagnostic)]
+        #[diag("tail calling a function marked with `#[track_caller]` has no special effect")]
+        struct TailCallingTrackCallerFn {
+            #[primary_span]
+            fn_span: Span,
+        }
+
         let source_info = mir::SourceInfo { span: fn_span, ..terminator.source_info };
 
         // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
@@ -1020,10 +1027,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if let Some(hir_id) =
                             terminator.source_info.scope.lint_root(&self.mir.source_scopes)
                         {
-                            let msg = "tail calling a function marked with `#[track_caller]` has no special effect";
-                            bx.tcx().node_lint(TAIL_CALL_TRACK_CALLER, hir_id, |d| {
-                                _ = d.primary_message(msg).span(fn_span)
-                            });
+                            bx.tcx().node_lint(
+                                TAIL_CALL_TRACK_CALLER,
+                                hir_id,
+                                TailCallingTrackCallerFn { fn_span },
+                            );
                         }
 
                         let instance = ty::Instance::resolve_for_fn_ptr(

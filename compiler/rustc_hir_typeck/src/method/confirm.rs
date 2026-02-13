@@ -25,7 +25,7 @@ use rustc_middle::ty::{
     TypeFoldable, TypeVisitableExt, UserArgs,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_trait_selection::traits;
 use tracing::debug;
 
@@ -730,18 +730,46 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         pick: &probe::Pick<'_>,
         segment: &hir::PathSegment<'tcx>,
     ) {
+        struct AmbiguousTraitImportError {
+            trait_name: Symbol,
+            segment_ident_span: Span,
+            import_span: Span,
+        }
+
+        impl<'a> rustc_errors::Diagnostic<'a, ()> for AmbiguousTraitImportError {
+            fn into_diag(
+                self,
+                dcx: rustc_errors::DiagCtxtHandle<'a>,
+                level: rustc_errors::Level,
+            ) -> rustc_errors::Diag<'a, ()> {
+                let Self { trait_name, segment_ident_span, import_span } = self;
+                let mut diag = rustc_errors::Diag::new(
+                    dcx,
+                    level,
+                    format!("Use of ambiguously glob imported trait `{trait_name}`"),
+                );
+                diag.span(segment_ident_span);
+                diag.span_label(import_span, format!("`{trait_name}` imported ambiguously here"));
+                diag.help(format!("Import `{trait_name}` explicitly"));
+                diag
+            }
+        }
+
         if pick.kind != probe::PickKind::TraitPick(true) {
             return;
         }
         let trait_name = self.tcx.item_name(pick.item.container_id(self.tcx));
         let import_span = self.tcx.hir_span_if_local(pick.import_ids[0].to_def_id()).unwrap();
 
-        self.tcx.node_lint(AMBIGUOUS_GLOB_IMPORTED_TRAITS, segment.hir_id, |diag| {
-            diag.primary_message(format!("Use of ambiguously glob imported trait `{trait_name}`"))
-                .span(segment.ident.span)
-                .span_label(import_span, format!("`{trait_name}` imported ambiguously here"))
-                .help(format!("Import `{trait_name}` explicitly"));
-        });
+        self.tcx.node_lint(
+            AMBIGUOUS_GLOB_IMPORTED_TRAITS,
+            segment.hir_id,
+            AmbiguousTraitImportError {
+                trait_name,
+                segment_ident_span: segment.ident.span,
+                import_span,
+            },
+        );
     }
 
     fn upcast(

@@ -2505,10 +2505,7 @@ impl<'tcx> TyCtxt<'tcx> {
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level_at_node(lint, hir_id);
-        lint_level(self.sess, lint, level, Some(span.into()), |lint| {
-            let diag = decorator.into_diag(self.sess.dcx(), lint.level());
-            lint.merge_with_other_diag(diag);
-        })
+        lint_level(self.sess, lint, level, Some(span.into()), decorator)
     }
 
     /// Emit a lint at the appropriate level for a hir node, with an associated span.
@@ -2520,10 +2517,10 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         hir_id: HirId,
         span: impl Into<MultiSpan>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
+        decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level_at_node(lint, hir_id);
-        lint_level(self.sess, lint, level, Some(span.into()), decorate);
+        lint_level(self.sess, lint, level, Some(span.into()), decorator);
     }
 
     /// Find the appropriate span where `use` and outer attributes can be inserted at.
@@ -2564,10 +2561,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         lint: &'static Lint,
         id: HirId,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
+        decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level_at_node(lint, id);
-        lint_level(self.sess, lint, level, None, decorate);
+        lint_level(self.sess, lint, level, None, decorator);
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate]> {
