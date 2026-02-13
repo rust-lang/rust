@@ -10,11 +10,15 @@ use std::any::type_name;
 use std::cmp::min;
 use std::ops::RangeInclusive;
 use std::process::ExitCode;
-use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::{fmt, time};
+use std::sync::{LazyLock, OnceLock};
+use std::{env, fmt, time};
 
+use base64::engine::Engine;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use rand::TryRng;
 use rand::distr::{Distribution, StandardUniform};
+use rand::rngs::SysRng;
 use rayon::prelude::*;
 use time::{Duration, Instant};
 use traits::{Float, Generator, Int};
@@ -44,8 +48,26 @@ const MAX_BITS_FOR_EXHAUUSTIVE: u32 = 32;
 /// `--skip-huge`.
 const HUGE_TEST_CUTOFF: u64 = 5_000_000;
 
-/// Seed for tests that use a deterministic RNG.
-const SEED: [u8; 32] = *b"3.141592653589793238462643383279";
+const SEED_ENV: &str = "TEST_FLOAT_PARSE_SEED";
+
+/// Seed for tests that use a deterministic RNG, and its b64 representation for printing. Taken
+/// from env if provided,
+static SEED: LazyLock<([u8; 32], Box<str>)> = LazyLock::new(|| {
+    let seed = match env::var(SEED_ENV) {
+        Ok(s) => URL_SAFE_NO_PAD
+            .decode(s)
+            .ok()
+            .and_then(|decoded| <[u8; 32]>::try_from(decoded).ok())
+            .unwrap_or_else(|| panic!("{SEED_ENV} must be 32 bytes, base64 encoded")),
+        Err(_) => {
+            let mut seed = [0u8; 32];
+            SysRng.try_fill_bytes(&mut seed).unwrap();
+            seed
+        }
+    };
+    let encoded = URL_SAFE_NO_PAD.encode(&seed).into_boxed_str();
+    (seed, encoded)
+});
 
 /// Global configuration.
 #[derive(Debug)]
@@ -78,8 +100,10 @@ pub fn run(cfg: Config, include: &[String], exclude: &[String]) -> ExitCode {
     let threads = std::thread::available_parallelism().map(Into::into).unwrap_or(0) * 3 / 2;
     rayon::ThreadPoolBuilder::new().num_threads(threads).build_global().unwrap();
 
+    println!("Starting test runner");
+    println!("Using {SEED_ENV}={}`", SEED.1);
     let mut tests = register_tests(&cfg);
-    println!("registered");
+    println!("Tests registered");
     let initial_tests: Vec<_> = tests.iter().map(|t| t.name.clone()).collect();
 
     let unmatched: Vec<_> = include

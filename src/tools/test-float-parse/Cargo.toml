@@ -5,6 +5,7 @@ edition = "2024"
 publish = false
 
 [dependencies]
+base64 = "0.22.1"
 indicatif = { version = "0.18.3", default-features = false }
 num = "0.4.3"
 rand = "0.10.0"
