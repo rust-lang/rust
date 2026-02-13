@@ -301,17 +301,6 @@ fn stackprotector_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll A
     Some(sspattr.create_attr(cx.llcx))
 }
 
-fn backchain_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attribute> {
-    if sess.target.arch != Arch::S390x {
-        return None;
-    }
-
-    let requested_features = sess.opts.cg.target_feature.split(',');
-    let found_positive = requested_features.clone().any(|r| r == "+backchain");
-
-    if found_positive { Some(llvm::CreateAttrString(cx.llcx, "backchain")) } else { None }
-}
-
 pub(crate) fn target_cpu_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> &'ll Attribute {
     let target_cpu = llvm_util::target_cpu(sess);
     llvm::CreateAttrStringValue(cx.llcx, "target-cpu", target_cpu)
@@ -529,9 +518,6 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     }
     if let Some(align) = codegen_fn_attrs.alignment {
         llvm::set_alignment(llfn, align);
-    }
-    if let Some(backchain) = backchain_attr(cx, sess) {
-        to_add.push(backchain);
     }
     to_add.extend(patchable_function_entry_attrs(
         cx,
