@@ -338,15 +338,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
             ast::ExprKind::TryBlock(_, None) => {
+                // `try { ... }` is old and is only gated post-expansion here.
                 gate!(&self, try_blocks, e.span, "`try` expression is experimental");
             }
             ast::ExprKind::TryBlock(_, Some(_)) => {
-                gate!(
-                    &self,
-                    try_blocks_heterogeneous,
-                    e.span,
-                    "`try bikeshed` expression is experimental"
-                );
+                // `try_blocks_heterogeneous` is new, and gated pre-expansion instead.
             }
             ast::ExprKind::Lit(token::Lit {
                 kind: token::LitKind::Float | token::LitKind::Integer,
@@ -522,6 +518,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         half_open_range_patterns_in_slices,
         "half-open range patterns in slices are unstable"
     );
+    gate_all!(try_blocks_heterogeneous, "`try bikeshed` expression is experimental");
     gate_all!(yeet_expr, "`do yeet` expression is experimental");
     gate_all!(const_closures, "const closures are experimental");
     gate_all!(builtin_syntax, "`builtin #` syntax is unstable");
