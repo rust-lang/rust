@@ -322,6 +322,10 @@ impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'
         a: ty::Region<'tcx>,
         bound: VerifyBound<'tcx>,
     ) {
+        if bound.must_hold() {
+            debug!("Bound {bound:?} always holds; emitting no type test.");
+            return;
+        }
         let kind = self.replace_placeholders_with_nll(kind);
         let bound = self.replace_placeholders_with_nll(bound);
         let type_test = self.verify_to_type_test(kind, a, bound);
