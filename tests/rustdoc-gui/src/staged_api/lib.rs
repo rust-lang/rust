@@ -21,3 +21,6 @@ impl Foo {
 impl X for Foo {
     fn vroum() {}
 }
+
+#[unstable(feature = "some_new_feature", issue = "none")]
+pub struct NewFoo {}

@@ -1450,6 +1450,9 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	grid-area: search-result-type-signature;
 	white-space: pre-wrap;
 }
+.search-results .result-name > span.emoji {
+	padding-right: 0.5em;
+}
 
 .popover {
 	position: absolute;

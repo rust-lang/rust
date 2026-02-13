@@ -4960,6 +4960,16 @@ async function addTab(results, query, display, finishedCallback, isTypeSearch) {
 <b>${obj.alias}</b><i class="grey">&nbsp;- see&nbsp;</i>\
 </div>`;
         }
+        if (obj.item.deprecated) {
+            resultName.insertAdjacentHTML(
+                "beforeend",
+                "<span class=emoji title=\"this item is deprecated\">👎</span>");
+        }
+        if (obj.item.unstable) {
+            resultName.insertAdjacentHTML(
+                "beforeend",
+                "<span class=emoji title=\"this item is unstable\">🔬</span>");
+        }
         resultName.insertAdjacentHTML(
             "beforeend",
             `<div class="path">${alias}\
