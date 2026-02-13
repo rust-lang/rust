@@ -16,11 +16,11 @@ rand_xoshiro.workspace = true
 # To compare float builtins against
 rustc_apfloat.workspace = true
 
-# Really a dev dependency, but dev dependencies can't be optional
+# Really dev dependencies, but those can't be optional
+criterion = { workspace = true, optional = true }
 gungraun = { workspace = true, optional = true }
 
 [dev-dependencies]
-criterion.workspace = true
 paste.workspace = true
 
 [target.'cfg(all(target_arch = "arm", not(any(target_env = "gnu", target_env = "musl")), target_os = "linux"))'.dev-dependencies]
@@ -46,8 +46,10 @@ no-sys-f16 = ["no-sys-f16-f64-convert"]
 # Enable icount benchmarks (requires gungraun-runner and valgrind locally)
 icount = ["dep:gungraun"]
 
-# Enable report generation without bringing in more dependencies by default
-benchmarking-reports = ["criterion/plotters", "criterion/html_reports"]
+# Config for wall time benchmarks. Plotters and html_reports bring in extra
+# deps so are off by default for CI.
+benchmarking-reports = ["walltime", "criterion/plotters", "criterion/html_reports"]
+walltime = ["dep:criterion"]
 
 # NOTE: benchmarks must be run with `--no-default-features` or with
 # `-p builtins-test`, otherwise the default `compiler-builtins` feature
@@ -57,38 +59,47 @@ benchmarking-reports = ["criterion/plotters", "criterion/html_reports"]
 [[bench]]
 name = "float_add"
 harness = false
+required-features = ["walltime"]
 
 [[bench]]
 name = "float_sub"
 harness = false
+required-features = ["walltime"]
 
 [[bench]]
 name = "float_mul"
 harness = false
+required-features = ["walltime"]
 
 [[bench]]
 name = "float_div"
 harness = false
+required-features = ["walltime"]
 
 [[bench]]
 name = "float_cmp"
 harness = false
+required-features = ["walltime"]
 
 [[bench]]
 name = "float_conv"
 harness = false
+required-features = ["walltime"]
 
 [[bench]]
 name = "float_extend"
 harness = false
+required-features = ["walltime"]
 
 [[bench]]
 name = "float_trunc"
 harness = false
+required-features = ["walltime"]
 
 [[bench]]
 name = "float_pow"
 harness = false
+required-features = ["walltime"]
 
 [[bench]]
 name = "mem_icount"

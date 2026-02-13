@@ -287,7 +287,7 @@ jobs:
         path: ${{ env.BASELINE_NAME }}.tar.xz
 
     - name: Run wall time benchmarks
-      run: ./ci/bench-runtime.sh
+      run: ./ci/bench-walltime.sh
 
     - name: Print test logs if available
       if: always()

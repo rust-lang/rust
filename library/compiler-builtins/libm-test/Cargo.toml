@@ -9,7 +9,6 @@ license = "MIT OR Apache-2.0"
 anyhow.workspace = true
 # This is not directly used but is required so we can enable `gmp-mpfr-sys/force-cross`.
 gmp-mpfr-sys = { workspace = true, optional = true }
-gungraun = { workspace = true, optional = true }
 indicatif.workspace = true
 libm = { workspace = true, default-features = true, features = ["unstable-public-internals"] }
 libm-macros.workspace = true
@@ -20,6 +19,10 @@ rand_chacha.workspace = true
 rayon.workspace = true
 rug = { workspace = true, optional = true }
 
+# Really dev dependencies, but those can't be optional
+criterion = { workspace = true, optional = true }
+gungraun = { workspace = true, optional = true }
+
 [target.'cfg(target_family = "wasm")'.dependencies]
 getrandom = { workspace = true, features = ["wasm_js"] }
 
@@ -27,7 +30,6 @@ getrandom = { workspace = true, features = ["wasm_js"] }
 rand = { workspace = true, optional = true }
 
 [dev-dependencies]
-criterion.workspace = true
 libtest-mimic.workspace = true
 
 [features]
@@ -43,8 +45,10 @@ build-mpfr = ["dep:rug", "dep:gmp-mpfr-sys"]
 # Build our own musl for testing and benchmarks
 build-musl = ["dep:musl-math-sys"]
 
-# Enable report generation without bringing in more dependencies by default
-benchmarking-reports = ["criterion/plotters", "criterion/html_reports"]
+# Config for wall time benchmarks. Plotters and html_reports bring in extra
+# deps so are off by default for CI.
+benchmarking-reports = ["walltime", "criterion/plotters", "criterion/html_reports"]
+walltime = ["dep:criterion"]
 
 # Enable icount benchmarks (requires gungraun-runner and valgrind locally)
 icount = ["dep:gungraun"]
@@ -60,6 +64,7 @@ required-features = ["icount"]
 [[bench]]
 name = "random"
 harness = false
+required-features = ["walltime"]
 
 [[test]]
 # No harness so that we can skip tests at runtime based on env. Prefixed with
