@@ -358,6 +358,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcStdInternalSymbol (..)
                     | AttributeKind::RustcStrictCoherence(..)
                     | AttributeKind::RustcSymbolName(..)
+                    | AttributeKind::RustcTestMarker(..)
                     | AttributeKind::RustcThenThisWouldNeed(..)
                     | AttributeKind::RustcTrivialFieldReads
                     | AttributeKind::RustcUnsafeSpecializationMarker(..)
@@ -404,7 +405,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::rustc_on_unimplemented
                             | sym::rustc_do_not_const_check
                             | sym::rustc_doc_primitive
-                            | sym::rustc_test_marker
                             | sym::rustc_layout
                             | sym::rustc_proc_macro_decls
                             | sym::rustc_autodiff

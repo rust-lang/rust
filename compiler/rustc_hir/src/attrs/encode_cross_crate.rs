@@ -167,6 +167,7 @@ impl AttributeKind {
             RustcStdInternalSymbol(..) => No,
             RustcStrictCoherence(..) => Yes,
             RustcSymbolName(..) => Yes,
+            RustcTestMarker(..) => No,
             RustcThenThisWouldNeed(..) => No,
             RustcTrivialFieldReads => Yes,
             RustcUnsafeSpecializationMarker(..) => No,
