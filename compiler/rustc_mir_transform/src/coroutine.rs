@@ -210,6 +210,9 @@ struct TransformVisitor<'tcx> {
     old_yield_ty: Ty<'tcx>,
 
     old_ret_ty: Ty<'tcx>,
+
+    // Self-referential fields in the coroutine struct that aren't pinned.
+    locals_needing_unsafe_pinned: DenseBitSet<Local>,
 }
 
 impl<'tcx> TransformVisitor<'tcx> {
@@ -355,6 +358,45 @@ impl<'tcx> TransformVisitor<'tcx> {
         Place { local: base.local, projection: self.tcx.mk_place_elems(&projection) }
     }
 
+    // Create a `Place` referencing a self-referential coroutine struct field.
+    // Self-referential coroutine struct fields are wrapped in `UnsafePinned`. This method
+    // creates the projections to get the `Place` behind `UnsafePinned`.
+    #[tracing::instrument(level = "trace", skip(self), ret)]
+    fn make_self_referential_field(
+        &self,
+        variant_index: VariantIdx,
+        idx: FieldIdx,
+        ty: Ty<'tcx>,
+    ) -> Place<'tcx> {
+        let self_place = Place::from(SELF_ARG);
+        let base = self.tcx.mk_place_downcast_unnamed(self_place, variant_index);
+
+        let ty::Adt(adt_def, args) = ty.kind() else {
+            bug!("expected self-referential field to be an ADT, but it is {:?}", ty);
+        };
+        assert_eq!(adt_def.did(), self.tcx.require_lang_item(LangItem::UnsafePinned, DUMMY_SP));
+        let original_ty = args.type_at(0);
+
+        let unsafe_cell_def_id = self.tcx.require_lang_item(LangItem::UnsafeCell, DUMMY_SP);
+        let unsafe_cell_ty = Ty::new_adt(
+            self.tcx,
+            self.tcx.adt_def(unsafe_cell_def_id),
+            self.tcx.mk_args(&[original_ty.into()]),
+        );
+
+        let mut projection = base.projection.to_vec();
+        // self.field (UnsafePinned<T>)
+        projection.push(ProjectionElem::Field(idx, ty));
+        // value (UnsafeCell<T>)
+        projection.push(ProjectionElem::Field(FieldIdx::from_u32(0), unsafe_cell_ty));
+        // value (T)
+        projection.push(ProjectionElem::Field(FieldIdx::from_u32(0), original_ty));
+
+        let place = Place { local: base.local, projection: self.tcx.mk_place_elems(&projection) };
+        debug!(?place);
+        place
+    }
+
     // Create a statement which changes the discriminant
     #[tracing::instrument(level = "trace", skip(self))]
     fn set_discr(&self, state_disc: VariantIdx, source_info: SourceInfo) -> Statement<'tcx> {
@@ -411,8 +453,17 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
     #[tracing::instrument(level = "trace", skip(self), ret)]
     fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, _location: Location) {
         // Replace an Local in the remap with a coroutine struct access
-        if let Some(&Some((ty, variant_index, idx))) = self.remap.get(place.local) {
-            replace_base(place, self.make_field(variant_index, idx, ty), self.tcx);
+        let local = place.local;
+        if let Some(&Some((ty, variant_index, idx))) = self.remap.get(local) {
+            if self.locals_needing_unsafe_pinned.contains(local) {
+                replace_base(
+                    place,
+                    self.make_self_referential_field(variant_index, idx, ty),
+                    self.tcx,
+                );
+            } else {
+                replace_base(place, self.make_field(variant_index, idx, ty), self.tcx);
+            }
         }
     }
 
@@ -709,7 +760,7 @@ fn locals_live_across_suspend_points<'tcx>(
     body: &Body<'tcx>,
     always_live_locals: &DenseBitSet<Local>,
     movable: bool,
-) -> LivenessInfo {
+) -> (LivenessInfo, DenseBitSet<Local>) {
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
     let mut storage_live = MaybeStorageLive::new(std::borrow::Cow::Borrowed(always_live_locals))
@@ -735,6 +786,10 @@ fn locals_live_across_suspend_points<'tcx>(
     let mut source_info_at_suspension_points = Vec::new();
     let mut live_locals_at_any_suspension_point = DenseBitSet::new_empty(body.local_decls.len());
 
+    // Every Local that is live due to an outstanding borrow is a self-referential field of
+    // the coroutine struct.
+    let mut locals_live_due_to_borrow = DenseBitSet::new_empty(body.local_decls.len());
+
     for (block, data) in body.basic_blocks.iter_enumerated() {
         let TerminatorKind::Yield { .. } = data.terminator().kind else { continue };
 
@@ -742,6 +797,11 @@ fn locals_live_across_suspend_points<'tcx>(
 
         liveness.seek_to_block_end(block);
         let mut live_locals = liveness.get().clone();
+        debug!(?live_locals);
+
+        borrowed_locals_cursor2.seek_before_primary_effect(loc);
+        let borrowed_locals = borrowed_locals_cursor2.get();
+        locals_live_due_to_borrow.union(borrowed_locals);
 
         if !movable {
             // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
@@ -754,8 +814,7 @@ fn locals_live_across_suspend_points<'tcx>(
             // If a borrow is converted to a raw reference, we must also assume that it lives
             // forever. Note that the final liveness is still bounded by the storage liveness
             // of the local, which happens using the `intersect` operation below.
-            borrowed_locals_cursor2.seek_before_primary_effect(loc);
-            live_locals.union(borrowed_locals_cursor2.get());
+            live_locals.union(borrowed_locals);
         }
 
         // Store the storage liveness for later use so we can restore the state
@@ -784,6 +843,12 @@ fn locals_live_across_suspend_points<'tcx>(
 
     debug!(?live_locals_at_any_suspension_point);
     let saved_locals = CoroutineSavedLocals(live_locals_at_any_suspension_point);
+    debug!(?saved_locals);
+
+    debug!(?locals_live_due_to_borrow);
+    locals_live_due_to_borrow.intersect(&saved_locals.0);
+    let self_referential_fields = locals_live_due_to_borrow;
+    debug!(?self_referential_fields);
 
     // Renumber our liveness_map bitsets to include only the locals we are
     // saving.
@@ -799,13 +864,16 @@ fn locals_live_across_suspend_points<'tcx>(
         &requires_storage,
     );
 
-    LivenessInfo {
-        saved_locals,
-        live_locals_at_suspension_points,
-        source_info_at_suspension_points,
-        storage_conflicts,
-        storage_liveness: storage_liveness_map,
-    }
+    (
+        LivenessInfo {
+            saved_locals,
+            live_locals_at_suspension_points,
+            source_info_at_suspension_points,
+            storage_conflicts,
+            storage_liveness: storage_liveness_map,
+        },
+        self_referential_fields,
+    )
 }
 
 /// The set of `Local`s that must be saved across yield points.
@@ -813,6 +881,7 @@ fn locals_live_across_suspend_points<'tcx>(
 /// `CoroutineSavedLocal` is indexed in terms of the elements in this set;
 /// i.e. `CoroutineSavedLocal::new(1)` corresponds to the second local
 /// included in this set.
+#[derive(Debug)]
 struct CoroutineSavedLocals(DenseBitSet<Local>);
 
 impl CoroutineSavedLocals {
@@ -963,10 +1032,12 @@ impl StorageConflictVisitor<'_, '_> {
     }
 }
 
-#[tracing::instrument(level = "trace", skip(liveness, body))]
+#[tracing::instrument(level = "trace", skip(tcx, liveness, body))]
 fn compute_layout<'tcx>(
+    tcx: TyCtxt<'tcx>,
     liveness: LivenessInfo,
     body: &Body<'tcx>,
+    locals_needing_unsafe_pinned: &DenseBitSet<Local>,
 ) -> (
     IndexVec<Local, Option<(Ty<'tcx>, VariantIdx, FieldIdx)>>,
     CoroutineLayout<'tcx>,
@@ -1005,8 +1076,19 @@ fn compute_layout<'tcx>(
             ClearCrossCrate::Set(box LocalInfo::FakeBorrow) => true,
             _ => false,
         };
+
+        // Use `UnsafePinned` for self-referential fields that aren't pinned.
+        let local_ty = if locals_needing_unsafe_pinned.contains(local) {
+            let unsafe_pinned_did = tcx.require_lang_item(LangItem::UnsafePinned, body.span);
+            let unsafe_pinned_adt_def = tcx.adt_def(unsafe_pinned_did);
+            let args = tcx.mk_args(&[decl.ty.into()]);
+            Ty::new_adt(tcx, unsafe_pinned_adt_def, args)
+        } else {
+            decl.ty
+        };
+
         let decl =
-            CoroutineSavedTy { ty: decl.ty, source_info: decl.source_info, ignore_for_traits };
+            CoroutineSavedTy { ty: local_ty, source_info: decl.source_info, ignore_for_traits };
         debug!(?decl);
 
         tys.push(decl);
@@ -1408,12 +1490,16 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     // The witness simply contains all locals live across suspend points.
 
     let always_live_locals = always_storage_live_locals(body);
-    let liveness_info = locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
+    let (liveness_info, self_referential_fields) =
+        locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
+    let locals_needing_unsafe_pinned =
+        find_locals_needing_unsafe_pinned(tcx, body, self_referential_fields);
 
     // Extract locals which are live across suspension point into `layout`
     // `remap` gives a mapping from local indices onto coroutine struct indices
     // `storage_liveness` tells us which locals have live storage at suspension points
-    let (_, coroutine_layout, _) = compute_layout(liveness_info, body);
+    let (_, coroutine_layout, _) =
+        compute_layout(tcx, liveness_info, body, &locals_needing_unsafe_pinned);
 
     check_suspend_tys(tcx, &coroutine_layout, body);
     check_field_tys_sized(tcx, &coroutine_layout, def_id);
@@ -1541,9 +1627,10 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
             cleanup_async_drops(body);
         }
 
+        debug!(?coroutine_kind);
         let always_live_locals = always_storage_live_locals(body);
         let movable = coroutine_kind.movability() == hir::Movability::Movable;
-        let liveness_info =
+        let (liveness_info, self_referential_fields) =
             locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
 
         if tcx.sess.opts.unstable_opts.validate_mir {
@@ -1556,10 +1643,17 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
             vis.visit_body(body);
         }
 
+        debug!(?self_referential_fields);
+        let locals_needing_unsafe_pinned =
+            find_locals_needing_unsafe_pinned(tcx, body, self_referential_fields);
+        debug!("saved_locals: {:?}", liveness_info.saved_locals);
+        debug!(?locals_needing_unsafe_pinned);
+
         // Extract locals which are live across suspension point into `layout`
         // `remap` gives a mapping from local indices onto coroutine struct indices
         // `storage_liveness` tells us which locals have live storage at suspension points
-        let (remap, layout, storage_liveness) = compute_layout(liveness_info, body);
+        let (remap, layout, storage_liveness) =
+            compute_layout(tcx, liveness_info, body, &locals_needing_unsafe_pinned);
 
         let can_return = can_return(tcx, body, body.typing_env(tcx));
 
@@ -1584,6 +1678,7 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
             new_ret_local,
             old_ret_ty,
             old_yield_ty,
+            locals_needing_unsafe_pinned,
         };
         transform.visit_body(body);
 
@@ -1598,7 +1693,13 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
             0..0,
             args_iter.filter_map(|local| {
                 let (ty, variant_index, idx) = transform.remap[local]?;
-                let lhs = transform.make_field(variant_index, idx, ty);
+
+                let lhs = if transform.locals_needing_unsafe_pinned.contains(local) {
+                    transform.make_self_referential_field(variant_index, idx, ty)
+                } else {
+                    transform.make_field(variant_index, idx, ty)
+                };
+
                 let rhs = Rvalue::Use(Operand::Move(local.into()));
                 let assign = StatementKind::Assign(Box::new((lhs, rhs)));
                 Some(Statement::new(source_info, assign))
@@ -1888,6 +1989,16 @@ fn check_must_not_suspend_ty<'tcx>(
                 SuspendCheckData { descr_pre: &format!("{}allocator ", data.descr_pre), ..data },
             )
         }
+        ty::Adt(def, args) if def.is_unsafe_pinned() => {
+            let inner_ty = args.type_at(0);
+            debug!(?inner_ty);
+            check_must_not_suspend_ty(
+                tcx,
+                inner_ty,
+                hir_id,
+                SuspendCheckData { descr_pre: &format!("{}boxed ", data.descr_pre), ..data },
+            )
+        }
         // FIXME(sized_hierarchy): This should be replaced with a requirement that types in
         // coroutines implement `const Sized`. Scalable vectors are temporarily `Sized` while
         // `feature(sized_hierarchy)` is not fully implemented, but in practice are
@@ -2008,4 +2119,142 @@ fn check_must_not_suspend_def(
     } else {
         false
     }
+}
+
+/// Finds all `Local`s that need to be wrapped in `UnsafePinned`. These are all self-referential
+/// fields of the coroutine struct which aren't pinned.
+fn find_locals_needing_unsafe_pinned<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'_>,
+    mut self_referential_fields: DenseBitSet<Local>,
+) -> DenseBitSet<Local> {
+    // We use the DefId of `Pin::new_unchecked` when looking for pinned locals
+    let Some(pin_fn) = tcx.lang_items().new_unchecked_fn() else {
+        return self_referential_fields;
+    };
+
+    let mut pinned_locals_finder = PinnedLocalsFinder::new(pin_fn);
+    pinned_locals_finder.visit_body(body);
+    let pinned_locals = pinned_locals_finder.pinned_locals;
+    debug!(?pinned_locals);
+
+    let pinned_targets =
+        find_pinned_self_referential_fields(body, &pinned_locals[..], &self_referential_fields);
+    debug!(?pinned_targets);
+
+    self_referential_fields.subtract(&pinned_targets);
+    self_referential_fields
+}
+
+struct PinnedLocalsFinder {
+    pin_fn: DefId,
+    pinned_locals: Vec<(Local, Location)>,
+}
+
+impl PinnedLocalsFinder {
+    fn new(pin_fn: DefId) -> Self {
+        PinnedLocalsFinder { pin_fn, pinned_locals: vec![] }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for PinnedLocalsFinder {
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
+        match &terminator.kind {
+            TerminatorKind::Call { func, args, .. } => {
+                if let Some((fn_def, _)) = func.const_fn_def() {
+                    if fn_def == self.pin_fn {
+                        assert!(args.len() == 1);
+                        match args[0].node {
+                            Operand::Move(pinned_place) => {
+                                self.pinned_locals.push((pinned_place.local, location));
+                            }
+                            _ => bug!("expected Operand::Move for argument to Pin::new_unchecked"),
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+        self.super_terminator(terminator, location);
+    }
+}
+
+/// Traces pinned `Local`s backwards to find if they refer to self-referential fields of the coroutine struct.
+/// Without this function we would have to use `UnsafePinned` on all self-referential fields, even those that
+/// are pinned. This would imply that we wouldn't be able to use `noalias` on coroutines. Hence, we do our best
+/// to identify these to allow us to forego using `UnsafePinned` on them.
+/// Note: this is a best-effort attempt to heuristically find pinned `Local`s, but isn't guaranteed to find every
+/// such one.
+fn find_pinned_self_referential_fields<'tcx>(
+    body: &Body<'tcx>,
+    pin_calls: &[(Local, Location)], // locals that are pinned with Pin::new_unchecked call locations
+    self_referential_fields: &DenseBitSet<Local>,
+) -> DenseBitSet<Local> {
+    // For each pinned local we walk backwards in the CFG to find the definition of the pointee.
+    let mut pinned_self_ref_fields = DenseBitSet::new_empty(body.local_decls.len());
+    for &(pinned_local, call_loc) in pin_calls {
+        let mut worklist = vec![(call_loc.block, call_loc.statement_index, pinned_local)];
+        let mut visited = FxHashSet::default();
+
+        while let Some((bb, worklist_stmt_idx, mut tracked_local)) = worklist.pop() {
+            if !visited.insert((bb, worklist_stmt_idx, tracked_local)) {
+                continue;
+            }
+
+            let block_data = &body.basic_blocks[bb];
+            let mut found_definition = false;
+
+            // walk backwards through current block
+            for stmt_idx in (0..worklist_stmt_idx).rev() {
+                let stmt = &block_data.statements[stmt_idx];
+
+                if let StatementKind::Assign(box (lhs, rhs)) = &stmt.kind {
+                    if lhs.local == tracked_local && lhs.projection.is_empty() {
+                        found_definition = true;
+
+                        match rhs {
+                            Rvalue::Ref(_, _, place) => {
+                                if place.is_indirect() {
+                                    // re-borrow, continue searching with new `tracked_local`
+                                    tracked_local = place.local;
+                                    found_definition = false;
+                                } else {
+                                    if self_referential_fields.contains(place.local) {
+                                        pinned_self_ref_fields.insert(place.local);
+                                    }
+
+                                    break;
+                                }
+                            }
+                            Rvalue::Use(operand) | Rvalue::Cast(_, operand, _) => {
+                                if let Some(place) = operand.place() {
+                                    tracked_local = place.local;
+                                    found_definition = false;
+                                } else {
+                                    break;
+                                }
+                            }
+                            _ => {
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if found_definition {
+                    break;
+                }
+            }
+
+            // check the predecessors of this basic block
+            if !found_definition {
+                for &pred in body.basic_blocks.predecessors()[bb].iter() {
+                    let pred_last_stmt_idx = body.basic_blocks[pred].statements.len();
+                    worklist.push((pred, pred_last_stmt_idx, tracked_local));
+                }
+            }
+        }
+    }
+
+    pinned_self_ref_fields
 }
