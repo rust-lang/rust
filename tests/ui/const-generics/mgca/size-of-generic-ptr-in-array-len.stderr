@@ -1,4 +1,4 @@
-error: tuple constructor with invalid base path
+error: complex const arguments must be placed inside of a `const` block
   --> $DIR/size-of-generic-ptr-in-array-len.rs:6:9
    |
 LL |     [0; size_of::<*mut T>()];
