@@ -1153,6 +1153,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_deprecated_safe_2024]`
     RustcDeprecatedSafe2024 { suggestion: Symbol },
 
+    /// Represents `#[rustc_diagnostic_item]`
+    RustcDiagnosticItem(Symbol),
+
     /// Represents `#[rustc_dummy]`.
     RustcDummy,
 

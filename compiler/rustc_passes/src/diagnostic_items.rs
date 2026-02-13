@@ -9,20 +9,21 @@
 //!
 //! * Compiler internal types like `Ty` and `TyCtxt`
 
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::diagnostic_items::DiagnosticItems;
-use rustc_hir::{Attribute, CRATE_OWNER_ID, OwnerId};
+use rustc_hir::{CRATE_OWNER_ID, OwnerId, find_attr};
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
+use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_span::{Symbol, sym};
 
 use crate::errors::DuplicateDiagnosticItemInCrate;
 
 fn observe_item<'tcx>(tcx: TyCtxt<'tcx>, diagnostic_items: &mut DiagnosticItems, owner: OwnerId) {
     let attrs = tcx.hir_attrs(owner.into());
-    if let Some(name) = extract(attrs) {
+    if let Some(name) = find_attr!(attrs, AttributeKind::RustcDiagnosticItem(name) => name) {
         // insert into our table
-        collect_item(tcx, diagnostic_items, name, owner.to_def_id());
+        collect_item(tcx, diagnostic_items, *name, owner.to_def_id());
     }
 }
 
@@ -51,13 +52,6 @@ fn report_duplicate_item(
         different_crates: (item_def_id.krate != original_def_id.krate),
         name,
     });
-}
-
-/// Extract the first `rustc_diagnostic_item = "$name"` out of a list of attributes.
-fn extract(attrs: &[Attribute]) -> Option<Symbol> {
-    attrs.iter().find_map(|attr| {
-        if attr.has_name(sym::rustc_diagnostic_item) { attr.value_str() } else { None }
-    })
 }
 
 /// Traverse and collect the diagnostic items in the current

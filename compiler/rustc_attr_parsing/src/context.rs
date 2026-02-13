@@ -203,6 +203,7 @@ attribute_parsers!(
         Single<RustcBuiltinMacroParser>,
         Single<RustcDefPath>,
         Single<RustcDeprecatedSafe2024Parser>,
+        Single<RustcDiagnosticItemParser>,
         Single<RustcForceInlineParser>,
         Single<RustcIfThisChangedParser>,
         Single<RustcLayoutScalarValidRangeEndParser>,

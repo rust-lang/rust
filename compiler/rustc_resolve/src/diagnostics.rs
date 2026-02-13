@@ -1425,14 +1425,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // a note about editions
                         let note = if let Some(did) = did {
                             let requires_note = !did.is_local()
-                                && this.tcx.get_attrs(did, sym::rustc_diagnostic_item).any(
-                                    |attr| {
-                                        [sym::TryInto, sym::TryFrom, sym::FromIterator]
-                                            .map(|x| Some(x))
-                                            .contains(&attr.value_str())
-                                    },
+                                && find_attr!(
+                                    this.tcx.get_all_attrs(did),
+                                    AttributeKind::RustcDiagnosticItem(
+                                        sym::TryInto | sym::TryFrom | sym::FromIterator
+                                    )
                                 );
-
                             requires_note.then(|| {
                                 format!(
                                     "'{}' is included in the prelude starting in Edition 2021",

@@ -21,7 +21,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, MacroKinds};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
-use rustc_hir::{MissingLifetimeKind, PrimTy};
+use rustc_hir::{MissingLifetimeKind, PrimTy, find_attr};
 use rustc_middle::ty;
 use rustc_session::{Session, lint};
 use rustc_span::edit_distance::{edit_distance, find_best_match_for_name};
@@ -2446,10 +2446,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             .iter()
             .filter_map(|candidate| candidate.did)
             .find(|did| {
-                self.r
-                    .tcx
-                    .get_attrs(*did, sym::rustc_diagnostic_item)
-                    .any(|attr| attr.value_str() == Some(sym::Default))
+                find_attr!(
+                    self.r.tcx.get_all_attrs(*did),
+                    AttributeKind::RustcDiagnosticItem(sym::Default)
+                )
             });
         let Some(default_trait) = default_trait else {
             return;

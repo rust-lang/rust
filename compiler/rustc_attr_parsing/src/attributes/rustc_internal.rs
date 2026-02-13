@@ -1103,6 +1103,45 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcEffectiveVisibilityParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcEffectiveVisibility;
 }
 
+pub(crate) struct RustcDiagnosticItemParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcDiagnosticItemParser {
+    const PATH: &[Symbol] = &[sym::rustc_diagnostic_item];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Trait),
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::MacroDef),
+        Allow(Target::TyAlias),
+        Allow(Target::AssocTy),
+        Allow(Target::AssocConst),
+        Allow(Target::Fn),
+        Allow(Target::Const),
+        Allow(Target::Mod),
+        Allow(Target::Impl { of_trait: false }),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Crate),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(nv) = args.name_value() else {
+            cx.expected_name_value(cx.attr_span, None);
+            return None;
+        };
+        let Some(value) = nv.value_as_str() else {
+            cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+            return None;
+        };
+        Some(AttributeKind::RustcDiagnosticItem(value))
+    }
+}
+
 pub(crate) struct RustcSymbolName;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcSymbolName {
