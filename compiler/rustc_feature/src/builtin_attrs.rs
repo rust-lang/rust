@@ -862,13 +862,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         register_tool, CrateLevel, template!(List: &["tool1, tool2, ..."]), DuplicatesOk,
         EncodeCrossCrate::No, experimental!(register_tool),
     ),
-
-    // lang-team MCP 147
-    gated!(
-        deprecated_safe, Normal, template!(List: &[r#"since = "version", note = "...""#]), ErrorFollowing,
-        EncodeCrossCrate::Yes, experimental!(deprecated_safe),
-    ),
-
     // `#[cfi_encoding = ""]`
     gated!(
         cfi_encoding, Normal, template!(NameValueStr: "encoding"), ErrorPreceding,
