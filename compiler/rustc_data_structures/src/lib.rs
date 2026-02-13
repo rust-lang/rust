@@ -28,6 +28,8 @@
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
+#![feature(pattern_type_macro)]
+#![feature(pattern_types)]
 #![feature(ptr_alignment_type)]
 #![feature(rustc_attrs)]
 #![feature(sized_hierarchy)]
