@@ -39,7 +39,7 @@ impl<F: Float> Generator<F> for RandDigits<F> {
     }
 
     fn new() -> Self {
-        let rng = ChaCha8Rng::from_seed(SEED);
+        let rng = ChaCha8Rng::from_seed(SEED.0);
         let range = Uniform::try_from(0..10).unwrap();
 
         Self { rng, iter: 0..ITERATIONS, uniform: range, marker: PhantomData }
