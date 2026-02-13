@@ -7,7 +7,7 @@ use std::any::Any;
 use std::cell::Cell;
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::join;
+use rustc_data_structures::sync::par_join;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::{self as hir, AmbigArg, HirId, intravisit as hir_visit};
 use rustc_middle::hir::nested_filter;
@@ -461,7 +461,7 @@ fn late_lint_crate_inner<'tcx, T: LateLintPass<'tcx>>(
 
 /// Performs lint checking on a crate.
 pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) {
-    join(
+    par_join(
         || {
             tcx.sess.time("crate_lints", || {
                 // Run whole crate non-incremental lints

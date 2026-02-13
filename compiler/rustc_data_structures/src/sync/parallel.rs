@@ -56,41 +56,6 @@ where
     (a.unwrap(), b.unwrap())
 }
 
-/// Runs a list of blocks in parallel. The first block is executed immediately on
-/// the current thread. Use that for the longest running block.
-#[macro_export]
-macro_rules! parallel {
-        (impl $fblock:block [$($c:expr,)*] [$block:expr $(, $rest:expr)*]) => {
-            parallel!(impl $fblock [$block, $($c,)*] [$($rest),*])
-        };
-        (impl $fblock:block [$($blocks:expr,)*] []) => {
-            $crate::sync::parallel_guard(|guard| {
-                $crate::sync::scope(|s| {
-                    $(
-                        let block = $crate::sync::FromDyn::from(|| $blocks);
-                        s.spawn(move |_| {
-                            guard.run(move || block.into_inner()());
-                        });
-                    )*
-                    guard.run(|| $fblock);
-                });
-            });
-        };
-        ($fblock:block, $($blocks:block),*) => {
-            if $crate::sync::is_dyn_thread_safe() {
-                // Reverse the order of the later blocks since Rayon executes them in reverse order
-                // when using a single thread. This ensures the execution order matches that
-                // of a single threaded rustc.
-                parallel!(impl $fblock [] [$($blocks),*]);
-            } else {
-                $crate::sync::parallel_guard(|guard| {
-                    guard.run(|| $fblock);
-                    $(guard.run(|| $blocks);)*
-                });
-            }
-        };
-    }
-
 pub fn spawn(func: impl FnOnce() + DynSend + 'static) {
     if mode::is_dyn_thread_safe() {
         let func = FromDyn::from(func);
@@ -102,18 +67,43 @@ pub fn spawn(func: impl FnOnce() + DynSend + 'static) {
     }
 }
 
-// This function only works when `mode::is_dyn_thread_safe()`.
-pub fn scope<'scope, OP, R>(op: OP) -> R
-where
-    OP: FnOnce(&rustc_thread_pool::Scope<'scope>) -> R + DynSend,
-    R: DynSend,
-{
-    let op = FromDyn::from(op);
-    rustc_thread_pool::scope(|s| FromDyn::from(op.into_inner()(s))).into_inner()
+/// Runs the functions in parallel.
+///
+/// The first function is executed immediately on the current thread.
+/// Use that for the longest running function for better scheduling.
+pub fn par_fns(funcs: &mut [&mut (dyn FnMut() + DynSend)]) {
+    parallel_guard(|guard: &ParallelGuard| {
+        if mode::is_dyn_thread_safe() {
+            let funcs = FromDyn::from(funcs);
+            rustc_thread_pool::scope(|s| {
+                let Some((first, rest)) = funcs.into_inner().split_at_mut_checked(1) else {
+                    return;
+                };
+
+                // Reverse the order of the later functions since Rayon executes them in reverse
+                // order when using a single thread. This ensures the execution order matches
+                // that of a single threaded rustc.
+                for f in rest.iter_mut().rev() {
+                    let f = FromDyn::from(f);
+                    s.spawn(|_| {
+                        guard.run(|| (f.into_inner())());
+                    });
+                }
+
+                // Run the first function without spawning to
+                // ensure it executes immediately on this thread.
+                guard.run(|| first[0]());
+            });
+        } else {
+            for f in funcs {
+                guard.run(|| f());
+            }
+        }
+    });
 }
 
 #[inline]
-pub fn join<A, B, RA: DynSend, RB: DynSend>(oper_a: A, oper_b: B) -> (RA, RB)
+pub fn par_join<A, B, RA: DynSend, RB: DynSend>(oper_a: A, oper_b: B) -> (RA, RB)
 where
     A: FnOnce() -> RA + DynSend,
     B: FnOnce() -> RB + DynSend,
