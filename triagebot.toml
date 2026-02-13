@@ -76,9 +76,9 @@ add-labels = ["beta-nominated"]
 
 [ping.windows]
 message = """\
-Hey Windows Group! This bug has been identified as a good "Windows candidate".
+Hey Windows Group! This issue has been identified as a good "Windows candidate".
 In case it's useful, here are some [instructions] for tackling these sorts of
-bugs. Maybe take a look?
+issues. Maybe take a look?
 Thanks! <3
 
 [instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/windows.html
@@ -87,9 +87,9 @@ label = "O-windows"
 
 [ping.arm]
 message = """\
-Hey ARM Group! This bug has been identified as a good "ARM candidate".
+Hey ARM Group! This issue has been identified as a good "ARM candidate".
 In case it's useful, here are some [instructions] for tackling these sorts of
-bugs. Maybe take a look?
+issues. Maybe take a look?
 Thanks! <3
 
 [instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/arm.html
@@ -98,9 +98,9 @@ label = "O-ARM"
 
 [ping.loongarch]
 message = """\
-Hey LoongArch Group! This bug has been identified as a good "LoongArch candidate".
+Hey LoongArch Group! This issue has been identified as a good "LoongArch candidate".
 In case it's useful, here are some [instructions] for tackling these sorts of
-bugs. Maybe take a look?
+issues. Maybe take a look?
 Thanks! <3
 
 [instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/loongarch.html
@@ -109,9 +109,9 @@ label = "O-loongarch"
 
 [ping.risc-v]
 message = """\
-Hey RISC-V Group! This bug has been identified as a good "RISC-V candidate".
+Hey RISC-V Group! This issue has been identified as a good "RISC-V candidate".
 In case it's useful, here are some [instructions] for tackling these sorts of
-bugs. Maybe take a look?
+issues. Maybe take a look?
 Thanks! <3
 
 [instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/risc-v.html
