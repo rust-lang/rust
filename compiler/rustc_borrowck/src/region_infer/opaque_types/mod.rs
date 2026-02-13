@@ -24,13 +24,13 @@ use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use tracing::{debug, instrument};
 
 use super::reverse_sccs::ReverseSccGraph;
-use crate::BorrowckInferCtxt;
 use crate::consumers::RegionInferenceContext;
 use crate::session_diagnostics::LifetimeMismatchOpaqueParam;
 use crate::type_check::canonical::fully_perform_op_raw;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::universal_regions::{RegionClassification, UniversalRegions};
+use crate::{BorrowckInferCtxt, CollectRegionConstraintsResult};
 
 mod member_constraints;
 mod region_ctxt;
@@ -126,6 +126,31 @@ fn nll_var_to_universal_region<'tcx>(
     }
 }
 
+/// Record info needed to report the same name error later.
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct UnexpectedHiddenRegion<'tcx> {
+    // The def_id of the body where this error occurs.
+    // Needed to handle region vars with their corresponding `infcx`.
+    def_id: LocalDefId,
+    opaque_type_key: OpaqueTypeKey<'tcx>,
+    hidden_type: ProvisionalHiddenType<'tcx>,
+    member_region: Region<'tcx>,
+}
+
+impl<'tcx> UnexpectedHiddenRegion<'tcx> {
+    pub(crate) fn to_error(self) -> (LocalDefId, DeferredOpaqueTypeError<'tcx>) {
+        let UnexpectedHiddenRegion { def_id, opaque_type_key, hidden_type, member_region } = self;
+        (
+            def_id,
+            DeferredOpaqueTypeError::UnexpectedHiddenRegion {
+                opaque_type_key,
+                hidden_type,
+                member_region,
+            },
+        )
+    }
+}
+
 /// Collect all defining uses of opaque types inside of this typeck root. This
 /// expects the hidden type to be mapped to the definition parameters of the opaque
 /// and errors if we end up with distinct hidden types.
@@ -176,11 +201,13 @@ struct DefiningUse<'tcx> {
 /// It also means that this whole function is not really soundness critical as we
 /// recheck all uses of the opaques regardless.
 pub(crate) fn compute_definition_site_hidden_types<'tcx>(
+    def_id: LocalDefId,
     infcx: &BorrowckInferCtxt<'tcx>,
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
     constraints: &MirTypeckRegionConstraints<'tcx>,
     location_map: Rc<DenseLocationMap>,
     hidden_types: &mut FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
+    unconstrained_hidden_type_errors: &mut Vec<UnexpectedHiddenRegion<'tcx>>,
     opaque_types: &[(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)],
 ) -> Vec<DeferredOpaqueTypeError<'tcx>> {
     let mut errors = Vec::new();
@@ -204,8 +231,10 @@ pub(crate) fn compute_definition_site_hidden_types<'tcx>(
     // up equal to one of their choice regions and compute the actual hidden type of
     // the opaque type definition. This is stored in the `root_cx`.
     compute_definition_site_hidden_types_from_defining_uses(
+        def_id,
         &rcx,
         hidden_types,
+        unconstrained_hidden_type_errors,
         &defining_uses,
         &mut errors,
     );
@@ -274,8 +303,10 @@ fn collect_defining_uses<'tcx>(
 
 #[instrument(level = "debug", skip(rcx, hidden_types, defining_uses, errors))]
 fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
+    def_id: LocalDefId,
     rcx: &RegionCtxt<'_, 'tcx>,
     hidden_types: &mut FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
+    unconstrained_hidden_type_errors: &mut Vec<UnexpectedHiddenRegion<'tcx>>,
     defining_uses: &[DefiningUse<'tcx>],
     errors: &mut Vec<DeferredOpaqueTypeError<'tcx>>,
 ) {
@@ -293,16 +324,29 @@ fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
                 Ok(hidden_type) => hidden_type,
                 Err(r) => {
                     debug!("UnexpectedHiddenRegion: {:?}", r);
-                    errors.push(DeferredOpaqueTypeError::UnexpectedHiddenRegion {
-                        hidden_type,
-                        opaque_type_key,
-                        member_region: ty::Region::new_var(tcx, r),
-                    });
-                    let guar = tcx.dcx().span_delayed_bug(
-                        hidden_type.span,
-                        "opaque type with non-universal region args",
-                    );
-                    ty::ProvisionalHiddenType::new_error(tcx, guar)
+                    // If we're using the next solver, the unconstrained region may be resolved by a
+                    // fully defining use from another body.
+                    // So we don't generate error eagerly here.
+                    if rcx.infcx.tcx.use_typing_mode_borrowck() {
+                        unconstrained_hidden_type_errors.push(UnexpectedHiddenRegion {
+                            def_id,
+                            hidden_type,
+                            opaque_type_key,
+                            member_region: ty::Region::new_var(tcx, r),
+                        });
+                        continue;
+                    } else {
+                        errors.push(DeferredOpaqueTypeError::UnexpectedHiddenRegion {
+                            hidden_type,
+                            opaque_type_key,
+                            member_region: ty::Region::new_var(tcx, r),
+                        });
+                        let guar = tcx.dcx().span_delayed_bug(
+                            hidden_type.span,
+                            "opaque type with non-universal region args",
+                        );
+                        ty::ProvisionalHiddenType::new_error(tcx, guar)
+                    }
                 }
             };
 
@@ -568,6 +612,40 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
         }
     }
     errors
+}
+
+/// We handle `UnexpectedHiddenRegion` error lazily in the next solver as
+/// there may be a fully defining use in another body.
+///
+/// In case such a defining use does not exist, we register an error here.
+pub(crate) fn handle_unconstrained_hidden_type_errors<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    hidden_types: &mut FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
+    unconstrained_hidden_type_errors: &mut Vec<UnexpectedHiddenRegion<'tcx>>,
+    collect_region_constraints_results: &mut FxIndexMap<
+        LocalDefId,
+        CollectRegionConstraintsResult<'tcx>,
+    >,
+) {
+    let mut unconstrained_hidden_type_errors = std::mem::take(unconstrained_hidden_type_errors);
+    unconstrained_hidden_type_errors
+        .retain(|unconstrained| !hidden_types.contains_key(&unconstrained.opaque_type_key.def_id));
+
+    unconstrained_hidden_type_errors.iter().for_each(|t| {
+        tcx.dcx()
+            .span_delayed_bug(t.hidden_type.span, "opaque type with non-universal region args");
+    });
+
+    // `UnexpectedHiddenRegion` error contains region var which only makes sense in the
+    // corresponding `infcx`.
+    // So we need to insert the error to the body where it originates from.
+    for error in unconstrained_hidden_type_errors {
+        let (def_id, error) = error.to_error();
+        let Some(result) = collect_region_constraints_results.get_mut(&def_id) else {
+            unreachable!("the body should depend on opaques type if it has opaque use");
+        };
+        result.deferred_opaque_type_errors.push(error);
+    }
 }
 
 /// In theory `apply_definition_site_hidden_types` could introduce new uses of opaque types.
