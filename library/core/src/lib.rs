@@ -87,6 +87,7 @@
 #![allow(incomplete_features)]
 #![warn(multiple_supertrait_upcastable)]
 #![allow(internal_features)]
+#![allow(unused_features)]
 #![deny(ffi_unwind_calls)]
 #![warn(unreachable_pub)]
 // Do not check link redundancy on bootstrapping phase
@@ -95,9 +96,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
-#![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(cfg_select)]
 #![feature(cfg_target_has_reliable_f16_f128)]
@@ -106,31 +105,15 @@
 #![feature(const_destruct)]
 #![feature(const_eval_select)]
 #![feature(const_select_unpredictable)]
-#![feature(const_unsigned_bigint_helpers)]
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
 #![feature(disjoint_bitor)]
 #![feature(internal_impls_macro)]
-#![feature(ip)]
-#![feature(is_ascii_octdigit)]
 #![feature(link_cfg)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
 #![feature(pattern_type_macro)]
-#![feature(ptr_alignment_type)]
-#![feature(ptr_metadata)]
-#![feature(set_ptr_value)]
-#![feature(signed_bigint_helpers)]
-#![feature(slice_ptr_get)]
-#![feature(str_internals)]
-#![feature(str_split_inclusive_remainder)]
-#![feature(str_split_remainder)]
-#![feature(type_info)]
 #![feature(ub_checks)]
-#![feature(unsafe_pinned)]
-#![feature(utf16_extra)]
-#![feature(variant_count)]
-#![feature(widening_mul)]
 // tidy-alphabetical-end
 //
 // Language features:
@@ -175,7 +158,6 @@
 #![feature(optimize_attribute)]
 #![feature(pattern_types)]
 #![feature(prelude_import)]
-#![feature(reborrow)]
 #![feature(repr_simd)]
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]

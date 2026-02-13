@@ -219,6 +219,7 @@ impl_float_from_bool!(
     f16;
     doctest_prefix:
     // rustdoc doesn't remove the conventional space after the `///`
+    ///# #![allow(unused_features)]
     ///#![feature(f16)]
     ///# #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///
@@ -230,6 +231,7 @@ impl_float_from_bool!(f64);
 impl_float_from_bool!(
     f128;
     doctest_prefix:
+    ///# #![allow(unused_features)]
     ///#![feature(f128)]
     ///# #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
     ///

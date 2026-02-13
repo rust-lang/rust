@@ -1800,7 +1800,6 @@ impl<T> *mut [T] {
     ///
     /// ```
     /// #![feature(raw_slice_split)]
-    /// #![feature(slice_ptr_get)]
     ///
     /// let mut v = [1, 0, 3, 0, 5, 6];
     /// let ptr = &mut v as *mut [_];

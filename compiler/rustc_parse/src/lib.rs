@@ -2,12 +2,12 @@
 
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(assert_matches))]
+#![cfg_attr(test, feature(iter_order_by))]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
 #![feature(default_field_values)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
-#![feature(iter_order_by)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 

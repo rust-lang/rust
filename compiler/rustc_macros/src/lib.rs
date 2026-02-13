@@ -1,6 +1,5 @@
 // tidy-alphabetical-start
 #![allow(rustc::default_hash_types)]
-#![feature(if_let_guard)]
 #![feature(never_type)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_tracked_env)]

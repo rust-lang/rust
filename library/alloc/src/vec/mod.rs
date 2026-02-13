@@ -1238,7 +1238,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api, box_vec_non_null)]
+    /// #![feature(allocator_api)]
     ///
     /// use std::alloc::System;
     ///
@@ -1265,7 +1265,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Using memory that was allocated elsewhere:
     ///
     /// ```rust
-    /// #![feature(allocator_api, box_vec_non_null)]
+    /// #![feature(allocator_api)]
     ///
     /// use std::alloc::{AllocError, Allocator, Global, Layout};
     ///
@@ -1365,7 +1365,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api, box_vec_non_null)]
+    /// #![feature(allocator_api)]
     ///
     /// use std::alloc::System;
     ///

@@ -14,8 +14,6 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
-#![feature(try_blocks)]
-#![feature(yeet_expr)]
 // tidy-alphabetical-end
 
 extern crate self as rustc_errors;

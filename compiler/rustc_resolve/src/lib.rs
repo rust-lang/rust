@@ -15,7 +15,6 @@
 #![feature(const_default)]
 #![feature(const_trait_impl)]
 #![feature(control_flow_into_value)]
-#![feature(decl_macro)]
 #![feature(default_field_values)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]

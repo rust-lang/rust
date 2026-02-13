@@ -4,12 +4,12 @@
 #![feature(cfg_select)]
 #![feature(link_cfg)]
 #![feature(staged_api)]
-#![cfg_attr(not(target_env = "msvc"), feature(libc))]
 #![cfg_attr(
     all(target_family = "wasm", any(not(target_os = "emscripten"), emscripten_wasm_eh)),
     feature(link_llvm_intrinsics, simd_wasm64)
 )]
 #![allow(internal_features)]
+#![allow(unused_features)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 // Force libc to be included even if unused. This is required by many platforms.

@@ -1,4 +1,4 @@
-#![allow(internal_features)]
+#![allow(internal_features, unused_features)]
 #![feature(stdarch_internal)]
 #![cfg_attr(target_arch = "arm", feature(stdarch_arm_feature_detection))]
 #![cfg_attr(
