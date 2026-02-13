@@ -6,6 +6,7 @@ use syn::ext::IdentExt;
 use synstructure::VariantInfo;
 
 use crate::diagnostics::error::span_err;
+use crate::diagnostics::pattern_to_tokens::pattern_to_tokens;
 
 #[derive(Clone)]
 pub(crate) struct Message {
@@ -19,28 +20,33 @@ impl Message {
     /// The passed `variant` is used to check whether all variables in the message are used.
     /// For subdiagnostics, we cannot check this.
     pub(crate) fn diag_message(&self, variant: Option<&VariantInfo<'_>>) -> TokenStream {
-        let message = &self.value;
-        self.verify(variant);
-        quote! { rustc_errors::DiagMessage::Inline(std::borrow::Cow::Borrowed(#message)) }
-    }
+        // Parse the fluent message
+        const GENERATED_MSG_ID: &str = "generated_msg";
+        let message_str = &self.value;
+        let resource =
+            FluentResource::try_new(format!("{GENERATED_MSG_ID} = {message_str}\n")).unwrap();
+        assert_eq!(resource.entries().count(), 1);
+        let Some(fluent_syntax::ast::Entry::Message(message)) = resource.get_entry(0) else {
+            panic!("Did not parse into a message")
+        };
 
-    fn verify(&self, variant: Option<&VariantInfo<'_>>) {
-        verify_variables_used(self.message_span, &self.value, variant);
+        verify_variables_used(self.message_span, message, variant);
         verify_message_style(self.message_span, &self.value);
         verify_message_formatting(self.attr_span, self.message_span, &self.value);
+
+        let pattern = pattern_to_tokens(message.value.as_ref().unwrap(), self.message_span);
+        quote! {{
+            static MESSAGE: std::sync::LazyLock<rustc_errors::FluentMessage> = std::sync::LazyLock::new(|| rustc_errors::FluentMessage(#pattern));
+            rustc_errors::DiagMessage::Inline(std::borrow::Cow::Borrowed(&*MESSAGE))
+        }}
     }
 }
 
-fn verify_variables_used(msg_span: Span, message_str: &str, variant: Option<&VariantInfo<'_>>) {
-    // Parse the fluent message
-    const GENERATED_MSG_ID: &str = "generated_msg";
-    let resource =
-        FluentResource::try_new(format!("{GENERATED_MSG_ID} = {message_str}\n")).unwrap();
-    assert_eq!(resource.entries().count(), 1);
-    let Some(fluent_syntax::ast::Entry::Message(message)) = resource.get_entry(0) else {
-        panic!("Did not parse into a message")
-    };
-
+fn verify_variables_used(
+    msg_span: Span,
+    message: &fluent_syntax::ast::Message<&str>,
+    variant: Option<&VariantInfo<'_>>,
+) {
     // Check if all variables are used
     if let Some(variant) = variant {
         let fields: Vec<String> = variant

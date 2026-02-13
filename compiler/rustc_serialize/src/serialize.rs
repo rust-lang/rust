@@ -382,6 +382,20 @@ impl<D: Decoder> Decodable<D> for Cow<'_, str> {
     }
 }
 
+impl<S: Encoder, T: Encodable<S> + Clone> Encodable<S> for Cow<'_, T> {
+    fn encode(&self, s: &mut S) {
+        let val: &T = self;
+        val.encode(s)
+    }
+}
+
+impl<D: Decoder, T: Decodable<D> + Clone + 'static> Decodable<D> for Cow<'_, T> {
+    fn decode(d: &mut D) -> Cow<'static, T> {
+        let v: T = Decodable::decode(d);
+        Cow::Owned(v)
+    }
+}
+
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for Option<T> {
     fn encode(&self, s: &mut S) {
         match *self {

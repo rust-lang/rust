@@ -4,9 +4,7 @@ use std::collections::BTreeMap;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{
-    Applicability, Diag, DiagMessage, EmissionGuarantee, MultiSpan, inline_fluent, listify,
-};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, MultiSpan, inline_fluent, listify};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::{
     self as hir, CoroutineKind, GenericBound, LangItem, WhereBoundPredicate, WherePredicateKind,
@@ -701,7 +699,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
                 .is_some()
             {
-                diag.span_note(pred.span, LIMITATION_NOTE);
+                diag.span_note(pred.span, inline_fluent!(
+                    "due to a current limitation of the type system, this implies a `'static` lifetime"
+                ));
                 return;
             }
             for bound in bounds.iter() {
@@ -712,7 +712,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
                         .is_some()
                     {
-                        diag.span_note(bound.span, LIMITATION_NOTE);
+                        diag.span_note(bound.span, inline_fluent!(
+                            "due to a current limitation of the type system, this implies a `'static` lifetime"
+                        ));
                         return;
                     }
                 }
@@ -1572,7 +1574,3 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         self.local_name(index).is_none_or(|name| name.as_str().starts_with('_'))
     }
 }
-
-const LIMITATION_NOTE: DiagMessage = inline_fluent!(
-    "due to a current limitation of the type system, this implies a `'static` lifetime"
-);

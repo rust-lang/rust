@@ -56,9 +56,10 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{DynSend, Lock};
 use rustc_data_structures::{AtomicRef, assert_matches};
 pub use rustc_error_messages::{
-    DiagArg, DiagArgFromDisplay, DiagArgName, DiagArgValue, DiagMessage, FluentBundle, IntoDiagArg,
-    LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, fallback_fluent_bundle,
-    fluent_bundle, into_diag_arg_using_display,
+    CallArguments, DiagArg, DiagArgFromDisplay, DiagArgName, DiagArgValue, DiagMessage, Expression,
+    FluentBundle, FluentMessage, Identifier, InlineExpression, IntoDiagArg, LanguageIdentifier,
+    LazyFallbackBundle, MultiSpan, NamedArgument, Pattern, PatternElement, SpanLabel, Variant,
+    VariantKey, fallback_fluent_bundle, fluent_bundle, into_diag_arg_using_display,
 };
 use rustc_hashes::Hash128;
 use rustc_lint_defs::LintExpectationId;

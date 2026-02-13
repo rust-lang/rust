@@ -5,6 +5,7 @@
 
 use std::borrow::Cow;
 use std::error::Error;
+use std::hash::Hash;
 use std::path::Path;
 use std::sync::{Arc, LazyLock};
 use std::{fmt, fs, io};
@@ -12,6 +13,10 @@ use std::{fmt, fs, io};
 use fluent_bundle::FluentResource;
 pub use fluent_bundle::types::FluentType;
 pub use fluent_bundle::{self, FluentArgs, FluentError, FluentValue};
+pub use fluent_syntax::ast::{
+    CallArguments, Expression, Identifier, InlineExpression, NamedArgument, Pattern,
+    PatternElement, Variant, VariantKey,
+};
 use fluent_syntax::parser::ParserError;
 use intl_memoizer::concurrent::IntlLangMemoizer;
 use rustc_data_structures::sync::{DynSend, IntoDynSyncSend};
@@ -22,6 +27,7 @@ pub use unic_langid::{LanguageIdentifier, langid};
 
 mod diagnostic_impls;
 pub use diagnostic_impls::DiagArgFromDisplay;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 pub type FluentBundle =
     IntoDynSyncSend<fluent_bundle::bundle::FluentBundle<FluentResource, IntlLangMemoizer>>;
@@ -230,6 +236,25 @@ pub fn fallback_fluent_bundle(
     })))
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct FluentMessage(pub Pattern<&'static str>);
+
+impl<E: Encoder> Encodable<E> for FluentMessage {
+    fn encode(&self, s: &mut E) {
+        let bytes = postcard::to_allocvec(&self.0).unwrap();
+        s.emit_byte_str(&bytes);
+    }
+}
+
+impl<D: Decoder> Decodable<D> for FluentMessage {
+    fn decode(d: &mut D) -> Self {
+        let bytes = d.read_byte_str();
+        let bytes = Vec::leak(bytes.into()); //TODO
+
+        Self(postcard::from_bytes(bytes).unwrap())
+    }
+}
+
 /// Abstraction over a message in a diagnostic to support both translatable and non-translatable
 /// diagnostic messages.
 ///
@@ -245,7 +270,7 @@ pub enum DiagMessage {
     /// this variant of `DiagMessage` is produced.
     Str(Cow<'static, str>),
     /// An inline Fluent message, containing the to be translated diagnostic message.
-    Inline(Cow<'static, str>),
+    Inline(Cow<'static, FluentMessage>),
 }
 
 impl DiagMessage {

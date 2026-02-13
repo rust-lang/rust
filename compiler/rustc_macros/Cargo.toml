@@ -8,8 +8,8 @@ proc-macro = true
 
 [dependencies]
 # tidy-alphabetical-start
-fluent-bundle = "0.16"
-fluent-syntax = "0.12"
+fluent-bundle = {  git = "https://github.com/JonathanBrouwer/fluent-rs.git", branch = "rustc_changes" }
+fluent-syntax = {  git = "https://github.com/JonathanBrouwer/fluent-rs.git", branch = "rustc_changes" }
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "2.0.9", features = ["full"] }

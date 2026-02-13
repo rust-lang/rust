@@ -5,11 +5,12 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-fluent-bundle = "0.16"
-fluent-syntax = "0.12"
+fluent-bundle = {  git = "https://github.com/JonathanBrouwer/fluent-rs.git", branch = "rustc_changes" }
+fluent-syntax = {  git = "https://github.com/JonathanBrouwer/fluent-rs.git", branch = "rustc_changes", features = ["serde"] }
 icu_list = { version = "2.0", default-features = false, features = ["alloc"] }
 icu_locale = { version = "2.0", default-features = false }
-intl-memoizer = "0.5.1"
+intl-memoizer = {  git = "https://github.com/JonathanBrouwer/fluent-rs.git", branch = "rustc_changes" }
+postcard = { version = "1.1.3", features = ["alloc"] }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_baked_icu_data = { path = "../rustc_baked_icu_data" }

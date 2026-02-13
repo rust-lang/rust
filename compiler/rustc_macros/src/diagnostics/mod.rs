@@ -3,6 +3,7 @@ mod diagnostic_builder;
 mod error;
 mod inline_fluent;
 mod message;
+mod pattern_to_tokens;
 mod subdiagnostic;
 mod utils;
 

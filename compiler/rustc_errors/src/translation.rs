@@ -68,23 +68,18 @@ impl Translator {
             // It does this by creating a new `FluentBundle` with only one message,
             // and then translating using this bundle.
             DiagMessage::Inline(msg) => {
-                const GENERATED_MSG_ID: &str = "generated_msg";
-                let resource =
-                    FluentResource::try_new(format!("{GENERATED_MSG_ID} = {msg}\n")).unwrap();
-                let mut bundle = fluent_bundle::FluentBundle::new(vec![langid!("en-US")]);
+                let mut bundle: fluent_bundle::FluentBundle<FluentResource> =
+                    fluent_bundle::FluentBundle::new(vec![langid!("en-US")]);
                 bundle.set_use_isolating(false);
-                bundle.add_resource(resource).unwrap();
                 register_functions(&mut bundle);
-                let message = bundle.get_message(GENERATED_MSG_ID).unwrap();
-                let value = message.value().unwrap();
 
                 let mut errs = vec![];
-                let translated = bundle.format_pattern(value, Some(args), &mut errs).to_string();
+                let translated = bundle.format_pattern(&msg.0, Some(args), &mut errs).to_string();
                 debug!(?translated, ?errs);
                 if errs.is_empty() {
                     Ok(Cow::Owned(translated))
                 } else {
-                    Err(TranslateError::fluent(&Cow::Borrowed(GENERATED_MSG_ID), args, errs))
+                    Err(TranslateError::fluent(&Cow::Borrowed("GENERATED_MSG"), args, errs))
                 }
             }
         }

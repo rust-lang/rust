@@ -27,7 +27,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 use tracing::{debug, instrument, trace};
 
-use super::{LIMITATION_NOTE, OutlivesSuggestionBuilder, RegionName, RegionNameSource};
+use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
 use crate::nll::ConstraintDescription;
 use crate::region_infer::{BlameConstraint, TypeTest};
 use crate::session_diagnostics::{
@@ -258,7 +258,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }) = bound else {
                 return;
             };
-            diag.span_note(*trait_span, LIMITATION_NOTE);
+            diag.span_note(*trait_span, inline_fluent!(
+                "due to a current limitation of the type system, this implies a `'static` lifetime"
+            ));
             let Some(generics_fn) = tcx.hir_get_generics(self.body.source.def_id().expect_local())
             else {
                 return;
