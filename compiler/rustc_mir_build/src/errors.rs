@@ -67,18 +67,6 @@ pub(crate) struct UnsafeOpInUnsafeFnUseOfInlineAssemblyRequiresUnsafe {
 }
 
 #[derive(Diagnostic)]
-#[diag("initializing type with `rustc_layout_scalar_valid_range` attr is unsafe and requires unsafe block", code = E0133)]
-#[note(
-    "initializing a layout restricted type's field with a value outside the valid range is undefined behavior"
-)]
-pub(crate) struct UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
-    #[label("initializing type with `rustc_layout_scalar_valid_range` attr")]
-    pub(crate) span: Span,
-    #[subdiagnostic]
-    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
-}
-
-#[derive(Diagnostic)]
 #[diag("initializing type with an unsafe field is unsafe and requires unsafe block", code = E0133)]
 #[note("unsafe fields may carry library invariants")]
 pub(crate) struct UnsafeOpInUnsafeFnInitializingTypeWithUnsafeFieldRequiresUnsafe {
@@ -283,40 +271,11 @@ pub(crate) struct UseOfInlineAssemblyRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
 }
 
 #[derive(Diagnostic)]
-#[diag("initializing type with `rustc_layout_scalar_valid_range` attr is unsafe and requires unsafe block", code = E0133)]
-#[note(
-    "initializing a layout restricted type's field with a value outside the valid range is undefined behavior"
-)]
-pub(crate) struct InitializingTypeWithRequiresUnsafe {
-    #[primary_span]
-    #[label("initializing type with `rustc_layout_scalar_valid_range` attr")]
-    pub(crate) span: Span,
-    #[subdiagnostic]
-    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
-}
-
-#[derive(Diagnostic)]
 #[diag("initializing type with an unsafe field is unsafe and requires unsafe block", code = E0133)]
 #[note("unsafe fields may carry library invariants")]
 pub(crate) struct InitializingTypeWithUnsafeFieldRequiresUnsafe {
     #[primary_span]
     #[label("initialization of struct with unsafe field")]
-    pub(crate) span: Span,
-    #[subdiagnostic]
-    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
-}
-
-#[derive(Diagnostic)]
-#[diag(
-    "initializing type with `rustc_layout_scalar_valid_range` attr is unsafe and requires unsafe function or block",
-    code = E0133
-)]
-#[note(
-    "initializing a layout restricted type's field with a value outside the valid range is undefined behavior"
-)]
-pub(crate) struct InitializingTypeWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
-    #[primary_span]
-    #[label("initializing type with `rustc_layout_scalar_valid_range` attr")]
     pub(crate) span: Span,
     #[subdiagnostic]
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,

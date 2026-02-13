@@ -15,7 +15,7 @@
 //! crate as a kind of pass. This should eventually be factored away.
 
 use std::cell::Cell;
-use std::ops::{Bound, ControlFlow};
+use std::ops::ControlFlow;
 use std::{assert_matches, iter};
 
 use rustc_abi::{ExternAbi, Size};
@@ -1039,12 +1039,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
                 .fields()
                 .iter()
                 .map(|f| tcx.type_of(f.def_id).instantiate_identity().skip_norm_wip());
-            // constructors for structs with `layout_scalar_valid_range` are unsafe to call
-            let safety = match tcx.layout_scalar_valid_range(adt_def_id) {
-                (Bound::Unbounded, Bound::Unbounded) => hir::Safety::Safe,
-                _ => hir::Safety::Unsafe,
-            };
-            ty::Binder::dummy(tcx.mk_fn_sig_rust_abi(inputs, ty, safety))
+            ty::Binder::dummy(tcx.mk_fn_sig_rust_abi(inputs, ty, hir::Safety::Safe))
         }
 
         Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {

@@ -129,10 +129,6 @@ fn test2() { }
 //~| ERROR the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro` crate type
 pub fn test3() {}
 
-#[rustc_layout_scalar_valid_range_start]
-//~^ ERROR malformed
-#[rustc_layout_scalar_valid_range_end]
-//~^ ERROR malformed
 #[must_not_suspend()]
 //~^ ERROR malformed
 #[cfi_encoding = ""]

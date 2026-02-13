@@ -1752,8 +1752,6 @@ symbols! {
         rustc_insignificant_dtor,
         rustc_intrinsic,
         rustc_intrinsic_const_stable_indirect,
-        rustc_layout_scalar_valid_range_end,
-        rustc_layout_scalar_valid_range_start,
         rustc_legacy_const_generics,
         rustc_lint_opt_deny_field_access,
         rustc_lint_opt_ty,

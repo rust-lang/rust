@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::mem;
-use std::ops::Bound;
 
 use rustc_ast::AsmMacro;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -8,7 +7,6 @@ use rustc_errors::DiagArgValue;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
-use rustc_middle::mir::BorrowKind;
 use rustc_middle::span_bug;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
@@ -19,7 +17,6 @@ use rustc_session::lint::builtin::{DEPRECATED_SAFE_2024, UNSAFE_OP_IN_UNSAFE_FN,
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{Span, Symbol};
 
-use crate::builder::ExprCategory;
 use crate::errors::*;
 
 struct UnsafetyVisitor<'a, 'tcx> {
@@ -221,50 +218,6 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
     }
 }
 
-// Searches for accesses to layout constrained fields.
-struct LayoutConstrainedPlaceVisitor<'a, 'tcx> {
-    found: bool,
-    thir: &'a Thir<'tcx>,
-    tcx: TyCtxt<'tcx>,
-}
-
-impl<'a, 'tcx> LayoutConstrainedPlaceVisitor<'a, 'tcx> {
-    fn new(thir: &'a Thir<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        Self { found: false, thir, tcx }
-    }
-}
-
-impl<'a, 'tcx> Visitor<'a, 'tcx> for LayoutConstrainedPlaceVisitor<'a, 'tcx> {
-    fn thir(&self) -> &'a Thir<'tcx> {
-        self.thir
-    }
-
-    fn visit_expr(&mut self, expr: &'a Expr<'tcx>) {
-        match expr.kind {
-            ExprKind::Field { lhs, .. } => {
-                if let ty::Adt(adt_def, _) = self.thir[lhs].ty.kind() {
-                    if (Bound::Unbounded, Bound::Unbounded)
-                        != self.tcx.layout_scalar_valid_range(adt_def.did())
-                    {
-                        self.found = true;
-                    }
-                }
-                visit::walk_expr(self, expr);
-            }
-
-            // Keep walking through the expression as long as we stay in the same
-            // place, i.e. the expression is a place expression and not a dereference
-            // (since dereferencing something leads us to a different place).
-            ExprKind::Deref { .. } => {}
-            ref kind if ExprCategory::of(kind).is_none_or(|cat| cat == ExprCategory::Place) => {
-                visit::walk_expr(self, expr);
-            }
-
-            _ => {}
-        }
-    }
-}
-
 impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
     fn thir(&self) -> &'a Thir<'tcx> {
         self.thir
@@ -342,12 +295,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                             std::mem::replace(&mut self.in_union_destructure, true);
                         visit::walk_pat(self, pat);
                         self.in_union_destructure = old_in_union_destructure;
-                    } else if (Bound::Unbounded, Bound::Unbounded)
-                        != self.tcx.layout_scalar_valid_range(adt_def.did())
-                    {
-                        let old_inside_adt = std::mem::replace(&mut self.inside_adt, true);
-                        visit::walk_pat(self, pat);
-                        self.inside_adt = old_inside_adt;
                     } else {
                         visit::walk_pat(self, pat);
                     }
@@ -612,10 +559,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 if adt_def.variant(variant_index).has_unsafe_fields() {
                     self.requires_unsafe(expr.span, InitializingTypeWithUnsafeField)
                 }
-                match self.tcx.layout_scalar_valid_range(adt_def.did()) {
-                    (Bound::Unbounded, Bound::Unbounded) => {}
-                    _ => self.requires_unsafe(expr.span, InitializingTypeWith),
-                }
             }
             ExprKind::Closure(box ClosureExpr {
                 closure_id,
@@ -653,14 +596,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             }
             ExprKind::Assign { lhs, rhs } | ExprKind::AssignOp { lhs, rhs, .. } => {
                 let lhs = &self.thir[lhs];
-                // First, check whether we are mutating a layout constrained field
-                let mut visitor = LayoutConstrainedPlaceVisitor::new(self.thir, self.tcx);
-                visit::walk_expr(&mut visitor, lhs);
-                if visitor.found {
-                    self.requires_unsafe(expr.span, MutationOfLayoutConstrainedField);
-                }
 
-                // Second, check for accesses to union fields. Don't have any
+                // Check for accesses to union fields. Don't have any
                 // special handling for AssignOp since it causes a read *and*
                 // write to lhs.
                 if matches!(expr.kind, ExprKind::Assign { .. }) {
@@ -669,23 +606,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     self.assignment_info = None;
                     visit::walk_expr(self, &self.thir()[rhs]);
                     return; // We have already visited everything by now.
-                }
-            }
-            ExprKind::Borrow { borrow_kind, arg } => {
-                let mut visitor = LayoutConstrainedPlaceVisitor::new(self.thir, self.tcx);
-                visit::walk_expr(&mut visitor, expr);
-                if visitor.found {
-                    match borrow_kind {
-                        BorrowKind::Fake(_) | BorrowKind::Shared
-                            if !self.thir[arg].ty.is_freeze(self.tcx, self.typing_env) =>
-                        {
-                            self.requires_unsafe(expr.span, BorrowOfLayoutConstrainedField)
-                        }
-                        BorrowKind::Mut { .. } => {
-                            self.requires_unsafe(expr.span, MutationOfLayoutConstrainedField)
-                        }
-                        BorrowKind::Fake(_) | BorrowKind::Shared => {}
-                    }
                 }
             }
             ExprKind::PlaceUnwrapUnsafeBinder { .. }
@@ -723,7 +643,6 @@ struct UnusedUnsafeWarning {
 enum UnsafeOpKind {
     CallToUnsafeFunction(Option<DefId>),
     UseOfInlineAssembly,
-    InitializingTypeWith,
     InitializingTypeWithUnsafeField,
     UseOfMutableStatic,
     UseOfExternStatic,
@@ -803,15 +722,6 @@ impl UnsafeOpKind {
                 hir_id,
                 span,
                 UnsafeOpInUnsafeFnUseOfInlineAssemblyRequiresUnsafe {
-                    span,
-                    unsafe_not_inherited_note,
-                },
-            ),
-            InitializingTypeWith => tcx.emit_node_span_lint(
-                UNSAFE_OP_IN_UNSAFE_FN,
-                hir_id,
-                span,
-                UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
                     span,
                     unsafe_not_inherited_note,
                 },
@@ -987,18 +897,6 @@ impl UnsafeOpKind {
             }
             UseOfInlineAssembly => {
                 dcx.emit_err(UseOfInlineAssemblyRequiresUnsafe { span, unsafe_not_inherited_note });
-            }
-            InitializingTypeWith if unsafe_op_in_unsafe_fn_allowed => {
-                dcx.emit_err(InitializingTypeWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
-                    span,
-                    unsafe_not_inherited_note,
-                });
-            }
-            InitializingTypeWith => {
-                dcx.emit_err(InitializingTypeWithRequiresUnsafe {
-                    span,
-                    unsafe_not_inherited_note,
-                });
             }
             InitializingTypeWithUnsafeField if unsafe_op_in_unsafe_fn_allowed => {
                 dcx.emit_err(

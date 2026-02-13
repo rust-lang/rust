@@ -96,32 +96,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcNoImplicitAutorefsParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoImplicitAutorefs;
 }
 
-pub(crate) struct RustcLayoutScalarValidRangeStartParser;
-
-impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStartParser {
-    const PATH: &[Symbol] = &[sym::rustc_layout_scalar_valid_range_start];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
-    const TEMPLATE: AttributeTemplate = template!(List: &["start"]);
-
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        parse_single_integer(cx, args)
-            .map(|n| AttributeKind::RustcLayoutScalarValidRangeStart(Box::new(n), cx.attr_span))
-    }
-}
-
-pub(crate) struct RustcLayoutScalarValidRangeEndParser;
-
-impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeEndParser {
-    const PATH: &[Symbol] = &[sym::rustc_layout_scalar_valid_range_end];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
-    const TEMPLATE: AttributeTemplate = template!(List: &["end"]);
-
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        parse_single_integer(cx, args)
-            .map(|n| AttributeKind::RustcLayoutScalarValidRangeEnd(Box::new(n), cx.attr_span))
-    }
-}
-
 pub(crate) struct RustcLegacyConstGenericsParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLegacyConstGenericsParser {

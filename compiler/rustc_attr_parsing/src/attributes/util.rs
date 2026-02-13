@@ -34,7 +34,7 @@ pub fn is_builtin_attr(attr: &impl AttributeExt) -> bool {
 /// Parse a single integer.
 ///
 /// Used by attributes that take a single integer as argument, such as
-/// `#[link_ordinal]` and `#[rustc_layout_scalar_valid_range_start]`.
+/// `#[link_ordinal]`.
 /// `cx` is the context given to the attribute.
 /// `args` is the parser for the attribute arguments.
 pub(crate) fn parse_single_integer<S: Stage>(

@@ -151,21 +151,6 @@ pub fn option_borrow(_x: Option<&i32>) {}
 #[no_mangle]
 pub fn option_borrow_mut(_x: Option<&mut i32>) {}
 
-// Function that must NOT have `dereferenceable` or `align`.
-#[rustc_layout_scalar_valid_range_start(16)]
-pub struct RestrictedAddress(&'static i16);
-enum E {
-    A(RestrictedAddress),
-    B,
-    C,
-}
-// If the `nonnull` ever goes missing, you might have to tweak the
-// scalar_valid_range on `RestrictedAddress` to get it back. You
-// might even have to add a `rustc_layout_scalar_valid_range_end`.
-// CHECK: @nonnull_and_nondereferenceable(ptr noundef nonnull %_x)
-#[no_mangle]
-pub fn nonnull_and_nondereferenceable(_x: E) {}
-
 // CHECK: @raw_struct(ptr noundef %_1)
 #[no_mangle]
 pub fn raw_struct(_: *const S) {}

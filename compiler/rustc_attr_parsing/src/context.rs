@@ -225,8 +225,6 @@ attribute_parsers!(
         Single<RustcDumpSymbolNameParser>,
         Single<RustcForceInlineParser>,
         Single<RustcIfThisChangedParser>,
-        Single<RustcLayoutScalarValidRangeEndParser>,
-        Single<RustcLayoutScalarValidRangeStartParser>,
         Single<RustcLegacyConstGenericsParser>,
         Single<RustcLintOptDenyFieldAccessParser>,
         Single<RustcMacroTransparencyParser>,

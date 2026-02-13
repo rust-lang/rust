@@ -114,7 +114,7 @@ LL | const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
                HEX_DUMP
            }
 
-error[E0080]: reading memory at ALLOC6[0x%..0x%], but memory is uninitialized at [0x%..0x%], and this operation requires initialized memory
+error[E0080]: reading memory at ALLOC5[0x%..0x%], but memory is uninitialized at [0x%..0x%], and this operation requires initialized memory
   --> $DIR/ub-ref-ptr.rs:54:41
    |
 LL | const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
@@ -135,7 +135,7 @@ LL | const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
                HEX_DUMP
            }
 
-error[E0080]: reading memory at ALLOC7[0x%..0x%], but memory is uninitialized at [0x%..0x%], and this operation requires initialized memory
+error[E0080]: reading memory at ALLOC6[0x%..0x%], but memory is uninitialized at [0x%..0x%], and this operation requires initialized memory
   --> $DIR/ub-ref-ptr.rs:59:38
    |
 LL | const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
@@ -184,17 +184,6 @@ error[E0080]: accessing memory based on pointer with alignment 1, but alignment 
 LL |     ptr.read();
    |     ^^^^^^^^^^ evaluation of `UNALIGNED_READ` failed here
 
-error[E0080]: constructing invalid value of type High: encountered a pointer with unknown absolute address, but expected something that is definitely greater or equal to 1000
-  --> $DIR/ub-ref-ptr.rs:84:1
-   |
-LL | const INVALID_VALUE_PTR: High = unsafe { mem::transmute(&S) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
-
-error: aborting due to 18 previous errors
+error: aborting due to 17 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

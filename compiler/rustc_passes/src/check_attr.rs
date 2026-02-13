@@ -313,8 +313,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcInsignificantDtor
                     | AttributeKind::RustcIntrinsic
                     | AttributeKind::RustcIntrinsicConstStableIndirect
-                    | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
-                    | AttributeKind::RustcLayoutScalarValidRangeStart(..)
                     | AttributeKind::RustcLintOptDenyFieldAccess { .. }
                     | AttributeKind::RustcLintOptTy
                     | AttributeKind::RustcLintQueryInstability
