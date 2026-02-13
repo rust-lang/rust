@@ -2465,7 +2465,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let parent_did = tcx.parent(*def_id);
                 (tcx.adt_def(parent_did), fn_args, parent_did)
             }
-            _ => return non_adt_or_variant_res(),
+            _ => {
+                let e = self.dcx().span_err(
+                    span,
+                    "complex const arguments must be placed inside of a `const` block",
+                );
+                return Const::new_error(tcx, e);
+            }
         };
 
         let variant_def = adt_def.variant_with_id(variant_did);

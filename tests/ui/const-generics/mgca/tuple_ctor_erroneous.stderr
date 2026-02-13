@@ -27,7 +27,7 @@ error: tuple constructor with invalid base path
 LL |     accepts_point::<{ UnresolvedIdent(N, N) }>();
    |                       ^^^^^^^^^^^^^^^^^^^^^
 
-error: tuple constructor with invalid base path
+error: complex const arguments must be placed inside of a `const` block
   --> $DIR/tuple_ctor_erroneous.rs:34:23
    |
 LL |     accepts_point::<{ non_ctor(N, N) }>();
