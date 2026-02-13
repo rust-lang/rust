@@ -3,7 +3,8 @@
 
 //@ check-pass
 
-#![feature(c_variadic)]
+#![feature(custom_inner_attributes)] // for top-level rustfmt::skip
+#![rustfmt::skip]
 
 extern crate param_attrs;
 

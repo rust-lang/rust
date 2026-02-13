@@ -1,5 +1,5 @@
 error: multiple `#[splat]`s are not allowed in the same function argument list
-  --> $DIR/splat-invalid.rs:7:22
+  --> $DIR/splat-invalid.rs:6:22
    |
 LL | fn multisplat_fn_bad(#[splat] (_a, _b): (u32, i8), #[splat] (_c, _d): (u32, i8)) {}
    |                      ^^^^^^^^                      ^^^^^^^^
@@ -7,7 +7,7 @@ LL | fn multisplat_fn_bad(#[splat] (_a, _b): (u32, i8), #[splat] (_c, _d): (u32,
    = help: remove `#[splat]` from all but one argument
 
 error: multiple `#[splat]`s are not allowed in the same function argument list
-  --> $DIR/splat-invalid.rs:19:5
+  --> $DIR/splat-invalid.rs:18:5
    |
 LL |     #[splat]
    |     ^^^^^^^^
@@ -21,7 +21,7 @@ LL |     #[splat] (_c, _d): (u32, i8),
    = help: remove `#[splat]` from all but one argument
 
 error: `...` and `#[splat]` are not allowed in the same function argument list
-  --> $DIR/splat-invalid.rs:28:37
+  --> $DIR/splat-invalid.rs:27:37
    |
 LL | unsafe extern "C" fn splat_variadic(#[splat] (_a, _b): (u32, i8), varargs: ...) {}
    |                                     ^^^^^^^^                      ^^^^^^^^^^^^
@@ -29,13 +29,13 @@ LL | unsafe extern "C" fn splat_variadic(#[splat] (_a, _b): (u32, i8), varargs: 
    = help: remove `#[splat]` or remove `...`
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/splat-invalid.rs:31:38
+  --> $DIR/splat-invalid.rs:30:38
    |
 LL | unsafe extern "C" fn splat_variadic2(varargs: ..., #[splat] (_a, _b): (u32, i8)) {}
    |                                      ^^^^^^^^^^^^
 
 error: `...` and `#[splat]` are not allowed in the same function argument list
-  --> $DIR/splat-invalid.rs:31:38
+  --> $DIR/splat-invalid.rs:30:38
    |
 LL | unsafe extern "C" fn splat_variadic2(varargs: ..., #[splat] (_a, _b): (u32, i8)) {}
    |                                      ^^^^^^^^^^^^  ^^^^^^^^
@@ -43,7 +43,7 @@ LL | unsafe extern "C" fn splat_variadic2(varargs: ..., #[splat] (_a, _b): (u32,
    = help: remove `#[splat]` or remove `...`
 
 error: incorrect function inside `extern` block
-  --> $DIR/splat-invalid.rs:36:8
+  --> $DIR/splat-invalid.rs:35:8
    |
 LL | extern "C" {
    | ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
@@ -54,7 +54,7 @@ LL |     fn splat_variadic3(#[splat] (_a, _b): (u32, i8), ...) {}
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
 
 error: `...` and `#[splat]` are not allowed in the same function argument list
-  --> $DIR/splat-invalid.rs:36:24
+  --> $DIR/splat-invalid.rs:35:24
    |
 LL |     fn splat_variadic3(#[splat] (_a, _b): (u32, i8), ...) {}
    |                        ^^^^^^^^                      ^^^
@@ -62,7 +62,7 @@ LL |     fn splat_variadic3(#[splat] (_a, _b): (u32, i8), ...) {}
    = help: remove `#[splat]` or remove `...`
 
 error: incorrect function inside `extern` block
-  --> $DIR/splat-invalid.rs:40:8
+  --> $DIR/splat-invalid.rs:39:8
    |
 LL | extern "C" {
    | ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
@@ -74,13 +74,13 @@ LL |     fn splat_variadic4(..., #[splat] (_a, _b): (u32, i8)) {}
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/splat-invalid.rs:40:24
+  --> $DIR/splat-invalid.rs:39:24
    |
 LL |     fn splat_variadic4(..., #[splat] (_a, _b): (u32, i8)) {}
    |                        ^^^
 
 error: `...` and `#[splat]` are not allowed in the same function argument list
-  --> $DIR/splat-invalid.rs:40:24
+  --> $DIR/splat-invalid.rs:39:24
    |
 LL |     fn splat_variadic4(..., #[splat] (_a, _b): (u32, i8)) {}
    |                        ^^^  ^^^^^^^^
@@ -88,37 +88,37 @@ LL |     fn splat_variadic4(..., #[splat] (_a, _b): (u32, i8)) {}
    = help: remove `#[splat]` or remove `...`
 
 error: multiple `splat` attributes
-  --> $DIR/splat-invalid.rs:12:5
+  --> $DIR/splat-invalid.rs:11:5
    |
 LL |     #[splat]
    |     ^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/splat-invalid.rs:11:5
+  --> $DIR/splat-invalid.rs:10:5
    |
 LL |     #[splat]
    |     ^^^^^^^^
 
 error: multiple `splat` attributes
-  --> $DIR/splat-invalid.rs:21:5
+  --> $DIR/splat-invalid.rs:20:5
    |
 LL |     #[splat]
    |     ^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/splat-invalid.rs:19:5
+  --> $DIR/splat-invalid.rs:18:5
    |
 LL |     #[splat]
    |     ^^^^^^^^
 
 error[E0053]: method `has_splat` has an incompatible type for trait
-  --> $DIR/splat-invalid.rs:60:5
+  --> $DIR/splat-invalid.rs:59:5
    |
 LL |     fn has_splat(_: ()) {}
    |     ^^^^^^^^^^^^^^^^^^^ expected fn with arg 0 splatted, found fn with no splatted arg
    |
 note: type in trait
-  --> $DIR/splat-invalid.rs:52:5
+  --> $DIR/splat-invalid.rs:51:5
    |
 LL |     fn has_splat(#[splat] _: ());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -126,13 +126,13 @@ LL |     fn has_splat(#[splat] _: ());
               found signature `fn(())`
 
 error[E0053]: method `no_splat` has an incompatible type for trait
-  --> $DIR/splat-invalid.rs:62:5
+  --> $DIR/splat-invalid.rs:61:5
    |
 LL |     fn no_splat(#[splat] _: (u32, f64)) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected fn with no splatted arg, found fn with arg 0 splatted
    |
 note: type in trait
-  --> $DIR/splat-invalid.rs:54:5
+  --> $DIR/splat-invalid.rs:53:5
    |
 LL |     fn no_splat(_: (u32, f64));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^

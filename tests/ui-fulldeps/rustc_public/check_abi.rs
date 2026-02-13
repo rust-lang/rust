@@ -185,7 +185,6 @@ fn generate_input(path: &str) -> std::io::Result<()> {
     write!(
         file,
         r#"
-        #![feature(c_variadic)]
         #![allow(unused_variables)]
 
         use std::num::NonZero;

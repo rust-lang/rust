@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/variadic-ffi-4.rs:8:5
+  --> $DIR/variadic-ffi-4.rs:7:5
    |
 LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaList<'f> {
    |                                     --            -- has type `VaList<'1>`
@@ -9,7 +9,7 @@ LL |     ap
    |     ^^ function was supposed to return data with lifetime `'f` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/variadic-ffi-4.rs:13:5
+  --> $DIR/variadic-ffi-4.rs:12:5
    |
 LL | pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaList<'static> {
    |                                               -- has type `VaList<'1>`
@@ -17,7 +17,7 @@ LL |     ap
    |     ^^ returning this value requires that `'1` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/variadic-ffi-4.rs:17:5
+  --> $DIR/variadic-ffi-4.rs:16:5
    |
 LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
    |                                               -------               ------- has type `VaList<'1>`
@@ -27,7 +27,7 @@ LL |     *ap0 = ap1;
    |     ^^^^ assignment requires that `'1` must outlive `'2`
 
 error: lifetime may not live long enough
-  --> $DIR/variadic-ffi-4.rs:22:5
+  --> $DIR/variadic-ffi-4.rs:21:5
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
    |                                               -------               ------- has type `VaList<'1>`
@@ -41,7 +41,7 @@ LL |     ap0 = &mut ap1;
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variadic-ffi-4.rs:22:5
+  --> $DIR/variadic-ffi-4.rs:21:5
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
    |                                               -------               ------- has type `VaList<'1>`
@@ -55,7 +55,7 @@ LL |     ap0 = &mut ap1;
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error[E0597]: `ap1` does not live long enough
-  --> $DIR/variadic-ffi-4.rs:22:11
+  --> $DIR/variadic-ffi-4.rs:21:11
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
    |                                                        -            ------- binding `ap1` declared here
@@ -71,7 +71,7 @@ LL | }
    | - `ap1` dropped here while still borrowed
 
 error: lifetime may not live long enough
-  --> $DIR/variadic-ffi-4.rs:29:5
+  --> $DIR/variadic-ffi-4.rs:28:5
    |
 LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
    |                                               -------               ------- has type `VaList<'1>`

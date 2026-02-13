@@ -1,8 +1,6 @@
 //@ run-pass
 //@ ignore-backends: gcc
 
-#![feature(c_variadic)]
-
 use std::ffi::VaList;
 
 #[link(name = "rust_test_helpers", kind = "static")]

@@ -3,7 +3,7 @@
 //
 //@ compile-flags: -Copt-level=3 --target s390x-unknown-linux-gnu
 //@ needs-llvm-components: systemz
-#![feature(c_variadic, no_core, lang_items, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, intrinsics, rustc_attrs)]
 #![no_core]
 #![crate_type = "lib"]
 

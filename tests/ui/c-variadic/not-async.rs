@@ -1,5 +1,4 @@
 //@ edition: 2021
-#![feature(c_variadic)]
 #![crate_type = "lib"]
 
 async unsafe extern "C" fn fn_cannot_be_async(x: isize, _: ...) {}
