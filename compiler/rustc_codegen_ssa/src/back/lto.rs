@@ -32,18 +32,13 @@ impl<B: WriteBackendMethods> ThinModule<B> {
     }
 
     pub fn data(&self) -> &[u8] {
-        let a = self.shared.thin_buffers.get(self.idx).map(|b| b.data());
-        a.unwrap_or_else(|| {
-            let len = self.shared.thin_buffers.len();
-            self.shared.serialized_modules[self.idx - len].data()
-        })
+        self.shared.modules[self.idx].data()
     }
 }
 
 pub struct ThinShared<B: WriteBackendMethods> {
     pub data: B::ThinData,
-    pub thin_buffers: Vec<B::ModuleBuffer>,
-    pub serialized_modules: Vec<SerializedModule<B::ModuleBuffer>>,
+    pub modules: Vec<SerializedModule<B::ModuleBuffer>>,
     pub module_names: Vec<CString>,
 }
 
