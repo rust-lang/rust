@@ -59,6 +59,8 @@ bitflags::bitflags! {
         const IS_PIN                        = 1 << 11;
         /// Indicates whether the type is `#[pin_project]`.
         const IS_PIN_PROJECT                = 1 << 12;
+        /// Indicates whether the type is `MaybeUninit`.
+        const IS_MAYBE_UNINIT               = 1 << 13;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }
@@ -224,6 +226,10 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         self.is_manually_drop()
     }
 
+    fn is_maybe_uninit(self) -> bool {
+        self.is_maybe_uninit()
+    }
+
     fn all_field_tys(
         self,
         tcx: TyCtxt<'tcx>,
@@ -314,6 +320,9 @@ impl AdtDefData {
         }
         if tcx.is_lang_item(did, LangItem::ManuallyDrop) {
             flags |= AdtFlags::IS_MANUALLY_DROP;
+        }
+        if tcx.is_lang_item(did, LangItem::MaybeUninit) {
+            flags |= AdtFlags::IS_MAYBE_UNINIT;
         }
         if tcx.is_lang_item(did, LangItem::UnsafeCell) {
             flags |= AdtFlags::IS_UNSAFE_CELL;
@@ -437,6 +446,12 @@ impl<'tcx> AdtDef<'tcx> {
     #[inline]
     pub fn is_manually_drop(self) -> bool {
         self.flags().contains(AdtFlags::IS_MANUALLY_DROP)
+    }
+
+    /// Returns `true` if this is `ManuallyDrop<T>`.
+    #[inline]
+    pub fn is_maybe_uninit(self) -> bool {
+        self.flags().contains(AdtFlags::IS_MAYBE_UNINIT)
     }
 
     /// Returns `true` if this is `Pin<T>`.

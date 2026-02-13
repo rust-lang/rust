@@ -701,8 +701,8 @@ where
             match ty.kind() {
                 // `&mut T` and `&T` always implement `BikeshedGuaranteedNoDrop`.
                 ty::Ref(..) => {}
-                // `ManuallyDrop<T>` always implements `BikeshedGuaranteedNoDrop`.
-                ty::Adt(def, _) if def.is_manually_drop() => {}
+                // `ManuallyDrop<T>` and `MaybeUninit<T>` always implement `BikeshedGuaranteedNoDrop`.
+                ty::Adt(def, _) if def.is_manually_drop() || def.is_maybe_uninit() => {}
                 // Arrays and tuples implement `BikeshedGuaranteedNoDrop` only if
                 // their constituent types implement `BikeshedGuaranteedNoDrop`.
                 ty::Tuple(tys) => {

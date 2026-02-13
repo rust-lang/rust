@@ -496,6 +496,7 @@ impl<T: PointeeSized> Copy for &T {}
 /// Implemented for:
 /// * `&T`, `&mut T` for all `T`,
 /// * `ManuallyDrop<T>` for all `T`,
+/// * `MaybeUninit<T>` for all `T`,
 /// * tuples and arrays whose elements implement `BikeshedGuaranteedNoDrop`,
 /// * or otherwise, all types that are `Copy`.
 ///
