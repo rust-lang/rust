@@ -11,7 +11,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_target::spec::{Arch, Env, RustcAbi};
 
 use crate::builder::Builder;
-use crate::llvm::{Type, Value};
+use crate::llvm::Value;
 use crate::type_of::LayoutLlvmExt;
 
 fn round_up_to_alignment<'ll>(
@@ -27,12 +27,11 @@ fn round_pointer_up_to_alignment<'ll>(
     bx: &mut Builder<'_, 'll, '_>,
     addr: &'ll Value,
     align: Align,
-    ptr_ty: &'ll Type,
 ) -> &'ll Value {
     let ptr = bx.inbounds_ptradd(addr, bx.const_i32(align.bytes() as i32 - 1));
     bx.call_intrinsic(
         "llvm.ptrmask",
-        &[ptr_ty, bx.type_i32()],
+        &[bx.type_ptr(), bx.type_i32()],
         &[ptr, bx.const_int(bx.isize_ty, -(align.bytes() as isize) as i64)],
     )
 }
@@ -53,7 +52,7 @@ fn emit_direct_ptr_va_arg<'ll, 'tcx>(
     let ptr = bx.load(va_list_ty, va_list_addr, ptr_align_abi);
 
     let (addr, addr_align) = if allow_higher_align && align > slot_size {
-        (round_pointer_up_to_alignment(bx, ptr, align, bx.type_ptr()), align)
+        (round_pointer_up_to_alignment(bx, ptr, align), align)
     } else {
         (ptr, slot_size)
     };
@@ -357,12 +356,8 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
 
         // Round up address of argument to alignment
         if layout.layout.align.abi > overflow_area_align {
-            overflow_area = round_pointer_up_to_alignment(
-                bx,
-                overflow_area,
-                layout.layout.align.abi,
-                bx.type_ptr(),
-            );
+            overflow_area =
+                round_pointer_up_to_alignment(bx, overflow_area, layout.layout.align.abi);
         }
 
         let mem_addr = overflow_area;
@@ -827,7 +822,7 @@ fn emit_hexagon_va_arg_musl<'ll, 'tcx>(
     } else {
         Align::from_bytes(4).unwrap()
     };
-    let aligned_current = round_pointer_up_to_alignment(bx, current_ptr, arg_align, bx.type_ptr());
+    let aligned_current = round_pointer_up_to_alignment(bx, current_ptr, arg_align);
 
     // Calculate next pointer position (following LLVM's logic)
     // Arguments <= 32 bits take 4 bytes, > 32 bits take 8 bytes
@@ -849,8 +844,7 @@ fn emit_hexagon_va_arg_musl<'ll, 'tcx>(
     bx.switch_to_block(from_overflow);
 
     // Align overflow pointer using the same alignment rules
-    let aligned_overflow =
-        round_pointer_up_to_alignment(bx, overflow_ptr, arg_align, bx.type_ptr());
+    let aligned_overflow = round_pointer_up_to_alignment(bx, overflow_ptr, arg_align);
 
     let overflow_value_addr = aligned_overflow;
     // Update overflow pointer - use the same size calculation
@@ -890,7 +884,7 @@ fn emit_hexagon_va_arg_bare_metal<'ll, 'tcx>(
     let aligned_ptr = if ty_align.bytes() > 4 {
         // Ensure alignment is a power of 2
         debug_assert!(ty_align.bytes().is_power_of_two(), "Alignment is not power of 2!");
-        round_pointer_up_to_alignment(bx, current_ptr, ty_align, bx.type_ptr())
+        round_pointer_up_to_alignment(bx, current_ptr, ty_align)
     } else {
         current_ptr
     };
