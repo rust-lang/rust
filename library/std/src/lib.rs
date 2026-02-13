@@ -403,7 +403,6 @@
 // Only for re-exporting:
 // tidy-alphabetical-start
 #![feature(async_iterator)]
-#![feature(c_variadic)]
 #![feature(cfg_accessible)]
 #![feature(cfg_eval)]
 #![feature(concat_bytes)]

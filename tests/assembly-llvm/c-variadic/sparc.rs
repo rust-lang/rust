@@ -6,7 +6,7 @@
 //@ [SPARC] needs-llvm-components: sparc
 //@ [SPARC64] compile-flags: -Copt-level=3 --target sparc64-unknown-linux-gnu
 //@ [SPARC64] needs-llvm-components: sparc
-#![feature(c_variadic, no_core, lang_items, intrinsics, rustc_attrs, asm_experimental_arch)]
+#![feature(no_core, lang_items, intrinsics, rustc_attrs, asm_experimental_arch)]
 #![no_core]
 #![crate_type = "lib"]
 

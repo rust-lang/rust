@@ -94,6 +94,8 @@ declare_features! (
     (accepted, c_str_literals, "1.77.0", Some(105723)),
     /// Allows `extern "C-unwind" fn` to enable unwinding across ABI boundaries and treat `extern "C" fn` as nounwind.
     (accepted, c_unwind, "1.81.0", Some(74990)),
+    /// Allows using C-variadics.
+    (accepted, c_variadic, "CURRENT_RUSTC_VERSION", Some(44930)),
     /// Allows `#[cfg_attr(predicate, multiple, attributes, here)]`.
     (accepted, cfg_attr_multi, "1.33.0", Some(54881)),
     /// Allows the use of `#[cfg(<true/false>)]`.
