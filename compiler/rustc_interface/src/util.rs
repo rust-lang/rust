@@ -248,7 +248,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                             tls::with(|tcx| {
                                 // Accessing session globals is sound as they outlive `GlobalCtxt`.
                                 // They are needed to hash query keys containing spans or symbols.
-                                let query_map = rustc_span::set_session_globals_then(
+                                let job_map = rustc_span::set_session_globals_then(
                                     unsafe { &*(session_globals as *const SessionGlobals) },
                                     || {
                                         // Ensure there were no errors collecting all active jobs.
@@ -258,7 +258,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                                         )
                                     },
                                 );
-                                break_query_cycles(query_map, &registry);
+                                break_query_cycles(job_map, &registry);
                             })
                         })
                     });

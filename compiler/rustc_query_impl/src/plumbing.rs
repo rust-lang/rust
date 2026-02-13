@@ -36,7 +36,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 
 use crate::error::{QueryOverflow, QueryOverflowNote};
 use crate::execution::{all_inactive, force_query};
-use crate::job::{QueryMap, find_dep_kind_root};
+use crate::job::{QueryJobMap, find_dep_kind_root};
 use crate::{QueryDispatcherUnerased, QueryFlags, SemiDynamicQueryDispatcher};
 
 /// Implements [`QueryContext`] for use by [`rustc_query_system`], since that
@@ -53,10 +53,10 @@ impl<'tcx> QueryCtxt<'tcx> {
     }
 
     fn depth_limit_error(self, job: QueryJobId) {
-        let query_map = self
+        let job_map = self
             .collect_active_jobs_from_all_queries(true)
             .expect("failed to collect active queries");
-        let (info, depth) = find_dep_kind_root(job, query_map);
+        let (info, depth) = find_dep_kind_root(job, job_map);
 
         let suggested_limit = match self.tcx.recursion_limit() {
             Limit(0) => Limit(2),
@@ -131,17 +131,17 @@ impl<'tcx> QueryCtxt<'tcx> {
     pub fn collect_active_jobs_from_all_queries(
         self,
         require_complete: bool,
-    ) -> Result<QueryMap<'tcx>, QueryMap<'tcx>> {
-        let mut jobs = QueryMap::default();
+    ) -> Result<QueryJobMap<'tcx>, QueryJobMap<'tcx>> {
+        let mut job_map_out = QueryJobMap::default();
         let mut complete = true;
 
         for gather_fn in crate::PER_QUERY_GATHER_ACTIVE_JOBS_FNS.iter() {
-            if gather_fn(self.tcx, &mut jobs, require_complete).is_none() {
+            if gather_fn(self.tcx, require_complete, &mut job_map_out).is_none() {
                 complete = false;
             }
         }
 
-        if complete { Ok(jobs) } else { Err(jobs) }
+        if complete { Ok(job_map_out) } else { Err(job_map_out) }
     }
 }
 
@@ -753,8 +753,8 @@ macro_rules! define_queries {
             /// Should only be called through `PER_QUERY_GATHER_ACTIVE_JOBS_FNS`.
             pub(crate) fn gather_active_jobs<'tcx>(
                 tcx: TyCtxt<'tcx>,
-                qmap: &mut QueryMap<'tcx>,
                 require_complete: bool,
+                job_map_out: &mut QueryJobMap<'tcx>,
             ) -> Option<()> {
                 let make_frame = |tcx: TyCtxt<'tcx>, key| {
                     let vtable = &tcx.query_system.query_vtables.$name;
@@ -765,8 +765,8 @@ macro_rules! define_queries {
                 let res = crate::execution::gather_active_jobs_inner(&tcx.query_system.states.$name,
                     tcx,
                     make_frame,
-                    qmap,
                     require_complete,
+                    job_map_out,
                 );
 
                 // this can be called during unwinding, and the function has a `try_`-prefix, so
@@ -849,9 +849,13 @@ macro_rules! define_queries {
         /// each individual query, so that we have distinct function names to
         /// grep for.)
         const PER_QUERY_GATHER_ACTIVE_JOBS_FNS: &[
-            for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap<'tcx>, require_complete: bool) -> Option<()>
+            for<'tcx> fn(
+                tcx: TyCtxt<'tcx>,
+                require_complete: bool,
+                job_map_out: &mut QueryJobMap<'tcx>,
+            ) -> Option<()>
         ] = &[
-            $(query_impl::$name::gather_active_jobs),*
+            $( $crate::query_impl::$name::gather_active_jobs ),*
         ];
 
         const ALLOC_SELF_PROFILE_QUERY_STRINGS: &[

@@ -15,7 +15,7 @@ use rustc_query_system::query::{
 use rustc_span::{DUMMY_SP, Span};
 
 use crate::dep_graph::{DepContext, DepNode, DepNodeIndex};
-use crate::job::{QueryJobInfo, QueryMap, find_cycle_in_stack, report_cycle};
+use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack, report_cycle};
 use crate::{QueryCtxt, QueryFlags, SemiDynamicQueryDispatcher};
 
 #[inline]
@@ -45,8 +45,8 @@ pub(crate) fn gather_active_jobs_inner<'tcx, K: Copy>(
     state: &QueryState<'tcx, K>,
     tcx: TyCtxt<'tcx>,
     make_frame: fn(TyCtxt<'tcx>, K) -> QueryStackFrame<QueryStackDeferred<'tcx>>,
-    jobs: &mut QueryMap<'tcx>,
     require_complete: bool,
+    job_map_out: &mut QueryJobMap<'tcx>, // Out-param; job info is gathered into this map
 ) -> Option<()> {
     let mut active = Vec::new();
 
@@ -77,7 +77,7 @@ pub(crate) fn gather_active_jobs_inner<'tcx, K: Copy>(
     // queries leading to a deadlock.
     for (key, job) in active {
         let frame = make_frame(tcx, key);
-        jobs.insert(job.id, QueryJobInfo { frame, job });
+        job_map_out.insert(job.id, QueryJobInfo { frame, job });
     }
 
     Some(())
@@ -213,12 +213,12 @@ fn cycle_error<'tcx, C: QueryCache, const FLAGS: QueryFlags>(
 ) -> (C::Value, Option<DepNodeIndex>) {
     // Ensure there was no errors collecting all active jobs.
     // We need the complete map to ensure we find a cycle to break.
-    let query_map = qcx
+    let job_map = qcx
         .collect_active_jobs_from_all_queries(false)
         .ok()
         .expect("failed to collect active queries");
 
-    let error = find_cycle_in_stack(try_execute, query_map, &qcx.current_query_job(), span);
+    let error = find_cycle_in_stack(try_execute, job_map, &qcx.current_query_job(), span);
     (mk_cycle(query, qcx, error.lift()), None)
 }
 
