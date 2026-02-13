@@ -956,13 +956,20 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             VerifyBound::AnyBound(bs) if bs.is_empty() => match min.kind() {
                 ty::ReVar(rid) => match var_values.values[rid] {
                     VarValue::ErrorValue => false,
-                    VarValue::Empty(_) => true,
+                    VarValue::Empty(_) => {
+                        debug!(
+                            "This bound was empty which should be true: {:?} {min:?}, {generic_ty:?}",
+                            var_values.values
+                        );
+                        false
+                    }
                     VarValue::Value(_) => false,
                 },
                 _ => false,
             },
 
             VerifyBound::AnyBound(bs) => {
+                // Edge case: an empty any bound does not hold.
                 bs.iter().any(|b| self.bound_is_met(b, var_values, generic_ty, min))
             }
 
