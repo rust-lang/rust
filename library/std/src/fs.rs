@@ -277,6 +277,7 @@ pub struct OpenOptions(fs_imp::OpenOptions);
 /// Representation of the various timestamps on a file.
 #[derive(Copy, Clone, Debug, Default)]
 #[stable(feature = "file_set_times", since = "1.75.0")]
+#[must_use = "must be applied to a file via `File::set_times` to have any effect"]
 pub struct FileTimes(fs_imp::FileTimes);
 
 /// Representation of the various permissions on a file.
