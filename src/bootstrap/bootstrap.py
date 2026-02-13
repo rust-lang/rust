@@ -479,7 +479,7 @@ def default_build_triple(verbose):
 @contextlib.contextmanager
 def output(filepath):
     tmp = filepath + ".tmp"
-    with open(tmp, "w") as f:
+    with open(tmp, "w", encoding="utf-8") as f:
         yield f
     try:
         if os.path.exists(filepath):
@@ -778,7 +778,7 @@ class RustBuild(object):
             # Use `/etc/os-release` instead of `/etc/NIXOS`.
             # The latter one does not exist on NixOS when using tmpfs as root.
             try:
-                with open("/etc/os-release", "r") as f:
+                with open("/etc/os-release", "r", encoding="utf-8") as f:
                     is_nixos = any(
                         ln.strip() in ("ID=nixos", "ID='nixos'", 'ID="nixos"')
                         for ln in f
@@ -863,7 +863,8 @@ class RustBuild(object):
         if ".so" not in fname:
             # Finally, set the correct .interp for binaries
             with open(
-                "{}/nix-support/dynamic-linker".format(nix_deps_dir)
+                "{}/nix-support/dynamic-linker".format(nix_deps_dir),
+                encoding="utf-8",
             ) as dynamic_linker:
                 patchelf_args += ["--set-interpreter", dynamic_linker.read().rstrip()]
 
@@ -888,7 +889,7 @@ class RustBuild(object):
         """Check if the given program stamp is out of date"""
         if not os.path.exists(stamp_path) or self.clean:
             return True
-        with open(stamp_path, "r") as stamp:
+        with open(stamp_path, "r", encoding="utf-8") as stamp:
             return key != stamp.read()
 
     def bin_root(self):
@@ -1276,7 +1277,7 @@ def parse_args(args):
 
 def parse_stage0_file(path):
     result = {}
-    with open(path, "r") as file:
+    with open(path, "r", encoding="utf-8") as file:
         for line in file:
             line = line.strip()
             if line and not line.startswith("#"):
@@ -1346,7 +1347,7 @@ def bootstrap(args):
 
         # HACK: This works because `self.get_toml()` returns the first match it finds for a
         # specific key, so appending our defaults at the end allows the user to override them
-        with open(include_path) as included_toml:
+        with open(include_path, encoding="utf-8") as included_toml:
             config_toml += os.linesep + included_toml.read()
 
     # Configure initial bootstrap
@@ -1384,7 +1385,9 @@ def main():
     if len(sys.argv) == 1 or sys.argv[1] in ["-h", "--help"]:
         try:
             with open(
-                os.path.join(os.path.dirname(__file__), "../etc/xhelp"), "r"
+                os.path.join(os.path.dirname(__file__), "../etc/xhelp"),
+                "r",
+                encoding="utf-8",
             ) as f:
                 # The file from bootstrap func already has newline.
                 print(f.read(), end="")
