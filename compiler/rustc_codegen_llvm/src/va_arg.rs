@@ -69,7 +69,8 @@ fn emit_direct_ptr_va_arg<'ll, 'tcx>(
     {
         let adjusted_size = bx.cx().const_i32((slot_size.bytes() - size.bytes()) as i32);
         let adjusted = bx.inbounds_ptradd(addr, adjusted_size);
-        (adjusted, addr_align)
+        // We're in the middle of a slot now, so use the type's alignment, not the slot's.
+        (adjusted, align)
     } else {
         (addr, addr_align)
     }
