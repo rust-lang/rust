@@ -44,7 +44,7 @@ impl<'tcx> ValTree<'tcx> {
     }
 
     pub fn is_zst(self) -> bool {
-        matches!(*self, ty::ValTreeKind::Branch(box []))
+        matches!(*self, ty::ValTreeKind::Branch(consts) if consts.is_empty())
     }
 
     pub fn from_raw_bytes(tcx: TyCtxt<'tcx>, bytes: &[u8]) -> Self {
@@ -58,7 +58,9 @@ impl<'tcx> ValTree<'tcx> {
         tcx: TyCtxt<'tcx>,
         branches: impl IntoIterator<Item = ty::Const<'tcx>>,
     ) -> Self {
-        tcx.intern_valtree(ty::ValTreeKind::Branch(branches.into_iter().collect()))
+        tcx.intern_valtree(ty::ValTreeKind::Branch(
+            tcx.mk_const_list_from_iter(branches.into_iter()),
+        ))
     }
 
     pub fn from_scalar_int(tcx: TyCtxt<'tcx>, i: ScalarInt) -> Self {

@@ -9,6 +9,7 @@ use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
 
+use crate::inherent::*;
 use crate::{self as ty, BoundVarIndexKind, Interner};
 
 /// Represents a constant in Rust.
@@ -159,8 +160,7 @@ pub enum ValTreeKind<I: Interner> {
     /// the fields of the variant.
     ///
     /// ZST types are represented as an empty slice.
-    // FIXME(mgca): Use a `List` here instead of a boxed slice
-    Branch(Box<[I::Const]>),
+    Branch(I::Consts),
 }
 
 impl<I: Interner> ValTreeKind<I> {
@@ -179,7 +179,7 @@ impl<I: Interner> ValTreeKind<I> {
     #[inline]
     pub fn to_branch(&self) -> &[I::Const] {
         match self {
-            ValTreeKind::Branch(branch) => &**branch,
+            ValTreeKind::Branch(branch) => branch.as_slice(),
             ValTreeKind::Leaf(..) => panic!("expected branch, got {:?}", self),
         }
     }
@@ -195,7 +195,7 @@ impl<I: Interner> ValTreeKind<I> {
     /// Attempts to convert to a `ValTreeKind::Branch` value.
     pub fn try_to_branch(&self) -> Option<&[I::Const]> {
         match self {
-            ValTreeKind::Branch(branch) => Some(&**branch),
+            ValTreeKind::Branch(branch) => Some(branch.as_slice()),
             ValTreeKind::Leaf(_) => None,
         }
     }

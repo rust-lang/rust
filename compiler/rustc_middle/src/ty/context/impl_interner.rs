@@ -95,6 +95,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Safety = hir::Safety;
     type Abi = ExternAbi;
     type Const = ty::Const<'tcx>;
+    type Consts = &'tcx List<Self::Const>;
 
     type ParamConst = ty::ParamConst;
     type ValueConst = ty::Value<'tcx>;

@@ -577,8 +577,9 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
                     if branches_a.len() == branches_b.len() =>
                 {
                     branches_a
-                        .into_iter()
-                        .zip(branches_b)
+                        .as_slice()
+                        .iter()
+                        .zip(branches_b.as_slice().iter())
                         .all(|(a, b)| relation.relate(*a, *b).is_ok())
                 }
                 _ => false,
