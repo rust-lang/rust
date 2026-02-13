@@ -335,13 +335,13 @@ pub(crate) fn save_temp_bitcode(
         &module.name,
         cgcx.invocation_temp.as_deref(),
     );
-    write_bitcode_to_file(module, &path)
+    write_bitcode_to_file(&module.module_llvm, &path)
 }
 
-fn write_bitcode_to_file(module: &ModuleCodegen<ModuleLlvm>, path: &Path) {
+fn write_bitcode_to_file(module: &ModuleLlvm, path: &Path) {
     unsafe {
         let path = path_to_c_string(&path);
-        let llmod = module.module_llvm.llmod();
+        let llmod = module.llmod();
         llvm::LLVMWriteBitcodeToFile(llmod, path.as_ptr());
     }
 }
@@ -905,13 +905,8 @@ pub(crate) fn optimize(
     let _handlers =
         DiagnosticHandlers::new(cgcx, shared_emitter, llcx, module, CodegenDiagnosticsStage::Opt);
 
-    if config.emit_no_opt_bc {
-        let out = cgcx.output_filenames.temp_path_ext_for_cgu(
-            "no-opt.bc",
-            &module.name,
-            cgcx.invocation_temp.as_deref(),
-        );
-        write_bitcode_to_file(module, &out)
+    if module.kind == ModuleKind::Regular {
+        save_temp_bitcode(cgcx, module, "no-opt");
     }
 
     // FIXME(ZuseZ4): support SanitizeHWAddress and prevent illegal/unsupported opts

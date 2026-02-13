@@ -94,7 +94,6 @@ pub struct ModuleConfig {
 
     // Flags indicating which outputs to produce.
     pub emit_pre_lto_bc: bool,
-    pub emit_no_opt_bc: bool,
     pub emit_bc: bool,
     pub emit_ir: bool,
     pub emit_asm: bool,
@@ -195,7 +194,6 @@ impl ModuleConfig {
                 save_temps || need_pre_lto_bitcode_for_incr_comp(sess),
                 false
             ),
-            emit_no_opt_bc: if_regular!(save_temps, false),
             emit_bc: if_regular!(
                 save_temps || sess.opts.output_types.contains_key(&OutputType::Bitcode),
                 save_temps
