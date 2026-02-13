@@ -560,6 +560,7 @@ pub(crate) enum AutodiffStage {
 
 pub(crate) unsafe fn llvm_optimize(
     cgcx: &CodegenContext,
+    prof: &SelfProfilerRef,
     dcx: DiagCtxtHandle<'_>,
     module: &ModuleCodegen<ModuleLlvm>,
     thin_lto_buffer: Option<&mut *mut llvm::ThinLTOBuffer>,
@@ -756,10 +757,9 @@ pub(crate) unsafe fn llvm_optimize(
         }
     }
 
-    let mut llvm_profiler = cgcx
-        .prof
+    let mut llvm_profiler = prof
         .llvm_recording_enabled()
-        .then(|| LlvmSelfProfiler::new(cgcx.prof.get_self_profiler().unwrap()));
+        .then(|| LlvmSelfProfiler::new(prof.get_self_profiler().unwrap()));
 
     let llvm_selfprofiler =
         llvm_profiler.as_mut().map(|s| s as *mut _ as *mut c_void).unwrap_or(std::ptr::null_mut());
@@ -878,7 +878,7 @@ pub(crate) unsafe fn llvm_optimize(
                 &out_obj,
                 None,
                 llvm::FileType::ObjectFile,
-                &cgcx.prof,
+                prof,
                 true,
             );
             // We ignore cgcx.save_temps here and unconditionally always keep our `host.out` artifact.
@@ -892,11 +892,12 @@ pub(crate) unsafe fn llvm_optimize(
 // Unsafe due to LLVM calls.
 pub(crate) fn optimize(
     cgcx: &CodegenContext,
+    prof: &SelfProfilerRef,
     shared_emitter: &SharedEmitter,
     module: &mut ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
 ) {
-    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_optimize", &*module.name);
+    let _timer = prof.generic_activity_with_arg("LLVM_module_optimize", &*module.name);
 
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
@@ -943,6 +944,7 @@ pub(crate) fn optimize(
         unsafe {
             llvm_optimize(
                 cgcx,
+                prof,
                 dcx,
                 module,
                 thin_lto_buffer.as_mut(),
@@ -964,12 +966,12 @@ pub(crate) fn optimize(
                 && let Some(thin_link_bitcode_filename) = bc_summary_out.file_name()
             {
                 let summary_data = thin_lto_buffer.thin_link_data();
-                cgcx.prof.artifact_size(
+                prof.artifact_size(
                     "llvm_bitcode_summary",
                     thin_link_bitcode_filename.to_string_lossy(),
                     summary_data.len() as u64,
                 );
-                let _timer = cgcx.prof.generic_activity_with_arg(
+                let _timer = prof.generic_activity_with_arg(
                     "LLVM_module_codegen_emit_bitcode_summary",
                     &*module.name,
                 );
@@ -983,11 +985,12 @@ pub(crate) fn optimize(
 
 pub(crate) fn codegen(
     cgcx: &CodegenContext,
+    prof: &SelfProfilerRef,
     shared_emitter: &SharedEmitter,
     module: ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
 ) -> CompiledModule {
-    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_codegen", &*module.name);
+    let _timer = prof.generic_activity_with_arg("LLVM_module_codegen", &*module.name);
 
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
@@ -1026,18 +1029,17 @@ pub(crate) fn codegen(
         if config.bitcode_needed() {
             if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
                 let thin = {
-                    let _timer = cgcx.prof.generic_activity_with_arg(
+                    let _timer = prof.generic_activity_with_arg(
                         "LLVM_module_codegen_make_bitcode",
                         &*module.name,
                     );
                     ThinBuffer::new(llmod, config.emit_thin_lto)
                 };
                 let data = thin.data();
-                let _timer = cgcx
-                    .prof
+                let _timer = prof
                     .generic_activity_with_arg("LLVM_module_codegen_emit_bitcode", &*module.name);
                 if let Some(bitcode_filename) = bc_out.file_name() {
-                    cgcx.prof.artifact_size(
+                    prof.artifact_size(
                         "llvm_bitcode",
                         bitcode_filename.to_string_lossy(),
                         data.len() as u64,
@@ -1049,8 +1051,7 @@ pub(crate) fn codegen(
             }
 
             if config.embed_bitcode() && module.kind == ModuleKind::Regular {
-                let _timer = cgcx
-                    .prof
+                let _timer = prof
                     .generic_activity_with_arg("LLVM_module_codegen_embed_bitcode", &*module.name);
                 let thin_bc =
                     module.thin_lto_buffer.as_deref().expect("cannot find embedded bitcode");
@@ -1060,7 +1061,7 @@ pub(crate) fn codegen(
 
         if config.emit_ir {
             let _timer =
-                cgcx.prof.generic_activity_with_arg("LLVM_module_codegen_emit_ir", &*module.name);
+                prof.generic_activity_with_arg("LLVM_module_codegen_emit_ir", &*module.name);
             let out = cgcx.output_filenames.temp_path_for_cgu(
                 OutputType::LlvmAssembly,
                 &module.name,
@@ -1098,7 +1099,7 @@ pub(crate) fn codegen(
                 unsafe { llvm::LLVMRustPrintModule(llmod, out_c.as_ptr(), demangle_callback) };
 
             if result == llvm::LLVMRustResult::Success {
-                record_artifact_size(&cgcx.prof, "llvm_ir", &out);
+                record_artifact_size(prof, "llvm_ir", &out);
             }
 
             result
@@ -1108,7 +1109,7 @@ pub(crate) fn codegen(
 
         if config.emit_asm {
             let _timer =
-                cgcx.prof.generic_activity_with_arg("LLVM_module_codegen_emit_asm", &*module.name);
+                prof.generic_activity_with_arg("LLVM_module_codegen_emit_asm", &*module.name);
             let path = cgcx.output_filenames.temp_path_for_cgu(
                 OutputType::Assembly,
                 &module.name,
@@ -1132,16 +1133,15 @@ pub(crate) fn codegen(
                 &path,
                 None,
                 llvm::FileType::AssemblyFile,
-                &cgcx.prof,
+                prof,
                 config.verify_llvm_ir,
             );
         }
 
         match config.emit_obj {
             EmitObj::ObjectCode(_) => {
-                let _timer = cgcx
-                    .prof
-                    .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &*module.name);
+                let _timer =
+                    prof.generic_activity_with_arg("LLVM_module_codegen_emit_obj", &*module.name);
 
                 let dwo_out = cgcx
                     .output_filenames
@@ -1168,7 +1168,7 @@ pub(crate) fn codegen(
                     &obj_out,
                     dwo_out,
                     llvm::FileType::ObjectFile,
-                    &cgcx.prof,
+                    prof,
                     config.verify_llvm_ir,
                 );
             }
@@ -1188,7 +1188,7 @@ pub(crate) fn codegen(
             EmitObj::None => {}
         }
 
-        record_llvm_cgu_instructions_stats(&cgcx.prof, &module.name, llmod);
+        record_llvm_cgu_instructions_stats(prof, &module.name, llmod);
     }
 
     // `.dwo` files are only emitted if:

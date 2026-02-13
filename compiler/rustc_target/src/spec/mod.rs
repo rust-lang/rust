@@ -1082,7 +1082,7 @@ crate::target_spec_enum! {
 }
 
 crate::target_spec_enum! {
-    #[derive(Default)]
+    #[derive(Default, Encodable, Decodable)]
     pub enum SplitDebuginfo {
         /// Split debug-information is disabled, meaning that on supported platforms
         /// you can find all debug information in the executable itself. This is

@@ -30,6 +30,7 @@ use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, SharedEmitter}
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::memmap::Mmap;
+use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_log::tracing::info;
 use rustc_middle::bug;
@@ -112,6 +113,7 @@ fn save_as_file(obj: &[u8], path: &Path) -> Result<(), LtoBitcodeFromRlib> {
 /// for further optimization.
 pub(crate) fn run_fat(
     cgcx: &CodegenContext,
+    prof: &SelfProfilerRef,
     shared_emitter: &SharedEmitter,
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
@@ -123,6 +125,7 @@ pub(crate) fn run_fat(
     lto_data.symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();*/
     fat_lto(
         cgcx,
+        prof,
         dcx,
         modules,
         lto_data.upstream_modules,
@@ -133,13 +136,14 @@ pub(crate) fn run_fat(
 
 fn fat_lto(
     cgcx: &CodegenContext,
+    prof: &SelfProfilerRef,
     _dcx: DiagCtxtHandle<'_>,
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     tmp_path: TempDir,
     //symbols_below_threshold: &[String],
 ) -> ModuleCodegen<GccContext> {
-    let _timer = cgcx.prof.generic_activity("GCC_fat_lto_build_monolithic_module");
+    let _timer = prof.generic_activity("GCC_fat_lto_build_monolithic_module");
     info!("going for a fat lto");
 
     // Sort out all our lists of incoming modules into two lists.
@@ -223,8 +227,7 @@ fn fat_lto(
         // We add the object files and save in should_combine_object_files that we should combine
         // them into a single object file when compiling later.
         for (bc_decoded, name) in serialized_modules {
-            let _timer = cgcx
-                .prof
+            let _timer = prof
                 .generic_activity_with_arg_recorder("GCC_fat_lto_link_module", |recorder| {
                     recorder.record_arg(format!("{:?}", name))
                 });
@@ -284,6 +287,7 @@ impl ModuleBufferMethods for ModuleBuffer {
 /// can simply be copied over from the incr. comp. cache.
 pub(crate) fn run_thin(
     cgcx: &CodegenContext,
+    prof: &SelfProfilerRef,
     dcx: DiagCtxtHandle<'_>,
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<(String, ThinBuffer)>,
@@ -298,6 +302,7 @@ pub(crate) fn run_thin(
     }
     thin_lto(
         cgcx,
+        prof,
         dcx,
         modules,
         lto_data.upstream_modules,
@@ -345,7 +350,8 @@ pub(crate) fn prepare_thin(module: ModuleCodegen<GccContext>) -> (String, ThinBu
 /// all of the `LtoModuleCodegen` units returned below and destroyed once
 /// they all go out of scope.
 fn thin_lto(
-    cgcx: &CodegenContext,
+    _cgcx: &CodegenContext,
+    prof: &SelfProfilerRef,
     _dcx: DiagCtxtHandle<'_>,
     modules: Vec<(String, ThinBuffer)>,
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
@@ -353,7 +359,7 @@ fn thin_lto(
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     //_symbols_below_threshold: &[String],
 ) -> (Vec<ThinModule<GccCodegenBackend>>, Vec<WorkProduct>) {
-    let _timer = cgcx.prof.generic_activity("LLVM_thin_lto_global_analysis");
+    let _timer = prof.generic_activity("LLVM_thin_lto_global_analysis");
     info!("going for that thin, thin LTO");
 
     /*let green_modules: FxHashMap<_, _> =

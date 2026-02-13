@@ -88,7 +88,7 @@ pub enum CFProtection {
     Full,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, HashStable_Generic)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, HashStable_Generic, Encodable, Decodable)]
 pub enum OptLevel {
     /// `-Copt-level=0`
     No,
@@ -108,7 +108,7 @@ pub enum OptLevel {
 /// and taking other command line options into account.
 ///
 /// Note that linker plugin-based LTO is a different mechanism entirely.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Encodable, Decodable)]
 pub enum Lto {
     /// Don't do any LTO whatsoever.
     No,
@@ -190,7 +190,7 @@ pub enum CoverageLevel {
 }
 
 // The different settings that the `-Z offload` flag can have.
-#[derive(Clone, PartialEq, Hash, Debug)]
+#[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum Offload {
     /// Entry point for `std::offload`, enables kernel compilation for a gpu device
     Device,
@@ -201,7 +201,7 @@ pub enum Offload {
 }
 
 /// The different settings that the `-Z autodiff` flag can have.
-#[derive(Clone, PartialEq, Hash, Debug)]
+#[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum AutoDiff {
     /// Enable the autodiff opt pipeline
     Enable,
@@ -528,7 +528,7 @@ impl FmtDebug {
     }
 }
 
-#[derive(Clone, PartialEq, Hash, Debug)]
+#[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum SwitchWithOptPath {
     Enabled(Option<PathBuf>),
     Disabled,
@@ -583,7 +583,7 @@ pub enum MirStripDebugInfo {
 /// DWARF provides a mechanism which allows the linker to skip the sections which don't require
 /// link-time relocation - either by putting those sections in DWARF object files, or by keeping
 /// them in the object file in such a way that the linker will skip them.
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub enum SplitDwarfKind {
     /// Sections which do not require relocation are written into object file but ignored by the
     /// linker.
@@ -1539,7 +1539,7 @@ pub enum EntryFnType {
 
 pub use rustc_hir::attrs::CrateType;
 
-#[derive(Clone, Hash, Debug, PartialEq, Eq)]
+#[derive(Clone, Hash, Debug, PartialEq, Eq, Encodable, Decodable)]
 pub enum Passes {
     Some(Vec<String>),
     All,
