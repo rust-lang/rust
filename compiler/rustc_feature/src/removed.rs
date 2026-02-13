@@ -102,6 +102,8 @@ declare_features! (
     /// Allows default type parameters to influence type inference.
     (removed, default_type_parameter_fallback, "1.82.0", Some(27336),
      Some("never properly implemented; requires significant design work"), 127655),
+    /// Allows using `#[deprecated_safe]` to deprecate the safeness of a function or trait
+    (removed, deprecated_safe, "CURRENT_RUSTC_VERSION", Some(94978), Some("never properly implemented, in the way of attribute refactor"), 152554),
     /// Allows deriving traits as per `SmartPointer` specification
     (removed, derive_smart_pointer, "1.84.0", Some(123430), Some("replaced by `CoercePointee`"), 131284),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.

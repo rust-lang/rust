@@ -392,8 +392,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::warn
                             | sym::deny
                             | sym::forbid
-                            // need to be fixed
-                            | sym::deprecated_safe // FIXME(deprecated_safe)
                             // internal
                             | sym::prelude_import
                             | sym::panic_handler
