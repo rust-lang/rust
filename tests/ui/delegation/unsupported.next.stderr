@@ -1,27 +1,27 @@
-error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:29:5: 29:24>::opaque_ret::{anon_assoc#0}`
-  --> $DIR/unsupported.rs:30:25
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:28:5: 28:24>::opaque_ret::{anon_assoc#0}`
+  --> $DIR/unsupported.rs:29:25
    |
 LL |         reuse to_reuse::opaque_ret;
    |                         ^^^^^^^^^^
    |
    = note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
-   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:29:5: 29:24>::opaque_ret::{anon_assoc#0}`, completing the cycle
-   = note: cycle used when checking assoc item `opaque::<impl at $DIR/unsupported.rs:29:5: 29:24>::opaque_ret` is compatible with trait definition
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:28:5: 28:24>::opaque_ret::{anon_assoc#0}`, completing the cycle
+   = note: cycle used when checking assoc item `opaque::<impl at $DIR/unsupported.rs:28:5: 28:24>::opaque_ret` is compatible with trait definition
    = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
-error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:32:5: 32:25>::opaque_ret::{anon_assoc#0}`
-  --> $DIR/unsupported.rs:33:24
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:31:5: 31:25>::opaque_ret::{anon_assoc#0}`
+  --> $DIR/unsupported.rs:32:24
    |
 LL |         reuse ToReuse::opaque_ret;
    |                        ^^^^^^^^^^
    |
    = note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
-   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:32:5: 32:25>::opaque_ret::{anon_assoc#0}`, completing the cycle
-   = note: cycle used when checking assoc item `opaque::<impl at $DIR/unsupported.rs:32:5: 32:25>::opaque_ret` is compatible with trait definition
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:31:5: 31:25>::opaque_ret::{anon_assoc#0}`, completing the cycle
+   = note: cycle used when checking assoc item `opaque::<impl at $DIR/unsupported.rs:31:5: 31:25>::opaque_ret` is compatible with trait definition
    = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error: delegation self type is not specified
-  --> $DIR/unsupported.rs:54:18
+  --> $DIR/unsupported.rs:53:18
    |
 LL |     reuse Trait::foo;
    |                  ^^^

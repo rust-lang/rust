@@ -2,12 +2,6 @@
 //!
 //! Better known as "varargs".
 
-#![unstable(
-    feature = "c_variadic",
-    issue = "44930",
-    reason = "the `c_variadic` feature has not been properly tested on all supported platforms"
-)]
-
 #[cfg(not(target_arch = "xtensa"))]
 use crate::ffi::c_void;
 use crate::fmt;
@@ -195,8 +189,6 @@ crate::cfg_select! {
 /// is automatically initialized (equivalent to calling `va_start` in C).
 ///
 /// ```
-/// #![feature(c_variadic)]
-///
 /// use std::ffi::VaList;
 ///
 /// /// # Safety
@@ -230,11 +222,13 @@ crate::cfg_select! {
 /// terms of layout and ABI.
 #[repr(transparent)]
 #[lang = "va_list"]
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
 pub struct VaList<'a> {
     inner: VaListInner,
     _marker: PhantomCovariantLifetime<'a>,
 }
 
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
 impl fmt::Debug for VaList<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // No need to include `_marker` in debug output.
@@ -249,6 +243,7 @@ impl VaList<'_> {
     }
 }
 
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
 const impl<'f> Clone for VaList<'f> {
     /// Clone the [`VaList`], producing a second independent cursor into the variable argument list.
@@ -264,6 +259,7 @@ const impl<'f> Clone for VaList<'f> {
     }
 }
 
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
 const impl<'f> Drop for VaList<'f> {
     /// Drop the [`VaList`].
@@ -313,6 +309,7 @@ const impl<'f> Drop for VaList<'f> {
 // types with an alignment larger than 8, or with a non-scalar layout. Inline assembly can be used
 // to accept unsupported types in the meantime.
 #[lang = "va_arg_safe"]
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
 pub impl(self) unsafe trait VaArgSafe: Copy {}
 
 crate::cfg_select! {
@@ -321,7 +318,9 @@ crate::cfg_select! {
         //
         // - i8 is implicitly promoted to c_int in C, and cannot implement `VaArgSafe`.
         // - u8 is implicitly promoted to c_uint in C, and cannot implement `VaArgSafe`.
+        #[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
         unsafe impl VaArgSafe for i16 {}
+        #[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
         unsafe impl VaArgSafe for u16 {}
     }
     _ => {
@@ -335,6 +334,7 @@ crate::cfg_select! {
 crate::cfg_select! {
     target_arch = "avr" => {
         // c_double is f32 on this target.
+        #[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
         unsafe impl VaArgSafe for f32 {}
     }
     _ => {
@@ -344,17 +344,26 @@ crate::cfg_select! {
     }
 }
 
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl VaArgSafe for i32 {}
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl VaArgSafe for i64 {}
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl VaArgSafe for isize {}
 
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl VaArgSafe for u32 {}
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl VaArgSafe for u64 {}
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl VaArgSafe for usize {}
 
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl VaArgSafe for f64 {}
 
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl<T> VaArgSafe for *mut T {}
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl<T> VaArgSafe for *const T {}
 
 // Check that relevant `core::ffi` types implement `VaArgSafe`.
@@ -401,6 +410,7 @@ impl<'f> VaList<'f> {
     ///
     /// [`c_void`]: core::ffi::c_void
     #[inline] // Avoid codegen when not used to help backends that don't support VaList.
+    #[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn next_arg<T: VaArgSafe>(&mut self) -> T {

@@ -2,7 +2,6 @@
 
 #![allow(incomplete_features)]
 #![feature(splat)]
-#![feature(c_variadic)]
 
 fn multisplat_bad(#[splat] (_a, _b): (u32, i8), #[splat] (_c, _d): (u32, i8)) {}
 //~^ ERROR multiple `#[splat]`s are not allowed in the same function
