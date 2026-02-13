@@ -48,7 +48,7 @@ Refer to the [dev guide](https://rustc-dev-guide.rust-lang.org/tests/docker.html
 ## Docker Toolbox on Windows
 
 For Windows before Windows 10, the docker images can be run on Windows via
-[Docker Toolbox]. There are several preparation needs to be made before running
+[Docker Toolbox]. There are several preparations that need to be made before running
 a Docker image.
 
 1. Stop the virtual machine from the terminal with `docker-machine stop`
@@ -92,7 +92,7 @@ To run the image,
 A number of these images take quite a long time to compile as they're building
 whole gcc toolchains to do cross builds with. Much of this is relatively
 self-explanatory but some images use [crosstool-ng] which isn't quite as self
-explanatory. Below is a description of where these `*.defconfig` files come form,
+explanatory. Below is a description of where these `*.defconfig` files come from,
 how to generate them, and how the existing ones were generated.
 
 [crosstool-ng]: https://github.com/crosstool-ng/crosstool-ng
