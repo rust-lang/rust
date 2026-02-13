@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use std::ops::Range;
 use std::sync::Mutex;
 
-use rand::Rng;
+use rand::RngExt;
 use rand::distr::{Distribution, StandardUniform};
 use rand_chacha::ChaCha8Rng;
 use rand_chacha::rand_core::SeedableRng;

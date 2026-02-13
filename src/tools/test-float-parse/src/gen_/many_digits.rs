@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use std::ops::{Range, RangeInclusive};
 
 use rand::distr::{Distribution, Uniform};
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use crate::{Float, Generator, SEED};
