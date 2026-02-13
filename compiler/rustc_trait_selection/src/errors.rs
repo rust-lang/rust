@@ -102,10 +102,16 @@ pub struct NegativePositiveConflict<'tcx> {
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for NegativePositiveConflict<'_> {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(dcx, level, inline_fluent!("found both positive and negative implementation of trait `{$trait_desc}`{$self_desc ->
-[none] {\"\"}
-*[default] {\" \"}for type `{$self_desc}`
-}:"));
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            inline_fluent!(
+            "found both positive and negative implementation of trait `{$trait_desc}`{$self_desc ->
+                [none] {\"\"}
+                *[default] {\" \"}for type `{$self_desc}`
+            }:"
+        ),
+        );
         diag.arg("trait_desc", self.trait_desc.print_only_trait_path().to_string());
         diag.arg("self_desc", self.self_ty.map_or_else(|| "none".to_string(), |ty| ty.to_string()));
         diag.span(self.impl_span);
@@ -157,9 +163,9 @@ impl Subdiagnostic for AdjustSignatureBorrow {
                 diag.multipart_suggestion_verbose(
                     inline_fluent!(
                         "consider adjusting the signature so it borrows its {$borrow_len ->
-[one] argument
-*[other] arguments
-}"
+                            [one] argument
+                            *[other] arguments
+                        }"
                     ),
                     to_borrow,
                     Applicability::MaybeIncorrect,
@@ -170,9 +176,9 @@ impl Subdiagnostic for AdjustSignatureBorrow {
                 diag.multipart_suggestion_verbose(
                     inline_fluent!(
                         "consider adjusting the signature so it does not borrow its {$remove_borrow_len ->
-[one] argument
-*[other] arguments
-}"
+                            [one] argument
+                            *[other] arguments
+                        }"
                     ),
                     remove_borrow,
                     Applicability::MaybeIncorrect,
@@ -505,18 +511,18 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                     span,
                     inline_fluent!(
                         "...so that the {$requirement ->
-[method_compat] method type is compatible with trait
-[type_compat] associated type is compatible with trait
-[const_compat] const is compatible with trait
-[expr_assignable] expression is assignable
-[if_else_different] `if` and `else` have incompatible types
-[no_else] `if` missing an `else` returns `()`
-[fn_main_correct_type] `main` function has the correct type
-[fn_lang_correct_type] lang item function has the correct type
-[intrinsic_correct_type] intrinsic has the correct type
-[method_correct_type] method receiver has the correct type
-*[other] types are compatible
-}"
+                            [method_compat] method type is compatible with trait
+                            [type_compat] associated type is compatible with trait
+                            [const_compat] const is compatible with trait
+                            [expr_assignable] expression is assignable
+                            [if_else_different] `if` and `else` have incompatible types
+                            [no_else] `if` missing an `else` returns `()`
+                            [fn_main_correct_type] `main` function has the correct type
+                            [fn_lang_correct_type] lang item function has the correct type
+                            [intrinsic_correct_type] intrinsic has the correct type
+                            [method_correct_type] method receiver has the correct type
+                            *[other] types are compatible
+                        }"
                     ),
                 );
                 diag.arg("requirement", requirement);
@@ -531,18 +537,18 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                     span,
                     inline_fluent!(
                         "...so that {$requirement ->
-[method_compat] method type is compatible with trait
-[type_compat] associated type is compatible with trait
-[const_compat] const is compatible with trait
-[expr_assignable] expression is assignable
-[if_else_different] `if` and `else` have incompatible types
-[no_else] `if` missing an `else` returns `()`
-[fn_main_correct_type] `main` function has the correct type
-[fn_lang_correct_type] lang item function has the correct type
-[intrinsic_correct_type] intrinsic has the correct type
-[method_correct_type] method receiver has the correct type
-*[other] types are compatible
-}"
+                            [method_compat] method type is compatible with trait
+                            [type_compat] associated type is compatible with trait
+                            [const_compat] const is compatible with trait
+                            [expr_assignable] expression is assignable
+                            [if_else_different] `if` and `else` have incompatible types
+                            [no_else] `if` missing an `else` returns `()`
+                            [fn_main_correct_type] `main` function has the correct type
+                            [fn_lang_correct_type] lang item function has the correct type
+                            [intrinsic_correct_type] intrinsic has the correct type
+                            [method_correct_type] method receiver has the correct type
+                            *[other] types are compatible
+                        }"
                     ),
                 );
                 diag.arg("requirement", requirement);
@@ -578,9 +584,9 @@ impl Subdiagnostic for LifetimeMismatchLabels {
                     span,
                     inline_fluent!(
                         "...but data{$label_var1_exists ->
-[true] {\" \"}from `{$label_var1}`
-*[false] {\"\"}
-} is returned here"
+                            [true] {\" \"}from `{$label_var1}`
+                            *[false] {\"\"}
+                        } is returned here"
                     ),
                 );
                 diag.arg("label_var1_exists", label_var1.is_some());
@@ -614,12 +620,12 @@ impl Subdiagnostic for LifetimeMismatchLabels {
                         span,
                         inline_fluent!(
                             "...but data{$label_var1_exists ->
-[true] {\" \"}from `{$label_var1}`
-*[false] {\"\"}
-} flows{$label_var2_exists ->
-[true] {\" \"}into `{$label_var2}`
-*[false] {\"\"}
-} here"
+                                [true] {\" \"}from `{$label_var1}`
+                                *[false] {\"\"}
+                            } flows{$label_var2_exists ->
+                                [true] {\" \"}into `{$label_var2}`
+                                *[false] {\"\"}
+                            } here"
                         ),
                     );
                     diag.arg("label_var1_exists", label_var1.is_some());
@@ -789,12 +795,12 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
             diag.multipart_suggestion_verbose(
                 inline_fluent!(
                     "consider {$is_reuse ->
-[true] reusing
-*[false] introducing
-} a named lifetime parameter{$is_impl ->
-[true] {\" \"}and update trait if needed
-*[false] {\"\"}
-}"
+                        [true] reusing
+                        *[false] introducing
+                    } a named lifetime parameter{$is_impl ->
+                        [true] {\" \"}and update trait if needed
+                        *[false] {\"\"}
+                    }"
                 ),
                 visitor.suggestions,
                 Applicability::MaybeIncorrect,

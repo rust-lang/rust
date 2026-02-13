@@ -466,10 +466,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         // a < b
                         if intrinsic_name == sym::ptr_offset_from_unsigned {
                             throw_ub_custom!(
-                                inline_fluent!("`ptr_offset_from_unsigned` called when first pointer has smaller {$is_addr ->
-    [true] address
-    *[false] offset
-} than second: {$a_offset} < {$b_offset}"),
+                                inline_fluent!(
+                                    "`ptr_offset_from_unsigned` called when first pointer has smaller {$is_addr ->
+                                        [true] address
+                                        *[false] offset
+                                    } than second: {$a_offset} < {$b_offset}"
+                                ),
                                 a_offset = a_offset,
                                 b_offset = b_offset,
                                 is_addr = is_addr,

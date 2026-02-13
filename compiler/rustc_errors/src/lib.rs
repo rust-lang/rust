@@ -61,6 +61,7 @@ pub use rustc_error_messages::{
 use rustc_hashes::Hash128;
 use rustc_lint_defs::LintExpectationId;
 pub use rustc_lint_defs::{Applicability, listify, pluralize};
+pub use rustc_macros::inline_fluent;
 use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker, catch_fatal_errors};
@@ -1559,7 +1560,7 @@ impl DelayedDiagInner {
         let msg = match self.note.status() {
             BacktraceStatus::Captured => inline_fluent!(
                 "delayed at {$emitted_at}
-{$note}"
+                {$note}"
             ),
             // Avoid the needless newline when no backtrace has been captured,
             // the display impl should just be a single line.

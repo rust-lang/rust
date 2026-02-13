@@ -542,10 +542,12 @@ impl Subdiagnostic for LocalLabel<'_> {
             dtor.add_to_diag(diag);
         }
         let msg =
-            diag.eagerly_translate(inline_fluent!("{$is_dropped_first_edition_2024 ->
-                [true] up until Edition 2021 `{$name}` is dropped last but will be dropped earlier in Edition 2024
-                *[false] `{$name}` will be dropped later as of Edition 2024
-            }"));
+            diag.eagerly_translate(inline_fluent!(
+                "{$is_dropped_first_edition_2024 ->
+                    [true] up until Edition 2021 `{$name}` is dropped last but will be dropped earlier in Edition 2024
+                    *[false] `{$name}` will be dropped later as of Edition 2024
+                }"
+            ));
         diag.span_label(self.span, msg);
     }
 }

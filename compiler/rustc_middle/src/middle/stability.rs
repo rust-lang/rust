@@ -128,19 +128,25 @@ pub struct Deprecated {
 impl<'a, G: EmissionGuarantee> rustc_errors::LintDiagnostic<'a, G> for Deprecated {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
         diag.primary_message(match &self.since_kind {
-            DeprecatedSinceKind::InEffect => inline_fluent!("use of deprecated {$kind} `{$path}`{$has_note ->
-                [true] : {$note}
-                *[other] {\"\"}
-            }"),
-            DeprecatedSinceKind::InFuture => inline_fluent!("use of {$kind} `{$path}` that will be deprecated in a future Rust version{$has_note ->
-                [true] : {$note}
-                *[other] {\"\"}
-            }"),
-            DeprecatedSinceKind::InVersion(_) => {
-                inline_fluent!("use of {$kind} `{$path}` that will be deprecated in future version {$version}{$has_note ->
+            DeprecatedSinceKind::InEffect => inline_fluent!(
+                "use of deprecated {$kind} `{$path}`{$has_note ->
                     [true] : {$note}
                     *[other] {\"\"}
-                }")
+                }"
+            ),
+            DeprecatedSinceKind::InFuture => inline_fluent!(
+                "use of {$kind} `{$path}` that will be deprecated in a future Rust version{$has_note ->
+                    [true] : {$note}
+                    *[other] {\"\"}
+                }"
+            ),
+            DeprecatedSinceKind::InVersion(_) => {
+                inline_fluent!(
+                    "use of {$kind} `{$path}` that will be deprecated in future version {$version}{$has_note ->
+                        [true] : {$note}
+                        *[other] {\"\"}
+                    }"
+                )
             }
         });
         diag.arg("kind", self.kind);

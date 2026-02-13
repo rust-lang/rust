@@ -196,10 +196,12 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 if let Some((open, close, del)) = find_delimiters(cx, span) {
                     lint.arg("already_suggested", suggest_display || suggest_debug);
                     lint.multipart_suggestion(
-                        inline_fluent!("{$already_suggested ->
-                            [true] or use
-                            *[false] use
-                        } std::panic::panic_any instead"),
+                        inline_fluent!(
+                            "{$already_suggested ->
+                                [true] or use
+                                *[false] use
+                            } std::panic::panic_any instead"
+                        ),
                         if del == '(' {
                             vec![(span.until(open), "std::panic::panic_any".into())]
                         } else {

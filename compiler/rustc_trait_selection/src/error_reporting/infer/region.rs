@@ -252,10 +252,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             SubregionOrigin::RelateParamBound(span, ty, opt_span) => {
                 RegionOriginNote::WithName {
                     span,
-                    msg: inline_fluent!("...so that the type `{$name}` will meet its required lifetime bounds{$continues ->
-[true] ...
-*[false] {\"\"}
-}"),
+                    msg: inline_fluent!(
+                        "...so that the type `{$name}` will meet its required lifetime bounds{$continues ->
+                            [true] ...
+                            *[false] {\"\"}
+                        }"
+                    ),
                     name: &self.ty_to_string(ty),
                     continues: opt_span.is_some(),
                 }
