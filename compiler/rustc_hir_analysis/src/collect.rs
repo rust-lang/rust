@@ -1063,6 +1063,70 @@ fn lower_fn_sig_recovering_infer_ret_ty<'tcx>(
     )
 }
 
+/// Convert `ReLateParam`s in `value` back into `ReBound`s and bind it with `bound_vars`.
+fn late_param_regions_to_bound<'tcx, T>(
+    tcx: TyCtxt<'tcx>,
+    scope: DefId,
+    bound_vars: &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
+    value: T,
+) -> ty::Binder<'tcx, T>
+where
+    T: ty::TypeFoldable<TyCtxt<'tcx>>,
+{
+    let value = fold_regions(tcx, value, |r, debruijn| match r.kind() {
+        ty::ReLateParam(lp) => {
+            // Should be in scope, otherwise inconsistency happens somewhere.
+            assert_eq!(lp.scope, scope);
+
+            let br = match lp.kind {
+                // These variants preserve the bound var index.
+                kind @ (ty::LateParamRegionKind::Anon(idx)
+                | ty::LateParamRegionKind::NamedAnon(idx, _)) => {
+                    let idx = idx as usize;
+                    let var = ty::BoundVar::from_usize(idx);
+
+                    let Some(ty::BoundVariableKind::Region(kind)) = bound_vars.get(idx).copied()
+                    else {
+                        bug!("unexpected late-bound region {kind:?} for bound vars {bound_vars:?}");
+                    };
+
+                    ty::BoundRegion { var, kind }
+                }
+
+                // For named regions, look up the corresponding bound var.
+                ty::LateParamRegionKind::Named(def_id) => bound_vars
+                    .iter()
+                    .enumerate()
+                    .find_map(|(idx, bv)| match bv {
+                        ty::BoundVariableKind::Region(kind @ ty::BoundRegionKind::Named(did))
+                            if did == def_id =>
+                        {
+                            Some(ty::BoundRegion { var: ty::BoundVar::from_usize(idx), kind })
+                        }
+                        _ => None,
+                    })
+                    .unwrap(),
+
+                ty::LateParamRegionKind::ClosureEnv => bound_vars
+                    .iter()
+                    .enumerate()
+                    .find_map(|(idx, bv)| match bv {
+                        ty::BoundVariableKind::Region(kind @ ty::BoundRegionKind::ClosureEnv) => {
+                            Some(ty::BoundRegion { var: ty::BoundVar::from_usize(idx), kind })
+                        }
+                        _ => None,
+                    })
+                    .unwrap(),
+            };
+
+            ty::Region::new_bound(tcx, debruijn, br)
+        }
+        _ => r,
+    });
+
+    ty::Binder::bind_with_vars(value, bound_vars)
+}
+
 fn recover_infer_ret_ty<'tcx>(
     icx: &ItemCtxt<'tcx>,
     infer_ret_ty: &'tcx hir::Ty<'tcx>,
@@ -1138,13 +1202,22 @@ fn recover_infer_ret_ty<'tcx>(
         );
     }
     let guar = diag.emit();
-    ty::Binder::dummy(tcx.mk_fn_sig(
+
+    // If we return a dummy binder here, we can ICE later in borrowck when it encounters
+    // `ReLateParam` regions (e.g. in a local type annotation) which weren't registered via the
+    // signature binder. See #135845.
+    let bound_vars = tcx.late_bound_vars(hir_id);
+    let scope = def_id.to_def_id();
+
+    let fn_sig = tcx.mk_fn_sig(
         fn_sig.inputs().iter().copied(),
         recovered_ret_ty.unwrap_or_else(|| Ty::new_error(tcx, guar)),
         fn_sig.c_variadic,
         fn_sig.safety,
         fn_sig.abi,
-    ))
+    );
+
+    late_param_regions_to_bound(tcx, scope, bound_vars, fn_sig)
 }
 
 pub fn suggest_impl_trait<'tcx>(
