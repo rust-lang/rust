@@ -1,8 +1,13 @@
-use super::*;
+#![cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
+#![allow(internal_features)]
+#![feature(stdarch_internal)]
+
+use std_detect::detect::__test::{Feature, Initializer};
+use std_detect::detect::__test_os::imply_features;
 
 #[test]
 fn simple_direct() {
-    let mut value = cache::Initializer::default();
+    let mut value = Initializer::default();
     value.set(Feature::f as u32);
     // F (and other extensions with CSRs) -> Zicsr
     assert!(imply_features(value).test(Feature::zicsr as u32));
@@ -10,7 +15,7 @@ fn simple_direct() {
 
 #[test]
 fn simple_indirect() {
-    let mut value = cache::Initializer::default();
+    let mut value = Initializer::default();
     value.set(Feature::q as u32);
     // Q -> D, D -> F, F -> Zicsr
     assert!(imply_features(value).test(Feature::zicsr as u32));
@@ -18,7 +23,7 @@ fn simple_indirect() {
 
 #[test]
 fn complex_zcd() {
-    let mut value = cache::Initializer::default();
+    let mut value = Initializer::default();
     // C & D -> Zcd
     value.set(Feature::c as u32);
     assert!(!imply_features(value).test(Feature::zcd as u32));
@@ -28,7 +33,7 @@ fn complex_zcd() {
 
 #[test]
 fn group_simple_forward() {
-    let mut value = cache::Initializer::default();
+    let mut value = Initializer::default();
     // A -> Zalrsc & Zaamo (forward implication)
     value.set(Feature::a as u32);
     let value = imply_features(value);
@@ -38,7 +43,7 @@ fn group_simple_forward() {
 
 #[test]
 fn group_simple_backward() {
-    let mut value = cache::Initializer::default();
+    let mut value = Initializer::default();
     // Zalrsc & Zaamo -> A (reverse implication)
     value.set(Feature::zalrsc as u32);
     value.set(Feature::zaamo as u32);
@@ -47,7 +52,7 @@ fn group_simple_backward() {
 
 #[test]
 fn group_complex_convergence() {
-    let mut value = cache::Initializer::default();
+    let mut value = Initializer::default();
     // Needs 3 iterations to converge
     // (and 4th iteration for convergence checking):
     // 1.  [Zvksc] -> Zvks & Zvbc

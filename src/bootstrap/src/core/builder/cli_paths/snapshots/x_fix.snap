@@ -129,6 +129,7 @@ expression: fix
     - Set({fix::library/rustc-std-workspace-core})
     - Set({fix::library/std})
     - Set({fix::library/std_detect})
+    - Set({fix::library/std_detect_tests})
     - Set({fix::library/sysroot})
     - Set({fix::library/test})
     - Set({fix::library/unwind})

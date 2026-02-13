@@ -30,21 +30,21 @@ const CACHE_CAPACITY: u32 = 93;
 // The derived `Default` implementation will initialize the field to zero,
 // which is what we want.
 #[derive(Copy, Clone, Default, PartialEq, Eq)]
-pub(crate) struct Initializer(u128);
+pub struct Initializer(u128);
 
 // NOTE: the `debug_assert!` would catch that we do not add more Features than
 // the one fitting our cache.
 impl Initializer {
     /// Tests the `bit` of the cache.
     #[inline]
-    pub(crate) fn test(self, bit: u32) -> bool {
+    pub fn test(self, bit: u32) -> bool {
         debug_assert!(bit < CACHE_CAPACITY, "too many features, time to increase the cache size!");
         test_bit(self.0, bit)
     }
 
     /// Sets the `bit` of the cache.
     #[inline]
-    pub(crate) fn set(&mut self, bit: u32) {
+    pub fn set(&mut self, bit: u32) {
         debug_assert!(bit < CACHE_CAPACITY, "too many features, time to increase the cache size!");
         let v = self.0;
         self.0 = set_bit(v, bit);

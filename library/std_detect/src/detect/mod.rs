@@ -32,6 +32,11 @@ pub(crate) use self::arch::Feature;
 mod bit;
 mod cache;
 
+pub mod __test {
+    pub use super::arch::Feature;
+    pub use super::cache::Initializer;
+}
+
 cfg_select! {
     miri => {
         // When running under miri all target-features that are not enabled at
@@ -53,6 +58,14 @@ cfg_select! {
         mod riscv;
         #[path = "os/linux/mod.rs"]
         mod os;
+        #[unstable(feature = "stdarch_internal", issue = "none")]
+        pub mod __test_os {
+            #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
+            pub use super::riscv::imply_features;
+            #[cfg(target_arch = "aarch64")]
+            pub use super::os::aarch64::AtHwcap;
+            pub use super::os::auxvec::{auxv, auxv_from_file};
+        }
     }
     target_os = "freebsd" => {
         #[cfg(target_arch = "aarch64")]
