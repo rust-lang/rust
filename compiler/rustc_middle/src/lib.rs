@@ -28,6 +28,7 @@
 #![allow(internal_features)]
 #![allow(rustc::direct_use_of_rustc_type_ir)]
 #![cfg_attr(bootstrap, feature(assert_matches))]
+#![cfg_attr(doc, feature(intra_doc_pointers))]
 #![feature(allocator_api)]
 #![feature(associated_type_defaults)]
 #![feature(box_as_ptr)]
@@ -43,7 +44,6 @@
 #![feature(file_buffered)]
 #![feature(gen_blocks)]
 #![feature(if_let_guard)]
-#![feature(intra_doc_pointers)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
@@ -56,7 +56,6 @@
 #![feature(try_trait_v2_residual)]
 #![feature(try_trait_v2_yeet)]
 #![feature(type_alias_impl_trait)]
-#![feature(unwrap_infallible)]
 #![feature(yeet_expr)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end

@@ -3072,7 +3072,6 @@ macro_rules! uint_impl {
         /// implementing it for wider-than-native types.
         ///
         /// ```
-        /// #![feature(const_unsigned_bigint_helpers)]
         /// fn scalar_mul_eq(little_endian_digits: &mut Vec<u16>, multiplicand: u16) {
         ///     let mut carry = 0;
         ///     for d in little_endian_digits.iter_mut() {
@@ -3097,6 +3096,7 @@ macro_rules! uint_impl {
         /// except that it gives the value of the overflow instead of just whether one happened:
         ///
         /// ```
+        /// # #![allow(unused_features)]
         /// #![feature(const_unsigned_bigint_helpers)]
         /// let r = u8::carrying_mul(7, 13, 0);
         /// assert_eq!((r.0, r.1 != 0), u8::overflowing_mul(7, 13));
@@ -3109,6 +3109,7 @@ macro_rules! uint_impl {
         /// [`wrapping_add`](Self::wrapping_add) methods:
         ///
         /// ```
+        /// # #![allow(unused_features)]
         /// #![feature(const_unsigned_bigint_helpers)]
         /// assert_eq!(
         ///     789_u16.carrying_mul(456, 123).0,

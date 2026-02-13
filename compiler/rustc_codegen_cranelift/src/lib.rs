@@ -2,8 +2,8 @@
 // Note: please avoid adding other feature gates where possible
 #![feature(rustc_private)]
 // Only used to define intrinsics in `compiler_builtins.rs`.
-#![feature(f16)]
-#![feature(f128)]
+#![cfg_attr(feature = "jit", feature(f16))]
+#![cfg_attr(feature = "jit", feature(f128))]
 // Note: please avoid adding other feature gates where possible
 #![warn(rust_2018_idioms)]
 #![warn(unreachable_pub)]

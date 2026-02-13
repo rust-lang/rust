@@ -112,7 +112,6 @@ impl Alignment {
     ///
     /// ```
     /// #![feature(ptr_alignment_type)]
-    /// #![feature(layout_for_ptr)]
     /// use std::ptr::Alignment;
     ///
     /// assert_eq!(unsafe { Alignment::of_val_raw(&5i32) }.as_usize(), 4);

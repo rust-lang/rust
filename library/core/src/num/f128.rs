@@ -148,7 +148,10 @@ pub mod consts {
     pub const LN_10: f128 = 2.30258509299404568401799145468436420760110148862877297603333_f128;
 }
 
-#[doc(test(attr(feature(cfg_target_has_reliable_f16_f128), allow(internal_features))))]
+#[doc(test(attr(
+    feature(cfg_target_has_reliable_f16_f128),
+    allow(internal_features, unused_features)
+)))]
 impl f128 {
     /// The radix or base of the internal representation of `f128`.
     #[unstable(feature = "f128", issue = "116909")]
@@ -1470,7 +1473,11 @@ impl f128 {
 // Functions in this module fall into `core_float_math`
 // #[unstable(feature = "core_float_math", issue = "137578")]
 #[cfg(not(test))]
-#[doc(test(attr(feature(cfg_target_has_reliable_f16_f128), expect(internal_features))))]
+#[doc(test(attr(
+    feature(cfg_target_has_reliable_f16_f128),
+    expect(internal_features),
+    allow(unused_features)
+)))]
 impl f128 {
     /// Returns the largest integer less than or equal to `self`.
     ///
