@@ -1,88 +1,88 @@
-error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/in-pat-recovery.rs:6:9
+error: const blocks cannot be used as patterns
+  --> $DIR/in-pat-recovery.rs:6:15
    |
 LL |         const { 1 + 7 } => {}
-   |         ^^^^^^^^^^^^^^^
+   |               ^^^^^^^^^
    |
    = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
 
-error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/in-pat-recovery.rs:13:9
+error: const blocks cannot be used as patterns
+  --> $DIR/in-pat-recovery.rs:13:15
    |
 LL |         const { 1 } ..= 10 => {}
-   |         ^^^^^^^^^^^
+   |               ^^^^^
    |
    = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
 
-error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/in-pat-recovery.rs:19:15
+error: const blocks cannot be used as patterns
+  --> $DIR/in-pat-recovery.rs:19:21
    |
 LL |         1 ..= const { 10 } => {}
-   |               ^^^^^^^^^^^^
+   |                     ^^^^^^
    |
    = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
 
-error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/in-pat-recovery.rs:25:9
+error: const blocks cannot be used as patterns
+  --> $DIR/in-pat-recovery.rs:25:15
    |
 LL |         const { 1 } ..= const { 10 } => {}
-   |         ^^^^^^^^^^^
+   |               ^^^^^
    |
    = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
 
-error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/in-pat-recovery.rs:25:25
+error: const blocks cannot be used as patterns
+  --> $DIR/in-pat-recovery.rs:25:31
    |
 LL |         const { 1 } ..= const { 10 } => {}
-   |                         ^^^^^^^^^^^^
+   |                               ^^^^^^
    |
    = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
 
-error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/in-pat-recovery.rs:32:9
+error: const blocks cannot be used as patterns
+  --> $DIR/in-pat-recovery.rs:32:15
    |
 LL |         const { 1 } .. 10 => {}
-   |         ^^^^^^^^^^^
+   |               ^^^^^
    |
    = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
 
-error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/in-pat-recovery.rs:38:14
+error: const blocks cannot be used as patterns
+  --> $DIR/in-pat-recovery.rs:38:20
    |
 LL |         1 .. const { 10 } => {}
-   |              ^^^^^^^^^^^^
+   |                    ^^^^^^
    |
    = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
 
-error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/in-pat-recovery.rs:44:9
+error: const blocks cannot be used as patterns
+  --> $DIR/in-pat-recovery.rs:44:15
    |
 LL |         const { 1 + 2 } ..= 10 => {}
-   |         ^^^^^^^^^^^^^^^
+   |               ^^^^^^^^^
    |
    = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
 
-error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/in-pat-recovery.rs:50:15
+error: const blocks cannot be used as patterns
+  --> $DIR/in-pat-recovery.rs:50:21
    |
 LL |         1 ..= const { 5 + 5 } => {}
-   |               ^^^^^^^^^^^^^^^
+   |                     ^^^^^^^^^
    |
    = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
 
-error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/in-pat-recovery.rs:56:9
+error: const blocks cannot be used as patterns
+  --> $DIR/in-pat-recovery.rs:56:15
    |
 LL |         const { 3 } .. => {}
-   |         ^^^^^^^^^^^
+   |               ^^^^^
    |
    = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
 
-error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/in-pat-recovery.rs:62:13
+error: const blocks cannot be used as patterns
+  --> $DIR/in-pat-recovery.rs:62:19
    |
 LL |         ..= const { 7 } => {}
-   |             ^^^^^^^^^^^
+   |                   ^^^^^
    |
    = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
 
