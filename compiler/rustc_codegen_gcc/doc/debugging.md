@@ -2,9 +2,9 @@
 
 ## How to debug GCC LTO
 
-Run do the command with `-v -save-temps` and then extract the `lto1` line from the output and run that under the debugger.
+Run the command with `-v -save-temps` and then extract the `lto1` line from the output and run that under the debugger.
 
-## How to debug stdarch tests that cannot be ran locally
+## How to debug stdarch tests that cannot be run locally
 
 First, run the tests normally:
 

@@ -6,7 +6,6 @@ use rustc_codegen_ssa::back::write::{
     BitcodeSection, CodegenContext, EmitObj, ModuleConfig, SharedEmitter,
 };
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
-use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::DiagCtxt;
 use rustc_fs_util::link_or_copy;
 use rustc_log::tracing::debug;
@@ -19,7 +18,6 @@ use crate::{GccContext, LtoMode};
 
 pub(crate) fn codegen(
     cgcx: &CodegenContext,
-    prof: &SelfProfilerRef,
     shared_emitter: &SharedEmitter,
     module: ModuleCodegen<GccContext>,
     config: &ModuleConfig,

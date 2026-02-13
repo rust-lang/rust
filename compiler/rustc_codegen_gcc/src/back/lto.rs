@@ -30,7 +30,6 @@ use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, SharedEmitter}
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_log::tracing::info;
 use rustc_middle::bug;
@@ -113,7 +112,6 @@ fn save_as_file(obj: &[u8], path: &Path) -> Result<(), LtoBitcodeFromRlib> {
 /// for further optimization.
 pub(crate) fn run_fat(
     cgcx: &CodegenContext,
-    prof: &SelfProfilerRef,
     shared_emitter: &SharedEmitter,
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
@@ -136,7 +134,6 @@ pub(crate) fn run_fat(
 
 fn fat_lto(
     cgcx: &CodegenContext,
-    prof: &SelfProfilerRef,
     _dcx: DiagCtxtHandle<'_>,
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
@@ -287,7 +284,6 @@ impl ModuleBufferMethods for ModuleBuffer {
 /// can simply be copied over from the incr. comp. cache.
 pub(crate) fn run_thin(
     cgcx: &CodegenContext,
-    prof: &SelfProfilerRef,
     dcx: DiagCtxtHandle<'_>,
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<(String, ThinBuffer)>,
@@ -350,8 +346,7 @@ pub(crate) fn prepare_thin(module: ModuleCodegen<GccContext>) -> (String, ThinBu
 /// all of the `LtoModuleCodegen` units returned below and destroyed once
 /// they all go out of scope.
 fn thin_lto(
-    _cgcx: &CodegenContext,
-    prof: &SelfProfilerRef,
+    cgcx: &CodegenContext,
     _dcx: DiagCtxtHandle<'_>,
     modules: Vec<(String, ThinBuffer)>,
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,

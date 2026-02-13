@@ -113,6 +113,10 @@ jobs:
         git config --global user.name "User"
         ./y.sh prepare
 
+    - name: Add more failing tests for GCC without 128-bit integers support
+      if: ${{ matrix.libgccjit_version.gcc == 'gcc-15-without-int128.deb' }}
+      run: cat tests/failing-ui-tests-without-128bit-integers.txt >> tests/failing-ui-tests.txt
+
     - name: Run tests
       run: |
         ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }}

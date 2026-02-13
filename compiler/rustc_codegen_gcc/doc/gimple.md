@@ -3,7 +3,7 @@
 You can see the full documentation about what GIMPLE is [here](https://gcc.gnu.org/onlinedocs/gccint/GIMPLE.html). In this document we will explain how to generate it.
 
 First, we'll copy the content from `gcc/gcc/testsuite/jit.dg/test-const-attribute.c` into a
-file named `local.c` and remove the content we're not interested into:
+file named `local.c` and remove the content we're not interested in:
 
 ```diff
 - /* { dg-do compile { target x86_64-*-* } } */

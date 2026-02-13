@@ -8,7 +8,7 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
 
-use crate::context::CodegenCx;
+use crate::context::{CodegenCx, new_array_type};
 use crate::type_of::LayoutGccExt;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -18,6 +18,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
     pub fn const_bytes(&self, bytes: &[u8]) -> RValue<'gcc> {
         bytes_in_context(self, bytes)
+    }
+
+    pub fn const_u16(&self, i: u16) -> RValue<'gcc> {
+        self.const_uint(self.type_u16(), i as u64)
     }
 
     fn global_string(&self, string: &str) -> LValue<'gcc> {
@@ -55,7 +59,7 @@ pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) ->
         0 => {
             let context = &cx.context;
             let byte_type = context.new_type::<u64>();
-            let typ = context.new_array_type(None, byte_type, bytes.len() as u64 / 8);
+            let typ = new_array_type(context, None, byte_type, bytes.len() as u64 / 8);
             let elements: Vec<_> = bytes
                 .chunks_exact(8)
                 .map(|arr| {
@@ -76,7 +80,7 @@ pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) ->
         4 => {
             let context = &cx.context;
             let byte_type = context.new_type::<u32>();
-            let typ = context.new_array_type(None, byte_type, bytes.len() as u64 / 4);
+            let typ = new_array_type(context, None, byte_type, bytes.len() as u64 / 4);
             let elements: Vec<_> = bytes
                 .chunks_exact(4)
                 .map(|arr| {
@@ -95,7 +99,7 @@ pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) ->
         _ => {
             let context = cx.context;
             let byte_type = context.new_type::<u8>();
-            let typ = context.new_array_type(None, byte_type, bytes.len() as u64);
+            let typ = new_array_type(context, None, byte_type, bytes.len() as u64);
             let elements: Vec<_> = bytes
                 .iter()
                 .map(|&byte| context.new_rvalue_from_int(byte_type, byte as i32))
