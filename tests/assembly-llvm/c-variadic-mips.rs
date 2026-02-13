@@ -3,9 +3,11 @@
 //
 //@ revisions: MIPS MIPS64 MIPS64EL
 //@ [MIPS] compile-flags: -Copt-level=3 --target mips-unknown-linux-gnu
+//@ [MIPS] needs-llvm-components: mips
 //@ [MIPS64] compile-flags: -Copt-level=3 --target mipsisa64r6-unknown-linux-gnuabi64
+//@ [MIPS64] needs-llvm-components: mips
 //@ [MIPS64EL] compile-flags: -Copt-level=3 --target mips64el-unknown-linux-gnuabi64
-//@ needs-llvm-components: mips
+//@ [MIPS64EL] needs-llvm-components: mips
 #![feature(c_variadic, no_core, lang_items, intrinsics, rustc_attrs, asm_experimental_arch)]
 #![no_core]
 #![crate_type = "lib"]
@@ -88,9 +90,9 @@ unsafe extern "C" fn read_i32(ap: &mut VaList<'_>) -> i32 {
     // MIPS64EL: ld  $1, 0($4)
     // MIPS64EL-NEXT: daddiu  $2, $1, 8
     // MIPS64EL-NEXT: sd  $2, 0($4)
-    // MIPS64EL-NEXT: lw  $1, 0($1)
+    // MIPS64EL-NEXT: lw  $2, 0($1)
     // MIPS64EL-NEXT: jr  $ra
-    // MIPS64EL-NEXT: sll $2, $1, 0
+    // MIPS64EL-NEXT: nop
     va_arg(ap)
 }
 
@@ -99,17 +101,15 @@ unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
     // CHECK-LABEL: read_i64
     //
     // MIPS: lw  $1, 0($4)
-    // MIPS-NEXT: addiu   $2, $zero, 4
-    // MIPS-NEXT: addiu   $1, $1, 7
-    // MIPS-NEXT: move    $3, $1
-    // MIPS-NEXT: ins $3, $2, 0, 3
     // MIPS-NEXT: addiu   $2, $zero, -8
+    // MIPS-NEXT: addiu   $1, $1, 7
+    // MIPS-NEXT: and $2, $1, $2
+    // MIPS-NEXT: addiu   $3, $2, 8
     // MIPS-NEXT: sw  $3, 0($4)
-    // MIPS-NEXT: and $1, $1, $2
-    // MIPS-NEXT: lw  $2, 0($1)
-    // MIPS-NEXT: addiu   $1, $3, 4
-    // MIPS-NEXT: sw  $1, 0($4)
-    // MIPS-NEXT: lw  $3, 0($3)
+    // MIPS-NEXT: addiu   $3, $zero, 4
+    // MIPS-NEXT: lw  $2, 0($2)
+    // MIPS-NEXT: ins $1, $3, 0, 3
+    // MIPS-NEXT: lw  $3, 0($1)
     // MIPS-NEXT: jr  $ra
     // MIPS-NEXT: nop
     //
