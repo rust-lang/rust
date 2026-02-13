@@ -32,7 +32,7 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::{BytePos, Ident, Span, Symbol, SyntaxContext, kw, sym};
+use rustc_span::{BytePos, Ident, RemapPathScopeComponents, Span, Symbol, SyntaxContext, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, instrument};
 
@@ -908,7 +908,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         err.help(msg);
                         return err;
                     }
-                    err.multipart_suggestion(msg, suggestions, applicability);
+                    err.multipart_suggestion_verbose(msg, suggestions, applicability);
                 }
 
                 let module = match module {
@@ -2635,12 +2635,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // }
                 // ```
                 Some(LateDecl::RibDef(Res::Local(id))) => {
-                    Some(*self.pat_span_map.get(&id).unwrap())
+                    Some((*self.pat_span_map.get(&id).unwrap(), "a", "local binding"))
                 }
                 // Name matches item from a local name binding
                 // created by `use` declaration. For example:
                 // ```
-                // pub Foo: &str = "";
+                // pub const Foo: &str = "";
                 //
                 // mod submod {
                 //     use super::Foo;
@@ -2648,19 +2648,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 //                               // binding `Foo`.
                 // }
                 // ```
-                Some(LateDecl::Decl(name_binding)) => Some(name_binding.span),
+                Some(LateDecl::Decl(name_binding)) => Some((
+                    name_binding.span,
+                    name_binding.res().article(),
+                    name_binding.res().descr(),
+                )),
                 _ => None,
             };
-            let suggestion = match_span.map(|span| {
-                (
-                    vec![(span, String::from(""))],
-                    format!("`{ident}` is defined here, but is not a type"),
-                    Applicability::MaybeIncorrect,
-                )
-            });
 
             let message = format!("cannot find type `{ident}` in {scope}");
-            (message, format!("use of undeclared type `{ident}`"), suggestion)
+            let label = if let Some((span, article, descr)) = match_span {
+                format!(
+                    "`{ident}` is declared as {article} {descr} at `{}`, not a type",
+                    self.tcx
+                        .sess
+                        .source_map()
+                        .span_to_short_string(span, RemapPathScopeComponents::DIAGNOSTICS)
+                )
+            } else {
+                format!("use of undeclared type `{ident}`")
+            };
+            (message, label, None)
         } else {
             let mut suggestion = None;
             if ident.name == sym::alloc {
