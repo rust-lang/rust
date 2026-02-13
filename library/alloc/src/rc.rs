@@ -411,16 +411,16 @@ impl<T> Rc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Rc<T> {
-        // There is an implicit weak pointer owned by all the strong
-        // pointers, which ensures that the weak destructor never frees
-        // the allocation while the strong destructor is running, even
-        // if the weak pointer is stored inside the strong one.
+        let mut rc = Rc::new_uninit();
+
+        // SAFETY: this is a freshly allocated `Rc` so it's guaranteed there are
+        // no other strong or weak pointers other than `rc` itself.
         unsafe {
-            Self::from_inner(
-                Box::leak(Box::new(RcInner { strong: Cell::new(1), weak: Cell::new(1), value }))
-                    .into(),
-            )
+            Rc::get_mut_unchecked(&mut rc).write(value);
         }
+
+        // SAFETY: this allocation was just initialized above.
+        unsafe { rc.assume_init() }
     }
 
     /// Constructs a new `Rc<T>` while giving you a `Weak<T>` to the allocation,
@@ -503,13 +503,7 @@ impl<T> Rc<T> {
     #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use]
     pub fn new_uninit() -> Rc<mem::MaybeUninit<T>> {
-        unsafe {
-            Rc::from_ptr(Rc::allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate(layout),
-                <*mut u8>::cast,
-            ))
-        }
+        Rc::from_box_uninit_inner(Box::new_uninit())
     }
 
     /// Constructs a new `Rc` with uninitialized contents, with the memory
@@ -534,13 +528,7 @@ impl<T> Rc<T> {
     #[stable(feature = "new_zeroed_alloc", since = "1.92.0")]
     #[must_use]
     pub fn new_zeroed() -> Rc<mem::MaybeUninit<T>> {
-        unsafe {
-            Rc::from_ptr(Rc::allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate_zeroed(layout),
-                <*mut u8>::cast,
-            ))
-        }
+        Rc::from_box_uninit_inner(Box::new_zeroed())
     }
 
     /// Constructs a new `Rc<T>`, returning an error if the allocation fails
@@ -556,20 +544,16 @@ impl<T> Rc<T> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn try_new(value: T) -> Result<Rc<T>, AllocError> {
-        // There is an implicit weak pointer owned by all the strong
-        // pointers, which ensures that the weak destructor never frees
-        // the allocation while the strong destructor is running, even
-        // if the weak pointer is stored inside the strong one.
+        let mut rc = Rc::try_new_uninit()?;
+
+        // SAFETY: this is a freshly allocated `Rc` so it's guaranteed there are
+        // no other strong or weak pointers other than `rc` itself.
         unsafe {
-            Ok(Self::from_inner(
-                Box::leak(Box::try_new(RcInner {
-                    strong: Cell::new(1),
-                    weak: Cell::new(1),
-                    value,
-                })?)
-                .into(),
-            ))
+            Rc::get_mut_unchecked(&mut rc).write(value);
         }
+
+        // SAFETY: this allocation was just initialized above.
+        Ok(unsafe { rc.assume_init() })
     }
 
     /// Constructs a new `Rc` with uninitialized contents, returning an error if the allocation fails
@@ -593,13 +577,7 @@ impl<T> Rc<T> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn try_new_uninit() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
-        unsafe {
-            Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate(layout),
-                <*mut u8>::cast,
-            )?))
-        }
+        Ok(Rc::from_box_uninit_inner(Box::try_new_uninit()?))
     }
 
     /// Constructs a new `Rc` with uninitialized contents, with the memory
@@ -625,14 +603,9 @@ impl<T> Rc<T> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn try_new_zeroed() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
-        unsafe {
-            Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate_zeroed(layout),
-                <*mut u8>::cast,
-            )?))
-        }
+        Ok(Rc::from_box_uninit_inner(Box::try_new_zeroed()?))
     }
+
     /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
     /// `value` will be pinned in memory and unable to be moved.
     #[cfg(not(no_global_oom_handling))]
@@ -780,16 +753,7 @@ impl<T, A: Allocator> Rc<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn new_uninit_in(alloc: A) -> Rc<mem::MaybeUninit<T>, A> {
-        unsafe {
-            Rc::from_ptr_in(
-                Rc::allocate_for_layout(
-                    Layout::new::<T>(),
-                    |layout| alloc.allocate(layout),
-                    <*mut u8>::cast,
-                ),
-                alloc,
-            )
-        }
+        Rc::from_box_uninit_inner(Box::new_uninit_in(alloc))
     }
 
     /// Constructs a new `Rc` with uninitialized contents, with the memory
@@ -817,16 +781,7 @@ impl<T, A: Allocator> Rc<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn new_zeroed_in(alloc: A) -> Rc<mem::MaybeUninit<T>, A> {
-        unsafe {
-            Rc::from_ptr_in(
-                Rc::allocate_for_layout(
-                    Layout::new::<T>(),
-                    |layout| alloc.allocate_zeroed(layout),
-                    <*mut u8>::cast,
-                ),
-                alloc,
-            )
-        }
+        Rc::from_box_uninit_inner(Box::new_zeroed_in(alloc))
     }
 
     /// Constructs a new `Rc<T, A>` in the given allocator while giving you a `Weak<T, A>` to the allocation,
@@ -923,15 +878,16 @@ impl<T, A: Allocator> Rc<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn try_new_in(value: T, alloc: A) -> Result<Self, AllocError> {
-        // There is an implicit weak pointer owned by all the strong
-        // pointers, which ensures that the weak destructor never frees
-        // the allocation while the strong destructor is running, even
-        // if the weak pointer is stored inside the strong one.
-        let (ptr, alloc) = Box::into_unique(Box::try_new_in(
-            RcInner { strong: Cell::new(1), weak: Cell::new(1), value },
-            alloc,
-        )?);
-        Ok(unsafe { Self::from_inner_in(ptr.into(), alloc) })
+        let mut rc = Rc::try_new_uninit_in(alloc)?;
+
+        // SAFETY: this is a freshly allocated `Rc` so it's guaranteed there are
+        // no other strong or weak pointers other than `rc` itself.
+        unsafe {
+            Rc::get_mut_unchecked(&mut rc).write(value);
+        }
+
+        // SAFETY: this allocation was just initialized above.
+        unsafe { Ok(rc.assume_init()) }
     }
 
     /// Constructs a new `Rc` with uninitialized contents, in the provided allocator, returning an
@@ -961,16 +917,7 @@ impl<T, A: Allocator> Rc<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn try_new_uninit_in(alloc: A) -> Result<Rc<mem::MaybeUninit<T>, A>, AllocError> {
-        unsafe {
-            Ok(Rc::from_ptr_in(
-                Rc::try_allocate_for_layout(
-                    Layout::new::<T>(),
-                    |layout| alloc.allocate(layout),
-                    <*mut u8>::cast,
-                )?,
-                alloc,
-            ))
-        }
+        Ok(Rc::from_box_uninit_inner(Box::try_new_uninit_in(alloc)?))
     }
 
     /// Constructs a new `Rc` with uninitialized contents, with the memory
@@ -999,16 +946,7 @@ impl<T, A: Allocator> Rc<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn try_new_zeroed_in(alloc: A) -> Result<Rc<mem::MaybeUninit<T>, A>, AllocError> {
-        unsafe {
-            Ok(Rc::from_ptr_in(
-                Rc::try_allocate_for_layout(
-                    Layout::new::<T>(),
-                    |layout| alloc.allocate_zeroed(layout),
-                    <*mut u8>::cast,
-                )?,
-                alloc,
-            ))
-        }
+        Ok(Rc::from_box_uninit_inner(Box::try_new_zeroed_in(alloc)?))
     }
 
     /// Constructs a new `Pin<Rc<T>>` in the provided allocator. If `T` does not implement `Unpin`, then
@@ -1097,6 +1035,40 @@ impl<T, A: Allocator> Rc<T, A> {
     #[stable(feature = "rc_into_inner", since = "1.70.0")]
     pub fn into_inner(this: Self) -> Option<T> {
         Rc::try_unwrap(this).ok()
+    }
+
+    fn from_box_uninit_inner(
+        boxed: Box<mem::MaybeUninit<RcInner<T>>, A>,
+    ) -> Rc<mem::MaybeUninit<T>, A> {
+        let (inner, alloc) = Box::into_non_null_with_allocator(boxed);
+
+        // This translates `NonNull<mem::MaybeUninit<RcInner<T>>>`
+        // to `NonNull<RcInner<mem::MaybeUninit<T>>>`. It's not yet safe to
+        // turn that into an `Rc` because the strong/weak fields need
+        // initialization. That's done next.
+        let inner = inner.cast::<RcInner<mem::MaybeUninit<T>>>();
+
+        // SAFETY: `inner` is a valid pointer to an uninitialized allocation
+        // which means that it is safe to initialize. Here of the three fields
+        // that `RcInner` contains, weak/strong/value, two are initialized. The
+        // `value` field is left uninitialized which is modeled through the
+        // return value of this function where `MaybeUninit` is used to
+        // represent the payload of the `Rc`.
+        //
+        // There is an implicit weak pointer owned by all the strong pointers,
+        // which ensures that the weak destructor never frees the allocation
+        // while the strong destructor is running, even if the weak pointer is
+        // stored inside the strong one. Hence both the strong and the weak
+        // count are both initialized to one.
+        unsafe {
+            (&raw mut (*inner.as_ptr()).strong).write(Cell::new(1));
+            (&raw mut (*inner.as_ptr()).weak).write(Cell::new(1));
+        }
+
+        // SAFETY: `inner` is allocated by `alloc`, it's strong/weak counts are
+        // initialized, and `value` is modeled as uninitialized in the return
+        // value to represent its lack of initialization.
+        unsafe { Rc::from_inner_in(inner, alloc) }
     }
 }
 
@@ -4300,17 +4272,27 @@ impl<T, A: Allocator> UniqueRc<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "unique_rc_arc", issue = "112566")]
     pub fn new_in(value: T, alloc: A) -> Self {
-        let (ptr, alloc) = Box::into_unique(Box::new_in(
-            RcInner {
-                strong: Cell::new(0),
-                // keep one weak reference so if all the weak pointers that are created are dropped
-                // the UniqueRc still stays valid.
-                weak: Cell::new(1),
-                value,
-            },
-            alloc,
-        ));
-        Self { ptr: ptr.into(), _marker: PhantomData, _marker2: PhantomData, alloc }
+        let mut rc = Self::from_box_uninit_inner(Box::new_uninit_in(alloc));
+        unsafe {
+            rc.write(value);
+            rc.assume_init()
+        }
+    }
+
+    fn from_box_uninit_inner(
+        boxed: Box<mem::MaybeUninit<RcInner<T>>, A>,
+    ) -> UniqueRc<mem::MaybeUninit<T>, A> {
+        let (inner, alloc) = Box::into_non_null_with_allocator(boxed);
+        let inner = inner.cast::<RcInner<mem::MaybeUninit<T>>>();
+
+        // SAFETY: same as above for `Rc`
+        unsafe {
+            (&raw mut (*inner.as_ptr()).strong).write(Cell::new(0));
+            // keep one weak reference so if all the weak pointers that are
+            // created are dropped the UniqueRc still stays valid.
+            (&raw mut (*inner.as_ptr()).weak).write(Cell::new(1));
+        }
+        unsafe { UniqueRc::from_inner_in(inner, alloc) }
     }
 }
 

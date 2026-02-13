@@ -417,14 +417,16 @@ impl<T> Arc<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(data: T) -> Arc<T> {
-        // Start the weak pointer count as 1 which is the weak pointer that's
-        // held by all the strong pointers (kinda), see std/rc.rs for more info
-        let x: Box<_> = Box::new(ArcInner {
-            strong: atomic::AtomicUsize::new(1),
-            weak: atomic::AtomicUsize::new(1),
-            data,
-        });
-        unsafe { Self::from_inner(Box::leak(x).into()) }
+        let mut arc = Arc::new_uninit();
+
+        // SAFETY: this is a freshly allocated `Arc` so it's guaranteed there
+        // are no other strong or weak pointers other than `arc` itself.
+        unsafe {
+            Arc::get_mut_unchecked(&mut arc).write(data);
+        }
+
+        // SAFETY: this allocation was just initialized above.
+        unsafe { arc.assume_init() }
     }
 
     /// Constructs a new `Arc<T>` while giving you a `Weak<T>` to the allocation,
@@ -509,13 +511,7 @@ impl<T> Arc<T> {
     #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use]
     pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
-        unsafe {
-            Arc::from_ptr(Arc::allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate(layout),
-                <*mut u8>::cast,
-            ))
-        }
+        Arc::from_box_uninit_inner(Box::new_uninit())
     }
 
     /// Constructs a new `Arc` with uninitialized contents, with the memory
@@ -541,13 +537,7 @@ impl<T> Arc<T> {
     #[stable(feature = "new_zeroed_alloc", since = "1.92.0")]
     #[must_use]
     pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {
-        unsafe {
-            Arc::from_ptr(Arc::allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate_zeroed(layout),
-                <*mut u8>::cast,
-            ))
-        }
+        Arc::from_box_uninit_inner(Box::new_zeroed())
     }
 
     /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
@@ -580,14 +570,16 @@ impl<T> Arc<T> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn try_new(data: T) -> Result<Arc<T>, AllocError> {
-        // Start the weak pointer count as 1 which is the weak pointer that's
-        // held by all the strong pointers (kinda), see std/rc.rs for more info
-        let x: Box<_> = Box::try_new(ArcInner {
-            strong: atomic::AtomicUsize::new(1),
-            weak: atomic::AtomicUsize::new(1),
-            data,
-        })?;
-        unsafe { Ok(Self::from_inner(Box::leak(x).into())) }
+        let mut arc = Arc::try_new_uninit()?;
+
+        // SAFETY: this is a freshly allocated `Arc` so it's guaranteed there
+        // are no other strong or weak pointers other than `arc` itself.
+        unsafe {
+            Arc::get_mut_unchecked(&mut arc).write(data);
+        }
+
+        // SAFETY: this allocation was just initialized above.
+        Ok(unsafe { arc.assume_init() })
     }
 
     /// Constructs a new `Arc` with uninitialized contents, returning an error
@@ -612,13 +604,7 @@ impl<T> Arc<T> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn try_new_uninit() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
-        unsafe {
-            Ok(Arc::from_ptr(Arc::try_allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate(layout),
-                <*mut u8>::cast,
-            )?))
-        }
+        Ok(Arc::from_box_uninit_inner(Box::try_new_uninit()?))
     }
 
     /// Constructs a new `Arc` with uninitialized contents, with the memory
@@ -644,13 +630,7 @@ impl<T> Arc<T> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn try_new_zeroed() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
-        unsafe {
-            Ok(Arc::from_ptr(Arc::try_allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate_zeroed(layout),
-                <*mut u8>::cast,
-            )?))
-        }
+        Ok(Arc::from_box_uninit_inner(Box::try_new_zeroed()?))
     }
 
     /// Maps the value in an `Arc`, reusing the allocation if possible.
@@ -758,18 +738,16 @@ impl<T, A: Allocator> Arc<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn new_in(data: T, alloc: A) -> Arc<T, A> {
-        // Start the weak pointer count as 1 which is the weak pointer that's
-        // held by all the strong pointers (kinda), see std/rc.rs for more info
-        let x = Box::new_in(
-            ArcInner {
-                strong: atomic::AtomicUsize::new(1),
-                weak: atomic::AtomicUsize::new(1),
-                data,
-            },
-            alloc,
-        );
-        let (ptr, alloc) = Box::into_unique(x);
-        unsafe { Self::from_inner_in(ptr.into(), alloc) }
+        let mut arc = Arc::new_uninit_in(alloc);
+
+        // SAFETY: this is a freshly allocated `Arc` so it's guaranteed there
+        // are no other strong or weak pointers other than `arc` itself.
+        unsafe {
+            Arc::get_mut_unchecked(&mut arc).write(data);
+        }
+
+        // SAFETY: this allocation was just initialized above.
+        unsafe { arc.assume_init() }
     }
 
     /// Constructs a new `Arc` with uninitialized contents in the provided allocator.
@@ -798,16 +776,7 @@ impl<T, A: Allocator> Arc<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn new_uninit_in(alloc: A) -> Arc<mem::MaybeUninit<T>, A> {
-        unsafe {
-            Arc::from_ptr_in(
-                Arc::allocate_for_layout(
-                    Layout::new::<T>(),
-                    |layout| alloc.allocate(layout),
-                    <*mut u8>::cast,
-                ),
-                alloc,
-            )
-        }
+        Arc::from_box_uninit_inner(Box::new_uninit_in(alloc))
     }
 
     /// Constructs a new `Arc` with uninitialized contents, with the memory
@@ -835,16 +804,7 @@ impl<T, A: Allocator> Arc<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn new_zeroed_in(alloc: A) -> Arc<mem::MaybeUninit<T>, A> {
-        unsafe {
-            Arc::from_ptr_in(
-                Arc::allocate_for_layout(
-                    Layout::new::<T>(),
-                    |layout| alloc.allocate_zeroed(layout),
-                    <*mut u8>::cast,
-                ),
-                alloc,
-            )
-        }
+        Arc::from_box_uninit_inner(Box::new_zeroed_in(alloc))
     }
 
     /// Constructs a new `Arc<T, A>` in the given allocator while giving you a `Weak<T, A>` to the allocation,
@@ -978,18 +938,16 @@ impl<T, A: Allocator> Arc<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn try_new_in(data: T, alloc: A) -> Result<Arc<T, A>, AllocError> {
-        // Start the weak pointer count as 1 which is the weak pointer that's
-        // held by all the strong pointers (kinda), see std/rc.rs for more info
-        let x = Box::try_new_in(
-            ArcInner {
-                strong: atomic::AtomicUsize::new(1),
-                weak: atomic::AtomicUsize::new(1),
-                data,
-            },
-            alloc,
-        )?;
-        let (ptr, alloc) = Box::into_unique(x);
-        Ok(unsafe { Self::from_inner_in(ptr.into(), alloc) })
+        let mut arc = Arc::try_new_uninit_in(alloc)?;
+
+        // SAFETY: this is a freshly allocated `Arc` so it's guaranteed there
+        // are no other strong or weak pointers other than `arc` itself.
+        unsafe {
+            Arc::get_mut_unchecked(&mut arc).write(data);
+        }
+
+        // SAFETY: this allocation was just initialized above.
+        Ok(unsafe { arc.assume_init() })
     }
 
     /// Constructs a new `Arc` with uninitialized contents, in the provided allocator, returning an
@@ -1019,16 +977,7 @@ impl<T, A: Allocator> Arc<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn try_new_uninit_in(alloc: A) -> Result<Arc<mem::MaybeUninit<T>, A>, AllocError> {
-        unsafe {
-            Ok(Arc::from_ptr_in(
-                Arc::try_allocate_for_layout(
-                    Layout::new::<T>(),
-                    |layout| alloc.allocate(layout),
-                    <*mut u8>::cast,
-                )?,
-                alloc,
-            ))
-        }
+        Ok(Arc::from_box_uninit_inner(Box::try_new_uninit_in(alloc)?))
     }
 
     /// Constructs a new `Arc` with uninitialized contents, with the memory
@@ -1057,17 +1006,9 @@ impl<T, A: Allocator> Arc<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn try_new_zeroed_in(alloc: A) -> Result<Arc<mem::MaybeUninit<T>, A>, AllocError> {
-        unsafe {
-            Ok(Arc::from_ptr_in(
-                Arc::try_allocate_for_layout(
-                    Layout::new::<T>(),
-                    |layout| alloc.allocate_zeroed(layout),
-                    <*mut u8>::cast,
-                )?,
-                alloc,
-            ))
-        }
+        Ok(Arc::from_box_uninit_inner(Box::try_new_zeroed_in(alloc)?))
     }
+
     /// Returns the inner value, if the `Arc` has exactly one strong reference.
     ///
     /// Otherwise, an [`Err`] is returned with the same `Arc` that was
@@ -1243,6 +1184,29 @@ impl<T, A: Allocator> Arc<T, A> {
         drop(Weak { ptr: this.ptr, alloc });
 
         Some(inner)
+    }
+
+    fn from_box_uninit_inner(
+        boxed: Box<mem::MaybeUninit<ArcInner<T>>, A>,
+    ) -> Arc<mem::MaybeUninit<T>, A> {
+        let (inner, alloc) = Box::into_non_null_with_allocator(boxed);
+
+        // This translates `NonNull<mem::MaybeUninit<ArcInner<T>>>`
+        // to `NonNull<ArcInner<mem::MaybeUninit<T>>>`. It's not yet safe to
+        // turn that into an `Arc` because the strong/weak fields need
+        // initialization. That's done next.
+        let inner = inner.cast::<ArcInner<mem::MaybeUninit<T>>>();
+
+        // SAFETY: `inner` is a valid pointer to an uninitialized allocation
+        // which means that it is safe to initialize.
+        unsafe {
+            Arc::initialize_arcinner_refcnts(inner.as_ptr());
+        }
+
+        // SAFETY: `inner` is allocated by `alloc`, it's strong/weak counts are
+        // initialized, and `value` is modeled as uninitialized in the return
+        // value to represent its lack of initialization.
+        unsafe { Arc::from_inner_in(inner, alloc) }
     }
 }
 
@@ -2193,11 +2157,17 @@ impl<T: ?Sized> Arc<T> {
         debug_assert_eq!(unsafe { Layout::for_value_raw(inner) }, layout);
 
         unsafe {
-            (&raw mut (*inner).strong).write(atomic::AtomicUsize::new(1));
-            (&raw mut (*inner).weak).write(atomic::AtomicUsize::new(1));
+            Arc::initialize_arcinner_refcnts(inner);
         }
 
         inner
+    }
+
+    unsafe fn initialize_arcinner_refcnts(inner: *mut ArcInner<T>) {
+        unsafe {
+            (&raw mut (*inner).strong).write(atomic::AtomicUsize::new(1));
+            (&raw mut (*inner).weak).write(atomic::AtomicUsize::new(1));
+        }
     }
 }
 
@@ -4730,17 +4700,27 @@ impl<T, A: Allocator> UniqueArc<T, A> {
     #[must_use]
     // #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn new_in(data: T, alloc: A) -> Self {
-        let (ptr, alloc) = Box::into_unique(Box::new_in(
-            ArcInner {
-                strong: atomic::AtomicUsize::new(0),
-                // keep one weak reference so if all the weak pointers that are created are dropped
-                // the UniqueArc still stays valid.
-                weak: atomic::AtomicUsize::new(1),
-                data,
-            },
-            alloc,
-        ));
-        Self { ptr: ptr.into(), _marker: PhantomData, _marker2: PhantomData, alloc }
+        let mut arc = Self::from_box_uninit_inner(Box::new_uninit_in(alloc));
+        unsafe {
+            arc.write(data);
+            arc.assume_init()
+        }
+    }
+
+    fn from_box_uninit_inner(
+        boxed: Box<mem::MaybeUninit<ArcInner<T>>, A>,
+    ) -> UniqueArc<mem::MaybeUninit<T>, A> {
+        let (inner, alloc) = Box::into_non_null_with_allocator(boxed);
+        let inner = inner.cast::<ArcInner<mem::MaybeUninit<T>>>();
+
+        // SAFETY: same as above for `Arc`
+        unsafe {
+            (&raw mut (*inner.as_ptr()).strong).write(atomic::AtomicUsize::new(0));
+            // keep one weak reference so if all the weak pointers that are
+            // created are dropped the UniqueArc still stays valid.
+            (&raw mut (*inner.as_ptr()).weak).write(atomic::AtomicUsize::new(1));
+        }
+        unsafe { UniqueArc::from_inner_in(inner, alloc) }
     }
 }
 
