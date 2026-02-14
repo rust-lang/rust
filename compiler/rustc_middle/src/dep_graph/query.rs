@@ -28,10 +28,9 @@ impl DepGraphQuery {
         self.indices.insert(node, source);
 
         for &target in edges.iter() {
-            let target = self.dep_index_to_index[target];
             // We may miss the edges that are pushed while the `DepGraphQuery` is being accessed.
             // Skip them to issues.
-            if let Some(target) = target {
+            if let Some(&Some(target)) = self.dep_index_to_index.get(target) {
                 self.graph.add_edge(source, target, ());
             }
         }
