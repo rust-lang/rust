@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeQPath;
 use clippy_utils::source::snippet_with_context;
+use clippy_utils::sym;
 use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
-use rustc_span::symbol::sym;
 
 use super::CMP_OWNED;
 

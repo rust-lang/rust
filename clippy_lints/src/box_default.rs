@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_default_equivalent;
+use clippy_utils::{is_default_equivalent, sym};
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::ty::expr_sig;
@@ -9,7 +9,7 @@ use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
 use rustc_hir::{AmbigArg, Block, Expr, ExprKind, HirId, LangItem, LetStmt, Node, QPath, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does

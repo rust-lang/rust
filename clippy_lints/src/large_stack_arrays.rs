@@ -2,7 +2,7 @@ use std::num::Saturating;
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_from_proc_macro;
+use clippy_utils::{is_from_proc_macro, sym};
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::source::snippet;
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, Node};
@@ -10,7 +10,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does

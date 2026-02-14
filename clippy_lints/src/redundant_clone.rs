@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
-use clippy_utils::fn_has_unsatisfiable_preds;
+use clippy_utils::{fn_has_unsatisfiable_preds, sym};
 use clippy_utils::mir::{LocalUsage, PossibleBorrowerMap, visit_local_usage};
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::SpanRangeExt;
@@ -12,7 +12,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{BytePos, Span, sym};
+use rustc_span::{BytePos, Span};
 
 macro_rules! unwrap_or_continue {
     ($x:expr) => {

@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::get_parent_expr;
+use clippy_utils::{get_parent_expr, sym};
 use clippy_utils::res::MaybeDef;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 use super::FILETYPE_IS_FILE;
 
