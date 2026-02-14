@@ -15,6 +15,7 @@ pub const ZX_TIME_INFINITE: zx_instant_mono_t = i64::MAX;
 
 unsafe extern "C" {
     pub safe fn zx_clock_get_monotonic() -> zx_instant_mono_t;
+    pub safe fn zx_nanosleep(deadline: zx_instant_mono_t) -> zx_status_t;
 }
 
 /////////////
