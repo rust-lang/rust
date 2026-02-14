@@ -198,19 +198,20 @@ impl SerializedDepGraph {
 
         // `node_max` is the number of indices including empty nodes while `node_count`
         // is the number of actually encoded nodes.
-        let (node_max, node_count, edge_count) =
-            d.with_position(d.len() - 3 * IntEncodedWithFixedSize::ENCODED_SIZE, |d| {
+        let (node_max, node_count, edge_count, chunk_count) =
+            d.with_position(d.len() - 4 * IntEncodedWithFixedSize::ENCODED_SIZE, |d| {
                 debug!("position: {:?}", d.position());
                 let node_max = IntEncodedWithFixedSize::decode(d).0 as usize;
                 let node_count = IntEncodedWithFixedSize::decode(d).0 as usize;
                 let edge_count = IntEncodedWithFixedSize::decode(d).0 as usize;
-                (node_max, node_count, edge_count)
+                let chunk_count = IntEncodedWithFixedSize::decode(d).0 as usize;
+                (node_max, node_count, edge_count, chunk_count)
             });
         debug!("position: {:?}", d.position());
 
         debug!(?node_count, ?edge_count);
 
-        let graph_bytes = d.len() - (3 * IntEncodedWithFixedSize::ENCODED_SIZE) - d.position();
+        let graph_bytes = d.len() - (4 * IntEncodedWithFixedSize::ENCODED_SIZE) - d.position();
 
         let mut nodes = IndexVec::from_elem_n(
             DepNode { kind: D::DEP_KIND_NULL, hash: PackedFingerprint::from(Fingerprint::ZERO) },
@@ -232,36 +233,45 @@ impl SerializedDepGraph {
         let mut edge_list_data =
             Vec::with_capacity(graph_bytes - node_count * size_of::<SerializedNodeHeader<D>>());
 
-        for _ in 0..node_count {
-            // Decode the header for this edge; the header packs together as many of the fixed-size
-            // fields as possible to limit the number of times we update decoder state.
-            let node_header =
-                SerializedNodeHeader::<D> { bytes: d.read_array(), _marker: PhantomData };
+        for _ in 0..chunk_count {
+            let mut current_index = d.read_u32();
 
-            let index = node_header.index();
+            loop {
+                // Decode the header for this edge; the header packs together as many of the fixed-size
+                // fields as possible to limit the number of times we update decoder state.
+                let node_header =
+                    SerializedNodeHeader::<D> { bytes: d.read_array(), _marker: PhantomData };
 
-            let node = &mut nodes[index];
-            // Make sure there's no duplicate indices in the dep graph.
-            assert!(node_header.node().kind != D::DEP_KIND_NULL && node.kind == D::DEP_KIND_NULL);
-            *node = node_header.node();
+                if node_header.node().kind == D::DEP_KIND_NULL {
+                    break;
+                }
 
-            fingerprints[index] = node_header.fingerprint();
+                let index = SerializedDepNodeIndex::from_u32(current_index);
+                current_index += 1;
 
-            // If the length of this node's edge list is small, the length is stored in the header.
-            // If it is not, we fall back to another decoder call.
-            let num_edges = node_header.len().unwrap_or_else(|| d.read_u32());
+                let node = &mut nodes[index];
+                // Make sure there's no duplicate indices in the dep graph.
+                assert!(node.kind == D::DEP_KIND_NULL);
+                *node = node_header.node();
 
-            // The edges index list uses the same varint strategy as rmeta tables; we select the
-            // number of byte elements per-array not per-element. This lets us read the whole edge
-            // list for a node with one decoder call and also use the on-disk format in memory.
-            let edges_len_bytes = node_header.bytes_per_index() * (num_edges as usize);
-            // The in-memory structure for the edges list stores the byte width of the edges on
-            // this node with the offset into the global edge data array.
-            let edges_header = node_header.edges_header(&edge_list_data, num_edges);
+                fingerprints[index] = node_header.fingerprint();
 
-            edge_list_data.extend(d.read_raw_bytes(edges_len_bytes));
+                // If the length of this node's edge list is small, the length is stored in the header.
+                // If it is not, we fall back to another decoder call.
+                let num_edges = node_header.len().unwrap_or_else(|| d.read_u32());
 
-            edge_list_indices[index] = edges_header;
+                // The edges index list uses the same varint strategy as rmeta tables; we select the
+                // number of byte elements per-array not per-element. This lets us read the whole edge
+                // list for a node with one decoder call and also use the on-disk format in memory.
+                let edges_len_bytes = node_header.bytes_per_index() * (num_edges as usize);
+                // The in-memory structure for the edges list stores the byte width of the edges on
+                // this node with the offset into the global edge data array.
+                let edges_header = node_header.edges_header(&edge_list_data, num_edges);
+
+                edge_list_data.extend(d.read_raw_bytes(edges_len_bytes));
+
+                edge_list_indices[index] = edges_header;
+            }
         }
 
         // When we access the edge list data, we do a fixed-size read from the edge list data then
@@ -312,10 +322,9 @@ impl SerializedDepGraph {
 /// * In whatever bits remain, the length of the edge list for this node, if it fits
 struct SerializedNodeHeader<D> {
     // 2 bytes for the DepNode
-    // 4 bytes for the index
     // 16 for Fingerprint in DepNode
     // 16 for Fingerprint in NodeInfo
-    bytes: [u8; 38],
+    bytes: [u8; 34],
     _marker: PhantomData<D>,
 }
 
@@ -325,7 +334,6 @@ struct Unpacked {
     len: Option<u32>,
     bytes_per_index: usize,
     kind: DepKind,
-    index: SerializedDepNodeIndex,
     hash: PackedFingerprint,
     fingerprint: Fingerprint,
 }
@@ -347,7 +355,6 @@ impl<D: Deps> SerializedNodeHeader<D> {
     #[inline]
     fn new(
         node: &DepNode,
-        index: DepNodeIndex,
         fingerprint: Fingerprint,
         edge_max_index: u32,
         edge_count: usize,
@@ -369,11 +376,10 @@ impl<D: Deps> SerializedNodeHeader<D> {
         let hash: Fingerprint = node.hash.into();
 
         // Using half-open ranges ensures an unconditional panic if we get the magic numbers wrong.
-        let mut bytes = [0u8; 38];
+        let mut bytes = [0u8; 34];
         bytes[..2].copy_from_slice(&head.to_le_bytes());
-        bytes[2..6].copy_from_slice(&index.as_u32().to_le_bytes());
-        bytes[6..22].copy_from_slice(&hash.to_le_bytes());
-        bytes[22..].copy_from_slice(&fingerprint.to_le_bytes());
+        bytes[2..18].copy_from_slice(&hash.to_le_bytes());
+        bytes[18..].copy_from_slice(&fingerprint.to_le_bytes());
 
         #[cfg(debug_assertions)]
         {
@@ -390,9 +396,8 @@ impl<D: Deps> SerializedNodeHeader<D> {
     #[inline]
     fn unpack(&self) -> Unpacked {
         let head = u16::from_le_bytes(self.bytes[..2].try_into().unwrap());
-        let index = u32::from_le_bytes(self.bytes[2..6].try_into().unwrap());
-        let hash = self.bytes[6..22].try_into().unwrap();
-        let fingerprint = self.bytes[22..].try_into().unwrap();
+        let hash = self.bytes[2..18].try_into().unwrap();
+        let fingerprint = self.bytes[18..].try_into().unwrap();
 
         let kind = head & mask(Self::KIND_BITS) as u16;
         let bytes_per_index = (head >> Self::KIND_BITS) & mask(Self::WIDTH_BITS) as u16;
@@ -402,7 +407,6 @@ impl<D: Deps> SerializedNodeHeader<D> {
             len: len.checked_sub(1),
             bytes_per_index: bytes_per_index as usize + 1,
             kind: DepKind::new(kind),
-            index: SerializedDepNodeIndex::from_u32(index),
             hash: Fingerprint::from_le_bytes(hash).into(),
             fingerprint: Fingerprint::from_le_bytes(fingerprint),
         }
@@ -416,11 +420,6 @@ impl<D: Deps> SerializedNodeHeader<D> {
     #[inline]
     fn bytes_per_index(&self) -> usize {
         self.unpack().bytes_per_index
-    }
-
-    #[inline]
-    fn index(&self) -> SerializedDepNodeIndex {
-        self.unpack().index
     }
 
     #[inline]
@@ -451,15 +450,10 @@ struct NodeInfo {
 }
 
 impl NodeInfo {
-    fn encode<D: Deps>(&self, e: &mut MemEncoder, index: DepNodeIndex) {
+    fn encode<D: Deps>(&self, e: &mut MemEncoder) {
         let NodeInfo { ref node, fingerprint, ref edges } = *self;
-        let header = SerializedNodeHeader::<D>::new(
-            node,
-            index,
-            fingerprint,
-            edges.max_index(),
-            edges.len(),
-        );
+        let header =
+            SerializedNodeHeader::<D>::new(node, fingerprint, edges.max_index(), edges.len());
         e.write_array(header.bytes);
 
         if header.len().is_none() {
@@ -483,7 +477,6 @@ impl NodeInfo {
     fn encode_promoted<D: Deps>(
         e: &mut MemEncoder,
         node: &DepNode,
-        index: DepNodeIndex,
         fingerprint: Fingerprint,
         prev_index: SerializedDepNodeIndex,
         colors: &DepNodeColorMap,
@@ -496,7 +489,7 @@ impl NodeInfo {
         let edge_max =
             edges.clone().map(|i| colors.current(i).unwrap().as_u32()).max().unwrap_or(0);
 
-        let header = SerializedNodeHeader::<D>::new(node, index, fingerprint, edge_max, edge_count);
+        let header = SerializedNodeHeader::<D>::new(node, fingerprint, edge_max, edge_count);
         e.write_array(header.bytes);
 
         if header.len().is_none() {
@@ -529,6 +522,9 @@ struct LocalEncoderState {
     encoder: MemEncoder,
     node_count: usize,
     edge_count: usize,
+    chunk_count: usize,
+
+    in_chunk: bool,
 
     /// Stores the number of times we've encoded each dep kind.
     kind_stats: Vec<u32>,
@@ -538,6 +534,7 @@ struct LocalEncoderResult {
     node_max: u32,
     node_count: usize,
     edge_count: usize,
+    chunk_count: usize,
 
     /// Stores the number of times we've encoded each dep kind.
     kind_stats: Vec<u32>,
@@ -565,12 +562,39 @@ impl<D: Deps> EncoderState<D> {
                     remaining_node_index: 0,
                     edge_count: 0,
                     node_count: 0,
+                    chunk_count: 0,
+                    in_chunk: false,
                     encoder: MemEncoder::new(),
                     kind_stats: iter::repeat_n(0, D::DEP_KIND_MAX as usize + 1).collect(),
                 })
             }),
             marker: PhantomData,
         }
+    }
+
+    #[inline]
+    fn end_chunk(&self, local: &mut LocalEncoderState) {
+        if !local.in_chunk {
+            return;
+        }
+        local.in_chunk = false;
+
+        NodeInfo {
+            node: DepNode { kind: D::DEP_KIND_NULL, hash: Fingerprint::ZERO.into() },
+            fingerprint: Fingerprint::ZERO,
+            edges: EdgesVec::new(),
+        }
+        .encode::<D>(&mut local.encoder);
+    }
+
+    #[inline]
+    fn start_chunk(&self, local: &mut LocalEncoderState, first_index: u32) {
+        if local.in_chunk {
+            self.end_chunk(local);
+        }
+        local.in_chunk = true;
+        local.chunk_count += 1;
+        local.encoder.emit_u32(first_index);
     }
 
     #[inline]
@@ -586,6 +610,8 @@ impl<D: Deps> EncoderState<D> {
 
             // Check that we'll stay within `u32`
             local.next_node_index.checked_add(COUNT).unwrap();
+
+            self.start_chunk(local, local.next_node_index);
 
             local.remaining_node_index = COUNT;
         }
@@ -643,10 +669,13 @@ impl<D: Deps> EncoderState<D> {
 
     #[inline]
     fn flush_mem_encoder(&self, local: &mut LocalEncoderState) {
-        let data = &mut local.encoder.data;
-        if data.len() > 64 * 1024 {
-            self.file.lock().as_mut().unwrap().emit_raw_bytes(&data[..]);
-            data.clear();
+        if local.encoder.data.len() > 64 * 1024 {
+            self.end_chunk(local);
+            self.file.lock().as_mut().unwrap().emit_raw_bytes(&local.encoder.data[..]);
+            local.encoder.data.clear();
+            if local.remaining_node_index > 0 {
+                self.start_chunk(local, local.next_node_index);
+            }
         }
     }
 
@@ -658,7 +687,7 @@ impl<D: Deps> EncoderState<D> {
         record_graph: &Option<Lock<DepGraphQuery>>,
         local: &mut LocalEncoderState,
     ) {
-        node.encode::<D>(&mut local.encoder, index);
+        node.encode::<D>(&mut local.encoder);
         self.flush_mem_encoder(&mut *local);
         self.record(
             &node.node,
@@ -690,7 +719,6 @@ impl<D: Deps> EncoderState<D> {
         let edge_count = NodeInfo::encode_promoted::<D>(
             &mut local.encoder,
             node,
-            index,
             fingerprint,
             prev_index,
             colors,
@@ -719,6 +747,8 @@ impl<D: Deps> EncoderState<D> {
         let results = broadcast(|_| {
             let mut local = self.local.borrow_mut();
 
+            self.end_chunk(&mut *local);
+
             // Prevent more indices from being allocated on this thread.
             local.remaining_node_index = 0;
 
@@ -730,6 +760,7 @@ impl<D: Deps> EncoderState<D> {
                 node_max: local.next_node_index,
                 node_count: local.node_count,
                 edge_count: local.edge_count,
+                chunk_count: local.chunk_count,
             }
         });
 
@@ -740,11 +771,13 @@ impl<D: Deps> EncoderState<D> {
         let mut node_max = 0;
         let mut node_count = 0;
         let mut edge_count = 0;
+        let mut chunk_count = 0;
 
         for result in results {
             node_max = max(node_max, result.node_max);
             node_count += result.node_count;
             edge_count += result.edge_count;
+            chunk_count += result.chunk_count;
             for (i, stat) in result.kind_stats.iter().enumerate() {
                 kind_stats[i] += stat;
             }
@@ -762,6 +795,7 @@ impl<D: Deps> EncoderState<D> {
         IntEncodedWithFixedSize(node_max.try_into().unwrap()).encode(&mut encoder);
         IntEncodedWithFixedSize(node_count.try_into().unwrap()).encode(&mut encoder);
         IntEncodedWithFixedSize(edge_count.try_into().unwrap()).encode(&mut encoder);
+        IntEncodedWithFixedSize(chunk_count.try_into().unwrap()).encode(&mut encoder);
         debug!("position: {:?}", encoder.position());
         // Drop the encoder so that nothing is written after the counts.
         let result = encoder.finish();
