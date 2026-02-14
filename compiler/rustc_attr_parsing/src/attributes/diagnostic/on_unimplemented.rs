@@ -1,5 +1,4 @@
-#![allow(warnings)]
-use rustc_hir::attrs::diagnostic::OnUnimplementedDirective;
+use rustc_hir::attrs::diagnostic::{AppendConstMessage, OnUnimplementedDirective};
 use rustc_hir::lints::AttributeLintKind;
 use rustc_session::lint::builtin::{
     MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
@@ -16,38 +15,54 @@ pub struct OnUnimplementedParser {
     directive: Option<(Span, OnUnimplementedDirective)>,
 }
 
+impl OnUnimplementedParser {
+    fn parse<'sess, S: Stage>(
+        &mut self,
+        cx: &mut AcceptContext<'_, 'sess, S>,
+        args: &ArgParser,
+        mode: Mode,
+    ) {
+        let span = cx.attr_span;
+
+        let items = match args {
+            ArgParser::List(items) if items.len() != 0 => items,
+            ArgParser::NoArgs | ArgParser::List(_) => {
+                cx.emit_lint(
+                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                    AttributeLintKind::MissingOptionsForOnUnimplemented,
+                    span,
+                );
+                return;
+            }
+            ArgParser::NameValue(_) => {
+                cx.emit_lint(
+                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                    AttributeLintKind::MalformedOnUnimplementedAttr { span },
+                    span,
+                );
+                return;
+            }
+        };
+
+        let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) else {
+            return;
+        };
+        merge_directives(cx, &mut self.directive, (span, directive));
+    }
+}
+
 impl<S: Stage> AttributeParser<S> for OnUnimplementedParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[
         (&[sym::diagnostic, sym::on_unimplemented], template!(Word), |this, cx, args| {
-            let span = cx.attr_span;
-
-            let items = match args {
-                ArgParser::List(items) => items,
-                ArgParser::NoArgs => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MissingOptionsForOnUnimplemented,
-                        span,
-                    );
-                    return;
-                }
-                ArgParser::NameValue(_) => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MalformedOnUnimplementedAttr { span },
-                        span,
-                    );
-                    return;
-                }
-            };
-
-            let Some(directive) = parse_directive_items(cx, Ctx::DiagnosticOnUnimplemented, items)
-            else {
-                return;
-            };
-            merge_directives(cx, &mut this.directive, (span, directive));
+            this.parse(cx, args, Mode::DiagnosticOnUnimplemented);
         }),
-        // todo (&[sym::rustc_on_unimplemented], template!(Word), |this, cx, args| {}),
+        (
+            &[sym::rustc_on_unimplemented],
+            template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+            |this, cx, args| {
+                this.parse(cx, args, Mode::RustcOnUnimplemented);
+            },
+        ),
     ];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
@@ -65,8 +80,12 @@ fn merge_directives<S: Stage>(
     later: (Span, OnUnimplementedDirective),
 ) {
     if let Some((first_span, first)) = first {
-        merge(cx, &mut first.message, later.1.message, "message");
-        merge(cx, &mut first.label, later.1.label, "label");
+        if first.is_rustc_attr || later.1.is_rustc_attr {
+            cx.emit_err(DupesNotAllowed);
+        }
+
+        merge(cx, &mut first.message, later.1.message, sym::message);
+        merge(cx, &mut first.label, later.1.label, sym::label);
         first.notes.extend(later.1.notes);
     } else {
         *first = Some(later);
@@ -77,7 +96,7 @@ fn merge<T, S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     first: &mut Option<(Span, T)>,
     later: Option<(Span, T)>,
-    option_name: &'static str,
+    option_name: Symbol,
 ) {
     match (first, later) {
         (Some(_) | None, None) => {}
@@ -98,42 +117,82 @@ fn merge<T, S: Stage>(
     }
 }
 
-fn parse_directive_items<S: Stage>(
+fn parse_directive_items<'p, S: Stage>(
     cx: &mut AcceptContext<S>,
-    ctx: Ctx,
-    items: &MetaItemListParser,
+    mode: Mode,
+    items: impl Iterator<Item = &'p MetaItemOrLitParser>,
+    is_root: bool,
 ) -> Option<OnUnimplementedDirective> {
     let condition = None;
-    let mut message = None;
-    let mut label = None;
+    let mut message: Option<(Span, _)> = None;
+    let mut label: Option<(Span, _)> = None;
     let mut notes = ThinVec::new();
     let mut parent_label = None;
     let mut subcommands = ThinVec::new();
     let mut append_const_msg = None;
 
-    for item in items.mixed() {
-        // At this point, we are expecting any of:
-        // message = "..", label = "..", note = ".."
-        let Some((name, value, value_span)) = (try {
-            let item = item.meta_item()?;
-            let name = item.ident()?.name;
-            let nv = item.args().name_value()?;
-            let value = nv.value_as_str()?;
-            (name, value, nv.value_span)
-        }) else {
-            let span = item.span();
-            cx.emit_lint(
-                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                AttributeLintKind::MalformedOnUnimplementedAttr { span },
-                span,
-            );
+    for item in items {
+        let span = item.span();
+
+        macro malformed() {{
+            match mode {
+                Mode::RustcOnUnimplemented => {
+                    cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
+                }
+                Mode::DiagnosticOnUnimplemented => {
+                    cx.emit_lint(
+                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        AttributeLintKind::MalformedOnUnimplementedAttr { span },
+                        span,
+                    );
+                }
+            }
             continue;
+        }}
+
+        macro or_malformed($($code:tt)*) {{
+            let Some(ret) = (try {
+                $($code)*
+            }) else {
+
+                malformed!()
+            };
+            ret
+        }}
+
+        macro duplicate($name: ident, $($first_span:tt)*) {{
+            match mode {
+                Mode::RustcOnUnimplemented => {
+                    cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
+                }
+                Mode::DiagnosticOnUnimplemented => {
+                    cx.emit_lint(
+                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        AttributeLintKind::IgnoredDiagnosticOption {
+                            first_span: $($first_span)*,
+                            later_span: span,
+                            option_name: $name,
+                        },
+                        span,
+                    );
+                }
+            }
+        }}
+
+        let item: &MetaItemParser = or_malformed!(item.meta_item()?);
+        let name = or_malformed!(item.ident()?).name;
+
+        // Some things like `message = "message"` must have a value.
+        // But with things like `append_const_msg` that is optional.
+        let value: Option<Ident> = match item.args().name_value() {
+            Some(nv) => Some(or_malformed!(nv.value_as_ident()?)),
+            None => None,
         };
 
-        let mut parse = |input| {
-            let snippet = cx.sess.source_map().span_to_snippet(value_span).ok();
+        let mut parse_format = |input: Ident| {
+            let snippet = cx.sess.source_map().span_to_snippet(input.span).ok();
             let is_snippet = snippet.is_some();
-            match parse_format_string(input, snippet, value_span, ctx) {
+            match parse_format_string(input.name, snippet, input.span, mode) {
                 Ok((f, warnings)) => {
                     for warning in warnings {
                         let (FormatWarning::InvalidSpecifier { span, .. }
@@ -153,44 +212,101 @@ fn parse_directive_items<S: Stage>(
                         AttributeLintKind::DiagnosticWrappedParserError {
                             description: e.description,
                             label: e.label,
-                            span: slice_span(value_span, e.span, is_snippet),
+                            span: slice_span(input.span, e.span, is_snippet),
                         },
-                        value_span,
+                        input.span,
                     );
                     // We could not parse the input, just use it as-is.
-                    FormatString { input, span: value_span, pieces: thin_vec![Piece::Lit(input)] }
+                    FormatString {
+                        input: input.name,
+                        span: input.span,
+                        pieces: thin_vec![Piece::Lit(input.name)],
+                    }
                 }
             }
         };
-        match name {
-            sym::message => {
-                if message.is_none() {
-                    message.insert((item.span(), parse(value)));
+        match (mode, name) {
+            (_, sym::message) => {
+                let value = or_malformed!(value?);
+                if let Some(message) = &message {
+                    duplicate!(name, message.0)
+                } else {
+                    message.insert((item.span(), parse_format(value)));
+                }
+            }
+            (_, sym::label) => {
+                let value = or_malformed!(value?);
+                if let Some(label) = &label {
+                    duplicate!(name, label.0)
+                } else {
+                    label.insert((item.span(), parse_format(value)));
+                }
+            }
+            (_, sym::note) => {
+                let value = or_malformed!(value?);
+                notes.push(parse_format(value))
+            }
+
+            (Mode::RustcOnUnimplemented, sym::append_const_msg) => {
+                append_const_msg = if let Some(msg) = value {
+                    Some(AppendConstMessage::Custom(msg.name, item.span()))
+                } else {
+                    Some(AppendConstMessage::Default)
+                }
+            }
+            (Mode::RustcOnUnimplemented, sym::parent_label) => {
+                let value = or_malformed!(value?);
+                if parent_label.is_none() {
+                    parent_label.insert(parse_format(value));
                 } else {
                     // warn
                 }
             }
-            sym::label => {
-                if label.is_none() {
-                    label.insert((item.span(), parse(value)));
+            (Mode::RustcOnUnimplemented, sym::on) => {
+                if is_root {
+                    let mut items = or_malformed!(item.args().list()?);
+                    let mut iter = items.mixed();
+                    let condition: &MetaItemOrLitParser = match iter.next() {
+                        Some(c) => c,
+                        None => {
+                            cx.emit_err(InvalidOnClause::Empty { span });
+                            continue;
+                        }
+                    };
+
+                    let condition = parse_condition(condition);
+
+                    if items.len() < 2 {
+                        // Something like `#[rustc_on_unimplemented(on(.., /* nothing */))]`
+                        // There's a condition but no directive behind it, this is a mistake.
+                        malformed!();
+                    }
+
+                    let mut directive =
+                        or_malformed!(parse_directive_items(cx, mode, iter, false)?);
+
+                    match condition {
+                        Ok(c) => {
+                            directive.condition = Some(c);
+                            subcommands.push(directive);
+                        }
+                        Err(e) => {
+                            cx.emit_err(e);
+                        }
+                    }
                 } else {
-                    // warn
+                    malformed!();
                 }
             }
-            sym::note => notes.push(parse(value)),
+
             _other => {
-                let span = item.span();
-                cx.emit_lint(
-                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    AttributeLintKind::MalformedOnUnimplementedAttr { span },
-                    span,
-                );
-                continue;
+                malformed!();
             }
         }
     }
 
     Some(OnUnimplementedDirective {
+        is_rustc_attr: matches!(mode, Mode::RustcOnUnimplemented),
         condition,
         subcommands,
         message,

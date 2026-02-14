@@ -828,7 +828,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().predicates_of(def_id);
             tcx.ensure_ok().associated_items(def_id);
             let assoc_items = tcx.associated_items(def_id);
-            check_diagnostic_attrs(tcx, def_id);
 
             for &assoc_item in assoc_items.in_definition_order() {
                 match assoc_item.kind {

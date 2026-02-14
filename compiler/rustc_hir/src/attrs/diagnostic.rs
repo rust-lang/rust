@@ -8,6 +8,7 @@ use crate::attrs::PrintAttribute;
 
 #[derive(Clone, Default, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct OnUnimplementedDirective {
+    pub is_rustc_attr: bool,
     pub condition: Option<OnUnimplementedCondition>,
     pub subcommands: ThinVec<OnUnimplementedDirective>,
     pub message: Option<(Span, FormatString)>,
@@ -18,7 +19,20 @@ pub struct OnUnimplementedDirective {
 }
 
 impl OnUnimplementedDirective {
+    /// Visit all the generic arguments used in the attribute, to see whether they are actually a
+    /// generic of the item. If not then `visit` must issue a diagnostic.
+    ///
+    /// We can't check this while parsing the attribute because `rustc_attr_parsing` doesn't have
+    /// access to the item an attribute is on. Instead we later call this function in `check_attr`.
     pub fn visit_params(&self, visit: &mut impl FnMut(Symbol, Span)) {
+        if let Some(condition) = &self.condition {
+            condition.visit_params(visit);
+        }
+
+        for subcommand in &self.subcommands {
+            subcommand.visit_params(visit);
+        }
+
         if let Some((_, message)) = &self.message {
             message.visit_params(visit);
         }
@@ -26,12 +40,12 @@ impl OnUnimplementedDirective {
             label.visit_params(visit);
         }
 
-        if let Some(parent_label) = &self.parent_label {
-            parent_label.visit_params(visit);
-        }
-
         for note in &self.notes {
             note.visit_params(visit);
+        }
+
+        if let Some(parent_label) = &self.parent_label {
+            parent_label.visit_params(visit);
         }
     }
 }
@@ -117,6 +131,12 @@ pub struct OnUnimplementedCondition {
     pub pred: Predicate,
 }
 
+impl OnUnimplementedCondition {
+    pub fn visit_params(&self, visit: &mut impl FnMut(Symbol, Span)) {
+        self.pred.visit_params(self.span, visit);
+    }
+}
+
 /// Predicate(s) in `#[rustc_on_unimplemented]`'s `on` filter. See [`OnUnimplementedCondition`].
 ///
 /// It is similar to the predicate in the `cfg` attribute,
@@ -143,6 +163,17 @@ impl Predicate {
             Predicate::Not(not) => !not.eval(eval),
             Predicate::All(preds) => preds.into_iter().all(|pred| pred.eval(eval)),
             Predicate::Any(preds) => preds.into_iter().any(|pred| pred.eval(eval)),
+        }
+    }
+
+    pub fn visit_params(&self, span: Span, visit: &mut impl FnMut(Symbol, Span)) {
+        match self {
+            Predicate::Flag(_) => {}
+            Predicate::Match(nv) => nv.visit_params(span, visit),
+            Predicate::Not(not) => not.visit_params(span, visit),
+            Predicate::All(preds) | Predicate::Any(preds) => {
+                preds.iter().for_each(|pred| pred.visit_params(span, visit))
+            }
         }
     }
 }
@@ -172,6 +203,15 @@ pub struct NameValue {
     pub value: FilterFormatString,
 }
 
+impl NameValue {
+    pub fn visit_params(&self, span: Span, visit: &mut impl FnMut(Symbol, Span)) {
+        if let Name::GenericArg(arg) = self.name {
+            visit(arg, span);
+        }
+        self.value.visit_params(span, visit);
+    }
+}
+
 /// The valid names of the `on` filter.
 #[derive(Clone, Copy, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum Name {
@@ -196,6 +236,16 @@ pub enum FlagOrNv<'p> {
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct FilterFormatString {
     pub pieces: ThinVec<LitOrArg>,
+}
+
+impl FilterFormatString {
+    pub fn visit_params(&self, span: Span, visit: &mut impl FnMut(Symbol, Span)) {
+        for piece in &self.pieces {
+            if let LitOrArg::Arg(arg) = piece {
+                visit(*arg, span);
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]

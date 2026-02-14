@@ -5,7 +5,8 @@ use ::std::prelude::rust_2015::*;
 //@ check-pass
 //@ edition: 2015
 
-#[attr = OnUnimplemented {directive: OnUnimplementedDirective {subcommands: [],
+#[attr = OnUnimplemented {directive: OnUnimplementedDirective {is_rustc_attr: false,
+subcommands: [],
 message: FormatString {input: "My Message for `ImportantTrait<{A}>` implemented for `{Self}`",
 pieces: [Lit("My Message for `ImportantTrait<"),
 Arg(GenericParam {generic_param: "A"}), Lit(">` implemented for `"),

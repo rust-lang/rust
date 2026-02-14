@@ -846,7 +846,7 @@ pub enum AttributeLintKind {
         span: Span,
     },
     IgnoredDiagnosticOption {
-        option_name: &'static str,
+        option_name: Symbol,
         first_span: Span,
         later_span: Span,
     },

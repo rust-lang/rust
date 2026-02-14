@@ -1,4 +1,3 @@
-use rustc_ast::Path;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -26,60 +25,6 @@ pub struct UnableToConstructConstantValue<'a> {
     #[primary_span]
     pub span: Span,
     pub unevaluated: ty::UnevaluatedConst<'a>,
-}
-
-#[derive(Diagnostic)]
-pub enum InvalidOnClause {
-    #[diag("empty `on`-clause in `#[rustc_on_unimplemented]`", code = E0232)]
-    Empty {
-        #[primary_span]
-        #[label("empty `on`-clause here")]
-        span: Span,
-    },
-    #[diag("expected a single predicate in `not(..)`", code = E0232)]
-    ExpectedOnePredInNot {
-        #[primary_span]
-        #[label("unexpected quantity of predicates here")]
-        span: Span,
-    },
-    #[diag("literals inside `on`-clauses are not supported", code = E0232)]
-    UnsupportedLiteral {
-        #[primary_span]
-        #[label("unexpected literal here")]
-        span: Span,
-    },
-    #[diag("expected an identifier inside this `on`-clause", code = E0232)]
-    ExpectedIdentifier {
-        #[primary_span]
-        #[label("expected an identifier here, not `{$path}`")]
-        span: Span,
-        path: Path,
-    },
-    #[diag("this predicate is invalid", code = E0232)]
-    InvalidPredicate {
-        #[primary_span]
-        #[label("expected one of `any`, `all` or `not` here, not `{$invalid_pred}`")]
-        span: Span,
-        invalid_pred: Symbol,
-    },
-    #[diag("invalid flag in `on`-clause", code = E0232)]
-    InvalidFlag {
-        #[primary_span]
-        #[label(
-            "expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `{$invalid_flag}`"
-        )]
-        span: Span,
-        invalid_flag: Symbol,
-    },
-    #[diag("invalid name in `on`-clause", code = E0232)]
-    InvalidName {
-        #[primary_span]
-        #[label(
-            "expected one of `cause`, `from_desugaring`, `Self` or any generic parameter of the trait, not `{$invalid_name}`"
-        )]
-        span: Span,
-        invalid_name: Symbol,
-    },
 }
 
 #[derive(Diagnostic)]

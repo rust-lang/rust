@@ -1,4 +1,3 @@
-use std::iter;
 use std::path::PathBuf;
 
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit};
@@ -17,7 +16,7 @@ use rustc_hir::{AttrArgs, Attribute, find_attr};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt;
-use rustc_middle::ty::{self, GenericArgsRef, GenericParamDef, GenericParamDefKind, TyCtxt};
+use rustc_middle::ty::{self, GenericParamDef, GenericParamDefKind, TyCtxt};
 use rustc_session::lint::builtin::{
     MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
 };
@@ -27,60 +26,11 @@ use tracing::{debug, info};
 
 use super::{ObligationCauseCode, PredicateObligation};
 use crate::error_reporting::TypeErrCtxt;
-use crate::error_reporting::traits::on_unimplemented_condition::{
-    matches_predicate, parse_condition,
-};
+use crate::error_reporting::traits::on_unimplemented_condition::matches_predicate;
 use crate::error_reporting::traits::on_unimplemented_format::{Ctx, FormatArgs};
-use crate::errors::{InvalidOnClause, NoValueInOnUnimplemented};
-use crate::infer::InferCtxtExt;
+use crate::errors::NoValueInOnUnimplemented;
+
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
-    fn impl_similar_to(
-        &self,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
-        obligation: &PredicateObligation<'tcx>,
-    ) -> Option<(DefId, GenericArgsRef<'tcx>)> {
-        let tcx = self.tcx;
-        let param_env = obligation.param_env;
-        self.enter_forall(trait_pred, |trait_pred| {
-            let trait_self_ty = trait_pred.self_ty();
-
-            let mut self_match_impls = vec![];
-            let mut fuzzy_match_impls = vec![];
-
-            self.tcx.for_each_relevant_impl(trait_pred.def_id(), trait_self_ty, |def_id| {
-                let impl_args = self.fresh_args_for_item(obligation.cause.span, def_id);
-                let impl_trait_ref = tcx.impl_trait_ref(def_id).instantiate(tcx, impl_args);
-
-                let impl_self_ty = impl_trait_ref.self_ty();
-
-                if self.can_eq(param_env, trait_self_ty, impl_self_ty) {
-                    self_match_impls.push((def_id, impl_args));
-
-                    if iter::zip(
-                        trait_pred.trait_ref.args.types().skip(1),
-                        impl_trait_ref.args.types().skip(1),
-                    )
-                    .all(|(u, v)| self.fuzzy_match_tys(u, v, false).is_some())
-                    {
-                        fuzzy_match_impls.push((def_id, impl_args));
-                    }
-                }
-            });
-
-            let impl_def_id_and_args = if let [impl_] = self_match_impls[..] {
-                impl_
-            } else if let [impl_] = fuzzy_match_impls[..] {
-                impl_
-            } else {
-                return None;
-            };
-
-            #[allow(deprecated)]
-            tcx.has_attr(impl_def_id_and_args.0, sym::rustc_on_unimplemented)
-                .then_some(impl_def_id_and_args)
-        })
-    }
-
     /// Used to set on_unimplemented's `ItemContext`
     /// to be the enclosing (async) block/function/closure
     fn describe_enclosure(&self, def_id: LocalDefId) -> Option<&'static str> {
@@ -130,9 +80,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         long_ty_path: &mut Option<PathBuf>,
     ) -> (ConditionOptions, FormatArgs<'tcx>) {
-        let (def_id, args) = self
-            .impl_similar_to(trait_pred, obligation)
-            .unwrap_or_else(|| (trait_pred.def_id(), trait_pred.skip_binder().trait_ref.args));
+        let (def_id, args) = (trait_pred.def_id(), trait_pred.skip_binder().trait_ref.args);
         let trait_pred = trait_pred.skip_binder();
 
         let mut self_types = vec![];
@@ -384,41 +332,19 @@ fn parse_directive<'tcx>(
     tcx: TyCtxt<'tcx>,
     item_def_id: DefId,
     items: &[MetaItemInner],
-    span: Span,
+    _span: Span,
     is_root: bool,
     is_diagnostic_namespace_variant: bool,
 ) -> Result<Option<OnUnimplementedDirective>, ErrorGuaranteed> {
     let mut errored = None;
-    let mut item_iter = items.iter();
+    let item_iter = items.iter();
 
     let parse_value = |value_str, span| {
         try_parse_format_string(tcx, item_def_id, value_str, span, is_diagnostic_namespace_variant)
             .map(Some)
     };
 
-    let condition = if is_root {
-        None
-    } else {
-        let cond =
-            item_iter.next().ok_or_else(|| tcx.dcx().emit_err(InvalidOnClause::Empty { span }))?;
-
-        let generics: Vec<Symbol> = tcx
-            .generics_of(item_def_id)
-            .own_params
-            .iter()
-            .filter_map(|param| {
-                if matches!(param.kind, GenericParamDefKind::Lifetime) {
-                    None
-                } else {
-                    Some(param.name)
-                }
-            })
-            .collect();
-        match parse_condition(cond, &generics) {
-            Ok(condition) => Some(condition),
-            Err(e) => return Err(tcx.dcx().emit_err(e)),
-        }
-    };
+    let condition = if is_root { None } else { unreachable!() };
 
     let mut message = None;
     let mut label = None;
@@ -522,6 +448,7 @@ fn parse_directive<'tcx>(
         if is_diagnostic_namespace_variant { Ok(None) } else { Err(reported) }
     } else {
         Ok(Some(OnUnimplementedDirective {
+            is_rustc_attr: !is_diagnostic_namespace_variant,
             condition,
             subcommands,
             message,
@@ -548,13 +475,8 @@ pub fn of_item_directive<'tcx>(
         // We don't support those.
         return Ok(None);
     };
-    if let Some(attr) = {
-        #[allow(deprecated)]
-        tcx.get_attr(item_def_id, sym::rustc_on_unimplemented)
-    } {
-        return parse_attribute_directive(attr, false, tcx, item_def_id);
-    } else if attr == sym::on_unimplemented {
-        Ok(find_attr!(tcx.get_all_attrs(item_def_id), AttributeKind::OnUnimplemented {directive, ..} => directive.as_deref().cloned()).flatten())
+    if attr == sym::on_unimplemented {
+        Ok(find_attr!(tcx, item_def_id, AttributeKind::OnUnimplemented {directive, ..} => directive.as_deref().cloned()).flatten())
     } else {
         tcx.get_attrs_by_path(item_def_id, &[sym::diagnostic, attr])
             .filter_map(|attr| parse_attribute_directive(attr, true, tcx, item_def_id).transpose())
@@ -606,6 +528,7 @@ pub fn of_item_directive<'tcx>(
                     );
 
                     Ok(Some(OnUnimplementedDirective {
+                        is_rustc_attr: false,
                         condition: aggr.condition.or(directive.condition),
                         subcommands,
                         message: aggr.message.or(directive.message),
@@ -639,6 +562,7 @@ fn parse_attribute_directive<'tcx>(
     } else if let Some(value) = attr.value_str() {
         if !is_diagnostic_namespace_variant {
             Ok(Some(OnUnimplementedDirective {
+                is_rustc_attr: !is_diagnostic_namespace_variant,
                 condition: None,
                 message: None,
                 subcommands: thin_vec![],

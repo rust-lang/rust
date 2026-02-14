@@ -51,7 +51,6 @@ use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
-use rustc_trait_selection::error_reporting::traits::on_unimplemented_format::errors::UnknownFormatParameterForOnUnimplementedAttr;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
@@ -645,9 +644,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
                             hir_id,
                             span,
-                            UnknownFormatParameterForOnUnimplementedAttr {
+                            errors::UnknownFormatParameterForOnUnimplementedAttr {
                                 argument_name,
                                 trait_name: *trait_name,
+                                help: !directive.is_rustc_attr,
                             },
                         )
                     }
