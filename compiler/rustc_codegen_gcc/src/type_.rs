@@ -13,7 +13,7 @@ use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, ty};
 
 use crate::common::TypeReflection;
-use crate::context::CodegenCx;
+use crate::context::{CodegenCx, new_array_type};
 use crate::type_of::LayoutGccExt;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -311,7 +311,7 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
             len = 0;
         }
 
-        self.context.new_array_type(None, ty, len)
+        new_array_type(self.context, None, ty, len)
     }
 }
 

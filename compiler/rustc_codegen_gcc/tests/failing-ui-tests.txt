@@ -89,11 +89,13 @@ tests/ui/thir-print/offset_of.rs
 tests/ui/iterators/rangefrom-overflow-debug.rs
 tests/ui/iterators/rangefrom-overflow-overflow-checks.rs
 tests/ui/iterators/iter-filter-count-debug-check.rs
-tests/ui/eii/codegen_single_crate.rs
-tests/ui/eii/codegen_cross_crate.rs
+tests/ui/eii/linking/codegen_single_crate.rs
+tests/ui/eii/linking/codegen_cross_crate.rs
 tests/ui/eii/default/local_crate.rs
-tests/ui/eii/multiple_impls.rs
+tests/ui/eii/duplicate/multiple_impls.rs
 tests/ui/eii/default/call_default.rs
-tests/ui/eii/same-symbol.rs
+tests/ui/eii/linking/same-symbol.rs
 tests/ui/eii/privacy1.rs
 tests/ui/eii/default/call_impl.rs
+tests/ui/c-variadic/copy.rs
+tests/ui/asm/x86_64/global_asm_escape.rs

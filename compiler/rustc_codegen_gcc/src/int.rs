@@ -942,7 +942,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     fn float_to_int_cast(
         &self,
         signed: bool,
-        value: RValue<'gcc>,
+        mut value: RValue<'gcc>,
         dest_typ: Type<'gcc>,
     ) -> RValue<'gcc> {
         let value_type = value.get_type();
@@ -951,16 +951,22 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         }
 
         debug_assert!(dest_typ.dyncast_array().is_some());
+        let (dest_type, param_type) = match self.type_kind(value_type) {
+            TypeKind::Half => (Some(self.float_type), self.float_type),
+            _ => (None, value_type),
+        };
         let name_suffix = match self.type_kind(value_type) {
             // cSpell:disable
-            TypeKind::Float => "sfti",
+            // Since we will cast Half to a float, we use sfti for both.
+            TypeKind::Half | TypeKind::Float => "sfti",
             TypeKind::Double => "dfti",
+            TypeKind::FP128 => "tfti",
             // cSpell:enable
             kind => panic!("cannot cast a {:?} to non-native integer", kind),
         };
         let sign = if signed { "" } else { "uns" };
         let func_name = format!("__fix{}{}", sign, name_suffix);
-        let param = self.context.new_parameter(None, value_type, "n");
+        let param = self.context.new_parameter(None, param_type, "n");
         let func = self.context.new_function(
             None,
             FunctionType::Extern,
@@ -969,6 +975,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             func_name,
             false,
         );
+        if let Some(dest_type) = dest_type {
+            value = self.context.new_cast(None, value, dest_type);
+        }
         self.context.new_call(None, func, &[value])
     }
 

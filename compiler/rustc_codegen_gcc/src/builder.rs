@@ -1495,6 +1495,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     #[cfg(not(feature = "master"))]
     fn extract_element(&mut self, vec: RValue<'gcc>, idx: RValue<'gcc>) -> RValue<'gcc> {
+        use crate::context::new_array_type;
+
         let vector_type = vec
             .get_type()
             .unqualified()
@@ -1503,7 +1505,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let element_type = vector_type.get_element_type();
         let vec_num_units = vector_type.get_num_units();
         let array_type =
-            self.context.new_array_type(self.location, element_type, vec_num_units as u64);
+            new_array_type(self.context, self.location, element_type, vec_num_units as u64);
         let array = self.context.new_bitcast(self.location, vec, array_type).to_rvalue();
         self.context.new_array_access(self.location, array, idx).to_rvalue()
     }
@@ -1871,32 +1873,31 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // On the other hand, f_max works even if int_ty::MAX is greater than float_ty::MAX. Because
         // we're rounding towards zero, we just get float_ty::MAX (which is always an integer).
         // This already happens today with u128::MAX = 2^128 - 1 > f32::MAX.
-        let int_max = |signed: bool, int_width: u64| -> u128 {
+        fn int_max(signed: bool, int_width: u64) -> u128 {
             let shift_amount = 128 - int_width;
             if signed { i128::MAX as u128 >> shift_amount } else { u128::MAX >> shift_amount }
-        };
-        let int_min = |signed: bool, int_width: u64| -> i128 {
+        }
+        fn int_min(signed: bool, int_width: u64) -> i128 {
             if signed { i128::MIN >> (128 - int_width) } else { 0 }
-        };
+        }
 
-        let compute_clamp_bounds_single = |signed: bool, int_width: u64| -> (u128, u128) {
+        // TODO: rewrite using a generic function with <F: Float>.
+        let compute_clamp_bounds_half = |signed: bool, int_width: u64| -> (u128, u128) {
             let rounded_min =
-                ieee::Single::from_i128_r(int_min(signed, int_width), Round::TowardZero);
-            assert_eq!(rounded_min.status, Status::OK);
+                ieee::Half::from_i128_r(int_min(signed, int_width), Round::TowardZero);
+            //assert_eq!(rounded_min.status, Status::OK);
             let rounded_max =
-                ieee::Single::from_u128_r(int_max(signed, int_width), Round::TowardZero);
+                ieee::Half::from_u128_r(int_max(signed, int_width), Round::TowardZero);
             assert!(rounded_max.value.is_finite());
             (rounded_min.value.to_bits(), rounded_max.value.to_bits())
         };
-        let compute_clamp_bounds_double = |signed: bool, int_width: u64| -> (u128, u128) {
-            let rounded_min =
-                ieee::Double::from_i128_r(int_min(signed, int_width), Round::TowardZero);
+        fn compute_clamp_bounds<F: Float>(signed: bool, int_width: u64) -> (u128, u128) {
+            let rounded_min = F::from_i128_r(int_min(signed, int_width), Round::TowardZero);
             assert_eq!(rounded_min.status, Status::OK);
-            let rounded_max =
-                ieee::Double::from_u128_r(int_max(signed, int_width), Round::TowardZero);
+            let rounded_max = F::from_u128_r(int_max(signed, int_width), Round::TowardZero);
             assert!(rounded_max.value.is_finite());
             (rounded_min.value.to_bits(), rounded_max.value.to_bits())
-        };
+        }
         // To implement saturation, we perform the following steps:
         //
         // 1. Cast val to an integer with fpto[su]i. This may result in undef.
@@ -1926,15 +1927,19 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         let float_bits_to_llval = |bx: &mut Self, bits| {
             let bits_llval = match float_width {
+                16 => bx.cx().const_u16(bits as u16),
                 32 => bx.cx().const_u32(bits as u32),
                 64 => bx.cx().const_u64(bits as u64),
+                128 => bx.cx().const_u128(bits),
                 n => bug!("unsupported float width {}", n),
             };
             bx.bitcast(bits_llval, float_ty)
         };
         let (f_min, f_max) = match float_width {
-            32 => compute_clamp_bounds_single(signed, int_width),
-            64 => compute_clamp_bounds_double(signed, int_width),
+            16 => compute_clamp_bounds_half(signed, int_width),
+            32 => compute_clamp_bounds::<ieee::Single>(signed, int_width),
+            64 => compute_clamp_bounds::<ieee::Double>(signed, int_width),
+            128 => compute_clamp_bounds::<ieee::Quad>(signed, int_width),
             n => bug!("unsupported float width {}", n),
         };
         let f_min = float_bits_to_llval(self, f_min);

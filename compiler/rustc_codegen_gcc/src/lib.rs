@@ -234,6 +234,8 @@ impl CodegenBackend for GccCodegenBackend {
 
         #[cfg(feature = "master")]
         {
+            gccjit::set_lang_name(c"GNU Rust");
+
             let target_cpu = target_cpu(sess);
 
             // Get the second TargetInfo with the correct CPU features by setting the arch.

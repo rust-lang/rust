@@ -15,7 +15,7 @@ That can be caused by the fact that you try to compile with `lto = "fat"`, but y
 
 ### ld: cannot find crtbegin.o
 
-When compiling an executable with libgccijt, if setting the `*LIBRARY_PATH` variables to the install directory, you will get the following errors:
+When compiling an executable with libgccjit, if setting the `*LIBRARY_PATH` variables to the install directory, you will get the following errors:
 
 ```
 ld: cannot find crtbegin.o: No such file or directory
