@@ -1,14 +1,14 @@
-//! See docs in build/expr/mod.rs
+//! See docs in builder/expr/mod.rs
 
 use rustc_abi::Size;
 use rustc_ast::{self as ast};
 use rustc_hir::LangItem;
-use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, LitToConstInput, Scalar};
+use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{
-    self, CanonicalUserType, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypeVisitableExt as _,
-    UserTypeAnnotationIndex,
+    self, CanonicalUserType, CanonicalUserTypeAnnotation, LitToConstInput, Ty, TyCtxt,
+    TypeVisitableExt as _, UserTypeAnnotationIndex,
 };
 use rustc_middle::{bug, mir, span_bug};
 use tracing::{instrument, trace};

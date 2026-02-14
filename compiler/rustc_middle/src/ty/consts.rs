@@ -11,10 +11,12 @@ use crate::ty::{self, Ty, TyCtxt};
 
 mod int;
 mod kind;
+mod lit;
 mod valtree;
 
 pub use int::*;
 pub use kind::*;
+pub use lit::*;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed};
 pub use valtree::*;
 

@@ -87,7 +87,7 @@ impl<'tcx> Key for (Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>) {
     }
 }
 
-impl<'tcx> Key for mir::interpret::LitToConstInput<'tcx> {
+impl<'tcx> Key for ty::LitToConstInput<'tcx> {
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }

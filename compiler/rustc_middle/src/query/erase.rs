@@ -256,6 +256,10 @@ impl Erasable for Option<ty::EarlyBinder<'_, Ty<'_>>> {
     type Storage = [u8; size_of::<Option<ty::EarlyBinder<'static, Ty<'static>>>>()];
 }
 
+impl Erasable for Option<ty::Value<'_>> {
+    type Storage = [u8; size_of::<Option<ty::Value<'static>>>()];
+}
+
 impl Erasable for rustc_hir::MaybeOwner<'_> {
     type Storage = [u8; size_of::<rustc_hir::MaybeOwner<'static>>()];
 }
@@ -441,7 +445,6 @@ impl_erasable_for_single_lifetime_types! {
     rustc_middle::mir::DestructuredConstant,
     rustc_middle::mir::ConstAlloc,
     rustc_middle::mir::interpret::GlobalId,
-    rustc_middle::mir::interpret::LitToConstInput,
     rustc_middle::mir::interpret::EvalStaticInitializerRawResult,
     rustc_middle::mir::mono::MonoItemPartitions,
     rustc_middle::traits::query::MethodAutoderefStepsResult,
@@ -466,6 +469,7 @@ impl_erasable_for_single_lifetime_types! {
     rustc_middle::ty::InstanceKind,
     rustc_middle::ty::layout::FnAbiError,
     rustc_middle::ty::layout::LayoutError,
+    rustc_middle::ty::LitToConstInput,
     rustc_middle::ty::ParamEnv,
     rustc_middle::ty::TypingEnv,
     rustc_middle::ty::Predicate,

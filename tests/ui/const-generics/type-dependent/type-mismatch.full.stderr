@@ -1,3 +1,15 @@
+error: the constant `1` is not of type `u8`
+  --> $DIR/type-mismatch.rs:8:27
+   |
+LL |     assert_eq!(R.method::<1u16>(), 1);
+   |                           ^^^^ expected `u8`, found `u16`
+   |
+note: required by a const generic parameter in `R::method`
+  --> $DIR/type-mismatch.rs:5:15
+   |
+LL |     fn method<const N: u8>(&self) -> u8 { N }
+   |               ^^^^^^^^^^^ required by this const generic parameter in `R::method`
+
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:8:27
    |
@@ -10,6 +22,6 @@ LL -     assert_eq!(R.method::<1u16>(), 1);
 LL +     assert_eq!(R.method::<1u8>(), 1);
    |
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

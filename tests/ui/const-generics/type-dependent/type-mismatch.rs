@@ -6,5 +6,6 @@ impl R {
 }
 fn main() {
     assert_eq!(R.method::<1u16>(), 1);
-    //~^ ERROR mismatched types
+    //~^ ERROR the constant `1` is not of type `u8`
+    //~| ERROR mismatched types
 }
