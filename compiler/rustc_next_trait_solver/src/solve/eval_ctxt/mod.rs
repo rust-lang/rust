@@ -420,6 +420,18 @@ where
         Ok(goal_evaluation)
     }
 
+    /// Evaluate `goal` without adding it to `nested_goals`.
+    ///
+    /// This is intended for goal evaluation which should not affect the
+    /// certainty of the currently evaluated goal.
+    pub(super) fn try_evaluate_goal(
+        &mut self,
+        source: GoalSource,
+        goal: Goal<I, I::Predicate>,
+    ) -> Result<GoalEvaluation<I>, NoSolution> {
+        self.evaluate_goal(source, goal, None)
+    }
+
     /// Recursively evaluates `goal`, returning the nested goals in case
     /// the nested goal is a `NormalizesTo` goal.
     ///
@@ -1074,6 +1086,10 @@ where
 
     pub(super) fn shallow_resolve(&self, ty: I::Ty) -> I::Ty {
         self.delegate.shallow_resolve(ty)
+    }
+
+    pub(super) fn shallow_resolve_const(&self, ct: I::Const) -> I::Const {
+        self.delegate.shallow_resolve_const(ct)
     }
 
     pub(super) fn eager_resolve_region(&self, r: I::Region) -> I::Region {

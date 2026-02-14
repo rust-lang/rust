@@ -1,9 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{
-    InferCtxt, RegionResolutionError, SubregionOrigin, TypeOutlivesConstraint,
-};
+use rustc_infer::infer::{InferCtxt, RegionResolutionError};
 use rustc_macros::extension;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, Ty, elaborate};
@@ -56,48 +54,6 @@ fn normalize_higher_ranked_assumptions<'tcx>(
     }
 
     elaborate::elaborate_outlives_assumptions(infcx.tcx, normalized_assumptions)
-}
-
-fn normalize_registered_region_obligations<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-) -> Result<(), (ty::PolyTypeOutlivesPredicate<'tcx>, SubregionOrigin<'tcx>)> {
-    if !infcx.next_trait_solver() {
-        return Ok(());
-    }
-
-    let obligations = infcx.take_registered_region_obligations();
-    let mut seen_outputs = FxHashSet::default();
-    let mut normalized_obligations = vec![];
-
-    for TypeOutlivesConstraint { sup_type, sub_region, origin } in obligations {
-        let outlives = infcx.resolve_vars_if_possible(ty::Binder::dummy(ty::OutlivesPredicate(
-            sup_type, sub_region,
-        )));
-        let ty::OutlivesPredicate(sup_type, sub_region) = crate::solve::deeply_normalize(
-            infcx.at(&ObligationCause::dummy_with_span(origin.span()), param_env),
-            outlives,
-        )
-        .map_err(|_: Vec<ScrubbedTraitError<'tcx>>| (outlives, origin.clone()))?
-        .no_bound_vars()
-        .expect("started with no bound vars, should end with no bound vars");
-
-        if seen_outputs.insert((sup_type, sub_region)) {
-            normalized_obligations.push(TypeOutlivesConstraint { sup_type, sub_region, origin });
-        }
-    }
-
-    for obligation in infcx.take_registered_region_obligations() {
-        if seen_outputs.insert((obligation.sup_type, obligation.sub_region)) {
-            normalized_obligations.push(obligation);
-        }
-    }
-
-    for obligation in normalized_obligations {
-        infcx.register_type_outlives_constraint_inner(obligation);
-    }
-
-    Ok(())
 }
 
 #[extension(pub trait OutlivesEnvironmentBuildExt<'tcx>)]
@@ -159,12 +115,11 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
 
 #[extension(pub trait InferCtxtRegionExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
-    /// Resolve regions, using the deep normalizer to normalize any type-outlives
-    /// obligations in the process. This is in `rustc_trait_selection` because
-    /// we need to normalize.
+    /// Resolve regions.
     ///
-    /// Prefer this method over `resolve_regions_with_normalize`, unless you are
-    /// doing something specific for normalization.
+    /// With the next solver, `TypeOutlives` goals are normalized while they are
+    /// evaluated (and before being registered as region obligations), so region
+    /// resolution does not need to normalize them.
     ///
     /// This function assumes that all infer variables are already constrained.
     fn resolve_regions(
@@ -179,21 +134,5 @@ impl<'tcx> InferCtxt<'tcx> {
             param_env,
             assumed_wf_tys,
         ))
-    }
-
-    /// Don't call this directly unless you know what you're doing.
-    fn resolve_regions_with_outlives_env(
-        &self,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-    ) -> Vec<RegionResolutionError<'tcx>> {
-        if let Err((outlives, origin)) =
-            normalize_registered_region_obligations(self, outlives_env.param_env)
-        {
-            return vec![RegionResolutionError::CannotNormalize(outlives, origin)];
-        }
-
-        self.resolve_regions_with_normalize(outlives_env, |outlives, _| {
-            Ok(self.resolve_vars_if_possible(outlives))
-        })
     }
 }

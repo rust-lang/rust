@@ -116,13 +116,18 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 Some(Certainty::Yes)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(outlives)) => {
-                self.0.register_type_outlives_constraint(
-                    outlives.0,
-                    outlives.1,
-                    &ObligationCause::dummy_with_span(span),
-                );
-
-                Some(Certainty::Yes)
+                // `TypeOutlives` obligations in the `InferCtxt` must already be normalized.
+                let outlives = self.0.resolve_vars_if_possible(outlives);
+                if outlives.0.has_aliases() {
+                    None
+                } else {
+                    self.0.register_type_outlives_constraint(
+                        outlives.0,
+                        outlives.1,
+                        &ObligationCause::dummy_with_span(span),
+                    );
+                    Some(Certainty::Yes)
+                }
             }
             ty::PredicateKind::Subtype(ty::SubtypePredicate { a, b, .. })
             | ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) => {
