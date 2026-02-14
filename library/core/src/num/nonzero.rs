@@ -31,7 +31,7 @@ use crate::{fmt, intrinsics, ptr, ub_checks};
     issue = "none"
 )]
 pub unsafe trait ZeroablePrimitive: Sized + Copy + private::Sealed {
-    #[doc(hidden)]
+    /// A type like `Self` but with a niche that includes zero.
     type NonZeroInner: Sized + Copy;
 }
 
