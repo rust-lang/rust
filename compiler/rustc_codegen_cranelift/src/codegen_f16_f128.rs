@@ -217,7 +217,7 @@ pub(crate) fn codegen_cast(
             },
         );
         let ret =
-            fx.lib_call(&name, vec![AbiParam::new(from_ty)], vec![AbiParam::new(to_ty)], &[from])
+            fx.lib_call(&name, vec![AbiParam::new(from_ty)], vec![AbiParam::new(ret_ty)], &[from])
                 [0];
         let val = if ret_ty == to_ty {
             ret
