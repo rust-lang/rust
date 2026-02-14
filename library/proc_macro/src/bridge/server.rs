@@ -1,7 +1,7 @@
 //! Server-side traits.
 
 use std::cell::Cell;
-use std::marker::PhantomData;
+use std::sync::mpsc;
 
 use super::*;
 
@@ -53,14 +53,9 @@ impl<S: Server> Decode<'_, '_, HandleStore<S>> for MarkedSpan<S> {
     }
 }
 
-struct Dispatcher<S: Server> {
-    handle_store: HandleStore<S>,
-    server: S,
-}
-
 macro_rules! define_server {
     (
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
     ) => {
         pub trait Server {
             type TokenStream: 'static + Clone + Default;
@@ -81,16 +76,17 @@ macro_rules! define_server {
 }
 with_api!(define_server, Self::TokenStream, Self::Span, Self::Symbol);
 
+// FIXME(eddyb) `pub` only for `ExecutionStrategy` below.
+pub struct Dispatcher<S: Server> {
+    handle_store: HandleStore<S>,
+    server: S,
+}
+
 macro_rules! define_dispatcher {
     (
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
     ) => {
-        // FIXME(eddyb) `pub` only for `ExecutionStrategy` below.
-        pub trait DispatcherTrait {
-            fn dispatch(&mut self, buf: Buffer) -> Buffer;
-        }
-
-        impl<S: Server> DispatcherTrait for Dispatcher<S> {
+        impl<S: Server> Dispatcher<S> {
             fn dispatch(&mut self, mut buf: Buffer) -> Buffer {
                 let Dispatcher { handle_store, server } = self;
 
@@ -100,9 +96,7 @@ macro_rules! define_dispatcher {
                         let mut call_method = || {
                             $(let $arg = <$arg_ty>::decode(&mut reader, handle_store).unmark();)*
                             let r = server.$method($($arg),*);
-                            $(
-                                let r: $ret_ty = Mark::mark(r);
-                            )*
+                            $(let r: $ret_ty = Mark::mark(r);)?
                             r
                         };
                         // HACK(eddyb) don't use `panic::catch_unwind` in a panic.
@@ -127,10 +121,13 @@ macro_rules! define_dispatcher {
 }
 with_api!(define_dispatcher, MarkedTokenStream<S>, MarkedSpan<S>, MarkedSymbol<S>);
 
+// This trait is currently only implemented and used once, inside of this crate.
+// We keep it public to allow implementing more complex execution strategies in
+// the future, such as wasm proc-macros.
 pub trait ExecutionStrategy {
     fn run_bridge_and_client(
         &self,
-        dispatcher: &mut impl DispatcherTrait,
+        dispatcher: &mut Dispatcher<impl Server>,
         input: Buffer,
         run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
@@ -169,110 +166,78 @@ impl Drop for RunningSameThreadGuard {
     }
 }
 
-pub struct MaybeCrossThread<P> {
-    cross_thread: bool,
-    marker: PhantomData<P>,
+pub struct MaybeCrossThread {
+    pub cross_thread: bool,
 }
 
-impl<P> MaybeCrossThread<P> {
-    pub const fn new(cross_thread: bool) -> Self {
-        MaybeCrossThread { cross_thread, marker: PhantomData }
-    }
-}
+pub const SAME_THREAD: MaybeCrossThread = MaybeCrossThread { cross_thread: false };
+pub const CROSS_THREAD: MaybeCrossThread = MaybeCrossThread { cross_thread: true };
 
-impl<P> ExecutionStrategy for MaybeCrossThread<P>
-where
-    P: MessagePipe<Buffer> + Send + 'static,
-{
+impl ExecutionStrategy for MaybeCrossThread {
     fn run_bridge_and_client(
         &self,
-        dispatcher: &mut impl DispatcherTrait,
+        dispatcher: &mut Dispatcher<impl Server>,
         input: Buffer,
         run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer {
         if self.cross_thread || ALREADY_RUNNING_SAME_THREAD.get() {
-            <CrossThread<P>>::new().run_bridge_and_client(
-                dispatcher,
-                input,
-                run_client,
-                force_show_panics,
-            )
+            let (mut server, mut client) = MessagePipe::new();
+
+            let join_handle = thread::spawn(move || {
+                let mut dispatch = |b: Buffer| -> Buffer {
+                    client.send(b);
+                    client.recv().expect("server died while client waiting for reply")
+                };
+
+                run_client(BridgeConfig {
+                    input,
+                    dispatch: (&mut dispatch).into(),
+                    force_show_panics,
+                })
+            });
+
+            while let Some(b) = server.recv() {
+                server.send(dispatcher.dispatch(b));
+            }
+
+            join_handle.join().unwrap()
         } else {
-            SameThread.run_bridge_and_client(dispatcher, input, run_client, force_show_panics)
-        }
-    }
-}
+            let _guard = RunningSameThreadGuard::new();
 
-pub struct SameThread;
-
-impl ExecutionStrategy for SameThread {
-    fn run_bridge_and_client(
-        &self,
-        dispatcher: &mut impl DispatcherTrait,
-        input: Buffer,
-        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
-        force_show_panics: bool,
-    ) -> Buffer {
-        let _guard = RunningSameThreadGuard::new();
-
-        let mut dispatch = |buf| dispatcher.dispatch(buf);
-
-        run_client(BridgeConfig { input, dispatch: (&mut dispatch).into(), force_show_panics })
-    }
-}
-
-pub struct CrossThread<P>(PhantomData<P>);
-
-impl<P> CrossThread<P> {
-    pub const fn new() -> Self {
-        CrossThread(PhantomData)
-    }
-}
-
-impl<P> ExecutionStrategy for CrossThread<P>
-where
-    P: MessagePipe<Buffer> + Send + 'static,
-{
-    fn run_bridge_and_client(
-        &self,
-        dispatcher: &mut impl DispatcherTrait,
-        input: Buffer,
-        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
-        force_show_panics: bool,
-    ) -> Buffer {
-        let (mut server, mut client) = P::new();
-
-        let join_handle = thread::spawn(move || {
-            let mut dispatch = |b: Buffer| -> Buffer {
-                client.send(b);
-                client.recv().expect("server died while client waiting for reply")
-            };
+            let mut dispatch = |buf| dispatcher.dispatch(buf);
 
             run_client(BridgeConfig { input, dispatch: (&mut dispatch).into(), force_show_panics })
-        });
-
-        while let Some(b) = server.recv() {
-            server.send(dispatcher.dispatch(b));
         }
-
-        join_handle.join().unwrap()
     }
 }
 
 /// A message pipe used for communicating between server and client threads.
-pub trait MessagePipe<T>: Sized {
+struct MessagePipe<T> {
+    tx: mpsc::SyncSender<T>,
+    rx: mpsc::Receiver<T>,
+}
+
+impl<T> MessagePipe<T> {
     /// Creates a new pair of endpoints for the message pipe.
-    fn new() -> (Self, Self);
+    fn new() -> (Self, Self) {
+        let (tx1, rx1) = mpsc::sync_channel(1);
+        let (tx2, rx2) = mpsc::sync_channel(1);
+        (MessagePipe { tx: tx1, rx: rx2 }, MessagePipe { tx: tx2, rx: rx1 })
+    }
 
     /// Send a message to the other endpoint of this pipe.
-    fn send(&mut self, value: T);
+    fn send(&mut self, value: T) {
+        self.tx.send(value).unwrap();
+    }
 
     /// Receive a message from the other endpoint of this pipe.
     ///
     /// Returns `None` if the other end of the pipe has been destroyed, and no
     /// message was received.
-    fn recv(&mut self) -> Option<T>;
+    fn recv(&mut self) -> Option<T> {
+        self.rx.recv().ok()
+    }
 }
 
 fn run_server<

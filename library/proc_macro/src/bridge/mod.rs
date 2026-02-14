@@ -133,7 +133,7 @@ impl !Sync for BridgeConfig<'_> {}
 
 macro_rules! declare_tags {
     (
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
     ) => {
         #[allow(non_camel_case_types)]
         pub(super) enum ApiTags {

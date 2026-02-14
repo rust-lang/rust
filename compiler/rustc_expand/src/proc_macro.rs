@@ -11,32 +11,11 @@ use {rustc_ast as ast, rustc_proc_macro as pm};
 use crate::base::{self, *};
 use crate::{errors, proc_macro_server};
 
-struct MessagePipe<T> {
-    tx: std::sync::mpsc::SyncSender<T>,
-    rx: std::sync::mpsc::Receiver<T>,
-}
-
-impl<T> pm::bridge::server::MessagePipe<T> for MessagePipe<T> {
-    fn new() -> (Self, Self) {
-        let (tx1, rx1) = std::sync::mpsc::sync_channel(1);
-        let (tx2, rx2) = std::sync::mpsc::sync_channel(1);
-        (MessagePipe { tx: tx1, rx: rx2 }, MessagePipe { tx: tx2, rx: rx1 })
-    }
-
-    fn send(&mut self, value: T) {
-        self.tx.send(value).unwrap();
-    }
-
-    fn recv(&mut self) -> Option<T> {
-        self.rx.recv().ok()
-    }
-}
-
 fn exec_strategy(sess: &Session) -> impl pm::bridge::server::ExecutionStrategy + 'static {
-    pm::bridge::server::MaybeCrossThread::<MessagePipe<_>>::new(
-        sess.opts.unstable_opts.proc_macro_execution_strategy
+    pm::bridge::server::MaybeCrossThread {
+        cross_thread: sess.opts.unstable_opts.proc_macro_execution_strategy
             == ProcMacroExecutionStrategy::CrossThread,
-    )
+    }
 }
 
 pub struct BangProcMacro {
