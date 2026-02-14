@@ -123,7 +123,7 @@ impl RawStrings {
                         remove.push((end, String::new()));
                     }
 
-                    diag.multipart_suggestion_verbose(
+                    diag.multipart_suggestion(
                         format!("use a plain {descr} literal instead"),
                         remove,
                         Applicability::MachineApplicable,

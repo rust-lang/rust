@@ -51,7 +51,7 @@ impl LateLintPass<'_> for CreateDir {
                         suggestions.push((path.span.shrink_to_lo(), "std::fs::".to_owned()));
                     }
 
-                    diag.multipart_suggestion_verbose(
+                    diag.multipart_suggestion(
                         "consider calling `std::fs::create_dir_all` instead",
                         suggestions,
                         Applicability::MaybeIncorrect,

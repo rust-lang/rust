@@ -104,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for SignificantDropTightening<'tcx> {
                                 format!("\n{indent}{init_method}.{usage_method};")
                             };
 
-                            diag.multipart_suggestion_verbose(
+                            diag.multipart_suggestion(
                                 "merge the temporary construction with its single usage",
                                 vec![(apa.first_stmt_span, stmt), (apa.last_stmt_span, String::new())],
                                 Applicability::MaybeIncorrect,
