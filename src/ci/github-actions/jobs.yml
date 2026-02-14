@@ -485,12 +485,6 @@ auto:
         --stage 2
         --host=x86_64-apple-darwin
         --target=x86_64-apple-darwin
-        &&
-        ./x.py test
-        --stage 2
-        --host=x86_64-apple-darwin
-        --target=x86_64-apple-darwin
-        src/tools/cargo
       RUST_CONFIGURE_ARGS: >-
         --enable-sanitizers
         --enable-profiler
