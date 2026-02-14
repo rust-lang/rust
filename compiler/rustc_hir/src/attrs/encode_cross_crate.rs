@@ -158,6 +158,7 @@ impl AttributeKind {
             RustcPassByValue(..) => Yes,
             RustcPassIndirectlyInNonRusticAbis(..) => No,
             RustcPreserveUbChecks => No,
+            RustcProcMacroDecls => No,
             RustcPubTransparent(..) => Yes,
             RustcReallocator => No,
             RustcRegions => No,

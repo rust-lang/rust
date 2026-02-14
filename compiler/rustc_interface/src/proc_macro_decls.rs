@@ -1,15 +1,14 @@
-use rustc_ast::attr;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::find_attr;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::sym;
 
 fn proc_macro_decls_static(tcx: TyCtxt<'_>, (): ()) -> Option<LocalDefId> {
     let mut decls = None;
 
     for id in tcx.hir_free_items() {
-        let attrs = tcx.hir_attrs(id.hir_id());
-        if attr::contains_name(attrs, sym::rustc_proc_macro_decls) {
+        if find_attr!(tcx.hir_attrs(id.hir_id()), AttributeKind::RustcProcMacroDecls) {
             decls = Some(id.owner_id.def_id);
         }
     }
