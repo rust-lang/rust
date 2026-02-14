@@ -52,6 +52,7 @@
 #![feature(f16)]
 #![feature(f128)]
 #![feature(float_algebraic)]
+#![feature(float_exact_integer_constants)]
 #![feature(float_minimum_maximum)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
