@@ -309,19 +309,21 @@ pub fn sleep(dur: Duration) {
 ///
 /// |  Platform |               System call                                            |
 /// |-----------|----------------------------------------------------------------------|
-/// | Linux     | [clock_nanosleep] (Monotonic clock)                                  |
-/// | BSD except OpenBSD | [clock_nanosleep] (Monotonic Clock)]                        |
-/// | Android   | [clock_nanosleep] (Monotonic Clock)]                                 |
-/// | Solaris   | [clock_nanosleep] (Monotonic Clock)]                                 |
-/// | Illumos   | [clock_nanosleep] (Monotonic Clock)]                                 |
-/// | Dragonfly | [clock_nanosleep] (Monotonic Clock)]                                 |
-/// | Hurd      | [clock_nanosleep] (Monotonic Clock)]                                 |
-/// | Vxworks   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Linux     | [`clock_nanosleep`] (Monotonic clock)                                |
+/// | BSD except OpenBSD | [`clock_nanosleep`] (Monotonic clock)                       |
+/// | Android   | [`clock_nanosleep`] (Monotonic clock)                                |
+/// | Solaris   | [`clock_nanosleep`] (Monotonic clock)                                |
+/// | Illumos   | [`clock_nanosleep`] (Monotonic clock)                                |
+/// | Dragonfly | [`clock_nanosleep`] (Monotonic clock)                                |
+/// | Hurd      | [`clock_nanosleep`] (Monotonic clock)                                |
+/// | Vxworks   | [`clock_nanosleep`] (Monotonic clock)                                |
 /// | Apple     | `mach_wait_until`                                                    |
+/// | Fuchsia   | [`zx_nanosleep`]                                                     |
 /// | Other     | `sleep_until` uses [`sleep`] and does not issue a syscall itself     |
 ///
 /// [currently]: crate::io#platform-specific-behavior
-/// [clock_nanosleep]: https://linux.die.net/man/3/clock_nanosleep
+/// [`clock_nanosleep`]: https://linux.die.net/man/3/clock_nanosleep
+/// [`zx_nanosleep`]: https://fuchsia.dev/reference/syscalls/nanosleep
 ///
 /// **Disclaimer:** These system calls might change over time.
 ///
