@@ -764,6 +764,16 @@ pub fn sleep_until(deadline: crate::time::Instant) {
     }
 }
 
+#[cfg(target_os = "fuchsia")]
+pub fn sleep_until(deadline: crate::time::Instant) {
+    use crate::sys::pal::fuchsia::{zx_cvt, zx_nanosleep};
+
+    let deadline = deadline.into_inner().into_deadline();
+    if let Err(error) = zx_cvt(zx_nanosleep(deadline)) {
+        panic!("zx_nanosleep failed: {error}");
+    }
+}
+
 pub fn yield_now() {
     let ret = unsafe { libc::sched_yield() };
     debug_assert_eq!(ret, 0);
