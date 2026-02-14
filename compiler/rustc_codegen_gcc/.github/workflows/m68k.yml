@@ -83,7 +83,7 @@ jobs:
       run: |
         ./y.sh prepare --only-libcore --cross
         ./y.sh build --sysroot --target-triple m68k-unknown-linux-gnu --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
-        CG_RUSTFLAGS="-Clinker=m68k-unknown-linux-gnu-gcc" ./y.sh cargo build --manifest-path=./tests/hello-world/Cargo.toml --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
+        CG_RUSTFLAGS="-Clinker=m68k-unknown-linux-gnu-gcc" ./y.sh cargo build -Zjson-target-spec --manifest-path=./tests/hello-world/Cargo.toml --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
         ./y.sh clean all
 
     - name: Build

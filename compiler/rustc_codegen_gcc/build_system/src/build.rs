@@ -141,6 +141,10 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     }
 
     let mut args: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"build", &"--target", &config.target];
+    if config.target.ends_with(".json") {
+        args.push(&"-Zjson-target-spec");
+    }
+
     for feature in &config.features {
         args.push(&"--features");
         args.push(feature);

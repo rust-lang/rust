@@ -18,6 +18,7 @@
     ],
     "ignorePaths": [
         "src/intrinsic/archs.rs",
+        "src/intrinsic/old_archs.rs",
         "src/intrinsic/llvm.rs"
     ],
     "ignoreRegExpList": [

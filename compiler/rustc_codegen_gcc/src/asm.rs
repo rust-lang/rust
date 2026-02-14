@@ -575,9 +575,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
         if dest.is_none() && options.contains(InlineAsmOptions::NORETURN) {
             let builtin_unreachable = self.context.get_builtin_function("__builtin_unreachable");
-            let builtin_unreachable: RValue<'gcc> =
-                unsafe { std::mem::transmute(builtin_unreachable) };
-            self.call(self.type_void(), None, None, builtin_unreachable, &[], None, None);
+            self.llbb().add_eval(None, self.context.new_call(None, builtin_unreachable, &[]));
         }
 
         // Write results to outputs.
