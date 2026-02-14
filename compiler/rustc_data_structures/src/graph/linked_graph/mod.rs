@@ -52,7 +52,7 @@ pub struct LinkedGraph<N, E> {
 
 pub struct Node<N> {
     first_edge: [EdgeIndex; 2], // see module comment
-    pub data: N,
+    pub data: Option<N>,
 }
 
 #[derive(Debug)]
@@ -135,18 +135,30 @@ impl<N: Debug, E: Debug> LinkedGraph<N, E> {
         NodeIndex(self.nodes.len())
     }
 
+    fn ensure_node(&mut self, idx: NodeIndex) -> &mut Node<N> {
+        self.nodes.ensure_contains_elem(idx, || Node {
+            first_edge: [INVALID_EDGE_INDEX, INVALID_EDGE_INDEX],
+            data: None,
+        })
+    }
+
+    pub fn add_node_with_idx(&mut self, idx: NodeIndex, data: N) {
+        let old_data = self.ensure_node(idx).data.replace(data);
+        debug_assert!(old_data.is_none());
+    }
+
     pub fn add_node(&mut self, data: N) -> NodeIndex {
         let idx = self.next_node_index();
-        self.nodes.push(Node { first_edge: [INVALID_EDGE_INDEX, INVALID_EDGE_INDEX], data });
+        self.add_node_with_idx(idx, data);
         idx
     }
 
     pub fn mut_node_data(&mut self, idx: NodeIndex) -> &mut N {
-        &mut self.nodes[idx].data
+        self.nodes[idx].data.as_mut().unwrap()
     }
 
     pub fn node_data(&self, idx: NodeIndex) -> &N {
-        &self.nodes[idx].data
+        self.nodes[idx].data.as_ref().unwrap()
     }
 
     pub fn node(&self, idx: NodeIndex) -> &Node<N> {
@@ -165,8 +177,8 @@ impl<N: Debug, E: Debug> LinkedGraph<N, E> {
         let idx = self.next_edge_index();
 
         // read current first of the list of edges from each node
-        let source_first = self.nodes[source].first_edge[OUTGOING.repr];
-        let target_first = self.nodes[target].first_edge[INCOMING.repr];
+        let source_first = self.ensure_node(source).first_edge[OUTGOING.repr];
+        let target_first = self.ensure_node(target).first_edge[INCOMING.repr];
 
         // create the new edge, with the previous firsts from each node
         // as the next pointers

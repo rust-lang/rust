@@ -40,7 +40,7 @@ fn each_node() {
     let expected = ["A", "B", "C", "D", "E", "F"];
     graph.each_node(|idx, node| {
         assert_eq!(&expected[idx.0], graph.node_data(idx));
-        assert_eq!(expected[idx.0], node.data);
+        assert_eq!(expected[idx.0], node.data.unwrap());
         true
     });
 }
