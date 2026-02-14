@@ -1,4 +1,5 @@
 use rustc_errors::Applicability;
+use rustc_hir::LangItem;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::InferOk;
 use rustc_infer::traits::{Obligation, ObligationCauseCode};
@@ -8,7 +9,8 @@ use rustc_middle::ty::adjustment::{
     PointerCoercion,
 };
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{Span, sym};
+use rustc_span::{DUMMY_SP, Span, sym};
+use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -312,14 +314,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         };
                         *deref = OverloadedDeref { mutbl, span: deref.span };
                         self.enforce_context_effects(None, expr.span, method.def_id, method.args);
-                        // If this is a union field, also throw an error for `DerefMut` of `ManuallyDrop` (see RFC 2514).
+                        // If this is a union field, also throw an error for `DerefMut` of non `BikeshedGuaranteedNoDrop` (see RFC 2514).
                         // This helps avoid accidental drops.
                         if inside_union
-                            && source.ty_adt_def().is_some_and(|adt| adt.is_manually_drop())
+                            && !self
+                                .infcx
+                                .type_implements_trait(
+                                    self.tcx.require_lang_item(
+                                        LangItem::BikeshedGuaranteedNoDrop,
+                                        DUMMY_SP,
+                                    ),
+                                    [adjustment.target],
+                                    self.param_env,
+                                )
+                                .must_apply_considering_regions()
                         {
                             self.dcx().struct_span_err(
                                 expr.span,
-                                "not automatically applying `DerefMut` on `ManuallyDrop` union field",
+                                "not automatically applying `DerefMut` through union field to target that might have `Drop` glue",
                             )
                             .with_help(
                                 "writing to this reference calls the destructor for the old value",
