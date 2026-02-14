@@ -1,12 +1,27 @@
+use std::fmt::{Debug, LowerHex};
 use std::num::FpCategory as Fp;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
-trait TestableFloat: Sized {
-    const BITS: u32;
-    /// Unsigned int with the same size, for converting to/from bits.
-    type Int;
+mod casts;
+
+trait TestableFloat: Sized + Copy + PartialEq + Debug {
+    /// The unsigned integer with the same bit width as this float, for converting to/from bits.
+    type Int: Copy + PartialEq + LowerHex + Debug;
     /// Signed int with the same size.
     type SInt;
+
+    const BITS: u32 = size_of::<Self>() as u32 * 8;
+    const EXPONENT_BITS: u32 = Self::BITS - Self::SIGNIFICAND_BITS - 1;
+    const SIGNIFICAND_BITS: u32;
+
+    /// The saturated (all ones) value of the exponent (infinity representation)
+    const EXPONENT_SAT: u32 = (1 << Self::EXPONENT_BITS) - 1;
+
+    /// The exponent bias value (max representable positive exponent)
+    const EXPONENT_BIAS: u32 = Self::EXPONENT_SAT >> 1;
+
+    fn to_bits(self) -> Self::Int;
+
     /// Set the default tolerance for float comparison based on the type.
     const APPROX: Self;
     /// Allow looser tolerance for f32 on miri
@@ -61,9 +76,15 @@ trait TestableFloat: Sized {
 }
 
 impl TestableFloat for f16 {
-    const BITS: u32 = 16;
     type Int = u16;
     type SInt = i16;
+
+    // Just get this from std's value, which includes the implicit digit
+    const SIGNIFICAND_BITS: u32 = Self::MANTISSA_DIGITS - 1;
+    fn to_bits(self) -> Self::Int {
+        self.to_bits()
+    }
+
     const APPROX: Self = 1e-3;
     const POWF_APPROX: Self = 5e-1;
     const _180_TO_RADIANS_APPROX: Self = 1e-2;
@@ -102,9 +123,15 @@ impl TestableFloat for f16 {
 }
 
 impl TestableFloat for f32 {
-    const BITS: u32 = 32;
     type Int = u32;
     type SInt = i32;
+
+    // Just get this from std's value, which includes the implicit digit
+    const SIGNIFICAND_BITS: u32 = Self::MANTISSA_DIGITS - 1;
+    fn to_bits(self) -> Self::Int {
+        self.to_bits()
+    }
+
     const APPROX: Self = 1e-6;
     /// Miri adds some extra errors to float functions; make sure the tests still pass.
     /// These values are purely used as a canary to test against and are thus not a stable guarantee Rust provides.
@@ -145,9 +172,15 @@ impl TestableFloat for f32 {
 }
 
 impl TestableFloat for f64 {
-    const BITS: u32 = 64;
     type Int = u64;
     type SInt = i64;
+
+    // Just get this from std's value, which includes the implicit digit
+    const SIGNIFICAND_BITS: u32 = Self::MANTISSA_DIGITS - 1;
+    fn to_bits(self) -> Self::Int {
+        self.to_bits()
+    }
+
     const APPROX: Self = 1e-6;
     const GAMMA_APPROX_LOOSE: Self = 1e-4;
     const LNGAMMA_APPROX_LOOSE: Self = 1e-4;
@@ -173,9 +206,15 @@ impl TestableFloat for f64 {
 }
 
 impl TestableFloat for f128 {
-    const BITS: u32 = 128;
     type Int = u128;
     type SInt = i128;
+
+    // Just get this from std's value, which includes the implicit digit
+    const SIGNIFICAND_BITS: u32 = Self::MANTISSA_DIGITS - 1;
+    fn to_bits(self) -> Self::Int {
+        self.to_bits()
+    }
+
     const APPROX: Self = 1e-9;
     const EXP_APPROX: Self = 1e-12;
     const LN_APPROX: Self = 1e-12;
