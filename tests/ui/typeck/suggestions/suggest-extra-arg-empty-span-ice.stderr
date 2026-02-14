@@ -1,0 +1,45 @@
+error[E0425]: cannot find type `BagOfBits` in this scope
+  --> $DIR/suggest-extra-arg-empty-span-ice.rs:4:41
+   |
+LL | pub const fn make_1u8_bag<T: Copy>() -> BagOfBits<_> {
+   |                                         ^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `val` in this scope
+  --> $DIR/suggest-extra-arg-empty-span-ice.rs:7:37
+   |
+LL |     assert!(core::mem::size_of::<T>(val, 1) >= 1);
+   |                                     ^^^ not found in this scope
+
+error[E0425]: cannot find value `bag` in this scope
+  --> $DIR/suggest-extra-arg-empty-span-ice.rs:10:5
+   |
+LL |     bag
+   |     ^^^ not found in this scope
+
+error[E0061]: this function takes 0 arguments but 2 arguments were supplied
+  --> $DIR/suggest-extra-arg-empty-span-ice.rs:7:13
+   |
+LL |     assert!(core::mem::size_of::<T>(val, 1) >= 1);
+   |     --------^^^^^^^^^^^^^^^^^^^^^^^--------------
+   |     |                                    |
+   |     |                                    unexpected argument #2 of type `{integer}`
+   |     unexpected argument #1
+   |
+note: function defined here
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+help: remove the extra argument
+   |
+LL -     assert!(core::mem::size_of::<T>(val, 1) >= 1);
+LL +     assert!(core::mem::size_of::<T>(val, ) >= 1);
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-extra-arg-empty-span-ice.rs:4:51
+   |
+LL | pub const fn make_1u8_bag<T: Copy>() -> BagOfBits<_> {
+   |                                                   ^ not allowed in type signatures
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0061, E0121, E0425.
+For more information about an error, try `rustc --explain E0061`.
