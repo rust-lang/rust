@@ -2045,7 +2045,11 @@ mod type_keyword {}
 /// - to declare the existence of contracts the compiler can't check (`unsafe fn` and `unsafe
 /// trait`),
 /// - and to declare that a programmer has checked that these contracts have been upheld (`unsafe
-/// {}` and `unsafe impl`, but also `unsafe fn` -- see below).
+/// {}` and `unsafe impl`, but also sometimes `unsafe fn` -- see below).
+///
+/// Historically, these two are not mutually exclusive, as can be seen in `unsafe fn`: the body of
+/// an `unsafe fn` is, on old editions, treated like an unsafe block. The `unsafe_op_in_unsafe_fn`
+/// lint can be enabled to change that (and that lint is enabled by default since edition 2024).
 ///
 /// # Unsafe abilities
 ///
@@ -2087,6 +2091,13 @@ mod type_keyword {}
 /// block has been checked by the programmer and is guaranteed to be respected.
 /// - `unsafe impl`: the contract necessary to implement the trait has been
 /// checked by the programmer and is guaranteed to be respected.
+///
+/// On old editions, `unsafe fn` also acts like an `unsafe {}` block around the code inside the
+/// function. This means it is not just a signal to the caller, but also promises that the
+/// preconditions for the operations inside the function are upheld. Mixing these two meanings can
+/// be confusing, so the `unsafe_op_in_unsafe_fn` lint has been introduced and enabled by default
+/// since edition 2024 to warn against that and require explicit unsafe blocks even inside `unsafe
+/// fn`.
 ///
 /// See the [Rustonomicon] and the [Reference] for more information.
 ///
