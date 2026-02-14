@@ -846,8 +846,6 @@ mod parse_tests {
 }
 
 #[cfg(test)]
-// FIXME(ppc): something with `should_panic` tests cause a SIGILL with ppc64le
-#[cfg(not(all(target_arch = "powerpc64", target_endian = "little")))]
 mod tests_panicking {
     extern crate std;
     use super::*;
