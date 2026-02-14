@@ -3,7 +3,7 @@ use std::convert::identity;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, ast, token};
-use rustc_errors::{Applicability, PResult, inline_fluent};
+use rustc_errors::{Applicability, PResult, msg};
 use rustc_feature::{
     AttrSuggestionStyle, AttributeTemplate, Features, GatedCfg, find_gated_cfg, template,
 };
@@ -141,7 +141,7 @@ fn parse_cfg_entry_target<S: Stage>(
             cx.sess(),
             sym::cfg_target_compact,
             meta_span,
-            inline_fluent!("compact `cfg(target(..))` is experimental and subject to change"),
+            msg!("compact `cfg(target(..))` is experimental and subject to change"),
         )
         .emit();
     }

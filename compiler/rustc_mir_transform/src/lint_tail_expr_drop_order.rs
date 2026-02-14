@@ -5,7 +5,7 @@ use std::rc::Rc;
 use itertools::Itertools as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_errors::{Subdiagnostic, inline_fluent};
+use rustc_errors::{Subdiagnostic, msg};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::MixedBitSet;
@@ -531,7 +531,7 @@ impl Subdiagnostic for LocalLabel<'_> {
         diag.arg("is_generated_name", self.is_generated_name);
         diag.remove_arg("is_dropped_first_edition_2024");
         diag.arg("is_dropped_first_edition_2024", self.is_dropped_first_edition_2024);
-        let msg = diag.eagerly_translate(inline_fluent!(
+        let msg = diag.eagerly_translate(msg!(
             "{$is_generated_name ->
                 [true] this value will be stored in a temporary; let us call it `{$name}`
                 *[false] `{$name}` calls a custom destructor
@@ -542,7 +542,7 @@ impl Subdiagnostic for LocalLabel<'_> {
             dtor.add_to_diag(diag);
         }
         let msg =
-            diag.eagerly_translate(inline_fluent!(
+            diag.eagerly_translate(msg!(
                 "{$is_dropped_first_edition_2024 ->
                     [true] up until Edition 2021 `{$name}` is dropped last but will be dropped earlier in Edition 2024
                     *[false] `{$name}` will be dropped later as of Edition 2024

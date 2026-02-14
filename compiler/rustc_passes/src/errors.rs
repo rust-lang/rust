@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
-    MultiSpan, inline_fluent,
+    MultiSpan, msg,
 };
 use rustc_hir::Target;
 use rustc_hir::attrs::{MirDialect, MirPhase};
@@ -481,11 +481,8 @@ pub(crate) struct ItemFollowingInnerAttr {
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for InvalidAttrAtCrateLevel {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(
-            dcx,
-            level,
-            inline_fluent!("`{$name}` attribute cannot be used at crate level"),
-        );
+        let mut diag =
+            Diag::new(dcx, level, msg!("`{$name}` attribute cannot be used at crate level"));
         diag.span(self.span);
         diag.arg("name", self.name);
         // Only emit an error with a suggestion if we can create a string out
@@ -493,17 +490,14 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for InvalidAttrAtCrateLevel {
         if let Some(span) = self.sugg_span {
             diag.span_suggestion_verbose(
                 span,
-                inline_fluent!("perhaps you meant to use an outer attribute"),
+                msg!("perhaps you meant to use an outer attribute"),
                 String::new(),
                 Applicability::MachineApplicable,
             );
         }
         if let Some(item) = self.item {
             diag.arg("kind", item.kind);
-            diag.span_label(
-                item.span,
-                inline_fluent!("the inner attribute doesn't annotate this {$kind}"),
-            );
+            diag.span_label(item.span, msg!("the inner attribute doesn't annotate this {$kind}"));
         }
         diag
     }
@@ -654,11 +648,8 @@ pub(crate) struct NoMainErr {
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NoMainErr {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        let mut diag = Diag::new(
-            dcx,
-            level,
-            inline_fluent!("`main` function not found in crate `{$crate_name}`"),
-        );
+        let mut diag =
+            Diag::new(dcx, level, msg!("`main` function not found in crate `{$crate_name}`"));
         diag.span(DUMMY_SP);
         diag.code(E0601);
         diag.arg("crate_name", self.crate_name);
@@ -666,23 +657,23 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NoMainErr {
         diag.arg("has_filename", self.has_filename);
         let note = if !self.non_main_fns.is_empty() {
             for &span in &self.non_main_fns {
-                diag.span_note(span, inline_fluent!("here is a function named `main`"));
+                diag.span_note(span, msg!("here is a function named `main`"));
             }
-            diag.note(inline_fluent!(
+            diag.note(msg!(
                 "you have one or more functions named `main` not defined at the crate level"
             ));
-            diag.help(inline_fluent!("consider moving the `main` function definitions"));
+            diag.help(msg!("consider moving the `main` function definitions"));
             // There were some functions named `main` though. Try to give the user a hint.
-            inline_fluent!(
+            msg!(
                 "the main function must be defined at the crate level{$has_filename ->
                     [true] {\" \"}(in `{$filename}`)
                     *[false] {\"\"}
                 }"
             )
         } else if self.has_filename {
-            inline_fluent!("consider adding a `main` function to `{$filename}`")
+            msg!("consider adding a `main` function to `{$filename}`")
         } else {
-            inline_fluent!("consider adding a `main` function at the crate level")
+            msg!("consider adding a `main` function at the crate level")
         };
         if self.file_empty {
             diag.note(note);
@@ -695,14 +686,11 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NoMainErr {
             && main_def.opt_fn_def_id().is_none()
         {
             // There is something at `crate::main`, but it is not a function definition.
-            diag.span_label(
-                main_def.span,
-                inline_fluent!("non-function item at `crate::main` is found"),
-            );
+            diag.span_label(main_def.span, msg!("non-function item at `crate::main` is found"));
         }
 
         if self.add_teach_note {
-            diag.note(inline_fluent!("if you don't know the basics of Rust, you can go look to the Rust Book to get started: https://doc.rust-lang.org/book/"));
+            diag.note(msg!("if you don't know the basics of Rust, you can go look to the Rust Book to get started: https://doc.rust-lang.org/book/"));
         }
         diag
     }
@@ -730,11 +718,11 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for DuplicateLangItem {
             dcx,
             level,
             match self.duplicate {
-                Duplicate::Plain => inline_fluent!("found duplicate lang item `{$lang_item_name}`"),
-                Duplicate::Crate => inline_fluent!(
-                    "duplicate lang item in crate `{$crate_name}`: `{$lang_item_name}`"
-                ),
-                Duplicate::CrateDepends => inline_fluent!(
+                Duplicate::Plain => msg!("found duplicate lang item `{$lang_item_name}`"),
+                Duplicate::Crate => {
+                    msg!("duplicate lang item in crate `{$crate_name}`: `{$lang_item_name}`")
+                }
+                Duplicate::CrateDepends => msg!(
                     "duplicate lang item in crate `{$crate_name}` (which `{$dependency_of}` depends on): `{$lang_item_name}`"
                 ),
             },
@@ -757,32 +745,26 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for DuplicateLangItem {
             diag.span(span);
         }
         if let Some(span) = self.first_defined_span {
-            diag.span_note(span, inline_fluent!("the lang item is first defined here"));
+            diag.span_note(span, msg!("the lang item is first defined here"));
         } else {
             if self.orig_dependency_of.is_none() {
-                diag.note(inline_fluent!(
-                    "the lang item is first defined in crate `{$orig_crate_name}`"
-                ));
+                diag.note(msg!("the lang item is first defined in crate `{$orig_crate_name}`"));
             } else {
-                diag.note(inline_fluent!("the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)"));
+                diag.note(msg!("the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)"));
             }
 
             if self.orig_is_local {
-                diag.note(inline_fluent!(
-                    "first definition in the local crate (`{$orig_crate_name}`)"
-                ));
+                diag.note(msg!("first definition in the local crate (`{$orig_crate_name}`)"));
             } else {
-                diag.note(inline_fluent!(
+                diag.note(msg!(
                     "first definition in `{$orig_crate_name}` loaded from {$orig_path}"
                 ));
             }
 
             if self.is_local {
-                diag.note(inline_fluent!("second definition in the local crate (`{$crate_name}`)"));
+                diag.note(msg!("second definition in the local crate (`{$crate_name}`)"));
             } else {
-                diag.note(inline_fluent!(
-                    "second definition in `{$crate_name}` loaded from {$path}"
-                ));
+                diag.note(msg!("second definition in `{$crate_name}` loaded from {$path}"));
             }
         }
         diag

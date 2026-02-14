@@ -8,8 +8,7 @@ use rustc_abi::{
 };
 use rustc_error_messages::DiagMessage;
 use rustc_errors::{
-    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
-    inline_fluent,
+    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level, msg,
 };
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
@@ -270,24 +269,22 @@ impl<'tcx> LayoutError<'tcx> {
         use LayoutError::*;
 
         match self {
-            Unknown(_) => inline_fluent!("the type `{$ty}` has an unknown layout"),
+            Unknown(_) => msg!("the type `{$ty}` has an unknown layout"),
             SizeOverflow(_) => {
-                inline_fluent!("values of the type `{$ty}` are too big for the target architecture")
+                msg!("values of the type `{$ty}` are too big for the target architecture")
             }
             InvalidSimd { kind: SimdLayoutError::TooManyLanes(_), .. } => {
-                inline_fluent!(
-                    "the SIMD type `{$ty}` has more elements than the limit {$max_lanes}"
-                )
+                msg!("the SIMD type `{$ty}` has more elements than the limit {$max_lanes}")
             }
             InvalidSimd { kind: SimdLayoutError::ZeroLength, .. } => {
-                inline_fluent!("the SIMD type `{$ty}` has zero elements")
+                msg!("the SIMD type `{$ty}` has zero elements")
             }
-            TooGeneric(_) => inline_fluent!("the type `{$ty}` does not have a fixed layout"),
-            NormalizationFailure(_, _) => inline_fluent!(
+            TooGeneric(_) => msg!("the type `{$ty}` does not have a fixed layout"),
+            NormalizationFailure(_, _) => msg!(
                 "unable to determine layout for `{$ty}` because `{$failure_ty}` cannot be normalized"
             ),
-            Cycle(_) => inline_fluent!("a cycle occurred during layout computation"),
-            ReferencesError(_) => inline_fluent!("the type has an unknown layout"),
+            Cycle(_) => msg!("a cycle occurred during layout computation"),
+            ReferencesError(_) => msg!("the type has an unknown layout"),
         }
     }
 

@@ -3,8 +3,8 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, SuggestionStyle, inline_fluent, listify,
-    pluralize, struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, SuggestionStyle, listify, msg, pluralize,
+    struct_span_code_err,
 };
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -304,7 +304,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             // was also not an exact match, so we also suggest changing it.
                             err.span_suggestion_verbose(
                                 assoc_ident.span,
-                                inline_fluent!("...and changing the associated {$assoc_kind} name"),
+                                msg!("...and changing the associated {$assoc_kind} name"),
                                 suggested_name,
                                 Applicability::MaybeIncorrect,
                             );

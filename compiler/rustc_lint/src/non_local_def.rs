@@ -1,4 +1,4 @@
-use rustc_errors::{MultiSpan, inline_fluent};
+use rustc_errors::{MultiSpan, msg};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
@@ -210,7 +210,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 if !doctest {
                     ms.push_span_label(
                         cx.tcx.def_span(parent),
-                        inline_fluent!(
+                        msg!(
                             "move the `impl` block outside of this {$body_kind_descr} {$depth ->
                                 [one] `{$body_name}`
                                 *[other] `{$body_name}` and up {$depth} bodies

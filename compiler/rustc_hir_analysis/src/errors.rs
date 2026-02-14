@@ -4,7 +4,7 @@ use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
-    MultiSpan, inline_fluent, listify,
+    MultiSpan, listify, msg,
 };
 use rustc_hir::limit::Limit;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -444,7 +444,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for MissingGenericParams {
         let mut err = Diag::new(
             dcx,
             level,
-            inline_fluent!(
+            msg!(
                 "the {$descr} {$parameterCount ->
                     [one] parameter
                     *[other] parameters
@@ -455,7 +455,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for MissingGenericParams {
         err.code(E0393);
         err.span_label(
             self.def_span,
-            inline_fluent!(
+            msg!(
                 "{$descr} {$parameterCount ->
                     [one] parameter
                     *[other] parameters
@@ -511,7 +511,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for MissingGenericParams {
                 // least we can clue them to the correct syntax `Trait</* Term */>`.
                 err.span_suggestion_verbose(
                     self.span.shrink_to_hi(),
-                    inline_fluent!(
+                    msg!(
                         "explicitly specify the {$descr} {$parameterCount ->
                             [one] parameter
                             *[other] parameters
@@ -533,7 +533,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for MissingGenericParams {
         if !suggested {
             err.span_label(
                 self.span,
-                inline_fluent!(
+                msg!(
                     "missing {$parameterCount ->
                         [one] reference
                         *[other] references
@@ -542,7 +542,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for MissingGenericParams {
             );
         }
 
-        err.note(inline_fluent!(
+        err.note(msg!(
             "because the parameter {$parameterCount ->
                 [one] default references
                 *[other] defaults reference

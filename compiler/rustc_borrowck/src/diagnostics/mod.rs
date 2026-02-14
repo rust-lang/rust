@@ -4,9 +4,7 @@ use std::collections::BTreeMap;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{
-    Applicability, Diag, DiagMessage, EmissionGuarantee, MultiSpan, inline_fluent, listify,
-};
+use rustc_errors::{Applicability, Diag, DiagMessage, EmissionGuarantee, MultiSpan, listify, msg};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::{
     self as hir, CoroutineKind, GenericBound, LangItem, WhereBoundPredicate, WherePredicateKind,
@@ -1313,7 +1311,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         let mut span: MultiSpan = spans.clone().into();
                         err.arg("ty", param_ty.to_string());
                         let msg = err.dcx.eagerly_translate_to_string(
-                            inline_fluent!("`{$ty}` is made to be an `FnOnce` closure here"),
+                            msg!("`{$ty}` is made to be an `FnOnce` closure here"),
                             err.args.iter(),
                         );
                         err.remove_arg("ty");
@@ -1322,12 +1320,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         }
                         span.push_span_label(
                             fn_call_span,
-                            inline_fluent!("this value implements `FnOnce`, which causes it to be moved when called"),
+                            msg!("this value implements `FnOnce`, which causes it to be moved when called"),
                         );
-                        err.span_note(
-                            span,
-                            inline_fluent!("`FnOnce` closures can only be called once"),
-                        );
+                        err.span_note(span, msg!("`FnOnce` closures can only be called once"));
                     } else {
                         err.subdiagnostic(CaptureReasonNote::FnOnceMoveInCall { var_span });
                     }
@@ -1573,6 +1568,5 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     }
 }
 
-const LIMITATION_NOTE: DiagMessage = inline_fluent!(
-    "due to a current limitation of the type system, this implies a `'static` lifetime"
-);
+const LIMITATION_NOTE: DiagMessage =
+    msg!("due to a current limitation of the type system, this implies a `'static` lifetime");

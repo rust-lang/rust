@@ -1,5 +1,5 @@
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, EmissionGuarantee, Subdiagnostic, inline_fluent};
+use rustc_errors::{Diag, EmissionGuarantee, Subdiagnostic, msg};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::lint::Level;
 use rustc_span::{Span, Symbol};
@@ -27,17 +27,17 @@ impl Subdiagnostic for OverruledAttributeSub {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             OverruledAttributeSub::DefaultSource { id } => {
-                diag.note(inline_fluent!("`forbid` lint level is the default for {$id}"));
+                diag.note(msg!("`forbid` lint level is the default for {$id}"));
                 diag.arg("id", id);
             }
             OverruledAttributeSub::NodeSource { span, reason } => {
-                diag.span_label(span, inline_fluent!("`forbid` level set here"));
+                diag.span_label(span, msg!("`forbid` level set here"));
                 if let Some(rationale) = reason {
                     diag.note(rationale.to_string());
                 }
             }
             OverruledAttributeSub::CommandLineSource => {
-                diag.note(inline_fluent!("`forbid` lint level was set on command line"));
+                diag.note(msg!("`forbid` lint level was set on command line"));
             }
         }
     }

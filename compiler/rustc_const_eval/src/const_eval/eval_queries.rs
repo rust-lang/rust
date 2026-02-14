@@ -2,7 +2,7 @@ use std::sync::atomic::Ordering::Relaxed;
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, BackendRepr};
-use rustc_errors::{E0080, inline_fluent};
+use rustc_errors::{E0080, msg};
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo, ReportedErrorInfo};
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
@@ -469,7 +469,7 @@ fn report_eval_error<'tcx>(
             diag.code(E0080);
             diag.span_label(
                 span,
-                inline_fluent!(
+                msg!(
                     "evaluation of `{$instance}` failed {$num_frames ->
                         [0] here
                         *[other] inside this call

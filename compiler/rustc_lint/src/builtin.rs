@@ -22,7 +22,7 @@ use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_attr_parsing::AttributeParser;
-use rustc_errors::{Applicability, LintDiagnostic, inline_fluent};
+use rustc_errors::{Applicability, LintDiagnostic, msg};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, DocAttribute};
@@ -2653,10 +2653,10 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             if let Some(err) = with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty, init)) {
                 let msg = match init {
                     InitKind::Zeroed => {
-                        inline_fluent!("the type `{$ty}` does not permit zero-initialization")
+                        msg!("the type `{$ty}` does not permit zero-initialization")
                     }
                     InitKind::Uninit => {
-                        inline_fluent!("the type `{$ty}` does not permit being left uninitialized")
+                        msg!("the type `{$ty}` does not permit being left uninitialized")
                     }
                 };
                 let sub = BuiltinUnpermittedTypeInitSub { err };

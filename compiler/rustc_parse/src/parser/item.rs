@@ -9,7 +9,7 @@ use rustc_ast::util::case::Case;
 use rustc_ast::{self as ast};
 use rustc_ast_pretty::pprust;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, PResult, StashKey, inline_fluent, struct_span_code_err};
+use rustc_errors::{Applicability, PResult, StashKey, msg, struct_span_code_err};
 use rustc_session::lint::builtin::VARARGS_WITHOUT_PATTERN;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
@@ -1743,7 +1743,7 @@ impl<'a> Parser<'a> {
 
             if this.token == token::Bang {
                 if let Err(err) = this.unexpected() {
-                    err.with_note(inline_fluent!("macros cannot expand to enum variants")).emit();
+                    err.with_note(msg!("macros cannot expand to enum variants")).emit();
                 }
 
                 this.bump();

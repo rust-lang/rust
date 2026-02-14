@@ -61,7 +61,7 @@ pub use rustc_error_messages::{
 use rustc_hashes::Hash128;
 use rustc_lint_defs::LintExpectationId;
 pub use rustc_lint_defs::{Applicability, listify, pluralize};
-pub use rustc_macros::inline_fluent;
+pub use rustc_macros::msg;
 use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker, catch_fatal_errors};
@@ -1514,7 +1514,7 @@ impl DiagCtxtInner {
                 // the usual `Diag`/`DiagCtxt` level, so we must augment `bug`
                 // in a lower-level fashion.
                 bug.arg("level", bug.level);
-                let msg = inline_fluent!(
+                let msg = msg!(
                     "`flushed_delayed` got diagnostic with level {$level}, instead of the expected `DelayedBug`"
                 );
                 let msg = self.eagerly_translate_for_subdiag(&bug, msg); // after the `arg` call
@@ -1558,13 +1558,13 @@ impl DelayedDiagInner {
         // lower-level fashion.
         let mut diag = self.inner;
         let msg = match self.note.status() {
-            BacktraceStatus::Captured => inline_fluent!(
+            BacktraceStatus::Captured => msg!(
                 "delayed at {$emitted_at}
                 {$note}"
             ),
             // Avoid the needless newline when no backtrace has been captured,
             // the display impl should just be a single line.
-            _ => inline_fluent!("delayed at {$emitted_at} - {$note}"),
+            _ => msg!("delayed at {$emitted_at} - {$note}"),
         };
         diag.arg("emitted_at", diag.emitted_at.clone());
         diag.arg("note", self.note);

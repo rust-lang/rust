@@ -8,8 +8,7 @@ use std::process::ExitStatus;
 
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
-    inline_fluent,
+    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level, msg,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::layout::LayoutError;
@@ -217,122 +216,122 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ThorinErrorWrapper {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let build = |msg| Diag::new(dcx, level, msg);
         match self.0 {
-            thorin::Error::ReadInput(_) => build(inline_fluent!("failed to read input file")),
+            thorin::Error::ReadInput(_) => build(msg!("failed to read input file")),
             thorin::Error::ParseFileKind(_) => {
-                build(inline_fluent!("failed to parse input file kind"))
+                build(msg!("failed to parse input file kind"))
             }
             thorin::Error::ParseObjectFile(_) => {
-                build(inline_fluent!("failed to parse input object file"))
+                build(msg!("failed to parse input object file"))
             }
             thorin::Error::ParseArchiveFile(_) => {
-                build(inline_fluent!("failed to parse input archive file"))
+                build(msg!("failed to parse input archive file"))
             }
             thorin::Error::ParseArchiveMember(_) => {
-                build(inline_fluent!("failed to parse archive member"))
+                build(msg!("failed to parse archive member"))
             }
-            thorin::Error::InvalidInputKind => build(inline_fluent!("input is not an archive or elf object")),
-            thorin::Error::DecompressData(_) => build(inline_fluent!("failed to decompress compressed section")),
+            thorin::Error::InvalidInputKind => build(msg!("input is not an archive or elf object")),
+            thorin::Error::DecompressData(_) => build(msg!("failed to decompress compressed section")),
             thorin::Error::NamelessSection(_, offset) => {
-                build(inline_fluent!("section without name at offset {$offset}"))
+                build(msg!("section without name at offset {$offset}"))
                     .with_arg("offset", format!("0x{offset:08x}"))
             }
             thorin::Error::RelocationWithInvalidSymbol(section, offset) => {
-                build(inline_fluent!("relocation with invalid symbol for section `{$section}` at offset {$offset}"))
+                build(msg!("relocation with invalid symbol for section `{$section}` at offset {$offset}"))
                     .with_arg("section", section)
                     .with_arg("offset", format!("0x{offset:08x}"))
             }
             thorin::Error::MultipleRelocations(section, offset) => {
-                build(inline_fluent!("multiple relocations for section `{$section}` at offset {$offset}"))
+                build(msg!("multiple relocations for section `{$section}` at offset {$offset}"))
                     .with_arg("section", section)
                     .with_arg("offset", format!("0x{offset:08x}"))
             }
             thorin::Error::UnsupportedRelocation(section, offset) => {
-                build(inline_fluent!("unsupported relocation for section {$section} at offset {$offset}"))
+                build(msg!("unsupported relocation for section {$section} at offset {$offset}"))
                     .with_arg("section", section)
                     .with_arg("offset", format!("0x{offset:08x}"))
             }
-            thorin::Error::MissingDwoName(id) => build(inline_fluent!("missing path attribute to DWARF object ({$id})"))
+            thorin::Error::MissingDwoName(id) => build(msg!("missing path attribute to DWARF object ({$id})"))
                 .with_arg("id", format!("0x{id:08x}")),
             thorin::Error::NoCompilationUnits => {
-                build(inline_fluent!("input object has no compilation units"))
+                build(msg!("input object has no compilation units"))
             }
-            thorin::Error::NoDie => build(inline_fluent!("no top-level debugging information entry in compilation/type unit")),
+            thorin::Error::NoDie => build(msg!("no top-level debugging information entry in compilation/type unit")),
             thorin::Error::TopLevelDieNotUnit => {
-                build(inline_fluent!("top-level debugging information entry is not a compilation/type unit"))
+                build(msg!("top-level debugging information entry is not a compilation/type unit"))
             }
             thorin::Error::MissingRequiredSection(section) => {
-                build(inline_fluent!("input object missing required section `{$section}`"))
+                build(msg!("input object missing required section `{$section}`"))
                     .with_arg("section", section)
             }
             thorin::Error::ParseUnitAbbreviations(_) => {
-                build(inline_fluent!("failed to parse unit abbreviations"))
+                build(msg!("failed to parse unit abbreviations"))
             }
             thorin::Error::ParseUnitAttribute(_) => {
-                build(inline_fluent!("failed to parse unit attribute"))
+                build(msg!("failed to parse unit attribute"))
             }
             thorin::Error::ParseUnitHeader(_) => {
-                build(inline_fluent!("failed to parse unit header"))
+                build(msg!("failed to parse unit header"))
             }
-            thorin::Error::ParseUnit(_) => build(inline_fluent!("failed to parse unit")),
+            thorin::Error::ParseUnit(_) => build(msg!("failed to parse unit")),
             thorin::Error::IncompatibleIndexVersion(section, format, actual) => {
-                build(inline_fluent!("incompatible `{$section}` index version: found version {$actual}, expected version {$format}"))
+                build(msg!("incompatible `{$section}` index version: found version {$actual}, expected version {$format}"))
                     .with_arg("section", section)
                     .with_arg("actual", actual)
                     .with_arg("format", format)
             }
             thorin::Error::OffsetAtIndex(_, index) => {
-                build(inline_fluent!("read offset at index {$index} of `.debug_str_offsets.dwo` section")).with_arg("index", index)
+                build(msg!("read offset at index {$index} of `.debug_str_offsets.dwo` section")).with_arg("index", index)
             }
             thorin::Error::StrAtOffset(_, offset) => {
-                build(inline_fluent!("read string at offset {$offset} of `.debug_str.dwo` section"))
+                build(msg!("read string at offset {$offset} of `.debug_str.dwo` section"))
                     .with_arg("offset", format!("0x{offset:08x}"))
             }
             thorin::Error::ParseIndex(_, section) => {
-                build(inline_fluent!("failed to parse `{$section}` index section")).with_arg("section", section)
+                build(msg!("failed to parse `{$section}` index section")).with_arg("section", section)
             }
             thorin::Error::UnitNotInIndex(unit) => {
-                build(inline_fluent!("unit {$unit} from input package is not in its index"))
+                build(msg!("unit {$unit} from input package is not in its index"))
                     .with_arg("unit", format!("0x{unit:08x}"))
             }
             thorin::Error::RowNotInIndex(_, row) => {
-                build(inline_fluent!("row {$row} found in index's hash table not present in index")).with_arg("row", row)
+                build(msg!("row {$row} found in index's hash table not present in index")).with_arg("row", row)
             }
-            thorin::Error::SectionNotInRow => build(inline_fluent!("section not found in unit's row in index")),
-            thorin::Error::EmptyUnit(unit) => build(inline_fluent!("unit {$unit} in input DWARF object with no data"))
+            thorin::Error::SectionNotInRow => build(msg!("section not found in unit's row in index")),
+            thorin::Error::EmptyUnit(unit) => build(msg!("unit {$unit} in input DWARF object with no data"))
                 .with_arg("unit", format!("0x{unit:08x}")),
             thorin::Error::MultipleDebugInfoSection => {
-                build(inline_fluent!("multiple `.debug_info.dwo` sections"))
+                build(msg!("multiple `.debug_info.dwo` sections"))
             }
             thorin::Error::MultipleDebugTypesSection => {
-                build(inline_fluent!("multiple `.debug_types.dwo` sections in a package"))
+                build(msg!("multiple `.debug_types.dwo` sections in a package"))
             }
-            thorin::Error::NotSplitUnit => build(inline_fluent!("regular compilation unit in object (missing dwo identifier)")),
-            thorin::Error::DuplicateUnit(unit) => build(inline_fluent!("duplicate split compilation unit ({$unit})"))
+            thorin::Error::NotSplitUnit => build(msg!("regular compilation unit in object (missing dwo identifier)")),
+            thorin::Error::DuplicateUnit(unit) => build(msg!("duplicate split compilation unit ({$unit})"))
                 .with_arg("unit", format!("0x{unit:08x}")),
             thorin::Error::MissingReferencedUnit(unit) => {
-                build(inline_fluent!("unit {$unit} referenced by executable was not found"))
+                build(msg!("unit {$unit} referenced by executable was not found"))
                     .with_arg("unit", format!("0x{unit:08x}"))
             }
             thorin::Error::NoOutputObjectCreated => {
-                build(inline_fluent!("no output object was created from inputs"))
+                build(msg!("no output object was created from inputs"))
             }
             thorin::Error::MixedInputEncodings => {
-                build(inline_fluent!("input objects have mixed encodings"))
+                build(msg!("input objects have mixed encodings"))
             }
             thorin::Error::Io(e) => {
-                build(inline_fluent!("{$error}")).with_arg("error", format!("{e}"))
+                build(msg!("{$error}")).with_arg("error", format!("{e}"))
             }
             thorin::Error::ObjectRead(e) => {
-                build(inline_fluent!("{$error}")).with_arg("error", format!("{e}"))
+                build(msg!("{$error}")).with_arg("error", format!("{e}"))
             }
             thorin::Error::ObjectWrite(e) => {
-                build(inline_fluent!("{$error}")).with_arg("error", format!("{e}"))
+                build(msg!("{$error}")).with_arg("error", format!("{e}"))
             }
             thorin::Error::GimliRead(e) => {
-                build(inline_fluent!("{$error}")).with_arg("error", format!("{e}"))
+                build(msg!("{$error}")).with_arg("error", format!("{e}"))
             }
             thorin::Error::GimliWrite(e) => {
-                build(inline_fluent!("{$error}")).with_arg("error", format!("{e}"))
+                build(msg!("{$error}")).with_arg("error", format!("{e}"))
             }
             _ => unimplemented!("Untranslated thorin error"),
         }
@@ -350,11 +349,8 @@ pub(crate) struct LinkingFailed<'a> {
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
     fn into_diag(mut self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(
-            dcx,
-            level,
-            inline_fluent!("linking with `{$linker_path}` failed: {$exit_status}"),
-        );
+        let mut diag =
+            Diag::new(dcx, level, msg!("linking with `{$linker_path}` failed: {$exit_status}"));
         diag.arg("linker_path", format!("{}", self.linker_path.display()));
         diag.arg("exit_status", format!("{}", self.exit_status));
 
@@ -463,11 +459,11 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
         // Trying to match an error from OS linkers
         // which by now we have no way to translate.
         if contains_undefined_ref {
-            diag.note(inline_fluent!("some `extern` functions couldn't be found; some native libraries may need to be installed or have their path specified"))
-                .note(inline_fluent!("use the `-l` flag to specify native libraries to link"));
+            diag.note(msg!("some `extern` functions couldn't be found; some native libraries may need to be installed or have their path specified"))
+                .note(msg!("use the `-l` flag to specify native libraries to link"));
 
             if rustc_session::utils::was_invoked_from_cargo() {
-                diag.note(inline_fluent!("use the `cargo:rustc-link-lib` directive to specify the native libraries to link with Cargo (see https://doc.rust-lang.org/cargo/reference/build-scripts.html#rustc-link-lib)"));
+                diag.note(msg!("use the `cargo:rustc-link-lib` directive to specify the native libraries to link with Cargo (see https://doc.rust-lang.org/cargo/reference/build-scripts.html#rustc-link-lib)"));
             }
         }
         diag
@@ -482,12 +478,11 @@ pub(crate) struct LinkExeStatusStackBufferOverrun;
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for LinkExeStatusStackBufferOverrun {
     fn into_diag(self, dcx: rustc_errors::DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        let mut diag =
-            Diag::new(dcx, level, inline_fluent!("0xc0000409 is `STATUS_STACK_BUFFER_OVERRUN`"));
-        diag.note(inline_fluent!(
+        let mut diag = Diag::new(dcx, level, msg!("0xc0000409 is `STATUS_STACK_BUFFER_OVERRUN`"));
+        diag.note(msg!(
             "this may have been caused by a program abort and not a stack buffer overrun"
         ));
-        diag.note(inline_fluent!("consider checking the Application Event Log for Windows Error Reporting events to see the fail fast error code"));
+        diag.note(msg!("consider checking the Application Event Log for Windows Error Reporting events to see the fail fast error code"));
         diag
     }
 }
@@ -1233,9 +1228,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_
         let mut diag = Diag::new(
             dcx,
             level,
-            inline_fluent!(
-                "the target features {$features} must all be either enabled or disabled together"
-            ),
+            msg!("the target features {$features} must all be either enabled or disabled together"),
         );
         if let Some(span) = self.span {
             diag.span(span);

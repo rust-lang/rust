@@ -1,7 +1,7 @@
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagMessage, Diagnostic, ElidedLifetimeInPathSubdiag,
-    EmissionGuarantee, IntoDiagArg, Level, LintDiagnostic, MultiSpan, Subdiagnostic, inline_fluent,
+    EmissionGuarantee, IntoDiagArg, Level, LintDiagnostic, MultiSpan, Subdiagnostic, msg,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::source_map::Spanned;
@@ -1371,16 +1371,16 @@ impl Subdiagnostic for FoundItemConfigureOut {
                 let key = "feature".into();
                 let value = feature.into_diag_arg(&mut None);
                 let msg = diag.dcx.eagerly_translate_to_string(
-                    inline_fluent!("the item is gated behind the `{$feature}` feature"),
+                    msg!("the item is gated behind the `{$feature}` feature"),
                     [(&key, &value)].into_iter(),
                 );
                 multispan.push_span_label(span, msg);
             }
             ItemWas::CfgOut { span } => {
-                multispan.push_span_label(span, inline_fluent!("the item is gated here"));
+                multispan.push_span_label(span, msg!("the item is gated here"));
             }
         }
-        diag.span_note(multispan, inline_fluent!("found an item that was configured out"));
+        diag.span_note(multispan, msg!("found an item that was configured out"));
     }
 }
 

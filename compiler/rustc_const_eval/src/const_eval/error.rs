@@ -43,40 +43,36 @@ pub enum ConstEvalErrKind {
 impl MachineStopType for ConstEvalErrKind {
     fn diagnostic_message(&self) -> DiagMessage {
         use ConstEvalErrKind::*;
-        use rustc_errors::inline_fluent;
+        use rustc_errors::msg;
 
         match self {
             ConstAccessesMutGlobal => "constant accesses mutable global memory".into(),
             ModifiedGlobal => {
                 "modifying a static's initial value from another static's initializer".into()
             }
-            Panic { .. } => inline_fluent!("evaluation panicked: {$msg}"),
+            Panic { .. } => msg!("evaluation panicked: {$msg}"),
             RecursiveStatic => {
                 "encountered static that tried to access itself during initialization".into()
             }
             AssertFailure(x) => x.diagnostic_message(),
             WriteThroughImmutablePointer => {
-                inline_fluent!(
+                msg!(
                     "writing through a pointer that was derived from a shared (immutable) reference"
                 )
             }
             ConstMakeGlobalPtrAlreadyMadeGlobal { .. } => {
-                inline_fluent!(
-                    "attempting to call `const_make_global` twice on the same allocation {$alloc}"
-                )
+                msg!("attempting to call `const_make_global` twice on the same allocation {$alloc}")
             }
             ConstMakeGlobalPtrIsNonHeap(_) => {
-                inline_fluent!(
+                msg!(
                     "pointer passed to `const_make_global` does not point to a heap allocation: {$ptr}"
                 )
             }
             ConstMakeGlobalWithDanglingPtr(_) => {
-                inline_fluent!("pointer passed to `const_make_global` is dangling: {$ptr}")
+                msg!("pointer passed to `const_make_global` is dangling: {$ptr}")
             }
             ConstMakeGlobalWithOffset(_) => {
-                inline_fluent!(
-                    "making {$ptr} global which does not point to the beginning of an object"
-                )
+                msg!("making {$ptr} global which does not point to the beginning of an object")
             }
         }
     }

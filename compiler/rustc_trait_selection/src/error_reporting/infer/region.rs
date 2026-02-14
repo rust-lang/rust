@@ -2,8 +2,7 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
-    Applicability, Diag, E0309, E0310, E0311, E0803, Subdiagnostic, inline_fluent,
-    struct_span_code_err,
+    Applicability, Diag, E0309, E0310, E0311, E0803, Subdiagnostic, msg, struct_span_code_err,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -230,20 +229,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             .add_to_diag(err),
             SubregionOrigin::Reborrow(span) => RegionOriginNote::Plain {
                 span,
-                msg: inline_fluent!("...so that reference does not outlive borrowed content"),
+                msg: msg!("...so that reference does not outlive borrowed content"),
             }
             .add_to_diag(err),
             SubregionOrigin::RelateObjectBound(span) => {
                 RegionOriginNote::Plain {
                     span,
-                    msg: inline_fluent!("...so that it can be closed over into an object"),
+                    msg: msg!("...so that it can be closed over into an object"),
                 }
                 .add_to_diag(err);
             }
             SubregionOrigin::ReferenceOutlivesReferent(ty, span) => {
                 RegionOriginNote::WithName {
                     span,
-                    msg: inline_fluent!("...so that the reference type `{$name}` does not outlive the data it points at"),
+                    msg: msg!("...so that the reference type `{$name}` does not outlive the data it points at"),
                     name: &self.ty_to_string(ty),
                     continues: false,
                 }
@@ -252,7 +251,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             SubregionOrigin::RelateParamBound(span, ty, opt_span) => {
                 RegionOriginNote::WithName {
                     span,
-                    msg: inline_fluent!(
+                    msg: msg!(
                         "...so that the type `{$name}` will meet its required lifetime bounds{$continues ->
                             [true] ...
                             *[false] {\"\"}
@@ -265,7 +264,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let Some(span) = opt_span {
                     RegionOriginNote::Plain {
                         span,
-                        msg: inline_fluent!("...that is required by this bound"),
+                        msg: msg!("...that is required by this bound"),
                     }
                     .add_to_diag(err);
                 }
@@ -273,16 +272,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             SubregionOrigin::RelateRegionParamBound(span, _) => {
                 RegionOriginNote::Plain {
                     span,
-                    msg: inline_fluent!(
-                        "...so that the declared lifetime parameter bounds are satisfied"
-                    ),
+                    msg: msg!("...so that the declared lifetime parameter bounds are satisfied"),
                 }
                 .add_to_diag(err);
             }
             SubregionOrigin::CompareImplItemObligation { span, .. } => {
                 RegionOriginNote::Plain {
                     span,
-                    msg: inline_fluent!(
+                    msg: msg!(
                         "...so that the definition in impl matches the definition from the trait"
                     ),
                 }
@@ -292,11 +289,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.note_region_origin(err, parent);
             }
             SubregionOrigin::AscribeUserTypeProvePredicate(span) => {
-                RegionOriginNote::Plain {
-                    span,
-                    msg: inline_fluent!("...so that the where clause holds"),
-                }
-                .add_to_diag(err);
+                RegionOriginNote::Plain { span, msg: msg!("...so that the where clause holds") }
+                    .add_to_diag(err);
             }
         }
     }

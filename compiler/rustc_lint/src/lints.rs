@@ -5,7 +5,7 @@ use std::num::NonZero;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
-    EmissionGuarantee, LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle, inline_fluent,
+    EmissionGuarantee, LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle, msg,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -228,7 +228,7 @@ pub(crate) struct BuiltinMissingDebugImpl<'a> {
 // Needed for def_path_str
 impl<'a> LintDiagnostic<'a, ()> for BuiltinMissingDebugImpl<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::Diag<'a, ()>) {
-        diag.primary_message(inline_fluent!("type does not implement `{$debug}`; consider adding `#[derive(Debug)]` or a manual implementation"));
+        diag.primary_message(msg!("type does not implement `{$debug}`; consider adding `#[derive(Debug)]` or a manual implementation"));
         diag.arg("debug", self.tcx.def_path_str(self.def_id));
     }
 }
@@ -298,11 +298,8 @@ pub(crate) struct BuiltinUngatedAsyncFnTrackCaller<'a> {
 
 impl<'a> LintDiagnostic<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        diag.primary_message(inline_fluent!("`#[track_caller]` on async functions is a no-op"));
-        diag.span_label(
-            self.label,
-            inline_fluent!("this function will not propagate the caller location"),
-        );
+        diag.primary_message(msg!("`#[track_caller]` on async functions is a no-op"));
+        diag.span_label(self.label, msg!("this function will not propagate the caller location"));
         rustc_session::parse::add_feature_diagnostics(
             diag,
             self.session,
@@ -345,20 +342,17 @@ pub(crate) struct BuiltinTypeAliasBounds<'hir> {
 impl<'a> LintDiagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         diag.primary_message(if self.in_where_clause {
-            inline_fluent!("where clauses on type aliases are not enforced")
+            msg!("where clauses on type aliases are not enforced")
         } else {
-            inline_fluent!("bounds on generic parameters in type aliases are not enforced")
+            msg!("bounds on generic parameters in type aliases are not enforced")
         });
-        diag.span_label(
-            self.label,
-            inline_fluent!("will not be checked at usage sites of the type alias"),
-        );
-        diag.note(inline_fluent!(
+        diag.span_label(self.label, msg!("will not be checked at usage sites of the type alias"));
+        diag.note(msg!(
             "this is a known limitation of the type checker that may be lifted in a future edition.
             see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information"
         ));
         if self.enable_feat_help {
-            diag.help(inline_fluent!("add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics"));
+            diag.help(msg!("add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics"));
         }
 
         // We perform the walk in here instead of in `<TypeAliasBounds as LateLintPass>` to
@@ -385,9 +379,9 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
         diag.arg("count", self.suggestions.len());
         diag.multipart_suggestion(
             if self.in_where_clause {
-                inline_fluent!("remove this where clause")
+                msg!("remove this where clause")
             } else {
-                inline_fluent!(
+                msg!(
                     "remove {$count ->
                         [one] this bound
                         *[other] these bounds
@@ -410,7 +404,7 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
         // (We could employ some simple heuristics but that's likely not worth it).
         for qself in collector.qselves {
             diag.multipart_suggestion(
-                inline_fluent!("fully qualify this associated type"),
+                msg!("fully qualify this associated type"),
                 vec![
                     (qself.shrink_to_lo(), "<".into()),
                     (qself.shrink_to_hi(), " as /* Trait */>".into()),
@@ -551,15 +545,12 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         diag.primary_message(self.msg);
         diag.arg("ty", self.ty);
-        diag.span_label(
-            self.label,
-            inline_fluent!("this code causes undefined behavior when executed"),
-        );
+        diag.span_label(self.label, msg!("this code causes undefined behavior when executed"));
         if let InhabitedPredicate::True = self.ty.inhabited_predicate(self.tcx) {
             // Only suggest late `MaybeUninit::assume_init` initialization if the type is inhabited.
             diag.span_label(
                 self.label,
-                inline_fluent!("help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done"),
+                msg!("help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done"),
             );
         }
         self.sub.add_to_diag(diag);
@@ -1183,7 +1174,7 @@ impl Subdiagnostic for NonBindingLetSub {
             let prefix = if self.is_assign_desugar { "let " } else { "" };
             diag.span_suggestion_verbose(
                 self.suggestion,
-                inline_fluent!(
+                msg!(
                     "consider binding to an unused variable to avoid immediately dropping the value"
                 ),
                 format!("{prefix}_unused"),
@@ -1192,14 +1183,14 @@ impl Subdiagnostic for NonBindingLetSub {
         } else {
             diag.span_help(
                 self.suggestion,
-                inline_fluent!(
+                msg!(
                     "consider binding to an unused variable to avoid immediately dropping the value"
                 ),
             );
         }
         if let Some(drop_fn_start_end) = self.drop_fn_start_end {
             diag.multipart_suggestion(
-                inline_fluent!("consider immediately dropping the value"),
+                msg!("consider immediately dropping the value"),
                 vec![
                     (drop_fn_start_end.0, "drop(".to_string()),
                     (drop_fn_start_end.1, ")".to_string()),
@@ -1207,7 +1198,7 @@ impl Subdiagnostic for NonBindingLetSub {
                 Applicability::MachineApplicable,
             );
         } else {
-            diag.help(inline_fluent!(
+            diag.help(msg!(
                 "consider immediately dropping the value using `drop(..)` after the `let` statement"
             ));
         }
@@ -1454,7 +1445,7 @@ pub(crate) struct NonFmtPanicUnused {
 // Used because of two suggestions based on one Option<Span>
 impl<'a> LintDiagnostic<'a, ()> for NonFmtPanicUnused {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        diag.primary_message(inline_fluent!(
+        diag.primary_message(msg!(
             "panic message contains {$count ->
                 [one] an unused
                 *[other] unused
@@ -1464,11 +1455,11 @@ impl<'a> LintDiagnostic<'a, ()> for NonFmtPanicUnused {
             }"
         ));
         diag.arg("count", self.count);
-        diag.note(inline_fluent!("this message is not used as a format string when given without arguments, but will be in Rust 2021"));
+        diag.note(msg!("this message is not used as a format string when given without arguments, but will be in Rust 2021"));
         if let Some(span) = self.suggestion {
             diag.span_suggestion(
                 span.shrink_to_hi(),
-                inline_fluent!(
+                msg!(
                     "add the missing {$count ->
                         [one] argument
                         *[other] arguments
@@ -1479,9 +1470,7 @@ impl<'a> LintDiagnostic<'a, ()> for NonFmtPanicUnused {
             );
             diag.span_suggestion(
                 span.shrink_to_lo(),
-                inline_fluent!(
-                    r#"or add a "{"{"}{"}"}" format string to use the message literally"#
-                ),
+                msg!(r#"or add a "{"{"}{"}"}" format string to use the message literally"#),
                 "\"{}\", ",
                 Applicability::MachineApplicable,
             );
@@ -1558,15 +1547,15 @@ impl Subdiagnostic for NonSnakeCaseDiagSub {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             NonSnakeCaseDiagSub::Label { span } => {
-                diag.span_label(span, inline_fluent!("should have a snake_case name"));
+                diag.span_label(span, msg!("should have a snake_case name"));
             }
             NonSnakeCaseDiagSub::Help => {
-                diag.help(inline_fluent!("convert the identifier to snake case: `{$sc}`"));
+                diag.help(msg!("convert the identifier to snake case: `{$sc}`"));
             }
             NonSnakeCaseDiagSub::ConvertSuggestion { span, suggestion } => {
                 diag.span_suggestion(
                     span,
-                    inline_fluent!("convert the identifier to snake case"),
+                    msg!("convert the identifier to snake case"),
                     suggestion,
                     Applicability::MaybeIncorrect,
                 );
@@ -1574,18 +1563,16 @@ impl Subdiagnostic for NonSnakeCaseDiagSub {
             NonSnakeCaseDiagSub::RenameOrConvertSuggestion { span, suggestion } => {
                 diag.span_suggestion(
                     span,
-                    inline_fluent!(
-                        "rename the identifier or convert it to a snake case raw identifier"
-                    ),
+                    msg!("rename the identifier or convert it to a snake case raw identifier"),
                     suggestion,
                     Applicability::MaybeIncorrect,
                 );
             }
             NonSnakeCaseDiagSub::SuggestionAndNote { span } => {
-                diag.note(inline_fluent!("`{$sc}` cannot be used as a raw identifier"));
+                diag.note(msg!("`{$sc}` cannot be used as a raw identifier"));
                 diag.span_suggestion(
                     span,
-                    inline_fluent!("rename the identifier"),
+                    msg!("rename the identifier"),
                     "",
                     Applicability::MaybeIncorrect,
                 );
@@ -1703,7 +1690,7 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 doctest,
                 macro_to_change,
             } => {
-                diag.primary_message(inline_fluent!("non-local `impl` definition, `impl` blocks should be written at the same level as their item"));
+                diag.primary_message(msg!("non-local `impl` definition, `impl` blocks should be written at the same level as their item"));
                 diag.arg("depth", depth);
                 diag.arg("body_kind_descr", body_kind_descr);
                 diag.arg("body_name", body_name);
@@ -1711,24 +1698,24 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 if let Some((macro_to_change, macro_kind)) = macro_to_change {
                     diag.arg("macro_to_change", macro_to_change);
                     diag.arg("macro_kind", macro_kind);
-                    diag.note(inline_fluent!("the {$macro_kind} `{$macro_to_change}` defines the non-local `impl`, and may need to be changed"));
+                    diag.note(msg!("the {$macro_kind} `{$macro_to_change}` defines the non-local `impl`, and may need to be changed"));
                 }
                 if let Some(cargo_update) = cargo_update {
                     diag.subdiagnostic(cargo_update);
                 }
 
-                diag.note(inline_fluent!("an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`"));
+                diag.note(msg!("an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`"));
 
                 if doctest {
-                    diag.help(inline_fluent!("make this doc-test a standalone test with its own `fn main() {\"{\"} ... {\"}\"}`"));
+                    diag.help(msg!("make this doc-test a standalone test with its own `fn main() {\"{\"} ... {\"}\"}`"));
                 }
 
                 if let Some(const_anon) = const_anon {
-                    diag.note(inline_fluent!("items in an anonymous const item (`const _: () = {\"{\"} ... {\"}\"}`) are treated as in the same scope as the anonymous const's declaration for the purpose of this lint"));
+                    diag.note(msg!("items in an anonymous const item (`const _: () = {\"{\"} ... {\"}\"}`) are treated as in the same scope as the anonymous const's declaration for the purpose of this lint"));
                     if let Some(const_anon) = const_anon {
                         diag.span_suggestion(
                             const_anon,
-                            inline_fluent!("use a const-anon item to suppress this lint"),
+                            msg!("use a const-anon item to suppress this lint"),
                             "_",
                             Applicability::MachineApplicable,
                         );
@@ -1742,15 +1729,15 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 doctest,
                 cargo_update,
             } => {
-                diag.primary_message(inline_fluent!("non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module"));
+                diag.primary_message(msg!("non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module"));
                 diag.arg("depth", depth);
                 diag.arg("body_kind_descr", body_kind_descr);
                 diag.arg("body_name", body_name);
 
                 if doctest {
-                    diag.help(inline_fluent!(r#"remove the `#[macro_export]` or make this doc-test a standalone test with its own `fn main() {"{"} ... {"}"}`"#));
+                    diag.help(msg!(r#"remove the `#[macro_export]` or make this doc-test a standalone test with its own `fn main() {"{"} ... {"}"}`"#));
                 } else {
-                    diag.help(inline_fluent!(
+                    diag.help(msg!(
                         "remove the `#[macro_export]` or move this `macro_rules!` outside the of the current {$body_kind_descr} {$depth ->
                             [one] `{$body_name}`
                             *[other] `{$body_name}` and up {$depth} bodies
@@ -1758,7 +1745,7 @@ impl<'a> LintDiagnostic<'a, ()> for NonLocalDefinitionsDiag {
                     ));
                 }
 
-                diag.note(inline_fluent!("a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute"));
+                diag.note(msg!("a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute"));
 
                 if let Some(cargo_update) = cargo_update {
                     diag.subdiagnostic(cargo_update);
@@ -1861,7 +1848,7 @@ pub(crate) struct DropTraitConstraintsDiag<'a> {
 // Needed for def_path_str
 impl<'a> LintDiagnostic<'a, ()> for DropTraitConstraintsDiag<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        diag.primary_message(inline_fluent!("bounds on `{$predicate}` are most likely incorrect, consider instead using `{$needs_drop}` to detect whether a type can be trivially dropped"));
+        diag.primary_message(msg!("bounds on `{$predicate}` are most likely incorrect, consider instead using `{$needs_drop}` to detect whether a type can be trivially dropped"));
         diag.arg("predicate", self.predicate);
         diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
@@ -1875,7 +1862,7 @@ pub(crate) struct DropGlue<'a> {
 // Needed for def_path_str
 impl<'a> LintDiagnostic<'a, ()> for DropGlue<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        diag.primary_message(inline_fluent!("types that do not implement `Drop` can still have drop glue, consider instead using `{$needs_drop}` to detect whether a type is trivially dropped"));
+        diag.primary_message(msg!("types that do not implement `Drop` can still have drop glue, consider instead using `{$needs_drop}` to detect whether a type is trivially dropped"));
         diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
 }
@@ -2317,18 +2304,16 @@ pub(crate) struct ImproperCTypes<'a> {
 // Used because of the complexity of Option<DiagMessage>, DiagMessage, and Option<Span>
 impl<'a> LintDiagnostic<'a, ()> for ImproperCTypes<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        diag.primary_message(inline_fluent!(
-            "`extern` {$desc} uses type `{$ty}`, which is not FFI-safe"
-        ));
+        diag.primary_message(msg!("`extern` {$desc} uses type `{$ty}`, which is not FFI-safe"));
         diag.arg("ty", self.ty);
         diag.arg("desc", self.desc);
-        diag.span_label(self.label, inline_fluent!("not FFI-safe"));
+        diag.span_label(self.label, msg!("not FFI-safe"));
         if let Some(help) = self.help {
             diag.help(help);
         }
         diag.note(self.note);
         if let Some(note) = self.span_note {
-            diag.span_note(note, inline_fluent!("the type is defined here"));
+            diag.span_note(note, msg!("the type is defined here"));
         }
     }
 }
@@ -2491,7 +2476,7 @@ pub(crate) enum UnusedDefSuggestion {
 // Needed because of def_path_str
 impl<'a> LintDiagnostic<'a, ()> for UnusedDef<'_, '_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        diag.primary_message(inline_fluent!("unused {$pre}`{$def}`{$post} that must be used"));
+        diag.primary_message(msg!("unused {$pre}`{$def}`{$post} that must be used"));
         diag.arg("pre", self.pre);
         diag.arg("post", self.post);
         diag.arg("def", self.cx.tcx.def_path_str(self.def_id));
@@ -2575,10 +2560,10 @@ pub(crate) struct AsyncFnInTraitDiag {
 
 impl<'a> LintDiagnostic<'a, ()> for AsyncFnInTraitDiag {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        diag.primary_message(inline_fluent!("use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified"));
-        diag.note(inline_fluent!("you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`"));
+        diag.primary_message(msg!("use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified"));
+        diag.note(msg!("you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`"));
         if let Some(sugg) = self.sugg {
-            diag.multipart_suggestion(inline_fluent!("you can alternatively desugar to a normal `fn` that returns `impl Future` and add any desired bounds such as `Send`, but these cannot be relaxed without a breaking API change"), sugg, Applicability::MaybeIncorrect);
+            diag.multipart_suggestion(msg!("you can alternatively desugar to a normal `fn` that returns `impl Future` and add any desired bounds such as `Send`, but these cannot be relaxed without a breaking API change"), sugg, Applicability::MaybeIncorrect);
         }
     }
 }
@@ -3450,44 +3435,44 @@ impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for MismatchedLifetimeSynta
             }
 
             LifetimeSyntaxCategories { hidden: _, elided: _, named: 0 } => {
-                inline_fluent!("hiding a lifetime that's elided elsewhere is confusing")
+                msg!("hiding a lifetime that's elided elsewhere is confusing")
             }
 
             LifetimeSyntaxCategories { hidden: _, elided: 0, named: _ } => {
-                inline_fluent!("hiding a lifetime that's named elsewhere is confusing")
+                msg!("hiding a lifetime that's named elsewhere is confusing")
             }
 
             LifetimeSyntaxCategories { hidden: 0, elided: _, named: _ } => {
-                inline_fluent!("eliding a lifetime that's named elsewhere is confusing")
+                msg!("eliding a lifetime that's named elsewhere is confusing")
             }
 
             LifetimeSyntaxCategories { hidden: _, elided: _, named: _ } => {
-                inline_fluent!("hiding or eliding a lifetime that's named elsewhere is confusing")
+                msg!("hiding or eliding a lifetime that's named elsewhere is confusing")
             }
         };
         diag.primary_message(message);
 
         for s in self.inputs.hidden {
-            diag.span_label(s, inline_fluent!("the lifetime is hidden here"));
+            diag.span_label(s, msg!("the lifetime is hidden here"));
         }
         for s in self.inputs.elided {
-            diag.span_label(s, inline_fluent!("the lifetime is elided here"));
+            diag.span_label(s, msg!("the lifetime is elided here"));
         }
         for s in self.inputs.named {
-            diag.span_label(s, inline_fluent!("the lifetime is named here"));
+            diag.span_label(s, msg!("the lifetime is named here"));
         }
 
         for s in self.outputs.hidden {
-            diag.span_label(s, inline_fluent!("the same lifetime is hidden here"));
+            diag.span_label(s, msg!("the same lifetime is hidden here"));
         }
         for s in self.outputs.elided {
-            diag.span_label(s, inline_fluent!("the same lifetime is elided here"));
+            diag.span_label(s, msg!("the same lifetime is elided here"));
         }
         for s in self.outputs.named {
-            diag.span_label(s, inline_fluent!("the same lifetime is named here"));
+            diag.span_label(s, msg!("the same lifetime is named here"));
         }
 
-        diag.help(inline_fluent!(
+        diag.help(msg!(
             "the same lifetime is referred to in inconsistent ways, making the signature confusing"
         ));
 
@@ -3563,7 +3548,7 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
             Implicit { suggestions, optional_alternative } => {
                 let suggestions = suggestions.into_iter().map(|s| (s, String::new())).collect();
                 diag.multipart_suggestion_with_style(
-                    inline_fluent!("remove the lifetime name from references"),
+                    msg!("remove the lifetime name from references"),
                     suggestions,
                     applicability(optional_alternative),
                     style(optional_alternative),
@@ -3576,11 +3561,9 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
                 optional_alternative,
             } => {
                 let message = if implicit_suggestions.is_empty() {
-                    inline_fluent!("use `'_` for type paths")
+                    msg!("use `'_` for type paths")
                 } else {
-                    inline_fluent!(
-                        "remove the lifetime name from references and use `'_` for type paths"
-                    )
+                    msg!("remove the lifetime name from references and use `'_` for type paths")
                 };
 
                 let implicit_suggestions =
@@ -3599,8 +3582,7 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 
             Explicit { lifetime_name, suggestions, optional_alternative } => {
                 diag.arg("lifetime_name", lifetime_name);
-                let msg =
-                    diag.eagerly_translate(inline_fluent!("consistently use `{$lifetime_name}`"));
+                let msg = diag.eagerly_translate(msg!("consistently use `{$lifetime_name}`"));
                 diag.remove_arg("lifetime_name");
                 diag.multipart_suggestion_with_style(
                     msg,

@@ -1,6 +1,6 @@
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{self as ast, AttrVec, NodeId, PatKind, attr, token};
-use rustc_errors::inline_fluent;
+use rustc_errors::msg;
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features};
 use rustc_session::Session;
 use rustc_session::parse::{feature_err, feature_warn};
@@ -125,7 +125,7 @@ impl<'a> PostExpansionVisitor<'a> {
             &self,
             non_lifetime_binders,
             non_lt_param_spans,
-            inline_fluent!("only lifetime parameters can be used in this context")
+            msg!("only lifetime parameters can be used in this context")
         );
 
         // FIXME(non_lifetime_binders): Const bound params are pretty broken.

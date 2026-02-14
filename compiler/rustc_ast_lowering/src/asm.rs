@@ -3,7 +3,7 @@ use std::fmt::Write;
 
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_errors::inline_fluent;
+use rustc_errors::msg;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::parse::feature_err;
@@ -67,7 +67,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     &self.tcx.sess,
                     sym::asm_experimental_arch,
                     sp,
-                    inline_fluent!("inline assembly is not stable yet on this architecture"),
+                    msg!("inline assembly is not stable yet on this architecture"),
                 )
                 .emit();
             }
@@ -84,7 +84,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 &self.tcx.sess,
                 sym::asm_unwind,
                 sp,
-                inline_fluent!("the `may_unwind` option is unstable"),
+                msg!("the `may_unwind` option is unstable"),
             )
             .emit();
         }
@@ -499,9 +499,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     sess,
                     sym::asm_goto_with_outputs,
                     *op_sp,
-                    inline_fluent!(
-                        "using both label and output operands for inline assembly is unstable"
-                    ),
+                    msg!("using both label and output operands for inline assembly is unstable"),
                 )
                 .emit();
             }

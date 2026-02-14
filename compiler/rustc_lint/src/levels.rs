@@ -2,7 +2,7 @@ use rustc_ast::attr::AttributeExt;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{Diag, LintDiagnostic, MultiSpan, inline_fluent};
+use rustc_errors::{Diag, LintDiagnostic, MultiSpan, msg};
 use rustc_feature::{Features, GateIssue};
 use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -941,9 +941,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             let lint = builtin::UNKNOWN_LINTS;
             let level = self.lint_level(builtin::UNKNOWN_LINTS);
             lint_level(self.sess, lint, level, Some(span.into()), |lint| {
-                lint.primary_message(inline_fluent!("unknown lint: `{$name}`"));
+                lint.primary_message(msg!("unknown lint: `{$name}`"));
                 lint.arg("name", lint_id.lint.name_lower());
-                lint.note(inline_fluent!("the `{$name}` lint is unstable"));
+                lint.note(msg!("the `{$name}` lint is unstable"));
                 rustc_session::parse::add_feature_diagnostics_for_issue(
                     lint,
                     &self.sess,

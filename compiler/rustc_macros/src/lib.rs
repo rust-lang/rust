@@ -245,8 +245,8 @@ decl_derive!(
 ///
 /// This macro statically checks that the message is valid Fluent, but not that variables in the Fluent message actually exist.
 #[proc_macro]
-pub fn inline_fluent(input: TokenStream) -> TokenStream {
-    diagnostics::inline_fluent(input)
+pub fn msg(input: TokenStream) -> TokenStream {
+    diagnostics::msg_macro(input)
 }
 
 decl_derive! {

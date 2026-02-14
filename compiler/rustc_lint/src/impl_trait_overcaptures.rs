@@ -3,7 +3,7 @@ use std::cell::LazyCell;
 use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{LintDiagnostic, Subdiagnostic, inline_fluent};
+use rustc_errors::{LintDiagnostic, Subdiagnostic, msg};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -435,23 +435,21 @@ struct ImplTraitOvercapturesLint<'tcx> {
 
 impl<'a> LintDiagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::Diag<'a, ()>) {
-        diag.primary_message(inline_fluent!(
+        diag.primary_message(msg!(
             "`{$self_ty}` will capture more lifetimes than possibly intended in edition 2024"
         ));
         diag.arg("self_ty", self.self_ty.to_string())
             .arg("num_captured", self.num_captured)
             .span_note(
                 self.uncaptured_spans,
-                inline_fluent!(
+                msg!(
                     "specifically, {$num_captured ->
                         [one] this lifetime is
                         *[other] these lifetimes are
                     } in scope but not mentioned in the type's bounds"
                 ),
             )
-            .note(inline_fluent!(
-                "all lifetimes in scope will be captured by `impl Trait`s in edition 2024"
-            ));
+            .note(msg!("all lifetimes in scope will be captured by `impl Trait`s in edition 2024"));
         if let Some(suggestion) = self.suggestion {
             suggestion.add_to_diag(diag);
         }

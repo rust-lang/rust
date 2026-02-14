@@ -1,7 +1,7 @@
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
-    MultiSpan, Subdiagnostic, inline_fluent,
+    MultiSpan, Subdiagnostic, msg,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
@@ -619,14 +619,12 @@ impl Subdiagnostic for UnsafeNotInheritedLintNote {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.span_note(
             self.signature_span,
-            inline_fluent!(
-                "an unsafe function restricts its caller, but its body is safe by default"
-            ),
+            msg!("an unsafe function restricts its caller, but its body is safe by default"),
         );
         let body_start = self.body_span.shrink_to_lo();
         let body_end = self.body_span.shrink_to_hi();
         diag.tool_only_multipart_suggestion(
-            inline_fluent!("consider wrapping the function body in an unsafe block"),
+            msg!("consider wrapping the function body in an unsafe block"),
             vec![(body_start, "{ unsafe ".into()), (body_end, "}".into())],
             Applicability::MachineApplicable,
         );
@@ -660,11 +658,8 @@ pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        let mut diag = Diag::new(
-            dcx,
-            level,
-            inline_fluent!("non-exhaustive patterns: type `{$ty}` is non-empty"),
-        );
+        let mut diag =
+            Diag::new(dcx, level, msg!("non-exhaustive patterns: type `{$ty}` is non-empty"));
         diag.span(self.scrut_span);
         diag.code(E0004);
         let peeled_ty = self.ty.peel_refs();
@@ -684,22 +679,22 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNo
             let mut span: MultiSpan = def_span.into();
             span.push_span_label(def_span, "");
 
-            diag.span_note(span, inline_fluent!("`{$peeled_ty}` defined here"));
+            diag.span_note(span, msg!("`{$peeled_ty}` defined here"));
         }
 
         let is_non_exhaustive = matches!(self.ty.kind(),
             ty::Adt(def, _) if def.variant_list_has_applicable_non_exhaustive());
         if is_non_exhaustive {
-            diag.note(inline_fluent!(
+            diag.note(msg!(
                 "the matched value is of type `{$ty}`, which is marked as non-exhaustive"
             ));
         } else {
-            diag.note(inline_fluent!("the matched value is of type `{$ty}`"));
+            diag.note(msg!("the matched value is of type `{$ty}`"));
         }
 
         if let ty::Ref(_, sub_ty, _) = self.ty.kind() {
             if !sub_ty.is_inhabited_from(self.cx.tcx, self.cx.module, self.cx.typing_env) {
-                diag.note(inline_fluent!("references are always considered inhabited"));
+                diag.note(msg!("references are always considered inhabited"));
             }
         }
 
@@ -714,12 +709,12 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNo
             };
             diag.span_suggestion_verbose(
                 braces_span,
-                inline_fluent!("ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown"),
+                msg!("ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown"),
                 format!(" {{{indentation}{more}_ => todo!(),{indentation}}}"),
                 Applicability::HasPlaceholders,
             );
         } else {
-            diag.help(inline_fluent!(
+            diag.help(msg!(
                 "ensure that all possible cases are being handled by adding a match arm with a wildcard pattern"
             ));
         }
@@ -1240,10 +1235,10 @@ impl<'tcx> Subdiagnostic for AdtDefinedHere<'tcx> {
         let mut spans = MultiSpan::from(self.adt_def_span);
 
         for Variant { span } in self.variants {
-            spans.push_span_label(span, inline_fluent!("not covered"));
+            spans.push_span_label(span, msg!("not covered"));
         }
 
-        diag.span_note(spans, inline_fluent!("`{$ty}` defined here"));
+        diag.span_note(spans, msg!("`{$ty}` defined here"));
     }
 }
 

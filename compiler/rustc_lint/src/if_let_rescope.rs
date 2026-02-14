@@ -3,9 +3,7 @@ use std::ops::ControlFlow;
 
 use hir::intravisit::{self, Visitor};
 use rustc_ast::Recovered;
-use rustc_errors::{
-    Applicability, Diag, EmissionGuarantee, Subdiagnostic, SuggestionStyle, inline_fluent,
-};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic, SuggestionStyle, msg};
 use rustc_hir::{self as hir, HirIdSet};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::adjustment::Adjust;
@@ -356,7 +354,7 @@ impl Subdiagnostic for IfLetRescopeRewrite {
                 .chain(repeat_n('}', closing_brackets.count))
                 .collect(),
         ));
-        let msg = diag.eagerly_translate(inline_fluent!(
+        let msg = diag.eagerly_translate(msg!(
             "a `match` with a single arm can preserve the drop order up to Edition 2021"
         ));
         diag.multipart_suggestion_with_style(

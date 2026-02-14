@@ -1,7 +1,7 @@
 //! Deeply normalize types using the old trait solver.
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::inline_fluent;
+use rustc_errors::msg;
 use rustc_hir::def::DefKind;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::{InferCtxt, InferOk};
@@ -295,7 +295,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
                 self.cause.span,
                 false,
                 |diag| {
-                    diag.note(inline_fluent!("in case this is a recursive type alias, consider using a struct, enum, or union instead"));
+                    diag.note(msg!("in case this is a recursive type alias, consider using a struct, enum, or union instead"));
                 },
             );
         }

@@ -19,7 +19,7 @@ use rustc_attr_parsing::{
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{PResult, inline_fluent};
+use rustc_errors::{PResult, msg};
 use rustc_feature::Features;
 use rustc_hir::Target;
 use rustc_hir::def::MacroKinds;
@@ -1051,7 +1051,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             self.sess,
                             sym::proc_macro_hygiene,
                             item.span,
-                            inline_fluent!("file modules in proc macro input are unstable"),
+                            msg!("file modules in proc macro input are unstable"),
                         )
                         .emit();
                     }

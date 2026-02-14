@@ -7,7 +7,7 @@ use rustc_ast::{AssignOpKind, Label};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic,
-    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, inline_fluent,
+    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
 };
 use rustc_hir as hir;
 use rustc_hir::ExprKind;
@@ -343,28 +343,24 @@ impl Subdiagnostic for TypeMismatchFruTypo {
         if self.expr_span.between(self.fru_span).is_empty() {
             diag.span_note(
                 self.expr_span.to(self.fru_span),
-                inline_fluent!(
-                    "this expression may have been misinterpreted as a `..` range expression"
-                ),
+                msg!("this expression may have been misinterpreted as a `..` range expression"),
             );
         } else {
             let mut multispan: MultiSpan = vec![self.expr_span, self.fru_span].into();
             multispan.push_span_label(
                 self.expr_span,
-                inline_fluent!("this expression does not end in a comma..."),
+                msg!("this expression does not end in a comma..."),
             );
-            multispan.push_span_label(self.fru_span, inline_fluent!("... so this is interpreted as a `..` range expression, instead of functional record update syntax"));
+            multispan.push_span_label(self.fru_span, msg!("... so this is interpreted as a `..` range expression, instead of functional record update syntax"));
             diag.span_note(
                 multispan,
-                inline_fluent!(
-                    "this expression may have been misinterpreted as a `..` range expression"
-                ),
+                msg!("this expression may have been misinterpreted as a `..` range expression"),
             );
         }
 
         diag.span_suggestion(
             self.expr_span.shrink_to_hi(),
-            inline_fluent!(
+            msg!(
                 "to set the remaining fields{$expr ->
                     [NONE]{\"\"}
                     *[other] {\" \"}from `{$expr}`
@@ -651,28 +647,19 @@ impl Subdiagnostic for RemoveSemiForCoerce {
         let mut multispan: MultiSpan = self.semi.into();
         multispan.push_span_label(
             self.expr,
-            inline_fluent!(
-                "this could be implicitly returned but it is a statement, not a tail expression"
-            ),
+            msg!("this could be implicitly returned but it is a statement, not a tail expression"),
         );
-        multispan.push_span_label(
-            self.ret,
-            inline_fluent!("the `match` arms can conform to this return type"),
-        );
+        multispan
+            .push_span_label(self.ret, msg!("the `match` arms can conform to this return type"));
         multispan.push_span_label(
             self.semi,
-            inline_fluent!(
-                "the `match` is a statement because of this semicolon, consider removing it"
-            ),
+            msg!("the `match` is a statement because of this semicolon, consider removing it"),
         );
-        diag.span_note(
-            multispan,
-            inline_fluent!("you might have meant to return the `match` expression"),
-        );
+        diag.span_note(multispan, msg!("you might have meant to return the `match` expression"));
 
         diag.tool_only_span_suggestion(
             self.semi,
-            inline_fluent!("remove this semicolon"),
+            msg!("remove this semicolon"),
             "",
             Applicability::MaybeIncorrect,
         );
@@ -802,24 +789,20 @@ pub(crate) struct BreakNonLoop<'a> {
 impl<'a, G: EmissionGuarantee> Diagnostic<'_, G> for BreakNonLoop<'a> {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag =
-            Diag::new(dcx, level, inline_fluent!("`break` with value from a `{$kind}` loop"));
+        let mut diag = Diag::new(dcx, level, msg!("`break` with value from a `{$kind}` loop"));
         diag.span(self.span);
         diag.code(E0571);
         diag.arg("kind", self.kind);
         diag.span_label(
             self.span,
-            inline_fluent!("can only break with a value inside `loop` or breakable block"),
+            msg!("can only break with a value inside `loop` or breakable block"),
         );
         if let Some(head) = self.head {
-            diag.span_label(
-                head,
-                inline_fluent!("you can't `break` with a value in a `{$kind}` loop"),
-            );
+            diag.span_label(head, msg!("you can't `break` with a value in a `{$kind}` loop"));
         }
         diag.span_suggestion(
             self.span,
-            inline_fluent!("use `break` on its own without a value inside this `{$kind}` loop"),
+            msg!("use `break` on its own without a value inside this `{$kind}` loop"),
             self.suggestion,
             Applicability::MaybeIncorrect,
         );
@@ -837,9 +820,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'_, G> for BreakNonLoop<'a> {
                 _ => {
                     diag.span_suggestion(
                         self.break_expr_span,
-                        inline_fluent!(
-                            "alternatively, you might have meant to use the available loop label"
-                        ),
+                        msg!("alternatively, you might have meant to use the available loop label"),
                         label.ident,
                         Applicability::MaybeIncorrect,
                     );
@@ -1007,13 +988,13 @@ impl rustc_errors::Subdiagnostic for CastUnknownPointerSub {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             CastUnknownPointerSub::To(span) => {
-                let msg = diag.eagerly_translate(inline_fluent!("needs more type information"));
+                let msg = diag.eagerly_translate(msg!("needs more type information"));
                 diag.span_label(span, msg);
-                let msg = diag.eagerly_translate(inline_fluent!("the type information given here is insufficient to check whether the pointer cast is valid"));
+                let msg = diag.eagerly_translate(msg!("the type information given here is insufficient to check whether the pointer cast is valid"));
                 diag.note(msg);
             }
             CastUnknownPointerSub::From(span) => {
-                let msg = diag.eagerly_translate(inline_fluent!("the type information given here is insufficient to check whether the pointer cast is valid"));
+                let msg = diag.eagerly_translate(msg!("the type information given here is insufficient to check whether the pointer cast is valid"));
                 diag.span_label(span, msg);
             }
         }
@@ -1302,20 +1283,18 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for NakedFunctionsAsmBlock {
         let mut diag = Diag::new(
             dcx,
             level,
-            inline_fluent!("naked functions must contain a single `naked_asm!` invocation"),
+            msg!("naked functions must contain a single `naked_asm!` invocation"),
         );
         diag.span(self.span);
         diag.code(E0787);
         for span in self.multiple_asms.iter() {
             diag.span_label(
                 *span,
-                inline_fluent!(
-                    "multiple `naked_asm!` invocations are not allowed in naked functions"
-                ),
+                msg!("multiple `naked_asm!` invocations are not allowed in naked functions"),
             );
         }
         for span in self.non_asms.iter() {
-            diag.span_label(*span, inline_fluent!("not allowed in naked functions"));
+            diag.span_label(*span, msg!("not allowed in naked functions"));
         }
         diag
     }

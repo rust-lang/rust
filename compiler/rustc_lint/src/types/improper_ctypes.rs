@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 use bitflags::bitflags;
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{DiagMessage, inline_fluent};
+use rustc_errors::{DiagMessage, msg};
 use rustc_hir::def::CtorKind;
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg};
@@ -158,12 +158,12 @@ pub(crate) fn check_non_exhaustive_variant(
         // with an enum like `#[repr(u8)] enum Enum { A(DataA), B(DataB), }`
         // but exempt enums with unit ctors like C's (e.g. from rust-bindgen)
         if variant_has_complex_ctor(variant) {
-            return ControlFlow::Break(inline_fluent!("this enum is non-exhaustive"));
+            return ControlFlow::Break(msg!("this enum is non-exhaustive"));
         }
     }
 
     if variant.field_list_has_applicable_non_exhaustive() {
-        return ControlFlow::Break(inline_fluent!("this enum has non-exhaustive variants"));
+        return ControlFlow::Break(msg!("this enum has non-exhaustive variants"));
     }
 
     ControlFlow::Continue(())
@@ -426,7 +426,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         } else if transparent_with_all_zst_fields {
             FfiUnsafe {
                 ty,
-                reason: inline_fluent!("this struct contains only zero-sized fields"),
+                reason: msg!("this struct contains only zero-sized fields"),
                 help: None,
             }
         } else {
@@ -464,7 +464,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     } else {
                         return FfiUnsafe {
                             ty,
-                            reason: inline_fluent!("box cannot be represented as a single pointer"),
+                            reason: msg!("box cannot be represented as a single pointer"),
                             help: None,
                         };
                     }
@@ -480,10 +480,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         {
                             return FfiUnsafe {
                                 ty,
-                                reason: inline_fluent!(
-                                    "`CStr`/`CString` do not have a guaranteed layout"
-                                ),
-                                help: Some(inline_fluent!(
+                                reason: msg!("`CStr`/`CString` do not have a guaranteed layout"),
+                                help: Some(msg!(
                                     "consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`"
                                 )),
                             };
@@ -493,16 +491,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             return FfiUnsafe {
                                 ty,
                                 reason: if def.is_struct() {
-                                    inline_fluent!("this struct has unspecified layout")
+                                    msg!("this struct has unspecified layout")
                                 } else {
-                                    inline_fluent!("this union has unspecified layout")
+                                    msg!("this union has unspecified layout")
                                 },
                                 help: if def.is_struct() {
-                                    Some(inline_fluent!(
+                                    Some(msg!(
                                         "consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct"
                                     ))
                                 } else {
-                                    Some(inline_fluent!(
+                                    Some(msg!(
                                         "consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this union"
                                     ))
                                 },
@@ -513,9 +511,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             return FfiUnsafe {
                                 ty,
                                 reason: if def.is_struct() {
-                                    inline_fluent!("this struct is non-exhaustive")
+                                    msg!("this struct is non-exhaustive")
                                 } else {
-                                    inline_fluent!("this union is non-exhaustive")
+                                    msg!("this union is non-exhaustive")
                                 },
                                 help: None,
                             };
@@ -525,14 +523,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             return FfiUnsafe {
                                 ty,
                                 reason: if def.is_struct() {
-                                    inline_fluent!("this struct has no fields")
+                                    msg!("this struct has no fields")
                                 } else {
-                                    inline_fluent!("this union has no fields")
+                                    msg!("this union has no fields")
                                 },
                                 help: if def.is_struct() {
-                                    Some(inline_fluent!("consider adding a member to this struct"))
+                                    Some(msg!("consider adding a member to this struct"))
                                 } else {
-                                    Some(inline_fluent!("consider adding a member to this union"))
+                                    Some(msg!("consider adding a member to this union"))
                                 },
                             };
                         }
@@ -557,8 +555,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                             return FfiUnsafe {
                                 ty,
-                                reason: inline_fluent!("enum has no representation hint"),
-                                help: Some(inline_fluent!(
+                                reason: msg!("enum has no representation hint"),
+                                help: Some(msg!(
                                     "consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum"
                                 )),
                             };
@@ -586,8 +584,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::Char => FfiUnsafe {
                 ty,
-                reason: inline_fluent!("the `char` type has no C equivalent"),
-                help: Some(inline_fluent!("consider using `u32` or `libc::wchar_t` instead")),
+                reason: msg!("the `char` type has no C equivalent"),
+                help: Some(msg!("consider using `u32` or `libc::wchar_t` instead")),
             },
 
             // It's just extra invariants on the type that you need to uphold,
@@ -599,26 +597,24 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::Slice(_) => FfiUnsafe {
                 ty,
-                reason: inline_fluent!("slices have no C equivalent"),
-                help: Some(inline_fluent!("consider using a raw pointer instead")),
+                reason: msg!("slices have no C equivalent"),
+                help: Some(msg!("consider using a raw pointer instead")),
             },
 
-            ty::Dynamic(..) => FfiUnsafe {
-                ty,
-                reason: inline_fluent!("trait objects have no C equivalent"),
-                help: None,
-            },
+            ty::Dynamic(..) => {
+                FfiUnsafe { ty, reason: msg!("trait objects have no C equivalent"), help: None }
+            }
 
             ty::Str => FfiUnsafe {
                 ty,
-                reason: inline_fluent!("string slices have no C equivalent"),
-                help: Some(inline_fluent!("consider using `*const u8` and a length instead")),
+                reason: msg!("string slices have no C equivalent"),
+                help: Some(msg!("consider using `*const u8` and a length instead")),
             },
 
             ty::Tuple(..) => FfiUnsafe {
                 ty,
-                reason: inline_fluent!("tuples have unspecified layout"),
-                help: Some(inline_fluent!("consider using a struct instead")),
+                reason: msg!("tuples have unspecified layout"),
+                help: Some(msg!("consider using a struct instead")),
             },
 
             ty::RawPtr(ty, _) | ty::Ref(_, ty, _)
@@ -648,10 +644,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 if sig.abi().is_rustic_abi() {
                     return FfiUnsafe {
                         ty,
-                        reason: inline_fluent!(
-                            "this function pointer has Rust-specific calling convention"
-                        ),
-                        help: Some(inline_fluent!(
+                        reason: msg!("this function pointer has Rust-specific calling convention"),
+                        help: Some(msg!(
                             "consider using an `extern fn(...) -> ...` function pointer instead"
                         )),
                     };
@@ -677,11 +671,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             // While opaque types are checked for earlier, if a projection in a struct field
             // normalizes to an opaque type, then it will reach this branch.
-            ty::Alias(ty::Opaque, ..) => FfiUnsafe {
-                ty,
-                reason: inline_fluent!("opaque types have no C equivalent"),
-                help: None,
-            },
+            ty::Alias(ty::Opaque, ..) => {
+                FfiUnsafe { ty, reason: msg!("opaque types have no C equivalent"), help: None }
+            }
 
             // `extern "C" fn` functions can have type parameters, which may or may not be FFI-safe,
             //  so they are currently ignored for the purposes of this lint.
@@ -693,9 +685,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::UnsafeBinder(_) => FfiUnsafe {
                 ty,
-                reason: inline_fluent!(
-                    "unsafe binders are incompatible with foreign function interfaces"
-                ),
+                reason: msg!("unsafe binders are incompatible with foreign function interfaces"),
                 help: None,
             },
 
@@ -741,7 +731,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         {
             Some(FfiResult::FfiUnsafe {
                 ty,
-                reason: inline_fluent!("opaque types have no C equivalent"),
+                reason: msg!("opaque types have no C equivalent"),
                 help: None,
             })
         } else {
@@ -754,8 +744,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         if let ty::Array(..) = ty.kind() {
             Some(FfiResult::FfiUnsafe {
                 ty,
-                reason: inline_fluent!("passing raw arrays by value is not FFI-safe"),
-                help: Some(inline_fluent!("consider passing a pointer to the array")),
+                reason: msg!("passing raw arrays by value is not FFI-safe"),
+                help: Some(msg!("consider passing a pointer to the array")),
             })
         } else {
             None
@@ -934,7 +924,7 @@ impl<'tcx> ImproperCTypesLint {
                     cx,
                     ty,
                     sp,
-                    inline_fluent!("composed only of `PhantomData`"),
+                    msg!("composed only of `PhantomData`"),
                     None,
                     fn_mode,
                 );

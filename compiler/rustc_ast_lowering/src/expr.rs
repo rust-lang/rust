@@ -5,7 +5,7 @@ use std::sync::Arc;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::inline_fluent;
+use rustc_errors::msg;
 use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
@@ -1702,7 +1702,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 &self.tcx.sess,
                 sym::yield_expr,
                 span,
-                inline_fluent!("yield syntax is experimental"),
+                msg!("yield syntax is experimental"),
             )
             .emit();
         }

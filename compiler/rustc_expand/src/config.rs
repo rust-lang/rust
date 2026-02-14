@@ -15,7 +15,7 @@ use rustc_attr_parsing::{
     AttributeParser, CFG_TEMPLATE, EvalConfigResult, ShouldEmit, eval_config_entry, parse_cfg,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
-use rustc_errors::inline_fluent;
+use rustc_errors::msg;
 use rustc_feature::{
     ACCEPTED_LANG_FEATURES, EnabledLangFeature, EnabledLibFeature, Features, REMOVED_LANG_FEATURES,
     UNSTABLE_LANG_FEATURES,
@@ -433,14 +433,14 @@ impl<'a> StripUnconfigured<'a> {
                 &self.sess,
                 sym::stmt_expr_attributes,
                 attr.span,
-                inline_fluent!("attributes on expressions are experimental"),
+                msg!("attributes on expressions are experimental"),
             );
 
             if attr.is_doc_comment() {
                 err.help(if attr.style == AttrStyle::Outer {
-                    inline_fluent!("`///` is used for outer documentation comments; for a plain comment, use `//`")
+                    msg!("`///` is used for outer documentation comments; for a plain comment, use `//`")
                 } else {
-                    inline_fluent!("`//!` is used for inner documentation comments; for a plain comment, use `//` by removing the `!` or inserting a space in between them: `// !`")
+                    msg!("`//!` is used for inner documentation comments; for a plain comment, use `//` by removing the `!` or inserting a space in between them: `// !`")
                 });
             }
 

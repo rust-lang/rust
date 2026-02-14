@@ -337,25 +337,25 @@ impl<O> AssertKind<O> {
         use AssertKind::*;
 
         match self {
-            BoundsCheck { .. } => inline_fluent!(
-                "index out of bounds: the length is {$len} but the index is {$index}"
-            ),
+            BoundsCheck { .. } => {
+                msg!("index out of bounds: the length is {$len} but the index is {$index}")
+            }
             Overflow(BinOp::Shl, _, _) => {
-                inline_fluent!("attempt to shift left by `{$val}`, which would overflow")
+                msg!("attempt to shift left by `{$val}`, which would overflow")
             }
             Overflow(BinOp::Shr, _, _) => {
-                inline_fluent!("attempt to shift right by `{$val}`, which would overflow")
+                msg!("attempt to shift right by `{$val}`, which would overflow")
             }
             Overflow(_, _, _) => {
-                inline_fluent!("attempt to compute `{$left} {$op} {$right}`, which would overflow")
+                msg!("attempt to compute `{$left} {$op} {$right}`, which would overflow")
             }
-            OverflowNeg(_) => inline_fluent!("attempt to negate `{$val}`, which would overflow"),
-            DivisionByZero(_) => inline_fluent!("attempt to divide `{$val}` by zero"),
-            RemainderByZero(_) => inline_fluent!(
-                "attempt to calculate the remainder of `{$val}` with a divisor of zero"
-            ),
+            OverflowNeg(_) => msg!("attempt to negate `{$val}`, which would overflow"),
+            DivisionByZero(_) => msg!("attempt to divide `{$val}` by zero"),
+            RemainderByZero(_) => {
+                msg!("attempt to calculate the remainder of `{$val}` with a divisor of zero")
+            }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                inline_fluent!("`async fn` resumed after completion")
+                msg!("`async fn` resumed after completion")
             }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 todo!()
@@ -364,40 +364,38 @@ impl<O> AssertKind<O> {
                 bug!("gen blocks can be resumed after they return and will keep returning `None`")
             }
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
-                inline_fluent!("coroutine resumed after completion")
+                msg!("coroutine resumed after completion")
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                inline_fluent!("`async fn` resumed after panicking")
+                msg!("`async fn` resumed after panicking")
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 todo!()
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
-                inline_fluent!("`gen` fn or block cannot be further iterated on after it panicked")
+                msg!("`gen` fn or block cannot be further iterated on after it panicked")
             }
             ResumedAfterPanic(CoroutineKind::Coroutine(_)) => {
-                inline_fluent!("coroutine resumed after panicking")
+                msg!("coroutine resumed after panicking")
             }
-            NullPointerDereference => inline_fluent!("null pointer dereference occurred"),
+            NullPointerDereference => msg!("null pointer dereference occurred"),
             InvalidEnumConstruction(_) => {
-                inline_fluent!("trying to construct an enum from an invalid value `{$source}`")
+                msg!("trying to construct an enum from an invalid value `{$source}`")
             }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                inline_fluent!("`async fn` resumed after async drop")
+                msg!("`async fn` resumed after async drop")
             }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 todo!()
             }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
-                inline_fluent!(
-                    "`gen` fn or block cannot be further iterated on after it async dropped"
-                )
+                msg!("`gen` fn or block cannot be further iterated on after it async dropped")
             }
             ResumedAfterDrop(CoroutineKind::Coroutine(_)) => {
-                inline_fluent!("coroutine resumed after async drop")
+                msg!("coroutine resumed after async drop")
             }
 
-            MisalignedPointerDereference { .. } => inline_fluent!(
+            MisalignedPointerDereference { .. } => msg!(
                 "misaligned pointer dereference: address must be a multiple of {$required} but is {$found}"
             ),
         }
@@ -512,7 +510,7 @@ impl<'tcx> TerminatorKind<'tcx> {
 }
 
 pub use helper::*;
-use rustc_errors::inline_fluent;
+use rustc_errors::msg;
 
 mod helper {
     use super::*;

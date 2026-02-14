@@ -2,7 +2,7 @@ use rustc_abi::{FieldIdx, Integer};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_data_structures::assert_matches;
-use rustc_errors::inline_fluent;
+use rustc_errors::msg;
 use rustc_middle::mir::CastKind;
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::ty::adjustment::PointerCoercion;
@@ -139,7 +139,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 assert_eq!(cast_ty, dest.layout.ty); // we otherwise ignore `cast_ty` enirely...
                 if src.layout.size != dest.layout.size {
                     throw_ub_custom!(
-                        inline_fluent!(
+                        msg!(
                             "transmuting from {$src_bytes}-byte type to {$dest_bytes}-byte type: `{$src}` -> `{$dest}`"
                         ),
                         src_bytes = src.layout.size.bytes(),

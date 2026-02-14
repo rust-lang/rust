@@ -9,7 +9,7 @@ use rustc_ast::{Path, Visibility};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg,
-    Level, Subdiagnostic, SuggestionStyle, inline_fluent,
+    Level, Subdiagnostic, SuggestionStyle, msg,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -1463,22 +1463,22 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedIdentifier {
             level,
             match token_descr {
                 Some(TokenDescription::ReservedIdentifier) => {
-                    inline_fluent!("expected identifier, found reserved identifier `{$token}`")
+                    msg!("expected identifier, found reserved identifier `{$token}`")
                 }
                 Some(TokenDescription::Keyword) => {
-                    inline_fluent!("expected identifier, found keyword `{$token}`")
+                    msg!("expected identifier, found keyword `{$token}`")
                 }
                 Some(TokenDescription::ReservedKeyword) => {
-                    inline_fluent!("expected identifier, found reserved keyword `{$token}`")
+                    msg!("expected identifier, found reserved keyword `{$token}`")
                 }
                 Some(TokenDescription::DocComment) => {
-                    inline_fluent!("expected identifier, found doc comment `{$token}`")
+                    msg!("expected identifier, found doc comment `{$token}`")
                 }
                 Some(TokenDescription::MetaVar(_)) => {
                     add_token = false;
-                    inline_fluent!("expected identifier, found metavariable")
+                    msg!("expected identifier, found metavariable")
                 }
-                None => inline_fluent!("expected identifier, found `{$token}`"),
+                None => msg!("expected identifier, found `{$token}`"),
             },
         );
         diag.span(self.span);
@@ -1530,22 +1530,22 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedSemi {
             level,
             match token_descr {
                 Some(TokenDescription::ReservedIdentifier) => {
-                    inline_fluent!("expected `;`, found reserved identifier `{$token}`")
+                    msg!("expected `;`, found reserved identifier `{$token}`")
                 }
                 Some(TokenDescription::Keyword) => {
-                    inline_fluent!("expected `;`, found keyword `{$token}`")
+                    msg!("expected `;`, found keyword `{$token}`")
                 }
                 Some(TokenDescription::ReservedKeyword) => {
-                    inline_fluent!("expected `;`, found reserved keyword `{$token}`")
+                    msg!("expected `;`, found reserved keyword `{$token}`")
                 }
                 Some(TokenDescription::DocComment) => {
-                    inline_fluent!("expected `;`, found doc comment `{$token}`")
+                    msg!("expected `;`, found doc comment `{$token}`")
                 }
                 Some(TokenDescription::MetaVar(_)) => {
                     add_token = false;
-                    inline_fluent!("expected `;`, found metavariable")
+                    msg!("expected `;`, found metavariable")
                 }
-                None => inline_fluent!("expected `;`, found `{$token}`"),
+                None => msg!("expected `;`, found `{$token}`"),
             },
         );
         diag.span(self.span);
@@ -1554,7 +1554,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedSemi {
         }
 
         if let Some(unexpected_token_label) = self.unexpected_token_label {
-            diag.span_label(unexpected_token_label, inline_fluent!("unexpected token"));
+            diag.span_label(unexpected_token_label, msg!("unexpected token"));
         }
 
         self.sugg.add_to_diag(&mut diag);
@@ -1980,10 +1980,10 @@ pub(crate) struct FnTraitMissingParen {
 
 impl Subdiagnostic for FnTraitMissingParen {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        diag.span_label(self.span, inline_fluent!("`Fn` bounds require arguments in parentheses"));
+        diag.span_label(self.span, msg!("`Fn` bounds require arguments in parentheses"));
         diag.span_suggestion_short(
             self.span.shrink_to_hi(),
-            inline_fluent!("try adding parentheses"),
+            msg!("try adding parentheses"),
             "()",
             Applicability::MachineApplicable,
         );
@@ -4303,13 +4303,13 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
         match self {
             HiddenUnicodeCodepointsDiagSub::Escape { spans } => {
                 diag.multipart_suggestion_with_style(
-                    inline_fluent!("if their presence wasn't intentional, you can remove them"),
+                    msg!("if their presence wasn't intentional, you can remove them"),
                     spans.iter().map(|(_, span)| (*span, "".to_string())).collect(),
                     Applicability::MachineApplicable,
                     SuggestionStyle::HideCodeAlways,
                 );
                 diag.multipart_suggestion(
-                    inline_fluent!("if you want to keep them but make them visible in your source code, you can escape them"),
+                    msg!("if you want to keep them but make them visible in your source code, you can escape them"),
                     spans
                         .into_iter()
                         .map(|(c, span)| {
@@ -4332,10 +4332,8 @@ impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
                         .collect::<Vec<String>>()
                         .join(", "),
                 );
-                diag.note(inline_fluent!(
-                    "if their presence wasn't intentional, you can remove them"
-                ));
-                diag.note(inline_fluent!("if you want to keep them but make them visible in your source code, you can escape them: {$escaped}"));
+                diag.note(msg!("if their presence wasn't intentional, you can remove them"));
+                diag.note(msg!("if you want to keep them but make them visible in your source code, you can escape them: {$escaped}"));
             }
         }
     }

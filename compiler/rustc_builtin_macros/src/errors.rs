@@ -1,7 +1,7 @@
 use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan, SingleLabelManySpans,
-    Subdiagnostic, inline_fluent,
+    Subdiagnostic, msg,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
@@ -764,7 +764,7 @@ pub(crate) struct FormatUnusedArg {
 impl Subdiagnostic for FormatUnusedArg {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("named", self.named);
-        let msg = diag.eagerly_translate(inline_fluent!(
+        let msg = diag.eagerly_translate(msg!(
             "{$named ->
                 [true] named argument
                 *[false] argument
@@ -947,13 +947,12 @@ pub(crate) struct AsmClobberNoReg {
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AsmClobberNoReg {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         // eager translation as `span_labels` takes `AsRef<str>`
-        let lbl1 = dcx.eagerly_translate_to_string(inline_fluent!("clobber_abi"), [].into_iter());
-        let lbl2 =
-            dcx.eagerly_translate_to_string(inline_fluent!("generic outputs"), [].into_iter());
+        let lbl1 = dcx.eagerly_translate_to_string(msg!("clobber_abi"), [].into_iter());
+        let lbl2 = dcx.eagerly_translate_to_string(msg!("generic outputs"), [].into_iter());
         Diag::new(
             dcx,
             level,
-            inline_fluent!("asm with `clobber_abi` must specify explicit registers for outputs"),
+            msg!("asm with `clobber_abi` must specify explicit registers for outputs"),
         )
         .with_span(self.spans.clone())
         .with_span_labels(self.clobbers, &lbl1)

@@ -2,7 +2,7 @@ use std::ffi::CString;
 use std::path::Path;
 
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, inline_fluent};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, msg};
 use rustc_macros::Diagnostic;
 use rustc_span::Span;
 
@@ -28,7 +28,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
         Diag::new(
             dcx,
             level,
-            inline_fluent!("failed to parse target machine config to target machine: {$error}"),
+            msg!("failed to parse target machine config to target machine: {$error}"),
         )
         .with_arg("error", message)
     }
@@ -121,25 +121,25 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for WithLlvmError<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         use LlvmError::*;
         let msg_with_llvm_err = match &self.0 {
-            WriteOutput { .. } => inline_fluent!("could not write output to {$path}: {$llvm_err}"),
-            CreateTargetMachine { .. } => inline_fluent!(
-                "could not create LLVM TargetMachine for triple: {$triple}: {$llvm_err}"
-            ),
-            RunLlvmPasses => inline_fluent!("failed to run LLVM passes: {$llvm_err}"),
-            WriteIr { .. } => inline_fluent!("failed to write LLVM IR to {$path}: {$llvm_err}"),
+            WriteOutput { .. } => msg!("could not write output to {$path}: {$llvm_err}"),
+            CreateTargetMachine { .. } => {
+                msg!("could not create LLVM TargetMachine for triple: {$triple}: {$llvm_err}")
+            }
+            RunLlvmPasses => msg!("failed to run LLVM passes: {$llvm_err}"),
+            WriteIr { .. } => msg!("failed to write LLVM IR to {$path}: {$llvm_err}"),
             PrepareThinLtoContext => {
-                inline_fluent!("failed to prepare thin LTO context: {$llvm_err}")
+                msg!("failed to prepare thin LTO context: {$llvm_err}")
             }
             LoadBitcode { .. } => {
-                inline_fluent!("failed to load bitcode of module \"{$name}\": {$llvm_err}")
+                msg!("failed to load bitcode of module \"{$name}\": {$llvm_err}")
             }
             WriteThinLtoKey { .. } => {
-                inline_fluent!("error while writing ThinLTO key data: {$err}: {$llvm_err}")
+                msg!("error while writing ThinLTO key data: {$err}: {$llvm_err}")
             }
             PrepareThinLtoModule => {
-                inline_fluent!("failed to prepare thin LTO module: {$llvm_err}")
+                msg!("failed to prepare thin LTO module: {$llvm_err}")
             }
-            ParseBitcode => inline_fluent!("failed to parse bitcode for LTO module: {$llvm_err}"),
+            ParseBitcode => msg!("failed to parse bitcode for LTO module: {$llvm_err}"),
         };
         self.0
             .into_diag(dcx, level)

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use itertools::Itertools;
-use rustc_errors::inline_fluent;
+use rustc_errors::msg;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::Session;
 pub(super) use rustc_target::spec::apple::OSVersion;
@@ -185,21 +185,19 @@ pub(super) fn get_sdk_root(sess: &Session) -> Option<PathBuf> {
             // FIXME(madsmtm): Make this a lint, to allow deny warnings to work.
             // (Or fix <https://github.com/rust-lang/rust/issues/21204>).
             let mut diag = sess.dcx().create_warn(err);
-            diag.note(inline_fluent!("the SDK is needed by the linker to know where to find symbols in system libraries and for embedding the SDK version in the final object file"));
+            diag.note(msg!("the SDK is needed by the linker to know where to find symbols in system libraries and for embedding the SDK version in the final object file"));
 
             // Recognize common error cases, and give more Rust-specific error messages for those.
             if let Some(developer_dir) = xcode_select_developer_dir() {
                 diag.arg("developer_dir", &developer_dir);
-                diag.note(inline_fluent!(
-                    "found active developer directory at \"{$developer_dir}\""
-                ));
+                diag.note(msg!("found active developer directory at \"{$developer_dir}\""));
                 if developer_dir.as_os_str().to_string_lossy().contains("CommandLineTools") {
                     if sdk_name != "MacOSX" {
-                        diag.help(inline_fluent!("when compiling for iOS, tvOS, visionOS or watchOS, you need a full installation of Xcode"));
+                        diag.help(msg!("when compiling for iOS, tvOS, visionOS or watchOS, you need a full installation of Xcode"));
                     }
                 }
             } else {
-                diag.help(inline_fluent!("pass the path of an Xcode installation via the DEVELOPER_DIR environment variable, or an SDK with the SDKROOT environment variable"));
+                diag.help(msg!("pass the path of an Xcode installation via the DEVELOPER_DIR environment variable, or an SDK with the SDKROOT environment variable"));
             }
 
             diag.emit();

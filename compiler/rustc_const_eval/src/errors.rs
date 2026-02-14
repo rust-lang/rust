@@ -6,7 +6,7 @@ use rustc_abi::WrappingRange;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagArgValue, DiagMessage, Diagnostic, EmissionGuarantee, Level, MultiSpan,
-    Subdiagnostic, inline_fluent,
+    Subdiagnostic, msg,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -389,9 +389,9 @@ impl Subdiagnostic for FrameNote {
         diag.arg("instance", self.instance);
         let mut span: MultiSpan = self.span.into();
         if self.has_label && !self.span.is_dummy() {
-            span.push_span_label(self.span, inline_fluent!("the failure occurred here"));
+            span.push_span_label(self.span, msg!("the failure occurred here"));
         }
-        let msg = diag.eagerly_translate(inline_fluent!(
+        let msg = diag.eagerly_translate(msg!(
             r#"{$times ->
                 [0] inside {$where_ ->
                     [closure] closure
@@ -653,25 +653,25 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             ValidationError(e) => e.diagnostic_message(),
 
             Unreachable => "entering unreachable code".into(),
-            BoundsCheckFailed { .. } => inline_fluent!("indexing out of bounds: the len is {$len} but the index is {$index}"),
+            BoundsCheckFailed { .. } => msg!("indexing out of bounds: the len is {$len} but the index is {$index}"),
             DivisionByZero => "dividing by zero".into(),
             RemainderByZero => "calculating the remainder with a divisor of zero".into(),
             DivisionOverflow => "overflow in signed division (dividing MIN by -1)".into(),
             RemainderOverflow => "overflow in signed remainder (dividing MIN by -1)".into(),
             PointerArithOverflow => "overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`".into(),
-            ArithOverflow { .. } => inline_fluent!("arithmetic overflow in `{$intrinsic}`"),
-            ShiftOverflow { .. } => inline_fluent!("overflowing shift by {$shift_amount} in `{$intrinsic}`"),
+            ArithOverflow { .. } => msg!("arithmetic overflow in `{$intrinsic}`"),
+            ShiftOverflow { .. } => msg!("overflowing shift by {$shift_amount} in `{$intrinsic}`"),
             InvalidMeta(InvalidMetaKind::SliceTooBig) => "invalid metadata in wide pointer: slice is bigger than largest supported object".into(),
             InvalidMeta(InvalidMetaKind::TooBig) => "invalid metadata in wide pointer: total size is bigger than largest supported object".into(),
             UnterminatedCString(_) => "reading a null-terminated string starting at {$pointer} with no null found before end of allocation".into(),
-            PointerUseAfterFree(_, _) => inline_fluent!(
+            PointerUseAfterFree(_, _) => msg!(
                 "{$operation ->
                     [MemoryAccess] memory access failed
                     [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
                     *[Dereferenceable] pointer not dereferenceable
                 }: {$alloc_id} has been freed, so this pointer is dangling"
             ),
-            PointerOutOfBounds { .. } => inline_fluent!(
+            PointerOutOfBounds { .. } => msg!(
                 "{$operation ->
                     [MemoryAccess] memory access failed
                     [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
@@ -708,7 +708,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                     }
                 }"
             ),
-            DanglingIntPointer { addr: 0, .. } => inline_fluent!(
+            DanglingIntPointer { addr: 0, .. } => msg!(
                 "{$operation ->
                     [MemoryAccess] memory access failed
                     [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
@@ -728,7 +728,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                         *[x] be dereferenceable for {$inbounds_size} bytes
                     }
                 }, but got null pointer"),
-            DanglingIntPointer { .. } => inline_fluent!(
+            DanglingIntPointer { .. } => msg!(
                 "{$operation ->
                     [MemoryAccess] memory access failed
                     [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
@@ -748,34 +748,34 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                         *[x] be dereferenceable for {$inbounds_size} bytes
                     }
                 }, but got {$pointer} which is a dangling pointer (it has no provenance)"),
-            AlignmentCheckFailed { .. } => inline_fluent!(
+            AlignmentCheckFailed { .. } => msg!(
                 "{$msg ->
                     [AccessedPtr] accessing memory
                     *[other] accessing memory based on pointer
                 } with alignment {$has}, but alignment {$required} is required"
             ),
-            WriteToReadOnly(_) => inline_fluent!("writing to {$allocation} which is read-only"),
-            DerefFunctionPointer(_) => inline_fluent!("accessing {$allocation} which contains a function"),
-            DerefVTablePointer(_) => inline_fluent!("accessing {$allocation} which contains a vtable"),
-            DerefTypeIdPointer(_) => inline_fluent!("accessing {$allocation} which contains a `TypeId`"),
-            InvalidBool(_) => inline_fluent!("interpreting an invalid 8-bit value as a bool: 0x{$value}"),
-            InvalidChar(_) => inline_fluent!("interpreting an invalid 32-bit value as a char: 0x{$value}"),
-            InvalidTag(_) => inline_fluent!("enum value has invalid tag: {$tag}"),
-            InvalidFunctionPointer(_) => inline_fluent!("using {$pointer} as function pointer but it does not point to a function"),
-            InvalidVTablePointer(_) => inline_fluent!("using {$pointer} as vtable pointer but it does not point to a vtable"),
-            InvalidVTableTrait { .. } => inline_fluent!("using vtable for `{$vtable_dyn_type}` but `{$expected_dyn_type}` was expected"),
-            InvalidStr(_) => inline_fluent!("this string is not valid UTF-8: {$err}"),
+            WriteToReadOnly(_) => msg!("writing to {$allocation} which is read-only"),
+            DerefFunctionPointer(_) => msg!("accessing {$allocation} which contains a function"),
+            DerefVTablePointer(_) => msg!("accessing {$allocation} which contains a vtable"),
+            DerefTypeIdPointer(_) => msg!("accessing {$allocation} which contains a `TypeId`"),
+            InvalidBool(_) => msg!("interpreting an invalid 8-bit value as a bool: 0x{$value}"),
+            InvalidChar(_) => msg!("interpreting an invalid 32-bit value as a char: 0x{$value}"),
+            InvalidTag(_) => msg!("enum value has invalid tag: {$tag}"),
+            InvalidFunctionPointer(_) => msg!("using {$pointer} as function pointer but it does not point to a function"),
+            InvalidVTablePointer(_) => msg!("using {$pointer} as vtable pointer but it does not point to a vtable"),
+            InvalidVTableTrait { .. } => msg!("using vtable for `{$vtable_dyn_type}` but `{$expected_dyn_type}` was expected"),
+            InvalidStr(_) => msg!("this string is not valid UTF-8: {$err}"),
             InvalidUninitBytes(None) => "using uninitialized data, but this operation requires initialized memory".into(),
-            InvalidUninitBytes(Some(_)) => inline_fluent!("reading memory at {$alloc}{$access}, but memory is uninitialized at {$uninit}, and this operation requires initialized memory"),
+            InvalidUninitBytes(Some(_)) => msg!("reading memory at {$alloc}{$access}, but memory is uninitialized at {$uninit}, and this operation requires initialized memory"),
             DeadLocal => "accessing a dead local variable".into(),
-            ScalarSizeMismatch(_) => inline_fluent!("scalar size mismatch: expected {$target_size} bytes but got {$data_size} bytes instead"),
+            ScalarSizeMismatch(_) => msg!("scalar size mismatch: expected {$target_size} bytes but got {$data_size} bytes instead"),
             UninhabitedEnumVariantWritten(_) => "writing discriminant of an uninhabited enum variant".into(),
             UninhabitedEnumVariantRead(_) => "read discriminant of an uninhabited enum variant".into(),
             InvalidNichedEnumVariantWritten { .. } => {
-                inline_fluent!("trying to set discriminant of a {$ty} to the niched variant, but the value does not match")
+                msg!("trying to set discriminant of a {$ty} to the niched variant, but the value does not match")
             }
-            AbiMismatchArgument { .. } => inline_fluent!("calling a function whose parameter #{$arg_idx} has type {$callee_ty} passing argument of type {$caller_ty}"),
-            AbiMismatchReturn { .. } => inline_fluent!("calling a function with return type {$callee_ty} passing return place of type {$caller_ty}"),
+            AbiMismatchArgument { .. } => msg!("calling a function whose parameter #{$arg_idx} has type {$callee_ty} passing argument of type {$caller_ty}"),
+            AbiMismatchReturn { .. } => msg!("calling a function with return type {$callee_ty} passing return place of type {$caller_ty}"),
         }
     }
 
@@ -920,29 +920,25 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
 
         match self.kind {
             PtrToUninhabited { ptr_kind: PointerKind::Box, .. } => {
-                inline_fluent!(
-                    "{$front_matter}: encountered a box pointing to uninhabited type {$ty}"
-                )
+                msg!("{$front_matter}: encountered a box pointing to uninhabited type {$ty}")
             }
             PtrToUninhabited { ptr_kind: PointerKind::Ref(_), .. } => {
-                inline_fluent!(
-                    "{$front_matter}: encountered a reference pointing to uninhabited type {$ty}"
-                )
+                msg!("{$front_matter}: encountered a reference pointing to uninhabited type {$ty}")
             }
 
             PointerAsInt { .. } => {
-                inline_fluent!("{$front_matter}: encountered a pointer, but {$expected}")
+                msg!("{$front_matter}: encountered a pointer, but {$expected}")
             }
-            PartialPointer => inline_fluent!(
-                "{$front_matter}: encountered a partial pointer or a mix of pointers"
-            ),
+            PartialPointer => {
+                msg!("{$front_matter}: encountered a partial pointer or a mix of pointers")
+            }
             MutableRefToImmutable => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered mutable reference or box pointing to read-only memory"
                 )
             }
             NullFnPtr { .. } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered a {$maybe ->
                         [true] maybe-null
                         *[false] null
@@ -950,84 +946,78 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 )
             }
             NeverVal => {
-                inline_fluent!("{$front_matter}: encountered a value of the never type `!`")
+                msg!("{$front_matter}: encountered a value of the never type `!`")
             }
             NonnullPtrMaybeNull { .. } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered a maybe-null pointer, but expected something that is definitely non-zero"
                 )
             }
             PtrOutOfRange { .. } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered a pointer with unknown absolute address, but expected something that is definitely {$in_range}"
                 )
             }
             OutOfRange { .. } => {
-                inline_fluent!(
-                    "{$front_matter}: encountered {$value}, but expected something {$in_range}"
-                )
+                msg!("{$front_matter}: encountered {$value}, but expected something {$in_range}")
             }
             UnsafeCellInImmutable => {
-                inline_fluent!("{$front_matter}: encountered `UnsafeCell` in read-only memory")
+                msg!("{$front_matter}: encountered `UnsafeCell` in read-only memory")
             }
             UninhabitedVal { .. } => {
-                inline_fluent!("{$front_matter}: encountered a value of uninhabited type `{$ty}`")
+                msg!("{$front_matter}: encountered a value of uninhabited type `{$ty}`")
             }
             InvalidEnumTag { .. } => {
-                inline_fluent!(
-                    "{$front_matter}: encountered {$value}, but expected a valid enum tag"
-                )
+                msg!("{$front_matter}: encountered {$value}, but expected a valid enum tag")
             }
             UninhabitedEnumVariant => {
-                inline_fluent!("{$front_matter}: encountered an uninhabited enum variant")
+                msg!("{$front_matter}: encountered an uninhabited enum variant")
             }
             Uninit { .. } => {
-                inline_fluent!("{$front_matter}: encountered uninitialized memory, but {$expected}")
+                msg!("{$front_matter}: encountered uninitialized memory, but {$expected}")
             }
             InvalidVTablePtr { .. } => {
-                inline_fluent!(
-                    "{$front_matter}: encountered {$value}, but expected a vtable pointer"
-                )
+                msg!("{$front_matter}: encountered {$value}, but expected a vtable pointer")
             }
             InvalidMetaWrongTrait { .. } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: wrong trait in wide pointer vtable: expected `{$expected_dyn_type}`, but encountered `{$vtable_dyn_type}`"
                 )
             }
             InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Box } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered invalid box metadata: slice is bigger than largest supported object"
                 )
             }
             InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Ref(_) } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered invalid reference metadata: slice is bigger than largest supported object"
                 )
             }
 
             InvalidMetaTooLarge { ptr_kind: PointerKind::Box } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered invalid box metadata: total size is bigger than largest supported object"
                 )
             }
             InvalidMetaTooLarge { ptr_kind: PointerKind::Ref(_) } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered invalid reference metadata: total size is bigger than largest supported object"
                 )
             }
             UnalignedPtr { ptr_kind: PointerKind::Ref(_), .. } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered an unaligned reference (required {$required_bytes} byte alignment but found {$found_bytes})"
                 )
             }
             UnalignedPtr { ptr_kind: PointerKind::Box, .. } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered an unaligned box (required {$required_bytes} byte alignment but found {$found_bytes})"
                 )
             }
 
             NullPtr { ptr_kind: PointerKind::Box, .. } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered a {$maybe ->
                         [true] maybe-null
                         *[false] null
@@ -1035,7 +1025,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 )
             }
             NullPtr { ptr_kind: PointerKind::Ref(_), .. } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered a {$maybe ->
                         [true] maybe-null
                         *[false] null
@@ -1043,66 +1033,59 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 )
             }
             DanglingPtrNoProvenance { ptr_kind: PointerKind::Box, .. } => {
-                inline_fluent!(
-                    "{$front_matter}: encountered a dangling box ({$pointer} has no provenance)"
-                )
+                msg!("{$front_matter}: encountered a dangling box ({$pointer} has no provenance)")
             }
             DanglingPtrNoProvenance { ptr_kind: PointerKind::Ref(_), .. } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered a dangling reference ({$pointer} has no provenance)"
                 )
             }
             DanglingPtrOutOfBounds { ptr_kind: PointerKind::Box } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered a dangling box (going beyond the bounds of its allocation)"
                 )
             }
             DanglingPtrOutOfBounds { ptr_kind: PointerKind::Ref(_) } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered a dangling reference (going beyond the bounds of its allocation)"
                 )
             }
             DanglingPtrUseAfterFree { ptr_kind: PointerKind::Box } => {
-                inline_fluent!("{$front_matter}: encountered a dangling box (use-after-free)")
+                msg!("{$front_matter}: encountered a dangling box (use-after-free)")
             }
             DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref(_) } => {
-                inline_fluent!("{$front_matter}: encountered a dangling reference (use-after-free)")
+                msg!("{$front_matter}: encountered a dangling reference (use-after-free)")
             }
             InvalidBool { .. } => {
-                inline_fluent!("{$front_matter}: encountered {$value}, but expected a boolean")
+                msg!("{$front_matter}: encountered {$value}, but expected a boolean")
             }
             InvalidChar { .. } => {
-                inline_fluent!(
+                msg!(
                     "{$front_matter}: encountered {$value}, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)"
                 )
             }
             InvalidFnPtr { .. } => {
-                inline_fluent!(
-                    "{$front_matter}: encountered {$value}, but expected a function pointer"
-                )
+                msg!("{$front_matter}: encountered {$value}, but expected a function pointer")
             }
         }
     }
 
     fn add_args<G: EmissionGuarantee>(self, err: &mut Diag<'_, G>) {
-        use rustc_errors::inline_fluent;
+        use rustc_errors::msg;
         use rustc_middle::mir::interpret::ValidationErrorKind::*;
 
         if let PointerAsInt { .. } | PartialPointer = self.kind {
-            err.help(inline_fluent!("this code performed an operation that depends on the underlying bytes representing a pointer"));
-            err.help(inline_fluent!("the absolute address of a pointer is not known at compile-time, so such operations are not supported"));
+            err.help(msg!("this code performed an operation that depends on the underlying bytes representing a pointer"));
+            err.help(msg!("the absolute address of a pointer is not known at compile-time, so such operations are not supported"));
         }
 
         let message = if let Some(path) = self.path {
             err.dcx.eagerly_translate_to_string(
-                inline_fluent!("constructing invalid value at {$path}"),
+                msg!("constructing invalid value at {$path}"),
                 [("path".into(), DiagArgValue::Str(path.into()))].iter().map(|(a, b)| (a, b)),
             )
         } else {
-            err.dcx.eagerly_translate_to_string(
-                inline_fluent!("constructing invalid value"),
-                [].into_iter(),
-            )
+            err.dcx.eagerly_translate_to_string(msg!("constructing invalid value"), [].into_iter())
         };
 
         err.arg("front_matter", message);
@@ -1115,17 +1098,17 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             let WrappingRange { start: lo, end: hi } = r;
             assert!(hi <= max_hi);
             let msg = if lo > hi {
-                inline_fluent!("less or equal to {$hi}, or greater or equal to {$lo}")
+                msg!("less or equal to {$hi}, or greater or equal to {$lo}")
             } else if lo == hi {
-                inline_fluent!("equal to {$lo}")
+                msg!("equal to {$lo}")
             } else if lo == 0 {
                 assert!(hi < max_hi, "should not be printing if the range covers everything");
-                inline_fluent!("less or equal to {$hi}")
+                msg!("less or equal to {$hi}")
             } else if hi == max_hi {
                 assert!(lo > 0, "should not be printing if the range covers everything");
-                inline_fluent!("greater or equal to {$lo}")
+                msg!("greater or equal to {$lo}")
             } else {
-                inline_fluent!("in the range {$lo}..={$hi}")
+                msg!("in the range {$lo}..={$hi}")
             };
 
             let args = [
@@ -1143,17 +1126,17 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             }
             PointerAsInt { expected } | Uninit { expected } => {
                 let msg = match expected {
-                    ExpectedKind::Reference => inline_fluent!("expected a reference"),
-                    ExpectedKind::Box => inline_fluent!("expected a box"),
-                    ExpectedKind::RawPtr => inline_fluent!("expected a raw pointer"),
-                    ExpectedKind::InitScalar => inline_fluent!("expected initialized scalar value"),
-                    ExpectedKind::Bool => inline_fluent!("expected a boolean"),
-                    ExpectedKind::Char => inline_fluent!("expected a unicode scalar value"),
-                    ExpectedKind::Float => inline_fluent!("expected a floating point number"),
-                    ExpectedKind::Int => inline_fluent!("expected an integer"),
-                    ExpectedKind::FnPtr => inline_fluent!("expected a function pointer"),
-                    ExpectedKind::EnumTag => inline_fluent!("expected a valid enum tag"),
-                    ExpectedKind::Str => inline_fluent!("expected a string"),
+                    ExpectedKind::Reference => msg!("expected a reference"),
+                    ExpectedKind::Box => msg!("expected a box"),
+                    ExpectedKind::RawPtr => msg!("expected a raw pointer"),
+                    ExpectedKind::InitScalar => msg!("expected initialized scalar value"),
+                    ExpectedKind::Bool => msg!("expected a boolean"),
+                    ExpectedKind::Char => msg!("expected a unicode scalar value"),
+                    ExpectedKind::Float => msg!("expected a floating point number"),
+                    ExpectedKind::Int => msg!("expected an integer"),
+                    ExpectedKind::FnPtr => msg!("expected a function pointer"),
+                    ExpectedKind::EnumTag => msg!("expected a valid enum tag"),
+                    ExpectedKind::Str => msg!("expected a string"),
                 };
                 let msg = err.dcx.eagerly_translate_to_string(msg, [].into_iter());
                 err.arg("expected", msg);
@@ -1207,14 +1190,14 @@ impl ReportErrorExt for UnsupportedOpInfo {
             }
             UnsupportedOpInfo::UnsizedLocal => "unsized locals are not supported".into(),
             UnsupportedOpInfo::ReadPartialPointer(_) => {
-                inline_fluent!("unable to read parts of a pointer from memory at {$ptr}")
+                msg!("unable to read parts of a pointer from memory at {$ptr}")
             }
             UnsupportedOpInfo::ReadPointerAsInt(_) => "unable to turn pointer into integer".into(),
             UnsupportedOpInfo::ThreadLocalStatic(_) => {
-                inline_fluent!("cannot access thread local static `{$did}`")
+                msg!("cannot access thread local static `{$did}`")
             }
             UnsupportedOpInfo::ExternStatic(_) => {
-                inline_fluent!("cannot access extern static `{$did}`")
+                msg!("cannot access extern static `{$did}`")
             }
         }
         .into()

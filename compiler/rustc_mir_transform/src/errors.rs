@@ -1,7 +1,5 @@
 use rustc_errors::codes::*;
-use rustc_errors::{
-    Applicability, Diag, EmissionGuarantee, LintDiagnostic, Subdiagnostic, inline_fluent,
-};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, LintDiagnostic, Subdiagnostic, msg};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::query::Key;
@@ -135,10 +133,10 @@ impl<'a, P: std::fmt::Debug> LintDiagnostic<'a, ()> for AssertLint<P> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         diag.primary_message(match self.lint_kind {
             AssertLintKind::ArithmeticOverflow => {
-                inline_fluent!("this arithmetic operation will overflow")
+                msg!("this arithmetic operation will overflow")
             }
             AssertLintKind::UnconditionalPanic => {
-                inline_fluent!("this operation will panic at runtime")
+                msg!("this operation will panic at runtime")
             }
         });
         let label = self.assert_kind.diagnostic_message();
@@ -295,12 +293,10 @@ impl Subdiagnostic for UnusedVariableStringInterp {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.span_label(
             self.lit,
-            inline_fluent!(
-                "you might have meant to use string interpolation in this string literal"
-            ),
+            msg!("you might have meant to use string interpolation in this string literal"),
         );
         diag.multipart_suggestion(
-            inline_fluent!("string interpolation only works in `format!` invocations"),
+            msg!("string interpolation only works in `format!` invocations"),
             vec![
                 (self.lit.shrink_to_lo(), String::from("format!(")),
                 (self.lit.shrink_to_hi(), String::from(")")),
@@ -337,17 +333,14 @@ pub(crate) struct MustNotSupend<'a, 'tcx> {
 // Needed for def_path_str
 impl<'a> LintDiagnostic<'a, ()> for MustNotSupend<'_, '_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::Diag<'a, ()>) {
-        diag.primary_message(inline_fluent!(
+        diag.primary_message(msg!(
             "{$pre}`{$def_path}`{$post} held across a suspend point, but should not be"
         ));
-        diag.span_label(
-            self.yield_sp,
-            inline_fluent!("the value is held across this suspend point"),
-        );
+        diag.span_label(self.yield_sp, msg!("the value is held across this suspend point"));
         if let Some(reason) = self.reason {
             diag.subdiagnostic(reason);
         }
-        diag.span_help(self.src_sp, inline_fluent!("consider using a block (`{\"{ ... }\"}`) to shrink the value's scope, ending before the suspend point"));
+        diag.span_help(self.src_sp, msg!("consider using a block (`{\"{ ... }\"}`) to shrink the value's scope, ending before the suspend point"));
         diag.arg("pre", self.pre);
         diag.arg("def_path", self.tcx.def_path_str(self.def_id));
         diag.arg("post", self.post);

@@ -1,4 +1,4 @@
-use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, Subdiagnostic, inline_fluent};
+use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, Subdiagnostic, msg};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt};
@@ -169,7 +169,7 @@ impl Subdiagnostic for RegionExplanation<'_> {
         diag.arg("desc_kind", self.desc.kind);
         diag.arg("desc_arg", self.desc.arg);
 
-        let msg = diag.eagerly_translate(inline_fluent!(
+        let msg = diag.eagerly_translate(msg!(
             "{$pref_kind ->
                 *[should_not_happen] [{$pref_kind}]
                 [ref_valid_for] ...the reference is valid for

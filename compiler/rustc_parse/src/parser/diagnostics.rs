@@ -12,8 +12,8 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, PResult, Subdiagnostic, Suggestions,
-    inline_fluent, pluralize,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, PResult, Subdiagnostic, Suggestions, msg,
+    pluralize,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -1272,7 +1272,7 @@ impl<'a> Parser<'a> {
                         // We made sense of it. Improve the error message.
                         e.span_suggestion_verbose(
                             binop.span.shrink_to_lo(),
-                            inline_fluent!("use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments"),
+                            msg!("use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments"),
                             "::",
                             Applicability::MaybeIncorrect,
                         );

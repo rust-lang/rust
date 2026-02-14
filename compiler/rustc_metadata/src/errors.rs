@@ -2,7 +2,7 @@ use std::io::Error;
 use std::path::{Path, PathBuf};
 
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, inline_fluent};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, msg};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
@@ -360,7 +360,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for MultipleCandidates {
         let mut diag = Diag::new(
             dcx,
             level,
-            inline_fluent!("multiple candidates for `{$flavor}` dependency `{$crate_name}` found"),
+            msg!("multiple candidates for `{$flavor}` dependency `{$crate_name}` found"),
         );
         diag.arg("crate_name", self.crate_name);
         diag.arg("flavor", self.flavor);
@@ -474,7 +474,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for InvalidMetadataFiles {
         let mut diag = Diag::new(
             dcx,
             level,
-            inline_fluent!("found invalid metadata files for crate `{$crate_name}`{$add_info}"),
+            msg!("found invalid metadata files for crate `{$crate_name}`{$add_info}"),
         );
         diag.arg("crate_name", self.crate_name);
         diag.arg("add_info", self.add_info);
@@ -503,11 +503,8 @@ pub struct CannotFindCrate {
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(
-            dcx,
-            level,
-            inline_fluent!("can't find crate for `{$crate_name}`{$add_info}"),
-        );
+        let mut diag =
+            Diag::new(dcx, level, msg!("can't find crate for `{$crate_name}`{$add_info}"));
         diag.arg("crate_name", self.crate_name);
         diag.arg("current_crate", self.current_crate);
         diag.arg("add_info", self.add_info);
@@ -516,9 +513,9 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
         diag.span(self.span);
         if self.crate_name == sym::std || self.crate_name == sym::core {
             if self.missing_core {
-                diag.note(inline_fluent!("the `{$locator_triple}` target may not be installed"));
+                diag.note(msg!("the `{$locator_triple}` target may not be installed"));
             } else {
-                diag.note(inline_fluent!(
+                diag.note(msg!(
                     "the `{$locator_triple}` target may not support the standard library"
                 ));
             }
@@ -528,12 +525,12 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
             if self.missing_core {
                 if env!("CFG_RELEASE_CHANNEL") == "dev" && !self.is_ui_testing {
                     // Note: Emits the nicer suggestion only for the dev channel.
-                    diag.help(inline_fluent!("consider adding the standard library to the sysroot with `x build library --target {$locator_triple}`"));
+                    diag.help(msg!("consider adding the standard library to the sysroot with `x build library --target {$locator_triple}`"));
                 } else if has_precompiled_std {
                     // NOTE: this suggests using rustup, even though the user may not have it installed.
                     // That's because they could choose to install it; or this may give them a hint which
                     // target they need to install from their distro.
-                    diag.help(inline_fluent!(
+                    diag.help(msg!(
                         "consider downloading the target with `rustup target add {$locator_triple}`"
                     ));
                 }
@@ -544,21 +541,19 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
             // If it's not a dummy, that means someone added `extern crate std` explicitly and
             // `#![no_std]` won't help.
             if !self.missing_core && self.span.is_dummy() {
-                diag.note(inline_fluent!("`std` is required by `{$current_crate}` because it does not declare `#![no_std]`"));
+                diag.note(msg!("`std` is required by `{$current_crate}` because it does not declare `#![no_std]`"));
             }
             // Recommend -Zbuild-std even on stable builds for Tier 3 targets because
             // it's the recommended way to use the target, the user should switch to nightly.
             if self.is_nightly_build || !has_precompiled_std {
-                diag.help(inline_fluent!("consider building the standard library from source with `cargo build -Zbuild-std`"));
+                diag.help(msg!("consider building the standard library from source with `cargo build -Zbuild-std`"));
             }
         } else if self.crate_name == self.profiler_runtime {
-            diag.note(inline_fluent!(
-                "the compiler may have been built without the profiler runtime"
-            ));
+            diag.note(msg!("the compiler may have been built without the profiler runtime"));
         } else if self.crate_name.as_str().starts_with("rustc_") {
-            diag.help(inline_fluent!("maybe you need to install the missing components with: `rustup component add rust-src rustc-dev llvm-tools-preview`"));
+            diag.help(msg!("maybe you need to install the missing components with: `rustup component add rust-src rustc-dev llvm-tools-preview`"));
         }
-        diag.span_label(self.span, inline_fluent!("can't find crate"));
+        diag.span_label(self.span, msg!("can't find crate"));
         diag
     }
 }
