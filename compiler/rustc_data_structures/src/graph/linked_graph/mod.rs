@@ -23,6 +23,7 @@
 use std::fmt::Debug;
 
 use rustc_index::bit_set::DenseBitSet;
+use rustc_index::{Idx, IndexSlice, IndexVec};
 use tracing::debug;
 
 #[cfg(test)]
@@ -45,7 +46,7 @@ mod tests;
 /// and does not implement those traits, so it has its own implementations of a
 /// few basic graph algorithms.
 pub struct LinkedGraph<N, E> {
-    nodes: Vec<Node<N>>,
+    nodes: IndexVec<NodeIndex, Node<N>>,
     edges: Vec<Edge<E>>,
 }
 
@@ -62,7 +63,7 @@ pub struct Edge<E> {
     pub data: E,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct NodeIndex(pub usize);
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -87,19 +88,29 @@ impl NodeIndex {
     }
 }
 
+impl Idx for NodeIndex {
+    fn new(idx: usize) -> NodeIndex {
+        NodeIndex(idx)
+    }
+
+    fn index(self) -> usize {
+        self.0
+    }
+}
+
 impl<N: Debug, E: Debug> LinkedGraph<N, E> {
     pub fn new() -> Self {
-        Self { nodes: Vec::new(), edges: Vec::new() }
+        Self { nodes: IndexVec::new(), edges: Vec::new() }
     }
 
     pub fn with_capacity(nodes: usize, edges: usize) -> Self {
-        Self { nodes: Vec::with_capacity(nodes), edges: Vec::with_capacity(edges) }
+        Self { nodes: IndexVec::with_capacity(nodes), edges: Vec::with_capacity(edges) }
     }
 
     // # Simple accessors
 
     #[inline]
-    pub fn all_nodes(&self) -> &[Node<N>] {
+    pub fn all_nodes(&self) -> &IndexSlice<NodeIndex, Node<N>> {
         &self.nodes
     }
 
@@ -131,15 +142,15 @@ impl<N: Debug, E: Debug> LinkedGraph<N, E> {
     }
 
     pub fn mut_node_data(&mut self, idx: NodeIndex) -> &mut N {
-        &mut self.nodes[idx.0].data
+        &mut self.nodes[idx].data
     }
 
     pub fn node_data(&self, idx: NodeIndex) -> &N {
-        &self.nodes[idx.0].data
+        &self.nodes[idx].data
     }
 
     pub fn node(&self, idx: NodeIndex) -> &Node<N> {
-        &self.nodes[idx.0]
+        &self.nodes[idx]
     }
 
     // # Edge construction and queries
@@ -154,16 +165,16 @@ impl<N: Debug, E: Debug> LinkedGraph<N, E> {
         let idx = self.next_edge_index();
 
         // read current first of the list of edges from each node
-        let source_first = self.nodes[source.0].first_edge[OUTGOING.repr];
-        let target_first = self.nodes[target.0].first_edge[INCOMING.repr];
+        let source_first = self.nodes[source].first_edge[OUTGOING.repr];
+        let target_first = self.nodes[target].first_edge[INCOMING.repr];
 
         // create the new edge, with the previous firsts from each node
         // as the next pointers
         self.edges.push(Edge { next_edge: [source_first, target_first], source, target, data });
 
         // adjust the firsts for each node target be the next object.
-        self.nodes[source.0].first_edge[OUTGOING.repr] = idx;
-        self.nodes[target.0].first_edge[INCOMING.repr] = idx;
+        self.nodes[source].first_edge[OUTGOING.repr] = idx;
+        self.nodes[target].first_edge[INCOMING.repr] = idx;
 
         idx
     }
