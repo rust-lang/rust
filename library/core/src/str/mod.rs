@@ -85,34 +85,50 @@ fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
     let trunc_len = s.floor_char_boundary(MAX_DISPLAY_LENGTH);
     let s_trunc = &s[..trunc_len];
     let ellipsis = if trunc_len < s.len() { "[...]" } else { "" };
+    let len = s.len();
 
-    // 1. out of bounds
-    if begin > s.len() || end > s.len() {
-        let oob_index = if begin > s.len() { begin } else { end };
-        panic!("byte index {oob_index} is out of bounds of `{s_trunc}`{ellipsis}");
+    // 1. begin is OOB.
+    if begin > len {
+        panic!("start byte index {begin} is out of bounds of `{s_trunc}`{ellipsis}");
     }
 
-    // 2. begin <= end
-    assert!(
-        begin <= end,
-        "begin <= end ({} <= {}) when slicing `{}`{}",
-        begin,
-        end,
-        s_trunc,
-        ellipsis
-    );
+    // 2. end is OOB.
+    if end > len {
+        panic!("end byte index {end} is out of bounds of `{s_trunc}`{ellipsis}");
+    }
 
-    // 3. character boundary
-    let index = if !s.is_char_boundary(begin) { begin } else { end };
-    // find the character
-    let char_start = s.floor_char_boundary(index);
-    // `char_start` must be less than len and a char boundary
-    let ch = s[char_start..].chars().next().unwrap();
-    let char_range = char_start..char_start + ch.len_utf8();
-    panic!(
-        "byte index {} is not a char boundary; it is inside {:?} (bytes {:?}) of `{}`{}",
-        index, ch, char_range, s_trunc, ellipsis
-    );
+    // 3. range is backwards.
+    if begin > end {
+        panic!("begin > end ({begin} > {end}) when slicing `{s_trunc}`{ellipsis}")
+    }
+
+    // 4. begin is inside a character.
+    if !s.is_char_boundary(begin) {
+        let floor = s.floor_char_boundary(begin);
+        let ceil = s.ceil_char_boundary(begin);
+        let range = floor..ceil;
+        let ch = s[floor..ceil].chars().next().unwrap();
+        panic!(
+            "start byte index {begin} is not a char boundary; it is inside {ch:?} (bytes {range:?}) of `{s_trunc}`{ellipsis}"
+        )
+    }
+
+    // 5. end is inside a character.
+    if !s.is_char_boundary(end) {
+        let floor = s.floor_char_boundary(end);
+        let ceil = s.ceil_char_boundary(end);
+        let range = floor..ceil;
+        let ch = s[floor..ceil].chars().next().unwrap();
+        panic!(
+            "end byte index {end} is not a char boundary; it is inside {ch:?} (bytes {range:?}) of `{s_trunc}`{ellipsis}"
+        )
+    }
+
+    // 6. end is OOB and range is inclusive (end == len).
+    // This test cannot be combined with 2. above because for cases like
+    // `"abcαβγ"[4..9]` the error is that 4 is inside 'α', not that 9 is OOB.
+    debug_assert_eq!(end, len);
+    panic!("end byte index {end} is out of bounds of `{s_trunc}`{ellipsis}");
 }
 
 impl str {
