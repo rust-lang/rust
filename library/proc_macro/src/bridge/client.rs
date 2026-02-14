@@ -98,7 +98,7 @@ pub(crate) use super::symbol::Symbol;
 
 macro_rules! define_client_side {
     (
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
     ) => {
         impl Methods {
             $(pub(crate) fn $method($($arg: $arg_ty),*) $(-> $ret_ty)? {

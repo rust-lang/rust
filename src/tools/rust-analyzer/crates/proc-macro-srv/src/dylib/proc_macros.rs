@@ -30,7 +30,7 @@ impl ProcMacros {
                     if *trait_name == macro_name =>
                 {
                     let res = client.run(
-                        &bridge::server::SameThread,
+                        &bridge::server::SAME_THREAD,
                         S::make_server(call_site, def_site, mixed_site, callback),
                         macro_body,
                         cfg!(debug_assertions),
@@ -39,7 +39,7 @@ impl ProcMacros {
                 }
                 bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
                     let res = client.run(
-                        &bridge::server::SameThread,
+                        &bridge::server::SAME_THREAD,
                         S::make_server(call_site, def_site, mixed_site, callback),
                         macro_body,
                         cfg!(debug_assertions),
@@ -48,7 +48,7 @@ impl ProcMacros {
                 }
                 bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
                     let res = client.run(
-                        &bridge::server::SameThread,
+                        &bridge::server::SAME_THREAD,
                         S::make_server(call_site, def_site, mixed_site, callback),
                         parsed_attributes,
                         macro_body,
