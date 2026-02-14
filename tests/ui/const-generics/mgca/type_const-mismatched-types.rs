@@ -2,7 +2,8 @@
 #![feature(min_generic_const_args)]
 
 type const FREE: u32 = 5_usize;
-//~^ ERROR mismatched types
+//~^ ERROR the constant `5` is not of type `u32`
+//~| ERROR mismatched types
 
 type const FREE2: isize = FREE;
 //~^ ERROR the constant `5` is not of type `isize`

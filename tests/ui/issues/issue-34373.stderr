@@ -5,7 +5,7 @@ LL | pub struct Foo<T = Box<dyn Trait<DefaultFoo>>>;
    |                                  ^^^^^^^^^^
    |
 note: ...which requires expanding type alias `DefaultFoo`...
-  --> $DIR/issue-34373.rs:9:19
+  --> $DIR/issue-34373.rs:10:19
    |
 LL | type DefaultFoo = Foo;
    |                   ^^^
