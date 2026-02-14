@@ -77,7 +77,8 @@ strip = true
 debug = 0
 strip = true
 
-# Bigint libraries are slow without optimization, speed up testing
+# Bigint libraries are slow without optimization, speed up testing. Note that this doesn't affect
+# its dependencies, it should still be run in release mode where possible.
 [profile.dev.package.test-float-parse]
 opt-level = 3
 
@@ -92,4 +93,3 @@ codegen-units = 1
 # If you want to use a crate with local modifications, you can set a path or git dependency here.
 # For git dependencies, also add your source to ALLOWED_SOURCES in src/tools/tidy/src/extdeps.rs.
 #[patch.crates-io]
-
