@@ -1,5 +1,5 @@
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/undeclared-lifetime-no-ice-issue-151461.rs:9:33
+  --> $DIR/undeclared-lifetime-no-ice-issue-151461.rs:13:33
    |
 LL |     for<'b> <Self as X<'b>>::U: 'a,
    |                                 ^^ undeclared lifetime

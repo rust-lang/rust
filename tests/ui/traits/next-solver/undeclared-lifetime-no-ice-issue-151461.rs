@@ -1,3 +1,7 @@
+// Regression test for <https://github.com/rust-lang/rust/issues/151461>.
+//
+// The next solver normalizes `TypeOutlives` goals before registering them as region obligations.
+// This should not ICE when we already emitted an error for an undeclared lifetime.
 //@ compile-flags: -Znext-solver=globally
 
 trait X<'a> {
