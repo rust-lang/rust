@@ -2243,16 +2243,6 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
             copy_all_cgu_workproducts_to_incr_comp_cache_dir(sess, &compiled_modules);
         produce_final_output_artifacts(sess, &compiled_modules, &self.output_filenames);
 
-        // FIXME: time_llvm_passes support - does this use a global context or
-        // something?
-        if sess.codegen_units().as_usize() == 1 && sess.opts.unstable_opts.time_llvm_passes {
-            self.backend.print_pass_timings()
-        }
-
-        if sess.print_llvm_stats() {
-            self.backend.print_statistics()
-        }
-
         (compiled_modules, work_products)
     }
 

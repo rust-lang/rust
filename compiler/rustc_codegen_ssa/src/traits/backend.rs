@@ -119,6 +119,10 @@ pub trait CodegenBackend {
         outputs: &OutputFilenames,
     ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>);
 
+    fn print_pass_timings(&self) {}
+
+    fn print_statistics(&self) {}
+
     /// This is called on the returned [`CompiledModules`] from [`join_codegen`](Self::join_codegen).
     fn link(
         &self,

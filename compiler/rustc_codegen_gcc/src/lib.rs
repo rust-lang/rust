@@ -455,14 +455,6 @@ impl WriteBackendMethods for GccCodegenBackend {
         unreachable!()
     }
 
-    fn print_pass_timings(&self) {
-        unimplemented!();
-    }
-
-    fn print_statistics(&self) {
-        unimplemented!()
-    }
-
     fn optimize(
         _cgcx: &CodegenContext,
         _prof: &SelfProfilerRef,

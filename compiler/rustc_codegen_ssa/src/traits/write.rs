@@ -39,8 +39,6 @@ pub trait WriteBackendMethods: Clone + 'static {
         modules: Vec<(String, Self::ModuleBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>);
-    fn print_pass_timings(&self);
-    fn print_statistics(&self);
     fn optimize(
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,
