@@ -97,7 +97,8 @@ fn send_before_recv_timeout() {
         _ => panic!("expected Ok(22)"),
     }
 
-    assert!(start.elapsed() < timeout);
+    let elapsed = start.elapsed();
+    assert!(elapsed < timeout, "expected {elapsed:?} < {timeout:?}");
 }
 
 #[test]
