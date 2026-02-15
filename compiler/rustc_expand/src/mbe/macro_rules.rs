@@ -43,7 +43,7 @@ use crate::mbe::quoted::{RulePart, parse_one_tt};
 use crate::mbe::transcribe::transcribe;
 use crate::mbe::{self, KleeneOp};
 
-pub(crate) struct ParserAnyMacro<'a> {
+pub(crate) struct ParserAnyMacro<'a, 'b> {
     parser: Parser<'a>,
 
     /// Span of the expansion site of the macro this parser is for
@@ -55,10 +55,15 @@ pub(crate) struct ParserAnyMacro<'a> {
     arm_span: Span,
     /// Whether or not this macro is defined in the current crate
     is_local: bool,
+    bindings: &'b [MacroRule],
+    matched_rule_bindings: &'b [MatcherLoc],
 }
 
-impl<'a> ParserAnyMacro<'a> {
-    pub(crate) fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
+impl<'a, 'b> ParserAnyMacro<'a, 'b> {
+    pub(crate) fn make(
+        mut self: Box<ParserAnyMacro<'a, 'b>>,
+        kind: AstFragmentKind,
+    ) -> AstFragment {
         let ParserAnyMacro {
             site_span,
             macro_ident,
@@ -67,13 +72,22 @@ impl<'a> ParserAnyMacro<'a> {
             arm_span,
             is_trailing_mac,
             is_local,
+            bindings,
+            matched_rule_bindings,
         } = *self;
         let snapshot = &mut parser.create_snapshot_for_diagnostic();
         let fragment = match parse_ast_fragment(parser, kind) {
             Ok(f) => f,
             Err(err) => {
                 let guar = diagnostics::emit_frag_parse_err(
-                    err, parser, snapshot, site_span, arm_span, kind,
+                    err,
+                    parser,
+                    snapshot,
+                    site_span,
+                    arm_span,
+                    kind,
+                    bindings,
+                    matched_rule_bindings,
                 );
                 return kind.dummy(site_span, guar);
             }
@@ -100,7 +114,7 @@ impl<'a> ParserAnyMacro<'a> {
         fragment
     }
 
-    #[instrument(skip(cx, tts))]
+    #[instrument(skip(cx, tts, bindings, matched_rule_bindings))]
     pub(crate) fn from_tts<'cx>(
         cx: &'cx mut ExtCtxt<'a>,
         tts: TokenStream,
@@ -108,6 +122,9 @@ impl<'a> ParserAnyMacro<'a> {
         arm_span: Span,
         is_local: bool,
         macro_ident: Ident,
+        // bindings and lhs is for diagnostics
+        bindings: &'b [MacroRule],
+        matched_rule_bindings: &'b [MatcherLoc],
     ) -> Self {
         Self {
             parser: Parser::new(&cx.sess.psess, tts, None),
@@ -121,11 +138,13 @@ impl<'a> ParserAnyMacro<'a> {
             is_trailing_mac: cx.current_expansion.is_trailing_mac,
             arm_span,
             is_local,
+            bindings,
+            matched_rule_bindings,
         }
     }
 }
 
-pub(super) enum MacroRule {
+pub(crate) enum MacroRule {
     /// A function-style rule, for use with `m!()`
     Func { lhs: Vec<MatcherLoc>, lhs_span: Span, rhs: mbe::TokenTree },
     /// An attr rule, for use with `#[m]`
@@ -226,8 +245,8 @@ impl MacroRulesMacroExpander {
 }
 
 impl TTMacroExpander for MacroRulesMacroExpander {
-    fn expand<'cx>(
-        &self,
+    fn expand<'cx, 'a: 'cx>(
+        &'a self,
         cx: &'cx mut ExtCtxt<'_>,
         sp: Span,
         input: TokenStream,
@@ -337,7 +356,7 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
 
 /// Expands the rules based macro defined by `rules` for a given input `arg`.
 #[instrument(skip(cx, transparency, arg, rules))]
-fn expand_macro<'cx>(
+fn expand_macro<'cx, 'a: 'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     def_span: Span,
@@ -345,7 +364,7 @@ fn expand_macro<'cx>(
     name: Ident,
     transparency: Transparency,
     arg: TokenStream,
-    rules: &[MacroRule],
+    rules: &'a [MacroRule],
 ) -> Box<dyn MacResult + 'cx> {
     let psess = &cx.sess.psess;
 
@@ -359,7 +378,7 @@ fn expand_macro<'cx>(
 
     match try_success_result {
         Ok((rule_index, rule, named_matches)) => {
-            let MacroRule::Func { rhs, .. } = rule else {
+            let MacroRule::Func { lhs, rhs, .. } = rule else {
                 panic!("try_match_macro returned non-func rule");
             };
             let mbe::TokenTree::Delimited(rhs_span, _, rhs) = rhs else {
@@ -388,7 +407,7 @@ fn expand_macro<'cx>(
             }
 
             // Let the context choose how to interpret the result. Weird, but useful for X-macros.
-            Box::new(ParserAnyMacro::from_tts(cx, tts, sp, arm_span, is_local, name))
+            Box::new(ParserAnyMacro::from_tts(cx, tts, sp, arm_span, is_local, name, rules, lhs))
         }
         Err(CanRetry::No(guar)) => {
             debug!("Will not retry matching as an error was emitted already");

@@ -182,8 +182,8 @@ macro_rules! ast_fragments {
             }
         }
 
-        impl<'a> MacResult for crate::mbe::macro_rules::ParserAnyMacro<'a> {
-            $(fn $make_ast(self: Box<crate::mbe::macro_rules::ParserAnyMacro<'a>>)
+        impl<'a, 'b> MacResult for crate::mbe::macro_rules::ParserAnyMacro<'a, 'b> {
+            $(fn $make_ast(self: Box<crate::mbe::macro_rules::ParserAnyMacro<'a, 'b>>)
                            -> Option<$AstTy> {
                 Some(self.make(AstFragmentKind::$Kind).$make_ast())
             })*
