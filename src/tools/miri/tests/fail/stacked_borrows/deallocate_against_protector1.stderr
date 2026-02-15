@@ -1,8 +1,8 @@
 error: Undefined Behavior: deallocating while item [Unique for <TAG>] is strongly protected
   --> RUSTLIB/alloc/src/boxed.rs:LL:CC
    |
-LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+LL |                 self.1.deallocate_nonzero_size(From::from(ptr.cast()), layout);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information

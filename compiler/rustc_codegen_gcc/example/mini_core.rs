@@ -694,6 +694,12 @@ pub union MaybeUninit<T> {
     pub value: ManuallyDrop<T>,
 }
 
+pub mod mem {
+    #[lang = "Alignment"]
+    #[repr(transparent)]
+    pub struct Alignment(pub usize);
+}
+
 pub mod intrinsics {
     #[rustc_intrinsic]
     pub const fn black_box<T>(_dummy: T) -> T;
@@ -704,9 +710,9 @@ pub mod intrinsics {
     #[rustc_intrinsic]
     pub unsafe fn size_of_val<T: ?::Sized>(val: *const T) -> usize;
     #[rustc_intrinsic]
-    pub const fn align_of<T>() -> usize;
+    pub const fn align_of<T>() -> crate::mem::Alignment;
     #[rustc_intrinsic]
-    pub unsafe fn align_of_val<T: ?::Sized>(val: *const T) -> usize;
+    pub unsafe fn align_of_val<T: ?::Sized>(val: *const T) -> crate::mem::Alignment;
     #[rustc_intrinsic]
     pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
     #[rustc_intrinsic]
@@ -747,7 +753,7 @@ pub const fn size_of<T>() -> usize {
 }
 
 pub const fn align_of<T>() -> usize {
-    <T as SizedTypeProperties>::ALIGN
+    <T as SizedTypeProperties>::ALIGN.0
 }
 
 trait SizedTypeProperties: Sized {
@@ -755,7 +761,7 @@ trait SizedTypeProperties: Sized {
     const SIZE: usize = intrinsics::size_of::<Self>();
 
     #[lang = "mem_align_const"]
-    const ALIGN: usize = intrinsics::align_of::<Self>();
+    const ALIGN: crate::mem::Alignment = intrinsics::align_of::<Self>();
 }
 
 impl<T> SizedTypeProperties for T {}

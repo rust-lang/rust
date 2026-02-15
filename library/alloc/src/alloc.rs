@@ -216,18 +216,16 @@ impl Global {
 
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    fn deallocate_impl_runtime(ptr: NonNull<u8>, layout: Layout) {
-        if layout.size() != 0 {
-            // SAFETY:
-            // * We have checked that `layout` is non-zero in size.
-            // * The caller is obligated to provide a layout that "fits", and in this case,
-            //   "fit" always means a layout that is equal to the original, because our
-            //   `allocate()`, `grow()`, and `shrink()` implementations never returns a larger
-            //   allocation than requested.
-            // * Other conditions must be upheld by the caller, as per `Allocator::deallocate()`'s
-            //   safety documentation.
-            unsafe { dealloc_nonnull(ptr, layout) }
-        }
+    fn deallocate_nonzero_impl_runtime(ptr: NonNull<u8>, layout: Layout) {
+        // SAFETY:
+        // * The caller provided a `layout` that is non-zero in size.
+        // * The caller is obligated to provide a layout that "fits", and in this case,
+        //   "fit" always means a layout that is equal to the original, because our
+        //   `allocate()`, `grow()`, and `shrink()` implementations never returns a larger
+        //   allocation than requested.
+        // * Other conditions must be upheld by the caller, as per `Allocator::deallocate()`'s
+        //   safety documentation.
+        unsafe { dealloc_nonnull(ptr, layout) }
     }
 
     // SAFETY: Same as `Allocator::grow`
@@ -340,11 +338,11 @@ impl Global {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-    const unsafe fn deallocate_impl(&self, ptr: NonNull<u8>, layout: Layout) {
+    const unsafe fn deallocate_nonzero_impl(&self, ptr: NonNull<u8>, layout: Layout) {
         core::intrinsics::const_eval_select(
             (ptr, layout),
-            Global::deallocate_impl_const,
-            Global::deallocate_impl_runtime,
+            Global::deallocate_nonzero_impl_const,
+            Global::deallocate_nonzero_impl_runtime,
         )
     }
 
@@ -405,12 +403,10 @@ impl Global {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-    const fn deallocate_impl_const(ptr: NonNull<u8>, layout: Layout) {
-        if layout.size() != 0 {
-            // SAFETY: We checked for nonzero size; other preconditions must be upheld by caller.
-            unsafe {
-                core::intrinsics::const_deallocate(ptr.as_ptr(), layout.size(), layout.align());
-            }
+    const fn deallocate_nonzero_impl_const(ptr: NonNull<u8>, layout: Layout) {
+        // SAFETY: all conditions must be upheld by the caller
+        unsafe {
+            core::intrinsics::const_deallocate(ptr.as_ptr(), layout.size(), layout.align());
         }
     }
 
@@ -434,7 +430,7 @@ impl Global {
             );
         }
         unsafe {
-            self.deallocate_impl(ptr, old_layout);
+            self.deallocate(ptr, old_layout);
         }
         Ok(new_ptr)
     }
@@ -458,8 +454,17 @@ unsafe impl const Allocator for Global {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+        if layout.size() != 0 {
+            // SAFETY: We checked for nonzero size; other preconditions must be upheld by caller.
+            unsafe { self.deallocate_nonzero_size(ptr, layout) }
+        }
+    }
+
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    unsafe fn deallocate_nonzero_size(&self, ptr: NonNull<u8>, layout: Layout) {
         // SAFETY: all conditions must be upheld by the caller
-        unsafe { self.deallocate_impl(ptr, layout) }
+        unsafe { self.deallocate_nonzero_impl(ptr, layout) }
     }
 
     #[inline]

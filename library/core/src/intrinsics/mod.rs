@@ -2797,7 +2797,7 @@ pub const fn size_of<T>() -> usize;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn align_of<T>() -> usize;
+pub const fn align_of<T>() -> mem::Alignment;
 
 /// The offset of a field inside a type.
 ///
@@ -2871,7 +2871,7 @@ pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_const_stable_indirect]
-pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
+pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> mem::Alignment;
 
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]

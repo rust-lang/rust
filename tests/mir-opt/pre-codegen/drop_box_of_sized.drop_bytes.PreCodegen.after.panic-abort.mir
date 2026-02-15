@@ -10,28 +10,26 @@ fn drop_bytes(_1: *mut Box<[u8; 1024]>) -> () {
                 let _4: ();
                 scope 4 {
                     scope 5 {
-                        scope 17 (inlined Layout::size) {
+                        scope 12 (inlined Layout::size) {
                         }
-                        scope 18 (inlined std::ptr::Unique::<[u8; 1024]>::cast::<u8>) {
+                        scope 13 (inlined std::ptr::Unique::<[u8; 1024]>::cast::<u8>) {
                             let mut _3: std::ptr::NonNull<u8>;
-                            scope 19 (inlined NonNull::<[u8; 1024]>::cast::<u8>) {
-                                scope 20 (inlined NonNull::<[u8; 1024]>::as_ptr) {
+                            scope 14 (inlined NonNull::<[u8; 1024]>::cast::<u8>) {
+                                scope 15 (inlined NonNull::<[u8; 1024]>::as_ptr) {
                                 }
                             }
                         }
-                        scope 21 (inlined <NonNull<u8> as From<std::ptr::Unique<u8>>>::from) {
-                            scope 22 (inlined std::ptr::Unique::<u8>::as_non_null_ptr) {
+                        scope 16 (inlined <NonNull<u8> as From<std::ptr::Unique<u8>>>::from) {
+                            scope 17 (inlined std::ptr::Unique::<u8>::as_non_null_ptr) {
                             }
                         }
-                        scope 23 (inlined <std::alloc::Global as Allocator>::deallocate) {
-                            scope 24 (inlined std::alloc::Global::deallocate_impl) {
-                                scope 25 (inlined std::alloc::Global::deallocate_impl_runtime) {
-                                    scope 26 (inlined Layout::size) {
-                                    }
-                                    scope 27 (inlined alloc::alloc::dealloc_nonnull) {
-                                        scope 28 (inlined Layout::size) {
+                        scope 18 (inlined <std::alloc::Global as Allocator>::deallocate_nonzero_size) {
+                            scope 19 (inlined std::alloc::Global::deallocate_nonzero_impl) {
+                                scope 20 (inlined std::alloc::Global::deallocate_nonzero_impl_runtime) {
+                                    scope 21 (inlined alloc::alloc::dealloc_nonnull) {
+                                        scope 22 (inlined Layout::size) {
                                         }
-                                        scope 29 (inlined Layout::alignment) {
+                                        scope 23 (inlined Layout::alignment) {
                                         }
                                     }
                                 }
@@ -48,16 +46,6 @@ fn drop_bytes(_1: *mut Box<[u8; 1024]>) -> () {
                         scope 10 (inlined size_of_val_raw::<[u8; 1024]>) {
                         }
                         scope 11 (inlined std::mem::Alignment::of_val_raw::<[u8; 1024]>) {
-                            scope 12 {
-                                scope 14 (inlined #[track_caller] std::mem::Alignment::new_unchecked) {
-                                    scope 15 (inlined core::ub_checks::check_language_ub) {
-                                        scope 16 (inlined core::ub_checks::check_language_ub::runtime) {
-                                        }
-                                    }
-                                }
-                            }
-                            scope 13 (inlined align_of_val_raw::<[u8; 1024]>) {
-                            }
                         }
                     }
                 }
