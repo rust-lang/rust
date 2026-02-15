@@ -1,35 +1,35 @@
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/issue-110164.rs:8:5
+  --> $DIR/invalid-path-110164.rs:8:5
    |
 LL | use _::a;
    |     ^ expected identifier, found reserved identifier
 
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/issue-110164.rs:10:5
+  --> $DIR/invalid-path-110164.rs:10:5
    |
 LL | use _::*;
    |     ^ expected identifier, found reserved identifier
 
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/issue-110164.rs:14:9
+  --> $DIR/invalid-path-110164.rs:14:9
    |
 LL |     use _::a;
    |         ^ expected identifier, found reserved identifier
 
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/issue-110164.rs:16:9
+  --> $DIR/invalid-path-110164.rs:16:9
    |
 LL |     use _::*;
    |         ^ expected identifier, found reserved identifier
 
 error[E0432]: unresolved import `self::*`
-  --> $DIR/issue-110164.rs:4:5
+  --> $DIR/invalid-path-110164.rs:4:5
    |
 LL | use self::*;
    |     ^^^^^^^ cannot glob-import a module into itself
 
 error[E0432]: unresolved import `crate::*`
-  --> $DIR/issue-110164.rs:6:5
+  --> $DIR/invalid-path-110164.rs:6:5
    |
 LL | use crate::*;
    |     ^^^^^^^^ cannot glob-import a module into itself
