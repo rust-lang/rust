@@ -580,7 +580,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 LintLevelSource::Node { span, reason, .. } => {
                     OverruledAttributeSub::NodeSource { span, reason }
                 }
-                LintLevelSource::CommandLine(_, _) => OverruledAttributeSub::CommandLineSource,
+                LintLevelSource::CommandLine(name, _) => {
+                    OverruledAttributeSub::CommandLineSource { id: name }
+                }
             };
             if !fcw_warning {
                 self.sess.dcx().emit_err(OverruledAttribute {

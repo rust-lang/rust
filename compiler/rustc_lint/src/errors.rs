@@ -20,7 +20,7 @@ pub(crate) struct OverruledAttribute<'a> {
 pub(crate) enum OverruledAttributeSub {
     DefaultSource { id: String },
     NodeSource { span: Span, reason: Option<Symbol> },
-    CommandLineSource,
+    CommandLineSource { id: Symbol },
 }
 
 impl Subdiagnostic for OverruledAttributeSub {
@@ -36,8 +36,9 @@ impl Subdiagnostic for OverruledAttributeSub {
                     diag.note(rationale.to_string());
                 }
             }
-            OverruledAttributeSub::CommandLineSource => {
-                diag.note(msg!("`forbid` lint level was set on command line"));
+            OverruledAttributeSub::CommandLineSource { id } => {
+                diag.note(msg!("`forbid` lint level was set on command line (`-F {$id}`)"));
+                diag.arg("id", id);
             }
         }
     }
