@@ -71,6 +71,8 @@ pub fn walk_native_lib_search_dirs<R>(
         || sess.target.os == Os::Fuchsia
         || sess.target.is_like_aix
         || sess.target.is_like_darwin && !sess.sanitizers().is_empty()
+        // FIXME: For the shared LLVM library.
+        || sess.target.os == Os::Windows && sess.target.env == Env::Gnu && sess.target.abi == Abi::Llvm
     {
         f(&sess.target_tlib_path.dir, false)?;
     }
