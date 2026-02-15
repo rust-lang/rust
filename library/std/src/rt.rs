@@ -187,7 +187,7 @@ fn lang_start_internal(
         cleanup();
         // Guard against multiple threads calling `libc::exit` concurrently.
         // See the documentation for `unique_thread_exit` for more information.
-        crate::sys::exit_guard::unique_thread_exit();
+        crate::sys::exit::unique_thread_exit();
 
         ret_code
     })
