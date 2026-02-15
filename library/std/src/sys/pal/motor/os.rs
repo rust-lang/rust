@@ -63,10 +63,6 @@ pub fn home_dir() -> Option<PathBuf> {
     None
 }
 
-pub fn exit(code: i32) -> ! {
-    moto_rt::process::exit(code)
-}
-
 pub fn getpid() -> u32 {
     panic!("Pids on Motor OS are u64.")
 }

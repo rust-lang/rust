@@ -19,8 +19,7 @@ cfg_select! {
         /// * If it is called again on the same thread as the first call, it will abort.
         /// * If it is called again on a different thread, it will wait in a loop
         ///   (waiting for the process to exit).
-        #[cfg_attr(any(test, doctest), allow(dead_code))]
-        pub(crate) fn unique_thread_exit() {
+        pub fn unique_thread_exit() {
             use crate::ffi::c_int;
             use crate::ptr;
             use crate::sync::atomic::AtomicPtr;
@@ -62,9 +61,83 @@ cfg_select! {
         ///
         /// Mitigation is ***NOT*** implemented on this platform, either because this platform
         /// is not affected, or because mitigation is not yet implemented for this platform.
-        #[cfg_attr(any(test, doctest), allow(dead_code))]
-        pub(crate) fn unique_thread_exit() {
+        #[cfg_attr(any(test, doctest), expect(dead_code))]
+        pub fn unique_thread_exit() {
             // Mitigation not required on platforms where `exit` is thread-safe.
+        }
+    }
+}
+
+pub fn exit(code: i32) -> ! {
+    cfg_select! {
+        target_os = "hermit" => {
+            unsafe { hermit_abi::exit(code) }
+        }
+        target_os = "linux" => {
+            unsafe {
+                unique_thread_exit();
+                libc::exit(code)
+            }
+        }
+        target_os = "motor" => {
+            moto_rt::process::exit(code)
+        }
+        all(target_vendor = "fortanix", target_env = "sgx") => {
+            crate::sys::pal::abi::exit_with_code(code as _)
+        }
+        target_os = "solid_asp3" => {
+            rtabort!("exit({}) called", code)
+        }
+        target_os = "teeos" => {
+            let _ = code;
+            panic!("TA should not call `exit`")
+        }
+        target_os = "uefi" => {
+            use r_efi::base::Status;
+
+            use crate::os::uefi::env;
+
+            if let (Some(boot_services), Some(handle)) =
+                (env::boot_services(), env::try_image_handle())
+            {
+                let boot_services = boot_services.cast::<r_efi::efi::BootServices>();
+                let _ = unsafe {
+                    ((*boot_services.as_ptr()).exit)(
+                        handle.as_ptr(),
+                        Status::from_usize(code as usize),
+                        0,
+                        crate::ptr::null_mut(),
+                    )
+                };
+            }
+            crate::intrinsics::abort()
+        }
+        any(
+            target_family = "unix",
+            target_os = "wasi",
+        ) => {
+            unsafe { libc::exit(code as crate::ffi::c_int) }
+        }
+        target_os = "vexos" => {
+            let _ = code;
+
+            unsafe {
+                vex_sdk::vexSystemExitRequest();
+
+                loop {
+                    vex_sdk::vexTasksRun();
+                }
+            }
+        }
+        target_os = "windows" => {
+            unsafe { crate::sys::pal::c::ExitProcess(code as u32) }
+        }
+        target_os = "xous" => {
+            crate::os::xous::ffi::exit(code as u32)
+        }
+        _ => {
+            let _ = code;
+            crate::intrinsics::abort()
         }
     }
 }

@@ -2464,7 +2464,7 @@ impl Child {
 #[cfg_attr(not(test), rustc_diagnostic_item = "process_exit")]
 pub fn exit(code: i32) -> ! {
     crate::rt::cleanup();
-    crate::sys::os::exit(code)
+    crate::sys::exit::exit(code)
 }
 
 /// Terminates the process in an abnormal fashion.

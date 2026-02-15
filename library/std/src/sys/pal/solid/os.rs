@@ -63,10 +63,6 @@ pub fn home_dir() -> Option<PathBuf> {
     None
 }
 
-pub fn exit(code: i32) -> ! {
-    rtabort!("exit({}) called", code);
-}
-
 pub fn getpid() -> u32 {
     panic!("no pids on this platform")
 }
