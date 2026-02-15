@@ -32,6 +32,19 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
         }
         None
     }
+    fn super_nth_back(&mut self, mut n: usize) -> Option<(A::Item, B::Item)>
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator,
+    {
+        while let Some(x) = <Self as DoubleEndedIterator>::next_back(self) {
+            if n == 0 {
+                return Some(x);
+            }
+            n -= 1;
+        }
+        None
+    }
 }
 
 /// Converts the arguments to iterators and zips them.
@@ -124,6 +137,11 @@ where
     fn next_back(&mut self) -> Option<(A::Item, B::Item)> {
         ZipImpl::next_back(self)
     }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<(A::Item, B::Item)> {
+        ZipImpl::nth_back(self, n)
+    }
 }
 
 // Zip specialization trait
@@ -135,6 +153,10 @@ trait ZipImpl<A, B> {
     fn size_hint(&self) -> (usize, Option<usize>);
     fn nth(&mut self, n: usize) -> Option<Self::Item>;
     fn next_back(&mut self) -> Option<Self::Item>
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator;
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item>
     where
         A: DoubleEndedIterator + ExactSizeIterator,
         B: DoubleEndedIterator + ExactSizeIterator;
@@ -201,6 +223,15 @@ macro_rules! zip_impl_general_defaults {
                 (None, None) => None,
                 _ => unreachable!(),
             }
+        }
+
+        #[inline]
+        default fn nth_back(&mut self, n: usize) -> Option<(A::Item, B::Item)>
+        where
+            A: DoubleEndedIterator + ExactSizeIterator,
+            B: DoubleEndedIterator + ExactSizeIterator,
+        {
+            self.super_nth_back(n)
         }
     };
 }
@@ -402,6 +433,80 @@ where
         } else {
             None
         }
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<(A::Item, B::Item)>
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator,
+    {
+        // No effects when the iterator is exhausted.
+        if self.index >= self.len {
+            return None;
+        }
+
+        let old_len = self.len;
+        let remaining = old_len - self.index;
+        // How many elements to skip from the back (capped at remaining).
+        let delta = cmp::min(n, remaining);
+        // The new back boundary after skipping `delta` elements.
+        let new_len = old_len - delta;
+
+        // Adjust a, b to equal length if needed on first backward iteration.
+        if A::MAY_HAVE_SIDE_EFFECT || B::MAY_HAVE_SIDE_EFFECT {
+            let sz_a = self.a.size();
+            let sz_b = self.b.size();
+            // This condition can and must only be true on the first backward
+            // iteration call, otherwise we would break the restriction on calls
+            // to `self.next_back()` after calling `get_unchecked()`.
+            if sz_a != sz_b && (old_len == sz_a || old_len == sz_b) {
+                if A::MAY_HAVE_SIDE_EFFECT && sz_a > old_len {
+                    for _ in 0..sz_a - old_len {
+                        self.a.next_back();
+                    }
+                }
+                if B::MAY_HAVE_SIDE_EFFECT && sz_b > old_len {
+                    for _ in 0..sz_b - old_len {
+                        self.b.next_back();
+                    }
+                }
+            }
+
+            // Execute side effects for the `delta` skipped elements from the back.
+            // Go from high to low indices since we're iterating backwards.
+            for i in (new_len..old_len).rev() {
+                // Update len before each access for panic safety, so that
+                // the same index won't be accessed twice, as required by
+                // TrustedRandomAccess.
+                self.len = i;
+                if A::MAY_HAVE_SIDE_EFFECT {
+                    // SAFETY: `i` < `old_len` <= `self.a.size()` and `self.b.size()`
+                    unsafe {
+                        self.a.__iterator_get_unchecked(i);
+                    }
+                }
+                if B::MAY_HAVE_SIDE_EFFECT {
+                    // SAFETY: same as above.
+                    unsafe {
+                        self.b.__iterator_get_unchecked(i);
+                    }
+                }
+            }
+        }
+
+        // If we couldn't skip enough, the iterator is exhausted.
+        if n >= remaining {
+            self.len = self.index;
+            return None;
+        }
+
+        // Get the target element at index `new_len - 1`.
+        let i = new_len - 1;
+        self.len = i;
+        // SAFETY: `i` is `old_len - n - 1`, which is >= `self.index` (since
+        // `n < remaining`) and < `old_len` <= `self.a.size()` and `self.b.size()`.
+        unsafe { Some((self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i))) }
     }
 }
 
