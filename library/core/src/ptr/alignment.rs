@@ -3,7 +3,7 @@
 use crate::marker::MetaSized;
 use crate::num::NonZero;
 use crate::ub_checks::assert_unsafe_precondition;
-use crate::{cmp, fmt, hash, mem, num};
+use crate::{cmp, fmt, hash, intrinsics, mem, num};
 
 /// A type storing a `usize` which is a power of two, and thus
 /// represents a possible alignment in the Rust abstract machine.
@@ -11,7 +11,10 @@ use crate::{cmp, fmt, hash, mem, num};
 /// Note that particularly large alignments, while representable in this type,
 /// are likely not to be supported by actual allocators and linkers.
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+// No special behaviour, but used as the return type from an intrinsic
+#[lang = "Alignment"]
 #[derive(Copy, Clone, PartialEq, Eq)]
+// This being transparent is critical for its use in `__rust_alloc` and friends
 #[repr(transparent)]
 pub struct Alignment {
     // This field is never used directly (nor is the enum),
@@ -73,9 +76,8 @@ impl Alignment {
     #[must_use]
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     pub const fn of_val<T: MetaSized>(val: &T) -> Self {
-        let align = mem::align_of_val(val);
-        // SAFETY: `align_of_val` returns valid alignment
-        unsafe { Alignment::new_unchecked(align) }
+        // SAFETY: val is a reference, so it's a valid raw pointer
+        unsafe { Alignment::of_val_raw(val) }
     }
 
     /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
@@ -122,9 +124,7 @@ impl Alignment {
     // #[unstable(feature = "layout_for_ptr", issue = "69835")]
     pub const unsafe fn of_val_raw<T: MetaSized>(val: *const T) -> Self {
         // SAFETY: precondition propagated to the caller
-        let align = unsafe { mem::align_of_val_raw(val) };
-        // SAFETY: `align_of_val_raw` returns valid alignment
-        unsafe { Alignment::new_unchecked(align) }
+        unsafe { intrinsics::align_of_val(val) }
     }
 
     /// Creates an `Alignment` from a `usize`, or returns `None` if it's

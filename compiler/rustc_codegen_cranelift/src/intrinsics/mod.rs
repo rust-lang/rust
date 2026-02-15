@@ -602,7 +602,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 None
             };
             let (_size, align) = crate::unsize::size_and_align_of(fx, layout, meta);
-            ret.write_cvalue(fx, CValue::by_val(align, usize_layout));
+            let alignment_layout = fx.layout_of(fx.tcx.ty_alignment(source_info.span));
+            ret.write_cvalue(fx, CValue::by_val(align, alignment_layout));
         }
 
         sym::vtable_size => {

@@ -17,7 +17,7 @@
   
       bb0: {
           StorageLive(_1);
-          _2 = alloc::alloc::exchange_malloc(const <S as std::mem::SizedTypeProperties>::SIZE, const <S as std::mem::SizedTypeProperties>::ALIGN) -> [return: bb1, unwind continue];
+          _2 = alloc::alloc::exchange_malloc(const <S as std::mem::SizedTypeProperties>::SIZE, const <S as std::mem::SizedTypeProperties>::ALIGNMENT) -> [return: bb1, unwind continue];
       }
   
       bb1: {

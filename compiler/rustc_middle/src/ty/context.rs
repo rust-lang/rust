@@ -1079,6 +1079,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self.type_of(ordering_enum).no_bound_vars().unwrap()
     }
 
+    /// Gets a `Ty` representing the [`LangItem::Alignment`]
+    #[track_caller]
+    pub fn ty_alignment(self, span: Span) -> Ty<'tcx> {
+        let alignment = self.require_lang_item(hir::LangItem::Alignment, span);
+        self.type_of(alignment).no_bound_vars().unwrap()
+    }
+
     /// Obtain the given diagnostic item's `DefId`. Use `is_diagnostic_item` if you just want to
     /// compare against another `DefId`, since `is_diagnostic_item` is cheaper.
     pub fn get_diagnostic_item(self, name: Symbol) -> Option<DefId> {

@@ -450,7 +450,7 @@ pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(note = "use `align_of` instead", since = "1.2.0", suggestion = "align_of")]
 pub fn min_align_of<T>() -> usize {
-    <T as SizedTypeProperties>::ALIGN
+    align_of::<T>()
 }
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
@@ -473,8 +473,7 @@ pub fn min_align_of<T>() -> usize {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(note = "use `align_of_val` instead", since = "1.2.0", suggestion = "align_of_val")]
 pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
-    // SAFETY: val is a reference, so it's a valid raw pointer
-    unsafe { intrinsics::align_of_val(val) }
+    align_of_val(val)
 }
 
 /// Returns the [ABI]-required minimum alignment of a type in bytes.
@@ -497,7 +496,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 #[rustc_const_stable(feature = "const_align_of", since = "1.24.0")]
 #[rustc_diagnostic_item = "mem_align_of"]
 pub const fn align_of<T>() -> usize {
-    <T as SizedTypeProperties>::ALIGN
+    Alignment::of::<T>().as_usize()
 }
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
@@ -517,8 +516,7 @@ pub const fn align_of<T>() -> usize {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_align_of_val", since = "1.85.0")]
 pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
-    // SAFETY: val is a reference, so it's a valid raw pointer
-    unsafe { intrinsics::align_of_val(val) }
+    Alignment::of_val(val).as_usize()
 }
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
@@ -565,7 +563,7 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
 pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
-    unsafe { intrinsics::align_of_val(val) }
+    unsafe { Alignment::of_val_raw(val) }.as_usize()
 }
 
 /// Returns `true` if dropping values of type `T` matters.
@@ -1256,14 +1254,8 @@ pub trait SizedTypeProperties: Sized {
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
     #[lang = "mem_align_const"]
-    const ALIGN: usize = intrinsics::align_of::<Self>();
-
-    #[doc(hidden)]
-    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-    const ALIGNMENT: Alignment = {
-        // This can't panic since type alignment is always a power of two.
-        Alignment::new(Self::ALIGN).unwrap()
-    };
+    // #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    const ALIGNMENT: Alignment = intrinsics::align_of::<Self>();
 
     /// `true` if this type requires no storage.
     /// `false` if its [size](size_of) is greater than zero.
@@ -1300,7 +1292,7 @@ pub trait SizedTypeProperties: Sized {
         // SAFETY: if the type is instantiated, rustc already ensures that its
         // layout is valid. Use the unchecked constructor to avoid inserting a
         // panicking codepath that needs to be optimized out.
-        unsafe { Layout::from_size_align_unchecked(Self::SIZE, Self::ALIGN) }
+        unsafe { Layout::from_size_alignment_unchecked(Self::SIZE, Self::ALIGNMENT) }
     };
 
     /// The largest safe length for a `[Self]`.

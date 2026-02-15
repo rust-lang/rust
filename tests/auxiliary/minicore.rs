@@ -271,6 +271,12 @@ trait Drop {
     fn drop(&mut self);
 }
 
+pub mod ptr {
+    #[lang = "Alignment"]
+    #[repr(transparent)]
+    pub struct Alignment(usize);
+}
+
 pub mod mem {
     #[rustc_nounwind]
     #[rustc_intrinsic]
@@ -279,9 +285,10 @@ pub mod mem {
     #[rustc_nounwind]
     #[rustc_intrinsic]
     pub const fn size_of<T>() -> usize;
+
     #[rustc_nounwind]
     #[rustc_intrinsic]
-    pub const fn align_of<T>() -> usize;
+    pub const fn align_of<T>() -> crate::ptr::Alignment;
 }
 
 #[lang = "c_void"]

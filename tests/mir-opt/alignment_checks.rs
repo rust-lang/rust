@@ -14,6 +14,6 @@ pub unsafe fn sized_ptr(ptr: *const u32) -> u32 {
     // CHECK: _2 = copy _1 as usize (Transmute);
     // CHECK: _3 = BitAnd(copy _2, const 3_usize);
     // CHECK: _4 = Eq(copy _3, const 0_usize);
-    // CHECK: assert(copy _4,
+    // CHECK: assert(move _4,
     *ptr
 }
