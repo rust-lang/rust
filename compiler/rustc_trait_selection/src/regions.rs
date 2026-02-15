@@ -116,11 +116,6 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
 #[extension(pub trait InferCtxtRegionExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
     /// Resolve regions.
-    ///
-    /// With the next solver, `TypeOutlives` goals are normalized while they are
-    /// evaluated (and before being registered as region obligations), so region
-    /// resolution does not need to normalize them.
-    ///
     /// This function assumes that all infer variables are already constrained.
     fn resolve_regions(
         &self,
