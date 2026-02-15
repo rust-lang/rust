@@ -135,7 +135,7 @@ pub fn check(cx: &LateContext<'_>) {
     {
         let mut rustc_groups = FxHashSet::default();
         let mut clippy_groups = FxHashSet::default();
-        for (group, ..) in unerased_lint_store(cx.tcx.sess).get_lint_groups() {
+        for group in unerased_lint_store(cx.tcx.sess).get_all_group_names() {
             match group.split_once("::") {
                 None => {
                     rustc_groups.insert(group);
