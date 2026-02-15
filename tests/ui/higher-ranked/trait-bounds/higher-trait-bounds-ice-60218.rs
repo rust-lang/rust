@@ -1,6 +1,4 @@
-// https://github.com/rust-lang/rust/issues/60218
-// Regression test for #60218
-//
+// Regression test for https://github.com/rust-lang/rust/issues/60218
 // This was reported to cause ICEs.
 
 use std::iter::Map;
