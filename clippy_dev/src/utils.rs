@@ -1,19 +1,21 @@
-use core::fmt::{self, Display};
+use core::cell::Cell;
+use core::fmt::{self, Display, Write as _};
+use core::hash::{Hash, Hasher};
 use core::marker::PhantomData;
-use core::mem;
 use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::range::Range;
 use core::str::FromStr;
+use core::str::pattern::Pattern;
+use core::{mem, ptr};
+use rustc_arena::DroplessArena;
 use std::ffi::OsStr;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read as _, Seek as _, SeekFrom, Write as _};
-use std::path::{Path, PathBuf};
+use std::path::{self, Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::{env, thread};
 use walkdir::WalkDir;
-
-use crate::parse::SourceFile;
 
 pub struct Scoped<'inner, 'outer: 'inner, T>(T, PhantomData<&'inner mut T>, PhantomData<&'outer mut ()>);
 impl<T> Scoped<'_, '_, T> {
@@ -697,4 +699,166 @@ pub fn slice_groups_mut<T>(
         }
     }
     I { slice, split_idx }
+}
+
+/// A string used as a temporary buffer used to avoid allocating for short lived strings.
+pub struct StrBuf(String);
+impl StrBuf {
+    /// Creates a new buffer with the specified initial capacity.
+    pub fn with_capacity(cap: usize) -> Self {
+        Self(String::with_capacity(cap))
+    }
+
+    /// Allocates the result of formatting the given value onto the arena.
+    pub fn alloc_display<'cx>(&mut self, arena: &'cx DroplessArena, value: impl Display) -> &'cx str {
+        self.0.clear();
+        write!(self.0, "{value}").expect("`Display` impl returned an error");
+        if self.0.is_empty() {
+            ""
+        } else {
+            arena.alloc_str(&self.0)
+        }
+    }
+
+    /// Allocates the string onto the arena with all ascii characters converted to
+    /// lowercase.
+    pub fn alloc_ascii_lower<'cx>(&mut self, arena: &'cx DroplessArena, s: &str) -> &'cx str {
+        self.0.clear();
+        self.0.push_str(s);
+        self.0.make_ascii_lowercase();
+        if self.0.is_empty() {
+            ""
+        } else {
+            arena.alloc_str(&self.0)
+        }
+    }
+
+    /// Collects all elements into the buffer and allocates that onto the arena.
+    pub fn alloc_collect<'cx, I>(&mut self, arena: &'cx DroplessArena, iter: I) -> &'cx str
+    where
+        I: IntoIterator,
+        String: Extend<I::Item>,
+    {
+        self.0.clear();
+        self.0.extend(iter);
+        if self.0.is_empty() {
+            ""
+        } else {
+            arena.alloc_str(&self.0)
+        }
+    }
+
+    /// Allocates the result of replacing all instances the pattern with the given string
+    /// onto the arena.
+    pub fn alloc_replaced<'cx>(
+        &mut self,
+        arena: &'cx DroplessArena,
+        s: &str,
+        pat: impl Pattern,
+        replacement: &str,
+    ) -> &'cx str {
+        let mut parts = s.split(pat);
+        let Some(first) = parts.next() else {
+            return "";
+        };
+        self.0.clear();
+        self.0.push_str(first);
+        for part in parts {
+            self.0.push_str(replacement);
+            self.0.push_str(part);
+        }
+        if self.0.is_empty() {
+            ""
+        } else {
+            arena.alloc_str(&self.0)
+        }
+    }
+
+    /// Performs an operation with the freshly cleared buffer.
+    pub fn with<T>(&mut self, f: impl FnOnce(&mut String) -> T) -> T {
+        self.0.clear();
+        f(&mut self.0)
+    }
+}
+
+pub struct VecBuf<T>(Vec<T>);
+impl<T> VecBuf<T> {
+    /// Creates a new buffer with the specified initial capacity.
+    pub fn with_capacity(cap: usize) -> Self {
+        Self(Vec::with_capacity(cap))
+    }
+
+    /// Performs an operation with the freshly cleared buffer.
+    pub fn with<R>(&mut self, f: impl FnOnce(&mut Vec<T>) -> R) -> R {
+        self.0.clear();
+        f(&mut self.0)
+    }
+}
+
+#[derive(Eq)]
+pub struct SourceFile<'cx> {
+    // `cargo dev rename_lint` needs to be able to rename files.
+    pub path: Cell<&'cx str>,
+    pub contents: String,
+}
+impl<'cx> SourceFile<'cx> {
+    pub fn load(path: &'cx str) -> Self {
+        let mut contents = String::new();
+        File::open_read(path).read_append_to_string(&mut contents);
+        SourceFile {
+            path: Cell::new(path),
+            contents,
+        }
+    }
+
+    /// Splits the file's path into the crate it's a part of and the module it implements.
+    ///
+    /// Only supports paths in the form `CRATE_NAME/src/PATH/TO/FILE.rs` using the current
+    /// platform's path separator. The module path returned will use the current platform's
+    /// path separator.
+    pub fn path_as_krate_mod(&self) -> (&'cx str, &'cx str) {
+        let path = self.path.get();
+        let Some((krate, path)) = path.split_once(path::MAIN_SEPARATOR) else {
+            return ("", "");
+        };
+        let module = if let Some(path) = path.strip_prefix("src")
+            && let Some(path) = path.strip_prefix(path::MAIN_SEPARATOR)
+            && let Some(path) = path.strip_suffix(".rs")
+        {
+            if path == "lib" {
+                ""
+            } else if let Some(path) = path.strip_suffix("mod")
+                && let Some(path) = path.strip_suffix(path::MAIN_SEPARATOR)
+            {
+                path
+            } else {
+                path
+            }
+        } else {
+            ""
+        };
+        (krate, module)
+    }
+}
+impl PartialEq<SourceFile<'_>> for SourceFile<'_> {
+    fn eq(&self, other: &SourceFile<'_>) -> bool {
+        // We should only be creating one source file per path.
+        ptr::addr_eq(self, other)
+    }
+}
+impl Hash for SourceFile<'_> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        ptr::hash(self, state);
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Span<'cx> {
+    pub file: &'cx SourceFile<'cx>,
+    pub range: Range<u32>,
+}
+impl<'cx> Span<'cx> {
+    pub fn new(file: &'cx SourceFile<'cx>, range: Range<u32>) -> Self {
+        Self { file, range }
+    }
 }

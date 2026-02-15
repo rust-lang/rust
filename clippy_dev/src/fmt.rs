@@ -1,8 +1,7 @@
 use crate::generate::gen_sorted_lints_file;
 use crate::new_parse_cx;
-use crate::parse::VecBuf;
 use crate::utils::{
-    ErrAction, FileUpdater, UpdateMode, UpdateStatus, expect_action, run_with_output, split_args_for_threads,
+    ErrAction, FileUpdater, UpdateMode, UpdateStatus, VecBuf, expect_action, run_with_output, split_args_for_threads,
     walk_dir_no_dot_or_target,
 };
 use itertools::Itertools as _;

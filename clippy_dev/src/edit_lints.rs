@@ -1,10 +1,8 @@
 use crate::parse::cursor::{self, Capture, Cursor};
-use crate::parse::{
-    ActiveLint, DeprecatedLint, Lint, LintData, LintName, ParseCx, ParsedLints, RenamedLint, SourceFile, Span,
-};
+use crate::parse::{ActiveLint, DeprecatedLint, Lint, LintData, LintName, ParseCx, ParsedLints, RenamedLint};
 use crate::utils::{
-    ErrAction, FileUpdater, UpdateMode, UpdateStatus, Version, delete_dir_if_exists, delete_file_if_exists,
-    expect_action, try_rename_dir, try_rename_file, walk_dir_no_dot_or_target,
+    ErrAction, FileUpdater, SourceFile, Span, UpdateMode, UpdateStatus, Version, delete_dir_if_exists,
+    delete_file_if_exists, expect_action, try_rename_dir, try_rename_file, walk_dir_no_dot_or_target,
 };
 use core::mem;
 use rustc_lexer::TokenKind;

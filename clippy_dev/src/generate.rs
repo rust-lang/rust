@@ -1,6 +1,6 @@
 use crate::parse::cursor::Cursor;
-use crate::parse::{LintData, LintPass, ParsedLints, VecBuf};
-use crate::utils::{FileUpdater, UpdateMode, UpdateStatus, slice_groups, update_text_region_fn};
+use crate::parse::{LintData, LintPass, ParsedLints};
+use crate::utils::{FileUpdater, UpdateMode, UpdateStatus, VecBuf, slice_groups, update_text_region_fn};
 use core::range::Range;
 use itertools::Itertools as _;
 use std::collections::HashSet;
