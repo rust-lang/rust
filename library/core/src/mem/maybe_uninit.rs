@@ -695,6 +695,16 @@ impl<T> MaybeUninit<T> {
     /// let x_init = unsafe { x.assume_init() };
     /// // `x` had not been initialized yet, so this last line caused undefined behavior. ⚠️
     /// ```
+    ///
+    /// *Incorrect* usage of this method:
+    ///
+    /// ```rust,no_run
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let x = MaybeUninit::<u8>::uninit();
+    /// let x_init = unsafe { x.assume_init() };
+    /// // `x` was not initialized, reading uninitialized integer is undefined behavior! ⚠️
+    /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[rustc_const_stable(feature = "const_maybe_uninit_assume_init_by_value", since = "1.59.0")]
     #[inline(always)]
@@ -703,6 +713,7 @@ impl<T> MaybeUninit<T> {
     pub const unsafe fn assume_init(self) -> T {
         // SAFETY: the caller must guarantee that `self` is initialized.
         // This also means that `self` must be a `value` variant.
+        // Note that reading uninitialized POD (such as `u8`) is undefined behavior.
         unsafe {
             intrinsics::assert_inhabited::<T>();
             // We do this via a raw ptr read instead of `ManuallyDrop::into_inner` so that there's
