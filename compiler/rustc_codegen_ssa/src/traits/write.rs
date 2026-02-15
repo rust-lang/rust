@@ -18,7 +18,7 @@ pub trait WriteBackendMethods: Clone + 'static {
 
     /// Performs fat LTO by merging all modules into a single one, running autodiff
     /// if necessary and running any further optimizations
-    fn run_and_optimize_fat_lto(
+    fn optimize_and_codegen_fat_lto(
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,
         shared_emitter: &SharedEmitter,
@@ -26,7 +26,7 @@ pub trait WriteBackendMethods: Clone + 'static {
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-    ) -> ModuleCodegen<Self::Module>;
+    ) -> CompiledModule;
     /// Performs thin LTO by performing necessary global analysis and returning two
     /// lists, one of the modules that need optimization and another for modules that
     /// can simply be copied over from the incr. comp. cache.
@@ -46,13 +46,13 @@ pub trait WriteBackendMethods: Clone + 'static {
         module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     );
-    fn optimize_thin(
+    fn optimize_and_codegen_thin(
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,
         shared_emitter: &SharedEmitter,
         tm_factory: TargetMachineFactoryFn<Self>,
         thin: ThinModule<Self>,
-    ) -> ModuleCodegen<Self::Module>;
+    ) -> CompiledModule;
     fn codegen(
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,

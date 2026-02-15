@@ -988,7 +988,7 @@ fn do_fat_lto<B: ExtraBackendMethods>(
         needs_fat_lto.push(FatLtoInput::Serialized { name: wp.cgu_name, buffer: module })
     }
 
-    let module = B::run_and_optimize_fat_lto(
+    B::optimize_and_codegen_fat_lto(
         cgcx,
         prof,
         &shared_emitter,
@@ -996,8 +996,7 @@ fn do_fat_lto<B: ExtraBackendMethods>(
         exported_symbols_for_lto,
         each_linked_rlib_for_lto,
         needs_fat_lto,
-    );
-    B::codegen(cgcx, prof, &shared_emitter, module, &cgcx.module_config)
+    )
 }
 
 fn do_thin_lto<B: ExtraBackendMethods>(
@@ -1162,8 +1161,7 @@ fn execute_thin_lto_work_item<B: ExtraBackendMethods>(
 ) -> CompiledModule {
     let _timer = prof.generic_activity_with_arg("codegen_module_perform_lto", module.name());
 
-    let module = B::optimize_thin(cgcx, prof, &shared_emitter, tm_factory, module);
-    B::codegen(cgcx, prof, &shared_emitter, module, &cgcx.module_config)
+    B::optimize_and_codegen_thin(cgcx, prof, &shared_emitter, tm_factory, module)
 }
 
 /// Messages sent to the coordinator.

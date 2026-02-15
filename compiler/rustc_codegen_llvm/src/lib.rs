@@ -135,7 +135,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     type ModuleBuffer = back::lto::ModuleBuffer;
     type TargetMachine = OwnedTargetMachine;
     type ThinData = back::lto::ThinData;
-    fn run_and_optimize_fat_lto(
+    fn optimize_and_codegen_fat_lto(
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,
         shared_emitter: &SharedEmitter,
@@ -143,7 +143,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-    ) -> ModuleCodegen<Self::Module> {
+    ) -> CompiledModule {
         let mut module = back::lto::run_fat(
             cgcx,
             prof,
@@ -158,7 +158,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         let dcx = dcx.handle();
         back::lto::run_pass_manager(cgcx, prof, dcx, &mut module, false);
 
-        module
+        back::write::codegen(cgcx, prof, shared_emitter, module, &cgcx.module_config)
     }
     fn run_thin_lto(
         cgcx: &CodegenContext,
@@ -188,14 +188,14 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     ) {
         back::write::optimize(cgcx, prof, shared_emitter, module, config)
     }
-    fn optimize_thin(
+    fn optimize_and_codegen_thin(
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,
         shared_emitter: &SharedEmitter,
         tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
         thin: ThinModule<Self>,
-    ) -> ModuleCodegen<Self::Module> {
-        back::lto::optimize_thin_module(cgcx, prof, shared_emitter, tm_factory, thin)
+    ) -> CompiledModule {
+        back::lto::optimize_and_codegen_thin_module(cgcx, prof, shared_emitter, tm_factory, thin)
     }
     fn codegen(
         cgcx: &CodegenContext,
