@@ -154,6 +154,11 @@ impl LintStore {
             })
     }
 
+    /// Returns all lint group names, including deprecated/aliased groups
+    pub fn get_all_group_names(&self) -> impl Iterator<Item = &'static str> {
+        self.lint_groups.keys().copied()
+    }
+
     pub fn register_early_pass(
         &mut self,
         pass: impl Fn() -> EarlyLintPassObject + 'static + sync::DynSend + sync::DynSync,
