@@ -116,6 +116,16 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     ) -> (ModuleCodegen<ModuleLlvm>, u64) {
         base::compile_codegen_unit(tcx, cgu_name)
     }
+}
+
+impl WriteBackendMethods for LlvmCodegenBackend {
+    type Module = ModuleLlvm;
+    type ModuleBuffer = back::lto::ModuleBuffer;
+    type TargetMachine = OwnedTargetMachine;
+    type ThinData = back::lto::ThinData;
+    fn thread_profiler() -> Box<dyn Any> {
+        Box::new(TimeTraceProfiler::new())
+    }
     fn target_machine_factory(
         &self,
         sess: &Session,
@@ -124,17 +134,6 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     ) -> TargetMachineFactoryFn<Self> {
         back::write::target_machine_factory(sess, optlvl, target_features)
     }
-
-    fn thread_profiler() -> Box<dyn Any> {
-        Box::new(TimeTraceProfiler::new())
-    }
-}
-
-impl WriteBackendMethods for LlvmCodegenBackend {
-    type Module = ModuleLlvm;
-    type ModuleBuffer = back::lto::ModuleBuffer;
-    type TargetMachine = OwnedTargetMachine;
-    type ThinData = back::lto::ThinData;
     fn optimize_and_codegen_fat_lto(
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,

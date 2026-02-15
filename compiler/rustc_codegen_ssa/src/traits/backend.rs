@@ -10,14 +10,13 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
-use rustc_session::config::{self, CrateType, OutputFilenames, PrintRequest};
+use rustc_session::config::{CrateType, OutputFilenames, PrintRequest};
 use rustc_span::Symbol;
 
 use super::CodegenObject;
 use super::write::WriteBackendMethods;
 use crate::back::archive::ArArchiveBuilderBuilder;
 use crate::back::link::link_binary;
-use crate::back::write::TargetMachineFactoryFn;
 use crate::{CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
 
 pub trait BackendTypes {
@@ -161,17 +160,6 @@ pub trait ExtraBackendMethods:
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
     ) -> (ModuleCodegen<Self::Module>, u64);
-
-    fn target_machine_factory(
-        &self,
-        sess: &Session,
-        opt_level: config::OptLevel,
-        target_features: &[String],
-    ) -> TargetMachineFactoryFn<Self>;
-
-    fn thread_profiler() -> Box<dyn Any> {
-        Box::new(())
-    }
 
     /// Returns `true` if this backend can be safely called from multiple threads.
     ///

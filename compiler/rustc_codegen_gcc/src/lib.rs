@@ -371,16 +371,6 @@ impl ExtraBackendMethods for GccCodegenBackend {
             self.lto_supported.load(Ordering::SeqCst),
         )
     }
-
-    fn target_machine_factory(
-        &self,
-        _sess: &Session,
-        _opt_level: OptLevel,
-        _features: &[String],
-    ) -> TargetMachineFactoryFn<Self> {
-        // TODO(antoyo): set opt level.
-        Arc::new(|_, _| ())
-    }
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -428,6 +418,16 @@ impl WriteBackendMethods for GccCodegenBackend {
     type TargetMachine = ();
     type ModuleBuffer = ModuleBuffer;
     type ThinData = ();
+
+    fn target_machine_factory(
+        &self,
+        _sess: &Session,
+        _opt_level: OptLevel,
+        _features: &[String],
+    ) -> TargetMachineFactoryFn<Self> {
+        // TODO(antoyo): set opt level.
+        Arc::new(|_, _| ())
+    }
 
     fn optimize_and_codegen_fat_lto(
         cgcx: &CodegenContext,

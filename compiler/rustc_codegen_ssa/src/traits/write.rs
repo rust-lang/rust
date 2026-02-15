@@ -1,8 +1,10 @@
+use std::any::Any;
 use std::path::PathBuf;
 
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::DiagCtxtHandle;
 use rustc_middle::dep_graph::WorkProduct;
+use rustc_session::{Session, config};
 
 use crate::back::lto::{SerializedModule, ThinModule};
 use crate::back::write::{
@@ -16,6 +18,15 @@ pub trait WriteBackendMethods: Clone + 'static {
     type ModuleBuffer: ModuleBufferMethods;
     type ThinData: Send + Sync;
 
+    fn thread_profiler() -> Box<dyn Any> {
+        Box::new(())
+    }
+    fn target_machine_factory(
+        &self,
+        sess: &Session,
+        opt_level: config::OptLevel,
+        target_features: &[String],
+    ) -> TargetMachineFactoryFn<Self>;
     /// Performs fat LTO by merging all modules into a single one, running autodiff
     /// if necessary and running any further optimizations
     fn optimize_and_codegen_fat_lto(

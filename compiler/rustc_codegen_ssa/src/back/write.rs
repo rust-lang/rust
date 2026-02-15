@@ -354,7 +354,7 @@ pub struct CodegenContext {
     pub parallel: bool,
 }
 
-fn generate_thin_lto_work<B: ExtraBackendMethods>(
+fn generate_thin_lto_work<B: WriteBackendMethods>(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
     dcx: DiagCtxtHandle<'_>,
@@ -822,7 +822,7 @@ pub(crate) fn compute_per_cgu_lto_type(
     }
 }
 
-fn execute_optimize_work_item<B: ExtraBackendMethods>(
+fn execute_optimize_work_item<B: WriteBackendMethods>(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
     shared_emitter: SharedEmitter,
@@ -967,7 +967,7 @@ fn execute_copy_from_cache_work_item(
     }
 }
 
-fn do_fat_lto<B: ExtraBackendMethods>(
+fn do_fat_lto<B: WriteBackendMethods>(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
     shared_emitter: SharedEmitter,
@@ -999,7 +999,7 @@ fn do_fat_lto<B: ExtraBackendMethods>(
     )
 }
 
-fn do_thin_lto<B: ExtraBackendMethods>(
+fn do_thin_lto<B: WriteBackendMethods>(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
     shared_emitter: SharedEmitter,
@@ -1152,7 +1152,7 @@ fn do_thin_lto<B: ExtraBackendMethods>(
     compiled_modules
 }
 
-fn execute_thin_lto_work_item<B: ExtraBackendMethods>(
+fn execute_thin_lto_work_item<B: WriteBackendMethods>(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
     shared_emitter: SharedEmitter,
@@ -1879,7 +1879,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
 #[must_use]
 pub(crate) struct WorkerFatalError;
 
-fn spawn_work<'a, B: ExtraBackendMethods>(
+fn spawn_work<'a, B: WriteBackendMethods>(
     cgcx: &CodegenContext,
     prof: &'a SelfProfilerRef,
     shared_emitter: SharedEmitter,
@@ -1922,7 +1922,7 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
     std::thread::Builder::new().name(name).spawn(f).expect("failed to spawn work thread");
 }
 
-fn spawn_thin_lto_work<B: ExtraBackendMethods>(
+fn spawn_thin_lto_work<B: WriteBackendMethods>(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
     shared_emitter: SharedEmitter,
@@ -2109,20 +2109,20 @@ impl SharedEmitterMain {
     }
 }
 
-pub struct Coordinator<B: ExtraBackendMethods> {
+pub struct Coordinator<B: WriteBackendMethods> {
     sender: Sender<Message<B>>,
     future: Option<thread::JoinHandle<Result<MaybeLtoModules<B>, ()>>>,
     // Only used for the Message type.
     phantom: PhantomData<B>,
 }
 
-impl<B: ExtraBackendMethods> Coordinator<B> {
+impl<B: WriteBackendMethods> Coordinator<B> {
     fn join(mut self) -> std::thread::Result<Result<MaybeLtoModules<B>, ()>> {
         self.future.take().unwrap().join()
     }
 }
 
-impl<B: ExtraBackendMethods> Drop for Coordinator<B> {
+impl<B: WriteBackendMethods> Drop for Coordinator<B> {
     fn drop(&mut self) {
         if let Some(future) = self.future.take() {
             // If we haven't joined yet, signal to the coordinator that it should spawn no more
@@ -2133,7 +2133,7 @@ impl<B: ExtraBackendMethods> Drop for Coordinator<B> {
     }
 }
 
-pub struct OngoingCodegen<B: ExtraBackendMethods> {
+pub struct OngoingCodegen<B: WriteBackendMethods> {
     pub backend: B,
     pub output_filenames: Arc<OutputFilenames>,
     // Field order below is intended to terminate the coordinator thread before two fields below
@@ -2144,7 +2144,7 @@ pub struct OngoingCodegen<B: ExtraBackendMethods> {
     pub shared_emitter_main: SharedEmitterMain,
 }
 
-impl<B: ExtraBackendMethods> OngoingCodegen<B> {
+impl<B: WriteBackendMethods> OngoingCodegen<B> {
     pub fn join(self, sess: &Session) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         self.shared_emitter_main.check(sess, true);
 
@@ -2267,7 +2267,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
     }
 }
 
-pub(crate) fn submit_codegened_module_to_llvm<B: ExtraBackendMethods>(
+pub(crate) fn submit_codegened_module_to_llvm<B: WriteBackendMethods>(
     coordinator: &Coordinator<B>,
     module: ModuleCodegen<B::Module>,
     cost: u64,
@@ -2276,7 +2276,7 @@ pub(crate) fn submit_codegened_module_to_llvm<B: ExtraBackendMethods>(
     drop(coordinator.sender.send(Message::CodegenDone::<B> { llvm_work_item, cost }));
 }
 
-pub(crate) fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
+pub(crate) fn submit_post_lto_module_to_llvm<B: WriteBackendMethods>(
     coordinator: &Coordinator<B>,
     module: CachedModuleCodegen,
 ) {
@@ -2284,7 +2284,7 @@ pub(crate) fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
     drop(coordinator.sender.send(Message::CodegenDone::<B> { llvm_work_item, cost: 0 }));
 }
 
-pub(crate) fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
+pub(crate) fn submit_pre_lto_module_to_llvm<B: WriteBackendMethods>(
     tcx: TyCtxt<'_>,
     coordinator: &Coordinator<B>,
     module: CachedModuleCodegen,
