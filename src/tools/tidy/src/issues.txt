@@ -2978,7 +2978,6 @@ ui/unboxed-closures/issue-18652.rs
 ui/unboxed-closures/issue-18661.rs
 ui/unboxed-closures/issue-30906.rs
 ui/unboxed-closures/issue-53448.rs
-ui/underscore-imports/issue-110164.rs
 ui/uniform-paths/auxiliary/issue-53691.rs
 ui/uniform-paths/issue-53691.rs
 ui/uninhabited/issue-107505.rs
