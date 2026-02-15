@@ -79,24 +79,18 @@ pub(crate) use macros::TryFromU32;
 #[derive(Clone)]
 pub struct LlvmCodegenBackend(());
 
-struct TimeTraceProfiler {
-    enabled: bool,
-}
+struct TimeTraceProfiler {}
 
 impl TimeTraceProfiler {
-    fn new(enabled: bool) -> Self {
-        if enabled {
-            unsafe { llvm::LLVMRustTimeTraceProfilerInitialize() }
-        }
-        TimeTraceProfiler { enabled }
+    fn new() -> Self {
+        unsafe { llvm::LLVMRustTimeTraceProfilerInitialize() }
+        TimeTraceProfiler {}
     }
 }
 
 impl Drop for TimeTraceProfiler {
     fn drop(&mut self) {
-        if self.enabled {
-            unsafe { llvm::LLVMRustTimeTraceProfilerFinishThread() }
-        }
+        unsafe { llvm::LLVMRustTimeTraceProfilerFinishThread() }
     }
 }
 
@@ -131,20 +125,8 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         back::write::target_machine_factory(sess, optlvl, target_features)
     }
 
-    fn spawn_named_thread<F, T>(
-        time_trace: bool,
-        name: String,
-        f: F,
-    ) -> std::io::Result<std::thread::JoinHandle<T>>
-    where
-        F: FnOnce() -> T,
-        F: Send + 'static,
-        T: Send + 'static,
-    {
-        std::thread::Builder::new().name(name).spawn(move || {
-            let _profiler = TimeTraceProfiler::new(time_trace);
-            f()
-        })
+    fn thread_profiler() -> Box<dyn Any> {
+        Box::new(TimeTraceProfiler::new())
     }
 }
 

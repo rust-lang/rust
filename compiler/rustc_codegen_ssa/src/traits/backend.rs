@@ -165,17 +165,8 @@ pub trait ExtraBackendMethods:
         target_features: &[String],
     ) -> TargetMachineFactoryFn<Self>;
 
-    fn spawn_named_thread<F, T>(
-        _time_trace: bool,
-        name: String,
-        f: F,
-    ) -> std::io::Result<std::thread::JoinHandle<T>>
-    where
-        F: FnOnce() -> T,
-        F: Send + 'static,
-        T: Send + 'static,
-    {
-        std::thread::Builder::new().name(name).spawn(f)
+    fn thread_profiler() -> Box<dyn Any> {
+        Box::new(())
     }
 
     /// Returns `true` if this backend can be safely called from multiple threads.

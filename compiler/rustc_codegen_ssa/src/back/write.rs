@@ -1470,7 +1470,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // Each LLVM module is automatically sent back to the coordinator for LTO if
     // necessary. There's already optimizations in place to avoid sending work
     // back to the coordinator if LTO isn't requested.
-    return B::spawn_named_thread(cgcx.time_trace, "coordinator".to_string(), move || {
+    let f = move || {
+        let _profiler = if cgcx.time_trace { B::thread_profiler() } else { Box::new(()) };
+
         // This is where we collect codegen units that have gone all the way
         // through codegen and LLVM.
         let mut compiled_modules = vec![];
@@ -1811,8 +1813,11 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 B::codegen(&cgcx, &prof, &shared_emitter, allocator_module, &allocator_config)
             }),
         }))
-    })
-    .expect("failed to spawn coordinator thread");
+    };
+    return std::thread::Builder::new()
+        .name("coordinator".to_owned())
+        .spawn(f)
+        .expect("failed to spawn coordinator thread");
 
     // A heuristic that determines if we have enough LLVM WorkItems in the
     // queue so that the main thread can do LLVM work instead of codegen
@@ -1891,7 +1896,10 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
     let cgcx = cgcx.clone();
     let prof = prof.clone();
 
-    B::spawn_named_thread(cgcx.time_trace, work.short_description(), move || {
+    let name = work.short_description();
+    let f = move || {
+        let _profiler = if cgcx.time_trace { B::thread_profiler() } else { Box::new(()) };
+
         let result = std::panic::catch_unwind(AssertUnwindSafe(|| match work {
             WorkItem::Optimize(m) => execute_optimize_work_item(&cgcx, &prof, shared_emitter, m),
             WorkItem::CopyPostLtoArtifacts(m) => WorkItemResult::Finished(
@@ -1912,8 +1920,8 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
             Err(_) => Message::WorkItem::<B> { result: Err(None) },
         };
         drop(coordinator_send.send(msg));
-    })
-    .expect("failed to spawn work thread");
+    };
+    std::thread::Builder::new().name(name).spawn(f).expect("failed to spawn work thread");
 }
 
 fn spawn_thin_lto_work<B: ExtraBackendMethods>(
@@ -1927,7 +1935,10 @@ fn spawn_thin_lto_work<B: ExtraBackendMethods>(
     let cgcx = cgcx.clone();
     let prof = prof.clone();
 
-    B::spawn_named_thread(cgcx.time_trace, work.short_description(), move || {
+    let name = work.short_description();
+    let f = move || {
+        let _profiler = if cgcx.time_trace { B::thread_profiler() } else { Box::new(()) };
+
         let result = std::panic::catch_unwind(AssertUnwindSafe(|| match work {
             ThinLtoWorkItem::CopyPostLtoArtifacts(m) => {
                 execute_copy_from_cache_work_item(&cgcx, &prof, shared_emitter, m)
@@ -1950,8 +1961,8 @@ fn spawn_thin_lto_work<B: ExtraBackendMethods>(
             Err(_) => ThinLtoMessage::WorkItem { result: Err(None) },
         };
         drop(coordinator_send.send(msg));
-    })
-    .expect("failed to spawn work thread");
+    };
+    std::thread::Builder::new().name(name).spawn(f).expect("failed to spawn work thread");
 }
 
 enum SharedEmitterMessage {
