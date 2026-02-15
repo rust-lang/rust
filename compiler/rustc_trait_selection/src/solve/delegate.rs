@@ -16,7 +16,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
-use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
+use crate::traits::{EvaluateConstErr, sizedness_fast_path, specialization_graph};
 
 #[repr(transparent)]
 pub struct SolverDelegate<'tcx>(InferCtxt<'tcx>);
@@ -114,20 +114,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     outlives.0,
                 );
                 Some(Certainty::Yes)
-            }
-            ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(outlives)) => {
-                // `TypeOutlives` obligations in the `InferCtxt` must already be normalized.
-                let outlives = self.0.resolve_vars_if_possible(outlives);
-                if outlives.0.has_aliases() {
-                    None
-                } else {
-                    self.0.register_type_outlives_constraint(
-                        outlives.0,
-                        outlives.1,
-                        &ObligationCause::dummy_with_span(span),
-                    );
-                    Some(Certainty::Yes)
-                }
             }
             ty::PredicateKind::Subtype(ty::SubtypePredicate { a, b, .. })
             | ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) => {
