@@ -39,6 +39,10 @@ pub trait PeekableIterator: Iterator {
     /// #![feature(peekable_iterator)]
     /// use std::iter::PeekableIterator;
     /// fn parse_number(s: &str) -> u32 {
+    ///     if s == "0" {
+    ///         return 0
+    ///     }
+    ///
     ///     let mut c = s.chars();
     ///
     ///     let base = if c.next_if_eq(&'0').is_some() {
@@ -57,6 +61,7 @@ pub trait PeekableIterator: Iterator {
     /// assert_eq!(parse_number("055"), 45);
     /// assert_eq!(parse_number("0o42"), 34);
     /// assert_eq!(parse_number("0x11"), 17);
+    /// assert_eq!(parse_number("0"), 0);
     /// ```
     ///
     fn next_if(&mut self, func: impl FnOnce(&Self::Item) -> bool) -> Option<Self::Item> {
