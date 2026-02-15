@@ -214,7 +214,11 @@ pub fn yield_now() {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn panicking() -> bool {
-    panicking::panicking()
+    if cfg!(panic = "abort") {
+        false
+    } else {
+        panicking::panicking()
+    }
 }
 
 /// Uses [`sleep`].
