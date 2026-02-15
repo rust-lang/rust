@@ -41,10 +41,10 @@ pub trait PeekableIterator: Iterator {
     /// fn parse_number(s: &str) -> u32 {
     ///     let mut c = s.chars();
     ///
-    ///     let base = if c.next_if_eq(&"0").is_some() {
+    ///     let base = if c.next_if_eq(&'0').is_some() {
     ///         match c.next_if(|c| "oxb".contains(c)) {
-    ///             Some("x") => 16,
-    ///             Some("b") => 2,
+    ///             Some('x') => 16,
+    ///             Some('b') => 2,
     ///             _ => 8
     ///         }
     ///     } else {
