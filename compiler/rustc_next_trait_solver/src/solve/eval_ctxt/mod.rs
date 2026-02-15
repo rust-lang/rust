@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_NoContext;
-use rustc_type_ir::data_structures::{HashMap, HashSet};
+use rustc_type_ir::data_structures::{HashMap, HashSet, IndexMap};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
@@ -418,18 +418,6 @@ where
             self.evaluate_goal_raw(source, goal, stalled_on)?;
         assert!(normalization_nested_goals.is_empty());
         Ok(goal_evaluation)
-    }
-
-    /// Evaluate `goal` without adding it to `nested_goals`.
-    ///
-    /// This is intended for goal evaluation which should not affect the
-    /// certainty of the currently evaluated goal.
-    pub(super) fn try_evaluate_goal(
-        &mut self,
-        source: GoalSource,
-        goal: Goal<I, I::Predicate>,
-    ) -> Result<GoalEvaluation<I>, NoSolution> {
-        self.evaluate_goal(source, goal, None)
     }
 
     /// Recursively evaluates `goal`, returning the nested goals in case
@@ -1199,6 +1187,19 @@ where
         universes: &mut Vec<Option<ty::UniverseIndex>>,
     ) -> T {
         BoundVarReplacer::replace_bound_vars(&**self.delegate, universes, t).0
+    }
+
+    pub(super) fn replace_escaping_bound_vars<T: TypeFoldable<I>>(
+        &self,
+        value: T,
+        universes: &mut Vec<Option<ty::UniverseIndex>>,
+    ) -> (
+        T,
+        IndexMap<ty::PlaceholderRegion<I>, ty::BoundRegion<I>>,
+        IndexMap<ty::PlaceholderType<I>, ty::BoundTy<I>>,
+        IndexMap<ty::PlaceholderConst<I>, ty::BoundConst<I>>,
+    ) {
+        BoundVarReplacer::replace_bound_vars(&**self.delegate, universes, value)
     }
 
     pub(super) fn may_use_unstable_feature(

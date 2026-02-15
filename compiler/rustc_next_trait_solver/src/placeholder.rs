@@ -164,3 +164,107 @@ where
         if p.has_vars_bound_at_or_above(self.current_index) { p.super_fold_with(self) } else { p }
     }
 }
+
+/// The inverse of [`BoundVarReplacer`]: replaces placeholders with the bound vars from which
+/// they came.
+pub struct PlaceholderReplacer<'a, I: Interner> {
+    cx: I,
+    mapped_regions: IndexMap<ty::PlaceholderRegion<I>, ty::BoundRegion<I>>,
+    mapped_types: IndexMap<ty::PlaceholderType<I>, ty::BoundTy<I>>,
+    mapped_consts: IndexMap<ty::PlaceholderConst<I>, ty::BoundConst<I>>,
+    universe_indices: &'a [Option<ty::UniverseIndex>],
+    current_index: ty::DebruijnIndex,
+}
+
+impl<'a, I: Interner> PlaceholderReplacer<'a, I> {
+    pub fn replace_placeholders<T: TypeFoldable<I>>(
+        cx: I,
+        mapped_regions: IndexMap<ty::PlaceholderRegion<I>, ty::BoundRegion<I>>,
+        mapped_types: IndexMap<ty::PlaceholderType<I>, ty::BoundTy<I>>,
+        mapped_consts: IndexMap<ty::PlaceholderConst<I>, ty::BoundConst<I>>,
+        universe_indices: &'a [Option<ty::UniverseIndex>],
+        value: T,
+    ) -> T {
+        let mut replacer = PlaceholderReplacer {
+            cx,
+            mapped_regions,
+            mapped_types,
+            mapped_consts,
+            universe_indices,
+            current_index: ty::INNERMOST,
+        };
+        value.fold_with(&mut replacer)
+    }
+
+    fn debruijn_for_universe(&self, universe: ty::UniverseIndex) -> ty::DebruijnIndex {
+        let index = self
+            .universe_indices
+            .iter()
+            .position(|u| matches!(u, Some(u_idx) if *u_idx == universe))
+            .unwrap_or_else(|| panic!("unexpected placeholder universe {universe:?}"));
+
+        ty::DebruijnIndex::from_usize(
+            self.universe_indices.len() - index + self.current_index.as_usize() - 1,
+        )
+    }
+}
+
+impl<I: Interner> TypeFolder<I> for PlaceholderReplacer<'_, I> {
+    fn cx(&self) -> I {
+        self.cx
+    }
+
+    fn fold_binder<T: TypeFoldable<I>>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T> {
+        if !t.has_placeholders() && !t.has_infer() {
+            return t;
+        }
+
+        self.current_index.shift_in(1);
+        let t = t.super_fold_with(self);
+        self.current_index.shift_out(1);
+        t
+    }
+
+    fn fold_region(&mut self, r: I::Region) -> I::Region {
+        if let ty::RePlaceholder(p) = r.kind() {
+            if let Some(replace_var) = self.mapped_regions.get(&p) {
+                let db = self.debruijn_for_universe(p.universe());
+                return Region::new_bound(self.cx(), db, *replace_var);
+            }
+        }
+
+        r
+    }
+
+    fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+        if let ty::Placeholder(p) = ty.kind() {
+            match self.mapped_types.get(&p) {
+                Some(replace_var) => {
+                    let db = self.debruijn_for_universe(p.universe());
+                    Ty::new_bound(self.cx(), db, *replace_var)
+                }
+                None => ty,
+            }
+        } else if ty.has_placeholders() || ty.has_infer() {
+            ty.super_fold_with(self)
+        } else {
+            ty
+        }
+    }
+
+    fn fold_const(&mut self, ct: I::Const) -> I::Const {
+        if let ty::ConstKind::Placeholder(p) = ct.kind() {
+            match self.mapped_consts.get(&p) {
+                Some(replace_var) => {
+                    let db = self.debruijn_for_universe(p.universe());
+                    Const::new_bound(self.cx(), db, *replace_var)
+                }
+                None => ct,
+            }
+        } else if ct.has_placeholders() || ct.has_infer() {
+            ct.super_fold_with(self)
+        } else {
+            ct
+        }
+    }
+}
