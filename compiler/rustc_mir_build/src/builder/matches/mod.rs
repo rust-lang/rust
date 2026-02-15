@@ -2944,11 +2944,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let ValTreeKind::Branch(branch) = *valtree else {
                     bug!("malformed valtree for an enum")
                 };
-                let Some(actual_variant_idx) = branch.get(0) else {
+                if branch.len() != 1 {
                     bug!("malformed valtree for an enum")
                 };
-                let ValTreeKind::Leaf(actual_variant_idx) = *actual_variant_idx.to_value().valtree
-                else {
+                let ValTreeKind::Leaf(actual_variant_idx) = **branch[0].to_value().valtree else {
                     bug!("malformed valtree for an enum")
                 };
 

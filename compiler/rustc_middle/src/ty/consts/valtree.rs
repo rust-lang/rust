@@ -31,12 +31,6 @@ impl<'tcx> ty::ValTreeKind<TyCtxt<'tcx>> {
 // recurses through
 pub struct ValTree<'tcx>(pub(crate) Interned<'tcx, ty::ValTreeKind<TyCtxt<'tcx>>>);
 
-impl<'tcx> rustc_type_ir::inherent::ValTree<TyCtxt<'tcx>> for ValTree<'tcx> {
-    fn kind(&self) -> &ty::ValTreeKind<TyCtxt<'tcx>> {
-        &self
-    }
-}
-
 impl<'tcx> ValTree<'tcx> {
     /// Returns the zero-sized valtree: `Branch([])`.
     pub fn zst(tcx: TyCtxt<'tcx>) -> Self {
@@ -80,6 +74,14 @@ impl<'tcx> Deref for ValTree<'tcx> {
 impl fmt::Debug for ValTree<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::IntoKind for ty::ValTree<'tcx> {
+    type Kind = ty::ValTreeKind<TyCtxt<'tcx>>;
+
+    fn kind(self) -> Self::Kind {
+        *self.0
     }
 }
 
