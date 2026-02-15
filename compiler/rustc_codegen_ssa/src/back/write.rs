@@ -398,8 +398,6 @@ enum MaybeLtoModules<B: WriteBackendMethods> {
         exported_symbols_for_lto: Arc<Vec<String>>,
         each_linked_rlib_file_for_lto: Vec<PathBuf>,
         needs_fat_lto: Vec<FatLtoInput<B>>,
-        lto_import_only_modules:
-            Vec<(SerializedModule<<B as WriteBackendMethods>::ModuleBuffer>, WorkProduct)>,
     },
     ThinLto {
         cgcx: CodegenContext,
@@ -973,8 +971,7 @@ fn do_fat_lto<B: WriteBackendMethods>(
     tm_factory: TargetMachineFactoryFn<B>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
-    mut needs_fat_lto: Vec<FatLtoInput<B>>,
-    import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
+    needs_fat_lto: Vec<FatLtoInput<B>>,
 ) -> CompiledModule {
     let _timer = prof.verbose_generic_activity("LLVM_fatlto");
 
@@ -982,10 +979,6 @@ fn do_fat_lto<B: WriteBackendMethods>(
     let dcx = dcx.handle();
 
     check_lto_allowed(&cgcx, dcx);
-
-    for (module, wp) in import_only_modules {
-        needs_fat_lto.push(FatLtoInput::Serialized { name: wp.cgu_name, buffer: module })
-    }
 
     B::optimize_and_codegen_fat_lto(
         cgcx,
@@ -1769,12 +1762,15 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 needs_fat_lto.push(FatLtoInput::InMemory(allocator_module));
             }
 
+            for (module, wp) in lto_import_only_modules {
+                needs_fat_lto.push(FatLtoInput::Serialized { name: wp.cgu_name, buffer: module })
+            }
+
             return Ok(MaybeLtoModules::FatLto {
                 cgcx,
                 exported_symbols_for_lto,
                 each_linked_rlib_file_for_lto,
                 needs_fat_lto,
-                lto_import_only_modules,
             });
         } else if !needs_thin_lto.is_empty() || !lto_import_only_modules.is_empty() {
             assert!(compiled_modules.is_empty());
@@ -2176,7 +2172,6 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                 exported_symbols_for_lto,
                 each_linked_rlib_file_for_lto,
                 needs_fat_lto,
-                lto_import_only_modules,
             } => {
                 let tm_factory = self.backend.target_machine_factory(
                     sess,
@@ -2193,7 +2188,6 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                         &exported_symbols_for_lto,
                         &each_linked_rlib_file_for_lto,
                         needs_fat_lto,
-                        lto_import_only_modules,
                     )],
                     allocator_module: None,
                 }
