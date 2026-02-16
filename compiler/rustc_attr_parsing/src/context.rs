@@ -26,6 +26,7 @@ use crate::attributes::confusables::*;
 use crate::attributes::crate_level::*;
 use crate::attributes::debugger::*;
 use crate::attributes::deprecation::*;
+use crate::attributes::diagnostic::on_const::*;
 use crate::attributes::diagnostic::on_unimplemented::*;
 use crate::attributes::do_not_recommend::*;
 use crate::attributes::doc::*;
@@ -148,6 +149,7 @@ attribute_parsers!(
         DocParser,
         MacroUseParser,
         NakedParser,
+        OnConstParser,
         OnUnimplementedParser,
         RustcCguTestAttributeParser,
         StabilityParser,

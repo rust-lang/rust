@@ -7,10 +7,10 @@ use thin_vec::ThinVec;
 use crate::attrs::PrintAttribute;
 
 #[derive(Clone, Default, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
-pub struct OnUnimplementedDirective {
+pub struct Directive {
     pub is_rustc_attr: bool,
     pub condition: Option<OnUnimplementedCondition>,
-    pub subcommands: ThinVec<OnUnimplementedDirective>,
+    pub subcommands: ThinVec<Directive>,
     pub message: Option<(Span, FormatString)>,
     pub label: Option<(Span, FormatString)>,
     pub notes: ThinVec<FormatString>,
@@ -18,7 +18,7 @@ pub struct OnUnimplementedDirective {
     pub append_const_msg: Option<AppendConstMessage>,
 }
 
-impl OnUnimplementedDirective {
+impl Directive {
     /// Visit all the generic arguments used in the attribute, to see whether they are actually a
     /// generic of the item. If not then `visit` must issue a diagnostic.
     ///

@@ -1,0 +1,57 @@
+use rustc_hir::attrs::diagnostic::Directive;
+use rustc_hir::lints::AttributeLintKind;
+use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_ATTRIBUTES;
+
+use crate::attributes::diagnostic::*;
+use crate::attributes::prelude::*;
+use crate::attributes::template;
+
+#[derive(Default)]
+pub(crate) struct OnConstParser {
+    directive: Option<(Span, Directive)>,
+}
+
+impl<S: Stage> AttributeParser<S> for OnConstParser {
+    const ATTRIBUTES: AcceptMapping<Self, S> =
+        &[(&[sym::diagnostic, sym::on_const], template!(Word), |this, cx, args| {
+            if !cx.features().diagnostic_on_const() {
+                return;
+            }
+            let span = cx.attr_span;
+
+            let items = match args {
+                ArgParser::List(items) if items.len() != 0 => items,
+                ArgParser::NoArgs | ArgParser::List(_) => {
+                    cx.emit_lint(
+                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        AttributeLintKind::MissingOptionsForOnConst,
+                        span,
+                    );
+                    return;
+                }
+                ArgParser::NameValue(_) => {
+                    cx.emit_lint(
+                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        AttributeLintKind::MalformedOnConstAttr { span },
+                        span,
+                    );
+                    return;
+                }
+            };
+
+            let Some(directive) =
+                parse_directive_items(cx, Mode::DiagnosticOnConst, items.mixed(), true)
+            else {
+                return;
+            };
+            merge_directives(cx, &mut this.directive, (span, directive));
+        })];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+
+    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+        self.directive.map(|(span, directive)| AttributeKind::OnConst {
+            span,
+            directive: Some(Box::new(directive)),
+        })
+    }
+}

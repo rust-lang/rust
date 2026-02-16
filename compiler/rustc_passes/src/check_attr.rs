@@ -20,7 +20,7 @@ use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP,
     BuiltinAttribute,
 };
-use rustc_hir::attrs::diagnostic::OnUnimplementedDirective;
+use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::attrs::{
     AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
     MirDialect, MirPhase, ReprAttr, SanitizerSet,
@@ -233,6 +233,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 },
                 Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
                 Attribute::Parsed(AttributeKind::OnUnimplemented{span, directive}) => {self.check_diagnostic_on_unimplemented(*span, hir_id, target,directive.as_deref())},
+                Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)}
                 Attribute::Parsed(
                     // tidy-alphabetical-start
                     AttributeKind::RustcAllowIncoherentImpl(..)
@@ -386,9 +387,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
-                        [sym::diagnostic, sym::on_const, ..] => {
-                            self.check_diagnostic_on_const(attr.span(), hir_id, target, item)
-                        }
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
                         }
@@ -611,7 +609,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         attr_span: Span,
         hir_id: HirId,
         target: Target,
-        directive: Option<&OnUnimplementedDirective>,
+        directive: Option<&Directive>,
     ) {
         if !matches!(target, Target::Trait) {
             self.tcx.emit_node_span_lint(
@@ -689,6 +687,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             attr_span,
             DiagnosticOnConstOnlyForTraitImpls { item_span },
         );
+
+        // We don't check the validity of generic args here...whose generics would that be, anyway?
+        // The traits' or the impls'?
     }
 
     /// Checks if an `#[inline]` is applied to a function or a closure.

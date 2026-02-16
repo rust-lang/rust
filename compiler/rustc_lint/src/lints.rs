@@ -3907,9 +3907,22 @@ pub(crate) struct IgnoredDiagnosticOption {
 pub(crate) struct MissingOptionsForOnUnimplementedAttr;
 
 #[derive(LintDiagnostic)]
+#[diag("missing options for `on_const` attribute")]
+#[help("at least one of the `message`, `note` and `label` options are expected")]
+pub(crate) struct MissingOptionsForOnConstAttr;
+
+#[derive(LintDiagnostic)]
 #[diag("malformed `on_unimplemented` attribute")]
 #[help("only `message`, `note` and `label` are allowed as options")]
 pub(crate) struct MalformedOnUnimplementedAttrLint {
+    #[label("invalid option found here")]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag("malformed `on_const` attribute")]
+#[help("only `message`, `note` and `label` are allowed as options")]
+pub(crate) struct MalformedOnConstAttrLint {
     #[label("invalid option found here")]
     pub span: Span,
 }

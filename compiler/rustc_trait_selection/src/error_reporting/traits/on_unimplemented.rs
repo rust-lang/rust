@@ -6,8 +6,7 @@ use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::diagnostic::{
-    AppendConstMessage, ConditionOptions, FormatString, OnUnimplementedDirective,
-    OnUnimplementedNote, Piece,
+    AppendConstMessage, ConditionOptions, Directive, FormatString, OnUnimplementedNote, Piece,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -335,7 +334,7 @@ fn parse_directive<'tcx>(
     _span: Span,
     is_root: bool,
     is_diagnostic_namespace_variant: bool,
-) -> Result<Option<OnUnimplementedDirective>, ErrorGuaranteed> {
+) -> Result<Option<Directive>, ErrorGuaranteed> {
     let mut errored = None;
     let item_iter = items.iter();
 
@@ -447,7 +446,7 @@ fn parse_directive<'tcx>(
     if let Some(reported) = errored {
         if is_diagnostic_namespace_variant { Ok(None) } else { Err(reported) }
     } else {
-        Ok(Some(OnUnimplementedDirective {
+        Ok(Some(Directive {
             is_rustc_attr: !is_diagnostic_namespace_variant,
             condition,
             subcommands,
@@ -463,7 +462,7 @@ fn parse_directive<'tcx>(
 pub fn of_item_directive<'tcx>(
     tcx: TyCtxt<'tcx>,
     item_def_id: DefId,
-) -> Result<Option<OnUnimplementedDirective>, ErrorGuaranteed> {
+) -> Result<Option<Directive>, ErrorGuaranteed> {
     let attr = if tcx.is_trait(item_def_id) {
         sym::on_unimplemented
     } else if let DefKind::Impl { of_trait: true } = tcx.def_kind(item_def_id) {
@@ -477,10 +476,12 @@ pub fn of_item_directive<'tcx>(
     };
     if attr == sym::on_unimplemented {
         Ok(find_attr!(tcx, item_def_id, AttributeKind::OnUnimplemented {directive, ..} => directive.as_deref().cloned()).flatten())
+    } else if attr == sym::on_const {
+        Ok(find_attr!(tcx, item_def_id, AttributeKind::OnConst {directive, ..} => directive.as_deref().cloned()).flatten())
     } else {
         tcx.get_attrs_by_path(item_def_id, &[sym::diagnostic, attr])
             .filter_map(|attr| parse_attribute_directive(attr, true, tcx, item_def_id).transpose())
-            .try_fold(None, |aggr: Option<OnUnimplementedDirective>, directive| {
+            .try_fold(None, |aggr: Option<Directive>, directive| {
                 let directive = directive?;
                 if let Some(aggr) = aggr {
                     let mut subcommands = aggr.subcommands;
@@ -527,7 +528,7 @@ pub fn of_item_directive<'tcx>(
                         "append_const_msg",
                     );
 
-                    Ok(Some(OnUnimplementedDirective {
+                    Ok(Some(Directive {
                         is_rustc_attr: false,
                         condition: aggr.condition.or(directive.condition),
                         subcommands,
@@ -549,7 +550,7 @@ fn parse_attribute_directive<'tcx>(
     is_diagnostic_namespace_variant: bool,
     tcx: TyCtxt<'tcx>,
     item_def_id: DefId,
-) -> Result<Option<OnUnimplementedDirective>, ErrorGuaranteed> {
+) -> Result<Option<Directive>, ErrorGuaranteed> {
     let result = if let Some(items) = attr.meta_item_list() {
         parse_directive(
             tcx,
@@ -561,7 +562,7 @@ fn parse_attribute_directive<'tcx>(
         )
     } else if let Some(value) = attr.value_str() {
         if !is_diagnostic_namespace_variant {
-            Ok(Some(OnUnimplementedDirective {
+            Ok(Some(Directive {
                 is_rustc_attr: !is_diagnostic_namespace_variant,
                 condition: None,
                 message: None,
@@ -633,7 +634,7 @@ fn parse_attribute_directive<'tcx>(
 }
 
 pub(crate) fn evaluate_directive<'tcx>(
-    slf: &OnUnimplementedDirective,
+    slf: &Directive,
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
     condition_options: &ConditionOptions,

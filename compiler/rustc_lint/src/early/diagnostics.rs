@@ -449,6 +449,9 @@ pub fn decorate_attribute_lint(
         &AttributeLintKind::MalformedOnUnimplementedAttr { span } => {
             lints::MalformedOnUnimplementedAttrLint { span }.decorate_lint(diag)
         }
+        &AttributeLintKind::MalformedOnConstAttr { span } => {
+            lints::MalformedOnConstAttrLint { span }.decorate_lint(diag)
+        }
         AttributeLintKind::MalformedDiagnosticFormat { warning } => match warning {
             FormatWarning::PositionalArgument { .. } => {
                 lints::DisallowedPositionalArgument.decorate_lint(diag)
@@ -466,6 +469,9 @@ pub fn decorate_attribute_lint(
         }
         &AttributeLintKind::MissingOptionsForOnUnimplemented => {
             lints::MissingOptionsForOnUnimplementedAttr.decorate_lint(diag)
+        }
+        &AttributeLintKind::MissingOptionsForOnConst => {
+            lints::MissingOptionsForOnConstAttr.decorate_lint(diag)
         }
     }
 }

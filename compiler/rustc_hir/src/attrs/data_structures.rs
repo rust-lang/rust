@@ -1080,11 +1080,18 @@ pub enum AttributeKind {
     /// Represents `#[non_exhaustive]`
     NonExhaustive(Span),
 
+    /// Represents `#[diagnostic::on_const]`.
+    OnConst {
+        span: Span,
+        /// None if the directive was malformed in some way.
+        directive: Option<Box<Directive>>,
+    },
+
     /// Represents `#[rustc_on_unimplemented]` and `#[diagnostic::on_unimplemented]`.
     OnUnimplemented {
         span: Span,
         /// None if the directive was malformed in some way.
-        directive: Option<Box<OnUnimplementedDirective>>,
+        directive: Option<Box<Directive>>,
     },
 
     /// Represents `#[optimize(size|speed)]`
