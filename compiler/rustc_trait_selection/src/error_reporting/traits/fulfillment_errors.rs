@@ -14,10 +14,11 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, Level, MultiSpan, StashKey, StringPart, Suggestions, msg,
     pluralize, struct_span_code_err,
 };
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::diagnostic::{AppendConstMessage, OnUnimplementedNote};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, LangItem, Node};
+use rustc_hir::{self as hir, LangItem, Node, find_attr};
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_infer::traits::ImplSource;
 use rustc_infer::traits::solve::Goal;
@@ -44,7 +45,7 @@ use super::{
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
-use crate::error_reporting::traits::on_unimplemented::{evaluate_directive, of_item_directive};
+use crate::error_reporting::traits::on_unimplemented::evaluate_directive;
 use crate::error_reporting::traits::report_dyn_incompatibility;
 use crate::errors::{ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch, CoroClosureNotFn};
 use crate::infer::{self, InferCtxt, InferCtxtExt as _};
@@ -912,10 +913,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         diag.long_ty_path(),
                     );
 
-                    if let Ok(Some(command)) = of_item_directive(self.tcx, impl_did) {
+                    if let Some(command) = find_attr!(self.tcx.get_all_attrs(impl_did), AttributeKind::OnConst {directive, ..} => directive.as_deref()).flatten(){
                         let note = evaluate_directive(
                             &command,
-                            self.tcx,
                             predicate.skip_binder().trait_ref,
                             &condition_options,
                             &format_args,

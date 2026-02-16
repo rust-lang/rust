@@ -1,33 +1,20 @@
 use std::path::PathBuf;
 
-use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit};
-use rustc_errors::codes::*;
-use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::attrs::diagnostic::{
-    AppendConstMessage, ConditionOptions, Directive, FormatString, OnUnimplementedNote, Piece,
-};
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::attrs::diagnostic::{ConditionOptions, Directive, OnUnimplementedNote};
+use rustc_hir::def_id::LocalDefId;
+use rustc_hir::find_attr;
 pub use rustc_hir::lints::FormatWarning;
-use rustc_hir::{AttrArgs, Attribute, find_attr};
-use rustc_macros::LintDiagnostic;
-use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt;
-use rustc_middle::ty::{self, GenericParamDef, GenericParamDefKind, TyCtxt};
-use rustc_session::lint::builtin::{
-    MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-};
-use rustc_span::{Span, Symbol, sym};
-use thin_vec::{ThinVec, thin_vec};
+use rustc_middle::ty::{self, GenericParamDef, GenericParamDefKind};
+use rustc_span::Symbol;
 use tracing::{debug, info};
 
 use super::{ObligationCauseCode, PredicateObligation};
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::traits::on_unimplemented_condition::matches_predicate;
-use crate::error_reporting::traits::on_unimplemented_format::{Ctx, FormatArgs};
-use crate::errors::NoValueInOnUnimplemented;
+use crate::error_reporting::traits::on_unimplemented_format::FormatArgs;
 
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// Used to set on_unimplemented's `ItemContext`
@@ -60,10 +47,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
         let (condition_options, format_args) =
             self.on_unimplemented_components(trait_pred, obligation, long_ty_path);
-        if let Ok(Some(command)) = of_item_directive(self.tcx, trait_pred.def_id()) {
+        if let Some(command) = find_attr!(self.tcx.get_all_attrs( trait_pred.def_id()), AttributeKind::OnUnimplemented {directive, ..} => directive.as_deref()).flatten() {
             evaluate_directive(
                 &command,
-                self.tcx,
                 trait_pred.skip_binder().trait_ref,
                 &condition_options,
                 &format_args,
@@ -270,372 +256,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     }
 }
 
-#[derive(LintDiagnostic)]
-#[diag("malformed `on_unimplemented` attribute")]
-#[help("only `message`, `note` and `label` are allowed as options")]
-pub struct MalformedOnUnimplementedAttrLint {
-    #[label("invalid option found here")]
-    pub span: Span,
-}
-
-impl MalformedOnUnimplementedAttrLint {
-    pub fn new(span: Span) -> Self {
-        Self { span }
-    }
-}
-
-#[derive(LintDiagnostic)]
-#[diag("missing options for `on_unimplemented` attribute")]
-#[help("at least one of the `message`, `note` and `label` options are expected")]
-pub struct MissingOptionsForOnUnimplementedAttr;
-
-#[derive(LintDiagnostic)]
-#[diag("`{$option_name}` is ignored due to previous definition of `{$option_name}`")]
-pub(crate) struct IgnoredDiagnosticOption {
-    pub option_name: &'static str,
-    #[label("`{$option_name}` is first declared here")]
-    pub first_span: Span,
-    #[label("`{$option_name}` is later redundantly declared here")]
-    pub later_span: Span,
-}
-
-impl IgnoredDiagnosticOption {
-    fn maybe_emit_warning<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        item_def_id: DefId,
-        new: Option<Span>,
-        old: Option<Span>,
-        option_name: &'static str,
-    ) {
-        if let (Some(new_item), Some(old_item)) = (new, old)
-            && let Some(item_def_id) = item_def_id.as_local()
-        {
-            tcx.emit_node_span_lint(
-                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                tcx.local_def_id_to_hir_id(item_def_id),
-                new_item,
-                IgnoredDiagnosticOption { later_span: new_item, first_span: old_item, option_name },
-            );
-        }
-    }
-}
-
-#[derive(LintDiagnostic)]
-#[diag("{$description}")]
-pub struct WrappedParserError {
-    pub description: String,
-    pub label: String,
-}
-
-fn parse_directive<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    item_def_id: DefId,
-    items: &[MetaItemInner],
-    _span: Span,
-    is_root: bool,
-    is_diagnostic_namespace_variant: bool,
-) -> Result<Option<Directive>, ErrorGuaranteed> {
-    let mut errored = None;
-    let item_iter = items.iter();
-
-    let parse_value = |value_str, span| {
-        try_parse_format_string(tcx, item_def_id, value_str, span, is_diagnostic_namespace_variant)
-            .map(Some)
-    };
-
-    let condition = if is_root { None } else { unreachable!() };
-
-    let mut message = None;
-    let mut label = None;
-    let mut notes = ThinVec::new();
-    let mut parent_label = None;
-    let mut subcommands = ThinVec::new();
-    let mut append_const_msg = None;
-
-    let get_value_and_span = |item: &_, key| {
-        if let MetaItemInner::MetaItem(MetaItem {
-            path,
-            kind: MetaItemKind::NameValue(MetaItemLit { span, kind: LitKind::Str(s, _), .. }),
-            ..
-        }) = item
-            && *path == key
-        {
-            Some((*s, *span))
-        } else {
-            None
-        }
-    };
-
-    for item in item_iter {
-        if let Some((message_, span)) = get_value_and_span(item, sym::message)
-            && message.is_none()
-        {
-            message = parse_value(message_, span)?.map(|l| (item.span(), l));
-            continue;
-        } else if let Some((label_, span)) = get_value_and_span(item, sym::label)
-            && label.is_none()
-        {
-            label = parse_value(label_, span)?.map(|l| (item.span(), l));
-            continue;
-        } else if let Some((note_, span)) = get_value_and_span(item, sym::note) {
-            if let Some(note) = parse_value(note_, span)? {
-                notes.push(note);
-                continue;
-            }
-        } else if item.has_name(sym::parent_label)
-            && parent_label.is_none()
-            && !is_diagnostic_namespace_variant
-        {
-            if let Some(parent_label_) = item.value_str() {
-                parent_label = parse_value(parent_label_, item.span())?;
-                continue;
-            }
-        } else if item.has_name(sym::on)
-            && is_root
-            && message.is_none()
-            && label.is_none()
-            && notes.is_empty()
-            && !is_diagnostic_namespace_variant
-        // FIXME(diagnostic_namespace): disallow filters for now
-        {
-            if let Some(items) = item.meta_item_list() {
-                match parse_directive(
-                    tcx,
-                    item_def_id,
-                    items,
-                    item.span(),
-                    false,
-                    is_diagnostic_namespace_variant,
-                ) {
-                    Ok(Some(subcommand)) => subcommands.push(subcommand),
-                    Ok(None) => bug!(
-                        "This cannot happen for now as we only reach that if `is_diagnostic_namespace_variant` is false"
-                    ),
-                    Err(reported) => errored = Some(reported),
-                };
-                continue;
-            }
-        } else if item.has_name(sym::append_const_msg)
-            && append_const_msg.is_none()
-            && !is_diagnostic_namespace_variant
-        {
-            if let Some(msg) = item.value_str() {
-                append_const_msg = Some(AppendConstMessage::Custom(msg, item.span()));
-                continue;
-            } else if item.is_word() {
-                append_const_msg = Some(AppendConstMessage::Default);
-                continue;
-            }
-        }
-
-        if is_diagnostic_namespace_variant {
-            if let Some(def_id) = item_def_id.as_local() {
-                tcx.emit_node_span_lint(
-                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    tcx.local_def_id_to_hir_id(def_id),
-                    vec![item.span()],
-                    MalformedOnUnimplementedAttrLint::new(item.span()),
-                );
-            }
-        } else {
-            // nothing found
-            tcx.dcx().emit_err(NoValueInOnUnimplemented { span: item.span() });
-        }
-    }
-
-    if let Some(reported) = errored {
-        if is_diagnostic_namespace_variant { Ok(None) } else { Err(reported) }
-    } else {
-        Ok(Some(Directive {
-            is_rustc_attr: !is_diagnostic_namespace_variant,
-            condition,
-            subcommands,
-            message,
-            label,
-            notes,
-            parent_label,
-            append_const_msg,
-        }))
-    }
-}
-
-pub fn of_item_directive<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    item_def_id: DefId,
-) -> Result<Option<Directive>, ErrorGuaranteed> {
-    let attr = if tcx.is_trait(item_def_id) {
-        sym::on_unimplemented
-    } else if let DefKind::Impl { of_trait: true } = tcx.def_kind(item_def_id) {
-        sym::on_const
-    } else {
-        // It could be a trait_alias (`trait MyTrait = SomeOtherTrait`)
-        // or an implementation (`impl MyTrait for Foo {}`)
-        //
-        // We don't support those.
-        return Ok(None);
-    };
-    if attr == sym::on_unimplemented {
-        Ok(find_attr!(tcx, item_def_id, AttributeKind::OnUnimplemented {directive, ..} => directive.as_deref().cloned()).flatten())
-    } else if attr == sym::on_const {
-        Ok(find_attr!(tcx, item_def_id, AttributeKind::OnConst {directive, ..} => directive.as_deref().cloned()).flatten())
-    } else {
-        tcx.get_attrs_by_path(item_def_id, &[sym::diagnostic, attr])
-            .filter_map(|attr| parse_attribute_directive(attr, true, tcx, item_def_id).transpose())
-            .try_fold(None, |aggr: Option<Directive>, directive| {
-                let directive = directive?;
-                if let Some(aggr) = aggr {
-                    let mut subcommands = aggr.subcommands;
-                    subcommands.extend(directive.subcommands);
-                    let mut notes = aggr.notes;
-                    notes.extend(directive.notes);
-                    IgnoredDiagnosticOption::maybe_emit_warning(
-                        tcx,
-                        item_def_id,
-                        directive.message.as_ref().map(|f| f.0),
-                        aggr.message.as_ref().map(|f| f.0),
-                        "message",
-                    );
-                    IgnoredDiagnosticOption::maybe_emit_warning(
-                        tcx,
-                        item_def_id,
-                        directive.label.as_ref().map(|f| f.0),
-                        aggr.label.as_ref().map(|f| f.0),
-                        "label",
-                    );
-                    IgnoredDiagnosticOption::maybe_emit_warning(
-                        tcx,
-                        item_def_id,
-                        directive.condition.as_ref().map(|i| i.span),
-                        aggr.condition.as_ref().map(|i| i.span),
-                        "condition",
-                    );
-                    IgnoredDiagnosticOption::maybe_emit_warning(
-                        tcx,
-                        item_def_id,
-                        directive.parent_label.as_ref().map(|f| f.span),
-                        aggr.parent_label.as_ref().map(|f| f.span),
-                        "parent_label",
-                    );
-                    IgnoredDiagnosticOption::maybe_emit_warning(
-                        tcx,
-                        item_def_id,
-                        directive.append_const_msg.as_ref().and_then(|c| {
-                            if let AppendConstMessage::Custom(_, s) = c { Some(*s) } else { None }
-                        }),
-                        aggr.append_const_msg.as_ref().and_then(|c| {
-                            if let AppendConstMessage::Custom(_, s) = c { Some(*s) } else { None }
-                        }),
-                        "append_const_msg",
-                    );
-
-                    Ok(Some(Directive {
-                        is_rustc_attr: false,
-                        condition: aggr.condition.or(directive.condition),
-                        subcommands,
-                        message: aggr.message.or(directive.message),
-                        label: aggr.label.or(directive.label),
-                        notes,
-                        parent_label: aggr.parent_label.or(directive.parent_label),
-                        append_const_msg: aggr.append_const_msg.or(directive.append_const_msg),
-                    }))
-                } else {
-                    Ok(Some(directive))
-                }
-            })
-    }
-}
-
-fn parse_attribute_directive<'tcx>(
-    attr: &Attribute,
-    is_diagnostic_namespace_variant: bool,
-    tcx: TyCtxt<'tcx>,
-    item_def_id: DefId,
-) -> Result<Option<Directive>, ErrorGuaranteed> {
-    let result = if let Some(items) = attr.meta_item_list() {
-        parse_directive(
-            tcx,
-            item_def_id,
-            &items,
-            attr.span(),
-            true,
-            is_diagnostic_namespace_variant,
-        )
-    } else if let Some(value) = attr.value_str() {
-        if !is_diagnostic_namespace_variant {
-            Ok(Some(Directive {
-                is_rustc_attr: !is_diagnostic_namespace_variant,
-                condition: None,
-                message: None,
-                subcommands: thin_vec![],
-                label: Some((
-                    attr.span(),
-                    try_parse_format_string(
-                        tcx,
-                        item_def_id,
-                        value,
-                        attr.value_span().unwrap_or(attr.span()),
-                        is_diagnostic_namespace_variant,
-                    )?,
-                )),
-                notes: thin_vec![],
-                parent_label: None,
-                append_const_msg: None,
-            }))
-        } else {
-            let item = attr.get_normal_item();
-            let report_span = match &item.args {
-                AttrArgs::Empty => item.path.span,
-                AttrArgs::Delimited(args) => args.dspan.entire(),
-                AttrArgs::Eq { eq_span, expr } => eq_span.to(expr.span),
-            };
-
-            if let Some(item_def_id) = item_def_id.as_local() {
-                tcx.emit_node_span_lint(
-                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    tcx.local_def_id_to_hir_id(item_def_id),
-                    report_span,
-                    MalformedOnUnimplementedAttrLint::new(report_span),
-                );
-            }
-            Ok(None)
-        }
-    } else if is_diagnostic_namespace_variant {
-        match attr {
-            Attribute::Unparsed(p) if !matches!(p.args, AttrArgs::Empty) => {
-                if let Some(item_def_id) = item_def_id.as_local() {
-                    tcx.emit_node_span_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        tcx.local_def_id_to_hir_id(item_def_id),
-                        attr.span(),
-                        MalformedOnUnimplementedAttrLint::new(attr.span()),
-                    );
-                }
-            }
-            _ => {
-                if let Some(item_def_id) = item_def_id.as_local() {
-                    tcx.emit_node_span_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        tcx.local_def_id_to_hir_id(item_def_id),
-                        attr.span(),
-                        MissingOptionsForOnUnimplementedAttr,
-                    )
-                }
-            }
-        };
-
-        Ok(None)
-    } else {
-        let reported =
-            tcx.dcx().delayed_bug("of_item_directive: neither meta_item_list nor value_str");
-        return Err(reported);
-    };
-    debug!("of_item_directive({:?}) = {:?}", item_def_id, result);
-    result
-}
-
 pub(crate) fn evaluate_directive<'tcx>(
     slf: &Directive,
-    tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
     condition_options: &ConditionOptions,
     args: &FormatArgs<'tcx>,
@@ -676,99 +298,13 @@ pub(crate) fn evaluate_directive<'tcx>(
         append_const_msg = command.append_const_msg;
     }
 
+    use crate::error_reporting::traits::on_unimplemented_format::format;
+
     OnUnimplementedNote {
-        label: label.map(|l| format_directive(l.1, tcx, trait_ref, args)),
-        message: message.map(|m| format_directive(m.1, tcx, trait_ref, args)),
-        notes: notes.into_iter().map(|n| format_directive(n, tcx, trait_ref, args)).collect(),
-        parent_label: parent_label.map(|e_s| format_directive(e_s, tcx, trait_ref, args)),
+        label: label.map(|l| format(&l.1, args)),
+        message: message.map(|m| format(&m.1, args)),
+        notes: notes.into_iter().map(|n| format(&n, args)).collect(),
+        parent_label: parent_label.map(|e_s| format(&e_s, args)),
         append_const_msg,
     }
-}
-
-fn try_parse_format_string<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_def_id: DefId,
-    input: Symbol,
-    span: Span,
-    is_diagnostic_namespace_variant: bool,
-) -> Result<FormatString, ErrorGuaranteed> {
-    let ctx = if is_diagnostic_namespace_variant {
-        Ctx::DiagnosticOnUnimplemented { tcx, trait_def_id }
-    } else {
-        Ctx::RustcOnUnimplemented { tcx, trait_def_id }
-    };
-
-    let mut result = Ok(());
-
-    use crate::error_reporting::traits::on_unimplemented_format::parse_format_string;
-
-    let snippet = tcx.sess.source_map().span_to_snippet(span).ok();
-    let ret = match parse_format_string(input, snippet, span, &ctx) {
-        // Warnings about format specifiers, deprecated parameters, wrong parameters etc.
-        // In other words we'd like to let the author know, but we can still try to format the string later
-        Ok((f, warnings)) => {
-            if is_diagnostic_namespace_variant {
-                for w in warnings {
-                    use crate::error_reporting::traits::on_unimplemented_format::emit_warning;
-
-                    emit_warning(&w, tcx, trait_def_id)
-                }
-            } else {
-                for w in warnings {
-                    match w {
-                        FormatWarning::PositionalArgument { span, .. } => {
-                            let reported = struct_span_code_err!(
-                                tcx.dcx(),
-                                span,
-                                E0231,
-                                "positional format arguments are not allowed here"
-                            )
-                            .emit();
-                            result = Err(reported);
-                        }
-                        FormatWarning::InvalidSpecifier { .. } => {}
-                    }
-                }
-            };
-            f
-        }
-        // Error from the underlying `rustc_parse_format::Parser`
-        Err(e) => {
-            // we cannot return errors from processing the format string as hard error here
-            // as the diagnostic namespace guarantees that malformed input cannot cause an error
-            //
-            // if we encounter any error while processing we nevertheless want to show it as warning
-            // so that users are aware that something is not correct
-            if is_diagnostic_namespace_variant {
-                if let Some(trait_def_id) = trait_def_id.as_local() {
-                    tcx.emit_node_span_lint(
-                        MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-                        tcx.local_def_id_to_hir_id(trait_def_id),
-                        span,
-                        WrappedParserError { description: e.description, label: e.label },
-                    );
-                }
-            } else {
-                let reported =
-                    struct_span_code_err!(tcx.dcx(), span, E0231, "{}", e.description).emit();
-                result = Err(reported);
-            }
-
-            // We could not parse the input, just use it as-is.
-            FormatString { input, span, pieces: thin_vec![Piece::Lit(input)] }
-        }
-    };
-
-    result?;
-    Ok(ret)
-}
-
-pub fn format_directive<'tcx>(
-    slf: FormatString,
-    _tcx: TyCtxt<'tcx>,
-    _trait_ref: ty::TraitRef<'tcx>,
-    args: &FormatArgs<'tcx>,
-) -> String {
-    use crate::error_reporting::traits::on_unimplemented_format::format;
-    format(&slf, args)
 }

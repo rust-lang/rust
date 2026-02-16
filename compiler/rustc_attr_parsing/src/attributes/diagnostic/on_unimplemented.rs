@@ -8,6 +8,7 @@ use crate::attributes::template;
 
 #[derive(Default)]
 pub(crate) struct OnUnimplementedParser {
+    span: Option<Span>,
     directive: Option<(Span, Directive)>,
 }
 
@@ -19,6 +20,11 @@ impl OnUnimplementedParser {
         mode: Mode,
     ) {
         let span = cx.attr_span;
+        self.span = Some(span);
+        if !matches!(cx.target, Target::Trait) {
+            // Lint later emitted in check_attr
+            return;
+        }
 
         let items = match args {
             ArgParser::List(items) if items.len() != 0 => items,
@@ -40,10 +46,9 @@ impl OnUnimplementedParser {
             }
         };
 
-        let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) else {
-            return;
+        if let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) {
+            merge_directives(cx, &mut self.directive, (span, directive));
         };
-        merge_directives(cx, &mut self.directive, (span, directive));
     }
 }
 
@@ -63,9 +68,13 @@ impl<S: Stage> AttributeParser<S> for OnUnimplementedParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
-        self.directive.map(|(span, directive)| AttributeKind::OnUnimplemented {
-            span,
-            directive: Some(Box::new(directive)),
-        })
+        if let Some(span) = self.span {
+            Some(AttributeKind::OnUnimplemented {
+                span,
+                directive: self.directive.map(|d| Box::new(d.1)),
+            })
+        } else {
+            None
+        }
     }
 }
