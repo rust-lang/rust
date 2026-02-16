@@ -208,7 +208,7 @@ pub(crate) fn codegen_cast(
         let ret_ty = if to_ty.bits() < 32 { types::I32 } else { to_ty };
         let name = format!(
             "__fix{sign}tf{size}i",
-            sign = if from_signed { "" } else { "un" },
+            sign = if to_signed { "" } else { "uns" },
             size = match ret_ty {
                 types::I32 => 's',
                 types::I64 => 'd',

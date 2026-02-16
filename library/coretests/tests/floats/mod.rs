@@ -5,6 +5,8 @@ trait TestableFloat: Sized {
     const BITS: u32;
     /// Unsigned int with the same size, for converting to/from bits.
     type Int;
+    /// Signed int with the same size.
+    type SInt;
     /// Set the default tolerance for float comparison based on the type.
     const APPROX: Self;
     /// Allow looser tolerance for f32 on miri
@@ -61,6 +63,7 @@ trait TestableFloat: Sized {
 impl TestableFloat for f16 {
     const BITS: u32 = 16;
     type Int = u16;
+    type SInt = i16;
     const APPROX: Self = 1e-3;
     const POWF_APPROX: Self = 5e-1;
     const _180_TO_RADIANS_APPROX: Self = 1e-2;
@@ -101,6 +104,7 @@ impl TestableFloat for f16 {
 impl TestableFloat for f32 {
     const BITS: u32 = 32;
     type Int = u32;
+    type SInt = i32;
     const APPROX: Self = 1e-6;
     /// Miri adds some extra errors to float functions; make sure the tests still pass.
     /// These values are purely used as a canary to test against and are thus not a stable guarantee Rust provides.
@@ -143,6 +147,7 @@ impl TestableFloat for f32 {
 impl TestableFloat for f64 {
     const BITS: u32 = 64;
     type Int = u64;
+    type SInt = i64;
     const APPROX: Self = 1e-6;
     const GAMMA_APPROX_LOOSE: Self = 1e-4;
     const LNGAMMA_APPROX_LOOSE: Self = 1e-4;
@@ -170,6 +175,7 @@ impl TestableFloat for f64 {
 impl TestableFloat for f128 {
     const BITS: u32 = 128;
     type Int = u128;
+    type SInt = i128;
     const APPROX: Self = 1e-9;
     const EXP_APPROX: Self = 1e-12;
     const LN_APPROX: Self = 1e-12;
@@ -2000,6 +2006,93 @@ float_test! {
         assert_biteq!(Float::from(i32::MIN), -2147483648.0);
         assert_biteq!(Float::from(42_i32), 42.0);
         assert_biteq!(Float::from(i32::MAX), 2147483647.0);
+    }
+}
+
+// Test the `float_exact_integer_constants` feature
+float_test! {
+    name: max_exact_integer_constant,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        // The maximum integer that converts to a unique floating point
+        // value.
+        const MAX_EXACT_INTEGER: <Float as TestableFloat>::SInt = Float::MAX_EXACT_INTEGER;
+
+        let max_minus_one = (MAX_EXACT_INTEGER - 1) as Float as <Float as TestableFloat>::SInt;
+        let max_plus_one = (MAX_EXACT_INTEGER + 1) as Float as <Float as TestableFloat>::SInt;
+        let max_plus_two = (MAX_EXACT_INTEGER + 2) as Float as <Float as TestableFloat>::SInt;
+
+        // This does an extra round trip back to float for the second operand in
+        // order to print the results if there is a mismatch
+        assert_biteq!((MAX_EXACT_INTEGER - 1) as Float, max_minus_one as Float);
+        assert_biteq!(MAX_EXACT_INTEGER as Float, MAX_EXACT_INTEGER as Float as <Float as TestableFloat>::SInt as Float);
+        assert_biteq!((MAX_EXACT_INTEGER + 1) as Float, max_plus_one as Float);
+        // The first non-unique conversion, where `max_plus_two` roundtrips to
+        // `max_plus_one`
+        assert_biteq!((MAX_EXACT_INTEGER + 1) as Float, (MAX_EXACT_INTEGER + 2) as Float);
+        assert_biteq!((MAX_EXACT_INTEGER + 2) as Float, max_plus_one as Float);
+        assert_biteq!((MAX_EXACT_INTEGER + 2) as Float, max_plus_two as Float);
+
+        // Lossless roundtrips, for integers
+        assert!(MAX_EXACT_INTEGER - 1 == max_minus_one);
+        assert!(MAX_EXACT_INTEGER == MAX_EXACT_INTEGER as Float as <Float as TestableFloat>::SInt);
+        assert!(MAX_EXACT_INTEGER + 1 == max_plus_one);
+        // The first non-unique conversion, where `max_plus_two` roundtrips to
+        // one less than the starting value
+        assert!(MAX_EXACT_INTEGER + 2 != max_plus_two);
+
+        // max-1 | max+0 | max+1 | max+2
+        // After roundtripping, +1 and +2 will equal each other
+        assert!(max_minus_one != MAX_EXACT_INTEGER);
+        assert!(MAX_EXACT_INTEGER != max_plus_one);
+        assert!(max_plus_one == max_plus_two);
+    }
+}
+
+float_test! {
+    name: min_exact_integer_constant,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        // The minimum integer that converts to a unique floating point
+        // value.
+        const MIN_EXACT_INTEGER: <Float as TestableFloat>::SInt = Float::MIN_EXACT_INTEGER;
+
+        // Same logic as the `max` test, but we work our way leftward
+        // across the number line from (min_exact + 1) to (min_exact - 2).
+        let min_plus_one = (MIN_EXACT_INTEGER + 1) as Float as <Float as TestableFloat>::SInt;
+        let min_minus_one = (MIN_EXACT_INTEGER - 1) as Float as <Float as TestableFloat>::SInt;
+        let min_minus_two = (MIN_EXACT_INTEGER - 2) as Float as <Float as TestableFloat>::SInt;
+
+        // This does an extra round trip back to float for the second operand in
+        // order to print the results if there is a mismatch
+        assert_biteq!((MIN_EXACT_INTEGER + 1) as Float, min_plus_one as Float);
+        assert_biteq!(MIN_EXACT_INTEGER as Float, MIN_EXACT_INTEGER as Float as <Float as TestableFloat>::SInt as Float);
+        assert_biteq!((MIN_EXACT_INTEGER - 1) as Float, min_minus_one as Float);
+        // The first non-unique conversion, which roundtrips to one
+        // greater than the starting value.
+        assert_biteq!((MIN_EXACT_INTEGER - 1) as Float, (MIN_EXACT_INTEGER - 2) as Float);
+        assert_biteq!((MIN_EXACT_INTEGER - 2) as Float, min_minus_one as Float);
+        assert_biteq!((MIN_EXACT_INTEGER - 2) as Float, min_minus_two as Float);
+
+        // Lossless roundtrips, for integers
+        assert!(MIN_EXACT_INTEGER + 1 == min_plus_one);
+        assert!(MIN_EXACT_INTEGER == MIN_EXACT_INTEGER as Float as <Float as TestableFloat>::SInt);
+        assert!(MIN_EXACT_INTEGER - 1 == min_minus_one);
+        // The first non-unique conversion, which roundtrips to one
+        // greater than the starting value.
+        assert!(MIN_EXACT_INTEGER - 2 != min_minus_two);
+
+        // min-2 | min-1 | min | min+1
+        // After roundtripping, -2 and -1 will equal each other.
+        assert!(min_plus_one != MIN_EXACT_INTEGER);
+        assert!(MIN_EXACT_INTEGER != min_minus_one);
+        assert!(min_minus_one == min_minus_two);
     }
 }
 
