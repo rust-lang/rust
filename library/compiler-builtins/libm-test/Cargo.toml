@@ -25,6 +25,7 @@ gungraun = { workspace = true, optional = true }
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 getrandom = { workspace = true, features = ["wasm_js"] }
+indicatif = { workspace = true, features = ["wasmbind"] }
 
 [build-dependencies]
 rand = { workspace = true, optional = true }
