@@ -2157,6 +2157,7 @@ symbols! {
         simd_shr,
         simd_shuffle,
         simd_shuffle_const_generic,
+        simd_shuffle_dyn,
         simd_splat,
         simd_sub,
         simd_trunc,

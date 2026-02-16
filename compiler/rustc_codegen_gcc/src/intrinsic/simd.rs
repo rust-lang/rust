@@ -24,6 +24,7 @@ use crate::builder::Builder;
 use crate::common::SignType;
 #[cfg(feature = "master")]
 use crate::context::CodegenCx;
+use crate::rustc_codegen_ssa::traits::ConstCodegenMethods;
 
 pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     bx: &mut Builder<'a, 'gcc, 'tcx>,
@@ -458,6 +459,20 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let vector = args[2].immediate();
 
         return Ok(bx.shuffle_vector(args[0].immediate(), args[1].immediate(), vector));
+    }
+
+    if name == sym::simd_shuffle_dyn {
+        let ty = args[0].layout.ty;
+        let n: u64 = if ty.is_simd()
+            && matches!(ty.simd_size_and_type(bx.cx.tcx).1.kind(), ty::Uint(ty::UintTy::U8))
+        {
+            ty.simd_size_and_type(bx.cx.tcx).0
+        } else {
+            return_error!(InvalidMonomorphization::SimdShuffleDyn { span, name, ty })
+        };
+
+        let undef = bx.const_poison(bx.type_vector(bx.type_u8(), n));
+        return Ok(bx.shuffle_vector(args[0].immediate(), undef, args[1].immediate()));
     }
 
     #[cfg(feature = "master")]

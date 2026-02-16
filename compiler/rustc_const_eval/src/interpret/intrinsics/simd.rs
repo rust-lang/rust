@@ -609,6 +609,34 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     self.write_immediate(*val, &dest)?;
                 }
             }
+            sym::simd_shuffle_dyn => {
+                let (src, src_len) = self.project_to_simd(&args[0])?;
+                let (index, index_len) = self.project_to_simd(&args[1])?;
+                let (dest, dest_len) = self.project_to_simd(&dest)?;
+
+                assert_eq!(src_len, index_len);
+                assert_eq!(index_len, dest_len);
+
+                for i in 0..dest_len {
+                    let src_index: u64 = self
+                        .read_immediate(&self.project_index(&index, i)?)?
+                        .to_scalar()
+                        .to_u8()?
+                        .into();
+
+                    let val = if src_index < src_len {
+                        self.read_immediate(&self.project_index(&src, src_index)?)?
+                    } else {
+                        throw_ub_format!(
+                            "`simd_shuffle_dyn` index {src_index} is out-of-bounds for a vector with length {dest_len}"
+                        );
+                    };
+
+                    let dest = self.project_index(&dest, i)?;
+
+                    self.write_immediate(*val, &dest)?;
+                }
+            }
             sym::simd_gather => {
                 let (passthru, passthru_len) = self.project_to_simd(&args[0])?;
                 let (ptrs, ptrs_len) = self.project_to_simd(&args[1])?;

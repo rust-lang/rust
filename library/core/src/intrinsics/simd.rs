@@ -334,6 +334,19 @@ pub const unsafe fn simd_ge<T, U>(x: T, y: T) -> U;
 #[rustc_nounwind]
 pub const unsafe fn simd_shuffle<T, U, V>(x: T, y: T, idx: U) -> V;
 
+/// Shuffles a vector by indices.
+///
+/// `T` must be a vector of `u8`s.
+///
+/// Returns a new vector such that element `i` is selected from `x[idx[i]]`.
+///
+/// /// # Safety
+///
+/// `idx` must be in-bounds of the vector.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub const unsafe fn simd_shuffle_dyn<T>(x: T, idx: T) -> T;
+
 /// Reads a vector of pointers.
 ///
 /// `T` must be a vector.

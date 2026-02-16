@@ -769,6 +769,7 @@ pub(crate) fn check_intrinsic_type(
         | sym::simd_reduce_max => (2, 0, vec![param(0)], param(1)),
         sym::simd_shuffle => (3, 0, vec![param(0), param(0), param(1)], param(2)),
         sym::simd_shuffle_const_generic => (2, 1, vec![param(0), param(0)], param(1)),
+        sym::simd_shuffle_dyn => (1, 0, vec![param(0), param(0)], param(0)),
 
         sym::atomic_cxchg | sym::atomic_cxchgweak => (
             1,

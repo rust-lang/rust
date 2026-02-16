@@ -867,6 +867,14 @@ pub enum InvalidMonomorphization<'tcx> {
         ty: Ty<'tcx>,
     },
 
+    #[diag("invalid monomorphization of `{$name}` intrinsic: simd_shuffle_dyn arguments must SIMD vectors of `u8`, got `{$ty}`", code = E0511)]
+    SimdShuffleDyn {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+        ty: Ty<'tcx>,
+    },
+
     #[diag("invalid monomorphization of `{$name}` intrinsic: expected return type of length {$in_len}, found `{$ret_ty}` with length {$out_len}", code = E0511)]
     ReturnLength {
         #[primary_span]

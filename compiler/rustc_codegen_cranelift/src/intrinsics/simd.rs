@@ -254,6 +254,44 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
         }
 
+        // simd_shuffle_dyn<T>(x: T, y: T, idx: T) -> T
+        sym::simd_shuffle_dyn => {
+            let (src, idx) = match args {
+                [src, idx] => (src, idx),
+                _ => {
+                    bug!("wrong number of args for intrinsic {intrinsic}");
+                }
+            };
+            let src = codegen_operand(fx, &src.node);
+            let idx = codegen_operand(fx, &idx.node);
+
+            if !src.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, src.layout().ty);
+                return;
+            }
+
+            let ty = src.layout().ty;
+            let n: u64 = if ty.is_simd()
+                && matches!(ty.simd_size_and_type(fx.tcx).1.kind(), ty::Uint(ty::UintTy::U8))
+            {
+                ty.simd_size_and_type(fx.tcx).0
+            } else {
+                fx.tcx.dcx().span_err(
+                    span,
+                    format!("simd_shuffle_dyn index must be a SIMD vector of `u8`, got `{}`", ty),
+                );
+                // Prevent verifier error
+                fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
+                return;
+            };
+
+            for i in 0..n {
+                let idx = idx.value_lane(fx, i.into()).load_scalar(fx);
+                let val = src.value_lane_dyn(fx, idx);
+                ret.place_lane(fx, i.into()).write_cvalue(fx, val);
+            }
+        }
+
         sym::simd_insert => {
             let (base, idx, val) = match args {
                 [base, idx, val] => (base, idx, val),

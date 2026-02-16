@@ -24,7 +24,7 @@ use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::callconv::PassMode;
-use rustc_target::spec::Os;
+use rustc_target::spec::{Arch, Os};
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
@@ -1759,6 +1759,36 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         }
 
         return Ok(bx.shuffle_vector(args[0].immediate(), args[1].immediate(), indices));
+    }
+
+    if name == sym::simd_shuffle_dyn {
+        let ty = args[0].layout.ty;
+        let n: u64 = if ty.is_simd()
+            && matches!(ty.simd_size_and_type(bx.cx.tcx).1.kind(), ty::Uint(ty::UintTy::U8))
+        {
+            ty.simd_size_and_type(bx.cx.tcx).0
+        } else {
+            return_error!(InvalidMonomorphization::SimdShuffleDyn { span, name, ty })
+        };
+
+        if matches!(bx.tcx.sess.target.arch, Arch::Wasm32 | Arch::Wasm64) {
+            let mut result = bx.const_poison(bx.type_vector(bx.type_i8(), n));
+            for i in 0..n {
+                let idx = bx.extract_element(args[1].immediate(), bx.const_i32(i as i32));
+                let idx = bx.sext(idx, bx.type_i32());
+                let val = bx.extract_element(args[0].immediate(), idx);
+                result = bx.insert_element(result, val, bx.const_i32(i as i32));
+            }
+            return Ok(result);
+        }
+
+        let mut result = bx.const_poison(bx.type_vector(bx.type_i8(), n));
+        for i in 0..n {
+            let idx = bx.extract_element(args[1].immediate(), bx.const_i32(i as i32));
+            let val = bx.extract_element(args[0].immediate(), idx);
+            result = bx.insert_element(result, val, bx.const_i32(i as i32));
+        }
+        return Ok(result);
     }
 
     if name == sym::simd_insert || name == sym::simd_insert_dyn {

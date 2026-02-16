@@ -2031,7 +2031,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         // NOTE: this condition is needed because we call shuffle_vector in the implementation of
         // simd_gather.
-        let mut mask_elements = if let Some(vector_type) = mask.get_type().dyncast_vector() {
+        let mut mask_elements = if let Some(vector_type) =
+            mask.get_type().unqualified().dyncast_vector()
+        {
             let mask_num_units = vector_type.get_num_units();
             let mut mask_elements = vec![];
             for i in 0..mask_num_units {
