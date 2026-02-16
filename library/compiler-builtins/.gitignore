@@ -1,6 +1,10 @@
 # Rust files
-Cargo.lock
 target
+
+# We have a couple of potential Cargo.lock files, but we only the root
+# workspace should have dependencies other than (optional) `cc`.
+Cargo.lock
+!/Cargo.lock
 
 # Sources for external files
 compiler-rt
