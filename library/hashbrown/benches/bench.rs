@@ -353,7 +353,7 @@ fn clone_small(b: &mut Bencher) {
 
     b.iter(|| {
         black_box(m.clone());
-    })
+    });
 }
 
 #[bench]
@@ -367,7 +367,7 @@ fn clone_from_small(b: &mut Bencher) {
     b.iter(|| {
         m2.clone_from(&m);
         black_box(&mut m2);
-    })
+    });
 }
 
 #[bench]
@@ -379,7 +379,7 @@ fn clone_large(b: &mut Bencher) {
 
     b.iter(|| {
         black_box(m.clone());
-    })
+    });
 }
 
 #[bench]
@@ -393,7 +393,7 @@ fn clone_from_large(b: &mut Bencher) {
     b.iter(|| {
         m2.clone_from(&m);
         black_box(&mut m2);
-    })
+    });
 }
 
 #[bench]

@@ -4531,7 +4531,7 @@ mod test_map {
             unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
                 unsafe {
                     let g = Global;
-                    g.deallocate(ptr, layout)
+                    g.deallocate(ptr, layout);
                 }
             }
         }

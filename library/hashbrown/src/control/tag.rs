@@ -70,7 +70,7 @@ pub(crate) trait TagSliceExt {
     /// Clears out the control.
     #[inline]
     fn fill_empty(&mut self) {
-        self.fill_tag(Tag::EMPTY)
+        self.fill_tag(Tag::EMPTY);
     }
 }
 impl TagSliceExt for [Tag] {
