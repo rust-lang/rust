@@ -71,19 +71,21 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-@dataclass(init=False)
+@dataclass(kw_only=True)
 class PrCfg:
     """Directives that we allow in the commit body to control test behavior.
 
     These are of the form `ci: foo`, at the start of a line.
     """
 
+    # The PR body
+    body: str
     # Skip regression checks (must be at the start of a line).
     allow_regressions: bool = False
     # Don't run extensive tests
     skip_extensive: bool = False
     # Add these extensive tests to the list
-    extra_extensive: list[str] = field(default_factory=list)
+    extra_extensive: list[str] = field(default_factory=list, init=False)
 
     # Allow running a large number of extensive tests. If not set, this script
     # will error out if a threshold is exceeded in order to avoid accidentally
@@ -103,10 +105,10 @@ class PrCfg:
     DIR_TEST_LIBM: str = "test-libm"
     DIR_EXTRA_EXTENSIVE: str = "extra-extensive"
 
-    def __init__(self, body: str):
+    def __post_init__(self):
         directives = re.finditer(
             r"^\s*ci:\s*(?P<dir_name>[^\s=]*)(?:\s*=\s*(?P<args>.*))?",
-            body,
+            self.body,
             re.MULTILINE,
         )
         for dir in directives:
@@ -131,7 +133,7 @@ class PrCfg:
                 eprint("Found arguments where not expected")
                 exit(1)
 
-        pprint.pp(self)
+        eprint(pprint.pformat(self))
 
 
 @dataclass
@@ -171,7 +173,7 @@ class PrInfo:
         )
         pr_json = json.loads(pr_info)
         eprint("PR info:", json.dumps(pr_json, indent=4))
-        return cls(**json.loads(pr_info), cfg=PrCfg(pr_json["body"]))
+        return cls(**pr_json, cfg=PrCfg(body=pr_json["body"]))
 
 
 class FunctionDef(TypedDict):
