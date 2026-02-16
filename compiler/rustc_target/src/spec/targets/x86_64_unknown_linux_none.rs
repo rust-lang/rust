@@ -10,6 +10,7 @@ pub(crate) fn target() -> Target {
     base.linker_flavor = LinkerFlavor::Gnu(Cc::No, Lld::Yes);
     base.linker = Some("rust-lld".into());
     base.panic_strategy = PanicStrategy::Abort;
+    base.supports_fentry = true;
 
     Target {
         llvm_target: "x86_64-unknown-linux-none".into(),

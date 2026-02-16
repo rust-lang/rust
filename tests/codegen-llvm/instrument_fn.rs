@@ -1,9 +1,11 @@
 // Verify the #[instrument_fn] applies the correct LLVM IR function attributes.
 //
-//@ revisions:XRAY MCOUNT
+//@ revisions:XRAY MCOUNT FENTRY
 //@ add-minicore
 //@ [XRAY] compile-flags: -Zinstrument-xray -Copt-level=0
 //@ [MCOUNT] compile-flags: -Zinstrument-mcount -Copt-level=0
+//@ [FENTRY] compile-flags: -Zinstrument-fentry -Copt-level=0 --target=x86_64-unknown-linux-gnu
+//@ [FENTRY] needs-llvm-components: x86
 
 #![feature(no_core)]
 #![crate_type = "lib"]
@@ -25,14 +27,16 @@ fn instrument_off() {}
 #[no_mangle]
 #[instrument_fn = "on"]
 // MCOUNT: define void @instrument_on() {{.*}} [[DFLT_ATTR]]
+// FENTRY: define void @instrument_on() {{.*}} [[DFLT_ATTR]]
 // XRAY: define void @instrument_on() {{.*}} [[ON_ATTR:#[0-9]+]]
 fn instrument_on() {}
 
 // MCOUNT: attributes [[DFLT_ATTR]] {{.*}} "instrument-function-entry-inlined"=
 // MCOUNT-NOT: attributes [[OFF_ATTR]] {{.*}} "instrument-function-entry-inlined"=
 
-// XRAY-NOT: attributes [[DFLT_ATTR]] {{.*}} "function-instrument"="xray-always"
-// XRAY-NOT: attributes [[DFLT_ATTR]] {{.*}} "function-instrument"="xray-never"
+// FENTRY: attributes [[DFLT_ATTR]] {{.*}} "fentry-call"="true"
+// FENTRY-NOT: attributes [[OFF_ATTR]] {{.*}} "fentry-call"="true"
+
 // XRAY-NOT: attributes [[DFLT_ATTR]] {{.*}} "xray-skip-exit"
 // XRAY-NOT: attributes [[DFLT_ATTR]] {{.*}} "xray-skip-entry"
 
