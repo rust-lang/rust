@@ -99,7 +99,7 @@ where
         assert!(self.stack.is_empty());
         // First, handle accessed node. A bunch of things need to
         // be handled differently here compared to the further parents
-        // of `accesssed_node`.
+        // of `accessesed_node`.
         {
             self.propagate_at(this, accessed_node, AccessRelatedness::LocalAccess)?;
             if matches!(visit_children, ChildrenVisitMode::VisitChildrenOfAccessed) {

@@ -138,7 +138,7 @@ pub fn iter_exported_symbols<'tcx>(
     }
 
     // Next, all our dependencies.
-    // `dependency_formats` includes all the transitive informations needed to link a crate,
+    // `dependency_formats` includes all the transitive information needed to link a crate,
     // which is what we need here since we need to dig out `exported_symbols` from all transitive
     // dependencies.
     let dependency_formats = tcx.dependency_formats(());
@@ -1148,7 +1148,7 @@ impl ToUsize for u32 {
 }
 
 /// Similarly, a maximum address size of `u64` is assumed widely here, so let's have ergonomic
-/// converion from `usize` to `u64`.
+/// conversion from `usize` to `u64`.
 pub trait ToU64 {
     fn to_u64(self) -> u64;
 }

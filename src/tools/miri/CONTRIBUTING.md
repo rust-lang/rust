@@ -66,6 +66,23 @@ process for such contributions:
 This process is largely informal, and its primary goal is to more clearly communicate expectations.
 Please get in touch with us if you have any questions!
 
+## Scope of Miri shims
+
+Miri has "shims" to implement functionality that is usually implemented in C libraries which are
+invoked from Rust code, such as opening files or spawning threads, as well as for
+CPU-vendor-provided SIMD intrinsics. However, the set of C functions that Rust code invokes this way
+is enormous, and for obvious reasons we have no intention of implementing every C API ever written
+in Miri.
+
+At the moment, the general guideline for "could this function have a shim in Miri" is: we will
+generally only add shims for functions that can be implemented in a portable way using just what is
+provided by the Rust standard library. The function should also be reasonably widely-used in Rust
+code to justify the review and maintenance effort (i.e. the easier the function is to implement, the
+lower the barrier). Other than that, we might make exceptions for certain cases if (a) there is a
+good case for why Miri should support those APIs, and (b) robust and widely-used portable libraries
+exist in the Rust ecosystem. We will generally not add shims to Miri that would require Miri to
+directly interact with platform-specific APIs (such as `libc` or `windows-sys`).
+
 ## Preparing the build environment
 
 Miri heavily relies on internal and unstable rustc interfaces to execute MIR,
