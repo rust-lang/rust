@@ -1300,6 +1300,10 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
+    if sess.opts.unstable_opts.instrument_fentry && !sess.target.options.supports_fentry {
+        sess.dcx().emit_err(errors::InstrumentationNotSupported { us: "fentry".to_string() });
+    }
+
     if sess.opts.unstable_opts.instrument_xray.is_some() && !sess.target.options.supports_xray {
         sess.dcx().emit_err(errors::InstrumentationNotSupported { us: "XRay".to_string() });
     }
