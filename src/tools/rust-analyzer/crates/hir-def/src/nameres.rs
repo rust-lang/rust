@@ -211,6 +211,7 @@ struct DefMapCrateData {
     /// Side table for resolving derive helpers.
     exported_derives: FxHashMap<MacroId, Box<[Name]>>,
     fn_proc_macro_mapping: FxHashMap<FunctionId, ProcMacroId>,
+    fn_proc_macro_mapping_back: FxHashMap<ProcMacroId, FunctionId>,
 
     /// Custom tool modules registered with `#![register_tool]`.
     registered_tools: Vec<Symbol>,
@@ -230,6 +231,7 @@ impl DefMapCrateData {
         Self {
             exported_derives: FxHashMap::default(),
             fn_proc_macro_mapping: FxHashMap::default(),
+            fn_proc_macro_mapping_back: FxHashMap::default(),
             registered_tools: PREDEFINED_TOOLS.iter().map(|it| Symbol::intern(it)).collect(),
             unstable_features: FxHashSet::default(),
             rustc_coherence_is_core: false,
@@ -244,6 +246,7 @@ impl DefMapCrateData {
         let Self {
             exported_derives,
             fn_proc_macro_mapping,
+            fn_proc_macro_mapping_back,
             registered_tools,
             unstable_features,
             rustc_coherence_is_core: _,
@@ -254,6 +257,7 @@ impl DefMapCrateData {
         } = self;
         exported_derives.shrink_to_fit();
         fn_proc_macro_mapping.shrink_to_fit();
+        fn_proc_macro_mapping_back.shrink_to_fit();
         registered_tools.shrink_to_fit();
         unstable_features.shrink_to_fit();
     }
@@ -568,6 +572,10 @@ impl DefMap {
 
     pub fn fn_as_proc_macro(&self, id: FunctionId) -> Option<ProcMacroId> {
         self.data.fn_proc_macro_mapping.get(&id).copied()
+    }
+
+    pub fn proc_macro_as_fn(&self, id: ProcMacroId) -> Option<FunctionId> {
+        self.data.fn_proc_macro_mapping_back.get(&id).copied()
     }
 
     pub fn krate(&self) -> Crate {

@@ -29,8 +29,9 @@ impl BorshDeserialize for SmolStr {
             }))
         } else {
             // u8::vec_from_reader always returns Some on success in current implementation
-            let vec = u8::vec_from_reader(len, reader)?
-                .ok_or_else(|| Error::other("u8::vec_from_reader unexpectedly returned None"))?;
+            let vec = u8::vec_from_reader(len, reader)?.ok_or_else(|| {
+                Error::new(ErrorKind::Other, "u8::vec_from_reader unexpectedly returned None")
+            })?;
             Ok(SmolStr::from(String::from_utf8(vec).map_err(|err| {
                 let msg = err.to_string();
                 Error::new(ErrorKind::InvalidData, msg)

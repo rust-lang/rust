@@ -4074,3 +4074,38 @@ static S: &[u8; 158] = include_bytes!("/foo/bar/baz.txt");
     "#,
     );
 }
+
+#[test]
+fn proc_macros_are_functions_inside_defining_crate_and_macros_outside() {
+    check_types(
+        r#"
+//- /pm.rs crate:pm
+#![crate_type = "proc-macro"]
+
+#[proc_macro_attribute]
+pub fn proc_macro() {}
+
+fn foo() {
+    proc_macro;
+ // ^^^^^^^^^^ fn proc_macro()
+}
+
+mod bar {
+    use super::proc_macro;
+
+    fn baz() {
+        super::proc_macro;
+     // ^^^^^^^^^^^^^^^^^ fn proc_macro()
+        proc_macro;
+     // ^^^^^^^^^^ fn proc_macro()
+    }
+}
+
+//- /lib.rs crate:lib deps:pm
+fn foo() {
+    pm::proc_macro;
+ // ^^^^^^^^^^^^^^ {unknown}
+}
+    "#,
+    );
+}

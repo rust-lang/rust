@@ -9,7 +9,7 @@ use hir::{
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
-use smallvec::SmallVec;
+use smallvec::{SmallVec, smallvec};
 use syntax::{
     AstNode, SyntaxNode,
     ast::{self, HasName, make},
@@ -68,6 +68,8 @@ pub struct PathImportCandidate {
     pub qualifier: Vec<Name>,
     /// The name the item (struct, trait, enum, etc.) should have.
     pub name: NameToImport,
+    /// Potentially more segments that should resolve in the candidate.
+    pub after: Vec<Name>,
 }
 
 /// A name that will be used during item lookups.
@@ -376,7 +378,7 @@ fn path_applicable_imports(
 ) -> FxIndexSet<LocatedImport> {
     let _p = tracing::info_span!("ImportAssets::path_applicable_imports").entered();
 
-    match &*path_candidate.qualifier {
+    let mut result = match &*path_candidate.qualifier {
         [] => {
             items_locator::items_with_name(
                 db,
@@ -433,6 +435,75 @@ fn path_applicable_imports(
         })
         .take(DEFAULT_QUERY_SEARCH_LIMIT)
         .collect(),
+    };
+
+    filter_candidates_by_after_path(db, scope, path_candidate, &mut result);
+
+    result
+}
+
+fn filter_candidates_by_after_path(
+    db: &RootDatabase,
+    scope: &SemanticsScope<'_>,
+    path_candidate: &PathImportCandidate,
+    imports: &mut FxIndexSet<LocatedImport>,
+) {
+    if imports.len() <= 1 {
+        // Short-circuit, as even if it doesn't match fully we want it.
+        return;
+    }
+
+    let Some((last_after, after_except_last)) = path_candidate.after.split_last() else {
+        return;
+    };
+
+    let original_imports = imports.clone();
+
+    let traits_in_scope = scope.visible_traits();
+    imports.retain(|import| {
+        let items = if after_except_last.is_empty() {
+            smallvec![import.original_item]
+        } else {
+            let ItemInNs::Types(ModuleDef::Module(item)) = import.original_item else {
+                return false;
+            };
+            // FIXME: This doesn't consider visibilities.
+            item.resolve_mod_path(db, after_except_last.iter().cloned())
+                .into_iter()
+                .flatten()
+                .collect::<SmallVec<[_; 3]>>()
+        };
+        items.into_iter().any(|item| {
+            let has_last_method = |ty: hir::Type<'_>| {
+                ty.iterate_path_candidates(db, scope, &traits_in_scope, Some(last_after), |_| {
+                    Some(())
+                })
+                .is_some()
+            };
+            // FIXME: A trait can have an assoc type that has a function/const, that's two segments before last.
+            match item {
+                // A module? Can we resolve one more segment?
+                ItemInNs::Types(ModuleDef::Module(module)) => module
+                    .resolve_mod_path(db, [last_after.clone()])
+                    .is_some_and(|mut it| it.any(|_| true)),
+                // And ADT/Type Alias? That might be a method.
+                ItemInNs::Types(ModuleDef::Adt(it)) => has_last_method(it.ty(db)),
+                ItemInNs::Types(ModuleDef::BuiltinType(it)) => has_last_method(it.ty(db)),
+                ItemInNs::Types(ModuleDef::TypeAlias(it)) => has_last_method(it.ty(db)),
+                // A trait? Might have an associated item.
+                ItemInNs::Types(ModuleDef::Trait(it)) => it
+                    .items(db)
+                    .into_iter()
+                    .any(|assoc_item| assoc_item.name(db) == Some(last_after.clone())),
+                // Other items? can't resolve one more segment.
+                _ => false,
+            }
+        })
+    });
+
+    if imports.is_empty() {
+        // Better one half-match than zero full matches.
+        *imports = original_imports;
     }
 }
 
@@ -759,10 +830,14 @@ impl<'db> ImportCandidate<'db> {
         if sema.resolve_path(path).is_some() {
             return None;
         }
+        let after = std::iter::successors(path.parent_path(), |it| it.parent_path())
+            .map(|seg| seg.segment()?.name_ref().map(|name| Name::new_root(&name.text())))
+            .collect::<Option<_>>()?;
         path_import_candidate(
             sema,
             path.qualifier(),
             NameToImport::exact_case_sensitive(path.segment()?.name_ref()?.to_string()),
+            after,
         )
     }
 
@@ -777,6 +852,7 @@ impl<'db> ImportCandidate<'db> {
         Some(ImportCandidate::Path(PathImportCandidate {
             qualifier: vec![],
             name: NameToImport::exact_case_sensitive(name.to_string()),
+            after: vec![],
         }))
     }
 
@@ -785,7 +861,8 @@ impl<'db> ImportCandidate<'db> {
         fuzzy_name: String,
         sema: &Semantics<'db, RootDatabase>,
     ) -> Option<Self> {
-        path_import_candidate(sema, qualifier, NameToImport::fuzzy(fuzzy_name))
+        // Assume a fuzzy match does not want the segments after. Because... I guess why not?
+        path_import_candidate(sema, qualifier, NameToImport::fuzzy(fuzzy_name), Vec::new())
     }
 }
 
@@ -793,6 +870,7 @@ fn path_import_candidate<'db>(
     sema: &Semantics<'db, RootDatabase>,
     qualifier: Option<ast::Path>,
     name: NameToImport,
+    after: Vec<Name>,
 ) -> Option<ImportCandidate<'db>> {
     Some(match qualifier {
         Some(qualifier) => match sema.resolve_path(&qualifier) {
@@ -802,7 +880,7 @@ fn path_import_candidate<'db>(
                         .segments()
                         .map(|seg| seg.name_ref().map(|name| Name::new_root(&name.text())))
                         .collect::<Option<Vec<_>>>()?;
-                    ImportCandidate::Path(PathImportCandidate { qualifier, name })
+                    ImportCandidate::Path(PathImportCandidate { qualifier, name, after })
                 } else {
                     return None;
                 }
@@ -826,7 +904,7 @@ fn path_import_candidate<'db>(
             }
             Some(_) => return None,
         },
-        None => ImportCandidate::Path(PathImportCandidate { qualifier: vec![], name }),
+        None => ImportCandidate::Path(PathImportCandidate { qualifier: vec![], name, after }),
     })
 }
 

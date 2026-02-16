@@ -3,7 +3,7 @@ use ide_db::{
     use_trivial_constructor::use_trivial_constructor,
 };
 use syntax::{
-    ast::{self, AstNode, HasName, HasVisibility, StructKind, edit_in_place::Indent, make},
+    ast::{self, AstNode, HasName, HasVisibility, StructKind, edit::AstNodeEdit, make},
     syntax_editor::Position,
 };
 
@@ -150,14 +150,14 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             false,
             false,
         )
-        .clone_for_update();
-        fn_.indent(1.into());
+        .clone_for_update()
+        .indent(1.into());
 
         let mut editor = builder.make_editor(strukt.syntax());
 
         // Get the node for set annotation
         let contain_fn = if let Some(impl_def) = impl_def {
-            fn_.indent(impl_def.indent_level());
+            let fn_ = fn_.indent(impl_def.indent_level());
 
             if let Some(l_curly) = impl_def.assoc_item_list().and_then(|list| list.l_curly_token())
             {
@@ -182,9 +182,8 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             let indent_level = strukt.indent_level();
             let body = vec![ast::AssocItem::Fn(fn_)];
             let list = make::assoc_item_list(Some(body));
-            let impl_def = generate_impl_with_item(&ast::Adt::Struct(strukt.clone()), Some(list));
-
-            impl_def.indent(strukt.indent_level());
+            let impl_def = generate_impl_with_item(&ast::Adt::Struct(strukt.clone()), Some(list))
+                .indent(strukt.indent_level());
 
             // Insert it after the adt
             editor.insert_all(
