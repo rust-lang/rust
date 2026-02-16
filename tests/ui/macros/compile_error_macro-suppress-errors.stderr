@@ -16,7 +16,7 @@ error[E0432]: unresolved import `crate::another_module::NotExist`
 LL |         use crate::another_module::NotExist;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `NotExist` in `another_module`
 
-error[E0433]: failed to resolve: could not find `Hello` in `another_module`
+error[E0433]: cannot find `Hello` in `another_module`
   --> $DIR/compile_error_macro-suppress-errors.rs:37:55
    |
 LL |     let _: another_module::SomeType = another_module::Hello::new();

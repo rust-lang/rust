@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: could not find `nonexistent` in `existent`
+error[E0433]: cannot find `nonexistent` in `existent`
   --> $DIR/custom_attr_multisegment_error.rs:5:13
    |
 LL | #[existent::nonexistent]

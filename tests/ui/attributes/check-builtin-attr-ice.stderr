@@ -1,16 +1,16 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `should_panic`
+error[E0433]: cannot find module or crate `should_panic` in this scope
   --> $DIR/check-builtin-attr-ice.rs:45:7
    |
 LL |     #[should_panic::skip]
    |       ^^^^^^^^^^^^ use of unresolved module or unlinked crate `should_panic`
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `should_panic`
+error[E0433]: cannot find module or crate `should_panic` in this scope
   --> $DIR/check-builtin-attr-ice.rs:49:7
    |
 LL |     #[should_panic::a::b::c]
    |       ^^^^^^^^^^^^ use of unresolved module or unlinked crate `should_panic`
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `deny`
+error[E0433]: cannot find module or crate `deny` in this scope
   --> $DIR/check-builtin-attr-ice.rs:57:7
    |
 LL |     #[deny::skip]
