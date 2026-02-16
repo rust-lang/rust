@@ -1260,6 +1260,7 @@ pub trait SizedTypeProperties: Sized {
 
     #[doc(hidden)]
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[lang = "mem_alignment_const"]
     const ALIGNMENT: Alignment = {
         // This can't panic since type alignment is always a power of two.
         Alignment::new(Self::ALIGN).unwrap()
@@ -1300,7 +1301,7 @@ pub trait SizedTypeProperties: Sized {
         // SAFETY: if the type is instantiated, rustc already ensures that its
         // layout is valid. Use the unchecked constructor to avoid inserting a
         // panicking codepath that needs to be optimized out.
-        unsafe { Layout::from_size_align_unchecked(Self::SIZE, Self::ALIGN) }
+        unsafe { Layout::from_size_alignment_unchecked(Self::SIZE, Self::ALIGNMENT) }
     };
 
     /// The largest safe length for a `[Self]`.

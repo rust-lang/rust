@@ -132,7 +132,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let size = tcx.require_lang_item(LangItem::SizeOf, expr_span);
                 let size = Operand::unevaluated_constant(tcx, size, &[value_ty.into()], expr_span);
 
-                let align = tcx.require_lang_item(LangItem::AlignOf, expr_span);
+                let align = tcx.require_lang_item(LangItem::AlignmentOf, expr_span);
                 let align =
                     Operand::unevaluated_constant(tcx, align, &[value_ty.into()], expr_span);
 

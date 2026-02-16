@@ -1445,6 +1445,7 @@ symbols! {
         maybe_uninit_zeroed,
         mem_align_const,
         mem_align_of,
+        mem_alignment_const,
         mem_discriminant,
         mem_drop,
         mem_forget,

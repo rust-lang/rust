@@ -25,7 +25,7 @@ fn test() -> Option<Box<u32>> {
 
     bb0: {
         StorageLive(_1);
-        _2 = alloc::alloc::exchange_malloc(const <u32 as std::mem::SizedTypeProperties>::SIZE, const <u32 as std::mem::SizedTypeProperties>::ALIGN) -> [return: bb1, unwind: bb13];
+        _2 = alloc::alloc::exchange_malloc(const <u32 as std::mem::SizedTypeProperties>::SIZE, const <u32 as std::mem::SizedTypeProperties>::ALIGNMENT) -> [return: bb1, unwind: bb13];
     }
 
     bb1: {

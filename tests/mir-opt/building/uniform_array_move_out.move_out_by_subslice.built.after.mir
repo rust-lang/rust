@@ -20,7 +20,7 @@ fn move_out_by_subslice() -> () {
     bb0: {
         StorageLive(_1);
         StorageLive(_2);
-        _3 = alloc::alloc::exchange_malloc(const <i32 as std::mem::SizedTypeProperties>::SIZE, const <i32 as std::mem::SizedTypeProperties>::ALIGN) -> [return: bb1, unwind: bb13];
+        _3 = alloc::alloc::exchange_malloc(const <i32 as std::mem::SizedTypeProperties>::SIZE, const <i32 as std::mem::SizedTypeProperties>::ALIGNMENT) -> [return: bb1, unwind: bb13];
     }
 
     bb1: {
@@ -34,7 +34,7 @@ fn move_out_by_subslice() -> () {
     bb2: {
         StorageDead(_4);
         StorageLive(_5);
-        _6 = alloc::alloc::exchange_malloc(const <i32 as std::mem::SizedTypeProperties>::SIZE, const <i32 as std::mem::SizedTypeProperties>::ALIGN) -> [return: bb3, unwind: bb12];
+        _6 = alloc::alloc::exchange_malloc(const <i32 as std::mem::SizedTypeProperties>::SIZE, const <i32 as std::mem::SizedTypeProperties>::ALIGNMENT) -> [return: bb3, unwind: bb12];
     }
 
     bb3: {
