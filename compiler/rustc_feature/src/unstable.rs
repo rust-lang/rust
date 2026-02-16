@@ -64,8 +64,6 @@ pub struct EnabledLibFeature {
 }
 
 impl Features {
-    /// `since` should be set for stable features that are nevertheless enabled with a `#[feature]`
-    /// attribute, indicating since when they are stable.
     pub fn set_enabled_lang_feature(&mut self, lang_feat: EnabledLangFeature) {
         self.enabled_lang_features.push(lang_feat);
         self.enabled_features.insert(lang_feat.gate_name);
@@ -779,8 +777,9 @@ impl Features {
     }
 }
 
-/// Some features are not allowed to be used together at the same time, if
-/// the two are present, produce an error.
+/// Some features are not allowed to be used together at the same time.
+///
+/// If the two are present, produce an error.
 pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
     // Experimental match ergonomics rulesets are incompatible with each other, to simplify the
     // boolean logic required to tell which typing rules to use.

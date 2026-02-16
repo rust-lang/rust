@@ -42,7 +42,9 @@ where
     }
 }
 
-/// A complete reference to a trait. These take numerous guises in syntax,
+/// A complete reference to a trait.
+///
+/// These take numerous guises in syntax,
 /// but perhaps the most recognizable form is in a where-clause:
 /// ```ignore (illustrative)
 /// T: Foo<U>
@@ -241,7 +243,9 @@ impl ImplPolarity {
     }
 }
 
-/// Polarity for a trait predicate. May either be negative or positive.
+/// Polarity for a trait predicate.
+///
+/// May either be negative or positive.
 /// Distinguished from [`ImplPolarity`] since we never compute goals with
 /// "reservation" level.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -327,6 +331,7 @@ impl<I: Interner> ty::Binder<I, ExistentialPredicate<I>> {
 }
 
 /// An existential reference to a trait, where `Self` is erased.
+///
 /// For example, the trait object `Trait<'a, 'b, X, Y>` is:
 /// ```ignore (illustrative)
 /// exists T. T: Trait<'a, 'b, X, Y>
@@ -442,6 +447,7 @@ impl<I: Interner> ExistentialProjection<I> {
     }
 
     /// Extracts the underlying existential trait reference from this projection.
+    ///
     /// For example, if this is a projection of `exists T. <T as Iterator>::Item == X`,
     /// then this function would return an `exists T. T: Iterator` existential trait
     /// reference.
@@ -493,14 +499,17 @@ impl<I: Interner> ty::Binder<I, ExistentialProjection<I>> {
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum AliasTermKind {
     /// A projection `<Type as Trait>::AssocType`.
+    ///
     /// Can get normalized away if monomorphic enough.
     ProjectionTy,
     /// An associated type in an inherent `impl`
     InherentTy,
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
+    ///
     /// Can only be normalized away in PostAnalysis mode or its defining scope.
     OpaqueTy,
     /// A free type alias that actually checks its trait bounds.
+    ///
     /// Currently only used if the type alias references opaque types.
     /// Can always be normalized away.
     FreeTy,
