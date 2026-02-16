@@ -36,6 +36,7 @@ redundant_else = "allow"
 
 borrow_as_ptr = "warn"
 ptr_cast_constness = "warn"
+ref_as_ptr = "warn"
 
 [dependencies]
 # For the default hasher
