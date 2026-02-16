@@ -2,19 +2,16 @@ use std::path::PathBuf;
 
 use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::attrs::diagnostic::{ConditionOptions, Directive, OnUnimplementedNote};
+use rustc_hir::attrs::diagnostic::{ConditionOptions, FormatArgs, OnUnimplementedNote};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::find_attr;
 pub use rustc_hir::lints::FormatWarning;
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, GenericParamDef, GenericParamDefKind};
 use rustc_span::Symbol;
-use tracing::{debug, info};
 
 use super::{ObligationCauseCode, PredicateObligation};
 use crate::error_reporting::TypeErrCtxt;
-use crate::error_reporting::traits::on_unimplemented_condition::matches_predicate;
-use crate::error_reporting::traits::on_unimplemented_format::FormatArgs;
 
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// Used to set on_unimplemented's `ItemContext`
@@ -48,8 +45,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let (condition_options, format_args) =
             self.on_unimplemented_components(trait_pred, obligation, long_ty_path);
         if let Some(command) = find_attr!(self.tcx.get_all_attrs( trait_pred.def_id()), AttributeKind::OnUnimplemented {directive, ..} => directive.as_deref()).flatten() {
-            evaluate_directive(
-                &command,
+            command.evaluate_directive(
                 trait_pred.skip_binder().trait_ref,
                 &condition_options,
                 &format_args,
@@ -64,7 +60,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         long_ty_path: &mut Option<PathBuf>,
-    ) -> (ConditionOptions, FormatArgs<'tcx>) {
+    ) -> (ConditionOptions, FormatArgs) {
         let (def_id, args) = (trait_pred.def_id(), trait_pred.skip_binder().trait_ref.args);
         let trait_pred = trait_pred.skip_binder();
 
@@ -213,7 +209,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }));
 
         let this = self.tcx.def_path_str(trait_pred.trait_ref.def_id);
-        let trait_sugared = trait_pred.trait_ref.print_trait_sugared();
+        let trait_sugared = trait_pred.trait_ref.print_trait_sugared().to_string();
 
         let condition_options = ConditionOptions {
             self_types,
@@ -253,58 +249,5 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let format_args = FormatArgs { this, trait_sugared, generic_args, item_context };
         (condition_options, format_args)
-    }
-}
-
-pub(crate) fn evaluate_directive<'tcx>(
-    slf: &Directive,
-    trait_ref: ty::TraitRef<'tcx>,
-    condition_options: &ConditionOptions,
-    args: &FormatArgs<'tcx>,
-) -> OnUnimplementedNote {
-    let mut message = None;
-    let mut label = None;
-    let mut notes = Vec::new();
-    let mut parent_label = None;
-    let mut append_const_msg = None;
-    info!(
-        "evaluate_directive({:?}, trait_ref={:?}, options={:?}, args ={:?})",
-        slf, trait_ref, condition_options, args
-    );
-
-    for command in slf.subcommands.iter().chain(Some(slf)).rev() {
-        debug!(?command);
-        if let Some(ref condition) = command.condition
-            && !matches_predicate(condition, condition_options)
-        {
-            debug!("evaluate_directive: skipping {:?} due to condition", command);
-            continue;
-        }
-        debug!("evaluate_directive: {:?} succeeded", command);
-        if let Some(ref message_) = command.message {
-            message = Some(message_.clone());
-        }
-
-        if let Some(ref label_) = command.label {
-            label = Some(label_.clone());
-        }
-
-        notes.extend(command.notes.clone());
-
-        if let Some(ref parent_label_) = command.parent_label {
-            parent_label = Some(parent_label_.clone());
-        }
-
-        append_const_msg = command.append_const_msg;
-    }
-
-    use crate::error_reporting::traits::on_unimplemented_format::format;
-
-    OnUnimplementedNote {
-        label: label.map(|l| format(&l.1, args)),
-        message: message.map(|m| format(&m.1, args)),
-        notes: notes.into_iter().map(|n| format(&n, args)).collect(),
-        parent_label: parent_label.map(|e_s| format(&e_s, args)),
-        append_const_msg,
     }
 }

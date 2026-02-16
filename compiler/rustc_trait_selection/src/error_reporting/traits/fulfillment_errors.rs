@@ -45,7 +45,6 @@ use super::{
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
-use crate::error_reporting::traits::on_unimplemented::evaluate_directive;
 use crate::error_reporting::traits::report_dyn_incompatibility;
 use crate::errors::{ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch, CoroClosureNotFn};
 use crate::infer::{self, InferCtxt, InferCtxtExt as _};
@@ -914,9 +913,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
 
                     if let Some(command) = find_attr!(self.tcx.get_all_attrs(impl_did), AttributeKind::OnConst {directive, ..} => directive.as_deref()).flatten(){
-                        let note = evaluate_directive(
-                            &command,
-                            predicate.skip_binder().trait_ref,
+                        let note = command.evaluate_directive(
+                             predicate.skip_binder().trait_ref,
                             &condition_options,
                             &format_args,
                         );

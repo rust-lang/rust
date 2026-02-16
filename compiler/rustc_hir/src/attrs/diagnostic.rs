@@ -1,8 +1,12 @@
 //! Contains the data structures used by the diagnostic attribute family.
+use std::fmt;
+use std::fmt::Debug;
+
 pub use rustc_ast::attr::data_structures::*;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
-use rustc_span::{DesugaringKind, Span, Symbol};
+use rustc_span::{DesugaringKind, Span, Symbol, kw};
 use thin_vec::ThinVec;
+use tracing::{debug, info};
 
 use crate::attrs::PrintAttribute;
 
@@ -48,9 +52,59 @@ impl Directive {
             parent_label.visit_params(visit);
         }
     }
+
+    pub fn evaluate_directive(
+        &self,
+        trait_name: impl Debug,
+        condition_options: &ConditionOptions,
+        args: &FormatArgs,
+    ) -> OnUnimplementedNote {
+        let mut message = None;
+        let mut label = None;
+        let mut notes = Vec::new();
+        let mut parent_label = None;
+        let mut append_const_msg = None;
+        info!(
+            "evaluate_directive({:?}, trait_ref={:?}, options={:?}, args ={:?})",
+            self, trait_name, condition_options, args
+        );
+
+        for command in self.subcommands.iter().chain(Some(self)).rev() {
+            debug!(?command);
+            if let Some(ref condition) = command.condition
+                && !condition.matches_predicate(condition_options)
+            {
+                debug!("evaluate_directive: skipping {:?} due to condition", command);
+                continue;
+            }
+            debug!("evaluate_directive: {:?} succeeded", command);
+            if let Some(ref message_) = command.message {
+                message = Some(message_.clone());
+            }
+
+            if let Some(ref label_) = command.label {
+                label = Some(label_.clone());
+            }
+
+            notes.extend(command.notes.clone());
+
+            if let Some(ref parent_label_) = command.parent_label {
+                parent_label = Some(parent_label_.clone());
+            }
+
+            append_const_msg = command.append_const_msg;
+        }
+
+        OnUnimplementedNote {
+            label: label.map(|l| l.1.format(args)),
+            message: message.map(|m| m.1.format(args)),
+            notes: notes.into_iter().map(|n| n.format(args)).collect(),
+            parent_label: parent_label.map(|e_s| e_s.format(args)),
+            append_const_msg,
+        }
+    }
 }
 
-/// For the `#[rustc_on_unimplemented]` attribute
 #[derive(Default, Debug)]
 pub struct OnUnimplementedNote {
     pub message: Option<String>,
@@ -88,8 +142,45 @@ pub struct FormatString {
     pub span: Span,
     pub pieces: ThinVec<Piece>,
 }
-
 impl FormatString {
+    pub fn format(&self, args: &FormatArgs) -> String {
+        let mut ret = String::new();
+        for piece in &self.pieces {
+            match piece {
+                Piece::Lit(s) | Piece::Arg(FormatArg::AsIs(s)) => ret.push_str(s.as_str()),
+
+                // `A` if we have `trait Trait<A> {}` and `note = "i'm the actual type of {A}"`
+                Piece::Arg(FormatArg::GenericParam { generic_param, .. }) => {
+                    match args.generic_args.iter().find(|(p, _)| p == generic_param) {
+                        Some((_, val)) => ret.push_str(val.as_str()),
+
+                        None => {
+                            // Apparently this was not actually a generic parameter, so lets write
+                            // what the user wrote.
+                            let _ = fmt::write(&mut ret, format_args!("{{{generic_param}}}"));
+                        }
+                    }
+                }
+                // `{Self}`
+                Piece::Arg(FormatArg::SelfUpper) => {
+                    let slf = match args.generic_args.iter().find(|(p, _)| *p == kw::SelfUpper) {
+                        Some((_, val)) => val.to_string(),
+                        None => "Self".to_string(),
+                    };
+                    ret.push_str(&slf);
+                }
+
+                // It's only `rustc_onunimplemented` from here
+                Piece::Arg(FormatArg::This) => ret.push_str(&args.this),
+                Piece::Arg(FormatArg::Trait) => {
+                    let _ = fmt::write(&mut ret, format_args!("{}", &args.trait_sugared));
+                }
+                Piece::Arg(FormatArg::ItemContext) => ret.push_str(args.item_context),
+            }
+        }
+        ret
+    }
+
     fn visit_params(&self, visit: &mut impl FnMut(Symbol, Span)) {
         for piece in &self.pieces {
             if let Piece::Arg(FormatArg::GenericParam { generic_param, span }) = piece {
@@ -97,6 +188,48 @@ impl FormatString {
             }
         }
     }
+}
+
+/// Arguments to fill a [FormatString] with.
+///
+/// For example, given a
+/// ```rust,ignore (just an example)
+///
+/// #[rustc_on_unimplemented(
+///     on(all(from_desugaring = "QuestionMark"),
+///         message = "the `?` operator can only be used in {ItemContext} \
+///                     that returns `Result` or `Option` \
+///                     (or another type that implements `{FromResidual}`)",
+///         label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
+///         parent_label = "this function should return `Result` or `Option` to accept `?`"
+///     ),
+/// )]
+/// pub trait FromResidual<R = <Self as Try>::Residual> {
+///    ...
+/// }
+///
+/// async fn an_async_function() -> u32 {
+///     let x: Option<u32> = None;
+///     x?; //~ ERROR the `?` operator
+///     22
+/// }
+///  ```
+/// it will look like this:
+///
+/// ```rust,ignore (just an example)
+/// FormatArgs {
+///     this: "FromResidual",
+///     trait_sugared: "FromResidual<Option<Infallible>>",
+///     item_context: "an async function",
+///     generic_args: [("Self", "u32"), ("R", "Option<Infallible>")],
+/// }
+/// ```
+#[derive(Debug)]
+pub struct FormatArgs {
+    pub this: String,
+    pub trait_sugared: String,
+    pub item_context: &'static str,
+    pub generic_args: Vec<(Symbol, String)>,
 }
 
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
@@ -130,8 +263,17 @@ pub struct OnUnimplementedCondition {
     pub span: Span,
     pub pred: Predicate,
 }
-
 impl OnUnimplementedCondition {
+    pub fn matches_predicate(self: &OnUnimplementedCondition, options: &ConditionOptions) -> bool {
+        self.pred.eval(&mut |p| match p {
+            FlagOrNv::Flag(b) => options.has_flag(*b),
+            FlagOrNv::NameValue(NameValue { name, value }) => {
+                let value = value.format(&options.generic_args);
+                options.contains(*name, value)
+            }
+        })
+    }
+
     pub fn visit_params(&self, visit: &mut impl FnMut(Symbol, Span)) {
         self.pred.visit_params(self.span, visit);
     }
@@ -239,6 +381,23 @@ pub struct FilterFormatString {
 }
 
 impl FilterFormatString {
+    fn format(&self, generic_args: &[(Symbol, String)]) -> String {
+        let mut ret = String::new();
+
+        for piece in &self.pieces {
+            match piece {
+                LitOrArg::Lit(s) => ret.push_str(s.as_str()),
+                LitOrArg::Arg(s) => match generic_args.iter().find(|(k, _)| k == s) {
+                    Some((_, val)) => ret.push_str(val),
+                    None => {
+                        let _ = std::fmt::write(&mut ret, format_args!("{{{s}}}"));
+                    }
+                },
+            }
+        }
+
+        ret
+    }
     pub fn visit_params(&self, span: Span, visit: &mut impl FnMut(Symbol, Span)) {
         for piece in &self.pieces {
             if let LitOrArg::Arg(arg) = piece {
