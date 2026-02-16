@@ -6,7 +6,7 @@ use rustc_span::{SourceFile, Symbol, sym};
 use smallvec::SmallVec;
 use {rustc_ast as ast, rustc_hir as hir};
 
-use crate::ich::StableHashingContext;
+use super::StableHashingContext;
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
     #[inline]

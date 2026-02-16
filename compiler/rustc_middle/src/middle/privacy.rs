@@ -8,9 +8,9 @@ use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def::DefKind;
 use rustc_macros::HashStable;
-use rustc_query_system::ich::StableHashingContext;
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
 
+use crate::ich::StableHashingContext;
 use crate::ty::{TyCtxt, Visibility};
 
 /// Represents the levels of effective visibility an item can have.

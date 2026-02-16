@@ -72,6 +72,7 @@ pub mod arena;
 pub mod error;
 pub mod hir;
 pub mod hooks;
+pub mod ich;
 pub mod infer;
 pub mod lint;
 pub mod metadata;

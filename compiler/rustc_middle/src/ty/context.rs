@@ -39,7 +39,6 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
 use rustc_hir::{self as hir, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
-use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
 use rustc_session::config::CrateType;
@@ -55,6 +54,7 @@ use tracing::{debug, instrument};
 use crate::arena::Arena;
 use crate::dep_graph::dep_node::make_metadata;
 use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
+use crate::ich::StableHashingContext;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
 use crate::lint::lint_level;
 use crate::metadata::ModChild;
@@ -1220,7 +1220,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn needs_crate_hash(self) -> bool {
         // Why is the crate hash needed for these configurations?
         // - debug_assertions: for the "fingerprint the result" check in
-        //   `rustc_query_system::query::plumbing::execute_job`.
+        //   `rustc_query_impl::execution::execute_job`.
         // - incremental: for query lookups.
         // - needs_metadata: for putting into crate metadata.
         // - instrument_coverage: for putting into coverage data (see

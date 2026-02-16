@@ -129,7 +129,6 @@ expression: test
     - Set({test::compiler/rustc_public})
     - Set({test::compiler/rustc_public_bridge})
     - Set({test::compiler/rustc_query_impl})
-    - Set({test::compiler/rustc_query_system})
     - Set({test::compiler/rustc_resolve})
     - Set({test::compiler/rustc_sanitizers})
     - Set({test::compiler/rustc_serialize})

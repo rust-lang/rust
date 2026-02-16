@@ -7,7 +7,8 @@ pub use self::dep_node::{
     label_strs,
 };
 pub use self::graph::{
-    DepGraph, DepGraphData, DepNodeIndex, TaskDepsRef, WorkProduct, WorkProductMap, hash_result,
+    DepGraph, DepGraphData, DepNodeIndex, QuerySideEffect, TaskDepsRef, WorkProduct,
+    WorkProductMap, hash_result,
 };
 use self::graph::{MarkFrame, print_markframe_trace};
 pub use self::query::DepGraphQuery;
