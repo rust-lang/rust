@@ -1945,6 +1945,14 @@ where
             Entry::Vacant(entry) => Entry::Vacant(entry),
         }
     }
+
+    /// Converts the `Entry` into a mutable reference to the underlying table.
+    pub fn into_table(self) -> &'a mut HashTable<T, A> {
+        match self {
+            Entry::Occupied(entry) => entry.table,
+            Entry::Vacant(entry) => entry.table,
+        }
+    }
 }
 
 /// A view into an occupied entry in a `HashTable`.
