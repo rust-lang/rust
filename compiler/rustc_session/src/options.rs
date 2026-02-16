@@ -786,6 +786,8 @@ mod desc {
     pub(crate) const parse_coverage_options: &str = "`block` | `branch` | `condition`";
     pub(crate) const parse_codegen_retag_options: &str =
         "either no value or a comma-separated list of settings: `no-precise-im`, `no-precise-pin`";
+    pub(crate) const parse_instrument_mcount: &str =
+        "either a boolean (`yes`, `no`, `on`, `off`, etc), or `fentry` on supported targets.";
     pub(crate) const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -1563,6 +1565,19 @@ pub mod parse {
             }
         }
         true
+    }
+
+    pub(crate) fn parse_instrument_mcount(slot: &mut InstrumentMcount, v: Option<&str>) -> bool {
+        let mut use_mcount = false;
+        if parse_bool(&mut use_mcount, v) {
+            *slot = if use_mcount { InstrumentMcount::Mcount } else { InstrumentMcount::Disabled };
+            true
+        } else if let Some("fentry") = v {
+            *slot = InstrumentMcount::Fentry;
+            true
+        } else {
+            false
+        }
     }
 
     pub(crate) fn parse_instrument_xray(
@@ -2433,7 +2448,7 @@ options! {
         "a default MIR inlining threshold (default: 50)"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some statistics about AST and HIR (default: no)"),
-    instrument_mcount: bool = (false, parse_bool, [TRACKED],
+    instrument_mcount: InstrumentMcount = (InstrumentMcount::Disabled, parse_instrument_mcount, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
     instrument_xray: Option<InstrumentXRay> = (None, parse_instrument_xray, [TRACKED],
         "insert function instrument code for XRay-based tracing (default: no)

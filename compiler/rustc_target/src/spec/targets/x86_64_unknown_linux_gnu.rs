@@ -19,6 +19,7 @@ pub(crate) fn target() -> Target {
         | SanitizerSet::SAFESTACK
         | SanitizerSet::THREAD
         | SanitizerSet::REALTIME;
+    base.supports_fentry = true;
     base.supports_xray = true;
 
     Target {

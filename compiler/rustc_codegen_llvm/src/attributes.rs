@@ -7,7 +7,9 @@ use rustc_middle::middle::codegen_fn_attrs::{
     TargetFeature,
 };
 use rustc_middle::ty::{self, Instance, TyCtxt};
-use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};
+use rustc_session::config::{
+    BranchProtection, FunctionReturn, InstrumentMcount, OptLevel, PAuthKey, PacRet,
+};
 use rustc_span::sym;
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{Arch, FramePointer, SanitizerSet, StackProbeType, StackProtector};
@@ -177,7 +179,7 @@ pub(crate) fn frame_pointer(sess: &Session) -> FramePointer {
     let opts = &sess.opts;
     // "mcount" function relies on stack pointer.
     // See <https://sourceware.org/binutils/docs/gprof/Implementation.html>.
-    if opts.unstable_opts.instrument_mcount {
+    if opts.unstable_opts.instrument_mcount == InstrumentMcount::Mcount {
         fp.ratchet(FramePointer::Always);
     }
     fp.ratchet(opts.cg.force_frame_pointers);
@@ -214,7 +216,7 @@ fn instrument_function_attr<'ll>(
     instrument_fn: InstrumentFnAttr,
 ) -> SmallVec<[&'ll Attribute; 4]> {
     let mut attrs = SmallVec::new();
-    if sess.opts.unstable_opts.instrument_mcount {
+    if sess.opts.unstable_opts.instrument_mcount != InstrumentMcount::Disabled {
         // Similar to `clang -pg` behavior. Handled by the
         // `post-inline-ee-instrument` LLVM pass.
 
@@ -224,18 +226,26 @@ fn instrument_function_attr<'ll>(
         };
 
         if instrument_entry {
-            // The function name varies on platforms.
-            // See test/CodeGen/mcount.c in clang.
-            let mcount_name = match &sess.target.llvm_mcount_intrinsic {
-                Some(llvm_mcount_intrinsic) => llvm_mcount_intrinsic.as_ref(),
-                None => sess.target.mcount.as_ref(),
-            };
+            match sess.opts.unstable_opts.instrument_mcount {
+                InstrumentMcount::Mcount => {
+                    // The function name varies on platforms.
+                    // See test/CodeGen/mcount.c in clang.
+                    let mcount_name = match &sess.target.llvm_mcount_intrinsic {
+                        Some(llvm_mcount_intrinsic) => llvm_mcount_intrinsic.as_ref(),
+                        None => sess.target.mcount.as_ref(),
+                    };
 
-            attrs.push(llvm::CreateAttrStringValue(
-                cx.llcx,
-                "instrument-function-entry-inlined",
-                mcount_name,
-            ));
+                    attrs.push(llvm::CreateAttrStringValue(
+                        cx.llcx,
+                        "instrument-function-entry-inlined",
+                        mcount_name,
+                    ));
+                }
+                InstrumentMcount::Fentry => {
+                    attrs.push(llvm::CreateAttrStringValue(cx.llcx, "fentry-call", "true"));
+                }
+                InstrumentMcount::Disabled => {}
+            }
         }
     }
     if let Some(options) = &sess.opts.unstable_opts.instrument_xray {
