@@ -426,6 +426,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "sha1",
     "sha2",
     "sharded-slab",
+    "shell-words",
     "shlex",
     "simd-adler32",
     "smallvec",
