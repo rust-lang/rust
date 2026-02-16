@@ -897,6 +897,9 @@ pub enum AttributeKind {
     /// Represents `#[debugger_visualizer]`.
     DebuggerVisualizer(ThinVec<DebugVisualizer>),
 
+    /// Represents `#![default_lib_allocator]`
+    DefaultLibAllocator,
+
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
     Deprecation { deprecation: Deprecation, span: Span },
 

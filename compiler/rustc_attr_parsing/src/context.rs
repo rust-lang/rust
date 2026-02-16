@@ -235,6 +235,7 @@ attribute_parsers!(
         Single<WithoutArgs<ConstContinueParser>>,
         Single<WithoutArgs<ConstStabilityIndirectParser>>,
         Single<WithoutArgs<CoroutineParser>>,
+        Single<WithoutArgs<DefaultLibAllocatorParser>>,
         Single<WithoutArgs<DenyExplicitImplParser>>,
         Single<WithoutArgs<DynIncompatibleTraitParser>>,
         Single<WithoutArgs<EiiForeignItemParser>>,

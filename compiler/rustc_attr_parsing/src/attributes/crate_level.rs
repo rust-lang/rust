@@ -292,3 +292,12 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcNoImplicitBoundsParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoImplicitBounds;
 }
+
+pub(crate) struct DefaultLibAllocatorParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for DefaultLibAllocatorParser {
+    const PATH: &[Symbol] = &[sym::default_lib_allocator];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::DefaultLibAllocator;
+}
