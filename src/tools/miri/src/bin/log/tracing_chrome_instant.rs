@@ -20,6 +20,7 @@
 ///
 /// This measures time using [std::time::Instant], except for x86/x86_64 Linux machines, where
 /// [std::time::Instant] is too slow (~1.5us) and thus `rdtsc` is used instead (~5ns).
+#[derive(Clone)]
 pub enum TracingChromeInstant {
     WallTime {
         /// The time at which this instant was created, shifted forward to account

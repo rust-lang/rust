@@ -53,6 +53,7 @@ use std::{
 use crate::log::tracing_chrome_instant::TracingChromeInstant;
 
 /// Contains thread-local data for threads that send tracing spans or events.
+#[derive(Clone)]
 struct ThreadData {
     /// A unique ID for this thread, will populate "tid" field in the output trace file.
     tid: usize,
@@ -562,15 +563,20 @@ where
     #[inline(always)]
     fn with_elapsed_micros_subtracting_tracing(&self, f: impl Fn(f64, usize, &Sender<Message>)) {
         THREAD_DATA.with(|value| {
-            let mut thread_data = value.borrow_mut();
-            let (ThreadData { tid, out, start }, new_thread) = match thread_data.as_mut() {
-                Some(thread_data) => (thread_data, false),
-                None => {
-                    let tid = self.max_tid.fetch_add(1, Ordering::SeqCst);
-                    let out = self.out.lock().unwrap().clone();
-                    let start = TracingChromeInstant::setup_for_thread_and_start(tid);
-                    *thread_data = Some(ThreadData { tid, out, start });
-                    (thread_data.as_mut().unwrap(), true)
+            // Make sure not to keep `value` borrowed when calling `f` below, since the user tracing
+            // code that `f` might invoke (e.g. fmt::Debug argument formatting) may contain nested
+            // tracing calls that would cause `value` to be doubly-borrowed mutably.
+            let (ThreadData { tid, out, mut start }, new_thread) = {
+                let mut thread_data = value.borrow_mut();
+                match thread_data.as_mut() {
+                    Some(thread_data) => (thread_data.clone(), false),
+                    None => {
+                        let tid = self.max_tid.fetch_add(1, Ordering::SeqCst);
+                        let out = self.out.lock().unwrap().clone();
+                        let start = TracingChromeInstant::setup_for_thread_and_start(tid);
+                        *thread_data = Some(ThreadData { tid, out: out.clone(), start: start.clone() });
+                        (ThreadData { tid, out, start }, true)
+                    }
                 }
             };
 
@@ -580,10 +586,13 @@ where
                         Some(name) => name.to_owned(),
                         None => tid.to_string(),
                     };
-                    let _ignored = out.send(Message::NewThread(*tid, name));
+                    let _ignored = out.send(Message::NewThread(tid, name));
                 }
-                f(ts, *tid, out);
+                f(ts, tid, &out);
             });
+
+            // we have to re-borrow here, see comment above
+            value.borrow_mut().as_mut().unwrap().start = start;
         });
     }
 }
