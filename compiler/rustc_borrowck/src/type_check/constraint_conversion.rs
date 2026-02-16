@@ -4,7 +4,7 @@ use rustc_infer::infer::SubregionOrigin;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::outlives::obligations::{
-    OutlivesHandlingDelegate, TypeOutlivesOpCtxt, require_type_outlives,
+    OutlivesHandlingDelegate, TypeOutlivesOpCtxt, type_must_outlive,
 };
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::traits::query::type_op::DeeplyNormalize;
@@ -193,7 +193,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                         // we don't actually use this for anything, but
                         // the `TypeOutlives` code needs an origin.
                         let origin = SubregionOrigin::RelateParamBound(self.span, t1, None);
-                        require_type_outlives(
+                        type_must_outlive(
                             &mut TypeOutlivesOpCtxt::new(
                                 &mut *self,
                                 tcx,

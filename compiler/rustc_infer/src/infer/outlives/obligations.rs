@@ -142,7 +142,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 debug!(?sup_type, ?sub_region, ?origin);
 
                 let category = origin.to_constraint_category();
-                require_type_outlives(
+                type_must_outlive(
                     &mut TypeOutlivesOpCtxt::new(
                         self,
                         self.tcx,
@@ -441,7 +441,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     }
 }
 
-/// Holds necessary context for the [`require_type_outlives`] operation.
+/// Holds necessary context for the [`type_must_outlive`] operation.
 pub struct TypeOutlivesOpCtxt<'cx, 'tcx, D>
 where
     D: OutlivesHandlingDelegate<'tcx>,
@@ -516,7 +516,7 @@ where
 /// - `ty`, the type `T`
 /// - `region`, the region `'a`
 #[instrument(level = "debug", skip(ctxt))]
-pub fn require_type_outlives<'tcx, D: OutlivesHandlingDelegate<'tcx>>(
+pub fn type_must_outlive<'tcx, D: OutlivesHandlingDelegate<'tcx>>(
     ctxt: &mut TypeOutlivesOpCtxt<'_, 'tcx, D>,
     // ideally this would be in `ctxt` but then we lose ownership
     origin: infer::SubregionOrigin<'tcx>,
@@ -749,7 +749,7 @@ impl<'tcx, D: OutlivesHandlingDelegate<'tcx>> TypeOutlivesOpCtxt<'_, 'tcx, D> {
                     );
                 }
                 GenericArgKind::Type(ty) => {
-                    require_type_outlives(self, origin.clone(), ty, region, constraint);
+                    type_must_outlive(self, origin.clone(), ty, region, constraint);
                 }
                 GenericArgKind::Const(_) => {
                     // Const parameters don't impose constraints.

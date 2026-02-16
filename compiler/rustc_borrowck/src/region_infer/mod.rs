@@ -181,7 +181,7 @@ pub(crate) enum Cause {
 ///
 /// For more information about this translation, see
 /// `InferCtxt::process_registered_region_obligations` and
-/// [`rustc_infer::infer::outlives::obligations::require_type_outlives`].
+/// [`rustc_infer::infer::outlives::obligations::type_must_outlive`].
 #[derive(Clone, Debug)]
 pub(crate) struct TypeTest<'tcx> {
     /// The type `T` that must outlive the region.
