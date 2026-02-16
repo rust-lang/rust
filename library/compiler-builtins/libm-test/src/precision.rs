@@ -222,6 +222,15 @@ impl MaybeOverride<(f32,)> for SpecialCase {
             return XFAIL_NOCHECK;
         }
 
+        // the testing infrastructure doesn't account for allowed ulp in the case of overflow
+        if matches!(ctx.base_name, BaseName::Lgamma | BaseName::LgammaR)
+            && input.0 == 4.0850034e36
+            && expected.is_infinite()
+            && actual == F::MAX
+        {
+            return XFAIL_NOCHECK;
+        }
+
         // FIXME(correctness): lgammaf has high relative inaccuracy near its zeroes
         if matches!(ctx.base_name, BaseName::Lgamma | BaseName::LgammaR)
             && input.0 > -13.0625
