@@ -979,7 +979,7 @@ impl<T, A: Allocator> RawTable<T, A> {
                 fallibility,
                 Self::TABLE_LAYOUT,
                 if T::NEEDS_DROP {
-                    Some(|ptr| ptr::drop_in_place(ptr as *mut T))
+                    Some(|ptr| ptr::drop_in_place(ptr.cast::<T>()))
                 } else {
                     None
                 },
@@ -4403,7 +4403,7 @@ mod test_map {
                 &|table, index| hasher(table.bucket::<T>(index).as_ref()),
                 mem::size_of::<T>(),
                 if mem::needs_drop::<T>() {
-                    Some(|ptr| ptr::drop_in_place(ptr as *mut T))
+                    Some(|ptr| ptr::drop_in_place(ptr.cast::<T>()))
                 } else {
                     None
                 },
