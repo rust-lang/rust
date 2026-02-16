@@ -526,7 +526,7 @@ pub fn type_must_outlive<'tcx, D: OutlivesHandlingDelegate<'tcx>>(
 ) {
     assert!(!ty.has_escaping_bound_vars());
 
-    let components = compute_outlives_verify_for_components(ctxt.tcx, ty);
+    let components = compute_outlives_components(ctxt.tcx, ty);
     ctxt.components_must_outlive(origin, &components, region, category);
 }
 
