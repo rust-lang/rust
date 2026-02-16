@@ -1291,6 +1291,7 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_, 'tcx> {
             TerminatorKind::Return
             | TerminatorKind::Yield { .. }
             | TerminatorKind::Goto { target: START_BLOCK } // Inserted for the `FnMut` case.
+            | TerminatorKind::Call { target: None, .. } // unwinding could be caught
                 if self.capture_kind != CaptureKind::None =>
             {
                 // All indirect captures have an effect on the environment, so we mark them as live.
