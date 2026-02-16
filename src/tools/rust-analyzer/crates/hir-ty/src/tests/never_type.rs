@@ -820,28 +820,17 @@ fn foo() -> i32 {
 
 #[test]
 fn binop_lhs_never_place_diverges() {
-    check_infer_with_mismatches(
+    check_no_mismatches(
         r#"
 //- minicore: sized, add
 fn foo() -> i32 {
     unsafe {
         let p: *const ! = 0 as _;
         let _x = *p + 1;
+              // ^^ adjustments: NeverToAny
     }
 }
 "#,
-        expect![[r#"
-            16..97 '{     ...   } }': i32
-            22..95 'unsafe...     }': i32
-            43..44 'p': *const !
-            57..58 '0': i32
-            57..63 '0 as _': *const !
-            77..79 '_x': {unknown}
-            82..84 '*p': !
-            82..88 '*p + 1': <! as Add<i32>>::Output
-            83..84 'p': *const !
-            87..88 '1': i32
-        "#]],
     );
 }
 
