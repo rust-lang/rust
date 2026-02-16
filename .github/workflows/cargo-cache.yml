@@ -1,0 +1,47 @@
+name: CI — Cargo cache
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  prepare-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache cargo artifacts
+        uses: actions/cache@v4
+        with:
+          # Cache the workspace `target` dir and cargo registries so CI runs
+          # and subsequent builds are faster. Keep keys conservative to avoid
+          # cache poisoning.
+          path: |
+            target
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install sccache (optional)
+        # Install `sccache` if possible to speed up CI; fail-safe so job still works
+        # even when install is unavailable.
+        run: |
+          set -e
+          if command -v cargo >/dev/null 2>&1; then
+            cargo install sccache || true
+          fi
+
+      - name: Show tool versions
+        run: |
+          rustc --version
+          cargo --version

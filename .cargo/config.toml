@@ -1,0 +1,19 @@
+# Repository-level Cargo configuration to improve local and CI iteration speed.
+# Conservative, non-invasive defaults. Remove or override these in local
+# environments if you prefer a different layout.
+
+[build]
+# Keep a single `target` directory under the repo root so CI caching is
+# effective and users share a predictable location.
+target-dir = "target"
+
+# Example: to use `sccache` locally or in CI, set `RUSTC_WRAPPER` in your
+# environment or uncomment the line below. We do NOT enable it by default to
+# avoid surprising environments that don't have `sccache` installed.
+#
+# [env]
+# RUSTC_WRAPPER = "sccache"
+
+[term]
+# Prefer some verbosity during builds in CI to help debugging failed jobs.
+verbose = true
