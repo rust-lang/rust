@@ -654,7 +654,7 @@ pub struct MiriMachine<'tcx> {
     /// Whether floating-point operations can have a non-deterministic rounding error.
     pub float_rounding_error: FloatRoundingErrorMode,
 
-    /// Whether Miri artifically introduces short reads/writes on file descriptors.
+    /// Whether Miri artificially introduces short reads/writes on file descriptors.
     pub short_fd_operations: bool,
 }
 
@@ -1802,7 +1802,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             // We have to skip the frame that is just being popped.
             ecx.active_thread_mut().recompute_top_user_relevant_frame(/* skip */ 1);
         }
-        // tracing-tree can autoamtically annotate scope changes, but it gets very confused by our
+        // tracing-tree can automatically annotate scope changes, but it gets very confused by our
         // concurrency and what it prints is just plain wrong. So we print our own information
         // instead. (Cc https://github.com/rust-lang/miri/issues/2266)
         info!("Leaving {}", ecx.frame().instance());

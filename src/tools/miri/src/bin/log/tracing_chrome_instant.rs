@@ -2,7 +2,7 @@
 //! <https://github.com/tikv/minstant/blob/27c9ec5ec90b5b67113a748a4defee0d2519518c/src/tsc_now.rs>.
 //! A useful resource is also
 //! <https://www.pingcap.com/blog/how-we-trace-a-kv-database-with-less-than-5-percent-performance-impact/>,
-//! although this file does not implement TSC synchronization but insteads pins threads to CPUs,
+//! although this file does not implement TSC synchronization but instead pins threads to CPUs,
 //! since the former is not reliable (i.e. it might lead to non-monotonic time measurements).
 //! Another useful resource for future improvements might be measureme's time measurement utils:
 //! <https://github.com/rust-lang/measureme/blob/master/measureme/src/counters.rs>.
@@ -11,7 +11,7 @@
 #![cfg(feature = "tracing")]
 
 /// This alternative `TracingChromeInstant` implementation was made entirely to suit the needs of
-/// [crate::log::tracing_chrome], and shouldn't be used for anything else. It featues two functions:
+/// [crate::log::tracing_chrome], and shouldn't be used for anything else. It features two functions:
 /// - [TracingChromeInstant::setup_for_thread_and_start], which sets up the current thread to do
 ///   proper time tracking and returns a point in time to use as "t=0", and
 /// - [TracingChromeInstant::with_elapsed_micros_subtracting_tracing], which allows

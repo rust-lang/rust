@@ -578,7 +578,7 @@ pub mod diagnostics {
                         // - created as Reserved { conflicted: false },
                         //   then Unique -> Disabled is forbidden
                         // A potential `Reserved { conflicted: false }
-                        //   -> Reserved { conflicted: true }` is inexistant or irrelevant,
+                        //   -> Reserved { conflicted: true }` is inexistent or irrelevant,
                         // and so is the `Reserved { conflicted: false } -> Unique`
                         (Unique, Frozen) => false,
                         (ReservedFrz { conflicted: true }, _) => false,

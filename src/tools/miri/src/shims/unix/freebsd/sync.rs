@@ -169,7 +169,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let Some(futex_ref) =
                     this.get_sync_or_init(obj, |_| FreeBsdFutex { futex: Default::default() })
                 else {
-                    // From Linux implemenation:
+                    // From Linux implementation:
                     // No AllocId, or no live allocation at that AllocId.
                     // Return an error code. (That seems nicer than silently doing something non-intuitive.)
                     // This means that if an address gets reused by a new allocation,

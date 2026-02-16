@@ -1045,7 +1045,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     &[Os::Linux, Os::FreeBsd, Os::Illumos, Os::Solaris, Os::Android, Os::MacOs],
                     link_name,
                 )?;
-                // This function looks and behaves excatly like miri_start_unwind.
+                // This function looks and behaves exactly like miri_start_unwind.
                 let [payload] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 this.handle_miri_start_unwind(payload)?;
                 return interp_ok(EmulateItemResult::NeedsUnwind);

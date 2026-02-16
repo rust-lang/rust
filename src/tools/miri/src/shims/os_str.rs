@@ -316,7 +316,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // The new path is still absolute on Windows.
                 path.remove(0);
             }
-            // If this starts withs a `\` but not a `\\`, then this was absolute on Unix but is
+            // If this starts with a `\` but not a `\\`, then this was absolute on Unix but is
             // relative on Windows (relative to "the root of the current directory", e.g. the
             // drive letter).
             else if path.first() == Some(&sep) && path.get(1) != Some(&sep) {
