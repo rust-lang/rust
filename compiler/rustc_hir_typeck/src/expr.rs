@@ -1245,7 +1245,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let coerce_never = true;
         tracing::debug!("calling complete in check_expr_if");
-        let result_ty = coerce.complete(self, &self.misc(sp), coerce_never);
+        let expected = expected.coercion_target_type(self, sp);
+        let result_ty = coerce.complete(self, &self.misc(sp), expected, coerce_never);
         if let Err(guar) = cond_ty.error_reported() {
             Ty::new_error(self.tcx, guar)
         } else {
@@ -1471,7 +1472,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let coerce_never = true;
         tracing::debug!("calling complete in check_expr_loop");
         ctxt.coerce
-            .map(|c| c.complete(self, &cause, coerce_never))
+            .map(|c| {
+                c.complete(
+                    self,
+                    &cause,
+                    expected.coercion_target_type(self, body.span),
+                    coerce_never,
+                )
+            })
             .unwrap_or_else(|| self.tcx.types.unit)
     }
 
@@ -1689,7 +1697,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
                 .unwrap_or_else(|| self.next_ty_var(expr.span));
             let mut coerce = CoerceMany::with_capacity(coerce_to, args.len());
-            coerce.force_initial_sub = true;
 
             for e in args {
                 // FIXME: the element expectation should use
@@ -1717,7 +1724,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 coerce.coerce(self, &cause, e, e_ty);
             }
             tracing::debug!("calling complete in check_expr_array");
-            coerce.complete(self, &ObligationCause::dummy(), true)
+            coerce.complete(self, &ObligationCause::dummy(), coerce_to, true)
         } else {
             self.next_ty_var(expr.span)
         };

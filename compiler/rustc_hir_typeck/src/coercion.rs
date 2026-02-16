@@ -818,6 +818,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ForceLeakCheck::No,
         )?;
 
+        tracing::debug!(?coercion);
+
         // Create an obligation for `Source: CoerceUnsized<Target>`.
         let cause = self.cause(self.cause.span, ObligationCauseCode::Coercion { source, target });
         let pred = ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target]);
@@ -1271,7 +1273,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn sig_for_fn_def_coercion(
+    pub(crate) fn sig_for_fn_def_coercion(
         &self,
         fndef: Ty<'tcx>,
         expected_safety: Option<hir::Safety>,
@@ -1314,7 +1316,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn sig_for_closure_coercion(
+    pub(crate) fn sig_for_closure_coercion(
         &self,
         closure: Ty<'tcx>,
         expected_safety: Option<hir::Safety>,
@@ -1600,7 +1602,7 @@ pub(crate) struct CoerceMany<'tcx> {
     expected_ty: Ty<'tcx>,
     final_ty: Option<Ty<'tcx>>,
     expressions: Vec<(Option<&'tcx hir::Expr<'tcx>>, Ty<'tcx>)>,
-    pub(crate) force_initial_sub: bool,
+    pub(crate) initial_guidance_only: bool,
 }
 
 impl<'tcx> CoerceMany<'tcx> {
@@ -1618,7 +1620,7 @@ impl<'tcx> CoerceMany<'tcx> {
             expected_ty,
             final_ty: None,
             expressions: Vec::with_capacity(capacity),
-            force_initial_sub: false,
+            initial_guidance_only: false,
         }
     }
 
@@ -1736,7 +1738,7 @@ impl<'tcx> CoerceMany<'tcx> {
                 // Special-case the first expression we are coercing.
                 // To be honest, I'm not entirely sure why we do this.
                 // We don't allow two-phase borrows, see comment in try_find_coercion_lub for why
-                if self.force_initial_sub {
+                if !self.initial_guidance_only {
                     fcx.coerce(
                         expression,
                         expression_ty,
@@ -1744,8 +1746,35 @@ impl<'tcx> CoerceMany<'tcx> {
                         AllowTwoPhase::No,
                         Some(cause.clone()),
                     )
-                } else {
+                } else if false {
                     Ok(expression_ty)
+                } else {
+                    // See `tests/ui/coercion/expected-guidance.rs` for why this is needed.
+                    // If the expected type is e.g. `Option<?0>` and the first arm match sets it to `Option<X>`, the
+                    // second arm should be able to observe that `?0` is `X`.
+
+                    let source = fcx.try_structurally_resolve_type(expression.span, expression_ty);
+                    let target = if fcx.next_trait_solver() {
+                        fcx.try_structurally_resolve_type(cause.span, self.expected_ty)
+                    } else {
+                        self.expected_ty
+                    };
+                    let coerce_never =
+                        fcx.tcx.expr_guaranteed_to_constitute_read_for_never(expression);
+                    let guidance = crate::coercion_guidance::CoerceGuidance::new(
+                        fcx,
+                        cause.clone(),
+                        AllowTwoPhase::No,
+                        coerce_never,
+                    )
+                    .do_guidance(source, target);
+                    match guidance {
+                        Ok(ok) => {
+                            fcx.register_infer_ok_obligations(ok);
+                            Ok(source)
+                        }
+                        Err(e) => Err(e),
+                    }
                 }
             } else {
                 fcx.try_find_coercion_lub(
@@ -2196,6 +2225,7 @@ impl<'tcx> CoerceMany<'tcx> {
         &self,
         fcx: &FnCtxt<'a, 'tcx>,
         cause: &ObligationCause<'tcx>,
+        mut expected_ty: Ty<'tcx>,
         coerce_never: bool,
     ) -> Ty<'tcx> {
         let Some(final_ty) = self.final_ty else {
@@ -2205,7 +2235,7 @@ impl<'tcx> CoerceMany<'tcx> {
             return fcx.tcx.types.never;
         };
 
-        if self.force_initial_sub {
+        if !self.initial_guidance_only {
             return final_ty;
         }
 
@@ -2214,32 +2244,39 @@ impl<'tcx> CoerceMany<'tcx> {
             expected_ty = fcx.try_structurally_resolve_type(cause.span, expected_ty);
         }
 
-        // You may ask "Why do we coerce the `final_ty` to the `expected_ty`, and
-        // then *also* each expression ty to the `expected_ty`?".
-        // TODO: investigate and validate the following claim
-        // Basically, if `expected_ty` is an inference variable, then a coercion
-        // with the first arm can constrain that because of the `unify` fallback.
+        if fcx.next_trait_solver() {
+            expected_ty = fcx.try_structurally_resolve_type(cause.span, expected_ty);
+        }
 
         let final_ty = fcx.try_structurally_resolve_type(cause.span, final_ty);
+        let expected_ty = fcx.try_structurally_resolve_type(cause.span, expected_ty);
         debug!("coerce::complete (final_ty): {:?} -> {:?}", final_ty, expected_ty);
 
-        let coerce = Coerce::new(fcx, cause.clone(), AllowTwoPhase::No, coerce_never);
-        let ok = match fcx.commit_if_ok(|_| coerce.coerce(final_ty, expected_ty)) {
-            Ok(coerce) => coerce,
-            Err(err) => {
-                let reported = self.report_coercion_error(
-                    fcx,
-                    err,
-                    cause,
-                    None,
-                    expected_ty,
-                    final_ty,
-                    |_| {},
-                );
-                return Ty::new_error(fcx.tcx, reported);
-            }
-        };
-        let _ = fcx.register_infer_ok_obligations(ok);
+        if true {
+            // You may ask "Why do we coerce the `final_ty` to the `expected_ty`, and
+            // then *also* each expression ty to the `expected_ty`?".
+            // TODO: investigate and validate the following claim
+            // Basically, if `expected_ty` is an inference variable, then a coercion
+            // with the first arm can constrain that because of the `unify` fallback.
+
+            let coerce = Coerce::new(fcx, cause.clone(), AllowTwoPhase::No, coerce_never);
+            let ok = match fcx.commit_if_ok(|_| coerce.coerce(final_ty, expected_ty)) {
+                Ok(coerce) => coerce,
+                Err(err) => {
+                    let reported = self.report_coercion_error(
+                        fcx,
+                        err,
+                        cause,
+                        None,
+                        expected_ty,
+                        final_ty,
+                        |_| {},
+                    );
+                    return Ty::new_error(fcx.tcx, reported);
+                }
+            };
+            let _ = fcx.register_infer_ok_obligations(ok);
+        }
 
         for (expr, ty) in self.expressions.iter() {
             let source = fcx.try_structurally_resolve_type(cause.span, *ty);
@@ -2273,7 +2310,7 @@ impl<'tcx> CoerceMany<'tcx> {
         if let Err(guar) = final_ty.error_reported() {
             Ty::new_error(fcx.tcx, guar)
         } else {
-            self.expected_ty
+            expected_ty
         }
     }
 }
@@ -2281,13 +2318,13 @@ impl<'tcx> CoerceMany<'tcx> {
 /// Recursively visit goals to decide whether an unsizing is possible.
 /// `Break`s when it isn't, and an error should be raised.
 /// `Continue`s when an unsizing ok based on an implementation of the `Unsize` trait / lang item.
-struct CoerceVisitor<'a, 'tcx> {
-    fcx: &'a FnCtxt<'a, 'tcx>,
-    span: Span,
+pub(crate) struct CoerceVisitor<'a, 'tcx> {
+    pub(crate) fcx: &'a FnCtxt<'a, 'tcx>,
+    pub(crate) span: Span,
     /// Whether the coercion is impossible. If so we sometimes still try to
     /// coerce in these cases to emit better errors. This changes the behavior
     /// when hitting the recursion limit.
-    errored: bool,
+    pub(crate) errored: bool,
 }
 
 impl<'tcx> ProofTreeVisitor<'tcx> for CoerceVisitor<'_, 'tcx> {

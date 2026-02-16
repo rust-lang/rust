@@ -178,7 +178,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //let coerce_never = self.tcx.expr_guaranteed_to_constitute_read_for_never(expr);
         let coerce_never = true;
         tracing::debug!("calling complete in check_expr_match");
-        coercion.complete(self, &cause, coerce_never)
+        let expected = expected.coercion_target_type(self, expr.span);
+        coercion.complete(self, &cause, expected, coerce_never)
     }
 
     fn explain_never_type_coerced_to_unit(

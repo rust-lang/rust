@@ -1176,7 +1176,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         let coerce_never = true;
         tracing::debug!("calling complete in check_expr_block");
-        let ty = ctxt.coerce.unwrap().complete(self, &cause, coerce_never);
+        let ty = ctxt.coerce.unwrap().complete(self, &cause, coerce_to_ty, coerce_never);
 
         self.write_ty(blk.hir_id, ty);
 

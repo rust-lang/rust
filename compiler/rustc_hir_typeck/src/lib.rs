@@ -16,6 +16,7 @@ pub mod cast;
 mod check;
 mod closure;
 mod coercion;
+mod coercion_guidance;
 mod demand;
 mod diverges;
 mod errors;

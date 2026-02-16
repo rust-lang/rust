@@ -136,7 +136,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     let coercion = fcx.ret_coercion.take().unwrap().into_inner();
     let cause = ObligationCause::dummy();
     tracing::debug!("calling complete in check_fn");
-    let mut actual_return_ty = coercion.complete(fcx, &cause, true);
+    let mut actual_return_ty = coercion.complete(fcx, &cause, ret_ty, true);
     debug!("actual_return_ty = {:?}", actual_return_ty);
     if let ty::Dynamic(..) = declared_ret_ty.kind() {
         // We have special-cased the case where the function is declared

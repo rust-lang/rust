@@ -84,7 +84,7 @@ pub(crate) struct TypeVariableStorage<'tcx> {
     sub_unification_table: ut::UnificationTableStorage<TyVidSubKey>,
 }
 
-pub(crate) struct TypeVariableTable<'a, 'tcx> {
+pub struct TypeVariableTable<'a, 'tcx> {
     storage: &'a mut TypeVariableStorage<'tcx>,
 
     undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
@@ -182,7 +182,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     ///
     /// Precondition: `vid` must not have been previously instantiated.
     #[tracing::instrument(skip(self))]
-    pub(crate) fn instantiate(&mut self, vid: ty::TyVid, ty: Ty<'tcx>) {
+    pub fn instantiate(&mut self, vid: ty::TyVid, ty: Ty<'tcx>) {
         let vid = self.root_var(vid);
         debug_assert!(!ty.is_ty_var(), "instantiating ty var with var: {vid:?} {ty:?}");
         debug_assert!(self.probe(vid).is_unknown());
