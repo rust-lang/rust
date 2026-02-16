@@ -204,14 +204,14 @@ fn instrument_function_attr<'ll>(
     instrument_fn: &Option<bool>,
 ) -> SmallVec<[&'ll Attribute; 4]> {
     let mut attrs = SmallVec::new();
-    if sess.opts.unstable_opts.instrument_mcount {
+    if sess.opts.unstable_opts.instrument_mcount || sess.opts.unstable_opts.instrument_fentry {
         // Similar to `clang -pg` behavior. Handled by the
         // `post-inline-ee-instrument` LLVM pass.
 
         // #[instrument_fn], the default is on.
         let instrument_entry = instrument_fn.unwrap_or_else(|| true);
 
-        if instrument_entry {
+        if instrument_entry && sess.opts.unstable_opts.instrument_mcount {
             // The function name varies on platforms.
             // See test/CodeGen/mcount.c in clang.
             let mcount_name = match &sess.target.llvm_mcount_intrinsic {
@@ -224,6 +224,10 @@ fn instrument_function_attr<'ll>(
                 "instrument-function-entry-inlined",
                 mcount_name,
             ));
+        }
+
+        if instrument_entry && sess.opts.unstable_opts.instrument_fentry {
+            attrs.push(llvm::CreateAttrStringValue(cx.llcx, "fentry-call", "true"));
         }
     }
     if let Some(options) = &sess.opts.unstable_opts.instrument_xray {
