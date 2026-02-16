@@ -1,5 +1,5 @@
 use crate::parse::cursor::Cursor;
-use crate::parse::{LintData, LintPass, ParsedLints};
+use crate::parse::{ConfDef, LintData, LintPass, ParsedLints};
 use crate::utils::{FileUpdater, UpdateMode, UpdateStatus, VecBuf, slice_groups, update_text_region_fn};
 use core::range::Range;
 use itertools::Itertools as _;
@@ -215,6 +215,35 @@ impl LintPass<'_> {
             dst.push_str(list_multi_end);
         }
         dst.push_str(end);
+    }
+}
+
+impl ConfDef<'_> {
+    pub fn gen_mac(&mut self, src: &str, dst: &mut String) {
+        self.opts.sort_unstable_by_key(|o| o.name);
+        dst.push_str("define_Conf! {");
+        for opt in &mut self.opts {
+            let pre_lints = src[opt.decl_range.start as usize..opt.lints_range.start as usize].trim_end();
+            if !pre_lints.is_empty() {
+                dst.push_str("\n    ");
+                dst.push_str(pre_lints);
+            }
+            let pre_name_text = if opt.lints.is_empty() {
+                "\n    "
+            } else {
+                opt.lints.sort_unstable();
+                dst.push_str("\n    #[lints(");
+                let fmt = write_list(opt.lints.iter().copied(), 80 - 14, "        ", dst);
+                match fmt {
+                    ListFmt::SingleLine => ")]\n    ",
+                    ListFmt::MultiLine => "\n    )]\n    ",
+                }
+            };
+            dst.push_str(pre_name_text);
+            dst.push_str(src[opt.lints_range.end as usize..opt.decl_range.end as usize].trim());
+            dst.push(',');
+        }
+        dst.push_str("\n}");
     }
 }
 
