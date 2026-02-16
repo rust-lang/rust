@@ -100,31 +100,18 @@ where
         // With `-Znext-solver`, `TypeOutlives` goals normalize aliases before registering region
         // obligations so that later processing does not have to structurally process aliases.
         let ty = self.resolve_vars_if_possible(ty);
-        if ty.has_non_region_infer() {
-            if ty.has_aliases() {
+        let ty = match self
+            .probe(|_| inspect::ProbeKind::NormalizedSelfTyAssembly)
+            .enter(|ecx| ecx.deeply_normalize_for_outlives(goal.param_env, ty))
+        {
+            Ok(ty) => ty,
+            Err(Ok(cause)) => {
                 return self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe {
-                    cause: MaybeCause::Ambiguity,
+                    cause,
                     opaque_types_jank: OpaqueTypesJank::AllGood,
                 });
             }
-
-            self.register_ty_outlives(ty, lt);
-            return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
-        }
-
-        // This avoids spurious overflows when attempting to normalize alias types which are
-        // generic/ambiguous (e.g. `<T as Trait>::Assoc`) or involve opaques.
-        let ty = if ty.has_aliases()
-            && !ty.has_opaque_types()
-            && !ty.has_non_region_param()
-            && !ty.has_non_region_placeholders()
-        {
-            self.probe(|_| inspect::ProbeKind::NormalizedSelfTyAssembly)
-                .enter(|ecx| ecx.deeply_normalize_for_outlives(goal.param_env, ty))
-                .ok()
-                .unwrap_or(ty)
-        } else {
-            ty
+            Err(Err(NoSolution)) => ty,
         };
 
         self.register_ty_outlives(ty, lt);
@@ -348,16 +335,15 @@ where
         &mut self,
         param_env: I::ParamEnv,
         ty: I::Ty,
-    ) -> Result<I::Ty, Result<Certainty, NoSolution>> {
+    ) -> Result<I::Ty, Result<MaybeCause, NoSolution>> {
         let ty = self.shallow_resolve(ty);
-        if ty.has_non_region_infer() {
-            return Err(Ok(Certainty::Maybe {
-                cause: MaybeCause::Ambiguity,
-                opaque_types_jank: OpaqueTypesJank::AllGood,
-            }));
-        }
-
         if !ty.has_aliases() {
+            return Ok(ty);
+        }
+        if ty.has_non_region_infer() {
+            return Err(Ok(MaybeCause::Ambiguity));
+        }
+        if ty.has_opaque_types() || ty.has_non_region_param() || ty.has_non_region_placeholders() {
             return Ok(ty);
         }
 
@@ -381,12 +367,15 @@ where
                 &mut self,
                 alias_term: I::Term,
                 has_escaping_bound_vars: bool,
-            ) -> Result<I::Term, Result<Certainty, NoSolution>> {
+            ) -> Result<I::Term, Result<MaybeCause, NoSolution>> {
                 debug_assert!(alias_term.to_alias_term().is_some());
 
                 // Avoid getting stuck on self-referential normalization.
                 if self.depth >= self.ecx.cx().recursion_limit() {
-                    return Err(Ok(Certainty::overflow(true)));
+                    return Err(Ok(MaybeCause::Overflow {
+                        suggest_increasing_limit: true,
+                        keep_constraints: false,
+                    }));
                 }
 
                 self.depth += 1;
@@ -428,7 +417,7 @@ where
             D: SolverDelegate<Interner = I>,
             I: Interner,
         {
-            type Error = Result<Certainty, NoSolution>;
+            type Error = Result<MaybeCause, NoSolution>;
 
             fn cx(&self) -> I {
                 self.ecx.cx()
@@ -447,15 +436,15 @@ where
             #[instrument(level = "trace", skip(self), ret)]
             fn try_fold_ty(&mut self, ty: I::Ty) -> Result<I::Ty, Self::Error> {
                 let ty = self.ecx.shallow_resolve(ty);
-                if ty.has_non_region_infer() {
-                    return Err(Ok(Certainty::Maybe {
-                        cause: MaybeCause::Ambiguity,
-                        opaque_types_jank: OpaqueTypesJank::AllGood,
-                    }));
-                }
-
                 if !ty.has_aliases() {
                     return Ok(ty);
+                }
+                if ty.has_non_region_infer()
+                    || ty.has_opaque_types()
+                    || ty.has_non_region_param()
+                    || ty.has_non_region_placeholders()
+                {
+                    return Err(Ok(MaybeCause::Ambiguity));
                 }
 
                 if let ty::Alias(..) = ty.kind() {
@@ -471,15 +460,15 @@ where
             #[instrument(level = "trace", skip(self), ret)]
             fn try_fold_const(&mut self, ct: I::Const) -> Result<I::Const, Self::Error> {
                 let ct = self.ecx.shallow_resolve_const(ct);
-                if ct.has_non_region_infer() {
-                    return Err(Ok(Certainty::Maybe {
-                        cause: MaybeCause::Ambiguity,
-                        opaque_types_jank: OpaqueTypesJank::AllGood,
-                    }));
-                }
-
                 if !ct.has_aliases() {
                     return Ok(ct);
+                }
+                if ct.has_non_region_infer()
+                    || ct.has_opaque_types()
+                    || ct.has_non_region_param()
+                    || ct.has_non_region_placeholders()
+                {
+                    return Err(Ok(MaybeCause::Ambiguity));
                 }
 
                 if let ty::ConstKind::Unevaluated(..) = ct.kind() {
