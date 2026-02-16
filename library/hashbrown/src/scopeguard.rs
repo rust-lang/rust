@@ -32,9 +32,9 @@ where
         // Don't use mem::forget as that might invalidate value
         let guard = ManuallyDrop::new(guard);
         unsafe {
-            let value = ptr::read(&guard.value);
+            let value = ptr::read(&raw const guard.value);
             // read the closure so that it is dropped
-            let _ = ptr::read(&guard.dropfn);
+            let _ = ptr::read(&raw const guard.dropfn);
             value
         }
     }

@@ -34,6 +34,8 @@ must_use_candidate = "allow"
 option_if_let_else = "allow"
 redundant_else = "allow"
 
+borrow_as_ptr = "warn"
+
 [dependencies]
 # For the default hasher
 foldhash = { version = "0.2.0", default-features = false, optional = true }
