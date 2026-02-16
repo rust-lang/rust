@@ -86,8 +86,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
             if let Some(f) = REMOVED_LANG_FEATURES.iter().find(|f| name == f.feature.name) {
                 let pull_note = if let Some(pull) = f.pull {
                     format!(
-                        "; see <https://github.com/rust-lang/rust/pull/{}> for more information",
-                        pull
+                        "; see <https://github.com/rust-lang/rust/pull/{pull}> for more information",
                     )
                 } else {
                     "".to_owned()
@@ -123,7 +122,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
 
             // If the enabled feature is unstable, record it.
             if UNSTABLE_LANG_FEATURES.iter().find(|f| name == f.name).is_some() {
-                // When the ICE comes a standard library crate, there's a chance that the person
+                // When the ICE comes from a standard library crate, there's a chance that the person
                 // hitting the ICE may be using -Zbuild-std or similar with an untested target.
                 // The bug is probably in the standard library and not the compiler in that case,
                 // but that doesn't really matter - we want a bug report.
