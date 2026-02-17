@@ -225,7 +225,7 @@ fn parse_directive_items<'p, S: Stage>(
                 if parent_label.is_none() {
                     parent_label = Some(parse_format(value));
                 } else {
-                    // warn
+                    duplicate!(name, span)
                 }
             }
             (Mode::RustcOnUnimplemented, sym::on) => {
