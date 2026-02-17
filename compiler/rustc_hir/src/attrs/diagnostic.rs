@@ -116,18 +116,8 @@ pub struct OnUnimplementedNote {
 }
 
 /// Append a message for `[const] Trait` errors.
-#[derive(
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Debug,
-    Default,
-    HashStable_Generic,
-    Encodable,
-    Decodable,
-    PrintAttribute
-)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[derive(HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum AppendConstMessage {
     #[default]
     Default,
