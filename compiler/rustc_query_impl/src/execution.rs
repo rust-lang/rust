@@ -5,7 +5,7 @@ use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::{outline, sharded, sync};
 use rustc_errors::{Diag, FatalError, StashKey};
-use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, DepsType, HasDepContext};
+use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, HasDepContext};
 use rustc_middle::query::{
     ActiveKeyStatus, CycleError, CycleErrorHandling, QueryCache, QueryJob, QueryJobId, QueryLatch,
     QueryMode, QueryStackDeferred, QueryStackFrame, QueryState,
@@ -14,7 +14,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_span::{DUMMY_SP, Span};
 
-use crate::dep_graph::{DepContext, DepNode, DepNodeIndex};
+use crate::dep_graph::{DepNode, DepNodeIndex};
 use crate::job::{QueryJobInfo, QueryJobMap, find_cycle_in_stack, report_cycle};
 use crate::{QueryCtxt, QueryFlags, SemiDynamicQueryDispatcher};
 
@@ -438,7 +438,7 @@ fn execute_job_non_incr<'tcx, C: QueryCache, const FLAGS: QueryFlags>(
 fn execute_job_incr<'tcx, C: QueryCache, const FLAGS: QueryFlags>(
     query: SemiDynamicQueryDispatcher<'tcx, C, FLAGS>,
     qcx: QueryCtxt<'tcx>,
-    dep_graph_data: &DepGraphData<DepsType>,
+    dep_graph_data: &DepGraphData,
     key: C::Key,
     mut dep_node_opt: Option<DepNode>,
     job_id: QueryJobId,
@@ -487,7 +487,7 @@ fn execute_job_incr<'tcx, C: QueryCache, const FLAGS: QueryFlags>(
 #[inline(always)]
 fn try_load_from_disk_and_cache_in_memory<'tcx, C: QueryCache, const FLAGS: QueryFlags>(
     query: SemiDynamicQueryDispatcher<'tcx, C, FLAGS>,
-    dep_graph_data: &DepGraphData<DepsType>,
+    dep_graph_data: &DepGraphData,
     qcx: QueryCtxt<'tcx>,
     key: &C::Key,
     dep_node: &DepNode,
@@ -495,7 +495,7 @@ fn try_load_from_disk_and_cache_in_memory<'tcx, C: QueryCache, const FLAGS: Quer
     // Note this function can be called concurrently from the same query
     // We must ensure that this is handled correctly.
 
-    let (prev_dep_node_index, dep_node_index) = dep_graph_data.try_mark_green(qcx, dep_node)?;
+    let (prev_dep_node_index, dep_node_index) = dep_graph_data.try_mark_green(qcx.tcx, dep_node)?;
 
     debug_assert!(dep_graph_data.is_index_green(prev_dep_node_index));
 
@@ -535,7 +535,7 @@ fn try_load_from_disk_and_cache_in_memory<'tcx, C: QueryCache, const FLAGS: Quer
     // can be forced from `DepNode`.
     debug_assert!(
         !query.will_cache_on_disk_for_key(qcx.tcx, key)
-            || !qcx.dep_context().fingerprint_style(dep_node.kind).reconstructible(),
+            || !qcx.tcx.fingerprint_style(dep_node.kind).reconstructible(),
         "missing on-disk cache entry for {dep_node:?}"
     );
 
@@ -602,7 +602,7 @@ fn ensure_must_run<'tcx, C: QueryCache, const FLAGS: QueryFlags>(
     let dep_node = query.construct_dep_node(qcx.tcx, key);
 
     let dep_graph = &qcx.tcx.dep_graph;
-    let serialized_dep_node_index = match dep_graph.try_mark_green(qcx, &dep_node) {
+    let serialized_dep_node_index = match dep_graph.try_mark_green(qcx.tcx, &dep_node) {
         None => {
             // A None return from `try_mark_green` means that this is either
             // a new dep node or that the dep node has already been marked red.

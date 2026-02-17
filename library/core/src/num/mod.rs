@@ -244,6 +244,104 @@ macro_rules! midpoint_impl {
     };
 }
 
+macro_rules! widening_carryless_mul_impl {
+    ($SelfT:ty, $WideT:ty) => {
+        /// Performs a widening carry-less multiplication.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(uint_carryless_mul)]
+        ///
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.widening_carryless_mul(",
+                                stringify!($SelfT), "::MAX), ", stringify!($WideT), "::MAX / 3);")]
+        /// ```
+        #[rustc_const_unstable(feature = "uint_carryless_mul", issue = "152080")]
+        #[doc(alias = "clmul")]
+        #[unstable(feature = "uint_carryless_mul", issue = "152080")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn widening_carryless_mul(self, rhs: $SelfT) -> $WideT {
+            (self as $WideT).carryless_mul(rhs as $WideT)
+        }
+    }
+}
+
+macro_rules! carrying_carryless_mul_impl {
+    (u128, u256) => {
+        carrying_carryless_mul_impl! { @internal u128 =>
+            pub const fn carrying_carryless_mul(self, rhs: Self, carry: Self) -> (Self, Self) {
+                let x0 = self as u64;
+                let x1 = (self >> 64) as u64;
+                let y0 = rhs as u64;
+                let y1 = (rhs >> 64) as u64;
+
+                let z0 = u64::widening_carryless_mul(x0, y0);
+                let z2 = u64::widening_carryless_mul(x1, y1);
+
+                // The grade school algorithm would compute:
+                // z1 = x0y1 ^ x1y0
+
+                // Instead, Karatsuba first computes:
+                let z3 = u64::widening_carryless_mul(x0 ^ x1, y0 ^ y1);
+                // Since it distributes over XOR,
+                // z3 == x0y0 ^ x0y1 ^ x1y0 ^ x1y1
+                //       |--|   |---------|   |--|
+                //    ==  z0  ^     z1      ^  z2
+                // so we can compute z1 as
+                let z1 = z3 ^ z0 ^ z2;
+
+                let lo = z0 ^ (z1 << 64);
+                let hi = z2 ^ (z1 >> 64);
+
+                (lo ^ carry, hi)
+            }
+        }
+    };
+    ($SelfT:ty, $WideT:ty) => {
+        carrying_carryless_mul_impl! { @internal $SelfT =>
+            pub const fn carrying_carryless_mul(self, rhs: Self, carry: Self) -> (Self, Self) {
+                // Can't use widening_carryless_mul because it's not implemented for usize.
+                let p = (self as $WideT).carryless_mul(rhs as $WideT);
+
+                let lo = (p as $SelfT);
+                let hi = (p  >> Self::BITS) as $SelfT;
+
+                (lo ^ carry, hi)
+            }
+        }
+    };
+    (@internal $SelfT:ty => $($fn:tt)*) => {
+        /// Calculates the "full carryless multiplication" without the possibility to overflow.
+        ///
+        /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
+        /// of the result as two separate values, in that order.
+        ///
+        /// # Examples
+        ///
+        /// Please note that this example is shared among integer types, which is why `u8` is used.
+        ///
+        /// ```
+        /// #![feature(uint_carryless_mul)]
+        ///
+        /// assert_eq!(0b1000_0000u8.carrying_carryless_mul(0b1000_0000, 0b0000), (0, 0b0100_0000));
+        /// assert_eq!(0b1000_0000u8.carrying_carryless_mul(0b1000_0000, 0b1111), (0b1111, 0b0100_0000));
+        #[doc = concat!("assert_eq!(",
+            stringify!($SelfT), "::MAX.carrying_carryless_mul(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
+            "(!(", stringify!($SelfT), "::MAX / 3), ", stringify!($SelfT), "::MAX / 3));"
+        )]
+        /// ```
+        #[rustc_const_unstable(feature = "uint_carryless_mul", issue = "152080")]
+        #[doc(alias = "clmul")]
+        #[unstable(feature = "uint_carryless_mul", issue = "152080")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        $($fn)*
+    }
+}
+
 impl i8 {
     int_impl! {
         Self = i8,
@@ -458,6 +556,9 @@ impl u8 {
         fsh_op = "0x36",
         fshl_result = "0x8",
         fshr_result = "0x8d",
+        clmul_lhs = "0x12",
+        clmul_rhs = "0x34",
+        clmul_result = "0x28",
         swap_op = "0x12",
         swapped = "0x12",
         reversed = "0x48",
@@ -468,6 +569,8 @@ impl u8 {
         bound_condition = "",
     }
     midpoint_impl! { u8, u16, unsigned }
+    widening_carryless_mul_impl! { u8, u16 }
+    carrying_carryless_mul_impl! { u8, u16 }
 
     /// Checks if the value is within the ASCII range.
     ///
@@ -1095,6 +1198,9 @@ impl u16 {
         fsh_op = "0x2de",
         fshl_result = "0x30",
         fshr_result = "0x302d",
+        clmul_lhs = "0x9012",
+        clmul_rhs = "0xcd34",
+        clmul_result = "0x928",
         swap_op = "0x1234",
         swapped = "0x3412",
         reversed = "0x2c48",
@@ -1105,6 +1211,8 @@ impl u16 {
         bound_condition = "",
     }
     midpoint_impl! { u16, u32, unsigned }
+    widening_carryless_mul_impl! { u16, u32 }
+    carrying_carryless_mul_impl! { u16, u32 }
 
     /// Checks if the value is a Unicode surrogate code point, which are disallowed values for [`char`].
     ///
@@ -1145,6 +1253,9 @@ impl u32 {
         fsh_op = "0x2fe78e45",
         fshl_result = "0xb32f",
         fshr_result = "0xb32fe78e",
+        clmul_lhs = "0x56789012",
+        clmul_rhs = "0xf52ecd34",
+        clmul_result = "0x9b980928",
         swap_op = "0x12345678",
         swapped = "0x78563412",
         reversed = "0x1e6a2c48",
@@ -1155,6 +1266,8 @@ impl u32 {
         bound_condition = "",
     }
     midpoint_impl! { u32, u64, unsigned }
+    widening_carryless_mul_impl! { u32, u64 }
+    carrying_carryless_mul_impl! { u32, u64 }
 }
 
 impl u64 {
@@ -1171,6 +1284,9 @@ impl u64 {
         fsh_op = "0x2fe78e45983acd98",
         fshl_result = "0x6e12fe",
         fshr_result = "0x6e12fe78e45983ac",
+        clmul_lhs = "0x7890123456789012",
+        clmul_rhs = "0xdd358416f52ecd34",
+        clmul_result = "0xa6299579b980928",
         swap_op = "0x1234567890123456",
         swapped = "0x5634129078563412",
         reversed = "0x6a2c48091e6a2c48",
@@ -1181,6 +1297,8 @@ impl u64 {
         bound_condition = "",
     }
     midpoint_impl! { u64, u128, unsigned }
+    widening_carryless_mul_impl! { u64, u128 }
+    carrying_carryless_mul_impl! { u64, u128 }
 }
 
 impl u128 {
@@ -1197,6 +1315,9 @@ impl u128 {
         fsh_op = "0x2fe78e45983acd98039000008736273",
         fshl_result = "0x4f7602fe",
         fshr_result = "0x4f7602fe78e45983acd9803900000873",
+        clmul_lhs = "0x12345678901234567890123456789012",
+        clmul_rhs = "0x4317e40ab4ddcf05dd358416f52ecd34",
+        clmul_result = "0xb9cf660de35d0c170a6299579b980928",
         swap_op = "0x12345678901234567890123456789012",
         swapped = "0x12907856341290785634129078563412",
         reversed = "0x48091e6a2c48091e6a2c48091e6a2c48",
@@ -1209,6 +1330,7 @@ impl u128 {
         bound_condition = "",
     }
     midpoint_impl! { u128, unsigned }
+    carrying_carryless_mul_impl! { u128, u256 }
 }
 
 #[cfg(target_pointer_width = "16")]
@@ -1223,9 +1345,12 @@ impl usize {
         rot = 4,
         rot_op = "0xa003",
         rot_result = "0x3a",
-        fsh_op = "0x2fe78e45983acd98039000008736273",
-        fshl_result = "0x4f7602fe",
-        fshr_result = "0x4f7602fe78e45983acd9803900000873",
+        fsh_op = "0x2de",
+        fshl_result = "0x30",
+        fshr_result = "0x302d",
+        clmul_lhs = "0x9012",
+        clmul_rhs = "0xcd34",
+        clmul_result = "0x928",
         swap_op = "0x1234",
         swapped = "0x3412",
         reversed = "0x2c48",
@@ -1236,6 +1361,7 @@ impl usize {
         bound_condition = " on 16-bit targets",
     }
     midpoint_impl! { usize, u32, unsigned }
+    carrying_carryless_mul_impl! { usize, u32 }
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -1253,6 +1379,9 @@ impl usize {
         fsh_op = "0x2fe78e45",
         fshl_result = "0xb32f",
         fshr_result = "0xb32fe78e",
+        clmul_lhs = "0x56789012",
+        clmul_rhs = "0xf52ecd34",
+        clmul_result = "0x9b980928",
         swap_op = "0x12345678",
         swapped = "0x78563412",
         reversed = "0x1e6a2c48",
@@ -1263,6 +1392,7 @@ impl usize {
         bound_condition = " on 32-bit targets",
     }
     midpoint_impl! { usize, u64, unsigned }
+    carrying_carryless_mul_impl! { usize, u64 }
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -1280,6 +1410,9 @@ impl usize {
         fsh_op = "0x2fe78e45983acd98",
         fshl_result = "0x6e12fe",
         fshr_result = "0x6e12fe78e45983ac",
+        clmul_lhs = "0x7890123456789012",
+        clmul_rhs = "0xdd358416f52ecd34",
+        clmul_result = "0xa6299579b980928",
         swap_op = "0x1234567890123456",
         swapped = "0x5634129078563412",
         reversed = "0x6a2c48091e6a2c48",
@@ -1290,6 +1423,7 @@ impl usize {
         bound_condition = " on 64-bit targets",
     }
     midpoint_impl! { usize, u128, unsigned }
+    carrying_carryless_mul_impl! { usize, u128 }
 }
 
 impl usize {

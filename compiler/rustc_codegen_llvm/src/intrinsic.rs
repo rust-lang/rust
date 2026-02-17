@@ -387,6 +387,27 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let pair = self.insert_value(pair, high, 1);
                 pair
             }
+
+            // FIXME move into the branch below when LLVM 22 is the lowest version we support.
+            sym::carryless_mul if crate::llvm_util::get_version() >= (22, 0, 0) => {
+                let ty = args[0].layout.ty;
+                if !ty.is_integral() {
+                    tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
+                        span,
+                        name,
+                        ty,
+                    });
+                    return Ok(());
+                }
+                let (size, _) = ty.int_size_and_signed(self.tcx);
+                let width = size.bits();
+                let llty = self.type_ix(width);
+
+                let lhs = args[0].immediate();
+                let rhs = args[1].immediate();
+                self.call_intrinsic("llvm.clmul", &[llty], &[lhs, rhs])
+            }
+
             sym::ctlz
             | sym::ctlz_nonzero
             | sym::cttz
@@ -2784,6 +2805,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             | sym::simd_ctlz
             | sym::simd_ctpop
             | sym::simd_cttz
+            | sym::simd_carryless_mul
             | sym::simd_funnel_shl
             | sym::simd_funnel_shr
     ) {
@@ -2808,6 +2830,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             sym::simd_cttz => "llvm.cttz",
             sym::simd_funnel_shl => "llvm.fshl",
             sym::simd_funnel_shr => "llvm.fshr",
+            sym::simd_carryless_mul => "llvm.clmul",
             _ => unreachable!(),
         };
         let int_size = in_elem.int_size_and_signed(bx.tcx()).0.bits();
@@ -2833,6 +2856,17 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 &[vec_ty],
                 &[args[0].immediate(), args[1].immediate(), args[2].immediate()],
             )),
+            sym::simd_carryless_mul => {
+                if crate::llvm_util::get_version() >= (22, 0, 0) {
+                    Ok(bx.call_intrinsic(
+                        llvm_intrinsic,
+                        &[vec_ty],
+                        &[args[0].immediate(), args[1].immediate()],
+                    ))
+                } else {
+                    span_bug!(span, "`simd_carryless_mul` needs LLVM 22 or higher");
+                }
+            }
             _ => unreachable!(),
         };
     }

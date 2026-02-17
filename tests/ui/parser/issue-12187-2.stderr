@@ -6,7 +6,7 @@ LL |     let &v = new();
    |
 help: consider giving this pattern a type, where the type for type parameter `T` is specified
    |
-LL |     let &v: &T = new();
+LL |     let &v: &_ = new();
    |           ++++
 
 error: aborting due to 1 previous error

@@ -44,7 +44,6 @@ fn unwrap_or_else_default() {
 
     let with_new = Some(vec![1]);
     with_new.unwrap_or_else(Vec::new);
-    //~^ unwrap_or_default
 
     let with_err: Result<_, ()> = Ok(vec![1]);
     with_err.unwrap_or_else(make);

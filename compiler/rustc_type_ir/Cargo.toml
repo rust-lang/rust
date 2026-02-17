@@ -8,7 +8,7 @@ edition = "2024"
 arrayvec = { version = "0.7", default-features = false }
 bitflags = "2.4.1"
 derive-where = "1.2.7"
-ena = "0.14.3"
+ena = "0.14.4"
 indexmap = "2.0.0"
 rustc-hash = "2.0.0"
 rustc_ast_ir = { path = "../rustc_ast_ir", default-features = false }

@@ -1,10 +1,9 @@
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{DepKindVTable, DepNodeKey, FingerprintStyle};
 use rustc_middle::query::QueryCache;
-use rustc_middle::ty::TyCtxt;
 
 use crate::plumbing::{force_from_dep_node_inner, try_load_from_on_disk_cache_inner};
-use crate::{QueryCtxt, QueryDispatcherUnerased, QueryFlags};
+use crate::{QueryDispatcherUnerased, QueryFlags};
 
 /// [`DepKindVTable`] constructors for special dep kinds that aren't queries.
 #[expect(non_snake_case, reason = "use non-snake case to avoid collision with query names")]
@@ -45,7 +44,7 @@ mod non_query {
             is_eval_always: false,
             fingerprint_style: FingerprintStyle::Unit,
             force_from_dep_node: Some(|tcx, _, prev_index| {
-                tcx.dep_graph.force_diagnostic_node(QueryCtxt::new(tcx), prev_index);
+                tcx.dep_graph.force_diagnostic_node(tcx, prev_index);
                 true
             }),
             try_load_from_on_disk_cache: None,
@@ -122,7 +121,7 @@ where
     let fingerprint_style = if is_anon {
         FingerprintStyle::Opaque
     } else {
-        <Cache::Key as DepNodeKey<TyCtxt<'tcx>>>::fingerprint_style()
+        <Cache::Key as DepNodeKey<'tcx>>::fingerprint_style()
     };
 
     if is_anon || !fingerprint_style.reconstructible() {

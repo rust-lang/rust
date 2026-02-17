@@ -13,9 +13,9 @@ auto_llvm_sign_conversion: false
 neon-stable: &neon-stable
   FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
 
-# #[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+# #[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 neon-stable-fp16: &neon-stable-fp16
-  FnCall: [stable, ['feature = "stdarch_neon_fp16"', 'since = "CURRENT_RUSTC_VERSION"']]
+  FnCall: [stable, ['feature = "stdarch_neon_fp16"', 'since = "1.94.0"']]
 
 # #[cfg(not(target_arch = "arm64ec"))]
 target-not-arm64ec: &target-not-arm64ec

@@ -76,7 +76,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use back::lto::{ThinBuffer, ThinData};
 use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
 use gccjit::{TargetInfo, Version};
@@ -87,7 +86,9 @@ use rustc_codegen_ssa::back::write::{
 };
 use rustc_codegen_ssa::base::codegen_crate;
 use rustc_codegen_ssa::target_features::cfg_target_feature;
-use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
+use rustc_codegen_ssa::traits::{
+    CodegenBackend, ExtraBackendMethods, ThinBufferMethods, WriteBackendMethods,
+};
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -177,8 +178,6 @@ pub struct GccCodegenBackend {
     lto_supported: Arc<AtomicBool>,
 }
 
-static LTO_SUPPORTED: AtomicBool = AtomicBool::new(false);
-
 fn load_libgccjit_if_needed(libgccjit_target_lib_file: &Path) {
     if gccjit::is_loaded() {
         // Do not load a libgccjit second time.
@@ -251,7 +250,6 @@ impl CodegenBackend for GccCodegenBackend {
         #[cfg(feature = "master")]
         {
             let lto_supported = gccjit::is_lto_supported();
-            LTO_SUPPORTED.store(lto_supported, Ordering::SeqCst);
             self.lto_supported.store(lto_supported, Ordering::SeqCst);
 
             gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
@@ -279,6 +277,10 @@ impl CodegenBackend for GccCodegenBackend {
                 .supports_128bit_integers
                 .store(check_context.get_last_error() == Ok(None), Ordering::SeqCst);
         }
+    }
+
+    fn thin_lto_supported(&self) -> bool {
+        false
     }
 
     fn provide(&self, providers: &mut Providers) {
@@ -421,11 +423,19 @@ unsafe impl Send for SyncContext {}
 // FIXME(antoyo): that shouldn't be Sync. Parallel compilation is currently disabled with "CodegenBackend::supports_parallel()".
 unsafe impl Sync for SyncContext {}
 
+pub struct ThinBuffer;
+
+impl ThinBufferMethods for ThinBuffer {
+    fn data(&self) -> &[u8] {
+        &[]
+    }
+}
+
 impl WriteBackendMethods for GccCodegenBackend {
     type Module = GccContext;
     type TargetMachine = ();
     type ModuleBuffer = ModuleBuffer;
-    type ThinData = ThinData;
+    type ThinData = ();
     type ThinBuffer = ThinBuffer;
 
     fn run_and_optimize_fat_lto(
@@ -442,16 +452,16 @@ impl WriteBackendMethods for GccCodegenBackend {
     }
 
     fn run_thin_lto(
-        cgcx: &CodegenContext,
-        prof: &SelfProfilerRef,
-        dcx: DiagCtxtHandle<'_>,
+        _cgcx: &CodegenContext,
+        _prof: &SelfProfilerRef,
+        _dcx: DiagCtxtHandle<'_>,
         // FIXME(bjorn3): Limit LTO exports to these symbols
         _exported_symbols_for_lto: &[String],
-        each_linked_rlib_for_lto: &[PathBuf],
-        modules: Vec<(String, Self::ThinBuffer)>,
-        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
+        _each_linked_rlib_for_lto: &[PathBuf],
+        _modules: Vec<(String, Self::ThinBuffer)>,
+        _cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>) {
-        back::lto::run_thin(cgcx, prof, dcx, each_linked_rlib_for_lto, modules, cached_modules)
+        unreachable!()
     }
 
     fn print_pass_timings(&self) {
@@ -473,13 +483,13 @@ impl WriteBackendMethods for GccCodegenBackend {
     }
 
     fn optimize_thin(
-        cgcx: &CodegenContext,
+        _cgcx: &CodegenContext,
         _prof: &SelfProfilerRef,
         _shared_emitter: &SharedEmitter,
         _tm_factory: TargetMachineFactoryFn<Self>,
-        thin: ThinModule<Self>,
+        _thin: ThinModule<Self>,
     ) -> ModuleCodegen<Self::Module> {
-        back::lto::optimize_thin_module(thin, cgcx)
+        unreachable!()
     }
 
     fn codegen(
@@ -492,8 +502,8 @@ impl WriteBackendMethods for GccCodegenBackend {
         back::write::codegen(cgcx, prof, shared_emitter, module, config)
     }
 
-    fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
-        back::lto::prepare_thin(module)
+    fn prepare_thin(_module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
+        unreachable!()
     }
 
     fn serialize_module(_module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {

@@ -80,6 +80,11 @@ pub trait CodegenBackend {
         vec![]
     }
 
+    /// Is ThinLTO supported by this backend?
+    fn thin_lto_supported(&self) -> bool {
+        true
+    }
+
     /// Value printed by `--print=backend-has-zstd`.
     ///
     /// Used by compiletest to determine whether tests involving zstd compression

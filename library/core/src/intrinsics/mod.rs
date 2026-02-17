@@ -2178,6 +2178,19 @@ pub const unsafe fn unchecked_funnel_shr<T: [const] fallback::FunnelShift>(
     unsafe { a.unchecked_funnel_shr(b, shift) }
 }
 
+/// Carryless multiply.
+///
+/// Safe versions of this intrinsic are available on the integer primitives
+/// via the `carryless_mul` method. For example, [`u32::carryless_mul`].
+#[rustc_intrinsic]
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "uint_carryless_mul", issue = "152080")]
+#[unstable(feature = "uint_carryless_mul", issue = "152080")]
+#[miri::intrinsic_fallback_is_spec]
+pub const fn carryless_mul<T: [const] fallback::CarrylessMul>(a: T, b: T) -> T {
+    a.carryless_mul(b)
+}
+
 /// This is an implementation detail of [`crate::ptr::read`] and should
 /// not be used anywhere else.  See its comments for why this exists.
 ///
@@ -3472,7 +3485,7 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
 ///
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaList<'_>) -> T;
+pub const unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaList<'_>) -> T;
 
 /// Duplicates a variable argument list. The returned list is initially at the same position as
 /// the one in `src`, but can be advanced independently.
@@ -3484,7 +3497,7 @@ pub unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaList<'_>) -> T;
 /// when a variable argument list is used incorrectly.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn va_copy<'f>(src: &VaList<'f>) -> VaList<'f> {
+pub const fn va_copy<'f>(src: &VaList<'f>) -> VaList<'f> {
     src.duplicate()
 }
 
@@ -3503,6 +3516,6 @@ pub fn va_copy<'f>(src: &VaList<'f>) -> VaList<'f> {
 ///
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn va_end(ap: &mut VaList<'_>) {
+pub const unsafe fn va_end(ap: &mut VaList<'_>) {
     /* deliberately does nothing */
 }

@@ -128,34 +128,21 @@ fn par_slice<I: DynSend>(
     guard: &ParallelGuard,
     for_each: impl Fn(&mut I) + DynSync + DynSend,
 ) {
-    struct State<'a, F> {
-        for_each: FromDyn<F>,
-        guard: &'a ParallelGuard,
-        group: usize,
-    }
-
-    fn par_rec<I: DynSend, F: Fn(&mut I) + DynSync + DynSend>(
-        items: &mut [I],
-        state: &State<'_, F>,
-    ) {
-        if items.len() <= state.group {
-            for item in items {
-                state.guard.run(|| (state.for_each)(item));
-            }
-        } else {
-            let (left, right) = items.split_at_mut(items.len() / 2);
-            let mut left = state.for_each.derive(left);
-            let mut right = state.for_each.derive(right);
-            rustc_thread_pool::join(move || par_rec(*left, state), move || par_rec(*right, state));
+    let for_each = FromDyn::from(for_each);
+    let mut items = for_each.derive(items);
+    rustc_thread_pool::scope(|s| {
+        let proof = items.derive(());
+        let group_size = std::cmp::max(items.len() / 128, 1);
+        for group in items.chunks_exact_mut(group_size) {
+            let group = proof.derive(group);
+            s.spawn(|_| {
+                let mut group = group;
+                for i in group.iter_mut() {
+                    guard.run(|| for_each(i));
+                }
+            });
         }
-    }
-
-    let state = State {
-        for_each: FromDyn::from(for_each),
-        guard,
-        group: std::cmp::max(items.len() / 128, 1),
-    };
-    par_rec(items, &state)
+    });
 }
 
 pub fn par_for_each_in<I: DynSend, T: IntoIterator<Item = I>>(

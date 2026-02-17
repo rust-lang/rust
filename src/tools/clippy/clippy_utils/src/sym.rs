@@ -91,6 +91,7 @@ generate! {
     author,
     borrow,
     borrow_mut,
+    box_assume_init_into_vec_unsafe,
     build_hasher,
     by_ref,
     bytes,

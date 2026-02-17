@@ -14,7 +14,6 @@ use rustc_session::Session;
 use rustc_span::{DUMMY_SP, Span};
 
 use crate::QueryCtxt;
-use crate::dep_graph::DepContext;
 
 /// Map from query job IDs to job information collected by
 /// `collect_active_jobs_from_all_queries`.

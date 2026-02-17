@@ -824,17 +824,6 @@ pub(crate) struct ConstAndCoroutine {
 }
 
 #[derive(Diagnostic)]
-#[diag("functions cannot be both `const` and C-variadic")]
-pub(crate) struct ConstAndCVariadic {
-    #[primary_span]
-    pub spans: Vec<Span>,
-    #[label("`const` because of this")]
-    pub const_span: Span,
-    #[label("C-variadic because of this")]
-    pub variadic_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("functions cannot be both `{$coroutine_kind}` and C-variadic")]
 pub(crate) struct CoroutineAndCVariadic {
     #[primary_span]

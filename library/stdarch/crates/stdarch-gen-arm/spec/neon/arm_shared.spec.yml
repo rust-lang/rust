@@ -10,9 +10,9 @@ auto_big_endian: true
 neon-stable: &neon-stable
   FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
 
-# #[stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION")]
+# #[stable(feature = "stdarch_neon_fp16", since = "1.94.0")]
 neon-stable-fp16: &neon-stable-fp16
-  FnCall: [stable, ['feature = "stdarch_neon_fp16"', 'since = "CURRENT_RUSTC_VERSION"']]
+  FnCall: [stable, ['feature = "stdarch_neon_fp16"', 'since = "1.94.0"']]
 
 # #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 neon-cfg-arm-unstable: &neon-cfg-arm-unstable
@@ -55,9 +55,9 @@ neon-target-aarch64-arm64ec: &neon-target-aarch64-arm64ec
 neon-not-arm-stable: &neon-not-arm-stable
   FnCall: [cfg_attr, [{ FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]}]]
 
-# #[cfg_attr(not(target_arch = "arm"), stable(feature = "stdarch_neon_fp16", since = "CURRENT_RUSTC_VERSION"))]
+# #[cfg_attr(not(target_arch = "arm"), stable(feature = "stdarch_neon_fp16", since = "1.94.0"))]
 neon-not-arm-stable-fp16: &neon-not-arm-stable-fp16
-  FnCall: [cfg_attr, [{ FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [stable, ['feature = "stdarch_neon_fp16"', 'since = "CURRENT_RUSTC_VERSION"']]}]]
+  FnCall: [cfg_attr, [{ FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [stable, ['feature = "stdarch_neon_fp16"', 'since = "1.94.0"']]}]]
 
 # #[cfg_attr(all(test, not(target_env = "msvc"))]
 msvc-disabled: &msvc-disabled

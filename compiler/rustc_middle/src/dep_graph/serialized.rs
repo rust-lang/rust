@@ -41,7 +41,6 @@
 
 use std::cell::RefCell;
 use std::cmp::max;
-use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::{iter, mem, u64};
@@ -61,7 +60,7 @@ use tracing::{debug, instrument};
 
 use super::graph::{CurrentDepGraph, DepNodeColorMap};
 use super::query::DepGraphQuery;
-use super::{DepKind, DepNode, DepNodeIndex, Deps};
+use super::{DepKind, DepNode, DepNodeIndex};
 use crate::dep_graph::edges::EdgesVec;
 
 // The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
@@ -192,7 +191,7 @@ fn mask(bits: usize) -> usize {
 
 impl SerializedDepGraph {
     #[instrument(level = "debug", skip(d))]
-    pub fn decode<D: Deps>(d: &mut MemDecoder<'_>) -> Arc<SerializedDepGraph> {
+    pub fn decode(d: &mut MemDecoder<'_>) -> Arc<SerializedDepGraph> {
         // The last 16 bytes are the node count and edge count.
         debug!("position: {:?}", d.position());
 
@@ -213,7 +212,7 @@ impl SerializedDepGraph {
         let graph_bytes = d.len() - (3 * IntEncodedWithFixedSize::ENCODED_SIZE) - d.position();
 
         let mut nodes = IndexVec::from_elem_n(
-            DepNode { kind: D::DEP_KIND_NULL, hash: PackedFingerprint::from(Fingerprint::ZERO) },
+            DepNode { kind: DepKind::NULL, hash: PackedFingerprint::from(Fingerprint::ZERO) },
             node_max,
         );
         let mut fingerprints = IndexVec::from_elem_n(Fingerprint::ZERO, node_max);
@@ -230,19 +229,18 @@ impl SerializedDepGraph {
         // least (34 byte header + 1 byte len + 64 bytes edge data), which is ~1%. A 2-byte leb128
         // length is about the same fractional overhead and it amortizes for yet greater lengths.
         let mut edge_list_data =
-            Vec::with_capacity(graph_bytes - node_count * size_of::<SerializedNodeHeader<D>>());
+            Vec::with_capacity(graph_bytes - node_count * size_of::<SerializedNodeHeader>());
 
         for _ in 0..node_count {
             // Decode the header for this edge; the header packs together as many of the fixed-size
             // fields as possible to limit the number of times we update decoder state.
-            let node_header =
-                SerializedNodeHeader::<D> { bytes: d.read_array(), _marker: PhantomData };
+            let node_header = SerializedNodeHeader { bytes: d.read_array() };
 
             let index = node_header.index();
 
             let node = &mut nodes[index];
             // Make sure there's no duplicate indices in the dep graph.
-            assert!(node_header.node().kind != D::DEP_KIND_NULL && node.kind == D::DEP_KIND_NULL);
+            assert!(node_header.node().kind != DepKind::NULL && node.kind == DepKind::NULL);
             *node = node_header.node();
 
             fingerprints[index] = node_header.fingerprint();
@@ -270,7 +268,7 @@ impl SerializedDepGraph {
         edge_list_data.extend(&[0u8; DEP_NODE_PAD]);
 
         // Read the number of each dep kind and use it to create an hash map with a suitable size.
-        let mut index: Vec<_> = (0..(D::DEP_KIND_MAX + 1))
+        let mut index: Vec<_> = (0..(DepKind::MAX + 1))
             .map(|_| UnhashMap::with_capacity_and_hasher(d.read_u32() as usize, Default::default()))
             .collect();
 
@@ -279,8 +277,8 @@ impl SerializedDepGraph {
         for (idx, node) in nodes.iter_enumerated() {
             if index[node.kind.as_usize()].insert(node.hash, idx).is_some() {
                 // Empty nodes and side effect nodes can have duplicates
-                if node.kind != D::DEP_KIND_NULL && node.kind != D::DEP_KIND_SIDE_EFFECT {
-                    let name = D::name(node.kind);
+                if node.kind != DepKind::NULL && node.kind != DepKind::SIDE_EFFECT {
+                    let name = node.kind.name();
                     panic!(
                     "Error: A dep graph node ({name}) does not have an unique index. \
                      Running a clean build on a nightly compiler with `-Z incremental-verify-ich` \
@@ -310,13 +308,12 @@ impl SerializedDepGraph {
 /// * The `DepKind`'s discriminant (a u16, but not all bits are used...)
 /// * The byte width of the encoded edges for this node
 /// * In whatever bits remain, the length of the edge list for this node, if it fits
-struct SerializedNodeHeader<D> {
+struct SerializedNodeHeader {
     // 2 bytes for the DepNode
     // 4 bytes for the index
     // 16 for Fingerprint in DepNode
     // 16 for Fingerprint in NodeInfo
     bytes: [u8; 38],
-    _marker: PhantomData<D>,
 }
 
 // The fields of a `SerializedNodeHeader`, this struct is an implementation detail and exists only
@@ -337,11 +334,11 @@ struct Unpacked {
 // 0..M    length of the edge
 // M..M+N  bytes per index
 // M+N..16 kind
-impl<D: Deps> SerializedNodeHeader<D> {
+impl SerializedNodeHeader {
     const TOTAL_BITS: usize = size_of::<DepKind>() * 8;
     const LEN_BITS: usize = Self::TOTAL_BITS - Self::KIND_BITS - Self::WIDTH_BITS;
     const WIDTH_BITS: usize = DEP_NODE_WIDTH_BITS;
-    const KIND_BITS: usize = Self::TOTAL_BITS - D::DEP_KIND_MAX.leading_zeros() as usize;
+    const KIND_BITS: usize = Self::TOTAL_BITS - DepKind::MAX.leading_zeros() as usize;
     const MAX_INLINE_LEN: usize = (u16::MAX as usize >> (Self::TOTAL_BITS - Self::LEN_BITS)) - 1;
 
     #[inline]
@@ -377,14 +374,14 @@ impl<D: Deps> SerializedNodeHeader<D> {
 
         #[cfg(debug_assertions)]
         {
-            let res = Self { bytes, _marker: PhantomData };
+            let res = Self { bytes };
             assert_eq!(fingerprint, res.fingerprint());
             assert_eq!(*node, res.node());
             if let Some(len) = res.len() {
                 assert_eq!(edge_count, len as usize);
             }
         }
-        Self { bytes, _marker: PhantomData }
+        Self { bytes }
     }
 
     #[inline]
@@ -451,15 +448,10 @@ struct NodeInfo {
 }
 
 impl NodeInfo {
-    fn encode<D: Deps>(&self, e: &mut MemEncoder, index: DepNodeIndex) {
+    fn encode(&self, e: &mut MemEncoder, index: DepNodeIndex) {
         let NodeInfo { ref node, fingerprint, ref edges } = *self;
-        let header = SerializedNodeHeader::<D>::new(
-            node,
-            index,
-            fingerprint,
-            edges.max_index(),
-            edges.len(),
-        );
+        let header =
+            SerializedNodeHeader::new(node, index, fingerprint, edges.max_index(), edges.len());
         e.write_array(header.bytes);
 
         if header.len().is_none() {
@@ -480,7 +472,7 @@ impl NodeInfo {
     /// the previous dep graph and expects all edges to already have a new dep node index assigned.
     /// This avoids the overhead of constructing `EdgesVec`, which would be needed to call `encode`.
     #[inline]
-    fn encode_promoted<D: Deps>(
+    fn encode_promoted(
         e: &mut MemEncoder,
         node: &DepNode,
         index: DepNodeIndex,
@@ -496,7 +488,7 @@ impl NodeInfo {
         let edge_max =
             edges.clone().map(|i| colors.current(i).unwrap().as_u32()).max().unwrap_or(0);
 
-        let header = SerializedNodeHeader::<D>::new(node, index, fingerprint, edge_max, edge_count);
+        let header = SerializedNodeHeader::new(node, index, fingerprint, edge_max, edge_count);
         e.write_array(header.bytes);
 
         if header.len().is_none() {
@@ -543,16 +535,15 @@ struct LocalEncoderResult {
     kind_stats: Vec<u32>,
 }
 
-struct EncoderState<D: Deps> {
+struct EncoderState {
     next_node_index: AtomicU64,
     previous: Arc<SerializedDepGraph>,
     file: Lock<Option<FileEncoder>>,
     local: WorkerLocal<RefCell<LocalEncoderState>>,
     stats: Option<Lock<FxHashMap<DepKind, Stat>>>,
-    marker: PhantomData<D>,
 }
 
-impl<D: Deps> EncoderState<D> {
+impl EncoderState {
     fn new(encoder: FileEncoder, record_stats: bool, previous: Arc<SerializedDepGraph>) -> Self {
         Self {
             previous,
@@ -566,10 +557,9 @@ impl<D: Deps> EncoderState<D> {
                     edge_count: 0,
                     node_count: 0,
                     encoder: MemEncoder::new(),
-                    kind_stats: iter::repeat_n(0, D::DEP_KIND_MAX as usize + 1).collect(),
+                    kind_stats: iter::repeat_n(0, DepKind::MAX as usize + 1).collect(),
                 })
             }),
-            marker: PhantomData,
         }
     }
 
@@ -658,7 +648,7 @@ impl<D: Deps> EncoderState<D> {
         record_graph: &Option<Lock<DepGraphQuery>>,
         local: &mut LocalEncoderState,
     ) {
-        node.encode::<D>(&mut local.encoder, index);
+        node.encode(&mut local.encoder, index);
         self.flush_mem_encoder(&mut *local);
         self.record(
             &node.node,
@@ -687,7 +677,7 @@ impl<D: Deps> EncoderState<D> {
     ) {
         let node = self.previous.index_to_node(prev_index);
         let fingerprint = self.previous.fingerprint_by_index(prev_index);
-        let edge_count = NodeInfo::encode_promoted::<D>(
+        let edge_count = NodeInfo::encode_promoted(
             &mut local.encoder,
             node,
             index,
@@ -712,7 +702,7 @@ impl<D: Deps> EncoderState<D> {
         );
     }
 
-    fn finish(&self, profiler: &SelfProfilerRef, current: &CurrentDepGraph<D>) -> FileEncodeResult {
+    fn finish(&self, profiler: &SelfProfilerRef, current: &CurrentDepGraph) -> FileEncodeResult {
         // Prevent more indices from being allocated.
         self.next_node_index.store(u32::MAX as u64 + 1, Ordering::SeqCst);
 
@@ -735,7 +725,7 @@ impl<D: Deps> EncoderState<D> {
 
         let mut encoder = self.file.lock().take().unwrap();
 
-        let mut kind_stats: Vec<u32> = iter::repeat_n(0, D::DEP_KIND_MAX as usize + 1).collect();
+        let mut kind_stats: Vec<u32> = iter::repeat_n(0, DepKind::MAX as usize + 1).collect();
 
         let mut node_max = 0;
         let mut node_count = 0;
@@ -778,7 +768,7 @@ impl<D: Deps> EncoderState<D> {
 
     fn print_incremental_info(
         &self,
-        current: &CurrentDepGraph<D>,
+        current: &CurrentDepGraph,
         total_node_count: usize,
         total_edge_count: usize,
     ) {
@@ -835,13 +825,13 @@ impl<D: Deps> EncoderState<D> {
     }
 }
 
-pub(crate) struct GraphEncoder<D: Deps> {
+pub(crate) struct GraphEncoder {
     profiler: SelfProfilerRef,
-    status: EncoderState<D>,
+    status: EncoderState,
     record_graph: Option<Lock<DepGraphQuery>>,
 }
 
-impl<D: Deps> GraphEncoder<D> {
+impl GraphEncoder {
     pub(crate) fn new(
         sess: &Session,
         encoder: FileEncoder,
@@ -945,7 +935,7 @@ impl<D: Deps> GraphEncoder<D> {
         }
     }
 
-    pub(crate) fn finish(&self, current: &CurrentDepGraph<D>) -> FileEncodeResult {
+    pub(crate) fn finish(&self, current: &CurrentDepGraph) -> FileEncodeResult {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph_finish");
 
         self.status.finish(&self.profiler, current)

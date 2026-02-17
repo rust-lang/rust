@@ -432,6 +432,22 @@ impl<'tcx> Place<'tcx> {
         self.as_ref().project_deeper(more_projections, tcx)
     }
 
+    /// Return a place that projects to a field of the current place.
+    ///
+    /// The type of the current place must be an ADT.
+    pub fn project_to_field(
+        self,
+        idx: FieldIdx,
+        local_decls: &impl HasLocalDecls<'tcx>,
+        tcx: TyCtxt<'tcx>,
+    ) -> Self {
+        let ty = self.ty(local_decls, tcx).ty;
+        let ty::Adt(adt, args) = ty.kind() else { panic!("projecting to field of non-ADT {ty}") };
+        let field = &adt.non_enum_variant().fields[idx];
+        let field_ty = field.ty(tcx, args);
+        self.project_deeper(&[ProjectionElem::Field(idx, field_ty)], tcx)
+    }
+
     pub fn ty_from<D>(
         local: Local,
         projection: &[PlaceElem<'tcx>],

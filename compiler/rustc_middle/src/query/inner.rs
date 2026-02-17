@@ -105,7 +105,7 @@ pub(crate) fn query_feed<'tcx, Cache>(
     value: Cache::Value,
 ) where
     Cache: QueryCache,
-    Cache::Key: DepNodeKey<TyCtxt<'tcx>>,
+    Cache::Key: DepNodeKey<'tcx>,
 {
     let format_value = query_vtable.format_value;
 

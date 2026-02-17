@@ -334,9 +334,9 @@ fn check_impl(
 
     if js_lint {
         if bless {
-            eprintln!("linting javascript files");
-        } else {
             eprintln!("linting javascript files and applying suggestions");
+        } else {
+            eprintln!("linting javascript files");
         }
         let res = rustdoc_js::lint(outdir, librustdoc_path, tools_path, bless);
         if res.is_err() {

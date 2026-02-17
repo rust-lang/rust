@@ -357,11 +357,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         VecGraph::new(num_ty_vars, coercion_edges)
     }
 
-    /// If `ty` is an unresolved type variable, returns its root vid.
-    fn root_vid(&self, ty: Ty<'tcx>) -> Option<ty::TyVid> {
-        Some(self.root_var(self.shallow_resolve(ty).ty_vid()?))
-    }
-
     /// Given a set of diverging vids and coercions, walk the HIR to gather a
     /// set of suggestions which can be applied to preserve fallback to unit.
     fn try_to_suggest_annotations(

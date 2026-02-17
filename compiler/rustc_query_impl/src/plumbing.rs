@@ -4,7 +4,6 @@
 
 use std::num::NonZero;
 
-use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordMap;
@@ -16,22 +15,19 @@ use rustc_middle::bug;
 #[expect(unused_imports, reason = "used by doc comments")]
 use rustc_middle::dep_graph::DepKindVTable;
 use rustc_middle::dep_graph::{
-    self, DepContext, DepNode, DepNodeIndex, DepNodeKey, DepsType, HasDepContext,
-    SerializedDepNodeIndex, dep_kinds,
+    self, DepNode, DepNodeIndex, DepNodeKey, HasDepContext, SerializedDepNodeIndex, dep_kinds,
 };
 use rustc_middle::query::on_disk_cache::{
     AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
 };
 use rustc_middle::query::plumbing::QueryVTable;
 use rustc_middle::query::{
-    Key, QueryCache, QueryContext, QueryJobId, QueryStackDeferred, QueryStackFrame,
-    QueryStackFrameExtra,
+    Key, QueryCache, QueryJobId, QueryStackDeferred, QueryStackFrame, QueryStackFrameExtra,
 };
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::print::with_reduced_queries;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_query_system::query::QuerySideEffect;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::def_id::LOCAL_CRATE;
 
@@ -40,8 +36,6 @@ use crate::execution::{all_inactive, force_query};
 use crate::job::{QueryJobMap, find_dep_kind_root};
 use crate::{QueryDispatcherUnerased, QueryFlags, SemiDynamicQueryDispatcher};
 
-/// Implements [`QueryContext`] for use by [`rustc_query_system`], since that
-/// crate does not have direct access to [`TyCtxt`].
 #[derive(Copy, Clone)]
 pub struct QueryCtxt<'tcx> {
     pub tcx: TyCtxt<'tcx>,
@@ -146,45 +140,15 @@ impl<'tcx> QueryCtxt<'tcx> {
     }
 }
 
-impl<'tcx> HasDepContext for QueryCtxt<'tcx> {
-    type Deps = DepsType;
-    type DepContext = TyCtxt<'tcx>;
-
+impl<'tcx> HasDepContext<'tcx> for QueryCtxt<'tcx> {
     #[inline]
-    fn dep_context(&self) -> &Self::DepContext {
-        &self.tcx
-    }
-}
-
-impl<'tcx> QueryContext<'tcx> for QueryCtxt<'tcx> {
-    #[inline]
-    fn jobserver_proxy(&self) -> &Proxy {
-        &self.tcx.jobserver_proxy
-    }
-
-    // Interactions with on_disk_cache
-    fn load_side_effect(
-        self,
-        prev_dep_node_index: SerializedDepNodeIndex,
-    ) -> Option<QuerySideEffect> {
+    fn dep_context(&self) -> TyCtxt<'tcx> {
         self.tcx
-            .query_system
-            .on_disk_cache
-            .as_ref()
-            .and_then(|c| c.load_side_effect(self.tcx, prev_dep_node_index))
-    }
-
-    #[inline(never)]
-    #[cold]
-    fn store_side_effect(self, dep_node_index: DepNodeIndex, side_effect: QuerySideEffect) {
-        if let Some(c) = self.tcx.query_system.on_disk_cache.as_ref() {
-            c.store_side_effect(dep_node_index, side_effect)
-        }
     }
 }
 
 pub(super) fn try_mark_green<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool {
-    tcx.dep_graph.try_mark_green(QueryCtxt::new(tcx), dep_node).is_some()
+    tcx.dep_graph.try_mark_green(tcx, dep_node).is_some()
 }
 
 pub(super) fn encode_all_query_results<'tcx>(
@@ -198,7 +162,7 @@ pub(super) fn encode_all_query_results<'tcx>(
 }
 
 pub fn query_key_hash_verify_all<'tcx>(tcx: TyCtxt<'tcx>) {
-    if tcx.sess().opts.unstable_opts.incremental_verify_ich || cfg!(debug_assertions) {
+    if tcx.sess.opts.unstable_opts.incremental_verify_ich || cfg!(debug_assertions) {
         tcx.sess.time("query_key_hash_verify_all", || {
             for verify in super::QUERY_KEY_HASH_VERIFY.iter() {
                 verify(tcx);

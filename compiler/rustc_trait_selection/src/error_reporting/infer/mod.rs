@@ -58,9 +58,9 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir};
+use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::extension;
 use rustc_middle::bug;
-use rustc_middle::dep_graph::DepContext;
 use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeErrorToStringExt};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, WrapBinderMode, with_forced_trimmed_paths};
@@ -72,12 +72,17 @@ use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, sym};
 use tracing::{debug, instrument};
 
 use crate::error_reporting::TypeErrCtxt;
+use crate::error_reporting::traits::ambiguity::{
+    CandidateSource, compute_applicable_impls_for_diagnostics,
+};
 use crate::errors::{ObligationCauseFailureCode, TypeErrorAdditionalDiags};
 use crate::infer;
 use crate::infer::relate::{self, RelateResult, TypeRelation};
 use crate::infer::{InferCtxt, InferCtxtExt as _, TypeTrace, ValuePairs};
 use crate::solve::deeply_normalize_for_diagnostics;
-use crate::traits::{MatchExpressionArmCause, ObligationCause, ObligationCauseCode};
+use crate::traits::{
+    MatchExpressionArmCause, Obligation, ObligationCause, ObligationCauseCode, specialization_graph,
+};
 
 mod note_and_explain;
 mod suggest;
@@ -149,11 +154,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         actual: Ty<'tcx>,
         err: TypeError<'tcx>,
     ) -> Diag<'a> {
-        self.report_and_explain_type_error(
+        let mut diag = self.report_and_explain_type_error(
             TypeTrace::types(cause, expected, actual),
             param_env,
             err,
-        )
+        );
+
+        self.suggest_param_env_shadowing(&mut diag, expected, actual, param_env);
+
+        diag
     }
 
     pub fn report_mismatched_consts(
@@ -238,6 +247,76 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => (), // FIXME(#22750) handle traits and stuff
         }
         false
+    }
+
+    fn suggest_param_env_shadowing(
+        &self,
+        diag: &mut Diag<'_>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) {
+        let (alias, concrete) = match (expected.kind(), found.kind()) {
+            (ty::Alias(ty::Projection, proj), _) => (proj, found),
+            (_, ty::Alias(ty::Projection, proj)) => (proj, expected),
+            _ => return,
+        };
+
+        let tcx = self.tcx;
+
+        let trait_ref = alias.trait_ref(tcx);
+        let obligation =
+            Obligation::new(tcx, ObligationCause::dummy(), param_env, ty::Binder::dummy(trait_ref));
+
+        let applicable_impls = compute_applicable_impls_for_diagnostics(self.infcx, &obligation);
+
+        for candidate in applicable_impls {
+            let impl_def_id = match candidate {
+                CandidateSource::DefId(did) => did,
+                CandidateSource::ParamEnv(_) => continue,
+            };
+
+            let is_shadowed = self.infcx.probe(|_| {
+                let impl_substs = self.infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
+                let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_substs);
+
+                let expected_trait_ref = alias.trait_ref(tcx);
+
+                if let Err(_) = self.infcx.at(&ObligationCause::dummy(), param_env).eq(
+                    DefineOpaqueTypes::No,
+                    expected_trait_ref,
+                    impl_trait_ref,
+                ) {
+                    return false;
+                }
+
+                let leaf_def = match specialization_graph::assoc_def(tcx, impl_def_id, alias.def_id)
+                {
+                    Ok(leaf) => leaf,
+                    Err(_) => return false,
+                };
+
+                let trait_def_id = alias.trait_def_id(tcx);
+                let rebased_args = alias.args.rebase_onto(tcx, trait_def_id, impl_substs);
+
+                let impl_item_def_id = leaf_def.item.def_id;
+                let impl_assoc_ty = tcx.type_of(impl_item_def_id).instantiate(tcx, rebased_args);
+
+                self.infcx.can_eq(param_env, impl_assoc_ty, concrete)
+            });
+
+            if is_shadowed {
+                diag.note(format!(
+                    "the associated type `{}` is defined as `{}` in the implementation, \
+                    but the where-bound `{}` shadows this definition\n\
+                    see issue #152409 <https://github.com/rust-lang/rust/issues/152409> for more information",
+                    self.ty_to_string(tcx.mk_ty_from_kind(ty::Alias(ty::Projection, *alias))),
+                    self.ty_to_string(concrete),
+                    self.ty_to_string(alias.self_ty())
+                ));
+                return;
+            }
+        }
     }
 
     fn note_error_origin(
@@ -1757,7 +1836,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // containing a single ASCII character, perhaps the user meant to write `b'c'` to
                 // specify a byte literal
                 (ty::Uint(ty::UintTy::U8), ty::Char) => {
-                    if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
+                    if let Ok(code) = self.tcx.sess.source_map().span_to_snippet(span)
                         && let Some(code) = code.strip_circumfix('\'', '\'')
                         // forbid all Unicode escapes
                         && !code.starts_with("\\u")
@@ -1774,7 +1853,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // containing a single character, perhaps the user meant to write `'c'` to
                 // specify a character literal (issue #92479)
                 (ty::Char, ty::Ref(_, r, _)) if r.is_str() => {
-                    if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
+                    if let Ok(code) = self.tcx.sess.source_map().span_to_snippet(span)
                         && let Some(code) = code.strip_circumfix('"', '"')
                         && code.chars().count() == 1
                     {
@@ -1787,7 +1866,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // If a string was expected and the found expression is a character literal,
                 // perhaps the user meant to write `"s"` to specify a string literal.
                 (ty::Ref(_, r, _), ty::Char) if r.is_str() => {
-                    if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
+                    if let Ok(code) = self.tcx.sess.source_map().span_to_snippet(span)
                         && code.starts_with("'")
                         && code.ends_with("'")
                     {
@@ -1928,7 +2007,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return None;
         }
 
-        let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) else { return None };
+        let Ok(code) = self.tcx.sess.source_map().span_to_snippet(span) else { return None };
 
         let sugg = if code.starts_with('(') && code.ends_with(')') {
             let before_close = span.hi() - BytePos::from_u32(1);
@@ -2005,7 +2084,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // Use the terminal width as the basis to determine when to compress the printed
                 // out type, but give ourselves some leeway to avoid ending up creating a file for
                 // a type that is somewhat shorter than the path we'd write to.
-                let len = self.tcx.sess().diagnostic_width() + 40;
+                let len = self.tcx.sess.diagnostic_width() + 40;
                 let exp_s = exp.content();
                 let fnd_s = fnd.content();
                 if exp_s.len() > len {
