@@ -887,7 +887,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     MPM.addPass(CanonicalizeAliasesPass());
     MPM.addPass(NameAnonGlobalPass());
   }
-  // For `-Copt-level=0`, ThinLTO, or LTO.
+  // For `-Copt-level=0`, and the pre-link fat/thin LTO stages.
   if (ThinLTOBufferRef && *ThinLTOBufferRef == nullptr) {
     // thin lto summaries prevent fat lto, so do not emit them if fat
     // lto is requested. See PR #136840 for background information.
