@@ -1,0 +1,14 @@
+error: relative paths are not supported in visibilities in 2018 edition or later
+  --> $DIR/field-attributes-vis-unresolved.rs:20:12
+   |
+LL |     pub(in nonexistent) field: u8
+   |            ^^^^^^^^^^^ help: try: `crate::nonexistent`
+
+error: relative paths are not supported in visibilities in 2018 edition or later
+  --> $DIR/field-attributes-vis-unresolved.rs:26:12
+   |
+LL |     pub(in nonexistent) u8
+   |            ^^^^^^^^^^^ help: try: `crate::nonexistent`
+
+error: aborting due to 2 previous errors
+
