@@ -37,6 +37,8 @@ pub struct Finder {
 /// when the newly-bumped stage 0 compiler now knows about the formerly-missing targets.
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
+    "x86_64-unknown-linux-gnumsan",
+    "x86_64-unknown-linux-gnutsan",
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM

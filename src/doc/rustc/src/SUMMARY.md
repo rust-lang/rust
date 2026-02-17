@@ -155,5 +155,7 @@
     - [x86_64-unknown-linux-none](platform-support/x86_64-unknown-linux-none.md)
     - [x86_64-unknown-none](platform-support/x86_64-unknown-none.md)
     - [x86_64-unknown-linux-gnuasan](platform-support/x86_64-unknown-linux-gnuasan.md)
+    - [x86_64-unknown-linux-gnumsan](platform-support/x86_64-unknown-linux-gnumsan.md)
+    - [x86_64-unknown-linux-gnutsan](platform-support/x86_64-unknown-linux-gnutsan.md)
     - [xtensa-\*-none-elf](platform-support/xtensa.md)
     - [\*-nuttx-\*](platform-support/nuttx.md)
