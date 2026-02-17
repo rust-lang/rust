@@ -8,6 +8,7 @@ use crate::attributes::template;
 
 #[derive(Default)]
 pub(crate) struct OnConstParser {
+    span: Option<Span>,
     directive: Option<(Span, Directive)>,
 }
 
@@ -17,7 +18,9 @@ impl<S: Stage> AttributeParser<S> for OnConstParser {
             if !cx.features().diagnostic_on_const() {
                 return;
             }
+
             let span = cx.attr_span;
+            this.span = Some(span);
 
             let items = match args {
                 ArgParser::List(items) if items.len() != 0 => items,
@@ -49,9 +52,10 @@ impl<S: Stage> AttributeParser<S> for OnConstParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
-        self.directive.map(|(span, directive)| AttributeKind::OnConst {
-            span,
-            directive: Some(Box::new(directive)),
-        })
+        if let Some(span) = self.span {
+            Some(AttributeKind::OnConst { span, directive: self.directive.map(|d| Box::new(d.1)) })
+        } else {
+            None
+        }
     }
 }
