@@ -1,5 +1,6 @@
 use rustc_ast as ast;
 use rustc_errors::{Applicability, msg};
+use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::{bug, ty};
@@ -89,8 +90,10 @@ struct PanicMessage<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     symbol: Symbol,
     span: Span,
-    arg: &'tcx hir::Expr<'tcx>,
     panic: Option<Symbol>,
+    arg_span: Span,
+    arg_macro: Option<DefId>,
+    arg: &'tcx hir::Expr<'tcx>,
 }
 
 impl<'a, 'b, 'tcx> rustc_errors::Diagnostic<'a, ()> for PanicMessage<'b, 'tcx> {
@@ -99,32 +102,12 @@ impl<'a, 'b, 'tcx> rustc_errors::Diagnostic<'a, ()> for PanicMessage<'b, 'tcx> {
         dcx: rustc_errors::DiagCtxtHandle<'a>,
         level: rustc_errors::Level,
     ) -> rustc_errors::Diag<'a, ()> {
-        let Self { cx, symbol, span, arg, panic } = self;
-
-        // Find the span of the argument to `panic!()` or `unreachable!`, before expansion in the
-        // case of `panic!(some_macro!())` or `unreachable!(some_macro!())`.
-        // We don't use source_callsite(), because this `panic!(..)` might itself
-        // be expanded from another macro, in which case we want to stop at that
-        // expansion.
-        let mut arg_span = arg.span;
-        let mut arg_macro = None;
-        while !span.contains(arg_span) {
-            let ctxt = arg_span.ctxt();
-            if ctxt.is_root() {
-                break;
-            }
-            let expn = ctxt.outer_expn_data();
-            arg_macro = expn.macro_def_id;
-            arg_span = expn.call_site;
-        }
+        let Self { cx, symbol, span, panic, arg_span, arg_macro, arg } = self;
 
         let mut lint = rustc_errors::Diag::new(dcx, level, "panic message is not a string literal");
         lint.arg("name", symbol);
         lint.note(msg!(
             "this usage of `{$name}!()` is deprecated; it will be a hard error in Rust 2021"
-        ));
-        lint.note(msg!(
-            "for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>"
         ));
         if !is_arg_inside_call(arg_span, span) {
             // No clue where this argument is coming from.
@@ -238,7 +221,28 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
         return;
     }
 
-    cx.span_lint(NON_FMT_PANICS, arg.span, PanicMessage { cx, symbol, span, arg, panic });
+    // Find the span of the argument to `panic!()` or `unreachable!`, before expansion in the
+    // case of `panic!(some_macro!())` or `unreachable!(some_macro!())`.
+    // We don't use source_callsite(), because this `panic!(..)` might itself
+    // be expanded from another macro, in which case we want to stop at that
+    // expansion.
+    let mut arg_span = arg.span;
+    let mut arg_macro = None;
+    while !span.contains(arg_span) {
+        let ctxt = arg_span.ctxt();
+        if ctxt.is_root() {
+            break;
+        }
+        let expn = ctxt.outer_expn_data();
+        arg_macro = expn.macro_def_id;
+        arg_span = expn.call_site;
+    }
+
+    cx.span_lint(
+        NON_FMT_PANICS,
+        arg_span,
+        PanicMessage { cx, symbol, span, arg, panic, arg_span, arg_macro },
+    );
 }
 
 fn check_panic_str<'tcx>(

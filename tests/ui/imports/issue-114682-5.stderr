@@ -32,8 +32,6 @@ warning: `issue_114682_5_extern_1` is ambiguous
 LL | use issue_114682_5_extern_1::Url;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `issue_114682_5_extern_1` could refer to the module defined here
   --> $DIR/auxiliary/issue-114682-5-extern-2.rs:6:13
@@ -48,6 +46,8 @@ note: `issue_114682_5_extern_1` could also refer to the crate defined here
 LL |     pub use crate::*;
    |             ^^^^^
    = help: use `::issue_114682_5_extern_1` to refer to this crate unambiguously
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 error: aborting due to 2 previous errors; 1 warning emitted
@@ -61,8 +61,6 @@ warning: `issue_114682_5_extern_1` is ambiguous
 LL | use issue_114682_5_extern_1::Url;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `issue_114682_5_extern_1` could refer to the module defined here
   --> $DIR/auxiliary/issue-114682-5-extern-2.rs:6:13
@@ -77,5 +75,7 @@ note: `issue_114682_5_extern_1` could also refer to the crate defined here
 LL |     pub use crate::*;
    |             ^^^^^
    = help: use `::issue_114682_5_extern_1` to refer to this crate unambiguously
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 

@@ -1563,7 +1563,10 @@ impl Ambiguity {
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for Ambiguity {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        let mut diag = Diag::new(dcx, level, "").with_span(self.ident.span).with_code(E0659);
+        let mut diag = Diag::new(dcx, level, "");
+        if matches!(level, Level::Fatal | Level::Error) {
+            diag.span(self.ident.span).code(E0659);
+        }
         self.decorate(&mut diag);
         diag
     }

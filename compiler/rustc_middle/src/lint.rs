@@ -356,22 +356,38 @@ pub fn lint_level<'a, D: Diagnostic<'a, ()>>(
     //    will be emitted if `can_emit_warnings` is true.
     let skip = err_level == rustc_errors::Level::Warning && !sess.dcx().can_emit_warnings();
 
+    let disable_suggestions = if let Some(ref span) = span
+        // If this code originates in a foreign macro, aka something that this crate
+        // did not itself author, then it's likely that there's nothing this crate
+        // can do about it. We probably want to skip the lint entirely.
+        && span.primary_spans().iter().any(|s| s.in_external_macro(sess.source_map()))
+    {
+        true
+    } else {
+        false
+    };
+
     let mut err: Diag<'_, ()> = if !skip {
         decorate.into_diag(sess.dcx(), err_level)
     } else {
         Diag::new(sess.dcx(), err_level, "")
     };
-    if let Some(span) = span {
-        err.span(span);
+    if let Some(span) = span
+        && err.span.primary_span().is_none()
+    {
+        // We can't use `err.span()` because it overwrites the labels, so we need to do it manually.
+        for primary in span.primary_spans() {
+            err.span.push_primary_span(*primary);
+        }
+        for (label_span, label) in span.span_labels_raw() {
+            err.span.push_span_diag(*label_span, label.clone());
+        }
     }
     if let Some(lint_id) = lint_id {
         err.lint_id(lint_id);
     }
 
-    // If this code originates in a foreign macro, aka something that this crate
-    // did not itself author, then it's likely that there's nothing this crate
-    // can do about it. We probably want to skip the lint entirely.
-    if err.span.primary_spans().iter().any(|s| s.in_external_macro(sess.source_map())) {
+    if disable_suggestions {
         // Any suggestions made here are likely to be incorrect, so anything we
         // emit shouldn't be automatically fixed by rustfix.
         err.disable_suggestions();

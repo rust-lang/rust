@@ -324,6 +324,10 @@ impl MultiSpan {
         self.span_labels.push((span, label.into()));
     }
 
+    pub fn push_span_diag(&mut self, span: Span, diag: DiagMessage) {
+        self.span_labels.push((span, diag));
+    }
+
     /// Selects the first primary span (if any).
     pub fn primary_span(&self) -> Option<Span> {
         self.primary_spans.first().cloned()

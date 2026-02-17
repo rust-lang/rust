@@ -14,8 +14,6 @@ warning: `date_range` is ambiguous
 LL |     date_range();
    |     ^^^^^^^^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `date_range` could refer to the function imported here
   --> $DIR/ambiguous-9.rs:7:13
@@ -29,6 +27,8 @@ note: `date_range` could also refer to the function imported here
 LL |     use super::prelude::*;
    |         ^^^^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: ambiguous glob re-exports
@@ -45,8 +45,6 @@ warning: `date_range` is ambiguous
 LL |     date_range();
    |     ^^^^^^^^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `date_range` could refer to the function imported here
   --> $DIR/ambiguous-9.rs:19:5
@@ -60,6 +58,8 @@ note: `date_range` could also refer to the function imported here
 LL | use prelude::*;
    |     ^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
 
 warning: 4 warnings emitted
 
@@ -70,8 +70,6 @@ warning: `date_range` is ambiguous
 LL |     date_range();
    |     ^^^^^^^^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `date_range` could refer to the function imported here
   --> $DIR/ambiguous-9.rs:7:13
@@ -85,6 +83,8 @@ note: `date_range` could also refer to the function imported here
 LL |     use super::prelude::*;
    |         ^^^^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
@@ -94,8 +94,6 @@ warning: `date_range` is ambiguous
 LL |     date_range();
    |     ^^^^^^^^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `date_range` could refer to the function imported here
   --> $DIR/ambiguous-9.rs:19:5
@@ -109,5 +107,7 @@ note: `date_range` could also refer to the function imported here
 LL | use prelude::*;
    |     ^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 

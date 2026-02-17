@@ -4,8 +4,6 @@ warning: `C` is ambiguous
 LL |     C
    |     ^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `C` could refer to the constant imported here
   --> $DIR/ambiguous-6.rs:15:13
@@ -19,6 +17,8 @@ note: `C` could also refer to the constant imported here
 LL |     pub use mod2::*;
    |             ^^^^^^^
    = help: consider adding an explicit import of `C` to disambiguate
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: 1 warning emitted
@@ -30,8 +30,6 @@ warning: `C` is ambiguous
 LL |     C
    |     ^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `C` could refer to the constant imported here
   --> $DIR/ambiguous-6.rs:15:13
@@ -45,5 +43,7 @@ note: `C` could also refer to the constant imported here
 LL |     pub use mod2::*;
    |             ^^^^^^^
    = help: consider adding an explicit import of `C` to disambiguate
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 

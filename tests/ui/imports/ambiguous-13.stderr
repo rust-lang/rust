@@ -4,8 +4,6 @@ warning: `Rect` is ambiguous
 LL | fn a(_: Rect) {}
    |         ^^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `Rect` could refer to the struct imported here
   --> $DIR/ambiguous-13.rs:15:5
@@ -19,6 +17,8 @@ note: `Rect` could also refer to the struct imported here
 LL | use crate::content::*;
    |     ^^^^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `Rect` to disambiguate
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: 1 warning emitted
@@ -30,8 +30,6 @@ warning: `Rect` is ambiguous
 LL | fn a(_: Rect) {}
    |         ^^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `Rect` could refer to the struct imported here
   --> $DIR/ambiguous-13.rs:15:5
@@ -45,5 +43,7 @@ note: `Rect` could also refer to the struct imported here
 LL | use crate::content::*;
    |     ^^^^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `Rect` to disambiguate
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 

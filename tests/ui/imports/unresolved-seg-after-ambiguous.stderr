@@ -10,8 +10,6 @@ warning: `E` is ambiguous
 LL | use self::a::E::in_exist;
    |              ^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `E` could refer to the struct imported here
   --> $DIR/unresolved-seg-after-ambiguous.rs:13:17
@@ -25,6 +23,8 @@ note: `E` could also refer to the struct imported here
 LL |         pub use self::d::*;
    |                 ^^^^^^^^^^
    = help: consider adding an explicit import of `E` to disambiguate
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 error: aborting due to 1 previous error; 1 warning emitted
@@ -37,8 +37,6 @@ warning: `E` is ambiguous
 LL | use self::a::E::in_exist;
    |              ^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `E` could refer to the struct imported here
   --> $DIR/unresolved-seg-after-ambiguous.rs:13:17
@@ -52,5 +50,7 @@ note: `E` could also refer to the struct imported here
 LL |         pub use self::d::*;
    |                 ^^^^^^^^^^
    = help: consider adding an explicit import of `E` to disambiguate
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
