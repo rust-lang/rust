@@ -20,6 +20,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::context::{AcceptContext, Stage};
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
 
+pub(crate) mod do_not_recommend;
 pub(crate) mod on_const;
 pub(crate) mod on_unimplemented;
 
