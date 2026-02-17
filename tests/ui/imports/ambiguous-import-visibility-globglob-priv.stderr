@@ -1,0 +1,47 @@
+error[E0603]: struct import `S` is private
+  --> $DIR/ambiguous-import-visibility-globglob-priv.rs:12:27
+   |
+LL | use crate::both::private::S;
+   |                           ^ private struct import
+   |
+note: the struct import `S` is defined here...
+  --> $DIR/ambiguous-import-visibility-globglob-priv.rs:7:13
+   |
+LL |         use crate::m::*;
+   |             ^^^^^^^^^^^
+note: ...and refers to the struct `S` which is defined here
+  --> $DIR/ambiguous-import-visibility-globglob-priv.rs:2:5
+   |
+LL |     pub struct S {}
+   |     ^^^^^^^^^^^^ you could import this directly
+help: import `S` through the re-export
+   |
+LL - use crate::both::private::S;
+LL + use m::S;
+   |
+
+error[E0603]: struct import `S` is private
+  --> $DIR/ambiguous-import-visibility-globglob-priv.rs:17:31
+   |
+LL |     use crate::both::private::S;
+   |                               ^ private struct import
+   |
+note: the struct import `S` is defined here...
+  --> $DIR/ambiguous-import-visibility-globglob-priv.rs:7:13
+   |
+LL |         use crate::m::*;
+   |             ^^^^^^^^^^^
+note: ...and refers to the struct `S` which is defined here
+  --> $DIR/ambiguous-import-visibility-globglob-priv.rs:2:5
+   |
+LL |     pub struct S {}
+   |     ^^^^^^^^^^^^ you could import this directly
+help: import `S` through the re-export
+   |
+LL -     use crate::both::private::S;
+LL +     use m::S;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

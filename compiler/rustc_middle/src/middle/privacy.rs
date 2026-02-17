@@ -7,6 +7,7 @@ use std::hash::Hash;
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def::DefKind;
+use rustc_hir::{ItemKind, Node, UseKind};
 use rustc_macros::HashStable;
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
 
@@ -152,9 +153,9 @@ impl EffectiveVisibilities {
     }
 
     pub fn check_invariants(&self, tcx: TyCtxt<'_>) {
-        if !cfg!(debug_assertions) {
-            return;
-        }
+        // if !cfg!(debug_assertions) {
+        //     return;
+        // }
         for (&def_id, ev) in &self.map {
             // More direct visibility levels can never go farther than less direct ones,
             // and all effective visibilities are larger or equal than private visibility.
@@ -184,13 +185,20 @@ impl EffectiveVisibilities {
             if !is_impl && tcx.trait_impl_of_assoc(def_id.to_def_id()).is_none() {
                 let nominal_vis = tcx.visibility(def_id);
                 if !nominal_vis.is_at_least(ev.reachable, tcx) {
-                    span_bug!(
-                        span,
-                        "{:?}: reachable {:?} > nominal {:?}",
-                        def_id,
-                        ev.reachable,
-                        nominal_vis,
-                    );
+                    if let Node::Item(item) = tcx.hir_node_by_def_id(def_id)
+                        && let ItemKind::Use(_, UseKind::Glob) = item.kind
+                    {
+                        // Glob import visibilities can be increasee by other
+                        // more public glob imports in cases of ambiguity.
+                    } else {
+                        span_bug!(
+                            span,
+                            "{:?}: reachable {:?} > nominal {:?}",
+                            def_id,
+                            ev.reachable,
+                            nominal_vis,
+                        );
+                    }
                 }
             }
         }

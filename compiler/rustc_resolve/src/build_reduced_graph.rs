@@ -95,7 +95,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ambiguity: CmCell::new(ambiguity),
             // External ambiguities always report the `AMBIGUOUS_GLOB_IMPORTS` lint at the moment.
             warn_ambiguity: CmCell::new(true),
-            vis: CmCell::new(vis),
+            initial_vis: vis,
+            ambiguity_vis_max: CmCell::new(None),
+            ambiguity_vis_min: CmCell::new(None),
             span,
             expansion,
             parent_module: Some(parent),
@@ -250,16 +252,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn build_reduced_graph_external(&self, module: Module<'ra>) {
         let def_id = module.def_id();
         let children = self.tcx.module_children(def_id);
-        let parent_scope = ParentScope::module(module, self.arenas);
         for (i, child) in children.iter().enumerate() {
-            self.build_reduced_graph_for_external_crate_res(child, parent_scope, i, None)
+            self.build_reduced_graph_for_external_crate_res(child, module, i, None)
         }
         for (i, child) in
             self.cstore().ambig_module_children_untracked(self.tcx, def_id).enumerate()
         {
             self.build_reduced_graph_for_external_crate_res(
                 &child.main,
-                parent_scope,
+                module,
                 children.len() + i,
                 Some(&child.second),
             )
@@ -270,11 +271,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn build_reduced_graph_for_external_crate_res(
         &self,
         child: &ModChild,
-        parent_scope: ParentScope<'ra>,
+        parent: Module<'ra>,
         child_index: usize,
         ambig_child: Option<&ModChild>,
     ) {
-        let parent = parent_scope.module;
         let child_span = |this: &Self, reexport_chain: &[Reexport], res: def::Res<_>| {
             this.def_span(
                 reexport_chain
@@ -287,7 +287,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let ident = IdentKey::new(orig_ident);
         let span = child_span(self, reexport_chain, res);
         let res = res.expect_non_local();
-        let expansion = parent_scope.expansion;
+        let expansion = LocalExpnId::ROOT;
         let ambig = ambig_child.map(|ambig_child| {
             let ModChild { ident: _, res, vis, ref reexport_chain } = *ambig_child;
             let span = child_span(self, reexport_chain, res);
