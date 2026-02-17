@@ -290,31 +290,6 @@ pub(crate) struct UnallowedOpInConstContext {
 }
 
 #[derive(Diagnostic)]
-#[diag(r#"allocations are not allowed in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#, code = E0010)]
-pub(crate) struct UnallowedHeapAllocations {
-    #[primary_span]
-    #[label(
-        r#"allocation not allowed in {$kind ->
-            [const] constant
-            [static] static
-            [const_fn] constant function
-            *[other] {""}
-        }s"#
-    )]
-    pub span: Span,
-    pub kind: ConstContext,
-    #[note(
-        "the runtime heap is not yet available at compile-time, so no runtime heap allocations can be created"
-    )]
-    pub teach: bool,
-}
-
-#[derive(Diagnostic)]
 #[diag(r#"inline assembly is not allowed in {$kind ->
     [const] constant
     [static] static
@@ -529,6 +504,19 @@ pub struct NonConstClosure {
     #[subdiagnostic]
     pub note: Option<NonConstClosureNote>,
     pub non_or_conditionally: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(r#"calling const c-variadic functions is unstable in {$kind ->
+    [const] constant
+    [static] static
+    [const_fn] constant function
+    *[other] {""}
+}s"#, code = E0015)]
+pub struct NonConstCVariadicCall {
+    #[primary_span]
+    pub span: Span,
+    pub kind: ConstContext,
 }
 
 #[derive(Subdiagnostic)]
@@ -757,11 +745,13 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             WriteToReadOnly(_) => msg!("writing to {$allocation} which is read-only"),
             DerefFunctionPointer(_) => msg!("accessing {$allocation} which contains a function"),
             DerefVTablePointer(_) => msg!("accessing {$allocation} which contains a vtable"),
+            DerefVaListPointer(_) => msg!("accessing {$allocation} which contains a variable argument list"),
             DerefTypeIdPointer(_) => msg!("accessing {$allocation} which contains a `TypeId`"),
             InvalidBool(_) => msg!("interpreting an invalid 8-bit value as a bool: 0x{$value}"),
             InvalidChar(_) => msg!("interpreting an invalid 32-bit value as a char: 0x{$value}"),
             InvalidTag(_) => msg!("enum value has invalid tag: {$tag}"),
             InvalidFunctionPointer(_) => msg!("using {$pointer} as function pointer but it does not point to a function"),
+            InvalidVaListPointer(_) => msg!("using {$pointer} as variable argument list pointer but it does not point to a variable argument list"),
             InvalidVTablePointer(_) => msg!("using {$pointer} as vtable pointer but it does not point to a vtable"),
             InvalidVTableTrait { .. } => msg!("using vtable for `{$vtable_dyn_type}` but `{$expected_dyn_type}` was expected"),
             InvalidStr(_) => msg!("this string is not valid UTF-8: {$err}"),
@@ -776,6 +766,9 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             }
             AbiMismatchArgument { .. } => msg!("calling a function whose parameter #{$arg_idx} has type {$callee_ty} passing argument of type {$caller_ty}"),
             AbiMismatchReturn { .. } => msg!("calling a function with return type {$callee_ty} passing return place of type {$caller_ty}"),
+            VaArgOutOfBounds => "more C-variadic arguments read than were passed".into(),
+            CVariadicMismatch { ..} => "calling a function where the caller and callee disagree on whether the function is C-variadic".into(),
+            CVariadicFixedCountMismatch { .. } => msg!("calling a C-variadic function with {$caller} fixed arguments, but the function expects {$callee}"),
         }
     }
 
@@ -800,6 +793,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             | InvalidMeta(InvalidMetaKind::TooBig)
             | InvalidUninitBytes(None)
             | DeadLocal
+            | VaArgOutOfBounds
             | UninhabitedEnumVariantWritten(_)
             | UninhabitedEnumVariantRead(_) => {}
 
@@ -820,7 +814,10 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                 diag.arg("len", len);
                 diag.arg("index", index);
             }
-            UnterminatedCString(ptr) | InvalidFunctionPointer(ptr) | InvalidVTablePointer(ptr) => {
+            UnterminatedCString(ptr)
+            | InvalidFunctionPointer(ptr)
+            | InvalidVaListPointer(ptr)
+            | InvalidVTablePointer(ptr) => {
                 diag.arg("pointer", ptr);
             }
             InvalidVTableTrait { expected_dyn_type, vtable_dyn_type } => {
@@ -874,6 +871,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             WriteToReadOnly(alloc)
             | DerefFunctionPointer(alloc)
             | DerefVTablePointer(alloc)
+            | DerefVaListPointer(alloc)
             | DerefTypeIdPointer(alloc) => {
                 diag.arg("allocation", alloc);
             }
@@ -909,6 +907,14 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             AbiMismatchReturn { caller_ty, callee_ty } => {
                 diag.arg("caller_ty", caller_ty);
                 diag.arg("callee_ty", callee_ty);
+            }
+            CVariadicMismatch { caller_is_c_variadic, callee_is_c_variadic } => {
+                diag.arg("caller_is_c_variadic", caller_is_c_variadic);
+                diag.arg("callee_is_c_variadic", callee_is_c_variadic);
+            }
+            CVariadicFixedCountMismatch { caller, callee } => {
+                diag.arg("caller", caller);
+                diag.arg("callee", callee);
             }
         }
     }

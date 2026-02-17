@@ -1,17 +1,13 @@
 use std::panic;
 
-use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::sync::DynSync;
-use rustc_query_system::ich::StableHashingContext;
-use rustc_session::Session;
 use tracing::instrument;
 
 pub use self::dep_node::{
-    DepKind, DepNode, DepNodeExt, DepNodeKey, WorkProductId, dep_kind_from_label, dep_kinds,
+    DepKind, DepKindVTable, DepNode, DepNodeKey, WorkProductId, dep_kind_from_label, dep_kinds,
     label_strs,
 };
 pub use self::graph::{
-    DepGraphData, DepNodeIndex, TaskDepsRef, WorkProduct, WorkProductMap, hash_result,
+    DepGraph, DepGraphData, DepNodeIndex, TaskDepsRef, WorkProduct, WorkProductMap, hash_result,
 };
 use self::graph::{MarkFrame, print_markframe_trace};
 pub use self::query::DepGraphQuery;
@@ -28,125 +24,18 @@ mod graph;
 mod query;
 mod serialized;
 
-pub trait DepContext: Copy {
-    type Deps: Deps;
-
-    /// Create a hashing context for hashing new results.
-    fn with_stable_hashing_context<R>(self, f: impl FnOnce(StableHashingContext<'_>) -> R) -> R;
-
-    /// Access the DepGraph.
-    fn dep_graph(&self) -> &graph::DepGraph<Self::Deps>;
-
-    /// Access the profiler.
-    fn profiler(&self) -> &SelfProfilerRef;
-
-    /// Access the compiler session.
-    fn sess(&self) -> &Session;
-
-    fn dep_kind_vtable(&self, dep_node: DepKind) -> &dep_node::DepKindVTable<Self>;
-
-    #[inline(always)]
-    fn fingerprint_style(self, kind: DepKind) -> FingerprintStyle {
-        self.dep_kind_vtable(kind).fingerprint_style
-    }
-
-    #[inline(always)]
-    /// Return whether this kind always require evaluation.
-    fn is_eval_always(self, kind: DepKind) -> bool {
-        self.dep_kind_vtable(kind).is_eval_always
-    }
-
-    /// Try to force a dep node to execute and see if it's green.
-    ///
-    /// Returns true if the query has actually been forced. It is valid that a query
-    /// fails to be forced, e.g. when the query key cannot be reconstructed from the
-    /// dep-node or when the query kind outright does not support it.
-    #[inline]
-    #[instrument(skip(self, frame), level = "debug")]
-    fn try_force_from_dep_node(
-        self,
-        dep_node: DepNode,
-        prev_index: SerializedDepNodeIndex,
-        frame: &MarkFrame<'_>,
-    ) -> bool {
-        if let Some(force_fn) = self.dep_kind_vtable(dep_node.kind).force_from_dep_node {
-            match panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                force_fn(self, dep_node, prev_index)
-            })) {
-                Err(value) => {
-                    if !value.is::<rustc_errors::FatalErrorMarker>() {
-                        print_markframe_trace(self.dep_graph(), frame);
-                    }
-                    panic::resume_unwind(value)
-                }
-                Ok(query_has_been_forced) => query_has_been_forced,
-            }
-        } else {
-            false
-        }
-    }
-
-    /// Load data from the on-disk cache.
-    fn try_load_from_on_disk_cache(self, dep_node: &DepNode) {
-        if let Some(try_load_fn) = self.dep_kind_vtable(dep_node.kind).try_load_from_on_disk_cache {
-            try_load_fn(self, *dep_node)
-        }
-    }
-
-    fn with_reduced_queries<T>(self, _: impl FnOnce() -> T) -> T;
+pub trait HasDepContext<'tcx>: Copy {
+    fn dep_context(&self) -> TyCtxt<'tcx>;
 }
 
-pub trait Deps: DynSync {
-    /// Execute the operation with provided dependencies.
-    fn with_deps<OP, R>(deps: TaskDepsRef<'_>, op: OP) -> R
-    where
-        OP: FnOnce() -> R;
-
-    /// Access dependencies from current implicit context.
-    fn read_deps<OP>(op: OP)
-    where
-        OP: for<'a> FnOnce(TaskDepsRef<'a>);
-
-    fn name(dep_kind: DepKind) -> &'static str;
-
-    /// We use this for most things when incr. comp. is turned off.
-    const DEP_KIND_NULL: DepKind;
-
-    /// We use this to create a forever-red node.
-    const DEP_KIND_RED: DepKind;
-
-    /// We use this to create a side effect node.
-    const DEP_KIND_SIDE_EFFECT: DepKind;
-
-    /// We use this to create the anon node with zero dependencies.
-    const DEP_KIND_ANON_ZERO_DEPS: DepKind;
-
-    /// This is the highest value a `DepKind` can have. It's used during encoding to
-    /// pack information into the unused bits.
-    const DEP_KIND_MAX: u16;
-}
-
-pub trait HasDepContext: Copy {
-    type Deps: self::Deps;
-    type DepContext: self::DepContext<Deps = Self::Deps>;
-
-    fn dep_context(&self) -> &Self::DepContext;
-}
-
-impl<T: DepContext> HasDepContext for T {
-    type Deps = T::Deps;
-    type DepContext = Self;
-
-    fn dep_context(&self) -> &Self::DepContext {
-        self
+impl<'tcx> HasDepContext<'tcx> for TyCtxt<'tcx> {
+    fn dep_context(&self) -> TyCtxt<'tcx> {
+        *self
     }
 }
 
-impl<T: HasDepContext, Q: Copy> HasDepContext for (T, Q) {
-    type Deps = T::Deps;
-    type DepContext = T::DepContext;
-
-    fn dep_context(&self) -> &Self::DepContext {
+impl<'tcx, T: HasDepContext<'tcx>, Q: Copy> HasDepContext<'tcx> for (T, Q) {
+    fn dep_context(&self) -> TyCtxt<'tcx> {
         self.0.dep_context()
     }
 }
@@ -179,74 +68,77 @@ impl FingerprintStyle {
     }
 }
 
-pub type DepGraph = graph::DepGraph<DepsType>;
-
-pub type DepKindVTable<'tcx> = dep_node::DepKindVTable<TyCtxt<'tcx>>;
-
-pub struct DepsType;
-
-impl Deps for DepsType {
-    fn with_deps<OP, R>(task_deps: TaskDepsRef<'_>, op: OP) -> R
-    where
-        OP: FnOnce() -> R,
-    {
-        ty::tls::with_context(|icx| {
-            let icx = ty::tls::ImplicitCtxt { task_deps, ..icx.clone() };
-
-            ty::tls::enter_context(&icx, op)
-        })
-    }
-
-    fn read_deps<OP>(op: OP)
-    where
-        OP: for<'a> FnOnce(TaskDepsRef<'a>),
-    {
-        ty::tls::with_context_opt(|icx| {
-            let Some(icx) = icx else { return };
-            op(icx.task_deps)
-        })
-    }
-
-    fn name(dep_kind: DepKind) -> &'static str {
-        dep_node::DEP_KIND_NAMES[dep_kind.as_usize()]
-    }
-
-    const DEP_KIND_NULL: DepKind = dep_kinds::Null;
-    const DEP_KIND_RED: DepKind = dep_kinds::Red;
-    const DEP_KIND_SIDE_EFFECT: DepKind = dep_kinds::SideEffect;
-    const DEP_KIND_ANON_ZERO_DEPS: DepKind = dep_kinds::AnonZeroDeps;
-    const DEP_KIND_MAX: u16 = dep_node::DEP_KIND_VARIANTS - 1;
+/// Execute the operation with provided dependencies.
+fn with_deps<OP, R>(task_deps: TaskDepsRef<'_>, op: OP) -> R
+where
+    OP: FnOnce() -> R,
+{
+    ty::tls::with_context(|icx| {
+        let icx = ty::tls::ImplicitCtxt { task_deps, ..icx.clone() };
+        ty::tls::enter_context(&icx, op)
+    })
 }
 
-impl<'tcx> DepContext for TyCtxt<'tcx> {
-    type Deps = DepsType;
+/// Access dependencies from current implicit context.
+fn read_deps<OP>(op: OP)
+where
+    OP: for<'a> FnOnce(TaskDepsRef<'a>),
+{
+    ty::tls::with_context_opt(|icx| {
+        let Some(icx) = icx else { return };
+        op(icx.task_deps)
+    })
+}
 
+impl<'tcx> TyCtxt<'tcx> {
     #[inline]
-    fn with_stable_hashing_context<R>(self, f: impl FnOnce(StableHashingContext<'_>) -> R) -> R {
-        TyCtxt::with_stable_hashing_context(self, f)
-    }
-
-    #[inline]
-    fn dep_graph(&self) -> &DepGraph {
-        &self.dep_graph
-    }
-
-    #[inline(always)]
-    fn profiler(&self) -> &SelfProfilerRef {
-        &self.prof
-    }
-
-    #[inline(always)]
-    fn sess(&self) -> &Session {
-        self.sess
-    }
-
-    #[inline]
-    fn dep_kind_vtable(&self, dk: DepKind) -> &DepKindVTable<'tcx> {
+    pub fn dep_kind_vtable(self, dk: DepKind) -> &'tcx DepKindVTable<'tcx> {
         &self.dep_kind_vtables[dk.as_usize()]
     }
 
     fn with_reduced_queries<T>(self, f: impl FnOnce() -> T) -> T {
         with_reduced_queries!(f())
+    }
+
+    #[inline(always)]
+    pub fn fingerprint_style(self, kind: DepKind) -> FingerprintStyle {
+        self.dep_kind_vtable(kind).fingerprint_style
+    }
+
+    /// Try to force a dep node to execute and see if it's green.
+    ///
+    /// Returns true if the query has actually been forced. It is valid that a query
+    /// fails to be forced, e.g. when the query key cannot be reconstructed from the
+    /// dep-node or when the query kind outright does not support it.
+    #[inline]
+    #[instrument(skip(self, frame), level = "debug")]
+    fn try_force_from_dep_node(
+        self,
+        dep_node: DepNode,
+        prev_index: SerializedDepNodeIndex,
+        frame: &MarkFrame<'_>,
+    ) -> bool {
+        if let Some(force_fn) = self.dep_kind_vtable(dep_node.kind).force_from_dep_node {
+            match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                force_fn(self, dep_node, prev_index)
+            })) {
+                Err(value) => {
+                    if !value.is::<rustc_errors::FatalErrorMarker>() {
+                        print_markframe_trace(&self.dep_graph, frame);
+                    }
+                    panic::resume_unwind(value)
+                }
+                Ok(query_has_been_forced) => query_has_been_forced,
+            }
+        } else {
+            false
+        }
+    }
+
+    /// Load data from the on-disk cache.
+    fn try_load_from_on_disk_cache(self, dep_node: &DepNode) {
+        if let Some(try_load_fn) = self.dep_kind_vtable(dep_node.kind).try_load_from_on_disk_cache {
+            try_load_fn(self, *dep_node)
+        }
     }
 }

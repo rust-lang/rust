@@ -115,6 +115,7 @@ impl AttributeKind {
             RustcDenyExplicitImpl(..) => No,
             RustcDeprecatedSafe2024 { .. } => Yes,
             RustcDiagnosticItem(..) => Yes,
+            RustcDoNotConstCheck => Yes,
             RustcDummy => No,
             RustcDumpDefParents => No,
             RustcDumpItemBounds => No,
@@ -148,6 +149,7 @@ impl AttributeKind {
             RustcNoImplicitBounds => No,
             RustcNoMirInline => Yes,
             RustcNonConstTraitMethod => No, // should be reported via other queries like `constness`
+            RustcNonnullOptimizationGuaranteed => Yes,
             RustcNounwind => No,
             RustcObjcClass { .. } => No,
             RustcObjcSelector { .. } => No,

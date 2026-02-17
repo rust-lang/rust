@@ -180,6 +180,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
             && sess.target.env == Env::Gnu
             && sess.target.abi != Abi::Llvm);
 
+        // FIXME(f128): f128 math operations need f128 math symbols, which currently aren't always
+        // filled in by compiler-builtins. The only libc that provides these currently is glibc.
+        let has_reliable_f128_math = has_reliable_f16_f128 && sess.target.env == Env::Gnu;
+
         TargetConfig {
             target_features,
             unstable_target_features,
@@ -188,7 +192,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             has_reliable_f16: has_reliable_f16_f128,
             has_reliable_f16_math: has_reliable_f16_f128,
             has_reliable_f128: has_reliable_f16_f128,
-            has_reliable_f128_math: has_reliable_f16_f128,
+            has_reliable_f128_math,
         }
     }
 

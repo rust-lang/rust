@@ -73,7 +73,7 @@ pub unsafe fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwi
             // corresponds with llvm::WebAssembly::Tag::CPP_EXCEPTION
             //     in llvm-project/llvm/include/llvm/CodeGen/WasmEHFuncInfo.h
             const CPP_EXCEPTION_TAG: i32 = 0;
-            wasm_throw(CPP_EXCEPTION_TAG, exception.cast())
+            unsafe { wasm_throw(CPP_EXCEPTION_TAG, exception.cast()) }
         }
         _ => {
             let _ = exception;

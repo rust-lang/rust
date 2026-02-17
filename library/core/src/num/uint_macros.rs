@@ -17,6 +17,9 @@ macro_rules! uint_impl {
         fsh_op = $fsh_op:literal,
         fshl_result = $fshl_result:literal,
         fshr_result = $fshr_result:literal,
+        clmul_lhs = $clmul_rhs:literal,
+        clmul_rhs = $clmul_lhs:literal,
+        clmul_result = $clmul_result:literal,
         swap_op = $swap_op:literal,
         swapped = $swapped:literal,
         reversed = $reversed:literal,
@@ -480,6 +483,62 @@ macro_rules! uint_impl {
             assert!(n < Self::BITS, "attempt to funnel shift right with overflow");
             // SAFETY: just checked that `shift` is in-range
             unsafe { intrinsics::unchecked_funnel_shr(self, rhs, n) }
+        }
+
+        /// Performs a carry-less multiplication, returning the lower bits.
+        ///
+        /// This operation is similar to long multiplication, except that exclusive or is used
+        /// instead of addition. The implementation is equivalent to:
+        ///
+        /// ```no_run
+        #[doc = concat!("pub fn carryless_mul(lhs: ", stringify!($SelfT), ", rhs: ", stringify!($SelfT), ") -> ", stringify!($SelfT), "{")]
+        ///     let mut retval = 0;
+        #[doc = concat!("    for i in 0..",  stringify!($SelfT), "::BITS {")]
+        ///         if (rhs >> i) & 1 != 0 {
+        ///             // long multiplication would use +=
+        ///             retval ^= lhs << i;
+        ///         }
+        ///     }
+        ///     retval
+        /// }
+        /// ```
+        ///
+        /// The actual implementation is more efficient, and on some platforms lowers directly to a
+        /// dedicated instruction.
+        ///
+        /// # Uses
+        ///
+        /// Carryless multiplication can be used to turn a bitmask of quote characters into a
+        /// bit mask of characters surrounded by quotes:
+        ///
+        /// ```no_run
+        /// r#"abc xxx "foobar" zzz "a"!"#; // input string
+        ///  0b0000000010000001000001010; // quote_mask
+        ///  0b0000000001111110000000100; // quote_mask.carryless_mul(!0) & !quote_mask
+        /// ```
+        ///
+        /// Another use is in cryptography, where carryless multiplication allows for efficient
+        /// implementations of polynomial multiplication in `GF(2)[X]`, the polynomial ring
+        /// over `GF(2)`.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(uint_carryless_mul)]
+        ///
+        #[doc = concat!("let a = ", $clmul_lhs, stringify!($SelfT), ";")]
+        #[doc = concat!("let b = ", $clmul_rhs, stringify!($SelfT), ";")]
+        ///
+        #[doc = concat!("assert_eq!(a.carryless_mul(b), ", $clmul_result, ");")]
+        /// ```
+        #[rustc_const_unstable(feature = "uint_carryless_mul", issue = "152080")]
+        #[doc(alias = "clmul")]
+        #[unstable(feature = "uint_carryless_mul", issue = "152080")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn carryless_mul(self, rhs: Self) -> Self {
+            intrinsics::carryless_mul(self, rhs)
         }
 
         /// Reverses the byte order of the integer.

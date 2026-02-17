@@ -354,7 +354,14 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 
     fn replaced_intrinsics(&self) -> Vec<Symbol> {
-        vec![sym::unchecked_funnel_shl, sym::unchecked_funnel_shr, sym::carrying_mul_add]
+        let mut will_not_use_fallback =
+            vec![sym::unchecked_funnel_shl, sym::unchecked_funnel_shr, sym::carrying_mul_add];
+
+        if llvm_util::get_version() >= (22, 0, 0) {
+            will_not_use_fallback.push(sym::carryless_mul);
+        }
+
+        will_not_use_fallback
     }
 
     fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any> {

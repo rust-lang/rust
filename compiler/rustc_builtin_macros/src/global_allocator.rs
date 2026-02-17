@@ -128,11 +128,15 @@ impl AllocFnFactory<'_, '_> {
 
                 let usize = self.cx.path_ident(self.span, Ident::new(sym::usize, self.span));
                 let ty_usize = self.cx.ty_path(usize);
-                args.push(self.cx.param(self.span, size, ty_usize.clone()));
-                args.push(self.cx.param(self.span, align, ty_usize));
+                args.push(self.cx.param(self.span, size, ty_usize));
+                let ty_align = self.ptr_alignment();
+                args.push(self.cx.param(self.span, align, ty_align));
 
-                let layout_new =
-                    self.cx.std_path(&[sym::alloc, sym::Layout, sym::from_size_align_unchecked]);
+                let layout_new = self.cx.std_path(&[
+                    sym::alloc,
+                    sym::Layout,
+                    sym::from_size_alignment_unchecked,
+                ]);
                 let layout_new = self.cx.expr_path(self.cx.path(self.span, layout_new));
                 let size = self.cx.expr_ident(self.span, size);
                 let align = self.cx.expr_ident(self.span, align);
@@ -173,6 +177,12 @@ impl AllocFnFactory<'_, '_> {
     fn usize(&self) -> Box<Ty> {
         let usize = self.cx.path_ident(self.span, Ident::new(sym::usize, self.span));
         self.cx.ty_path(usize)
+    }
+
+    fn ptr_alignment(&self) -> Box<Ty> {
+        let path = self.cx.std_path(&[sym::ptr, sym::Alignment]);
+        let path = self.cx.path(self.span, path);
+        self.cx.ty_path(path)
     }
 
     fn ptr_u8(&self) -> Box<Ty> {

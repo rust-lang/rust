@@ -27,7 +27,7 @@ use rustc_hir::{
     Attribute, ImplItemKind, ItemKind as HirItem, Node as HirNode, TraitItemKind, find_attr,
     intravisit,
 };
-use rustc_middle::dep_graph::{DepNode, DepNodeExt, dep_kind_from_label, label_strs};
+use rustc_middle::dep_graph::{DepNode, dep_kind_from_label, label_strs};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, Symbol};

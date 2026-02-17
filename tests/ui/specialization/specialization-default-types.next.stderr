@@ -20,6 +20,8 @@ LL |         Box::new(self)
    |
    = note: expected associated type `<T as Example>::Output`
                        found struct `Box<T>`
+   = note: the associated type `<T as Example>::Output` is defined as `Box<T>` in the implementation, but the where-bound `T` shadows this definition
+           see issue #152409 <https://github.com/rust-lang/rust/issues/152409> for more information
 
 error[E0308]: mismatched types
   --> $DIR/specialization-default-types.rs:29:5
@@ -33,6 +35,8 @@ LL |     Example::generate(t)
            found associated type `<T as Example>::Output`
    = help: consider constraining the associated type `<T as Example>::Output` to `Box<T>`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+   = note: the associated type `<T as Example>::Output` is defined as `Box<T>` in the implementation, but the where-bound `T` shadows this definition
+           see issue #152409 <https://github.com/rust-lang/rust/issues/152409> for more information
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

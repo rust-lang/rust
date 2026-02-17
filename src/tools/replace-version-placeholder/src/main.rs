@@ -16,7 +16,7 @@ fn main() {
             &root_path.join("src/doc/rustc"),
             &root_path.join("src/doc/rustdoc"),
         ],
-        |path, _is_dir| walk::filter_dirs(path),
+        |path, _is_dir| filter_dirs(path),
         &mut |entry, contents| {
             if !contents.contains(VERSION_PLACEHOLDER) {
                 return;
@@ -26,4 +26,10 @@ fn main() {
             t!(std::fs::write(&path, new_contents), path);
         },
     );
+}
+
+fn filter_dirs(path: &std::path::Path) -> bool {
+    // tidy would skip some paths that we do want to process
+    let allow = ["library/stdarch"];
+    walk::filter_dirs(path) && !allow.iter().any(|p| path.ends_with(p))
 }

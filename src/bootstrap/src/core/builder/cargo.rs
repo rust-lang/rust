@@ -999,8 +999,18 @@ impl Builder<'_> {
             cargo.env("UPDATE_EXPECT", "1");
         }
 
-        if !mode.is_tool() {
-            cargo.env("RUSTC_FORCE_UNSTABLE", "1");
+        // Set an environment variable that tells the rustc/rustdoc wrapper
+        // binary to pass `-Zforce-unstable-if-unmarked` to the real compiler.
+        match mode {
+            // Any library crate that's part of the sysroot should be marked unstable
+            // (including third-party dependencies), unless it uses a staged_api
+            // `#![stable(..)]` attribute to explicitly mark itself stable.
+            Mode::Std | Mode::Codegen | Mode::Rustc => {
+                cargo.env("RUSTC_FORCE_UNSTABLE", "1");
+            }
+
+            // For everything else, crate stability shouldn't matter, so don't set a flag.
+            Mode::ToolBootstrap | Mode::ToolRustcPrivate | Mode::ToolStd | Mode::ToolTarget => {}
         }
 
         if let Some(x) = self.crt_static(target) {

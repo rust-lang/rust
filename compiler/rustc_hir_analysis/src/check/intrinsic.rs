@@ -77,11 +77,11 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::autodiff
         | sym::bitreverse
         | sym::black_box
-        | sym::box_new
         | sym::breakpoint
         | sym::bswap
         | sym::caller_location
         | sym::carrying_mul_add
+        | sym::carryless_mul
         | sym::ceilf16
         | sym::ceilf32
         | sym::ceilf64
@@ -222,6 +222,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::wrapping_add
         | sym::wrapping_mul
         | sym::wrapping_sub
+        | sym::write_box_via_move
         // tidy-alphabetical-end
         => hir::Safety::Safe,
         _ => hir::Safety::Unsafe,
@@ -564,6 +565,7 @@ pub(crate) fn check_intrinsic_type(
             (1, 0, vec![param(0), param(0)], param(0))
         }
         sym::saturating_add | sym::saturating_sub => (1, 0, vec![param(0), param(0)], param(0)),
+        sym::carryless_mul => (1, 0, vec![param(0), param(0)], param(0)),
         sym::fadd_fast | sym::fsub_fast | sym::fmul_fast | sym::fdiv_fast | sym::frem_fast => {
             (1, 0, vec![param(0), param(0)], param(0))
         }
@@ -581,6 +583,13 @@ pub(crate) fn check_intrinsic_type(
         sym::read_via_copy => (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(0)),
         sym::write_via_move => {
             (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit)
+        }
+        sym::write_box_via_move => {
+            let t = param(0);
+            let maybe_uninit_t = Ty::new_maybe_uninit(tcx, t);
+            let box_mu_t = Ty::new_box(tcx, maybe_uninit_t);
+
+            (1, 0, vec![box_mu_t, param(0)], box_mu_t)
         }
 
         sym::typed_swap_nonoverlapping => {
@@ -687,8 +696,6 @@ pub(crate) fn check_intrinsic_type(
 
         sym::ub_checks | sym::overflow_checks => (0, 0, Vec::new(), tcx.types.bool),
 
-        sym::box_new => (1, 0, vec![param(0)], Ty::new_box(tcx, param(0))),
-
         // contract_check_requires::<C>(C) -> bool, where C: impl Fn() -> bool
         sym::contract_check_requires => (1, 0, vec![param(0)], tcx.types.unit),
         sym::contract_check_ensures => {
@@ -711,7 +718,8 @@ pub(crate) fn check_intrinsic_type(
         | sym::simd_fmin
         | sym::simd_fmax
         | sym::simd_saturating_add
-        | sym::simd_saturating_sub => (1, 0, vec![param(0), param(0)], param(0)),
+        | sym::simd_saturating_sub
+        | sym::simd_carryless_mul => (1, 0, vec![param(0), param(0)], param(0)),
         sym::simd_arith_offset => (2, 0, vec![param(0), param(1)], param(0)),
         sym::simd_neg
         | sym::simd_bswap

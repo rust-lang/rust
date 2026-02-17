@@ -1178,6 +1178,30 @@ impl<S: Stage> SingleAttributeParser<S> for RustcDiagnosticItemParser {
     }
 }
 
+pub(crate) struct RustcDoNotConstCheckParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcDoNotConstCheckParser {
+    const PATH: &[Symbol] = &[sym::rustc_do_not_const_check];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDoNotConstCheck;
+}
+
+pub(crate) struct RustcNonnullOptimizationGuaranteedParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcNonnullOptimizationGuaranteedParser {
+    const PATH: &[Symbol] = &[sym::rustc_nonnull_optimization_guaranteed];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNonnullOptimizationGuaranteed;
+}
+
 pub(crate) struct RustcSymbolName;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcSymbolName {

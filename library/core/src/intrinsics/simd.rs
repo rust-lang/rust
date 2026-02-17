@@ -162,6 +162,18 @@ pub const unsafe fn simd_funnel_shl<T>(a: T, b: T, shift: T) -> T;
 #[rustc_nounwind]
 pub const unsafe fn simd_funnel_shr<T>(a: T, b: T, shift: T) -> T;
 
+/// Compute the carry-less product.
+///
+/// This is similar to long multiplication except that the carry is discarded.
+///
+/// This operation can be used to model multiplication in `GF(2)[X]`, the polynomial
+/// ring over `GF(2)`.
+///
+/// `T` must be a vector of integers.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn simd_carryless_mul<T>(a: T, b: T) -> T;
+
 /// "And"s vectors elementwise.
 ///
 /// `T` must be a vector of integers.

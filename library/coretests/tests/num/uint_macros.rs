@@ -117,6 +117,13 @@ macro_rules! uint_module {
                 assert_eq_const_safe!($T: <$T>::funnel_shr(_1, _1, 4), <$T>::rotate_right(_1, 4));
             }
 
+            fn test_carryless_mul() {
+                assert_eq_const_safe!($T: <$T>::carryless_mul(0, 0), 0);
+                assert_eq_const_safe!($T: <$T>::carryless_mul(1, 1), 1);
+
+                assert_eq_const_safe!($T: <$T>::carryless_mul(0b0100, 2), 0b1000);
+            }
+
             fn test_swap_bytes() {
                 assert_eq_const_safe!($T: A.swap_bytes().swap_bytes(), A);
                 assert_eq_const_safe!($T: B.swap_bytes().swap_bytes(), B);

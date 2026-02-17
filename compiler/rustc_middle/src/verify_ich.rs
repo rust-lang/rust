@@ -4,20 +4,19 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_query_system::ich::StableHashingContext;
 use tracing::instrument;
 
-use crate::dep_graph::{DepContext, DepGraphData, SerializedDepNodeIndex};
+use crate::dep_graph::{DepGraphData, SerializedDepNodeIndex};
+use crate::ty::TyCtxt;
 
 #[inline]
 #[instrument(skip(tcx, dep_graph_data, result, hash_result, format_value), level = "debug")]
-pub fn incremental_verify_ich<Tcx, V>(
-    tcx: Tcx,
-    dep_graph_data: &DepGraphData<Tcx::Deps>,
+pub fn incremental_verify_ich<'tcx, V>(
+    tcx: TyCtxt<'tcx>,
+    dep_graph_data: &DepGraphData,
     result: &V,
     prev_index: SerializedDepNodeIndex,
     hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
     format_value: fn(&V) -> String,
-) where
-    Tcx: DepContext,
-{
+) {
     if !dep_graph_data.is_index_green(prev_index) {
         incremental_verify_ich_not_green(tcx, prev_index)
     }
@@ -35,13 +34,10 @@ pub fn incremental_verify_ich<Tcx, V>(
 
 #[cold]
 #[inline(never)]
-fn incremental_verify_ich_not_green<Tcx>(tcx: Tcx, prev_index: SerializedDepNodeIndex)
-where
-    Tcx: DepContext,
-{
+fn incremental_verify_ich_not_green<'tcx>(tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) {
     panic!(
         "fingerprint for green query instance not loaded from cache: {:?}",
-        tcx.dep_graph().data().unwrap().prev_node_of(prev_index)
+        tcx.dep_graph.data().unwrap().prev_node_of(prev_index)
     )
 }
 
@@ -50,13 +46,11 @@ where
 // chew on (and filling up the final binary, too).
 #[cold]
 #[inline(never)]
-fn incremental_verify_ich_failed<Tcx>(
-    tcx: Tcx,
+fn incremental_verify_ich_failed<'tcx>(
+    tcx: TyCtxt<'tcx>,
     prev_index: SerializedDepNodeIndex,
     result: &dyn Fn() -> String,
-) where
-    Tcx: DepContext,
-{
+) {
     // When we emit an error message and panic, we try to debug-print the `DepNode`
     // and query result. Unfortunately, this can cause us to run additional queries,
     // which may result in another fingerprint mismatch while we're in the middle
@@ -70,16 +64,16 @@ fn incremental_verify_ich_failed<Tcx>(
     let old_in_panic = INSIDE_VERIFY_PANIC.replace(true);
 
     if old_in_panic {
-        tcx.sess().dcx().emit_err(crate::error::Reentrant);
+        tcx.dcx().emit_err(crate::error::Reentrant);
     } else {
-        let run_cmd = if let Some(crate_name) = &tcx.sess().opts.crate_name {
+        let run_cmd = if let Some(crate_name) = &tcx.sess.opts.crate_name {
             format!("`cargo clean -p {crate_name}` or `cargo clean`")
         } else {
             "`cargo clean`".to_string()
         };
 
-        let dep_node = tcx.dep_graph().data().unwrap().prev_node_of(prev_index);
-        tcx.sess().dcx().emit_err(crate::error::IncrementCompilation {
+        let dep_node = tcx.dep_graph.data().unwrap().prev_node_of(prev_index);
+        tcx.dcx().emit_err(crate::error::IncrementCompilation {
             run_cmd,
             dep_node: format!("{dep_node:?}"),
         });

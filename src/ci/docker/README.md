@@ -231,25 +231,9 @@ For targets: `armv7-unknown-linux-gnueabihf`
     libraries like jemalloc. See the mk/cfg/arm(v7)-unknown-linux-gnueabi{,hf}.mk
     file in Rust's source code.
 
-### `aarch64-linux-gnu.defconfig`
-
-For targets: `aarch64-unknown-linux-gnu`
-
-- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
-- Path and misc options > Use a mirror = ENABLE
-- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
-- Target options > Target Architecture = arm
-- Target options > Bitness = 64-bit
-- Operating System > Target OS = linux
-- Operating System > Linux kernel version = 4.1.49
-- Binary utilities > Version of binutils = 2.29.1
-- C-library > glibc version = 2.17 -- aarch64 support was introduced in this version
-- C compiler > gcc version = 13.2.0
-- C compiler > C++ = ENABLE -- to cross compile LLVM
-
 ### `i586-linux-gnu.defconfig`
 
-For targets: `i586-unknown-linux-gnu`
+For targets: `i586-unknown-linux-gnu`, `i586-unknown-linux-musl` and `i686-unknown-linux-musl`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Target options > Target Architecture = x86
@@ -266,7 +250,7 @@ For targets: `i586-unknown-linux-gnu`
 (\*) Compressed debug is enabled by default for gas (assembly) on Linux/x86 targets,
      but that makes our `compiler_builtins` incompatible with binutils < 2.32.
 
-### `loongarch64-linux-gnu.defconfig`
+### `loongarch64-unknown-linux-gnu.defconfig`
 
 For targets: `loongarch64-unknown-linux-gnu`
 
@@ -282,7 +266,7 @@ For targets: `loongarch64-unknown-linux-gnu`
 - C compiler > gcc version = 14.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
-### `loongarch64-linux-musl.defconfig`
+### `loongarch64-unknown-linux-musl.defconfig`
 
 For targets: `loongarch64-unknown-linux-musl`
 
@@ -412,6 +396,56 @@ For targets: `powerpc64-unknown-linux-gnu`
 
 (+) These CPU options match the configuration of the toolchains in RHEL6.
 
+### `powerpc64-unknown-linux-musl.defconfig`
+
+For targets: `powerpc64-unknown-linux-musl`
+
+- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Target options > Target Architecture = powerpc
+- Target options > Bitness = 64-bit
+- Operating System > Target OS = linux
+- Operating System > Linux kernel version = 4.19
+- Binary utilities > Version of binutils = 2.42
+- C-library > musl version = 1.2.5
+- C compiler > gcc version = 14.2.0
+- C compiler > C++ = ENABLE -- to cross compile LLVM
+
+### `powerpc64le-unknown-linux-gnu.defconfig`
+
+For targets: `powerpc64le-unknown-linux-gnu`
+
+- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Target options > Target Architecture = powerpc
+- Target options > Bitness = 64-bit
+- Target options > Endianness = Little endian
+- Operating System > Target OS = linux
+- Operating System > Linux kernel version = 3.10
+- Binary utilities > Version of binutils = 2.42
+- C-library > glibc version = 2.17
+- C compiler > gcc version = 14.2.0
+- C compiler > C++ = ENABLE -- to cross compile LLVM
+
+### `powerpc64le-unknown-linux-musl.defconfig`
+
+For targets: `powerpc64le-unknown-linux-musl`
+
+- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Target options > Target Architecture = powerpc
+- Target options > Bitness = 64-bit
+- Target options > Endianness = Little endian
+- Operating System > Target OS = linux
+- Operating System > Linux kernel version = 4.19
+- Binary utilities > Version of binutils = 2.42
+- C-library > musl version = 1.2.5
+- C compiler > gcc version = 14.2.0
+- C compiler > C++ = ENABLE -- to cross compile LLVM
+
 ### `riscv64-unknown-linux-gnu.defconfig`
 
 For targets: `riscv64-unknown-linux-gnu`
@@ -423,7 +457,7 @@ For targets: `riscv64-unknown-linux-gnu`
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 4.20.17
-- Binary utilities > Version of binutils = 2.36.1
+- Binary utilities > Version of binutils = 2.40
 - C-library > glibc version = 2.29
 - C compiler > gcc version = 8.5.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM

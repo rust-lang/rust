@@ -158,6 +158,9 @@ pub struct Session {
     /// The names of intrinsics that the current codegen backend replaces
     /// with its own implementations.
     pub replaced_intrinsics: FxHashSet<Symbol>,
+
+    /// Does the codegen backend support ThinLTO?
+    pub thin_lto_supported: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -606,8 +609,17 @@ impl Session {
             }
             config::LtoCli::Thin => {
                 // The user explicitly asked for ThinLTO
+                if !self.thin_lto_supported {
+                    // Backend doesn't support ThinLTO, disable LTO.
+                    self.dcx().emit_warn(errors::ThinLtoNotSupportedByBackend);
+                    return config::Lto::No;
+                }
                 return config::Lto::Thin;
             }
+        }
+
+        if !self.thin_lto_supported {
+            return config::Lto::No;
         }
 
         // Ok at this point the target doesn't require anything and the user
@@ -1088,6 +1100,7 @@ pub fn build_session(
         host_filesearch,
         invocation_temp,
         replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
+        thin_lto_supported: true,                  // filled by `run_compiler`
     };
 
     validate_commandline_args_with_session_available(&sess);

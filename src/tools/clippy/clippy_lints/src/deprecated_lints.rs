@@ -123,7 +123,7 @@ declare_with_version! { RENAMED(RENAMED_VERSION) = [
     ("clippy::into_iter_on_array", "array_into_iter"),
     #[clippy::version = ""]
     ("clippy::invalid_atomic_ordering", "invalid_atomic_ordering"),
-    #[clippy::version = "CURRENT_RUSTC_VERSION"]
+    #[clippy::version = "1.88.0"]
     ("clippy::invalid_null_ptr_usage", "invalid_null_arguments"),
     #[clippy::version = ""]
     ("clippy::invalid_ref", "invalid_value"),

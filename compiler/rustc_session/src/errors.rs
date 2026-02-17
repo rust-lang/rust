@@ -537,3 +537,7 @@ pub(crate) struct UnexpectedBuiltinCfg {
     pub(crate) cfg_name: Symbol,
     pub(crate) controlled_by: &'static str,
 }
+
+#[derive(Diagnostic)]
+#[diag("ThinLTO is not supported by the codegen backend")]
+pub(crate) struct ThinLtoNotSupportedByBackend;

@@ -89,15 +89,15 @@ fn send_before_recv_timeout() {
 
     assert!(sender.send(22i128).is_ok());
 
-    let start = Instant::now();
-
     let timeout = Duration::from_secs(1);
     match receiver.recv_timeout(timeout) {
         Ok(22) => {}
         _ => panic!("expected Ok(22)"),
     }
 
-    assert!(start.elapsed() < timeout);
+    // FIXME(#152648): There previously was a timing assertion here.
+    // This was removed, because under load there's no guarantee that the main thread is
+    // scheduled and run before `timeout` expires
 }
 
 #[test]

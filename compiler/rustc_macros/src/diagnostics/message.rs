@@ -101,6 +101,7 @@ const ALLOWED_CAPITALIZED_WORDS: &[&str] = &[
     "NaNs",
     "OK",
     "Rust",
+    "ThinLTO",
     "Unicode",
     "VS",
     // tidy-alphabetical-end

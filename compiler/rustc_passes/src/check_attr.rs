@@ -310,6 +310,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDenyExplicitImpl(..)
                     | AttributeKind::RustcDeprecatedSafe2024 {..}
                     | AttributeKind::RustcDiagnosticItem(..)
+                    | AttributeKind::RustcDoNotConstCheck
                     | AttributeKind::RustcDummy
                     | AttributeKind::RustcDumpDefParents
                     | AttributeKind::RustcDumpItemBounds
@@ -341,6 +342,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcNoImplicitBounds
                     | AttributeKind::RustcNoMirInline
                     | AttributeKind::RustcNonConstTraitMethod
+                    | AttributeKind::RustcNonnullOptimizationGuaranteed
                     | AttributeKind::RustcNounwind
                     | AttributeKind::RustcObjcClass { .. }
                     | AttributeKind::RustcObjcSelector { .. }
@@ -398,10 +400,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::forbid
                             // internal
                             | sym::default_lib_allocator
-                            | sym::rustc_nonnull_optimization_guaranteed
                             | sym::rustc_inherit_overflow_checks
                             | sym::rustc_on_unimplemented
-                            | sym::rustc_do_not_const_check
                             | sym::rustc_doc_primitive
                             | sym::rustc_layout
                             | sym::rustc_autodiff
