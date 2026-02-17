@@ -5,6 +5,7 @@ use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRes, PerNS};
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::Visibility;
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
@@ -492,6 +493,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             }
                             Some(Finalize { import_vis, .. }) => import_vis,
                         };
+                        this.get_mut().maybe_push_glob_vs_glob_vis_ambiguity(
+                            ident,
+                            orig_ident_span,
+                            decl,
+                            import_vis,
+                        );
 
                         if let Some(&(innermost_decl, _)) = innermost_results.first() {
                             // Found another solution, if the first one was "weak", report an error.
@@ -772,6 +779,30 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         ret.map_err(ControlFlow::Continue)
+    }
+
+    fn maybe_push_glob_vs_glob_vis_ambiguity(
+        &mut self,
+        ident: IdentKey,
+        orig_ident_span: Span,
+        decl: Decl<'ra>,
+        import_vis: Option<Visibility>,
+    ) {
+        let Some(import_vis) = import_vis else { return };
+        let min = |vis: Visibility<DefId>| vis.min(import_vis.to_def_id(), self.tcx).expect_local();
+        let (min1, min2) = (min(decl.vis()), min(decl.min_vis()));
+        if min1 != min2 {
+            self.ambiguity_errors.push(AmbiguityError {
+                kind: AmbiguityKind::GlobVsGlob,
+                ambig_vis: Some((min1, min2)),
+                ident: ident.orig(orig_ident_span),
+                b1: decl.ambiguity_vis_max.get().unwrap_or(decl),
+                b2: decl.ambiguity_vis_min.get().unwrap_or(decl),
+                scope1: Scope::ModuleGlobs(decl.parent_module.unwrap(), None),
+                scope2: Scope::ModuleGlobs(decl.parent_module.unwrap(), None),
+                warning: Some(AmbiguityWarning::GlobImport),
+            });
+        }
     }
 
     fn maybe_push_ambiguity(
