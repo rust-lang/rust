@@ -458,7 +458,7 @@ pub struct ConditionOptions {
     pub self_types: Vec<String>,
     // The kind of compiler desugaring.
     pub from_desugaring: Option<DesugaringKind>,
-    /// Match on a variant of [rustc_infer::traits::ObligationCauseCode].
+    /// Match on a variant of rustc_infer's `ObligationCauseCode`.
     pub cause: Option<String>,
     pub crate_local: bool,
     /// Is the obligation "directly" user-specified, rather than derived?
