@@ -20,6 +20,10 @@ impl OnUnimplementedParser {
     ) {
         let span = cx.attr_span;
         self.span = Some(span);
+
+        // If target is not a trait, returning early will make `finalize` emit a
+        // `AttributeKind::OnUnimplemented {span, directive: None }`, to prevent it being
+        // accidentally used on non-trait items like trait aliases.
         if !matches!(cx.target, Target::Trait) {
             // Lint later emitted in check_attr
             return;
