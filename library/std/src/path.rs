@@ -3308,9 +3308,145 @@ impl Path {
         fs::canonicalize(self)
     }
 
-    /// Normalize a path, including `..` without traversing the filesystem.
+    /// Does the path represent an absolute child of the current location? Path components are
+    /// evaluated naïvely with no filesystem traversal, so a "bounded" path may still be able to
+    /// escape the working directory when applied to the filesystem.
     ///
-    /// Returns an error if normalization would leave leading `..` components.
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(normalize_lexically)]
+    /// use std::path::Path;
+    ///
+    /// assert!(Path::new("").is_lexically_bounded());
+    /// assert!(Path::new(".").is_lexically_bounded());
+    /// assert!(Path::new("abc").is_lexically_bounded());
+    /// assert!(Path::new("abc/../def").is_lexically_bounded());
+    ///
+    /// assert!(!Path::new("..").is_lexically_bounded());
+    /// assert!(!Path::new("abc/../../def").is_lexically_bounded());
+    /// assert!(!Path::new("/abc").is_lexically_bounded());
+    /// ```
+    #[unstable(feature = "normalize_lexically", issue = "134694")]
+    pub fn is_lexically_bounded(&self) -> bool {
+        use Component::*;
+
+        self.components()
+            .try_fold(0usize, |depth, component| match component {
+                Prefix(_) | RootDir => None,
+                CurDir => Some(depth),
+                Normal(_) => Some(depth + 1),
+                ParentDir => depth.checked_sub(1),
+            })
+            .is_some()
+    }
+
+    /// Is the path normalized, ie. expressed in simplest possible terms? A normalized path:
+    ///
+    /// * Starts with either
+    ///   * a prefix followed by root (`C:\`); or
+    ///   * a prefix (`C:`); or
+    ///   * root (`/`); or
+    ///   * `.`; or
+    ///   * zero or more `..`
+    /// * Continues with zero or more normal segments (`abc`)
+    /// * Contains only the primary platform separator, if applicable (eg. only `\\` rather than
+    ///   `/` on Windows)
+    /// * Contains no repeated separators
+    /// * Does not end with a separator unless as part of the prefix
+    ///
+    /// # Examples
+    ///
+    /// TODO: examples for non-*nix platforms
+    ///
+    /// ```
+    /// #![feature(normalize_lexically)]
+    /// use std::path::Path;
+    ///
+    /// assert!(!Path::new(".//abc/def").is_normalized());
+    ///
+    /// assert!(Path::new("").is_normalized());
+    /// assert!(Path::new(".").is_normalized());
+    /// assert!(Path::new("abc").is_normalized());
+    /// assert!(Path::new("./abc").is_normalized());
+    /// assert!(Path::new("../../abc").is_normalized());
+    /// assert!(Path::new("/").is_normalized());
+    ///
+    /// assert!(!Path::new("abc/../def").is_normalized());
+    /// assert!(!Path::new("//abc").is_normalized());
+    /// assert!(!Path::new(".//abc").is_normalized());
+    /// assert!(!Path::new("//").is_normalized());
+    /// assert!(!Path::new("/../abc").is_normalized());
+    /// assert!(!Path::new("abc/./def").is_normalized());
+    /// assert!(!Path::new("abc/").is_normalized());
+    /// assert!(!Path::new("abc/.").is_normalized());
+    /// assert!(!Path::new("./").is_normalized());
+    /// assert!(!Path::new("/.").is_normalized());
+    /// ```
+    #[unstable(feature = "normalize_lexically", issue = "134694")]
+    pub fn is_normalized(&self) -> bool {
+        use Component::*;
+
+        // TODO: This can be compiled out on platforms that only recognize one separator and can be
+        // optimized on platforms with two.
+        // See: https://github.com/rust-lang/libs-team/issues/744
+        if self.as_u8_slice().iter().any(|&b| is_sep_byte(b) && b != MAIN_SEPARATOR as u8) {
+            return false;
+        }
+
+        let mut components = self.components();
+        let Some(first) = components.next() else {
+            return true;
+        };
+
+        if !match first {
+            Prefix(_) => {
+                components.skip_while(|c| matches!(c, RootDir)).all(|c| matches!(c, Normal(_)))
+            }
+            RootDir | CurDir | Normal(_) => components.all(|c| matches!(c, Normal(_))),
+            ParentDir => {
+                components.skip_while(|c| matches!(c, ParentDir)).all(|c| matches!(c, Normal(_)))
+            }
+        } {
+            return false;
+        }
+
+        // TODO: Checking for the component iterator silently dropping repeated separators or
+        // current directory components can be done inline with the previous pass and should maybe
+        // be done without hooking into the iterator internals.
+        components = self.components(); // restart the iterator
+        let mut prev = None;
+        while components.front < State::Body {
+            prev = components.next().or(prev);
+        }
+
+        let mut is_consecutive_empty = false;
+        while !components.path.is_empty() {
+            // This is how the iterator internally communicates skipping a component
+            let (len, component) = components.parse_next_component();
+            if component.is_some() {
+                is_consecutive_empty = false;
+                prev = component;
+            } else {
+                if prev != Some(CurDir) || is_consecutive_empty {
+                    return false;
+                }
+                is_consecutive_empty = true;
+            }
+            components.path = &components.path[len..];
+        }
+
+        if let Some(prev) = prev && !self.as_u8_slice().ends_with(prev.as_os_str().as_encoded_bytes()) {
+            return false;
+        }
+
+        true
+    }
+
+    /// Normalize a path, including `..` without traversing the filesystem. Any remaining `..`
+    /// components that can't be normalized are collected at the beginning of the path. Returns
+    /// [`Cow::Borrowed`] if the path is already normalized, otherwise [`Cow::Owned`] containing
+    /// the normalized form in a [`PathBuf`].
     ///
     /// <div class="warning">
     ///
@@ -3320,10 +3456,41 @@ impl Path {
     ///
     /// </div>
     ///
-    /// [`path::absolute`](absolute) is an alternative that preserves `..`.
-    /// Or [`Path::canonicalize`] can be used to resolve any `..` by querying the filesystem.
+    /// # Alternatives
+    ///
+    /// * [`path::absolute`](absolute) is an alternative that preserves `..`.
+    /// * [`canonicalize`] can be used to resolve any `..` by querying the filesystem.
+    /// * [`is_normalized`] checks if the `Path` is already in normalized form.
+    /// * [`is_lexically_bounded`] checks if the `Path` escapes the current directory using `..` or
+    ///   absolute paths, but does not query the filesystem and so cannot account for symbolic
+    ///   links.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(normalize_lexically)]
+    /// use std::path::Path;
+    ///
+    /// assert_eq!("def", Path::new("abc/../def").normalize_lexically().as_ref());
+    /// assert_eq!("../def", Path::new("abc/../../def").normalize_lexically().as_ref());
+    /// assert_eq!(".", Path::new("abc/..").normalize_lexically().as_ref());
+    /// assert_eq!("./abc/def", Path::new(".//abc/./def/").normalize_lexically().as_ref());
+    /// assert_eq!("", Path::new("").normalize_lexically().as_ref());
+    /// assert_eq!("/", Path::new("/").normalize_lexically().as_ref());
+    /// assert_eq!("/", Path::new("/..").normalize_lexically().as_ref());
+    /// ```
     #[unstable(feature = "normalize_lexically", issue = "134694")]
-    pub fn normalize_lexically(&self) -> Result<PathBuf, NormalizeError> {
+    pub fn normalize_lexically(&self) -> Cow<'_, Path> {
+        if self.is_normalized() {
+            Cow::Borrowed(self)
+        } else {
+            Cow::Owned(self.normalize_lexically_internal())
+        }
+    }
+
+    /// Owned logic for [`normalize_lexically`] is split into its own method to facilitate testing
+    /// of [`is_normalized`].
+    fn normalize_lexically_internal(&self) -> PathBuf {
         let mut lexical = PathBuf::new();
         let mut iter = self.components().peekable();
 
@@ -3331,7 +3498,6 @@ impl Path {
         // Here we treat the Windows path "C:\" as a single "root" even though
         // `components` splits it into two: (Prefix, RootDir).
         let root = match iter.peek() {
-            Some(Component::ParentDir) => return Err(NormalizeError),
             Some(p @ Component::RootDir) | Some(p @ Component::CurDir) => {
                 lexical.push(p);
                 iter.next();
@@ -3346,27 +3512,41 @@ impl Path {
                 }
                 lexical.as_os_str().len()
             }
-            None => return Ok(PathBuf::new()),
-            Some(Component::Normal(_)) => 0,
+            Some(Component::ParentDir) | Some(Component::Normal(_)) => 0,
+
+            // This will not happen in production code because an empty path satisfies
+            // `is_normalized`.
+            None => return lexical,
         };
 
+        let mut depth = 0usize;
         for component in iter {
             match component {
-                Component::RootDir => unreachable!(),
-                Component::Prefix(_) => return Err(NormalizeError),
-                Component::CurDir => continue,
-                Component::ParentDir => {
-                    // It's an error if ParentDir causes us to go above the "root".
-                    if lexical.as_os_str().len() == root {
-                        return Err(NormalizeError);
-                    } else {
+                c @ Component::ParentDir => {
+                    if depth > 0 {
                         lexical.pop();
+                        depth -= 1;
+                    } else if root == 0 {
+                        lexical.push(c);
                     }
                 }
-                Component::Normal(path) => lexical.push(path),
+                Component::Normal(path) => {
+                    lexical.push(path);
+                    depth += 1;
+                }
+                Component::CurDir | Component::RootDir | Component::Prefix(_) => unreachable!(
+                    "these components should have been consumed while handling the prefix"
+                ),
             }
         }
-        Ok(lexical)
+
+        // An empty input satisfies `is_normalized`, so the only way to arrive here empty-handed is
+        // when given an input that resolves to the current directory, eg. "abc/..".
+        if lexical.as_os_str().is_empty() {
+            lexical.push(Component::CurDir);
+        }
+
+        lexical
     }
 
     /// Reads a symbolic link, returning the file that the link points to.
