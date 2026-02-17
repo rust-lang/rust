@@ -4,7 +4,6 @@ use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
-use crate::attributes::template;
 
 #[derive(Default)]
 pub(crate) struct OnConstParser {
