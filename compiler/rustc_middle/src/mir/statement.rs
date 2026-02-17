@@ -442,10 +442,20 @@ impl<'tcx> Place<'tcx> {
         tcx: TyCtxt<'tcx>,
     ) -> Self {
         let ty = self.ty(local_decls, tcx).ty;
-        let ty::Adt(adt, args) = ty.kind() else { panic!("projecting to field of non-ADT {ty}") };
-        let field = &adt.non_enum_variant().fields[idx];
-        let field_ty = field.ty(tcx, args);
-        self.project_deeper(&[ProjectionElem::Field(idx, field_ty)], tcx)
+        match ty.kind() {
+            ty::Adt(adt, args) => {
+                let field = &adt.non_enum_variant().fields[idx];
+                let field_ty = field.ty(tcx, args);
+                self.project_deeper(&[ProjectionElem::Field(idx, field_ty)], tcx)
+            }
+            ty::Tuple(tys) => {
+                let Some(&field_ty) = tys.get(idx.index()) else {
+                    bug!("projecting out-of-bound on {ty} into field {}", idx.as_u32())
+                };
+                self.project_deeper(&[ProjectionElem::Field(idx, field_ty)], tcx)
+            }
+            _ => bug!("projecting to field of non-ADT {ty}"),
+        }
     }
 
     pub fn ty_from<D>(

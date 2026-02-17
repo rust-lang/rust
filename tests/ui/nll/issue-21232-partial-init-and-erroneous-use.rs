@@ -1,3 +1,7 @@
+//@ revisions: classic partial_init
+
+#![cfg_attr(partial_init, feature(partial_init_locals))]
+
 // This test enumerates various cases of interest where an ADT or tuple is
 // partially initialized and then used in some way that is wrong *even*
 // after rust-lang/rust#54987 is implemented.
@@ -18,23 +22,24 @@ struct S {
     z: u32,
 }
 
-
 impl Drop for D {
-    fn drop(&mut self) { }
+    fn drop(&mut self) {}
 }
 
 fn cannot_partially_init_adt_with_drop() {
     let d: D;
     d.x = 10; //~ ERROR E0381
+    //[classic]~^ ERROR E0658
 }
 
 fn cannot_partially_init_mutable_adt_with_drop() {
     let mut d: D;
     d.x = 10; //~ ERROR E0381
+    //[classic]~^ ERROR E0658
 }
 
 fn cannot_partially_reinit_adt_with_drop() {
-    let mut d = D { x: 0, s: S{ y: 0, z: 0 } };
+    let mut d = D { x: 0, s: S { y: 0, z: 0 } };
     drop(d);
     d.x = 10;
     //~^ ERROR assign of moved value: `d` [E0382]
@@ -43,18 +48,20 @@ fn cannot_partially_reinit_adt_with_drop() {
 fn cannot_partially_init_inner_adt_via_outer_with_drop() {
     let d: D;
     d.s.y = 20; //~ ERROR E0381
+    //[classic]~^ ERROR E0658
 }
 
 fn cannot_partially_init_inner_adt_via_mutable_outer_with_drop() {
     let mut d: D;
     d.s.y = 20; //~ ERROR E0381
+    //[classic]~^ ERROR E0658
 }
 
 fn cannot_partially_reinit_inner_adt_via_outer_with_drop() {
-    let mut d = D { x: 0, s: S{ y: 0, z: 0} };
+    let mut d = D { x: 0, s: S { y: 0, z: 0 } };
     drop(d);
-    d.s.y = 20;
-    //~^ ERROR assign to part of moved value: `d` [E0382]
+    d.s.y = 20; //[classic]~ ERROR assign to part of moved value: `d` [E0382]
+    //[partial_init]~^ ERROR assign of moved value: `d` [E0382]
 }
 
-fn main() { }
+fn main() {}
