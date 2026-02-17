@@ -371,8 +371,17 @@ fn remove_same_import<'ra>(d1: Decl<'ra>, d2: Decl<'ra>) -> (Decl<'ra>, Decl<'ra
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn import_decl_vis(&self, decl: Decl<'ra>, import: ImportSummary) -> Visibility {
+        self.import_decl_vis_ext(decl, import, false)
+    }
+
+    pub(crate) fn import_decl_vis_ext(
+        &self,
+        decl: Decl<'ra>,
+        import: ImportSummary,
+        min: bool,
+    ) -> Visibility {
         assert!(import.vis.is_accessible_from(import.nearest_parent_mod, self.tcx));
-        let decl_vis = decl.vis();
+        let decl_vis = if min { decl.min_vis() } else { decl.vis() };
         if decl_vis.is_at_least(import.vis, self.tcx) {
             // Ordered, import is less visible than the imported declaration, or the same,
             // use the import's visibility.
@@ -413,7 +422,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ambiguity: CmCell::new(None),
             warn_ambiguity: CmCell::new(false),
             span: import.span,
-            vis: CmCell::new(vis.to_def_id()),
+            initial_vis: vis.to_def_id(),
+            ambiguity_vis_max: CmCell::new(None),
+            ambiguity_vis_min: CmCell::new(None),
             expansion: import.parent_scope.expansion,
             parent_module: Some(import.parent_scope.module),
         })
@@ -438,8 +449,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // - A glob decl is overwritten by its clone after setting ambiguity in it.
         //   FIXME: avoid this by removing `warn_ambiguity`, or by triggering glob re-fetch
         //   with the same decl in some way.
-        // - A glob decl is overwritten by a glob decl with larger visibility.
-        //   FIXME: avoid this by updating this visibility in place.
         // - A glob decl is overwritten by a glob decl re-fetching an
         //   overwritten decl from other module (the recursive case).
         // Here we are detecting all such re-fetches and overwrite old decls
@@ -453,8 +462,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // FIXME: reenable the asserts when `warn_ambiguity` is removed (#149195).
             // assert_ne!(old_deep_decl, deep_decl);
             // assert!(old_deep_decl.is_glob_import());
-            // FIXME: reenable the assert when visibility is updated in place.
-            // assert!(!deep_decl.is_glob_import());
+            assert!(!deep_decl.is_glob_import());
             if old_glob_decl.ambiguity.get().is_some() && glob_decl.ambiguity.get().is_none() {
                 // Do not lose glob ambiguities when re-fetching the glob.
                 glob_decl.ambiguity.set_unchecked(old_glob_decl.ambiguity.get());
@@ -474,12 +482,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // FIXME: remove this when `warn_ambiguity` is removed (#149195).
                 self.arenas.alloc_decl((*old_glob_decl).clone())
             }
-        } else if !old_glob_decl.vis().is_at_least(glob_decl.vis(), self.tcx) {
-            // We are glob-importing the same item but with greater visibility.
+        } else if let old_vis = old_glob_decl.vis()
+            && let vis = glob_decl.vis()
+            && old_vis != vis
+        {
+            // We are glob-importing the same item but with a different visibility.
             // All visibilities here are ordered because all of them are ancestors of `module`.
-            // FIXME: Update visibility in place, but without regressions
-            // (#152004, #151124, #152347).
-            glob_decl
+            if vis.is_at_least(old_vis, self.tcx) {
+                old_glob_decl.ambiguity_vis_max.set_unchecked(Some(glob_decl));
+            } else if let old_min_vis = old_glob_decl.min_vis()
+                && old_min_vis != vis
+                && old_min_vis.is_at_least(vis, self.tcx)
+            {
+                old_glob_decl.ambiguity_vis_min.set_unchecked(Some(glob_decl));
+            }
+            old_glob_decl
         } else if glob_decl.is_ambiguity_recursive() && !old_glob_decl.is_ambiguity_recursive() {
             // Overwriting a non-ambiguous glob import with an ambiguous glob import.
             old_glob_decl.ambiguity.set_unchecked(Some(glob_decl));
@@ -502,6 +519,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Result<(), Decl<'ra>> {
         assert!(!decl.warn_ambiguity.get());
         assert!(decl.ambiguity.get().is_none());
+        assert!(decl.ambiguity_vis_max.get().is_none());
+        assert!(decl.ambiguity_vis_min.get().is_none());
         let module = decl.parent_module.unwrap().expect_local();
         assert!(self.is_accessible_from(decl.vis(), module.to_module()));
         let res = decl.res();
@@ -560,11 +579,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .resolution_or_default(module.to_module(), key, orig_ident_span)
                 .borrow_mut_unchecked();
             let old_decl = resolution.determined_decl();
+            let old_vis = old_decl.map(|d| d.vis());
 
             let t = f(self, resolution);
 
             if let Some(binding) = resolution.determined_decl()
-                && old_decl != Some(binding)
+                && (old_decl != Some(binding) || old_vis != Some(binding.vis()))
             {
                 (binding, t, warn_ambiguity || old_decl.is_some())
             } else {
