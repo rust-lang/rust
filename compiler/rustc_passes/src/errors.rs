@@ -1456,6 +1456,6 @@ pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
     pub argument_name: Symbol,
     pub trait_name: Ident,
     // `false` if we're in rustc_on_unimplemented, since its syntax is a lot more complex.
-    #[help("expect either a generic argument name or {\"`{Self}`\"} as format argument")]
+    #[help(r#"expect either a generic argument name or {"`{Self}`"} as format argument"#)]
     pub help: bool,
 }
