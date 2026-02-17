@@ -1735,6 +1735,10 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
 /// always returns the same value, taking into account even pointer identity tests.
 ///
 /// In other words, this answers: is "cloning" the `Const` ok?
+///
+/// This returns `false` for constants that synthesize new `AllocId` when they are instantiated.
+/// It is `true` for anything else, since a given `AllocId` *does* have a unique runtime value
+/// within the scope of a single MIR body.
 fn is_deterministic(c: Const<'_>) -> bool {
     // Primitive types cannot contain provenance and always have the same value.
     if c.ty().is_primitive() {
