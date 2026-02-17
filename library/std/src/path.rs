@@ -3308,9 +3308,9 @@ impl Path {
         fs::canonicalize(self)
     }
 
-    /// Does the path represent an absolute child of the current location? Path components are
-    /// evaluated naïvely with no filesystem traversal, so a "bounded" path may still be able to
-    /// escape the working directory when applied to the filesystem.
+    /// Does the path represent a child of the current location? Path components are evaluated
+    /// naively with no filesystem traversal, so a "bounded" path may still be able to escape the
+    /// working directory when applied to the filesystem if symlinks are present.
     ///
     /// # Examples
     ///
@@ -3318,13 +3318,14 @@ impl Path {
     /// #![feature(normalize_lexically)]
     /// use std::path::Path;
     ///
-    /// assert!(Path::new("").is_lexically_bounded());
-    /// assert!(Path::new(".").is_lexically_bounded());
     /// assert!(Path::new("abc").is_lexically_bounded());
     /// assert!(Path::new("abc/../def").is_lexically_bounded());
     ///
+    /// assert!(!Path::new("").is_lexically_bounded());
+    /// assert!(!Path::new(".").is_lexically_bounded());
     /// assert!(!Path::new("..").is_lexically_bounded());
     /// assert!(!Path::new("abc/../../def").is_lexically_bounded());
+    /// assert!(!Path::new("abc/..").is_lexically_bounded());
     /// assert!(!Path::new("/abc").is_lexically_bounded());
     /// ```
     #[unstable(feature = "normalize_lexically", issue = "134694")]
@@ -3338,7 +3339,7 @@ impl Path {
                 Normal(_) => Some(depth + 1),
                 ParentDir => depth.checked_sub(1),
             })
-            .is_some()
+            .is_some_and(|i| i > 0)
     }
 
     /// Is the path normalized, ie. expressed in simplest possible terms? A normalized path:
@@ -3352,7 +3353,7 @@ impl Path {
     /// * Continues with zero or more normal segments (`abc`)
     /// * Contains only the primary platform separator, if applicable (eg. only `\\` rather than
     ///   `/` on Windows)
-    /// * Contains no repeated separators
+    /// * Contains no repeated separators unless as part of the prefix
     /// * Does not end with a separator unless as part of the prefix
     ///
     /// # Examples
@@ -3362,8 +3363,6 @@ impl Path {
     /// ```
     /// #![feature(normalize_lexically)]
     /// use std::path::Path;
-    ///
-    /// assert!(!Path::new(".//abc/def").is_normalized());
     ///
     /// assert!(Path::new("").is_normalized());
     /// assert!(Path::new(".").is_normalized());
@@ -3436,7 +3435,9 @@ impl Path {
             components.path = &components.path[len..];
         }
 
-        if let Some(prev) = prev && !self.as_u8_slice().ends_with(prev.as_os_str().as_encoded_bytes()) {
+        if let Some(prev) = prev
+            && !self.as_u8_slice().ends_with(prev.as_os_str().as_encoded_bytes())
+        {
             return false;
         }
 
