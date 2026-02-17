@@ -1,0 +1,61 @@
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/issue-54499-field-mutation-of-never-init.rs:19:9
+   |
+LL |         t.0 = S(1);
+   |         ^^^^^^^^^^
+   |
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/issue-54499-field-mutation-of-never-init.rs:28:9
+   |
+LL |         u.0 = S(1);
+   |         ^^^^^^^^^^
+   |
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/issue-54499-field-mutation-of-never-init.rs:37:9
+   |
+LL |         v.x = S(1);
+   |         ^^^^^^^^^^
+   |
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0381]: partially assigned binding `t` isn't fully initialized
+  --> $DIR/issue-54499-field-mutation-of-never-init.rs:19:9
+   |
+LL |         let t: Tuple;
+   |             - binding declared here but left uninitialized
+LL |         t.0 = S(1);
+   |         ^^^^^^^^^^ `t` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `u` isn't fully initialized
+  --> $DIR/issue-54499-field-mutation-of-never-init.rs:28:9
+   |
+LL |         let u: Tpair;
+   |             - binding declared here but left uninitialized
+LL |         u.0 = S(1);
+   |         ^^^^^^^^^^ `u` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `v` isn't fully initialized
+  --> $DIR/issue-54499-field-mutation-of-never-init.rs:37:9
+   |
+LL |         let v: Spair;
+   |             - binding declared here but left uninitialized
+LL |         v.x = S(1);
+   |         ^^^^^^^^^^ `v` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0381, E0658.
+For more information about an error, try `rustc --explain E0381`.

@@ -79,12 +79,14 @@ fn fu_move_after_fu_move() {
 fn copy_after_field_assign_after_uninit() {
     let mut x: A;
     x.a = 1; //~ ERROR E0381
+    //~^ ERROR E0658
     drop(x.a);
 }
 
 fn borrow_after_field_assign_after_uninit() {
     let mut x: A;
     x.a = 1; //~ ERROR E0381
+    //~^ ERROR E0658
     let p = &x.a;
     drop(*p);
 }
@@ -92,6 +94,7 @@ fn borrow_after_field_assign_after_uninit() {
 fn move_after_field_assign_after_uninit() {
     let mut x: A;
     x.b = Box::new(1); //~ ERROR E0381
+    //~^ ERROR E0658
     drop(x.b);
 }
 

@@ -1477,6 +1477,7 @@ symbols! {
         param_attrs,
         parent_label,
         partial_cmp,
+        partial_init_locals,
         partial_ord,
         passes,
         pat,

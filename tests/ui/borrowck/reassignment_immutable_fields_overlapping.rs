@@ -9,7 +9,8 @@ union Foo {
 
 unsafe fn overlapping_fields() {
     let x: Foo;
-    x.a = 1;  //~ ERROR
+    x.a = 1;  //~ ERROR E0658
+    //~^ ERROR E0381
     x.b = 22; //~ ERROR
 }
 

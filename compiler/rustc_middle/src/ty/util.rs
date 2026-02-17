@@ -941,6 +941,14 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::AliasTermKind::ProjectionConst => None,
         }
     }
+
+    pub fn ty_can_partial_init_locals(self, ty: Ty<'tcx>) -> bool {
+        match ty.kind() {
+            ty::Tuple(..) => true,
+            ty::Adt(def, _) => !def.has_dtor(self),
+            _ => false,
+        }
+    }
 }
 
 struct OpaqueTypeExpander<'tcx> {

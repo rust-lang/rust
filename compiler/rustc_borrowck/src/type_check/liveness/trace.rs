@@ -16,7 +16,7 @@ use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::query::dropck_outlives;
 use rustc_trait_selection::traits::query::type_op::{DropckOutlives, TypeOp, TypeOpOutput};
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::polonius;
 use crate::region_infer::values;
@@ -544,6 +544,11 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
     /// the regions in its type must be live at `location`. The
     /// precise set will depend on the dropck constraints, and in
     /// particular this takes `#[may_dangle]` into account.
+    #[instrument(
+        level = "debug",
+        skip(self, live_at),
+        fields(live_at = ?values::pretty_print_points(self.location_map, live_at.iter())))
+    ]
     fn add_drop_live_facts_for(
         &mut self,
         dropped_local: Local,
@@ -551,18 +556,6 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
         drop_locations: &[Location],
         live_at: &IntervalSet<PointIndex>,
     ) {
-        debug!(
-            "add_drop_live_constraint(\
-             dropped_local={:?}, \
-             dropped_ty={:?}, \
-             drop_locations={:?}, \
-             live_at={:?})",
-            dropped_local,
-            dropped_ty,
-            drop_locations,
-            values::pretty_print_points(self.location_map, live_at.iter()),
-        );
-
         let local_span = self.body().local_decls()[dropped_local].source_info.span;
         let drop_data = self.drop_data.entry(dropped_ty).or_insert_with({
             let typeck = &self.typeck;
