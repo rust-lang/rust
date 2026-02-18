@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::ffi::c_uint;
-use std::{assert_matches, ptr};
+use std::{assert_matches, iter, ptr};
 
 use rustc_abi::{
     Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size, WrappingRange,
@@ -35,7 +35,8 @@ use crate::builder::gpu_offload::{
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
 use crate::errors::{
-    AutoDiffWithoutEnable, AutoDiffWithoutLto, OffloadWithoutEnable, OffloadWithoutFatLTO,
+    AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicSignatureMismatch, OffloadWithoutEnable,
+    OffloadWithoutFatLTO,
 };
 use crate::llvm::{self, Type, Value};
 use crate::type_of::LayoutLlvmExt;
@@ -716,35 +717,22 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             llargument_tys.push(arg_layout.immediate_llvm_type(self));
         }
 
-        let fn_ty = self.type_func(&llargument_tys, llreturn_ty);
-
         let fn_ptr = if let Some(&llfn) = self.intrinsic_instances.borrow().get(&instance) {
             llfn
         } else {
             let sym = tcx.symbol_name(instance).name;
 
-            // FIXME use get_intrinsic
             let llfn = if let Some(llfn) = self.get_declared_value(sym) {
                 llfn
             } else {
-                // Function addresses in Rust are never significant, allowing functions to
-                // be merged.
-                let llfn = declare_raw_fn(
-                    self,
-                    sym,
-                    llvm::CCallConv,
-                    llvm::UnnamedAddr::Global,
-                    llvm::Visibility::Default,
-                    fn_ty,
-                );
-
-                llfn
+                intrinsic_fn(self, sym, llreturn_ty, llargument_tys, instance)
             };
 
             self.intrinsic_instances.borrow_mut().insert(instance, llfn);
 
             llfn
         };
+        let fn_ty = self.get_type_of_global(fn_ptr);
 
         let mut llargs = vec![];
 
@@ -843,6 +831,61 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn va_end(&mut self, va_list: &'ll Value) -> &'ll Value {
         self.call_intrinsic("llvm.va_end", &[self.val_ty(va_list)], &[va_list])
     }
+}
+
+fn intrinsic_fn<'ll, 'tcx>(
+    bx: &Builder<'_, 'll, 'tcx>,
+    name: &str,
+    rust_return_ty: &'ll Type,
+    rust_argument_tys: Vec<&'ll Type>,
+    instance: ty::Instance<'tcx>,
+) -> &'ll Value {
+    let tcx = bx.tcx;
+
+    let rust_fn_ty = bx.type_func(&rust_argument_tys, rust_return_ty);
+
+    let intrinsic = llvm::Intrinsic::lookup(name.as_bytes());
+
+    if let Some(intrinsic) = intrinsic
+        && !intrinsic.is_overloaded()
+    {
+        // FIXME: also do this for overloaded intrinsics
+        let llfn = intrinsic.get_declaration(bx.llmod, &[]);
+        let llvm_fn_ty = bx.get_type_of_global(llfn);
+
+        let llvm_return_ty = bx.get_return_type(llvm_fn_ty);
+        let llvm_argument_tys = bx.func_params_types(llvm_fn_ty);
+        let llvm_is_variadic = bx.func_is_variadic(llvm_fn_ty);
+
+        let is_correct_signature = !llvm_is_variadic
+            && rust_argument_tys.len() == llvm_argument_tys.len()
+            && iter::once((rust_return_ty, llvm_return_ty))
+                .chain(iter::zip(rust_argument_tys, llvm_argument_tys))
+                .all(|(rust_ty, llvm_ty)| rust_ty == llvm_ty);
+
+        if !is_correct_signature {
+            tcx.dcx().emit_fatal(IntrinsicSignatureMismatch {
+                name,
+                llvm_fn_ty: &format!("{llvm_fn_ty:?}"),
+                rust_fn_ty: &format!("{rust_fn_ty:?}"),
+                span: tcx.def_span(instance.def_id()),
+            });
+        }
+
+        return llfn;
+    }
+
+    // Function addresses in Rust are never significant, allowing functions to be merged.
+    let llfn = declare_raw_fn(
+        bx,
+        name,
+        llvm::CCallConv,
+        llvm::UnnamedAddr::Global,
+        llvm::Visibility::Default,
+        rust_fn_ty,
+    );
+
+    llfn
 }
 
 fn catch_unwind_intrinsic<'ll, 'tcx>(

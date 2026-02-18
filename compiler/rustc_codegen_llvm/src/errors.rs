@@ -211,3 +211,15 @@ pub(crate) struct FixedX18InvalidArch<'a> {
     "enabling both `-Zpacked-stack` and the `backchain` target feature is incompatible with the default s390x ABI. Switch to s390x-unknown-none-softfloat if you need both attributes"
 )]
 pub(crate) struct PackedStackBackchainNeedsSoftfloat;
+
+#[derive(Diagnostic)]
+#[diag(
+    "intrinsic signature mismatch for `{$name}`: expected signature `{$llvm_fn_ty}`, found `{$rust_fn_ty}`"
+)]
+pub(crate) struct IntrinsicSignatureMismatch<'a> {
+    pub name: &'a str,
+    pub llvm_fn_ty: &'a str,
+    pub rust_fn_ty: &'a str,
+    #[primary_span]
+    pub span: Span,
+}
