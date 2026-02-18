@@ -2384,15 +2384,22 @@ impl<'test> TestCx<'test> {
             _ => {}
         };
 
-        let stderr = if self.force_color_svg() {
-            anstyle_svg::Term::new().render_svg(&proc_res.stderr)
-        } else if explicit_format {
-            proc_res.stderr.clone()
-        } else {
-            json::extract_rendered(&proc_res.stderr)
-        };
+        let stderr;
+        let normalized_stderr;
 
-        let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
+        if self.force_color_svg() {
+            let normalized = self.normalize_output(&proc_res.stderr, &self.props.normalize_stderr);
+            stderr = anstyle_svg::Term::new().render_svg(&normalized);
+            normalized_stderr = stderr.clone();
+        } else {
+            stderr = if explicit_format {
+                proc_res.stderr.clone()
+            } else {
+                json::extract_rendered(&proc_res.stderr)
+            };
+            normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
+        }
+
         let mut errors = 0;
         match output_kind {
             TestOutput::Compile => {
