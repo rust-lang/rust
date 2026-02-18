@@ -201,11 +201,12 @@ static DenseMap<StringRef, StringRef> getImageArguments(StringRef Image,
 #include "llvm/Support/StringSaver.h"
 #include "llvm/Support/WithColor.h"
 #include "llvm/TargetParser/Host.h"
-extern "C" bool LLVMRustWrapImages() {
-  LLVMContext Context;
-  Module M("offload.wrapper.module", Context);
-  M.setTargetTriple(llvm::Triple("x86_64-unknown-linux"));
-  //M.setTargetTriple(llvm::Triple("amdgcn-amd-amdhsa"));
+extern "C" bool LLVMRustWrapImages(LLVMModuleRef MRef) {
+  //LLVMContext Context;
+  //Module M("offload.wrapper.module", Context);
+  //M.setTargetTriple(llvm::Triple("x86_64-unknown-linux"));
+  if (!MRef) return false;
+  Module &M = *unwrap(MRef);
   SmallVector<std::unique_ptr<MemoryBuffer>> Buffers;
   SmallVector<ArrayRef<char>> BuffersToWrap;
   StringRef Input = "/p/lustre1/drehwald1/prog/offload/r/image";

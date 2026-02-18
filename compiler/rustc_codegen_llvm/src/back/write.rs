@@ -861,6 +861,7 @@ pub(crate) unsafe fn llvm_optimize(
             let host_path = cgcx.output_filenames.path(OutputType::Object);
             let host_dir = host_path.parent().unwrap();
             let out_obj = host_dir.join("host.o");
+            let wrapper_obj = host_dir.join("openmp.image.wrapper.o");
             let host_out_c = path_to_c_string(device_pathbuf.as_path());
 
             // 2) Finalize host: lib.bc + host.out -> host.o (host TM)
@@ -911,8 +912,34 @@ pub(crate) unsafe fn llvm_optimize(
                 unsafe { llvm::LLVMRustUnbundleImages(output_c.as_ptr(), output_c.count_bytes()) };
             dbg!(&unbundle);
             dbg!("between both");
-            unsafe { llvm::LLVMRustWrapImages() };
-            dbg!("after both");
+            let name = CString::new("offload.wrapper.module").unwrap();
+            let llmod3 = unsafe {
+                llvm::LLVMModuleCreateWithNameInContext(
+                    name.as_ptr() as *const c_char,
+                    module.module_llvm.llcx,
+                )
+            };
+            let triple = CString::new("x86_64-unknown-linux-gnu").unwrap();
+            unsafe {
+                llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod3, module.module_llvm.tm.raw())
+            };
+            //unsafe { llvm::LLVMSetTarget(llmod3, triple.as_ptr() as *const c_char) };
+            dbg!("set triple");
+            unsafe { llvm::LLVMRustWrapImages(llmod3) };
+            dbg!("after wrap images");
+            // now compile out.bc into bare.openmp.image.wrapper.o
+            write_output_file(
+                dcx,
+                module.module_llvm.tm.raw(),
+                config.no_builtins,
+                llmod3,
+                &wrapper_obj,
+                None,
+                llvm::FileType::ObjectFile,
+                &cgcx.prof,
+                true,
+            );
+            dbg!("after writing to .o file");
             // call c++
         }
     }
