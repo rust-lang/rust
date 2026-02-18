@@ -2483,7 +2483,7 @@ pub struct FnPtrTy {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct UnsafeBinderTy {
     pub generic_params: ThinVec<GenericParam>,
-    pub inner_ty: Box<Ty>,
+    pub inner_ty: Ty,
 }
 
 /// The various kinds of type recognized by the compiler.

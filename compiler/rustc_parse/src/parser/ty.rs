@@ -458,7 +458,7 @@ impl<'a> Parser<'a> {
         self.expect_lt()?;
         let generic_params = self.parse_generic_params()?;
         self.expect_gt()?;
-        let inner_ty = Box::new(self.parse_ty()?);
+        let inner_ty = self.parse_ty()?;
         let span = lo.to(self.prev_token.span);
         self.psess.gated_spans.gate(sym::unsafe_binders, span);
 
