@@ -104,14 +104,34 @@ fn validate_diag(diag: &Diag<'_, impl EmissionGuarantee>) {
 /// ```
 #[track_caller]
 pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) {
-    #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, sp, |diag| {
-        diag.primary_message(msg);
-        docs_link(diag, lint);
+    struct ClippyLintError<D: Into<DiagMessage>> {
+        msg: D,
+        lint: &'static Lint,
+    }
 
-        #[cfg(debug_assertions)]
-        validate_diag(diag);
-    });
+    impl<D: Into<DiagMessage>> rustc_errors::Diagnostic<'_, ()> for ClippyLintError<D> {
+        fn into_diag(
+            self,
+            dcx: rustc_errors::DiagCtxtHandle<'_>,
+            level: rustc_errors::Level,
+        ) -> Diag<'_, ()> {
+            let Self { msg, lint } = self;
+            let mut diag = Diag::new(
+                dcx,
+                level,
+                msg,
+            );
+            docs_link(&mut diag, lint);
+
+            #[cfg(debug_assertions)]
+            validate_diag(&mut diag);
+
+            diag
+        }
+    }
+
+    #[expect(clippy::disallowed_methods)]
+    cx.span_lint(lint, sp, ClippyLintError { msg, lint });
 }
 
 /// Same as [`span_lint`] but with an extra `help` message.
@@ -157,19 +177,41 @@ pub fn span_lint_and_help<T: LintContext>(
     help_span: Option<Span>,
     help: impl Into<DiagMessage>,
 ) {
-    #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, span, |diag| {
-        diag.primary_message(msg);
-        if let Some(help_span) = help_span {
-            diag.span_help(help_span, help.into());
-        } else {
-            diag.help(help.into());
-        }
-        docs_link(diag, lint);
+    struct ClippyLintError<D: Into<DiagMessage>, D2: Into<DiagMessage>> {
+        msg: D,
+        lint: &'static Lint,
+        help_span: Option<Span>,
+        help: D2,
+    }
 
-        #[cfg(debug_assertions)]
-        validate_diag(diag);
-    });
+    impl<D: Into<DiagMessage>, D2: Into<DiagMessage>> rustc_errors::Diagnostic<'_, ()> for ClippyLintError<D, D2> {
+        fn into_diag(
+            self,
+            dcx: rustc_errors::DiagCtxtHandle<'_>,
+            level: rustc_errors::Level,
+        ) -> Diag<'_, ()> {
+            let Self { msg, lint, help_span, help } = self;
+            let mut diag = Diag::new(
+                dcx,
+                level,
+                msg,
+            );
+            if let Some(help_span) = help_span {
+                diag.span_help(help_span, help.into());
+            } else {
+                diag.help(help.into());
+            }
+            docs_link(&mut diag, lint);
+
+            #[cfg(debug_assertions)]
+            validate_diag(&mut diag);
+
+            diag
+        }
+    }
+
+    #[expect(clippy::disallowed_methods)]
+    cx.span_lint(lint, span, ClippyLintError { msg, lint, help_span, help});
 }
 
 /// Like [`span_lint`] but with a `note` section instead of a `help` message.
@@ -218,19 +260,41 @@ pub fn span_lint_and_note<T: LintContext>(
     note_span: Option<Span>,
     note: impl Into<DiagMessage>,
 ) {
-    #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, span, |diag| {
-        diag.primary_message(msg);
-        if let Some(note_span) = note_span {
-            diag.span_note(note_span, note.into());
-        } else {
-            diag.note(note.into());
-        }
-        docs_link(diag, lint);
+    struct ClippyLintError<D: Into<DiagMessage>, D2: Into<DiagMessage>> {
+        msg: D,
+        lint: &'static Lint,
+        note_span: Option<Span>,
+        note: D2,
+    }
 
-        #[cfg(debug_assertions)]
-        validate_diag(diag);
-    });
+    impl<D: Into<DiagMessage>, D2: Into<DiagMessage>> rustc_errors::Diagnostic<'_, ()> for ClippyLintError<D, D2> {
+        fn into_diag(
+            self,
+            dcx: rustc_errors::DiagCtxtHandle<'_>,
+            level: rustc_errors::Level,
+        ) -> Diag<'_, ()> {
+            let Self { msg, lint, note_span, note } = self;
+            let mut diag = Diag::new(
+                dcx,
+                level,
+                msg,
+            );
+            if let Some(note_span) = note_span {
+                diag.span_note(note_span, note.into());
+            } else {
+                diag.note(note.into());
+            }
+            docs_link(&mut diag, lint);
+
+            #[cfg(debug_assertions)]
+            validate_diag(&mut diag);
+
+            diag
+        }
+    }
+
+    #[expect(clippy::disallowed_methods)]
+    cx.span_lint(lint, span, ClippyLintError { msg, lint, note_span, note });
 }
 
 /// Like [`span_lint`] but allows to add notes, help and suggestions using a closure.
@@ -259,15 +323,36 @@ where
     M: Into<DiagMessage>,
     F: FnOnce(&mut Diag<'_, ()>),
 {
-    #[expect(clippy::disallowed_methods)]
-    cx.span_lint(lint, sp, |diag| {
-        diag.primary_message(msg);
-        f(diag);
-        docs_link(diag, lint);
+    struct ClippyLintError<D: Into<DiagMessage>, F: FnOnce(&mut Diag<'_, ()>)> {
+        msg: D,
+        lint: &'static Lint,
+        f: F,
+    }
 
-        #[cfg(debug_assertions)]
-        validate_diag(diag);
-    });
+    impl<D: Into<DiagMessage>, F: FnOnce(&mut Diag<'_, ()>)> rustc_errors::Diagnostic<'_, ()> for ClippyLintError<D, F> {
+        fn into_diag(
+            self,
+            dcx: rustc_errors::DiagCtxtHandle<'_>,
+            level: rustc_errors::Level,
+        ) -> Diag<'_, ()> {
+            let Self { msg, lint, f } = self;
+            let mut diag = Diag::new(
+                dcx,
+                level,
+                msg,
+            );
+            f(&mut diag);
+            docs_link(&mut diag, lint);
+
+            #[cfg(debug_assertions)]
+            validate_diag(&mut diag);
+
+            diag
+        }
+    }
+
+    #[expect(clippy::disallowed_methods)]
+    cx.span_lint(lint, sp, ClippyLintError { msg, lint, f });
 }
 
 /// Like [`span_lint`], but emits the lint at the node identified by the given `HirId`.
@@ -296,14 +381,34 @@ where
 /// the `#[allow]` will work.
 #[track_caller]
 pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: impl Into<DiagMessage>) {
-    #[expect(clippy::disallowed_methods)]
-    cx.tcx.node_span_lint(lint, hir_id, sp, |diag| {
-        diag.primary_message(msg);
-        docs_link(diag, lint);
+    struct ClippyLintError<D: Into<DiagMessage>> {
+        msg: D,
+        lint: &'static Lint,
+    }
 
-        #[cfg(debug_assertions)]
-        validate_diag(diag);
-    });
+    impl<D: Into<DiagMessage>> rustc_errors::Diagnostic<'_, ()> for ClippyLintError<D> {
+        fn into_diag(
+            self,
+            dcx: rustc_errors::DiagCtxtHandle<'_>,
+            level: rustc_errors::Level,
+        ) -> Diag<'_, ()> {
+            let Self { msg, lint } = self;
+            let mut diag = Diag::new(
+                dcx,
+                level,
+                msg,
+            );
+            docs_link(&mut diag, lint);
+
+            #[cfg(debug_assertions)]
+            validate_diag(&mut diag);
+
+            diag
+        }
+    }
+
+    #[expect(clippy::disallowed_methods)]
+    cx.tcx.emit_node_span_lint(lint, hir_id, sp, ClippyLintError { msg, lint });
 }
 
 /// Like [`span_lint_and_then`], but emits the lint at the node identified by the given `HirId`.
@@ -339,15 +444,36 @@ pub fn span_lint_hir_and_then(
     msg: impl Into<DiagMessage>,
     f: impl FnOnce(&mut Diag<'_, ()>),
 ) {
-    #[expect(clippy::disallowed_methods)]
-    cx.tcx.node_span_lint(lint, hir_id, sp, |diag| {
-        diag.primary_message(msg);
-        f(diag);
-        docs_link(diag, lint);
+    struct ClippyLintError<D: Into<DiagMessage>, F: FnOnce(&mut Diag<'_, ()>)> {
+        msg: D,
+        lint: &'static Lint,
+        f: F,
+    }
 
-        #[cfg(debug_assertions)]
-        validate_diag(diag);
-    });
+    impl<D: Into<DiagMessage>, F: FnOnce(&mut Diag<'_, ()>)> rustc_errors::Diagnostic<'_, ()> for ClippyLintError<D, F> {
+        fn into_diag(
+            self,
+            dcx: rustc_errors::DiagCtxtHandle<'_>,
+            level: rustc_errors::Level,
+        ) -> Diag<'_, ()> {
+            let Self { msg, lint, f } = self;
+            let mut diag = Diag::new(
+                dcx,
+                level,
+                msg,
+            );
+            f(&mut diag);
+            docs_link(&mut diag, lint);
+
+            #[cfg(debug_assertions)]
+            validate_diag(&mut diag);
+
+            diag
+        }
+    }
+
+    #[expect(clippy::disallowed_methods)]
+    cx.tcx.emit_node_span_lint(lint, hir_id, sp, ClippyLintError { msg, lint, f });
 }
 
 /// Add a span lint with a suggestion on how to fix it.
