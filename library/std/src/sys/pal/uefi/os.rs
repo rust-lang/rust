@@ -105,23 +105,6 @@ pub fn home_dir() -> Option<PathBuf> {
     None
 }
 
-pub fn exit(code: i32) -> ! {
-    if let (Some(boot_services), Some(handle)) =
-        (uefi::env::boot_services(), uefi::env::try_image_handle())
-    {
-        let boot_services: NonNull<r_efi::efi::BootServices> = boot_services.cast();
-        let _ = unsafe {
-            ((*boot_services.as_ptr()).exit)(
-                handle.as_ptr(),
-                Status::from_usize(code as usize),
-                0,
-                crate::ptr::null_mut(),
-            )
-        };
-    }
-    crate::intrinsics::abort()
-}
-
 pub fn getpid() -> u32 {
     panic!("no pids on this platform")
 }
