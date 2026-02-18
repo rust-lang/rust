@@ -222,6 +222,10 @@ fn should_ignore(line: &str) -> bool {
         || static_regex!(
             "\\s*//@ \\!?(count|files|has|has-dir|hasraw|matches|matchesraw|snapshot)\\s.*"
         ).is_match(line)
+        // Matching for FileCheck checks
+        || static_regex!(
+            "\\s*// [a-zA-Z0-9-_]*:\\s.*"
+        ).is_match(line)
 }
 
 /// Returns `true` if `line` is allowed to be longer than the normal limit.

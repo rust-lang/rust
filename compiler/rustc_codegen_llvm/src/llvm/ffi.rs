@@ -1989,6 +1989,13 @@ unsafe extern "C" {
         NameLen: size_t,
         T: &'a Type,
     ) -> &'a Value;
+    pub(crate) fn LLVMRustGetOrInsertGlobalInAddrspace<'a>(
+        M: &'a Module,
+        Name: *const c_char,
+        NameLen: size_t,
+        T: &'a Type,
+        AddressSpace: c_uint,
+    ) -> &'a Value;
     pub(crate) fn LLVMRustGetNamedValue(
         M: &Module,
         Name: *const c_char,
