@@ -3851,7 +3851,7 @@ pub struct DelegationMac {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct StaticItem {
     pub ident: Ident,
-    pub ty: Box<Ty>,
+    pub ty: Ty,
     pub safety: Safety,
     pub mutability: Mutability,
     pub expr: Option<Box<Expr>>,
@@ -3863,7 +3863,7 @@ pub struct ConstItem {
     pub defaultness: Defaultness,
     pub ident: Ident,
     pub generics: Generics,
-    pub ty: Box<Ty>,
+    pub ty: Ty,
     pub rhs_kind: ConstItemRhsKind,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
 }

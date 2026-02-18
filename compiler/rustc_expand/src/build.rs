@@ -701,7 +701,7 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         ident: Ident,
-        ty: Box<ast::Ty>,
+        ty: ast::Ty,
         mutability: ast::Mutability,
         expr: Box<ast::Expr>,
     ) -> Box<ast::Item> {
@@ -739,7 +739,7 @@ impl<'a> ExtCtxt<'a> {
                     ident,
                     // FIXME(generic_const_items): Pass the generics as a parameter.
                     generics: ast::Generics::default(),
-                    ty: Box::new(ty),
+                    ty,
                     rhs_kind,
                     define_opaque: None,
                 }

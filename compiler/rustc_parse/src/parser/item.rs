@@ -1530,7 +1530,7 @@ impl<'a> Parser<'a> {
         // Parse the type of a static item. That is, the `":" $ty` fragment.
         // FIXME: This could maybe benefit from `.may_recover()`?
         let ty = match (self.eat(exp!(Colon)), self.check(exp!(Eq)) | self.check(exp!(Semi))) {
-            (true, false) => Box::new(self.parse_ty()?),
+            (true, false) => self.parse_ty()?,
             // If there wasn't a `:` or the colon was followed by a `=` or `;`, recover a missing
             // type.
             (colon, _) => self.recover_missing_global_item_type(colon, Some(mutability)),
@@ -1555,7 +1555,7 @@ impl<'a> Parser<'a> {
     fn parse_const_item(
         &mut self,
         const_arg: bool,
-    ) -> PResult<'a, (Ident, Generics, Box<Ty>, ConstItemRhsKind)> {
+    ) -> PResult<'a, (Ident, Generics, Ty, ConstItemRhsKind)> {
         let ident = self.parse_ident_or_underscore()?;
 
         let mut generics = self.parse_generics()?;
@@ -1572,7 +1572,7 @@ impl<'a> Parser<'a> {
             self.eat(exp!(Colon)),
             self.check(exp!(Eq)) | self.check(exp!(Semi)) | self.check_keyword(exp!(Where)),
         ) {
-            (true, false) => Box::new(self.parse_ty()?),
+            (true, false) => self.parse_ty()?,
             // If there wasn't a `:` or the colon was followed by a `=`, `;` or `where`, recover a missing type.
             (colon, _) => self.recover_missing_global_item_type(colon, None),
         };
@@ -1657,7 +1657,7 @@ impl<'a> Parser<'a> {
         &mut self,
         colon_present: bool,
         m: Option<Mutability>,
-    ) -> Box<Ty> {
+    ) -> Ty {
         // Construct the error and stash it away with the hope
         // that typeck will later enrich the error with a type.
         let kind = match m {
@@ -1677,7 +1677,7 @@ impl<'a> Parser<'a> {
 
         // The user intended that the type be inferred,
         // so treat this as if the user wrote e.g. `const A: _ = expr;`.
-        Box::new(Ty { kind: TyKind::Infer, span, id: ast::DUMMY_NODE_ID, tokens: None })
+        Ty { kind: TyKind::Infer, span, id: ast::DUMMY_NODE_ID, tokens: None }
     }
 
     /// Parses an enum declaration.

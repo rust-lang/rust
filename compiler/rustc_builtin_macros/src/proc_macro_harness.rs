@@ -365,7 +365,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
     let mut decls_static = cx.item_static(
         span,
         Ident::new(sym::_DECLS, span),
-        Box::new(cx.ty_ref(
+        cx.ty_ref(
             span,
             Box::new(cx.ty(
                 span,
@@ -375,7 +375,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
             )),
             None,
             ast::Mutability::Not,
-        )),
+        ),
         ast::Mutability::Not,
         cx.expr_array_ref(span, decls),
     );
