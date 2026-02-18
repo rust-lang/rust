@@ -30,10 +30,10 @@ use tracing::debug;
 
 use self::create_scope_map::compute_mir_scopes;
 pub(crate) use self::di_builder::DIBuilderExt;
-pub(crate) use self::metadata::build_global_var_di_node;
 use self::metadata::{
     UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, spanned_type_di_node, type_di_node,
 };
+pub(crate) use self::metadata::{build_extern_static_di_node, build_global_var_di_node};
 use self::namespace::mangled_name_of_instance;
 use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
 use crate::builder::Builder;
@@ -442,7 +442,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let file_metadata = file_metadata(self, &loc.file);
 
         let function_type_metadata =
-            create_subroutine_type(self, &get_function_signature(self, fn_abi));
+            create_subroutine_type(self, &self.get_function_signature(fn_abi));
 
         let mut name = String::with_capacity(64);
         type_names::push_item_name(tcx, def_id, false, &mut name);
@@ -530,55 +530,6 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 decl,
             )
         };
-
-        fn get_function_signature<'ll, 'tcx>(
-            cx: &CodegenCx<'ll, 'tcx>,
-            fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        ) -> Vec<Option<&'ll llvm::Metadata>> {
-            if cx.sess().opts.debuginfo != DebugInfo::Full {
-                return vec![];
-            }
-
-            let mut signature = Vec::with_capacity(fn_abi.args.len() + 1);
-
-            // Return type -- llvm::DIBuilder wants this at index 0
-            signature.push(if fn_abi.ret.is_ignore() {
-                None
-            } else {
-                Some(type_di_node(cx, fn_abi.ret.layout.ty))
-            });
-
-            // Arguments types
-            if cx.sess().target.is_like_msvc {
-                // FIXME(#42800):
-                // There is a bug in MSDIA that leads to a crash when it encounters
-                // a fixed-size array of `u8` or something zero-sized in a
-                // function-type (see #40477).
-                // As a workaround, we replace those fixed-size arrays with a
-                // pointer-type. So a function `fn foo(a: u8, b: [u8; 4])` would
-                // appear as `fn foo(a: u8, b: *const u8)` in debuginfo,
-                // and a function `fn bar(x: [(); 7])` as `fn bar(x: *const ())`.
-                // This transformed type is wrong, but these function types are
-                // already inaccurate due to ABI adjustments (see #42800).
-                signature.extend(fn_abi.args.iter().map(|arg| {
-                    let t = arg.layout.ty;
-                    let t = match t.kind() {
-                        ty::Array(ct, _)
-                            if (*ct == cx.tcx.types.u8) || cx.layout_of(*ct).is_zst() =>
-                        {
-                            Ty::new_imm_ptr(cx.tcx, *ct)
-                        }
-                        _ => t,
-                    };
-                    Some(type_di_node(cx, t))
-                }));
-            } else {
-                signature
-                    .extend(fn_abi.args.iter().map(|arg| Some(type_di_node(cx, arg.layout.ty))));
-            }
-
-            signature
-        }
 
         fn get_template_parameters<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
@@ -757,5 +708,129 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 )
             },
         }
+    }
+}
+
+impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
+    /// Creates a `DISubprogram` for a foreign function declaration (without `SPFlagDefinition`).
+    pub(crate) fn dbg_scope_foreign_fn(
+        &self,
+        instance: Instance<'tcx>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        llfn: Option<&'ll Value>,
+    ) {
+        if self.dbg_cx.is_none() {
+            return;
+        }
+
+        if self.sess().opts.debuginfo != DebugInfo::Full {
+            return;
+        }
+
+        let tcx = self.tcx;
+        let def_id = instance.def_id();
+
+        let scope = namespace::item_namespace(
+            self,
+            DefId {
+                krate: def_id.krate,
+                index: tcx.def_key(def_id).parent.expect("dbg_scope_foreign_fn: missing parent?"),
+            },
+        );
+
+        let span = tcx.def_span(def_id);
+        let loc = self.lookup_debug_loc(span.lo());
+        let file_metadata = file_metadata(self, &loc.file);
+
+        let function_type_metadata =
+            create_subroutine_type(self, &self.get_function_signature(fn_abi));
+
+        let mut name = String::with_capacity(64);
+        type_names::push_item_name(tcx, def_id, false, &mut name);
+
+        let linkage_name = &mangled_name_of_instance(self, instance).name;
+        let linkage_name = if &name == linkage_name { "" } else { linkage_name };
+
+        let scope_line = loc.line;
+
+        let mut flags = DIFlags::FlagPrototyped;
+        if fn_abi.ret.layout.is_uninhabited() {
+            flags |= DIFlags::FlagNoReturn;
+        }
+
+        let mut spflags = DISPFlags::SPFlagZero;
+        if self.sess().opts.optimize != config::OptLevel::No {
+            spflags |= DISPFlags::SPFlagOptimized;
+        }
+
+        let template_parameters = create_DIArray(DIB(self), &[]);
+
+        unsafe {
+            llvm::LLVMRustDIBuilderCreateFunction(
+                DIB(self),
+                scope,
+                name.as_c_char_ptr(),
+                name.len(),
+                linkage_name.as_c_char_ptr(),
+                linkage_name.len(),
+                file_metadata,
+                loc.line,
+                function_type_metadata,
+                scope_line,
+                flags,
+                spflags,
+                llfn, // Attach to LLVM function if provided
+                template_parameters,
+                None, // No decl
+            );
+        }
+    }
+
+    fn get_function_signature(
+        &self,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    ) -> Vec<Option<&'ll llvm::Metadata>> {
+        if self.sess().opts.debuginfo != DebugInfo::Full {
+            return vec![];
+        }
+
+        let mut signature = Vec::with_capacity(fn_abi.args.len() + 1);
+
+        // Return type -- llvm::DIBuilder wants this at index 0
+        signature.push(if fn_abi.ret.is_ignore() {
+            None
+        } else {
+            Some(type_di_node(self, fn_abi.ret.layout.ty))
+        });
+
+        // Arguments types
+        if self.sess().target.is_like_msvc {
+            // FIXME(#42800):
+            // There is a bug in MSDIA that leads to a crash when it encounters
+            // a fixed-size array of `u8` or something zero-sized in a
+            // function-type (see #40477).
+            // As a workaround, we replace those fixed-size arrays with a
+            // pointer-type. So a function `fn foo(a: u8, b: [u8; 4])` would
+            // appear as `fn foo(a: u8, b: *const u8)` in debuginfo,
+            // and a function `fn bar(x: [(); 7])` as `fn bar(x: *const ())`.
+            // This transformed type is wrong, but these function types are
+            // already inaccurate due to ABI adjustments (see #42800).
+            signature.extend(fn_abi.args.iter().map(|arg| {
+                let t = arg.layout.ty;
+                let t = match t.kind() {
+                    ty::Array(ct, _)
+                        if (*ct == self.tcx.types.u8) || self.layout_of(*ct).is_zst() =>
+                    {
+                        Ty::new_imm_ptr(self.tcx, *ct)
+                    }
+                    _ => t,
+                };
+                Some(type_di_node(self, t))
+            }));
+        } else {
+            signature.extend(fn_abi.args.iter().map(|arg| Some(type_di_node(self, arg.layout.ty))));
+        }
+
+        signature
     }
 }

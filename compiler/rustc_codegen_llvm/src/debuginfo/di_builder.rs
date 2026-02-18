@@ -44,10 +44,6 @@ pub(crate) trait DIBuilderExt<'ll> {
     }
 
     /// Creates a DIGlobalVariable debug info node.
-    ///
-    /// The `is_definition` parameter controls whether this is a definition (`true`)
-    /// or a declaration (`false`). For extern statics (e.g., BPF ksyms), use `false`
-    /// since they are declarations resolved at load time, not definitions.
     fn create_static_variable(
         &self,
         scope: Option<&'ll llvm::Metadata>,

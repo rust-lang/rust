@@ -1894,7 +1894,6 @@ unsafe extern "C" {
 
     // Custom wrapper that exposes the IsDefined parameter which the standard
     // LLVM-C API (LLVMDIBuilderCreateGlobalVariableExpression) hard-codes to true.
-    // This is needed for BPF/BTF extern declarations where isDefinition must be false.
     pub(crate) fn LLVMRustDIBuilderCreateGlobalVariableExpression<'ll>(
         Builder: &DIBuilder<'ll>,
         Scope: Option<&'ll Metadata>,

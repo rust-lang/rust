@@ -1,6 +1,4 @@
 // Verifies that #[link_section] works on foreign (extern) items.
-// This is useful for BPF ksyms/kfuncs where extern declarations
-// need to be placed in specific sections for BTF generation.
 //
 //@ ignore-wasm32 custom sections work differently on wasm
 //@ compile-flags: -C no-prepopulate-passes

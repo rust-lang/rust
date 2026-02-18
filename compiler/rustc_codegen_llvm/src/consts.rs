@@ -403,11 +403,11 @@ impl<'ll> CodegenCx<'ll, '_> {
             llvm::set_dllimport_storage_class(g);
         }
 
-        // Handle foreign static items (extern declarations)
         if self.tcx.is_foreign_item(def_id) {
-            // link_section applies to all targets (e.g., for linker scripts)
-            if fn_attrs.link_section.is_some() {
-                base::set_link_section(g, fn_attrs);
+            base::set_link_section(g, fn_attrs);
+            // Emit debug info for extern items for bpf target
+            if self.tcx.sess.target.arch == Arch::Bpf {
+                debuginfo::build_extern_static_di_node(self, def_id, g);
             }
         }
 

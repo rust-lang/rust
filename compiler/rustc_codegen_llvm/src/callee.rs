@@ -153,12 +153,11 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
 
         cx.assume_dso_local(llfn, true);
 
-        // Handle foreign function items (extern declarations)
         if tcx.is_foreign_item(instance_def_id) {
-            let attrs = tcx.codegen_fn_attrs(instance_def_id);
-            // link_section applies to all targets (e.g., for linker scripts)
-            if attrs.link_section.is_some() {
-                base::set_link_section(llfn, attrs);
+            base::set_link_section(llfn, tcx.codegen_fn_attrs(instance_def_id));
+            // Emit debug info for extern items for bpf target
+            if tcx.sess.target.arch == Arch::Bpf {
+                cx.dbg_scope_foreign_fn(instance, fn_abi, Some(llfn));
             }
         }
 

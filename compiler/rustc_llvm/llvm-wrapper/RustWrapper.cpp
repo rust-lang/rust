@@ -1143,9 +1143,9 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMethod(
   return wrap(Sub);
 }
 
-// Custom wrapper that exposes the IsDefined parameter, which the standard
-// LLVM-C API (LLVMDIBuilderCreateGlobalVariableExpression) hard-codes to true.
-// This is needed for BPF/BTF extern declarations where isDefinition must be false.
+// Wraps DIBuilder::createGlobalVariableExpression. Unlike the LLVM-C API
+// (LLVMDIBuilderCreateGlobalVariableExpression), this exposes the IsDefined
+// parameter instead of hard-coding it to true.
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateGlobalVariableExpression(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, const char *Linkage, size_t LinkLen, LLVMMetadataRef File,
