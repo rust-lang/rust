@@ -1986,7 +1986,12 @@ fn report_diagnostic(
         ),
     };
 
-    tcx.node_span_lint(lint, hir_id, attr_span, DiagError { msg, dox, link_range, span, decorate });
+    tcx.emit_node_span_lint(
+        lint,
+        hir_id,
+        attr_span,
+        DiagError { msg, dox, link_range, span, decorate },
+    );
 }
 
 /// Reports a link that failed to resolve.

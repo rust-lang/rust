@@ -174,7 +174,7 @@ fn emit_delayed_lint(lint: &DelayedLint, tcx: TyCtxt<'_>) {
 
     match lint {
         DelayedLint::AttributeParsing(attribute_lint) => {
-            tcx.node_span_lint(
+            tcx.emit_node_span_lint(
                 attribute_lint.lint_id.lint,
                 attribute_lint.id,
                 attribute_lint.span,

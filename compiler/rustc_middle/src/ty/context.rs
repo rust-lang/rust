@@ -2508,21 +2508,6 @@ impl<'tcx> TyCtxt<'tcx> {
         lint_level(self.sess, lint, level, Some(span.into()), decorator)
     }
 
-    /// Emit a lint at the appropriate level for a hir node, with an associated span.
-    ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[track_caller]
-    pub fn node_span_lint(
-        self,
-        lint: &'static Lint,
-        hir_id: HirId,
-        span: impl Into<MultiSpan>,
-        decorator: impl for<'a> Diagnostic<'a, ()>,
-    ) {
-        let level = self.lint_level_at_node(lint, hir_id);
-        lint_level(self.sess, lint, level, Some(span.into()), decorator);
-    }
-
     /// Find the appropriate span where `use` and outer attributes can be inserted at.
     pub fn crate_level_attribute_injection_span(self) -> Span {
         let node = self.hir_node(hir::CRATE_HIR_ID);

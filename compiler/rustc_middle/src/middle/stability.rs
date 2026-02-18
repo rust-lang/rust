@@ -568,7 +568,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         let soft_handler = |lint, span, msg: String| {
-            self.node_span_lint(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, Inner { msg });
+            self.emit_node_span_lint(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, Inner { msg });
         };
         let eval_result =
             self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable);

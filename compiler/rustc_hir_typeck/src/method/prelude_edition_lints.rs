@@ -256,7 +256,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Inherent impls only require not relying on autoref and autoderef in order to
             // ensure that the trait implementation won't be used
-            self.tcx.node_span_lint(
+            self.tcx.emit_node_span_lint(
                 prelude_or_array_lint,
                 self_expr.hir_id,
                 self_expr.span,
@@ -272,7 +272,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // trait implementations require full disambiguation to not clash with the new prelude
             // additions (i.e. convert from dot-call to fully-qualified call)
             let (self_adjusted, precise) = self.adjust_expr(pick, self_expr, call_expr.span);
-            self.tcx.node_span_lint(
+            self.tcx.emit_node_span_lint(
                 prelude_or_array_lint,
                 call_expr.hir_id,
                 call_expr.span,
@@ -424,7 +424,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
         };
 
-        self.tcx.node_span_lint(
+        self.tcx.emit_node_span_lint(
             RUST_2021_PRELUDE_COLLISIONS,
             expr_id,
             span,

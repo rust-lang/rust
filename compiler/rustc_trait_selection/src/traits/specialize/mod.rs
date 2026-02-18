@@ -597,7 +597,7 @@ fn report_conflicting_impls<'tcx>(
             let lint = match kind {
                 FutureCompatOverlapErrorKind::LeakCheck => COHERENCE_LEAK_CHECK,
             };
-            tcx.node_span_lint(
+            tcx.emit_node_span_lint(
                 lint,
                 tcx.local_def_id_to_hir_id(impl_def_id),
                 impl_span,

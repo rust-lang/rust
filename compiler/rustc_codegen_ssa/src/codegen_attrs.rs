@@ -445,7 +445,7 @@ fn check_result(
             (interesting_spans.sanitize, interesting_spans.inline)
     {
         let hir_id = tcx.local_def_id_to_hir_id(did);
-        tcx.node_span_lint(
+        tcx.emit_node_span_lint(
             lint::builtin::INLINE_NO_SANITIZE,
             hir_id,
             sanitize_span,
@@ -467,7 +467,7 @@ fn check_result(
                     != rustc_hir::ClosureKind::Closure))
     {
         let hir_id = tcx.local_def_id_to_hir_id(did);
-        tcx.node_span_lint(
+        tcx.emit_node_span_lint(
             lint::builtin::RTSAN_NONBLOCKING_ASYNC,
             hir_id,
             sanitize_span,

@@ -1582,7 +1582,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let (item_def_id, args) = self.lower_assoc_item_path(span, item_def_id, segment, bound)?;
 
         if let Some(variant_def_id) = variant_def_id {
-            tcx.node_span_lint(
+            tcx.emit_node_span_lint(
                 AMBIGUOUS_ASSOCIATED_ITEMS,
                 qpath_hir_id,
                 span,

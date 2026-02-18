@@ -228,7 +228,7 @@ fn check_inline_or_reference_unknown_redundancy(
             return None;
         };
 
-        cx.tcx.node_span_lint(
+        cx.tcx.emit_node_span_lint(
             crate::lint::REDUNDANT_EXPLICIT_LINKS,
             hir_id,
             explicit_span,
@@ -300,7 +300,7 @@ fn check_reference_redundancy(
             &item.attrs.doc_strings,
         )?;
 
-        cx.tcx.node_span_lint(
+        cx.tcx.emit_node_span_lint(
             crate::lint::REDUNDANT_EXPLICIT_LINKS,
             hir_id,
             explicit_span,

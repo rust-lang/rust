@@ -118,7 +118,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                 generics_sp = Some(generics_span);
             }
         }
-        tcx.node_span_lint(
+        tcx.emit_node_span_lint(
             crate::lint::INVALID_HTML_TAGS,
             hir_id,
             sp,

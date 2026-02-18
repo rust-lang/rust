@@ -637,7 +637,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             Some(diag.emit())
         } else {
-            tcx.node_span_lint(
+            tcx.emit_node_span_lint(
                 BARE_TRAIT_OBJECTS,
                 hir_id,
                 span,

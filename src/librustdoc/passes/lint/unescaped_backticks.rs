@@ -170,7 +170,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                     None => item.attr_span(tcx),
                 };
 
-                tcx.node_span_lint(
+                tcx.emit_node_span_lint(
                     crate::lint::UNESCAPED_BACKTICKS,
                     hir_id,
                     span,

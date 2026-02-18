@@ -2527,7 +2527,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &unmentioned_fields.iter().map(|(_, i)| i).collect::<Vec<_>>(),
         );
 
-        self.tcx.node_span_lint(
+        self.tcx.emit_node_span_lint(
             NON_EXHAUSTIVE_OMITTED_PATTERNS,
             pat.hir_id,
             pat.span,

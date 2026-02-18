@@ -50,7 +50,7 @@ pub(super) fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
         }
         let (path, _) = item.expect_use();
         let snippet = tcx.sess.source_map().span_to_snippet(path.span).ok();
-        tcx.node_span_lint(
+        tcx.emit_node_span_lint(
             lint::builtin::UNUSED_IMPORTS,
             item.hir_id(),
             path.span,

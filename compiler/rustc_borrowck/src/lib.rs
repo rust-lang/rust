@@ -1448,7 +1448,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     borrow,
                     Some((WriteKind::StorageDeadOrDrop, place)),
                 );
-                this.infcx.tcx.node_span_lint(
+                this.infcx.tcx.emit_node_span_lint(
                     TAIL_EXPR_DROP_ORDER,
                     CRATE_HIR_ID,
                     borrowed,

@@ -73,7 +73,7 @@ impl<'a> PatMigration<'a> {
             self.format_subdiagnostics(&mut err);
             err.emit();
         } else {
-            tcx.node_span_lint(
+            tcx.emit_node_span_lint(
                 lint::builtin::RUST_2024_INCOMPATIBLE_PAT,
                 pat_id,
                 spans,

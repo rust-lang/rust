@@ -819,7 +819,7 @@ impl<'tcx> ExtraInfo<'tcx> {
             }
         }
 
-        self.tcx.node_span_lint(
+        self.tcx.emit_node_span_lint(
             crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
             self.tcx.local_def_id_to_hir_id(self.def_id),
             self.sp,

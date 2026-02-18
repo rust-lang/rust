@@ -476,7 +476,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this case used to be allowed by the compiler,
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)
-                self.tcx.node_span_lint(
+                self.tcx.emit_node_span_lint(
                     lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                     scope_expr_id,
                     span,
@@ -1886,7 +1886,7 @@ impl<'tcx> Pick<'tcx> {
         if self.unstable_candidates.is_empty() {
             return;
         }
-        tcx.node_span_lint(
+        tcx.emit_node_span_lint(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
             scope_expr_id,
             span,

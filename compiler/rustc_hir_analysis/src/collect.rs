@@ -678,7 +678,7 @@ pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 } else {
                     "`repr(C)` enum discriminant does not fit into C `int`, and a previous discriminant does not fit into C `unsigned int`"
                 };
-                tcx.node_span_lint(
+                tcx.emit_node_span_lint(
                     rustc_session::lint::builtin::REPR_C_ENUMS_LARGER_THAN_INT,
                     tcx.local_def_id_to_hir_id(def_id),
                     span,

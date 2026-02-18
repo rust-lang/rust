@@ -380,7 +380,7 @@ fn check_unnecessary_transmute<'tcx>(
         _ => return,
     };
 
-    cx.tcx.node_span_lint(
+    cx.tcx.emit_node_span_lint(
         UNNECESSARY_TRANSMUTES,
         expr.hir_id,
         expr.span,

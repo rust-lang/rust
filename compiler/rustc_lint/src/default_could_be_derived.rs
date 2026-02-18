@@ -147,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
 
         let hir_id = cx.tcx.local_def_id_to_hir_id(impl_id);
         let impl_span = cx.tcx.hir_span_with_body(hir_id);
-        cx.tcx.node_span_lint(
+        cx.tcx.emit_node_span_lint(
             DEFAULT_OVERRIDES_DEFAULT_FIELDS,
             hir_id,
             impl_span,

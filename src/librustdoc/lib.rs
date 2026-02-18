@@ -930,7 +930,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                     for lint in &delayed_lints.lints {
                         match lint {
                             DelayedLint::AttributeParsing(attribute_lint) => {
-                                tcx.node_span_lint(
+                                tcx.emit_node_span_lint(
                                     attribute_lint.lint_id.lint,
                                     attribute_lint.id,
                                     attribute_lint.span,

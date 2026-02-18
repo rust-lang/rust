@@ -281,7 +281,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     match param_default_policy.expect("no policy for generic param default") {
                         ParamDefaultPolicy::Allowed => {}
                         ParamDefaultPolicy::FutureCompatForbidden => {
-                            tcx.node_span_lint(
+                            tcx.emit_node_span_lint(
                                 lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                                 param.hir_id,
                                 param.span,

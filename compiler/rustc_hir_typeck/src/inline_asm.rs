@@ -405,7 +405,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     result: default_result,
                     size: default_size,
                 } = reg_class.default_modifier(asm_arch).unwrap();
-                self.tcx().node_span_lint(
+                self.tcx().emit_node_span_lint(
                     lint::builtin::ASM_SUB_REGISTER,
                     expr.hir_id,
                     spans,
