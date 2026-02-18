@@ -36,8 +36,9 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // Size is always <= isize::MAX.
             let size_bound = bx.data_layout().ptr_sized_integer().signed_max() as u128;
             bx.range_metadata(size, WrappingRange { start: 0, end: size_bound });
-            // Alignment is always nonzero.
-            bx.range_metadata(align, WrappingRange { start: 1, end: !0 });
+            // Alignment is always a power of two, thus 1..=0x800…000.
+            let align_bound = size_bound + 1;
+            bx.range_metadata(align, WrappingRange { start: 1, end: align_bound });
 
             (size, align)
         }
@@ -157,7 +158,12 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // Furthermore, `align >= unsized_align`, and therefore we only need to do:
             // let full_size = (unsized_offset_unadjusted + unsized_size).align_to(full_align);
 
-            let full_size = bx.add(unsized_offset_unadjusted, unsized_size);
+            // This is the size *before* rounding up, which cannot exceed the size *after*
+            // rounding up, which itself cannot exceed `isize::MAX`. Thus the addition
+            // itself cannot overflow `isize::MAX`, let alone `usize::MAX`.
+            // (The range attribute from loading the size from the vtable is enough to prove
+            // `nuw`, but not `nsw`, which we only know from Rust's layout rules.)
+            let full_size = bx.unchecked_suadd(unsized_offset_unadjusted, unsized_size);
 
             // Issue #27023: must add any necessary padding to `size`
             // (to make it a multiple of `align`) before returning it.

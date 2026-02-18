@@ -1,4 +1,4 @@
-use rustc_abi::WrappingRange;
+use rustc_abi::{FieldIdx, WrappingRange};
 use rustc_middle::mir::SourceInfo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -7,7 +7,7 @@ use rustc_span::sym;
 use rustc_target::spec::Arch;
 
 use super::FunctionCx;
-use super::operand::OperandRef;
+use super::operand::{OperandRef, OperandRefBuilder};
 use super::place::PlaceRef;
 use crate::common::{AtomicRmwBinOp, SynchronizationScope};
 use crate::errors::InvalidMonomorphization;
@@ -149,17 +149,26 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             sym::va_start => bx.va_start(args[0].immediate()),
             sym::va_end => bx.va_end(args[0].immediate()),
-            sym::size_of_val => {
+            sym::size_of_val | sym::align_of_val | sym::layout_of_val => {
                 let tp_ty = fn_args.type_at(0);
                 let (_, meta) = args[0].val.pointer_parts();
-                let (llsize, _) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
-                llsize
-            }
-            sym::align_of_val => {
-                let tp_ty = fn_args.type_at(0);
-                let (_, meta) = args[0].val.pointer_parts();
-                let (_, llalign) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
-                llalign
+                let (llsize, llalign) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
+                match name {
+                    sym::size_of_val => llsize,
+                    sym::align_of_val => llalign,
+                    sym::layout_of_val => {
+                        // Use the builder so we're insulated from the in-memory field order
+                        let mut builder = OperandRefBuilder::<'_, Bx::Value>::new(result.layout);
+                        builder.insert_imm(FieldIdx::from_u32(0), llsize);
+                        builder.insert_imm(FieldIdx::from_u32(1), llalign);
+                        let val = builder.build(bx.cx()).val;
+                        // the match can only return a single `Bx::Value`,
+                        // so we need to do the store and return.
+                        val.store(bx, result);
+                        return Ok(());
+                    }
+                    _ => bug!(),
+                }
             }
             sym::vtable_size | sym::vtable_align => {
                 let vtable = args[0].immediate();
@@ -179,9 +188,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let size_bound = bx.data_layout().ptr_sized_integer().signed_max() as u128;
                         bx.range_metadata(value, WrappingRange { start: 0, end: size_bound });
                     }
-                    // Alignment is always nonzero.
+                    // Alignment is always a power of two, thus 1..=0x800…000.
                     sym::vtable_align => {
-                        bx.range_metadata(value, WrappingRange { start: 1, end: !0 })
+                        let align_bound = bx.data_layout().ptr_sized_integer().signed_min() as u128;
+                        bx.range_metadata(value, WrappingRange { start: 1, end: align_bound })
                     }
                     _ => {}
                 }
