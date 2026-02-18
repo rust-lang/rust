@@ -383,7 +383,6 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
         Rvalue::Repeat(op, cnst) => {
             write!(writer, "[{}; {}]", pretty_operand(op), pretty_ty_const(cnst))
         }
-        Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::ThreadLocalRef(item) => {
             write!(writer, "thread_local_ref{item:?}")
         }

@@ -747,11 +747,6 @@ impl<'tcx> ConstOperand<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Rvalues
 
-pub enum RvalueInitializationState {
-    Shallow,
-    Deep,
-}
-
 impl<'tcx> Rvalue<'tcx> {
     /// Returns true if rvalue can be safely removed when the result is unused.
     #[inline]
@@ -786,7 +781,6 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::UnaryOp(_, _)
             | Rvalue::Discriminant(_)
             | Rvalue::Aggregate(_, _)
-            | Rvalue::ShallowInitBox(_, _)
             | Rvalue::WrapUnsafeBinder(_, _) => true,
         }
     }
@@ -833,19 +827,8 @@ impl<'tcx> Rvalue<'tcx> {
                 }
                 AggregateKind::RawPtr(ty, mutability) => Ty::new_ptr(tcx, ty, mutability),
             },
-            Rvalue::ShallowInitBox(_, ty) => Ty::new_box(tcx, ty),
             Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,
             Rvalue::WrapUnsafeBinder(_, ty) => ty,
-        }
-    }
-
-    #[inline]
-    /// Returns `true` if this rvalue is deeply initialized (most rvalues) or
-    /// whether its only shallowly initialized (`Rvalue::Box`).
-    pub fn initialization_state(&self) -> RvalueInitializationState {
-        match *self {
-            Rvalue::ShallowInitBox(_, _) => RvalueInitializationState::Shallow,
-            _ => RvalueInitializationState::Deep,
         }
     }
 }

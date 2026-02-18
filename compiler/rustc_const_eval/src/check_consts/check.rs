@@ -646,8 +646,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             Rvalue::Cast(_, _, _) => {}
 
-            Rvalue::ShallowInitBox(_, _) => {}
-
             Rvalue::UnaryOp(op, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
                 match op {
