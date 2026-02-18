@@ -823,11 +823,11 @@ fn binop_lhs_never_place_diverges() {
     check_no_mismatches(
         r#"
 //- minicore: sized, add
-fn foo() -> i32 {
+fn foo() {
     unsafe {
-        let p: *const ! = 0 as _;
-        let _x = *p + 1;
-              // ^^ adjustments: NeverToAny
+        let p: *mut ! = 0 as _;
+        *p + 1;
+//      ^^ adjustments: NeverToAny
     }
 }
 "#,
