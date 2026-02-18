@@ -728,7 +728,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             }
             ty::RawPtr(..) => {
                 let place = self.deref_pointer(value, ExpectedKind::RawPtr)?;
-                if place.layout.is_unsized() {
+                if place.layout.is_unsized() && place.meta().has_meta() {
                     self.check_wide_ptr_meta(place.meta(), place.layout)?;
                 }
                 interp_ok(true)
