@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::is_must_use_ty;
 use clippy_utils::{nth_arg, return_ty};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, OwnerId, TraitItem, TraitItemKind, find_attr};
@@ -77,7 +76,7 @@ fn check_method(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_def: LocalDefId, spa
         // We don't want to emit this lint if the `#[must_use]` attribute is already there.
         && !find_attr!(
             cx.tcx.hir_attrs(owner_id.into()),
-            AttributeKind::MustUse { .. }
+            MustUse { .. }
         )
         && cx.tcx.visibility(fn_def.to_def_id()).is_public()
         && let ret_ty = return_ty(cx, owner_id)

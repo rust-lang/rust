@@ -171,6 +171,7 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
         if let Some(adt) = ty.ty_adt_def() {
             let mut iter = get_builtin_attr(
                 self.cx.sess(),
+                #[allow(deprecated)]
                 self.cx.tcx.get_all_attrs(adt.did()),
                 sym::has_significant_drop,
             );
