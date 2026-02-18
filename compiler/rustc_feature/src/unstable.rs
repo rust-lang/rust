@@ -287,10 +287,6 @@ declare_features! (
     (internal, panic_runtime, "1.10.0", Some(32837)),
     /// Allows using pattern types.
     (internal, pattern_types, "1.79.0", Some(123646)),
-    /// Allows using `#[rustc_allow_const_fn_unstable]`.
-    /// This is an attribute on `const fn` for the same
-    /// purpose as `#[allow_internal_unstable]`.
-    (internal, rustc_allow_const_fn_unstable, "1.49.0", Some(69399)),
     /// Allows using compiler's own crates.
     (unstable, rustc_private, "1.0.0", Some(27812)),
     /// Allows using internal rustdoc features like `doc(keyword)`.
