@@ -1233,6 +1233,7 @@ where
             ecx: self,
             param_env,
             universes: vec![],
+            recursion_depth: 0,
         }) {
             ControlFlow::Break(Err(NoSolution)) => Err(NoSolution),
             ControlFlow::Break(Ok(())) => Ok(CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)),
@@ -1245,6 +1246,7 @@ struct FindParamInClause<'a, 'b, D: SolverDelegate<Interner = I>, I: Interner> {
     ecx: &'a mut EvalCtxt<'b, D>,
     param_env: I::ParamEnv,
     universes: Vec<Option<ty::UniverseIndex>>,
+    recursion_depth: usize,
 }
 
 impl<D, I> TypeVisitor<I> for FindParamInClause<'_, '_, D, I>
@@ -1274,7 +1276,13 @@ where
                 ControlFlow::Continue(())
             }
         } else if ty.has_type_flags(TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_RE_INFER) {
-            ty.super_visit_with(self)
+            self.recursion_depth += 1;
+            if self.recursion_depth > self.ecx.cx().recursion_limit() {
+                return ControlFlow::Break(Err(NoSolution));
+            }
+            let result = ty.super_visit_with(self);
+            self.recursion_depth -= 1;
+            result
         } else {
             ControlFlow::Continue(())
         }
