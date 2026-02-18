@@ -13,6 +13,7 @@ This tracks support for additional registers in architectures where inline assem
 | Architecture | Register class | Registers | LLVM constraint code |
 | ------------ | -------------- | --------- | -------------------- |
 | s390x | `vreg` | `v[0-31]` | `v` |
+| RISC-V | `reg_pair` | | `R` |
 
 > **Notes**:
 > - s390x `vreg` is clobber-only in stable.
@@ -22,6 +23,8 @@ This tracks support for additional registers in architectures where inline assem
 | Architecture | Register class | Target feature | Allowed types |
 | ------------ | -------------- | -------------- | ------------- |
 | s390x | `vreg` | `vector` | `i32`, `f32`, `i64`, `f64`, `i128`, `f128`, `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4`, `f64x2` |
+| RISC-V32 | `reg_pair` | | `i64` |
+| RISC-V64 | `reg_pair` | | `i128` |
 
 ## Register aliases
 
@@ -38,3 +41,4 @@ This tracks support for additional registers in architectures where inline assem
 | Architecture | Register class | Modifier | Example output | LLVM modifier |
 | ------------ | -------------- | -------- | -------------- | ------------- |
 | s390x | `vreg` | None | `%v0` | None |
+| RISC-V | `reg_pair` | None | `a0` | None |
