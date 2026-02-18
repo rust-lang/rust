@@ -686,7 +686,7 @@ impl<'a> Parser<'a> {
             // AST validation later detects this `TyKind::Dummy` and emits an
             // error. (#121072 will hopefully remove all this special handling
             // of the obsolete `impl Trait for ..` and then this can go away.)
-            Some(self.mk_ty(self.prev_token.span, TyKind::Dummy))
+            Some(Box::new(self.mk_ty(self.prev_token.span, TyKind::Dummy)))
         } else if has_for || self.token.can_begin_type() {
             Some(Box::new(self.parse_ty()?))
         } else {

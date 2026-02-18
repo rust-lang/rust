@@ -112,7 +112,7 @@ impl<'a> Parser<'a> {
             let span = self.token.span;
             self.bump();
             let kind = TyKind::Err(self.dcx().emit_err(InvalidCVariadicType { span }));
-            return Ok(self.mk_ty_mut(span, kind));
+            return Ok(self.mk_ty(span, kind));
         }
         // Make sure deeply nested types don't overflow the stack.
         ensure_sufficient_stack(|| {
@@ -305,7 +305,7 @@ impl<'a> Parser<'a> {
                 }
             };
 
-            return Ok(self.mk_ty_mut(full_span, TyKind::Err(guar)));
+            return Ok(self.mk_ty(full_span, TyKind::Err(guar)));
         }
         if let Some(ty) = self.eat_metavar_seq_with_matcher(
             |mv_kind| matches!(mv_kind, MetaVarKind::Ty { .. }),
@@ -439,7 +439,7 @@ impl<'a> Parser<'a> {
         };
 
         let span = lo.to(self.prev_token.span);
-        let mut ty = self.mk_ty_mut(span, kind);
+        let mut ty = self.mk_ty(span, kind);
 
         // Try to recover from use of `+` with incorrect priority.
         match allow_plus {
@@ -655,7 +655,7 @@ impl<'a> Parser<'a> {
                 // Recover from `[LIT; EXPR]` and `[LIT]`
                 self.bump();
                 let guar = err.emit();
-                self.mk_ty(self.prev_token.span, TyKind::Err(guar))
+                Box::new(self.mk_ty(self.prev_token.span, TyKind::Err(guar)))
             }
             Err(err) => return Err(err),
         };
@@ -1596,11 +1596,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn mk_ty(&self, span: Span, kind: TyKind) -> Box<Ty> {
-        Box::new(self.mk_ty_mut(span, kind))
-    }
-
-    pub(super) fn mk_ty_mut(&self, span: Span, kind: TyKind) -> Ty {
+    pub(super) fn mk_ty(&self, span: Span, kind: TyKind) -> Ty {
         Ty { kind, span, id: ast::DUMMY_NODE_ID, tokens: None }
     }
 }

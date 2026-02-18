@@ -2408,24 +2408,6 @@ pub enum Term {
     Const(AnonConst),
 }
 
-impl From<Ty> for Term {
-    fn from(v: Ty) -> Self {
-        Term::Ty(Box::new(v))
-    }
-}
-
-impl From<Box<Ty>> for Term {
-    fn from(v: Box<Ty>) -> Self {
-        Term::Ty(v)
-    }
-}
-
-impl From<AnonConst> for Term {
-    fn from(v: AnonConst) -> Self {
-        Term::Const(v)
-    }
-}
-
 /// The kind of [associated item constraint][AssocItemConstraint].
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum AssocItemConstraintKind {

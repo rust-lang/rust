@@ -1911,7 +1911,7 @@ fn deny_equality_constraints(
                     ident: *ident,
                     gen_args,
                     kind: AssocItemConstraintKind::Equality {
-                        term: predicate.rhs_ty.clone().into(),
+                        term: Term::Ty(predicate.rhs_ty.clone()),
                     },
                     span: ident.span,
                 });

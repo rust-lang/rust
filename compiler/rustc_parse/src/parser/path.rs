@@ -5,7 +5,7 @@ use rustc_ast::token::{self, MetaVarKind, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemConstraint,
     AssocItemConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, MgcaDisambiguation,
-    ParenthesizedArgs, Path, PathSegment, QSelf,
+    ParenthesizedArgs, Path, PathSegment, QSelf, Term,
 };
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{BytePos, Ident, Span, kw, sym};
@@ -795,10 +795,10 @@ impl<'a> Parser<'a> {
         let arg = self.parse_generic_arg(None)?;
         let span = ident.span.to(self.prev_token.span);
         let term = match arg {
-            Some(GenericArg::Type(ty)) => ty.into(),
+            Some(GenericArg::Type(ty)) => Term::Ty(ty),
             Some(GenericArg::Const(c)) => {
                 self.psess.gated_spans.gate(sym::associated_const_equality, span);
-                c.into()
+                Term::Const(c)
             }
             Some(GenericArg::Lifetime(lt)) => {
                 let guar = self.dcx().emit_err(errors::LifetimeInEqConstraint {
@@ -809,7 +809,7 @@ impl<'a> Parser<'a> {
                         .map_or(ident.span, |args| args.span())
                         .between(lt.ident.span),
                 });
-                self.mk_ty(lt.ident.span, ast::TyKind::Err(guar)).into()
+                Term::Ty(Box::new(self.mk_ty(lt.ident.span, ast::TyKind::Err(guar))))
             }
             None => {
                 let after_eq = eq_span.shrink_to_hi();
@@ -1035,7 +1035,9 @@ impl<'a> Parser<'a> {
                 fix_span: attr_span.until(arg.span()),
             });
             return Ok(Some(match arg {
-                GenericArg::Type(_) => GenericArg::Type(self.mk_ty(attr_span, TyKind::Err(guar))),
+                GenericArg::Type(_) => {
+                    GenericArg::Type(Box::new(self.mk_ty(attr_span, TyKind::Err(guar))))
+                }
                 GenericArg::Const(_) => {
                     let error_expr = self.mk_expr(attr_span, ExprKind::Err(guar));
                     GenericArg::Const(AnonConst {

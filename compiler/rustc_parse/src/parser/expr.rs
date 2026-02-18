@@ -725,7 +725,7 @@ impl<'a> Parser<'a> {
                         let expr = mk_expr(
                             self,
                             lhs,
-                            self.mk_ty(path.span, TyKind::Path(None, path.clone())),
+                            Box::new(self.mk_ty(path.span, TyKind::Path(None, path.clone()))),
                         );
 
                         let args_span = self.look_ahead(1, |t| t.span).to(span_after_type);
@@ -2608,7 +2608,7 @@ impl<'a> Parser<'a> {
             let ty = if this.eat(exp!(Colon)) {
                 this.parse_ty()?
             } else {
-                this.mk_ty_mut(pat.span, TyKind::Infer)
+                this.mk_ty(pat.span, TyKind::Infer)
             };
 
             Ok((

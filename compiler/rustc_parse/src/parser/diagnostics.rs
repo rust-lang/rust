@@ -1596,7 +1596,7 @@ impl<'a> Parser<'a> {
                     right: self.prev_token.span,
                 },
             });
-            self.mk_ty_mut(ty.span.to(self.prev_token.span), TyKind::Err(guar))
+            self.mk_ty(ty.span.to(self.prev_token.span), TyKind::Err(guar))
         } else {
             ty
         }
@@ -2683,9 +2683,9 @@ impl<'a> Parser<'a> {
                         Applicability::MaybeIncorrect,
                     );
                     let guar = err.emit();
-                    return Ok(GenericArg::Type(
+                    return Ok(GenericArg::Type(Box::new(
                         self.mk_ty(start.to(expr.span), TyKind::Err(guar)),
-                    ));
+                    )));
                 } else if self.token == token::Comma || self.token.kind.should_end_const_arg() {
                     // Avoid the following output by checking that we consumed a full const arg:
                     // help: expressions must be enclosed in braces to be used as const generic

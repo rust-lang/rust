@@ -120,7 +120,7 @@ impl<'a> Parser<'a> {
                     Applicability::HasPlaceholders,
                 );
                 let kind = TyKind::Err(err.emit());
-                let ty = self.mk_ty(span, kind);
+                let ty = Box::new(self.mk_ty(span, kind));
                 Ok(GenericParam {
                     ident,
                     id: ast::DUMMY_NODE_ID,
