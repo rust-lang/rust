@@ -2,7 +2,7 @@
 // during incremental ThinLTO.
 
 //@ revisions: cfail1 cfail2 cfail3
-//@ compile-flags: -Z query-dep-graph -O
+//@ compile-flags: -Zretain-dep-graph -O
 //@ build-pass
 //@ ignore-backends: gcc
 

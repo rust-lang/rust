@@ -8,7 +8,7 @@ fn main() {
     rustc()
         .input("foo.rs")
         .incremental(path("incr"))
-        .arg("-Zquery-dep-graph")
+        .arg("-Zretain-dep-graph")
         .arg("-Zdump-dep-graph")
         .env("RUST_DEP_GRAPH", path("dep-graph"))
         .run();

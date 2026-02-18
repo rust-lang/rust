@@ -1,5 +1,5 @@
 //@ revisions:rpass1 rpass2
-//@ compile-flags: -Z query-dep-graph
+//@ compile-flags: -Zretain-dep-graph
 //@ aux-build:cached_hygiene.rs
 //@ ignore-backends: gcc
 

@@ -6,8 +6,8 @@
 //@ only-x86_64-unknown-linux-gnu
 //@ revisions:rpass1 rpass2
 
-//@ [rpass1]compile-flags: -g -Zquery-dep-graph -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split
-//@ [rpass2]compile-flags: -g -Zquery-dep-graph -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split
+//@ [rpass1]compile-flags: -g -Zretain-dep-graph -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split
+//@ [rpass2]compile-flags: -g -Zretain-dep-graph -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split
 //@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]

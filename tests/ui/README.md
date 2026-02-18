@@ -386,9 +386,9 @@ Tests to check whether definitions are reachable.
 
 Tests for `#![feature(fn_delegation)]`. See [Implement function delegation in rustc #3530](https://github.com/rust-lang/rfcs/pull/3530) for the proposed prototype experimentation.
 
-## `tests/ui/dep-graph/`: `-Z query-dep-graph`
+## `tests/ui/dep-graph/`: `-Zretain-dep-graph`
 
-These tests use the unstable command line option `query-dep-graph` to examine the dependency graph of a Rust program, which is useful for debugging.
+These tests use the `-Zretain-dep-graph` flag to test query dependency tracking for incremental compilation.
 
 ## `tests/ui/deprecation/`: Deprecation Attribute
 

@@ -4,7 +4,7 @@
 // their callers are not.
 
 //@ revisions:cfail1 cfail2
-//@ compile-flags: -Z query-dep-graph
+//@ compile-flags: -Zretain-dep-graph
 //@ build-pass
 //@ ignore-backends: gcc
 

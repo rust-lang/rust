@@ -3,7 +3,7 @@
 // `y` module entirely (but not the `x` module).
 
 //@ revisions:rpass1 rpass2
-//@ compile-flags: -Z query-dep-graph
+//@ compile-flags: -Zretain-dep-graph
 //@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]

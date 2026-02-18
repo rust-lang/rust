@@ -2,7 +2,7 @@
 
 //@ proc-macro:derive_nothing.rs
 //@ revisions:rpass1 rpass2
-//@ compile-flags: -Zquery-dep-graph -Zcache-proc-macros
+//@ compile-flags: -Zretain-dep-graph -Zcache-proc-macros
 //@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]

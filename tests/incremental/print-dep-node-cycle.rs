@@ -1,4 +1,4 @@
-//@ compile-flags: -Z query-dep-graph
+//@ compile-flags: -Zretain-dep-graph
 //@ revisions: rpass1
 
 // Exercises a debug-assertions-only query cycle that when printing a valtree const in

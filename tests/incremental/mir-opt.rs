@@ -2,7 +2,7 @@
 // This test verifies that those expansions can be decoded correctly.
 
 //@ revisions:rpass1 rpass2
-//@ compile-flags: -Z query-dep-graph -Z mir-opt-level=3
+//@ compile-flags: -Zretain-dep-graph -Z mir-opt-level=3
 //@ ignore-backends: gcc
 
 fn main() {

@@ -1,6 +1,6 @@
 //@ aux-build:a.rs
 //@ revisions:rpass1 rpass2 rpass3
-//@ compile-flags: -Z query-dep-graph
+//@ compile-flags: -Zretain-dep-graph
 //@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]

@@ -505,7 +505,7 @@ fn try_load_from_disk_and_cache_in_memory<'tcx, C: QueryCache, const FLAGS: Quer
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
     if let Some(result) = query.try_load_from_disk(tcx, key, prev_dep_node_index, dep_node_index) {
-        if std::intrinsics::unlikely(tcx.sess.opts.unstable_opts.query_dep_graph) {
+        if std::intrinsics::unlikely(tcx.sess.opts.unstable_opts.retain_dep_graph) {
             dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
         }
 

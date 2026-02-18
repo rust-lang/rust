@@ -1,5 +1,5 @@
 //@ revisions: rpass1 rpass2
-//@ compile-flags: -Z incremental-ignore-spans -Z query-dep-graph
+//@ compile-flags: -Z incremental-ignore-spans -Zretain-dep-graph
 //@ ignore-backends: gcc
 
 // Tests that module hashing depends on the order of the items

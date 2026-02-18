@@ -131,7 +131,7 @@ struct Assertion {
 }
 
 pub(crate) fn check_clean_annotations(tcx: TyCtxt<'_>) {
-    if !tcx.sess.opts.unstable_opts.query_dep_graph {
+    if !tcx.sess.opts.unstable_opts.retain_dep_graph {
         return;
     }
 

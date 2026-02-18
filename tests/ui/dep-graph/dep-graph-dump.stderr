@@ -1,2 +1,2 @@
-error: can't dump dependency graph without `-Z query-dep-graph`
+error: can't dump dependency graph without `-Zretain-dep-graph`
 

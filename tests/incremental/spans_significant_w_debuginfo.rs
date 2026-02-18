@@ -3,7 +3,7 @@
 
 //@ revisions:rpass1 rpass2
 
-//@ compile-flags: -g -Z query-dep-graph
+//@ compile-flags: -g -Zretain-dep-graph
 //@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]

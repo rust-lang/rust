@@ -1,5 +1,5 @@
 //@ revisions: rpass1 rpass2 rpass3 rpass4
-//@ compile-flags: -Zquery-dep-graph
+//@ compile-flags: -Zretain-dep-graph
 //@ [rpass1]compile-flags: -Zincremental-ignore-spans
 //@ [rpass2]compile-flags: -Zincremental-ignore-spans
 //@ ignore-backends: gcc

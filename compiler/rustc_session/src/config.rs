@@ -1458,7 +1458,7 @@ impl Options {
     pub fn build_dep_graph(&self) -> bool {
         self.incremental.is_some()
             || self.unstable_opts.dump_dep_graph
-            || self.unstable_opts.query_dep_graph
+            || self.unstable_opts.retain_dep_graph
     }
 
     pub fn file_path_mapping(&self) -> FilePathMapping {
@@ -2689,9 +2689,9 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let pretty = parse_pretty(early_dcx, &unstable_opts);
 
-    // query-dep-graph is required if dump-dep-graph is given #106736
-    if unstable_opts.dump_dep_graph && !unstable_opts.query_dep_graph {
-        early_dcx.early_fatal("can't dump dependency graph without `-Z query-dep-graph`");
+    // `-Zretain-dep-graph` is required if `-Zdump-dep-graph` is given #106736
+    if unstable_opts.dump_dep_graph && !unstable_opts.retain_dep_graph {
+        early_dcx.early_fatal("can't dump dependency graph without `-Zretain-dep-graph`");
     }
 
     let logical_env = parse_logical_env(early_dcx, matches);

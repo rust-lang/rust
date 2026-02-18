@@ -108,7 +108,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
 
     let mut prev_work_products = UnordMap::default();
 
-    // If we are only building with -Zquery-dep-graph but without an actual
+    // If we are only building with `-Zretain-dep-graph` but without an actual
     // incr. comp. session directory, we skip this. Otherwise we'd fail
     // when trying to load work products.
     if sess.incr_comp_session_dir_opt().is_some() {

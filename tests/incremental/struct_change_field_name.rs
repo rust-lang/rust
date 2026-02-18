@@ -2,8 +2,8 @@
 // in between revisions (hashing should be stable).
 
 //@ revisions:rpass1 cfail2
-//@ compile-flags: -Z query-dep-graph
-//@ [cfail2] compile-flags: -Z query-dep-graph -Z assert-incr-state=loaded
+//@ compile-flags: -Zretain-dep-graph
+//@ [cfail2] compile-flags: -Zretain-dep-graph -Z assert-incr-state=loaded
 
 #![feature(rustc_attrs)]
 #![allow(unused_variables)]

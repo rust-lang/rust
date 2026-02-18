@@ -3,7 +3,7 @@
 
 //@ needs-unwind
 //@ revisions:cfail1 cfail2
-//@ compile-flags: -Z query-dep-graph -Cpanic=unwind
+//@ compile-flags: -Zretain-dep-graph -Cpanic=unwind
 //@ needs-unwind
 //@ build-pass (FIXME(62277): could be check-pass?)
 //@ ignore-backends: gcc

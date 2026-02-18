@@ -1,5 +1,5 @@
 //@ revisions:rpass1 rpass2 rpass3
-//@ compile-flags: -Z query-dep-graph -g
+//@ compile-flags: -Zretain-dep-graph -g
 //@ aux-build:extern_crate.rs
 //@ ignore-backends: gcc
 

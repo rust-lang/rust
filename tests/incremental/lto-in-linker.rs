@@ -1,5 +1,5 @@
 //@ revisions:cfail1 cfail2
-//@ compile-flags: -Z query-dep-graph --crate-type rlib -C linker-plugin-lto -O
+//@ compile-flags: -Zretain-dep-graph --crate-type rlib -C linker-plugin-lto -O
 //@ no-prefer-dynamic
 //@ build-pass
 

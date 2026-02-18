@@ -152,7 +152,7 @@ impl DepNode {
         {
             if !tcx.key_fingerprint_style(kind).reconstructible()
                 && (tcx.sess.opts.unstable_opts.incremental_info
-                    || tcx.sess.opts.unstable_opts.query_dep_graph)
+                    || tcx.sess.opts.unstable_opts.retain_dep_graph)
             {
                 tcx.dep_graph.register_dep_node_debug_str(dep_node, || key.to_debug_str(tcx));
             }

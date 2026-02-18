@@ -1,5 +1,5 @@
 //@ revisions:cfail1 cfail2
-//@ compile-flags: -Z query-dep-graph --crate-type rlib -C lto
+//@ compile-flags: -Zretain-dep-graph --crate-type rlib -C lto
 //@ build-pass
 
 #![feature(rustc_attrs)]

@@ -12,7 +12,7 @@
 
 //@ build-pass (FIXME(62277): could be check-pass?)
 //@ revisions: cfail1 cfail2 cfail3
-//@ compile-flags: -Z query-dep-graph -O
+//@ compile-flags: -Zretain-dep-graph -O
 //@ ignore-backends: gcc
 
 #![allow(warnings)]

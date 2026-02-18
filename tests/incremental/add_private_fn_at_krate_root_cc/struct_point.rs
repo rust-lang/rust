@@ -3,7 +3,7 @@
 // Regression test for #36168.
 
 //@ revisions:cfail1 cfail2
-//@ compile-flags: -Z query-dep-graph
+//@ compile-flags: -Zretain-dep-graph
 //@ aux-build:point.rs
 //@ build-pass
 //@ ignore-backends: gcc

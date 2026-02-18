@@ -2,7 +2,7 @@
 // We then test what sort of functions must be rebuilt as a result.
 
 //@ revisions:cfail1 cfail2
-//@ compile-flags: -Z query-dep-graph
+//@ compile-flags: -Zretain-dep-graph
 //@ build-pass
 //@ ignore-backends: gcc
 

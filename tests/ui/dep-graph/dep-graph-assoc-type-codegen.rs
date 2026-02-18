@@ -2,7 +2,7 @@
 // must also be recompiled.
 
 //@ incremental
-//@ compile-flags: -Z query-dep-graph
+//@ compile-flags: -Zretain-dep-graph
 
 #![feature(rustc_attrs)]
 #![allow(warnings)]

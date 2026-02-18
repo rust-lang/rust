@@ -1,5 +1,5 @@
 //@ revisions:cfail1 cfail2 cfail3
-//@ compile-flags: -Z query-dep-graph --test
+//@ compile-flags: -Zretain-dep-graph --test
 //@ build-pass
 //@ ignore-backends: gcc
 

@@ -56,7 +56,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&mut CguReuseTr
         let mut ams = AssertModuleSource {
             tcx,
             available_cgus,
-            cgu_reuse_tracker: if tcx.sess.opts.unstable_opts.query_dep_graph {
+            cgu_reuse_tracker: if tcx.sess.opts.unstable_opts.retain_dep_graph {
                 CguReuseTracker::new()
             } else {
                 CguReuseTracker::new_disabled()
@@ -107,8 +107,8 @@ impl<'tcx> AssertModuleSource<'tcx> {
             | CguFields::PartitionCodegened { cfg, module }
             | CguFields::PartitionReused { cfg, module }) = cgu_fields;
 
-            if !self.tcx.sess.opts.unstable_opts.query_dep_graph {
-                self.tcx.dcx().emit_fatal(errors::MissingQueryDepGraph { span });
+            if !self.tcx.sess.opts.unstable_opts.retain_dep_graph {
+                self.tcx.dcx().emit_fatal(errors::MissingRetainDepGraph { span });
             }
 
             if !self.check_config(cfg) {

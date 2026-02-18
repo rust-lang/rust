@@ -4,14 +4,20 @@ use rustc_index::IndexVec;
 
 use super::{DepNode, DepNodeIndex};
 
-pub struct DepGraphQuery {
-    pub graph: LinkedGraph<DepNode, ()>,
+/// An in-memory copy of the current session's query dependency graph, which
+/// is only enabled when `-Zretain-dep-graph` is set (for debugging/testing).
+///
+/// Normally, dependencies recorded during the current session are written to
+/// disk and then forgotten, to avoid wasting memory on information that is
+/// not needed when the compiler is working correctly.
+pub struct RetainedDepGraph {
+    pub inner: LinkedGraph<DepNode, ()>,
     pub indices: FxHashMap<DepNode, NodeIndex>,
     pub dep_index_to_index: IndexVec<DepNodeIndex, Option<NodeIndex>>,
 }
 
-impl DepGraphQuery {
-    pub fn new(prev_node_count: usize) -> DepGraphQuery {
+impl RetainedDepGraph {
+    pub fn new(prev_node_count: usize) -> Self {
         let node_count = prev_node_count + prev_node_count / 4;
         let edge_count = 6 * node_count;
 
@@ -19,39 +25,39 @@ impl DepGraphQuery {
         let indices = FxHashMap::default();
         let dep_index_to_index = IndexVec::new();
 
-        DepGraphQuery { graph, indices, dep_index_to_index }
+        Self { inner: graph, indices, dep_index_to_index }
     }
 
     pub fn push(&mut self, index: DepNodeIndex, node: DepNode, edges: &[DepNodeIndex]) {
-        let source = self.graph.add_node(node);
+        let source = self.inner.add_node(node);
         self.dep_index_to_index.insert(index, source);
         self.indices.insert(node, source);
 
         for &target in edges.iter() {
-            // We may miss the edges that are pushed while the `DepGraphQuery` is being accessed.
-            // Skip them to issues.
+            // We may miss the edges that are pushed while this graph is being accessed.
+            // Skip them to avoid problems.
             if let Some(&Some(target)) = self.dep_index_to_index.get(target) {
-                self.graph.add_edge(source, target, ());
+                self.inner.add_edge(source, target, ());
             }
         }
     }
 
     pub fn nodes(&self) -> Vec<&DepNode> {
-        self.graph.all_nodes().iter().map(|n| &n.data).collect()
+        self.inner.all_nodes().iter().map(|n| &n.data).collect()
     }
 
     pub fn edges(&self) -> Vec<(&DepNode, &DepNode)> {
-        self.graph
+        self.inner
             .all_edges()
             .iter()
             .map(|edge| (edge.source(), edge.target()))
-            .map(|(s, t)| (self.graph.node_data(s), self.graph.node_data(t)))
+            .map(|(s, t)| (self.inner.node_data(s), self.inner.node_data(t)))
             .collect()
     }
 
     fn reachable_nodes(&self, node: &DepNode, direction: Direction) -> Vec<&DepNode> {
         if let Some(&index) = self.indices.get(node) {
-            self.graph.depth_traverse(index, direction).map(|s| self.graph.node_data(s)).collect()
+            self.inner.depth_traverse(index, direction).map(|s| self.inner.node_data(s)).collect()
         } else {
             vec![]
         }

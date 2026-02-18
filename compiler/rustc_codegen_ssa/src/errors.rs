@@ -42,8 +42,8 @@ pub(crate) struct CguNotRecorded<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("found CGU-reuse attribute but `-Zquery-dep-graph` was not specified")]
-pub(crate) struct MissingQueryDepGraph {
+#[diag("found CGU-reuse attribute but `-Zretain-dep-graph` was not specified")]
+pub(crate) struct MissingRetainDepGraph {
     #[primary_span]
     pub span: Span,
 }

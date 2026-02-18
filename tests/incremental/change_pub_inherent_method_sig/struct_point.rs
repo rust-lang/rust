@@ -1,7 +1,7 @@
 // Test where we change the *signature* of a public, inherent method.
 
 //@ revisions:cfail1 cfail2
-//@ compile-flags: -Z query-dep-graph
+//@ compile-flags: -Zretain-dep-graph
 //@ build-pass
 //@ ignore-backends: gcc
 

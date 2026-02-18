@@ -59,7 +59,7 @@ use rustc_session::Session;
 use tracing::{debug, instrument};
 
 use super::graph::{CurrentDepGraph, DepNodeColorMap};
-use super::query::DepGraphQuery;
+use super::retained::RetainedDepGraph;
 use super::{DepKind, DepNode, DepNodeIndex};
 use crate::dep_graph::edges::EdgesVec;
 
@@ -614,7 +614,7 @@ impl EncoderState {
         index: DepNodeIndex,
         edge_count: usize,
         edges: impl FnOnce(&Self) -> Vec<DepNodeIndex>,
-        record_graph: &Option<Lock<DepGraphQuery>>,
+        record_graph: &Option<Lock<RetainedDepGraph>>,
         local: &mut LocalEncoderState,
     ) {
         local.kind_stats[node.kind.as_usize()] += 1;
@@ -661,7 +661,7 @@ impl EncoderState {
         &self,
         index: DepNodeIndex,
         node: &NodeInfo,
-        record_graph: &Option<Lock<DepGraphQuery>>,
+        record_graph: &Option<Lock<RetainedDepGraph>>,
         local: &mut LocalEncoderState,
     ) {
         node.encode(&mut local.encoder, index);
@@ -687,7 +687,7 @@ impl EncoderState {
         &self,
         index: DepNodeIndex,
         prev_index: SerializedDepNodeIndex,
-        record_graph: &Option<Lock<DepGraphQuery>>,
+        record_graph: &Option<Lock<RetainedDepGraph>>,
         colors: &DepNodeColorMap,
         local: &mut LocalEncoderState,
     ) {
@@ -844,7 +844,8 @@ impl EncoderState {
 pub(crate) struct GraphEncoder {
     profiler: SelfProfilerRef,
     status: EncoderState,
-    record_graph: Option<Lock<DepGraphQuery>>,
+    /// Only present if `-Zretain-dep-graph` is set.
+    record_graph: Option<Lock<RetainedDepGraph>>,
 }
 
 impl GraphEncoder {
@@ -857,13 +858,13 @@ impl GraphEncoder {
         let record_graph = sess
             .opts
             .unstable_opts
-            .query_dep_graph
-            .then(|| Lock::new(DepGraphQuery::new(prev_node_count)));
+            .retain_dep_graph
+            .then(|| Lock::new(RetainedDepGraph::new(prev_node_count)));
         let status = EncoderState::new(encoder, sess.opts.unstable_opts.incremental_info, previous);
         GraphEncoder { status, record_graph, profiler: sess.prof.clone() }
     }
 
-    pub(crate) fn with_query(&self, f: impl Fn(&DepGraphQuery)) {
+    pub(crate) fn with_retained_dep_graph(&self, f: impl Fn(&RetainedDepGraph)) {
         if let Some(record_graph) = &self.record_graph {
             f(&record_graph.lock())
         }

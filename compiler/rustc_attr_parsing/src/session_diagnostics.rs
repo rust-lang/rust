@@ -542,11 +542,10 @@ pub(crate) struct RustcScalableVectorCountOutOfRange {
 }
 
 #[derive(Diagnostic)]
-#[diag("attribute requires {$opt} to be enabled")]
-pub(crate) struct AttributeRequiresOpt {
+#[diag("attribute requires `-Zretain-dep-graph` to be enabled")]
+pub(crate) struct AttributeRequiresRetainDepGraph {
     #[primary_span]
     pub span: Span,
-    pub opt: &'static str,
 }
 
 pub(crate) enum AttributeParseErrorReason<'a> {

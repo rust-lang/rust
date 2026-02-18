@@ -3,7 +3,7 @@
 
 //@ revisions:rpass1 rpass2
 
-//@ compile-flags: -C overflow-checks=on -Z query-dep-graph
+//@ compile-flags: -C overflow-checks=on -Zretain-dep-graph
 //@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]

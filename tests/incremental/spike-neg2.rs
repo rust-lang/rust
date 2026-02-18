@@ -7,7 +7,7 @@
 
 //@ revisions:rpass1 rpass2
 //@ should-fail
-//@ compile-flags: -Z query-dep-graph
+//@ compile-flags: -Zretain-dep-graph
 
 #![feature(rustc_attrs)]
 

@@ -5,4 +5,4 @@
 
 fn main() {}
 
-//~? ERROR can't dump dependency graph without `-Z query-dep-graph`
+//~? ERROR can't dump dependency graph without `-Zretain-dep-graph`

@@ -2,7 +2,7 @@
 // the cache while changing an untracked one doesn't.
 
 //@ revisions:rpass1 rpass2 rpass3 rpass4
-//@ compile-flags: -Z query-dep-graph
+//@ compile-flags: -Zretain-dep-graph
 
 #![feature(rustc_attrs)]
 

@@ -21,7 +21,7 @@ use tracing::{debug, instrument};
 #[cfg(debug_assertions)]
 use {super::debug::EdgeFilter, std::env};
 
-use super::query::DepGraphQuery;
+use super::retained::RetainedDepGraph;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepKind, DepNode, WorkProductId, read_deps, with_deps};
 use crate::dep_graph::edges::EdgesVec;
@@ -191,9 +191,9 @@ impl DepGraph {
         self.data.is_some()
     }
 
-    pub fn with_query(&self, f: impl Fn(&DepGraphQuery)) {
+    pub fn with_retained_dep_graph(&self, f: impl Fn(&RetainedDepGraph)) {
         if let Some(data) = &self.data {
-            data.current.encoder.with_query(f)
+            data.current.encoder.with_retained_dep_graph(f)
         }
     }
 
