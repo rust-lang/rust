@@ -34,8 +34,8 @@ fn compute_outlives_bounds_rename<'tcx>(
 
     let unnormalized_input_output_tys =
         compute_inputs_and_output_non_nll(&infcx, mir_def, defining_ty);
-    let unnormalized_input_output_tys = tcx
-        .liberate_late_bound_regions(defining_ty_def_id.to_def_id(), unnormalized_input_output_tys);
+    let unnormalized_input_output_tys =
+        infcx.enter_forall_and_leak_universe(unnormalized_input_output_tys);
 
     let span = tcx.def_span(defining_ty_def_id);
     let mut outlives_bounds: Vec<OutlivesBound<'tcx>> = vec![];
