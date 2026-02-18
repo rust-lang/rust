@@ -2481,6 +2481,9 @@ options! {
     mir_include_spans: MirIncludeSpans = (MirIncludeSpans::default(), parse_mir_include_spans, [UNTRACKED],
         "include extra comments in mir pretty printing, like line numbers and statement indices, \
          details about types, etc. (boolean for all passes, 'nll' to enable in NLL MIR only, default: 'nll')"),
+    mir_opt_bisect_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
+        "limit the number of MIR optimization pass executions (global across all bodies). \
+        Pass executions after this limit are skipped and reported. (default: no limit)"),
     #[rustc_lint_opt_deny_field_access("use `Session::mir_opt_level` instead of this field")]
     mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
