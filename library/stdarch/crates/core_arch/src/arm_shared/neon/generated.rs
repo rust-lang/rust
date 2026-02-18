@@ -10149,7 +10149,7 @@ pub fn vdotq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vdup_lane_f16<const N: i32>(a: float16x4_t) -> float16x4_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe { simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32]) }
+    unsafe { simd_shuffle!(a, a, [N as u32; 4]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_f16)"]
@@ -10174,13 +10174,7 @@ pub fn vdup_lane_f16<const N: i32>(a: float16x4_t) -> float16x4_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vdupq_lane_f16<const N: i32>(a: float16x4_t) -> float16x8_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 8]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_f32)"]
@@ -10341,7 +10335,7 @@ pub fn vdupq_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x4_t {
 )]
 pub fn vdup_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x4_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe { simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32]) }
+    unsafe { simd_shuffle!(a, a, [N as u32; 4]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_s16)"]
@@ -10364,7 +10358,7 @@ pub fn vdup_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x4_t {
 )]
 pub fn vdup_lane_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe { simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32]) }
+    unsafe { simd_shuffle!(a, a, [N as u32; 4]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_u16)"]
@@ -10387,7 +10381,7 @@ pub fn vdup_lane_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
 )]
 pub fn vdup_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe { simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32]) }
+    unsafe { simd_shuffle!(a, a, [N as u32; 4]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_p16)"]
@@ -10410,13 +10404,7 @@ pub fn vdup_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
 )]
 pub fn vdupq_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x8_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 8]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_s16)"]
@@ -10439,13 +10427,7 @@ pub fn vdupq_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x8_t {
 )]
 pub fn vdupq_lane_s16<const N: i32>(a: int16x4_t) -> int16x8_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 8]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_u16)"]
@@ -10468,13 +10450,7 @@ pub fn vdupq_lane_s16<const N: i32>(a: int16x4_t) -> int16x8_t {
 )]
 pub fn vdupq_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x8_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 8]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_p8)"]
@@ -10497,13 +10473,7 @@ pub fn vdupq_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x8_t {
 )]
 pub fn vdup_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x8_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 8]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_s8)"]
@@ -10526,13 +10496,7 @@ pub fn vdup_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x8_t {
 )]
 pub fn vdup_lane_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 8]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_u8)"]
@@ -10555,13 +10519,7 @@ pub fn vdup_lane_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
 )]
 pub fn vdup_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 8]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_p8)"]
@@ -10584,16 +10542,7 @@ pub fn vdup_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
 )]
 pub fn vdupq_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x16_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [
-                N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32,
-                N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32
-            ]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 16]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_s8)"]
@@ -10616,16 +10565,7 @@ pub fn vdupq_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x16_t {
 )]
 pub fn vdupq_lane_s8<const N: i32>(a: int8x8_t) -> int8x16_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [
-                N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32,
-                N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32
-            ]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 16]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_u8)"]
@@ -10648,16 +10588,7 @@ pub fn vdupq_lane_s8<const N: i32>(a: int8x8_t) -> int8x16_t {
 )]
 pub fn vdupq_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x16_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [
-                N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32,
-                N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32
-            ]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 16]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_s64)"]
@@ -10728,7 +10659,7 @@ pub fn vdup_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vdup_laneq_f16<const N: i32>(a: float16x8_t) -> float16x4_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe { simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32]) }
+    unsafe { simd_shuffle!(a, a, [N as u32; 4]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_f16)"]
@@ -10753,13 +10684,7 @@ pub fn vdup_laneq_f16<const N: i32>(a: float16x8_t) -> float16x4_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vdupq_laneq_f16<const N: i32>(a: float16x8_t) -> float16x8_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 8]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_f32)"]
@@ -10920,7 +10845,7 @@ pub fn vdupq_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
 )]
 pub fn vdup_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x4_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe { simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32]) }
+    unsafe { simd_shuffle!(a, a, [N as u32; 4]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_s16)"]
@@ -10943,7 +10868,7 @@ pub fn vdup_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x4_t {
 )]
 pub fn vdup_laneq_s16<const N: i32>(a: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe { simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32]) }
+    unsafe { simd_shuffle!(a, a, [N as u32; 4]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_u16)"]
@@ -10966,7 +10891,7 @@ pub fn vdup_laneq_s16<const N: i32>(a: int16x8_t) -> int16x4_t {
 )]
 pub fn vdup_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe { simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32]) }
+    unsafe { simd_shuffle!(a, a, [N as u32; 4]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_p16)"]
@@ -10989,13 +10914,7 @@ pub fn vdup_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x4_t {
 )]
 pub fn vdupq_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x8_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 8]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_s16)"]
@@ -11018,13 +10937,7 @@ pub fn vdupq_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x8_t {
 )]
 pub fn vdupq_laneq_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 8]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_u16)"]
@@ -11047,13 +10960,7 @@ pub fn vdupq_laneq_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
 )]
 pub fn vdupq_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 8]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_p8)"]
@@ -11076,13 +10983,7 @@ pub fn vdupq_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
 )]
 pub fn vdup_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x8_t {
     static_assert_uimm_bits!(N, 4);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 8]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_s8)"]
@@ -11105,13 +11006,7 @@ pub fn vdup_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x8_t {
 )]
 pub fn vdup_laneq_s8<const N: i32>(a: int8x16_t) -> int8x8_t {
     static_assert_uimm_bits!(N, 4);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 8]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_u8)"]
@@ -11134,13 +11029,7 @@ pub fn vdup_laneq_s8<const N: i32>(a: int8x16_t) -> int8x8_t {
 )]
 pub fn vdup_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x8_t {
     static_assert_uimm_bits!(N, 4);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 8]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_p8)"]
@@ -11163,16 +11052,7 @@ pub fn vdup_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x8_t {
 )]
 pub fn vdupq_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x16_t {
     static_assert_uimm_bits!(N, 4);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [
-                N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32,
-                N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32
-            ]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 16]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_s8)"]
@@ -11195,16 +11075,7 @@ pub fn vdupq_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x16_t {
 )]
 pub fn vdupq_laneq_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
     static_assert_uimm_bits!(N, 4);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [
-                N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32,
-                N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32
-            ]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 16]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_u8)"]
@@ -11227,16 +11098,7 @@ pub fn vdupq_laneq_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
 )]
 pub fn vdupq_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(N, 4);
-    unsafe {
-        simd_shuffle!(
-            a,
-            a,
-            [
-                N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32,
-                N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32
-            ]
-        )
-    }
+    unsafe { simd_shuffle!(a, a, [N as u32; 16]) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_s64)"]
@@ -35894,7 +35756,7 @@ pub fn vqdmulhq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 pub fn vqdmull_lane_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 2);
     unsafe {
-        let b: int16x4_t = simd_shuffle!(b, b, [N as u32, N as u32, N as u32, N as u32]);
+        let b: int16x4_t = simd_shuffle!(b, b, [N as u32; 4]);
         vqdmull_s16(a, b)
     }
 }
@@ -35920,7 +35782,7 @@ pub fn vqdmull_lane_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int32x4_t {
 pub fn vqdmull_lane_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 1);
     unsafe {
-        let b: int32x2_t = simd_shuffle!(b, b, [N as u32, N as u32]);
+        let b: int32x2_t = simd_shuffle!(b, b, [N as u32; 2]);
         vqdmull_s32(a, b)
     }
 }
@@ -37480,17 +37342,7 @@ pub fn vqrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnu.v8i8")]
         fn _vqrshrn_n_u16(a: uint16x8_t, n: uint16x8_t) -> uint8x8_t;
     }
-    unsafe {
-        _vqrshrn_n_u16(
-            a,
-            const {
-                uint16x8_t([
-                    -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16,
-                    -N as u16,
-                ])
-            },
-        )
-    }
+    unsafe { _vqrshrn_n_u16(a, const { uint16x8_t([-N as u16; 8]) }) }
 }
 #[doc = "Unsigned signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_u32)"]
@@ -37506,12 +37358,7 @@ pub fn vqrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnu.v4i16")]
         fn _vqrshrn_n_u32(a: uint32x4_t, n: uint32x4_t) -> uint16x4_t;
     }
-    unsafe {
-        _vqrshrn_n_u32(
-            a,
-            const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) },
-        )
-    }
+    unsafe { _vqrshrn_n_u32(a, const { uint32x4_t([-N as u32; 4]) }) }
 }
 #[doc = "Unsigned signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_u64)"]
@@ -37527,7 +37374,7 @@ pub fn vqrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnu.v2i32")]
         fn _vqrshrn_n_u64(a: uint64x2_t, n: uint64x2_t) -> uint32x2_t;
     }
-    unsafe { _vqrshrn_n_u64(a, const { uint64x2_t([-N as u64, -N as u64]) }) }
+    unsafe { _vqrshrn_n_u64(a, const { uint64x2_t([-N as u64; 2]) }) }
 }
 #[doc = "Unsigned signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_u16)"]
@@ -38922,17 +38769,7 @@ pub fn vqshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnu.v8i8")]
         fn _vqshrn_n_u16(a: uint16x8_t, n: uint16x8_t) -> uint8x8_t;
     }
-    unsafe {
-        _vqshrn_n_u16(
-            a,
-            const {
-                uint16x8_t([
-                    -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16,
-                    -N as u16,
-                ])
-            },
-        )
-    }
+    unsafe { _vqshrn_n_u16(a, const { uint16x8_t([-N as u16; 8]) }) }
 }
 #[doc = "Unsigned saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_u32)"]
@@ -38948,12 +38785,7 @@ pub fn vqshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnu.v4i16")]
         fn _vqshrn_n_u32(a: uint32x4_t, n: uint32x4_t) -> uint16x4_t;
     }
-    unsafe {
-        _vqshrn_n_u32(
-            a,
-            const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) },
-        )
-    }
+    unsafe { _vqshrn_n_u32(a, const { uint32x4_t([-N as u32; 4]) }) }
 }
 #[doc = "Unsigned saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_u64)"]
@@ -38969,7 +38801,7 @@ pub fn vqshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnu.v2i32")]
         fn _vqshrn_n_u64(a: uint64x2_t, n: uint64x2_t) -> uint32x2_t;
     }
-    unsafe { _vqshrn_n_u64(a, const { uint64x2_t([-N as u64, -N as u64]) }) }
+    unsafe { _vqshrn_n_u64(a, const { uint64x2_t([-N as u64; 2]) }) }
 }
 #[doc = "Unsigned saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_u16)"]

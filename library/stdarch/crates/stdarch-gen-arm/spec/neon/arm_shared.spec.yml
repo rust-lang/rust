@@ -1439,12 +1439,12 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [_lane_s8, int8x8_t, int8x8_t, '3', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [q_lane_s8, int8x8_t, int8x16_t, '3', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [_lane_u8, uint8x8_t, uint8x8_t, '3', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [q_lane_u8, uint8x8_t, uint8x16_t, '3', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [_lane_p8, poly8x8_t, poly8x8_t, '3', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [q_lane_p8, poly8x8_t, poly8x16_t, '3', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
+      - [_lane_s8, int8x8_t, int8x8_t, '3', '[N as u32; 8]']
+      - [q_lane_s8, int8x8_t, int8x16_t, '3', '[N as u32; 16]']
+      - [_lane_u8, uint8x8_t, uint8x8_t, '3', '[N as u32; 8]']
+      - [q_lane_u8, uint8x8_t, uint8x16_t, '3', '[N as u32; 16]']
+      - [_lane_p8, poly8x8_t, poly8x8_t, '3', '[N as u32; 8]']
+      - [q_lane_p8, poly8x8_t, poly8x16_t, '3', '[N as u32; 16]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, "{type[3]}"]]
       - FnCall: [simd_shuffle!, [a, a, "{type[4]}"]]
@@ -1463,12 +1463,12 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [q_laneq_s8, int8x16_t, int8x16_t, '4', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [_laneq_s8, int8x16_t, int8x8_t, '4', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [q_laneq_u8, uint8x16_t, uint8x16_t, '4', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [_laneq_u8, uint8x16_t, uint8x8_t, '4', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [q_laneq_p8, poly8x16_t, poly8x16_t, '4', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [_laneq_p8, poly8x16_t, poly8x8_t, '4', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
+      - [q_laneq_s8, int8x16_t, int8x16_t, '4', '[N as u32; 16]']
+      - [_laneq_s8, int8x16_t, int8x8_t, '4', '[N as u32; 8]']
+      - [q_laneq_u8, uint8x16_t, uint8x16_t, '4', '[N as u32; 16]']
+      - [_laneq_u8, uint8x16_t, uint8x8_t, '4', '[N as u32; 8]']
+      - [q_laneq_p8, poly8x16_t, poly8x16_t, '4', '[N as u32; 16]']
+      - [_laneq_p8, poly8x16_t, poly8x8_t, '4', '[N as u32; 8]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, "{type[3]}"]]
       - FnCall: [simd_shuffle!, [a, a, "{type[4]}"]]
@@ -1487,12 +1487,12 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [_lane_s16, int16x4_t, int16x4_t, '2', '[N as u32, N as u32, N as u32, N as u32]']
-      - [q_lane_s16, int16x4_t, int16x8_t, '2', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [_lane_u16, uint16x4_t, uint16x4_t, '2', '[N as u32, N as u32, N as u32, N as u32]']
-      - [q_lane_u16, uint16x4_t, uint16x8_t, '2', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [_lane_p16, poly16x4_t, poly16x4_t, '2', '[N as u32, N as u32, N as u32, N as u32]']
-      - [q_lane_p16, poly16x4_t, poly16x8_t, '2', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
+      - [_lane_s16, int16x4_t, int16x4_t, '2', '[N as u32; 4]']
+      - [q_lane_s16, int16x4_t, int16x8_t, '2', '[N as u32; 8]']
+      - [_lane_u16, uint16x4_t, uint16x4_t, '2', '[N as u32; 4]']
+      - [q_lane_u16, uint16x4_t, uint16x8_t, '2', '[N as u32; 8]']
+      - [_lane_p16, poly16x4_t, poly16x4_t, '2', '[N as u32; 4]']
+      - [q_lane_p16, poly16x4_t, poly16x8_t, '2', '[N as u32; 8]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, "{type[3]}"]]
       - FnCall: [simd_shuffle!, [a, a, "{type[4]}"]]
@@ -1511,12 +1511,12 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [q_laneq_s16, int16x8_t, int16x8_t, '3', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [_laneq_s16, int16x8_t, int16x4_t, '3', '[N as u32, N as u32, N as u32, N as u32]']
-      - [q_laneq_u16, uint16x8_t, uint16x8_t, '3', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [_laneq_u16, uint16x8_t, uint16x4_t, '3', '[N as u32, N as u32, N as u32, N as u32]']
-      - [q_laneq_p16, poly16x8_t, poly16x8_t, '3', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [_laneq_p16, poly16x8_t, poly16x4_t, '3', '[N as u32, N as u32, N as u32, N as u32]']
+      - [q_laneq_s16, int16x8_t, int16x8_t, '3', '[N as u32; 8]']
+      - [_laneq_s16, int16x8_t, int16x4_t, '3', '[N as u32; 4]']
+      - [q_laneq_u16, uint16x8_t, uint16x8_t, '3', '[N as u32; 8]']
+      - [_laneq_u16, uint16x8_t, uint16x4_t, '3', '[N as u32; 4]']
+      - [q_laneq_p16, poly16x8_t, poly16x8_t, '3', '[N as u32; 8]']
+      - [_laneq_p16, poly16x8_t, poly16x4_t, '3', '[N as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, "{type[3]}"]]
       - FnCall: [simd_shuffle!, [a, a, "{type[4]}"]]
@@ -1538,8 +1538,8 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [q_laneq_f16, float16x8_t, float16x8_t, '3', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
-      - [_laneq_f16, float16x8_t, float16x4_t, '3', '[N as u32, N as u32, N as u32, N as u32]']
+      - [q_laneq_f16, float16x8_t, float16x8_t, '3', '[N as u32; 8]']
+      - [_laneq_f16, float16x8_t, float16x4_t, '3', '[N as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, "{type[3]}"]]
       - FnCall: [simd_shuffle!, [a, a, "{type[4]}"]]
@@ -1578,8 +1578,8 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [_lane_f16, float16x4_t, float16x4_t, '2', '[N as u32, N as u32, N as u32, N as u32]']
-      - [q_lane_f16, float16x4_t, float16x8_t, '2', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
+      - [_lane_f16, float16x4_t, float16x4_t, '2', '[N as u32; 4]']
+      - [q_lane_f16, float16x4_t, float16x8_t, '2', '[N as u32; 8]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, "{type[3]}"]]
       - FnCall: [simd_shuffle!, [a, a, "{type[4]}"]]
@@ -7675,7 +7675,7 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int16x4_t, int16x4_t, int32x4_t, '[N as u32, N as u32, N as u32, N as u32]']
+      - [int16x4_t, int16x4_t, int32x4_t, '[N as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, '2']]
       - Let: [b, "{neon_type[0]}", {FnCall: [simd_shuffle!, [b, b, "{type[3]}"]]}]
@@ -7695,7 +7695,7 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int32x2_t, int32x2_t, int64x2_t, '[N as u32, N as u32]']
+      - [int32x2_t, int32x2_t, int64x2_t, '[N as u32; 2]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, '1']]
       - Let: [b, "{neon_type[0]}", {FnCall: [simd_shuffle!, [b, b, "{type[3]}"]]}]
@@ -8320,9 +8320,9 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [uint16x8_t, uint8x8_t, 'N >= 1 && N <= 8', 'const { uint16x8_t([-N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16]) }']
-      - [uint32x4_t, uint16x4_t, 'N >= 1 && N <= 16', 'const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) }']
-      - [uint64x2_t, uint32x2_t, 'N >= 1 && N <= 32', 'const { uint64x2_t([-N as u64, -N as u64]) }']
+      - [uint16x8_t, uint8x8_t, 'N >= 1 && N <= 8', 'const { uint16x8_t([-N as u16; 8]) }']
+      - [uint32x4_t, uint16x4_t, 'N >= 1 && N <= 16', 'const { uint32x4_t([-N as u32; 4]) }']
+      - [uint64x2_t, uint32x2_t, 'N >= 1 && N <= 32', 'const { uint64x2_t([-N as u64; 2]) }']
     compose:
       - FnCall: [static_assert!, ["{type[2]}"]]
       - LLVMLink:
@@ -10789,9 +10789,9 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [uint16x8_t, uint8x8_t, '8', 'const { uint16x8_t([-N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16]) }']
-      - [uint32x4_t, uint16x4_t, '16', 'const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) }']
-      - [uint64x2_t, uint32x2_t, '32', 'const { uint64x2_t([-N as u64, -N as u64]) }']
+      - [uint16x8_t, uint8x8_t, '8', 'const { uint16x8_t([-N as u16; 8]) }']
+      - [uint32x4_t, uint16x4_t, '16', 'const { uint32x4_t([-N as u32; 4]) }']
+      - [uint64x2_t, uint32x2_t, '32', 'const { uint64x2_t([-N as u64; 2]) }']
     compose:
       - FnCall: [static_assert!, ['N >= 1 && N <= {type[2]}']]
       - LLVMLink:
