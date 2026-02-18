@@ -1,9 +1,10 @@
 error: invalid format string: tuple index access isn't supported
-  --> $DIR/format-args-non-identifier-diagnostics.rs:8:16
+  --> $DIR/format-args-non-identifier-diagnostics.rs:9:16
    |
 LL |     println!("{x.0}");
    |                ^^^ not supported in format string
    |
+   = note: consider moving this expression to a local variable and then using the local here instead
 help: consider using a positional formatting argument instead
    |
 LL -     println!("{x.0}");
