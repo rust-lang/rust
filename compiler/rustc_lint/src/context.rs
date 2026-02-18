@@ -552,13 +552,6 @@ pub trait LintContext {
         self.opt_span_lint(lint, None as Option<Span>, decorator);
     }
 
-    /// Emit a lint at the appropriate level, with no associated span.
-    ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    fn lint(&self, lint: &'static Lint, decorate: impl for<'a> Diagnostic<'a, ()>) {
-        self.opt_span_lint(lint, None as Option<Span>, decorate);
-    }
-
     /// This returns the lint level for the given lint at the current location.
     fn get_lint_level(&self, lint: &'static Lint) -> LevelAndSource;
 
