@@ -46,14 +46,14 @@ pub trait PeekableIterator: Iterator {
     ///     let mut c = s.chars();
     ///
     ///     let base = if c.next_if_eq(&'0').is_some() {
-    ///         match c.next_if(|c| "oxb".contains(c)) {
+    ///         match c.next_if(|c| "oxb".contains(*c)) {
     ///             Some('x') => 16,
     ///             Some('b') => 2,
     ///             _ => 8
     ///         }
     ///     } else {
     ///       10
-    ///     }
+    ///     };
     ///
     ///     u32::from_str_radix(c.as_str(), base).unwrap()
     /// }
