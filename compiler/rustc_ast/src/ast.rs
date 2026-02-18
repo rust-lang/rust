@@ -1977,7 +1977,7 @@ pub enum UnsafeBinderCastKind {
 /// ```
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct QSelf {
-    pub ty: Box<Ty>,
+    pub ty: Ty,
 
     /// The span of `a::b::Trait` in a path like `<Vec<T> as
     /// a::b::Trait>::AssociatedItem`; in the case where `position ==

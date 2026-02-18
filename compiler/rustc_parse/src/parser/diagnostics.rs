@@ -67,13 +67,13 @@ pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
 
 pub(super) trait RecoverQPath: Sized + 'static {
     const PATH_STYLE: PathStyle = PathStyle::Expr;
-    fn to_ty(&self) -> Option<Box<Ty>>;
+    fn to_ty(&self) -> Option<Ty>;
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self;
 }
 
 impl<T: RecoverQPath> RecoverQPath for Box<T> {
     const PATH_STYLE: PathStyle = T::PATH_STYLE;
-    fn to_ty(&self) -> Option<Box<Ty>> {
+    fn to_ty(&self) -> Option<Ty> {
         T::to_ty(self)
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
@@ -83,8 +83,8 @@ impl<T: RecoverQPath> RecoverQPath for Box<T> {
 
 impl RecoverQPath for Ty {
     const PATH_STYLE: PathStyle = PathStyle::Type;
-    fn to_ty(&self) -> Option<Box<Ty>> {
-        Some(Box::new(self.clone()))
+    fn to_ty(&self) -> Option<Ty> {
+        Some(self.clone())
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
         Self {
@@ -98,8 +98,8 @@ impl RecoverQPath for Ty {
 
 impl RecoverQPath for Pat {
     const PATH_STYLE: PathStyle = PathStyle::Pat;
-    fn to_ty(&self) -> Option<Box<Ty>> {
-        self.to_ty().map(Box::new)
+    fn to_ty(&self) -> Option<Ty> {
+        self.to_ty()
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
         Self {
@@ -112,8 +112,8 @@ impl RecoverQPath for Pat {
 }
 
 impl RecoverQPath for Expr {
-    fn to_ty(&self) -> Option<Box<Ty>> {
-        self.to_ty().map(Box::new)
+    fn to_ty(&self) -> Option<Ty> {
+        self.to_ty()
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
         Self {
@@ -1846,7 +1846,7 @@ impl<'a> Parser<'a> {
     pub(super) fn maybe_recover_from_bad_qpath_stage_2<T: RecoverQPath>(
         &mut self,
         ty_span: Span,
-        ty: Box<Ty>,
+        ty: Ty,
     ) -> PResult<'a, T> {
         self.expect(exp!(PathSep))?;
 

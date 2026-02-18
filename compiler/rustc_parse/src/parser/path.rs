@@ -79,7 +79,7 @@ impl<'a> Parser<'a> {
     /// `<T as U>::F::a::<S>` (with disambiguator)
     pub(super) fn parse_qpath(&mut self, style: PathStyle) -> PResult<'a, (Box<QSelf>, Path)> {
         let lo = self.prev_token.span;
-        let ty = Box::new(self.parse_ty()?);
+        let ty = self.parse_ty()?;
 
         // `path` will contain the prefix of the path up to the `>`,
         // if any (e.g., `U` in the `<T as U>::*` examples
