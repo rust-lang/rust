@@ -1152,7 +1152,7 @@ pub fn parse_ast_fragment<'a>(
                 AstFragment::OptExpr(None)
             }
         }
-        AstFragmentKind::Ty => AstFragment::Ty(this.parse_ty()?),
+        AstFragmentKind::Ty => AstFragment::Ty(Box::new(this.parse_ty()?)),
         AstFragmentKind::Pat => AstFragment::Pat(Box::new(this.parse_pat_allow_top_guard(
             None,
             RecoverComma::No,

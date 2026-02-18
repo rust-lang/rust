@@ -2389,7 +2389,7 @@ impl<'a> Parser<'a> {
     pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (Box<ast::Pat>, ast::Ty)> {
         let pat = self.parse_pat_no_top_alt(Some(Expected::ArgumentName), None)?;
         self.expect(exp!(Colon))?;
-        let ty = self.parse_ty_mut()?;
+        let ty = self.parse_ty()?;
 
         self.dcx().emit_err(PatternMethodParamWithoutBody { span: pat.span });
 

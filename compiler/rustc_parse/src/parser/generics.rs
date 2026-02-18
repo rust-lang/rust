@@ -89,7 +89,7 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
 
-        let default = if self.eat(exp!(Eq)) { Some(self.parse_ty()?) } else { None };
+        let default = if self.eat(exp!(Eq)) { Some(Box::new(self.parse_ty()?)) } else { None };
         Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,
@@ -134,7 +134,7 @@ impl<'a> Parser<'a> {
                 Err(err)
             };
         }
-        let ty = self.parse_ty()?;
+        let ty = Box::new(self.parse_ty()?);
 
         // Parse optional const generics default value.
         let default = if self.eat(exp!(Eq)) { Some(self.parse_const_arg()?) } else { None };
@@ -162,7 +162,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, GenericParam> {
         let ident = self.parse_ident()?;
         self.expect(exp!(Colon))?;
-        let ty = self.parse_ty()?;
+        let ty = Box::new(self.parse_ty()?);
 
         // Parse optional const generics default value.
         let default = if self.eat(exp!(Eq)) { Some(self.parse_const_arg()?) } else { None };
@@ -594,7 +594,7 @@ impl<'a> Parser<'a> {
         // FIXME: Decide what should be used here, `=` or `==`.
         // FIXME: We are just dropping the binders in lifetime_defs on the floor here.
         } else if self.eat(exp!(Eq)) || self.eat(exp!(EqEq)) {
-            let rhs_ty = self.parse_ty()?;
+            let rhs_ty = Box::new(self.parse_ty()?);
             Ok(ast::WherePredicateKind::EqPredicate(ast::WhereEqPredicate { lhs_ty: ty, rhs_ty }))
         } else {
             self.maybe_recover_bounds_doubled_colon(&ty)?;

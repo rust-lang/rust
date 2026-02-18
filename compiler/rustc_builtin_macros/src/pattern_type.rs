@@ -27,7 +27,7 @@ fn parse_pat_ty<'a>(
 ) -> PResult<'a, (Box<Ty>, Box<TyPat>)> {
     let mut parser = cx.new_parser_from_tts(stream);
 
-    let ty = parser.parse_ty()?;
+    let ty = Box::new(parser.parse_ty()?);
     parser.expect_keyword(exp!(Is))?;
 
     let start = parser.token.span;

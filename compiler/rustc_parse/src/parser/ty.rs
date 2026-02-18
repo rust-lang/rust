@@ -104,11 +104,7 @@ fn can_begin_dyn_bound_in_edition_2015(t: Token) -> bool {
 
 impl<'a> Parser<'a> {
     /// Parses a type.
-    pub fn parse_ty(&mut self) -> PResult<'a, Box<Ty>> {
-        self.parse_ty_mut().map(Box::new)
-    }
-
-    pub fn parse_ty_mut(&mut self) -> PResult<'a, Ty> {
+    pub fn parse_ty(&mut self) -> PResult<'a, Ty> {
         if self.token == token::DotDotDot {
             // We special case this so that we don't talk about "nested C-variadics" in types.
             // We still pass in `AllowCVariadic::No` so that `parse_ty_common` can complain about
@@ -462,7 +458,7 @@ impl<'a> Parser<'a> {
         self.expect_lt()?;
         let generic_params = self.parse_generic_params()?;
         self.expect_gt()?;
-        let inner_ty = self.parse_ty()?;
+        let inner_ty = Box::new(self.parse_ty()?);
         let span = lo.to(self.prev_token.span);
         self.psess.gated_spans.gate(sym::unsafe_binders, span);
 
@@ -475,7 +471,7 @@ impl<'a> Parser<'a> {
     fn parse_ty_tuple_or_parens(&mut self, lo: Span, allow_plus: AllowPlus) -> PResult<'a, TyKind> {
         let mut trailing_plus = false;
         let (ts, trailing) = self.parse_paren_comma_seq(|p| {
-            let ty = p.parse_ty_mut()?;
+            let ty = p.parse_ty()?;
             trailing_plus = p.prev_token == TokenKind::Plus;
             Ok(ty)
         })?;
@@ -651,7 +647,7 @@ impl<'a> Parser<'a> {
     /// The opening `[` bracket is already eaten.
     fn parse_array_or_slice_ty(&mut self) -> PResult<'a, TyKind> {
         let elt_ty = match self.parse_ty() {
-            Ok(ty) => ty,
+            Ok(ty) => Box::new(ty),
             Err(err)
                 if self.look_ahead(1, |t| *t == token::CloseBracket)
                     | self.look_ahead(1, |t| *t == token::Semi) =>

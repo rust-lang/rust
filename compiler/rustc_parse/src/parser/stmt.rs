@@ -325,7 +325,7 @@ impl<'a> Parser<'a> {
             let parser_snapshot_before_type = self.clone();
             let colon_sp = self.prev_token.span;
             match self.parse_ty() {
-                Ok(ty) => (None, Some(ty), Some(colon_sp)),
+                Ok(ty) => (None, Some(Box::new(ty)), Some(colon_sp)),
                 Err(mut err) => {
                     err.span_label(
                         colon_sp,

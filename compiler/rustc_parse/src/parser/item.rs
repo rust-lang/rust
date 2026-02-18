@@ -688,7 +688,7 @@ impl<'a> Parser<'a> {
             // of the obsolete `impl Trait for ..` and then this can go away.)
             Some(self.mk_ty(self.prev_token.span, TyKind::Dummy))
         } else if has_for || self.token.can_begin_type() {
-            Some(self.parse_ty()?)
+            Some(Box::new(self.parse_ty()?))
         } else {
             None
         };
@@ -1170,7 +1170,7 @@ impl<'a> Parser<'a> {
         let bounds = if self.eat(exp!(Colon)) { self.parse_generic_bounds()? } else { Vec::new() };
         generics.where_clause = self.parse_where_clause()?;
 
-        let ty = if self.eat(exp!(Eq)) { Some(self.parse_ty()?) } else { None };
+        let ty = if self.eat(exp!(Eq)) { Some(Box::new(self.parse_ty()?)) } else { None };
 
         let after_where_clause = self.parse_where_clause()?;
 
@@ -1530,7 +1530,7 @@ impl<'a> Parser<'a> {
         // Parse the type of a static item. That is, the `":" $ty` fragment.
         // FIXME: This could maybe benefit from `.may_recover()`?
         let ty = match (self.eat(exp!(Colon)), self.check(exp!(Eq)) | self.check(exp!(Semi))) {
-            (true, false) => self.parse_ty()?,
+            (true, false) => Box::new(self.parse_ty()?),
             // If there wasn't a `:` or the colon was followed by a `=` or `;`, recover a missing
             // type.
             (colon, _) => self.recover_missing_global_item_type(colon, Some(mutability)),
@@ -1572,7 +1572,7 @@ impl<'a> Parser<'a> {
             self.eat(exp!(Colon)),
             self.check(exp!(Eq)) | self.check(exp!(Semi)) | self.check_keyword(exp!(Where)),
         ) {
-            (true, false) => self.parse_ty()?,
+            (true, false) => Box::new(self.parse_ty()?),
             // If there wasn't a `:` or the colon was followed by a `=`, `;` or `where`, recover a missing type.
             (colon, _) => self.recover_missing_global_item_type(colon, None),
         };
@@ -2008,7 +2008,7 @@ impl<'a> Parser<'a> {
                 };
                 // Unsafe fields are not supported in tuple structs, as doing so would result in a
                 // parsing ambiguity for `struct X(unsafe fn())`.
-                let ty = match p.parse_ty_mut() {
+                let ty = match p.parse_ty() {
                     Ok(ty) => ty,
                     Err(err) => {
                         if let Some(ref mut snapshot) = snapshot {
@@ -2209,7 +2209,7 @@ impl<'a> Parser<'a> {
             }
         }
         self.expect_field_ty_separator()?;
-        let ty = self.parse_ty_mut()?;
+        let ty = self.parse_ty()?;
         if self.token == token::Colon && self.look_ahead(1, |&t| t != token::Colon) {
             self.dcx()
                 .struct_span_err(self.token.span, "found single colon in a struct field type path")
@@ -3364,7 +3364,7 @@ impl<'a> Parser<'a> {
             let eself_ident = expect_self_ident(this);
             let eself_hi = this.prev_token.span;
             let eself = if this.eat(exp!(Colon)) {
-                SelfKind::Explicit(this.parse_ty_mut()?, m)
+                SelfKind::Explicit(this.parse_ty()?, m)
             } else {
                 SelfKind::Value(m)
             };
