@@ -1062,182 +1062,182 @@ error[E0573]: expected type, found module `self`
 LL |         type D1 = self;
    |                   ^^^^ not a type
 
-error[E0433]: failed to resolve: global paths cannot start with `$crate`
+error[E0433]: global paths cannot start with `$crate`
   --> $DIR/use-path-segment-kw.rs:12:21
    |
 LL |         type A2 = ::$crate;
-   |                     ^^^^^^ global paths cannot start with `$crate`
+   |                     ^^^^^^ cannot start with this
 ...
 LL |         macro_dollar_crate!();
    |         --------------------- in this macro invocation
    |
    = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: `$crate` in paths can only be used in start position
+error[E0433]: `$crate` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:18:27
    |
 LL |         type A3 = foobar::$crate;
-   |                           ^^^^^^ `$crate` in paths can only be used in start position
+   |                           ^^^^^^ can only be used in path start position
 ...
 LL |         macro_dollar_crate!();
    |         --------------------- in this macro invocation
    |
    = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: `$crate` in paths can only be used in start position
+error[E0433]: `$crate` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:24:26
    |
 LL |         type A4 = crate::$crate;
-   |                          ^^^^^^ `$crate` in paths can only be used in start position
+   |                          ^^^^^^ can only be used in path start position
 ...
 LL |         macro_dollar_crate!();
    |         --------------------- in this macro invocation
    |
    = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: `$crate` in paths can only be used in start position
+error[E0433]: `$crate` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:30:26
    |
 LL |         type A5 = super::$crate;
-   |                          ^^^^^^ `$crate` in paths can only be used in start position
+   |                          ^^^^^^ can only be used in path start position
 ...
 LL |         macro_dollar_crate!();
    |         --------------------- in this macro invocation
    |
    = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: `$crate` in paths can only be used in start position
+error[E0433]: `$crate` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:36:25
    |
 LL |         type A6 = self::$crate;
-   |                         ^^^^^^ `$crate` in paths can only be used in start position
+   |                         ^^^^^^ can only be used in path start position
 ...
 LL |         macro_dollar_crate!();
    |         --------------------- in this macro invocation
    |
    = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: `$crate` in paths can only be used in start position
+error[E0433]: `$crate` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:42:27
    |
 LL |         type A7 = $crate::$crate;
-   |                           ^^^^^^ `$crate` in paths can only be used in start position
+   |                           ^^^^^^ can only be used in path start position
 ...
 LL |         macro_dollar_crate!();
    |         --------------------- in this macro invocation
    |
    = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: `crate` in paths can only be used in start position
+error[E0433]: `crate` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:48:27
    |
 LL |         type A8 = $crate::crate;
-   |                           ^^^^^ `crate` in paths can only be used in start position
+   |                           ^^^^^ can only be used in path start position
 ...
 LL |         macro_dollar_crate!();
    |         --------------------- in this macro invocation
    |
    = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: `super` in paths can only be used in start position
+error[E0433]: `super` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:56:27
    |
 LL |         type A9 = $crate::super;
-   |                           ^^^^^ `super` in paths can only be used in start position
+   |                           ^^^^^ can only be used in path start position
 ...
 LL |         macro_dollar_crate!();
    |         --------------------- in this macro invocation
    |
    = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: `self` in paths can only be used in start position
+error[E0433]: `self` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:62:28
    |
 LL |         type A10 = $crate::self;
-   |                            ^^^^ `self` in paths can only be used in start position
+   |                            ^^^^ can only be used in path start position
 ...
 LL |         macro_dollar_crate!();
    |         --------------------- in this macro invocation
    |
    = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: global paths cannot start with `crate`
+error[E0433]: global paths cannot start with `crate`
   --> $DIR/use-path-segment-kw.rs:101:21
    |
 LL |         type B2 = ::crate;
-   |                     ^^^^^ global paths cannot start with `crate`
+   |                     ^^^^^ cannot start with this
 
-error[E0433]: failed to resolve: `crate` in paths can only be used in start position
+error[E0433]: `crate` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:109:27
    |
 LL |         type B3 = foobar::crate;
-   |                           ^^^^^ `crate` in paths can only be used in start position
+   |                           ^^^^^ can only be used in path start position
 
-error[E0433]: failed to resolve: `crate` in paths can only be used in start position
+error[E0433]: `crate` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:117:26
    |
 LL |         type B4 = crate::crate;
-   |                          ^^^^^ `crate` in paths can only be used in start position
+   |                          ^^^^^ can only be used in path start position
 
-error[E0433]: failed to resolve: `crate` in paths can only be used in start position
+error[E0433]: `crate` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:125:26
    |
 LL |         type B5 = super::crate;
-   |                          ^^^^^ `crate` in paths can only be used in start position
+   |                          ^^^^^ can only be used in path start position
 
-error[E0433]: failed to resolve: `crate` in paths can only be used in start position
+error[E0433]: `crate` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:133:25
    |
 LL |         type B6 = self::crate;
-   |                         ^^^^^ `crate` in paths can only be used in start position
+   |                         ^^^^^ can only be used in path start position
 
-error[E0433]: failed to resolve: global paths cannot start with `super`
+error[E0433]: global paths cannot start with `super`
   --> $DIR/use-path-segment-kw.rs:149:21
    |
 LL |         type C2 = ::super;
-   |                     ^^^^^ global paths cannot start with `super`
+   |                     ^^^^^ cannot start with this
 
-error[E0433]: failed to resolve: `super` in paths can only be used in start position
+error[E0433]: `super` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:155:27
    |
 LL |         type C3 = foobar::super;
-   |                           ^^^^^ `super` in paths can only be used in start position
+   |                           ^^^^^ can only be used in path start position
 
-error[E0433]: failed to resolve: `super` in paths can only be used in start position
+error[E0433]: `super` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:161:26
    |
 LL |         type C4 = crate::super;
-   |                          ^^^^^ `super` in paths can only be used in start position
+   |                          ^^^^^ can only be used in path start position
 
-error[E0433]: failed to resolve: global paths cannot start with `self`
+error[E0433]: global paths cannot start with `self`
   --> $DIR/use-path-segment-kw.rs:187:21
    |
 LL |         type D2 = ::self;
-   |                     ^^^^ global paths cannot start with `self`
+   |                     ^^^^ cannot start with this
 
-error[E0433]: failed to resolve: `self` in paths can only be used in start position
+error[E0433]: `self` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:195:27
    |
 LL |         type D3 = foobar::self;
-   |                           ^^^^ `self` in paths can only be used in start position
+   |                           ^^^^ can only be used in path start position
 
-error[E0433]: failed to resolve: `self` in paths can only be used in start position
+error[E0433]: `self` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:201:26
    |
 LL |         type D4 = crate::self;
-   |                          ^^^^ `self` in paths can only be used in start position
+   |                          ^^^^ can only be used in path start position
 
-error[E0433]: failed to resolve: `self` in paths can only be used in start position
+error[E0433]: `self` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:210:26
    |
 LL |         type D5 = super::self;
-   |                          ^^^^ `self` in paths can only be used in start position
+   |                          ^^^^ can only be used in path start position
 
-error[E0433]: failed to resolve: `self` in paths can only be used in start position
+error[E0433]: `self` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:218:25
    |
 LL |         type D6 = self::self;
-   |                         ^^^^ `self` in paths can only be used in start position
+   |                         ^^^^ can only be used in path start position
 
 error: aborting due to 141 previous errors
 

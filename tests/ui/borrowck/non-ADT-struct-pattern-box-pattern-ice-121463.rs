@@ -4,9 +4,9 @@
 
 fn main() {
     let mut a = E::StructVar { boxed: Box::new(5_i32) };
-    //~^ ERROR failed to resolve: use of undeclared type `E`
+    //~^ ERROR cannot find type `E`
     match a {
         E::StructVar { box boxed } => { }
-        //~^ ERROR failed to resolve: use of undeclared type `E`
+        //~^ ERROR cannot find type `E`
     }
 }
