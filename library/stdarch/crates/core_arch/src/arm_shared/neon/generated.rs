@@ -66809,11 +66809,7 @@ pub unsafe fn vst2_p64(a: *mut p64, b: poly64x1x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vst2_s64(a: *mut i64, b: int64x1x2_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2.v1i64.p0")]
-        fn _vst2_s64(ptr: *mut i8, a: int64x1_t, b: int64x1_t, size: i32);
-    }
-    _vst2_s64(a as _, b.0, b.1, 8)
+    core::ptr::write_unaligned(a.cast(), b)
 }
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s64)"]
@@ -66825,14 +66821,7 @@ pub unsafe fn vst2_s64(a: *mut i64, b: int64x1x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vst2_s64(a: *mut i64, b: int64x1x2_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st2.v1i64.p0"
-        )]
-        fn _vst2_s64(a: int64x1_t, b: int64x1_t, ptr: *mut i8);
-    }
-    _vst2_s64(b.0, b.1, a as _)
+    core::ptr::write_unaligned(a.cast(), b)
 }
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_u64)"]
@@ -68065,14 +68054,7 @@ pub unsafe fn vst3_p64(a: *mut p64, b: poly64x1x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vst3_s64(a: *mut i64, b: int64x1x3_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st3.v1i64.p0"
-        )]
-        fn _vst3_s64(a: int64x1_t, b: int64x1_t, c: int64x1_t, ptr: *mut i8);
-    }
-    _vst3_s64(b.0, b.1, b.2, a as _)
+    core::ptr::write_unaligned(a.cast(), b)
 }
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s64)"]
@@ -68084,11 +68066,7 @@ pub unsafe fn vst3_s64(a: *mut i64, b: int64x1x3_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vst3_s64(a: *mut i64, b: int64x1x3_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst3.p0.v1i64")]
-        fn _vst3_s64(ptr: *mut i8, a: int64x1_t, b: int64x1_t, c: int64x1_t, size: i32);
-    }
-    _vst3_s64(a as _, b.0, b.1, b.2, 8)
+    core::ptr::write_unaligned(a.cast(), b)
 }
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_u64)"]
@@ -69432,18 +69410,7 @@ pub unsafe fn vst4_p64(a: *mut p64, b: poly64x1x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vst4_s64(a: *mut i64, b: int64x1x4_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst4.p0.v1i64")]
-        fn _vst4_s64(
-            ptr: *mut i8,
-            a: int64x1_t,
-            b: int64x1_t,
-            c: int64x1_t,
-            d: int64x1_t,
-            size: i32,
-        );
-    }
-    _vst4_s64(a as _, b.0, b.1, b.2, b.3, 8)
+    core::ptr::write_unaligned(a.cast(), b)
 }
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s64)"]
@@ -69455,14 +69422,7 @@ pub unsafe fn vst4_s64(a: *mut i64, b: int64x1x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vst4_s64(a: *mut i64, b: int64x1x4_t) {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.st4.v1i64.p0"
-        )]
-        fn _vst4_s64(a: int64x1_t, b: int64x1_t, c: int64x1_t, d: int64x1_t, ptr: *mut i8);
-    }
-    _vst4_s64(b.0, b.1, b.2, b.3, a as _)
+    core::ptr::write_unaligned(a.cast(), b)
 }
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_u64)"]
