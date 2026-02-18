@@ -902,7 +902,6 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     lval.write_cvalue_transmute(fx, operand);
                 }
                 Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in codegen"),
-                Rvalue::ShallowInitBox(..) => bug!("`ShallowInitBox` in codegen"),
             }
         }
         StatementKind::StorageLive(_)

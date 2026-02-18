@@ -1259,14 +1259,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            Rvalue::ShallowInitBox(operand, _) => {
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, format!("ShallowInitBox after ElaborateBoxDerefs"))
-                }
-
-                let a = operand.ty(&self.body.local_decls, self.tcx);
-                check_kinds!(a, "Cannot shallow init type {:?}", ty::RawPtr(..));
-            }
             Rvalue::Cast(kind, operand, target_type) => {
                 let op_ty = operand.ty(self.body, self.tcx);
                 match kind {

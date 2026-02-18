@@ -1004,17 +1004,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
 
-            Rvalue::ShallowInitBox(_operand, ty) => {
-                let trait_ref =
-                    ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, span), [*ty]);
-
-                self.prove_trait_ref(
-                    trait_ref,
-                    location.to_locations(),
-                    ConstraintCategory::SizedBound,
-                );
-            }
-
             Rvalue::Cast(cast_kind, op, ty) => {
                 match *cast_kind {
                     CastKind::PointerCoercion(
@@ -2231,7 +2220,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::Ref(..)
             | Rvalue::RawPtr(..)
             | Rvalue::Cast(..)
-            | Rvalue::ShallowInitBox(..)
             | Rvalue::BinaryOp(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::UnaryOp(..)
