@@ -522,27 +522,29 @@ impl NonUpperCaseGlobals {
                 }
             }
 
-            cx.emit_span_lint_lazy(NON_UPPER_CASE_GLOBALS, ident.span, || {
-                // Compute usages lazily as it can expansive and useless when the lint is allowed.
-                // cf. https://github.com/rust-lang/rust/pull/142645#issuecomment-2993024625
-                let usages = if can_change_usages
-                    && *name != uc
-                    && let Some(did) = did
-                {
-                    let mut usage_collector =
-                        UsageCollector { cx, did: did.to_def_id(), collected: Vec::new() };
-                    cx.tcx.hir_walk_toplevel_module(&mut usage_collector);
-                    usage_collector
-                        .collected
-                        .into_iter()
-                        .map(|span| NonUpperCaseGlobalSubTool { span, replace: uc.clone() })
-                        .collect()
-                } else {
-                    vec![]
-                };
+            // Compute usages lazily as it can expansive and useless when the lint is allowed.
+            // cf. https://github.com/rust-lang/rust/pull/142645#issuecomment-2993024625
+            let usages = if can_change_usages
+                && *name != uc
+                && let Some(did) = did
+            {
+                let mut usage_collector =
+                    UsageCollector { cx, did: did.to_def_id(), collected: Vec::new() };
+                cx.tcx.hir_walk_toplevel_module(&mut usage_collector);
+                usage_collector
+                    .collected
+                    .into_iter()
+                    .map(|span| NonUpperCaseGlobalSubTool { span, replace: uc.clone() })
+                    .collect()
+            } else {
+                vec![]
+            };
 
-                NonUpperCaseGlobal { sort, name, sub, usages }
-            });
+            cx.emit_span_lint(
+                NON_UPPER_CASE_GLOBALS,
+                ident.span,
+                NonUpperCaseGlobal { sort, name, sub, usages },
+            );
         }
     }
 }
