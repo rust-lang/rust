@@ -3,7 +3,7 @@
 //! post-order traversal of the blocks.
 
 use rustc_abi::Size;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
@@ -21,7 +21,7 @@ impl crate::MirPass<'_> for UnreachablePropagation {
 
     fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut patch = MirPatch::new(body);
-        let mut unreachable_blocks = FxHashSet::default();
+        let mut unreachable_blocks = FxIndexSet::default();
 
         for (bb, bb_data) in traversal::postorder(body) {
             let terminator = bb_data.terminator();
@@ -47,8 +47,10 @@ impl crate::MirPass<'_> for UnreachablePropagation {
         patch.apply(body);
 
         // We do want do keep some unreachable blocks, but make them empty.
-        // The order in which we clear bb statements does not matter.
-        #[allow(rustc::potential_query_instability)]
+        // The order in which we clear bb statements does not matter for correctness,
+        // but we sort them to ensure query stability.
+        let mut unreachable_blocks: Vec<_> = unreachable_blocks.into_iter().collect();
+        unreachable_blocks.sort();
         for bb in unreachable_blocks {
             body.basic_blocks_mut()[bb].statements.clear();
         }
@@ -63,7 +65,7 @@ impl crate::MirPass<'_> for UnreachablePropagation {
 fn remove_successors_from_switch<'tcx>(
     tcx: TyCtxt<'tcx>,
     bb: BasicBlock,
-    unreachable_blocks: &FxHashSet<BasicBlock>,
+    unreachable_blocks: &FxIndexSet<BasicBlock>,
     body: &Body<'tcx>,
     patch: &mut MirPatch<'tcx>,
 ) -> bool {
