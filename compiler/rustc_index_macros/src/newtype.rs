@@ -18,12 +18,14 @@ impl Parse for Newtype {
         braced!(body in input);
 
         // Any additional `#[derive]` macro paths to apply
-        let mut derive_paths: Vec<Path> = Vec::new();
         let mut debug_format: Option<Lit> = None;
         let mut max = None;
         let mut consts = Vec::new();
         let mut encodable = false;
         let mut ord = false;
+        let mut stable_hash = false;
+        let mut stable_hash_generic = false;
+        let mut stable_hash_no_context = false;
         let mut gate_rustc_only = quote! {};
         let mut gate_rustc_only_cfg = quote! { all() };
 
@@ -40,6 +42,18 @@ impl Parse for Newtype {
                 }
                 "orderable" => {
                     ord = true;
+                    false
+                }
+                "stable_hash" => {
+                    stable_hash = true;
+                    false
+                }
+                "stable_hash_generic" => {
+                    stable_hash_generic = true;
+                    false
+                }
+                "stable_hash_no_context" => {
+                    stable_hash_no_context = true;
                     false
                 }
                 "max" => {
@@ -111,12 +125,6 @@ impl Parse for Newtype {
         } else {
             quote! {}
         };
-
-        if ord {
-            derive_paths.push(parse_quote!(Ord));
-            derive_paths.push(parse_quote!(PartialOrd));
-        }
-
         let step = if ord {
             quote! {
                 #gate_rustc_only
@@ -139,6 +147,38 @@ impl Parse for Newtype {
                         Self::index(start).checked_sub(u).map(Self::from_usize)
                     }
                 }
+                impl ::std::cmp::Ord for #name {
+                    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+                        self.as_u32().cmp(&other.as_u32())
+                    }
+                }
+                impl ::std::cmp::PartialOrd for #name {
+                    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+                        self.as_u32().partial_cmp(&other.as_u32())
+                    }
+                }
+            }
+        } else {
+            quote! {}
+        };
+
+        let hash_stable = if stable_hash {
+            quote! {
+                #gate_rustc_only
+                impl<'__ctx> ::rustc_data_structures::stable_hasher::HashStable<::rustc_middle::ich::StableHashingContext<'__ctx>> for #name {
+                    fn hash_stable(&self, hcx: &mut ::rustc_middle::ich::StableHashingContext<'__ctx>, hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
+                        self.as_u32().hash_stable(hcx, hasher)
+                    }
+                }
+            }
+        } else if stable_hash_generic || stable_hash_no_context {
+            quote! {
+                #gate_rustc_only
+                impl<CTX> ::rustc_data_structures::stable_hasher::HashStable<CTX> for #name {
+                    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
+                        self.as_u32().hash_stable(hcx, hasher)
+                    }
+                }
             }
         } else {
             quote! {}
@@ -154,11 +194,13 @@ impl Parse for Newtype {
 
         Ok(Self(quote! {
             #(#attrs)*
-            #[derive(Clone, Copy, PartialEq, Eq, Hash, #(#derive_paths),*)]
-            #[cfg_attr(#gate_rustc_only_cfg, rustc_layout_scalar_valid_range_end(#max))]
+            #[derive(Clone, Copy)]
             #[cfg_attr(#gate_rustc_only_cfg, rustc_pass_by_value)]
             #vis struct #name {
+                #[cfg(not(#gate_rustc_only_cfg))]
                 private_use_as_methods_instead: u32,
+                #[cfg(#gate_rustc_only_cfg)]
+                private_use_as_methods_instead: pattern_type!(u32 is 0..=#max),
             }
 
             #(#consts)*
@@ -226,7 +268,7 @@ impl Parse for Newtype {
                 /// Prefer using `from_u32`.
                 #[inline]
                 #vis const unsafe fn from_u32_unchecked(value: u32) -> Self {
-                    Self { private_use_as_methods_instead: value }
+                    Self { private_use_as_methods_instead: unsafe { std::mem::transmute(value) } }
                 }
 
                 /// Extracts the value of this index as a `usize`.
@@ -238,7 +280,7 @@ impl Parse for Newtype {
                 /// Extracts the value of this index as a `u32`.
                 #[inline]
                 #vis const fn as_u32(self) -> u32 {
-                    self.private_use_as_methods_instead
+                    unsafe { std::mem::transmute(self.private_use_as_methods_instead) }
                 }
 
                 /// Extracts the value of this index as a `usize`.
@@ -278,6 +320,8 @@ impl Parse for Newtype {
 
             #step
 
+            #hash_stable
+
             impl From<#name> for u32 {
                 #[inline]
                 fn from(v: #name) -> u32 {
@@ -303,6 +347,23 @@ impl Parse for Newtype {
                 #[inline]
                 fn from(value: u32) -> Self {
                     Self::from_u32(value)
+                }
+            }
+
+            impl ::std::cmp::Eq for #name {}
+
+            impl ::std::cmp::PartialEq for #name {
+                fn eq(&self, other: &Self) -> bool {
+                    self.as_u32().eq(&other.as_u32())
+                }
+            }
+
+            #gate_rustc_only
+            impl ::std::marker::StructuralPartialEq for #name {}
+
+            impl ::std::hash::Hash for #name {
+                fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
+                    self.as_u32().hash(state)
                 }
             }
 

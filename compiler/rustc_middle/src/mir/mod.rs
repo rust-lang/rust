@@ -840,7 +840,7 @@ impl SourceInfo {
 // Variables and temps
 
 rustc_index::newtype_index! {
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "_{}"]
@@ -1283,7 +1283,7 @@ rustc_index::newtype_index! {
     ///     https://rustc-dev-guide.rust-lang.org/appendix/background.html#what-is-a-dataflow-analysis
     /// [`CriticalCallEdges`]: ../../rustc_mir_transform/add_call_guards/enum.AddCallGuards.html#variant.CriticalCallEdges
     /// [guide-mir]: https://rustc-dev-guide.rust-lang.org/mir/
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "bb{}"]
@@ -1417,7 +1417,7 @@ impl<'tcx> BasicBlockData<'tcx> {
 // Scopes
 
 rustc_index::newtype_index! {
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[debug_format = "scope[{}]"]
     pub struct SourceScope {
@@ -1556,7 +1556,7 @@ pub struct UserTypeProjection {
 }
 
 rustc_index::newtype_index! {
-    #[derive(HashStable)]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "promoted[{}]"]
