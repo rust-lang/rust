@@ -319,7 +319,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
     let doc_hidden_attr = ecx.attr_nested_word(sym::doc, sym::hidden, sp);
 
     // pub fn main() { ... }
-    let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(ThinVec::new()));
+    let main_ret_ty = Box::new(ecx.ty(sp, ast::TyKind::Tup(ThinVec::new())));
 
     // If no test runner is provided we need to import the test crate
     let main_body = if cx.test_runner.is_none() {

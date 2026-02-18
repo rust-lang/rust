@@ -51,7 +51,9 @@ pub(crate) fn expand_deriving_coerce_pointee(
         .iter()
         .map(|p| match p.kind {
             GenericParamKind::Lifetime => GenericArg::Lifetime(cx.lifetime(p.span(), p.ident)),
-            GenericParamKind::Type { .. } => GenericArg::Type(cx.ty_ident(p.span(), p.ident)),
+            GenericParamKind::Type { .. } => {
+                GenericArg::Type(Box::new(cx.ty_ident(p.span(), p.ident)))
+            }
             GenericParamKind::Const { .. } => GenericArg::Const(cx.const_ident(p.span(), p.ident)),
         })
         .collect();
@@ -140,7 +142,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                         trait_ref,
                     })),
                     constness: ast::Const::No,
-                    self_ty: self_type.clone(),
+                    self_ty: Box::new(self_type.clone()),
                     items: ThinVec::new(),
                 }),
             ),
@@ -163,7 +165,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                     trait_ref,
                 })),
                 constness: ast::Const::No,
-                self_ty: self_type.clone(),
+                self_ty: Box::new(self_type.clone()),
                 items: ThinVec::new(),
             }),
         );
@@ -174,8 +176,9 @@ pub(crate) fn expand_deriving_coerce_pointee(
     // example, instead of `MyType<'a, T>`, it will be `MyType<'a, __S>`.
     let s_ty = cx.ty_ident(span, Ident::new(sym::__S, span));
     let mut alt_self_params = self_params;
-    alt_self_params[pointee_param_idx] = GenericArg::Type(s_ty.clone());
-    let alt_self_type = cx.ty_path(cx.path_all(span, false, vec![name_ident], alt_self_params));
+    alt_self_params[pointee_param_idx] = GenericArg::Type(Box::new(s_ty.clone()));
+    let alt_self_type =
+        Box::new(cx.ty_path(cx.path_all(span, false, vec![name_ident], alt_self_params)));
 
     // # Add `Unsize<__S>` bound to `#[pointee]` at the generic parameter location
     //
@@ -198,7 +201,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
             });
             return;
         }
-        let arg = GenericArg::Type(s_ty.clone());
+        let arg = GenericArg::Type(Box::new(s_ty.clone()));
         let unsize = cx.path_all(span, true, path!(span, core::marker::Unsize), vec![arg]);
         pointee.bounds.push(cx.trait_bound(unsize, false));
         // Drop `#[pointee]` attribute since it should not be recognized outside `derive(CoercePointee)`

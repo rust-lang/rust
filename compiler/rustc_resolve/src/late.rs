@@ -936,7 +936,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                             false,
                             // We don't need to deal with patterns in parameters, because
                             // they are not possible for foreign or bodiless functions.
-                            fn_ptr.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
+                            fn_ptr.decl.inputs.iter().map(|Param { ty, .. }| (None, ty)),
                             &fn_ptr.decl.output,
                             false,
                         )
@@ -1056,7 +1056,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                 self.resolve_fn_signature(
                     fn_id,
                     sig.decl.has_self(),
-                    sig.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
+                    sig.decl.inputs.iter().map(|Param { ty, .. }| (None, ty)),
                     &sig.decl.output,
                     false,
                 );
@@ -1108,7 +1108,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                             declaration
                                 .inputs
                                 .iter()
-                                .map(|Param { pat, ty, .. }| (Some(&**pat), &**ty)),
+                                .map(|Param { pat, ty, .. }| (Some(&**pat), ty)),
                             &declaration.output,
                             coro_node_id.is_some(),
                         );
@@ -1325,7 +1325,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                             self.resolve_fn_signature(
                                 binder,
                                 false,
-                                p_args.inputs.iter().map(|ty| (None, &**ty)),
+                                p_args.inputs.iter().map(|ty| (None, ty)),
                                 &p_args.output,
                                 false,
                             );

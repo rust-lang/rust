@@ -275,7 +275,7 @@ impl<'a> Parser<'a> {
             let op = op.node;
             // Special cases:
             if op == AssocOp::Cast {
-                lhs = self.parse_assoc_op_cast(lhs, lhs_span, op_span, ExprKind::Cast)?;
+                lhs = self.parse_assoc_op_cast(lhs, lhs_span, op_span)?;
                 continue;
             } else if let AssocOp::Range(limits) = op {
                 // If we didn't have to handle `x..`/`x..=`, it would be pretty easy to
@@ -664,17 +664,19 @@ impl<'a> Parser<'a> {
         lhs: Box<Expr>,
         lhs_span: Span,
         op_span: Span,
-        expr_kind: fn(Box<Expr>, Box<Ty>) -> ExprKind,
     ) -> PResult<'a, Box<Expr>> {
         let mk_expr = |this: &mut Self, lhs: Box<Expr>, rhs: Box<Ty>| {
-            this.mk_expr(this.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span), expr_kind(lhs, rhs))
+            this.mk_expr(
+                this.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span),
+                ExprKind::Cast(lhs, rhs),
+            )
         };
 
         // Save the state of the parser before parsing type normally, in case there is a
         // LessThan comparison after this cast.
         let parser_snapshot_before_type = self.clone();
         let cast_expr = match self.parse_as_cast_ty() {
-            Ok(rhs) => mk_expr(self, lhs, rhs),
+            Ok(rhs) => mk_expr(self, lhs, Box::new(rhs)),
             Err(type_err) => {
                 if !self.may_recover() {
                     return Err(type_err);
@@ -723,7 +725,7 @@ impl<'a> Parser<'a> {
                         let expr = mk_expr(
                             self,
                             lhs,
-                            self.mk_ty(path.span, TyKind::Path(None, path.clone())),
+                            Box::new(self.mk_ty(path.span, TyKind::Path(None, path.clone()))),
                         );
 
                         let args_span = self.look_ahead(1, |t| t.span).to(span_after_type);
@@ -2027,7 +2029,7 @@ impl<'a> Parser<'a> {
 
     /// Built-in macro for `offset_of!` expressions.
     pub(crate) fn parse_expr_offset_of(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
-        let container = self.parse_ty()?;
+        let container = Box::new(self.parse_ty()?);
         self.expect(exp!(Comma))?;
 
         let fields = self.parse_floating_field_access()?;
@@ -2057,7 +2059,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn parse_expr_type_ascribe(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
         let expr = self.parse_expr()?;
         self.expect(exp!(Comma))?;
-        let ty = self.parse_ty()?;
+        let ty = Box::new(self.parse_ty()?);
         let span = lo.to(self.token.span);
         Ok(self.mk_expr(span, ExprKind::Type(expr, ty)))
     }
@@ -2068,7 +2070,7 @@ impl<'a> Parser<'a> {
         kind: UnsafeBinderCastKind,
     ) -> PResult<'a, Box<Expr>> {
         let expr = self.parse_expr()?;
-        let ty = if self.eat(exp!(Comma)) { Some(self.parse_ty()?) } else { None };
+        let ty = if self.eat(exp!(Comma)) { Some(Box::new(self.parse_ty()?)) } else { None };
         let span = lo.to(self.token.span);
         Ok(self.mk_expr(span, ExprKind::UnsafeBinderCast(kind, expr, ty)))
     }
@@ -3581,7 +3583,7 @@ impl<'a> Parser<'a> {
     /// Parses a `try {...}` or `try bikeshed Ty {...}` expression (`try` token already eaten).
     fn parse_try_block(&mut self, span_lo: Span) -> PResult<'a, Box<Expr>> {
         let annotation =
-            if self.eat_keyword(exp!(Bikeshed)) { Some(self.parse_ty()?) } else { None };
+            if self.eat_keyword(exp!(Bikeshed)) { Some(Box::new(self.parse_ty()?)) } else { None };
 
         let (attrs, body) = self.parse_inner_attrs_and_block(None)?;
         if self.eat_keyword(exp!(Catch)) {

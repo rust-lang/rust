@@ -596,7 +596,7 @@ impl<'a> TraitDef<'a> {
         cx: &ExtCtxt<'_>,
         type_ident: Ident,
         generics: &Generics,
-        field_tys: Vec<Box<ast::Ty>>,
+        field_tys: Vec<ast::Ty>,
         methods: Vec<Box<ast::AssocItem>>,
         is_packed: bool,
     ) -> Box<ast::Item> {
@@ -619,7 +619,7 @@ impl<'a> TraitDef<'a> {
                     generics: Generics::default(),
                     after_where_clause: ast::WhereClause::default(),
                     bounds: Vec::new(),
-                    ty: Some(type_def.to_ty(cx, self.span, type_ident, generics)),
+                    ty: Some(Box::new(type_def.to_ty(cx, self.span, type_ident, generics))),
                 })),
                 tokens: None,
             })
@@ -782,9 +782,9 @@ impl<'a> TraitDef<'a> {
                 GenericParamKind::Lifetime { .. } => {
                     GenericArg::Lifetime(cx.lifetime(param.ident.span.with_ctxt(ctxt), param.ident))
                 }
-                GenericParamKind::Type { .. } => {
-                    GenericArg::Type(cx.ty_ident(param.ident.span.with_ctxt(ctxt), param.ident))
-                }
+                GenericParamKind::Type { .. } => GenericArg::Type(Box::new(
+                    cx.ty_ident(param.ident.span.with_ctxt(ctxt), param.ident),
+                )),
                 GenericParamKind::Const { .. } => {
                     GenericArg::Const(cx.const_ident(param.ident.span.with_ctxt(ctxt), param.ident))
                 }
@@ -794,7 +794,7 @@ impl<'a> TraitDef<'a> {
         // Create the type of `self`.
         let path =
             cx.path_all(type_ident.span.with_ctxt(ctxt), false, vec![type_ident], self_params);
-        let self_type = cx.ty_path(path);
+        let self_ty = Box::new(cx.ty_path(path));
         let rustc_const_unstable =
             cx.path_ident(self.span, Ident::new(sym::rustc_const_unstable, self.span));
 
@@ -855,7 +855,7 @@ impl<'a> TraitDef<'a> {
                     trait_ref,
                 })),
                 constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
-                self_ty: self_type,
+                self_ty,
                 items: methods.into_iter().chain(associated_types).collect(),
             }),
         )
@@ -870,7 +870,7 @@ impl<'a> TraitDef<'a> {
         from_scratch: bool,
         is_packed: bool,
     ) -> Box<ast::Item> {
-        let field_tys: Vec<Box<ast::Ty>> =
+        let field_tys: Vec<ast::Ty> =
             struct_def.fields().iter().map(|field| field.ty.clone()).collect();
 
         let methods = self
@@ -1005,7 +1005,7 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         type_ident: Ident,
         generics: &Generics,
-    ) -> (Option<ast::ExplicitSelf>, ThinVec<Box<Expr>>, Vec<Box<Expr>>, Vec<(Ident, Box<ast::Ty>)>)
+    ) -> (Option<ast::ExplicitSelf>, ThinVec<Box<Expr>>, Vec<Box<Expr>>, Vec<(Ident, ast::Ty)>)
     {
         let mut selflike_args = ThinVec::new();
         let mut nonselflike_args = Vec::new();
@@ -1043,7 +1043,7 @@ impl<'a> MethodDef<'a> {
         type_ident: Ident,
         generics: &Generics,
         explicit_self: Option<ast::ExplicitSelf>,
-        nonself_arg_tys: Vec<(Ident, Box<ast::Ty>)>,
+        nonself_arg_tys: Vec<(Ident, ast::Ty)>,
         body: BlockOrExpr,
     ) -> Box<ast::AssocItem> {
         let span = trait_.span;
@@ -1063,7 +1063,7 @@ impl<'a> MethodDef<'a> {
         let ret_type = if let Ty::Unit = &self.ret_ty {
             ast::FnRetTy::Default(span)
         } else {
-            ast::FnRetTy::Ty(self.ret_ty.to_ty(cx, span, type_ident, generics))
+            ast::FnRetTy::Ty(Box::new(self.ret_ty.to_ty(cx, span, type_ident, generics)))
         };
 
         let method_ident = Ident::new(self.name, span);

@@ -75,7 +75,7 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
 
     let call = cx.expr_call_ident(sig_span, handler, thin_vec![layout]);
 
-    let never = ast::FnRetTy::Ty(cx.ty(span, TyKind::Never));
+    let never = ast::FnRetTy::Ty(Box::new(cx.ty(span, TyKind::Never)));
     let params = thin_vec![cx.param(span, size, ty_usize.clone()), cx.param(span, align, ty_usize)];
     let decl = cx.fn_decl(params, never);
     let header = FnHeader { safety: Safety::Unsafe(span), ..FnHeader::default() };

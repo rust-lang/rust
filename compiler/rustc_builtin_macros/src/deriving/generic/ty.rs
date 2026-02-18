@@ -40,7 +40,7 @@ impl Path {
         span: Span,
         self_ty: Ident,
         self_generics: &Generics,
-    ) -> Box<ast::Ty> {
+    ) -> ast::Ty {
         cx.ty_path(self.to_path(cx, span, self_ty, self_generics))
     }
     pub(crate) fn to_path(
@@ -51,8 +51,11 @@ impl Path {
         self_generics: &Generics,
     ) -> ast::Path {
         let mut idents = self.path.iter().map(|s| Ident::new(*s, span)).collect();
-        let tys = self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics));
-        let params = tys.map(GenericArg::Type).collect();
+        let params = self
+            .params
+            .iter()
+            .map(|t| GenericArg::Type(Box::new(t.to_ty(cx, span, self_ty, self_generics))))
+            .collect();
 
         match self.kind {
             PathKind::Local => cx.path_all(span, false, idents, params),
@@ -91,10 +94,10 @@ impl Ty {
         span: Span,
         self_ty: Ident,
         self_generics: &Generics,
-    ) -> Box<ast::Ty> {
+    ) -> ast::Ty {
         match self {
             Ref(ty, mutbl) => {
-                let raw_ty = ty.to_ty(cx, span, self_ty, self_generics);
+                let raw_ty = Box::new(ty.to_ty(cx, span, self_ty, self_generics));
                 cx.ty_ref(span, raw_ty, None, *mutbl)
             }
             Path(p) => p.to_ty(cx, span, self_ty, self_generics),
@@ -103,7 +106,7 @@ impl Ty {
                 let ty = ast::TyKind::Tup(ThinVec::new());
                 cx.ty(span, ty)
             }
-            AstTy(ty) => ty.clone(),
+            AstTy(ty) => (&**ty).clone(),
         }
     }
 
@@ -124,7 +127,7 @@ impl Ty {
                             GenericArg::Lifetime(ast::Lifetime { id: param.id, ident: param.ident })
                         }
                         GenericParamKind::Type { .. } => {
-                            GenericArg::Type(cx.ty_ident(span, param.ident))
+                            GenericArg::Type(Box::new(cx.ty_ident(span, param.ident)))
                         }
                         GenericParamKind::Const { .. } => {
                             GenericArg::Const(cx.const_ident(span, param.ident))

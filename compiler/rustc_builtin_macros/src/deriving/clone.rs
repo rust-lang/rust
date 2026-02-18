@@ -143,7 +143,7 @@ fn cs_clone_simple(
                 super::assert_ty_bounds(
                     cx,
                     &mut stmts,
-                    field.ty.clone(),
+                    Box::new(field.ty.clone()),
                     field.span,
                     &[sym::clone, sym::AssertParamIsClone],
                 );
@@ -154,7 +154,8 @@ fn cs_clone_simple(
     if is_union {
         // Just a single assertion for unions, that the union impls `Copy`.
         // let _: AssertParamIsCopy<Self>;
-        let self_ty = cx.ty_path(cx.path_ident(trait_span, Ident::with_dummy_span(kw::SelfUpper)));
+        let self_ty =
+            Box::new(cx.ty_path(cx.path_ident(trait_span, Ident::with_dummy_span(kw::SelfUpper))));
         super::assert_ty_bounds(
             cx,
             &mut stmts,

@@ -551,7 +551,7 @@ mod llvm_enzyme {
             .filter_map(|p| match &p.kind {
                 GenericParamKind::Type { .. } => {
                     let path = ast::Path::from_ident(p.ident);
-                    let ty = ecx.ty_path(path);
+                    let ty = Box::new(ecx.ty_path(path));
                     Some(AngleBracketedArg::Arg(GenericArg::Type(ty)))
                 }
                 GenericParamKind::Const { .. } => {
@@ -682,7 +682,7 @@ mod llvm_enzyme {
                     for i in 0..x.width {
                         let mut shadow_arg = arg.clone();
                         // We += into the shadow in reverse mode.
-                        shadow_arg.ty = Box::new(assure_mut_ref(&arg.ty));
+                        shadow_arg.ty = assure_mut_ref(&arg.ty);
                         let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
                             ident.name
                         } else {
@@ -758,7 +758,7 @@ mod llvm_enzyme {
             match x.ret_activity {
                 DiffActivity::Active | DiffActivity::ActiveOnly => {
                     let ty = match d_decl.output {
-                        FnRetTy::Ty(ref ty) => ty.clone(),
+                        FnRetTy::Ty(ref ty) => (&**ty).clone(),
                         FnRetTy::Default(span) => {
                             panic!("Did not expect Default ret ty: {:?}", span);
                         }
@@ -788,17 +788,12 @@ mod llvm_enzyme {
 
         if x.mode.is_fwd() {
             let ty = match d_decl.output {
-                FnRetTy::Ty(ref ty) => ty.clone(),
+                FnRetTy::Ty(ref ty) => (&**ty).clone(),
                 FnRetTy::Default(span) => {
                     // We want to return std::hint::black_box(()).
                     let kind = TyKind::Tup(ThinVec::new());
-                    let ty = Box::new(rustc_ast::Ty {
-                        kind,
-                        id: ast::DUMMY_NODE_ID,
-                        span,
-                        tokens: None,
-                    });
-                    d_decl.output = FnRetTy::Ty(ty.clone());
+                    let ty = rustc_ast::Ty { kind, id: ast::DUMMY_NODE_ID, span, tokens: None };
+                    d_decl.output = FnRetTy::Ty(Box::new(ty.clone()));
                     assert!(matches!(x.ret_activity, DiffActivity::None));
                     // this won't be used below, so any type would be fine.
                     ty
@@ -817,7 +812,7 @@ mod llvm_enzyme {
                         value: ecx.expr_usize(span, 1 + x.width as usize),
                         mgca_disambiguation: MgcaDisambiguation::Direct,
                     };
-                    TyKind::Array(ty.clone(), anon_const)
+                    TyKind::Array(Box::new(ty.clone()), anon_const)
                 };
                 let ty = Box::new(rustc_ast::Ty { kind, id: ty.id, span: ty.span, tokens: None });
                 d_decl.output = FnRetTy::Ty(ty);
@@ -832,7 +827,7 @@ mod llvm_enzyme {
                         value: ecx.expr_usize(span, x.width as usize),
                         mgca_disambiguation: MgcaDisambiguation::Direct,
                     };
-                    let kind = TyKind::Array(ty.clone(), anon_const);
+                    let kind = TyKind::Array(Box::new(ty.clone()), anon_const);
                     let ty =
                         Box::new(rustc_ast::Ty { kind, id: ty.id, span: ty.span, tokens: None });
                     d_decl.output = FnRetTy::Ty(ty);
@@ -853,14 +848,14 @@ mod llvm_enzyme {
             let ret_ty = match d_decl.output {
                 FnRetTy::Ty(ref ty) => {
                     if !active_only_ret {
-                        act_ret.insert(0, ty.clone());
+                        act_ret.insert(0, (&**ty).clone());
                     }
                     let kind = TyKind::Tup(act_ret);
                     Box::new(rustc_ast::Ty { kind, id: ty.id, span: ty.span, tokens: None })
                 }
                 FnRetTy::Default(span) => {
                     if act_ret.len() == 1 {
-                        act_ret[0].clone()
+                        Box::new(act_ret[0].clone())
                     } else {
                         let kind = TyKind::Tup(act_ret.iter().map(|arg| arg.clone()).collect());
                         Box::new(rustc_ast::Ty { kind, id: ast::DUMMY_NODE_ID, span, tokens: None })

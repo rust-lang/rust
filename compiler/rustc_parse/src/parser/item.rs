@@ -686,9 +686,9 @@ impl<'a> Parser<'a> {
             // AST validation later detects this `TyKind::Dummy` and emits an
             // error. (#121072 will hopefully remove all this special handling
             // of the obsolete `impl Trait for ..` and then this can go away.)
-            Some(self.mk_ty(self.prev_token.span, TyKind::Dummy))
+            Some(Box::new(self.mk_ty(self.prev_token.span, TyKind::Dummy)))
         } else if has_for || self.token.can_begin_type() {
-            Some(self.parse_ty()?)
+            Some(Box::new(self.parse_ty()?))
         } else {
             None
         };
@@ -708,7 +708,6 @@ impl<'a> Parser<'a> {
                     self.dcx().emit_err(errors::MissingForInTraitImpl { span: missing_for_span });
                 }
 
-                let ty_first = *ty_first;
                 let path = match ty_first.kind {
                     // This notably includes paths passed through `ty` macro fragments (#46438).
                     TyKind::Path(None, path) => path,
@@ -1171,7 +1170,7 @@ impl<'a> Parser<'a> {
         let bounds = if self.eat(exp!(Colon)) { self.parse_generic_bounds()? } else { Vec::new() };
         generics.where_clause = self.parse_where_clause()?;
 
-        let ty = if self.eat(exp!(Eq)) { Some(self.parse_ty()?) } else { None };
+        let ty = if self.eat(exp!(Eq)) { Some(Box::new(self.parse_ty()?)) } else { None };
 
         let after_where_clause = self.parse_where_clause()?;
 
@@ -1556,7 +1555,7 @@ impl<'a> Parser<'a> {
     fn parse_const_item(
         &mut self,
         const_arg: bool,
-    ) -> PResult<'a, (Ident, Generics, Box<Ty>, ConstItemRhsKind)> {
+    ) -> PResult<'a, (Ident, Generics, Ty, ConstItemRhsKind)> {
         let ident = self.parse_ident_or_underscore()?;
 
         let mut generics = self.parse_generics()?;
@@ -1658,7 +1657,7 @@ impl<'a> Parser<'a> {
         &mut self,
         colon_present: bool,
         m: Option<Mutability>,
-    ) -> Box<Ty> {
+    ) -> Ty {
         // Construct the error and stash it away with the hope
         // that typeck will later enrich the error with a type.
         let kind = match m {
@@ -1678,7 +1677,7 @@ impl<'a> Parser<'a> {
 
         // The user intended that the type be inferred,
         // so treat this as if the user wrote e.g. `const A: _ = expr;`.
-        Box::new(Ty { kind: TyKind::Infer, span, id: ast::DUMMY_NODE_ID, tokens: None })
+        Ty { kind: TyKind::Infer, span, id: ast::DUMMY_NODE_ID, tokens: None }
     }
 
     /// Parses an enum declaration.

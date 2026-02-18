@@ -104,7 +104,7 @@ fn can_begin_dyn_bound_in_edition_2015(t: Token) -> bool {
 
 impl<'a> Parser<'a> {
     /// Parses a type.
-    pub fn parse_ty(&mut self) -> PResult<'a, Box<Ty>> {
+    pub fn parse_ty(&mut self) -> PResult<'a, Ty> {
         if self.token == token::DotDotDot {
             // We special case this so that we don't talk about "nested C-variadics" in types.
             // We still pass in `AllowCVariadic::No` so that `parse_ty_common` can complain about
@@ -139,12 +139,13 @@ impl<'a> Parser<'a> {
             Some(ty_params),
             RecoverQuestionMark::Yes,
         )
+        .map(Box::new)
     }
 
     /// Parse a type suitable for a function or function pointer parameter.
     /// The difference from `parse_ty` is that this version allows `...`
     /// (`CVarArgs`) at the top level of the type.
-    pub(super) fn parse_ty_for_param(&mut self) -> PResult<'a, Box<Ty>> {
+    pub(super) fn parse_ty_for_param(&mut self) -> PResult<'a, Ty> {
         let ty = self.parse_ty_common(
             AllowPlus::Yes,
             AllowCVariadic::Yes,
@@ -184,7 +185,7 @@ impl<'a> Parser<'a> {
     ///     `+` is prohibited to maintain operator priority (P(+) < P(&)).
     /// Example 2: `value1 as TYPE + value2`
     ///     `+` is prohibited to avoid interactions with expression grammar.
-    pub(super) fn parse_ty_no_plus(&mut self) -> PResult<'a, Box<Ty>> {
+    pub(super) fn parse_ty_no_plus(&mut self) -> PResult<'a, Ty> {
         self.parse_ty_common(
             AllowPlus::No,
             AllowCVariadic::No,
@@ -197,7 +198,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a type following an `as` cast. Similar to `parse_ty_no_plus`, but signaling origin
     /// for better diagnostics involving `?`.
-    pub(super) fn parse_as_cast_ty(&mut self) -> PResult<'a, Box<Ty>> {
+    pub(super) fn parse_as_cast_ty(&mut self) -> PResult<'a, Ty> {
         self.parse_ty_common(
             AllowPlus::No,
             AllowCVariadic::No,
@@ -208,7 +209,7 @@ impl<'a> Parser<'a> {
         )
     }
 
-    pub(super) fn parse_ty_no_question_mark_recover(&mut self) -> PResult<'a, Box<Ty>> {
+    pub(super) fn parse_ty_no_question_mark_recover(&mut self) -> PResult<'a, Ty> {
         self.parse_ty_common(
             AllowPlus::Yes,
             AllowCVariadic::No,
@@ -230,6 +231,7 @@ impl<'a> Parser<'a> {
             None,
             RecoverQuestionMark::Yes,
         )
+        .map(Box::new)
     }
 
     /// Parses an optional return type `[ -> TY ]` in a function declaration.
@@ -250,7 +252,7 @@ impl<'a> Parser<'a> {
                 None,
                 RecoverQuestionMark::Yes,
             )?;
-            FnRetTy::Ty(ty)
+            FnRetTy::Ty(Box::new(ty))
         } else if recover_return_sign.can_recover(&self.token.kind) {
             // Don't `eat` to prevent `=>` from being added as an expected token which isn't
             // actually expected and could only confuse users
@@ -267,7 +269,7 @@ impl<'a> Parser<'a> {
                 None,
                 RecoverQuestionMark::Yes,
             )?;
-            FnRetTy::Ty(ty)
+            FnRetTy::Ty(Box::new(ty))
         } else {
             FnRetTy::Default(self.prev_token.span.shrink_to_hi())
         })
@@ -281,7 +283,7 @@ impl<'a> Parser<'a> {
         recover_return_sign: RecoverReturnSign,
         ty_generics: Option<&Generics>,
         recover_question_mark: RecoverQuestionMark,
-    ) -> PResult<'a, Box<Ty>> {
+    ) -> PResult<'a, Ty> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
         if self.token == token::Pound && self.look_ahead(1, |t| *t == token::OpenBracket) {
@@ -495,7 +497,7 @@ impl<'a> Parser<'a> {
                     self.parse_remaining_bounds(bounds, true)
                 }
                 // `(TYPE)`
-                _ => Ok(TyKind::Paren(ty)),
+                _ => Ok(TyKind::Paren(Box::new(ty))),
             }
         } else {
             Ok(TyKind::Tup(ts))
@@ -542,6 +544,7 @@ impl<'a> Parser<'a> {
         let mutbl = self.parse_mutability();
         match self.parse_ty_no_plus() {
             Ok(ty) => {
+                let ty = Box::new(ty);
                 err.span_suggestion_verbose(
                     lo.shrink_to_lo(),
                     "you might have meant to write a reference type here",
@@ -606,7 +609,7 @@ impl<'a> Parser<'a> {
                 Mutability::Mut => "mut",
             };
 
-            let ty = self.parse_ty_no_question_mark_recover()?;
+            let ty = Box::new(self.parse_ty_no_question_mark_recover()?);
 
             self.dcx()
                 .struct_span_err(
@@ -636,7 +639,7 @@ impl<'a> Parser<'a> {
             });
             Mutability::Not
         });
-        let ty = self.parse_ty_no_plus()?;
+        let ty = Box::new(self.parse_ty_no_plus()?);
         Ok(TyKind::Ptr(MutTy { ty, mutbl }))
     }
 
@@ -644,7 +647,7 @@ impl<'a> Parser<'a> {
     /// The opening `[` bracket is already eaten.
     fn parse_array_or_slice_ty(&mut self) -> PResult<'a, TyKind> {
         let elt_ty = match self.parse_ty() {
-            Ok(ty) => ty,
+            Ok(ty) => Box::new(ty),
             Err(err)
                 if self.look_ahead(1, |t| *t == token::CloseBracket)
                     | self.look_ahead(1, |t| *t == token::Semi) =>
@@ -652,7 +655,7 @@ impl<'a> Parser<'a> {
                 // Recover from `[LIT; EXPR]` and `[LIT]`
                 self.bump();
                 let guar = err.emit();
-                self.mk_ty(self.prev_token.span, TyKind::Err(guar))
+                Box::new(self.mk_ty(self.prev_token.span, TyKind::Err(guar)))
             }
             Err(err) => return Err(err),
         };
@@ -766,7 +769,7 @@ impl<'a> Parser<'a> {
             self.bump();
             self.bump_with((dyn_tok, dyn_tok_sp));
         }
-        let ty = self.parse_ty_no_plus()?;
+        let ty = Box::new(self.parse_ty_no_plus()?);
         Ok(match pinned {
             Pinnedness::Not => TyKind::Ref(opt_lifetime, MutTy { ty, mutbl }),
             Pinnedness::Pinned => TyKind::PinnedRef(opt_lifetime, MutTy { ty, mutbl }),
@@ -1593,7 +1596,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn mk_ty(&self, span: Span, kind: TyKind) -> Box<Ty> {
-        Box::new(Ty { kind, span, id: ast::DUMMY_NODE_ID, tokens: None })
+    pub(super) fn mk_ty(&self, span: Span, kind: TyKind) -> Ty {
+        Ty { kind, span, id: ast::DUMMY_NODE_ID, tokens: None }
     }
 }

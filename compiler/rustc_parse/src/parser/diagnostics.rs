@@ -60,20 +60,20 @@ pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
         id: ast::DUMMY_NODE_ID,
         pat,
         span: ident.span,
-        ty: Box::new(ty),
+        ty,
         is_placeholder: false,
     }
 }
 
 pub(super) trait RecoverQPath: Sized + 'static {
     const PATH_STYLE: PathStyle = PathStyle::Expr;
-    fn to_ty(&self) -> Option<Box<Ty>>;
+    fn to_ty(&self) -> Option<Ty>;
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self;
 }
 
 impl<T: RecoverQPath> RecoverQPath for Box<T> {
     const PATH_STYLE: PathStyle = T::PATH_STYLE;
-    fn to_ty(&self) -> Option<Box<Ty>> {
+    fn to_ty(&self) -> Option<Ty> {
         T::to_ty(self)
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
@@ -83,8 +83,8 @@ impl<T: RecoverQPath> RecoverQPath for Box<T> {
 
 impl RecoverQPath for Ty {
     const PATH_STYLE: PathStyle = PathStyle::Type;
-    fn to_ty(&self) -> Option<Box<Ty>> {
-        Some(Box::new(self.clone()))
+    fn to_ty(&self) -> Option<Ty> {
+        Some(self.clone())
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
         Self {
@@ -98,7 +98,7 @@ impl RecoverQPath for Ty {
 
 impl RecoverQPath for Pat {
     const PATH_STYLE: PathStyle = PathStyle::Pat;
-    fn to_ty(&self) -> Option<Box<Ty>> {
+    fn to_ty(&self) -> Option<Ty> {
         self.to_ty()
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
@@ -112,7 +112,7 @@ impl RecoverQPath for Pat {
 }
 
 impl RecoverQPath for Expr {
-    fn to_ty(&self) -> Option<Box<Ty>> {
+    fn to_ty(&self) -> Option<Ty> {
         self.to_ty()
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
@@ -1586,7 +1586,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Swift lets users write `Ty?` to mean `Option<Ty>`. Parse the construct and recover from it.
-    pub(super) fn maybe_recover_from_question_mark(&mut self, ty: Box<Ty>) -> Box<Ty> {
+    pub(super) fn maybe_recover_from_question_mark(&mut self, ty: Ty) -> Ty {
         if self.token == token::Question {
             self.bump();
             let guar = self.dcx().emit_err(QuestionMarkInType {
@@ -1846,7 +1846,7 @@ impl<'a> Parser<'a> {
     pub(super) fn maybe_recover_from_bad_qpath_stage_2<T: RecoverQPath>(
         &mut self,
         ty_span: Span,
-        ty: Box<Ty>,
+        ty: Ty,
     ) -> PResult<'a, T> {
         self.expect(exp!(PathSep))?;
 
@@ -2386,7 +2386,7 @@ impl<'a> Parser<'a> {
     }
 
     #[cold]
-    pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (Box<ast::Pat>, Box<ast::Ty>)> {
+    pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (Box<ast::Pat>, ast::Ty)> {
         let pat = self.parse_pat_no_top_alt(Some(Expected::ArgumentName), None)?;
         self.expect(exp!(Colon))?;
         let ty = self.parse_ty()?;
@@ -2683,9 +2683,9 @@ impl<'a> Parser<'a> {
                         Applicability::MaybeIncorrect,
                     );
                     let guar = err.emit();
-                    return Ok(GenericArg::Type(
+                    return Ok(GenericArg::Type(Box::new(
                         self.mk_ty(start.to(expr.span), TyKind::Err(guar)),
-                    ));
+                    )));
                 } else if self.token == token::Comma || self.token.kind.should_end_const_arg() {
                     // Avoid the following output by checking that we consumed a full const arg:
                     // help: expressions must be enclosed in braces to be used as const generic

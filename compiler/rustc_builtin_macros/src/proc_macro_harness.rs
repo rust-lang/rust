@@ -367,12 +367,12 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
         Ident::new(sym::_DECLS, span),
         cx.ty_ref(
             span,
-            cx.ty(
+            Box::new(cx.ty(
                 span,
-                ast::TyKind::Slice(
+                ast::TyKind::Slice(Box::new(
                     cx.ty_path(cx.path(span, vec![proc_macro, bridge, client, proc_macro_ty])),
-                ),
-            ),
+                )),
+            )),
             None,
             ast::Mutability::Not,
         ),

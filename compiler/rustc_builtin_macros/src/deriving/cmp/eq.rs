@@ -71,7 +71,7 @@ fn cs_total_eq_assert(
                 super::assert_ty_bounds(
                     cx,
                     &mut stmts,
-                    field.ty.clone(),
+                    Box::new(field.ty.clone()),
                     field.span,
                     &[sym::cmp, sym::AssertParamIsEq],
                 );

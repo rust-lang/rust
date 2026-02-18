@@ -152,34 +152,35 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
         // `let names: &'static _ = &["field1", "field2"];`
         let names_let = is_struct.then(|| {
             let lt_static = Some(cx.lifetime_static(span));
-            let ty_static_ref = cx.ty_ref(span, cx.ty_infer(span), lt_static, ast::Mutability::Not);
+            let ty_static_ref =
+                cx.ty_ref(span, Box::new(cx.ty_infer(span)), lt_static, ast::Mutability::Not);
             cx.stmt_let_ty(
                 span,
                 false,
                 Ident::new(sym::names, span),
-                Some(ty_static_ref),
+                Some(Box::new(ty_static_ref)),
                 cx.expr_array_ref(span, name_exprs),
             )
         });
 
         // `let values: &[&dyn Debug] = &[&&self.field1, &&self.field2];`
         let path_debug = cx.path_global(span, cx.std_path(&[sym::fmt, sym::Debug]));
-        let ty_dyn_debug = cx.ty(
+        let ty_dyn_debug = Box::new(cx.ty(
             span,
             ast::TyKind::TraitObject(
                 vec![cx.trait_bound(path_debug, false)],
                 ast::TraitObjectSyntax::Dyn,
             ),
-        );
-        let ty_slice = cx.ty(
+        ));
+        let ty_slice = Box::new(cx.ty(
             span,
-            ast::TyKind::Slice(cx.ty_ref(span, ty_dyn_debug, None, ast::Mutability::Not)),
-        );
+            ast::TyKind::Slice(Box::new(cx.ty_ref(span, ty_dyn_debug, None, ast::Mutability::Not))),
+        ));
         let values_let = cx.stmt_let_ty(
             span,
             false,
             Ident::new(sym::values, span),
-            Some(cx.ty_ref(span, ty_slice, None, ast::Mutability::Not)),
+            Some(Box::new(cx.ty_ref(span, ty_slice, None, ast::Mutability::Not))),
             cx.expr_array_ref(span, value_exprs),
         );
 

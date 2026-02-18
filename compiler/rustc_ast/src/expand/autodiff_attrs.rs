@@ -164,7 +164,7 @@ pub fn valid_ret_activity(mode: DiffMode, activity: DiffActivity) -> bool {
 /// since Duplicated expects a mutable ref/ptr and we would thus end up with a shadow value
 /// who is an indirect type, which doesn't match the primal scalar type. We can't prevent
 /// users here from marking scalars as Duplicated, due to type aliases.
-pub fn valid_ty_for_activity(ty: &Box<Ty>, activity: DiffActivity) -> bool {
+pub fn valid_ty_for_activity(ty: &Ty, activity: DiffActivity) -> bool {
     use DiffActivity::*;
     // It's always allowed to mark something as Const, since we won't compute derivatives wrt. it.
     // Dual variants also support all types.
