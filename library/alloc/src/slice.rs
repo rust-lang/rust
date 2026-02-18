@@ -669,7 +669,29 @@ impl [u8] {
 // Extension traits for slices over specific kinds of data
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Helper trait for [`[T]::concat`](slice::concat).
+// FIXME: Be able to parse this with intra doc link somehow (e.g. std::slice::concat)
+//
+// The issue here is that the previous intra doc link [`T::[concat]`](slice::concat)
+// tried linking to core/primitive.slice.html#method.concat, but core does not have a
+// slice::concat method (possibly due to involving heap allocated object like `Vec`)
+// This method actually exists in std, which gets it from alloc_crate::slice
+// (aka this file). alloc has no way to access std's documentation of
+// concat method through std::slice::concat because it doesn't use the std crate.
+//
+// The hacky fix is to replace the portion shared by local doc file and doc website
+// [file_path/url]/alloc/slice/trait.Concat.html to using std/primitive.slice.html#method.concat
+/// <script>
+/// function linkToStdConcat() {
+///     const concatElements = document.querySelectorAll(".ConcatLink");
+///     const currUrl = window.location.href;
+///     Array.from(concatElements).forEach(element => {
+///         element.href = currUrl.replace("alloc/slice/trait.Concat.html",
+///                        "std/primitive.slice.html#method.concat");
+///     })
+/// }
+/// </script>
+///
+/// Helper trait for <a href="" class="ConcatLink" onClick="linkToStdConcat()">`[T]::concat`</a>.
 ///
 /// Note: the `Item` type parameter is not used in this trait,
 /// but it allows impls to be more generic.
@@ -704,19 +726,41 @@ pub trait Concat<Item: ?Sized> {
     /// The resulting type after concatenation
     type Output;
 
-    /// Implementation of [`[T]::concat`](slice::concat)
+    /// Implementation of <a href="" class="ConcatLink" onClick="linkToStdConcat()">`[T]::concat`</a>
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     fn concat(slice: &Self) -> Self::Output;
 }
 
-/// Helper trait for [`[T]::join`](slice::join)
+// FIXME: Be able to parse this with intra doc link somehow (e.g. std::slice::join)
+//
+// The issue here is that the previous intra doc link [`T::[join]`](slice::join)
+// tried linking to core/primitive.slice.html#method.join, but core does not have a
+// slice::join method (possibly due to involving heap allocated object like `Vec`)
+// This method actually exists in std, which gets it from alloc_crate::slice
+// (aka this file). alloc has no way to access std's documentation of
+// concat method through std::slice::join because it doesn't use the std crate.
+//
+// The hacky fix is to replace the portion shared by local doc file and doc website
+// [file_path/url]/alloc/slice/trait.Join.html to using std/primitive.slice.html#method.join
+
+/// <script>
+/// function linkToStdJoin() {
+///     const joinElements = document.querySelectorAll(".JoinLink");
+///     const currUrl = window.location.href;
+///     Array.from(joinElements).forEach(element => {
+///         element.href = currUrl.replace("alloc/slice/trait.Join.html",
+///                        "std/primitive.slice.html#method.join");
+///     });
+/// }
+/// </script>
+/// Helper trait for <a href="" class="JoinLink" onClick="linkToStdJoin()">`[T]::join`</a>.
 #[unstable(feature = "slice_concat_trait", issue = "27747")]
 pub trait Join<Separator> {
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     /// The resulting type after concatenation
     type Output;
 
-    /// Implementation of [`[T]::join`](slice::join)
+    /// Implementation of <a href="" class="JoinLink" onClick="linkToStdJoin()">`[T]::join`</a>
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     fn join(slice: &Self, sep: Separator) -> Self::Output;
 }
