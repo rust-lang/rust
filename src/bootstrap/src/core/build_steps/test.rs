@@ -3500,7 +3500,7 @@ impl Step for BootstrapPy {
         // Bootstrap tests might not be perfectly self-contained and can depend
         // on the environment, so only run them by default in CI, not locally.
         // See `test::Bootstrap::should_run`.
-        builder.config.is_running_on_ci
+        builder.config.is_running_on_ci()
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -3539,7 +3539,7 @@ impl Step for Bootstrap {
         // Bootstrap tests might not be perfectly self-contained and can depend on the external
         // environment, submodules that are checked out, etc.
         // Therefore we only run them by default on CI.
-        builder.config.is_running_on_ci
+        builder.config.is_running_on_ci()
     }
 
     /// Tests the build system itself.

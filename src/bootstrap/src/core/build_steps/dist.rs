@@ -3084,7 +3084,7 @@ impl Step for Gcc {
             return None;
         }
 
-        if builder.config.is_running_on_ci {
+        if builder.config.is_running_on_ci() {
             assert_eq!(
                 builder.config.gcc_ci_mode,
                 GccCiMode::BuildLocally,
