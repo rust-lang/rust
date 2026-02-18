@@ -647,13 +647,8 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 }
             } else {
                 // This is not CTFE, so it's Miri with recursive checking.
-                // FIXME: we do *not* check behind boxes, since creating a new box first creates it uninitialized
-                // and then puts the value in there, so briefly we have a box with uninit contents.
-                // FIXME: should we also skip `UnsafeCell` behind shared references? Currently that is not
+                // FIXME: should we also `UnsafeCell` behind shared references? Currently that is not
                 // needed since validation reads bypass Stacked Borrows and data race checks.
-                if matches!(ptr_kind, PointerKind::Box) {
-                    return interp_ok(());
-                }
             }
             let path = &self.path;
             ref_tracking.track(place, || {
