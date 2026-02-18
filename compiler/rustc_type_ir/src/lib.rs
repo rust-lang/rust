@@ -122,7 +122,7 @@ rustc_index::newtype_index! {
     /// is the outer fn.
     ///
     /// [dbi]: https://en.wikipedia.org/wiki/De_Bruijn_index
-    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+    #[stable_hash_no_context]
     #[encodable]
     #[orderable]
     #[debug_format = "DebruijnIndex({})"]
@@ -332,7 +332,7 @@ rustc_index::newtype_index! {
     /// declared, but a type name in a non-zero universe is a placeholder
     /// type -- an idealized representative of "types in general" that we
     /// use for checking generic functions.
-    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+    #[stable_hash_no_context]
     #[encodable]
     #[orderable]
     #[debug_format = "U{}"]
@@ -387,7 +387,7 @@ impl Default for UniverseIndex {
 }
 
 rustc_index::newtype_index! {
-    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+    #[stable_hash_generic]
     #[encodable]
     #[orderable]
     #[debug_format = "{}"]
