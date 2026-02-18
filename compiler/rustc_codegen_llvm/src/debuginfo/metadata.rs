@@ -1489,6 +1489,7 @@ pub(crate) fn build_global_var_di_node<'ll>(
         line_number,
         type_di_node,
         is_local_to_unit,
+        true,   // (is_definition)
         global, // (value)
         None,   // (decl)
         Some(global_align),
@@ -1767,6 +1768,7 @@ pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
         UNKNOWN_LINE_NUMBER,
         vtable_type_di_node,
         true,   // (is_local_to_unit)
+        true,   // (is_definition)
         vtable, // (value)
         None,   // (decl)
         None::<Align>,
