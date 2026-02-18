@@ -276,9 +276,16 @@ macro_rules! query_ensure_select {
     };
 }
 
-macro_rules! query_helper_param_ty {
-    (DefId) => { impl $crate::query::IntoQueryParam<DefId> };
-    (LocalDefId) => { impl $crate::query::IntoQueryParam<LocalDefId> };
+/// Expands to `impl IntoQueryParam<$K>` for a small allowlist of key types
+/// that benefit from the implicit conversion, or otherwise expands to `$K`
+/// itself.
+///
+/// This macro is why `define_callbacks!` needs to parse the key type as
+/// `$K:tt` and not `$K:ty`, because otherwise it would be unable to inspect
+/// the tokens inside `$K`.
+macro_rules! maybe_into_query_param {
+    ((DefId)) => { impl $crate::query::IntoQueryParam<DefId> };
+    ((LocalDefId)) => { impl $crate::query::IntoQueryParam<LocalDefId> };
     ($K:ty) => { $K };
 }
 
@@ -297,14 +304,12 @@ macro_rules! query_if_arena {
 /// If `separate_provide_extern`, then the key can be projected to its
 /// local key via `<$K as AsLocalKey>::LocalKey`.
 macro_rules! local_key_if_separate_extern {
-    ([] $($K:tt)*) => {
-        $($K)*
+    ([] $K:ty) => { $K };
+    ([(separate_provide_extern) $($rest:tt)*] $K:ty) => {
+        <$K as $crate::query::AsLocalKey>::LocalKey
     };
-    ([(separate_provide_extern) $($rest:tt)*] $($K:tt)*) => {
-        <$($K)* as $crate::query::AsLocalKey>::LocalKey
-    };
-    ([$other:tt $($modifiers:tt)*] $($K:tt)*) => {
-        local_key_if_separate_extern!([$($modifiers)*] $($K)*)
+    ([$other:tt $($modifiers:tt)*] $K:ty) => {
+        local_key_if_separate_extern!([$($modifiers)*] $K)
     };
 }
 
@@ -349,19 +354,26 @@ macro_rules! separate_provide_extern_default {
 
 macro_rules! define_callbacks {
     (
+        // Match the key type as `tt` so that we can inspect its tokens.
+        // (See `maybe_into_query_param`.)
+        //
+        // We don't need to write `$($K:tt)*` because `rustc_macros::query`
+        // takes care to wrap the key type in an extra set of parentheses,
+        // so it's always a single token tree.
         $(
             $(#[$attr:meta])*
-            [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,
+            [$($modifiers:tt)*]
+            fn $name:ident($K:tt) -> $V:ty,
         )*
     ) => {
         $(#[allow(unused_lifetimes)] pub mod $name {
             use super::*;
             use $crate::query::erase::{self, Erased};
 
-            pub type Key<'tcx> = $($K)*;
+            pub type Key<'tcx> = $K;
             pub type Value<'tcx> = $V;
 
-            pub type LocalKey<'tcx> = local_key_if_separate_extern!([$($modifiers)*] $($K)*);
+            pub type LocalKey<'tcx> = local_key_if_separate_extern!([$($modifiers)*] $K);
 
             /// This type alias specifies the type returned from query providers and the type
             /// used for decoding. For regular queries this is the declared returned type `V`,
@@ -397,7 +409,7 @@ macro_rules! define_callbacks {
                 erase::erase_val(value)
             }
 
-            pub type Storage<'tcx> = <$($K)* as $crate::query::Key>::Cache<Erased<$V>>;
+            pub type Storage<'tcx> = <$K as $crate::query::Key>::Cache<Erased<$V>>;
 
             // Ensure that keys grow no larger than 88 bytes by accident.
             // Increase this limit if necessary, but do try to keep the size low if possible
@@ -408,7 +420,7 @@ macro_rules! define_callbacks {
                         "the query `",
                         stringify!($name),
                         "` has a key type `",
-                        stringify!($($K)*),
+                        stringify!($K),
                         "` that is too large"
                     ));
                 }
@@ -455,7 +467,7 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(
                 self,
-                key: query_helper_param_ty!($($K)*),
+                key: maybe_into_query_param!($K),
             ) -> ensure_ok_result!([$($modifiers)*]) {
                 query_ensure_select!(
                     [$($modifiers)*]
@@ -471,7 +483,10 @@ macro_rules! define_callbacks {
         impl<'tcx> $crate::query::TyCtxtEnsureDone<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
+            pub fn $name(
+                self,
+                key: maybe_into_query_param!($K),
+            ) {
                 crate::query::inner::query_ensure(
                     self.tcx,
                     self.tcx.query_system.fns.engine.$name,
@@ -486,8 +501,11 @@ macro_rules! define_callbacks {
             $($(#[$attr])*
             #[inline(always)]
             #[must_use]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
-            {
+            pub fn $name(
+                self,
+                key: maybe_into_query_param!($K),
+            ) -> $V {
+                let key = $crate::query::IntoQueryParam::into_query_param(key);
                 self.at(DUMMY_SP).$name(key)
             })*
         }
@@ -495,8 +513,10 @@ macro_rules! define_callbacks {
         impl<'tcx> $crate::query::TyCtxtAt<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
-            {
+            pub fn $name(
+                self,
+                key: maybe_into_query_param!($K),
+            ) -> $V {
                 use $crate::query::{erase, inner};
 
                 erase::restore_val::<$V>(inner::query_get_at(
@@ -521,7 +541,7 @@ macro_rules! define_callbacks {
         #[derive(Default)]
         pub struct QueryStates<'tcx> {
             $(
-                pub $name: $crate::query::QueryState<'tcx, $($K)*>,
+                pub $name: $crate::query::QueryState<'tcx, $K>,
             )*
         }
 
@@ -578,8 +598,14 @@ macro_rules! define_callbacks {
 }
 
 macro_rules! define_feedable {
-    ($($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
-        $(impl<'tcx, K: $crate::query::IntoQueryParam<$($K)*> + Copy> TyCtxtFeed<'tcx, K> {
+    (
+        $(
+            $(#[$attr:meta])*
+            [$($modifiers:tt)*]
+            fn $name:ident($K:tt) -> $V:ty,
+        )*
+    ) => {
+        $(impl<'tcx, K: $crate::query::IntoQueryParam<$K> + Copy> TyCtxtFeed<'tcx, K> {
             $(#[$attr])*
             #[inline(always)]
             pub fn $name(self, value: $name::ProvidedValue<'tcx>) {

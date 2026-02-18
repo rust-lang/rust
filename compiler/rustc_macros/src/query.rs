@@ -483,11 +483,13 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
         let span = name.span();
         let modifiers_stream = quote_spanned! { span => #(#modifiers_out),* };
 
-        // Add the query to the group
+        // Add the query to the group.
+        // Surround `key_ty` with parentheses so it can be matched as a single
+        // token tree `$K:tt`, instead of the clunkier `$($K:tt)*`.
         query_stream.extend(quote! {
             #(#doc_comments)*
             [#modifiers_stream]
-            fn #name(#key_ty) #return_ty,
+            fn #name((#key_ty)) #return_ty,
         });
 
         if let Some(feedable) = &modifiers.feedable {
@@ -503,7 +505,7 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
             );
             feedable_queries.extend(quote! {
                 [#modifiers_stream]
-                fn #name(#key_ty) #return_ty,
+                fn #name((#key_ty)) #return_ty,
             });
         }
 

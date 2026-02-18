@@ -479,7 +479,8 @@ macro_rules! define_queries {
     (
         $(
             $(#[$attr:meta])*
-            [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,
+            [$($modifiers:tt)*]
+            fn $name:ident($K:tt) -> $V:ty,
         )*
     ) => {
 
