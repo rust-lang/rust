@@ -513,6 +513,64 @@ impl f32 {
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NEG_INFINITY: f32 = -1.0_f32 / 0.0_f32;
 
+    /// Maximum integer that can be represented exactly in an [`f32`] value,
+    /// with no other integer converting to the same floating point value.
+    ///
+    /// For an integer `x` which satisfies `MIN_EXACT_INTEGER <= x <= MAX_EXACT_INTEGER`,
+    /// there is a "one-to-one" mapping between [`i32`] and [`f32`] values.
+    /// `MAX_EXACT_INTEGER + 1` also converts losslessly to [`f32`] and back to
+    /// [`i32`], but `MAX_EXACT_INTEGER + 2` converts to the same [`f32`] value
+    /// (and back to `MAX_EXACT_INTEGER + 1` as an integer) so there is not a
+    /// "one-to-one" mapping.
+    ///
+    /// [`MAX_EXACT_INTEGER`]: f32::MAX_EXACT_INTEGER
+    /// [`MIN_EXACT_INTEGER`]: f32::MIN_EXACT_INTEGER
+    /// ```
+    /// #![feature(float_exact_integer_constants)]
+    /// # // FIXME(#152635): Float rounding on `i586` does not adhere to IEEE 754
+    /// # #[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))] {
+    /// let max_exact_int = f32::MAX_EXACT_INTEGER;
+    /// assert_eq!(max_exact_int, max_exact_int as f32 as i32);
+    /// assert_eq!(max_exact_int + 1, (max_exact_int + 1) as f32 as i32);
+    /// assert_ne!(max_exact_int + 2, (max_exact_int + 2) as f32 as i32);
+    ///
+    /// // Beyond `f32::MAX_EXACT_INTEGER`, multiple integers can map to one float value
+    /// assert_eq!((max_exact_int + 1) as f32, (max_exact_int + 2) as f32);
+    /// # }
+    /// ```
+    #[unstable(feature = "float_exact_integer_constants", issue = "152466")]
+    pub const MAX_EXACT_INTEGER: i32 = (1 << Self::MANTISSA_DIGITS) - 1;
+
+    /// Minimum integer that can be represented exactly in an [`f32`] value,
+    /// with no other integer converting to the same floating point value.
+    ///
+    /// For an integer `x` which satisfies `MIN_EXACT_INTEGER <= x <= MAX_EXACT_INTEGER`,
+    /// there is a "one-to-one" mapping between [`i32`] and [`f32`] values.
+    /// `MAX_EXACT_INTEGER + 1` also converts losslessly to [`f32`] and back to
+    /// [`i32`], but `MAX_EXACT_INTEGER + 2` converts to the same [`f32`] value
+    /// (and back to `MAX_EXACT_INTEGER + 1` as an integer) so there is not a
+    /// "one-to-one" mapping.
+    ///
+    /// This constant is equivalent to `-MAX_EXACT_INTEGER`.
+    ///
+    /// [`MAX_EXACT_INTEGER`]: f32::MAX_EXACT_INTEGER
+    /// [`MIN_EXACT_INTEGER`]: f32::MIN_EXACT_INTEGER
+    /// ```
+    /// #![feature(float_exact_integer_constants)]
+    /// # // FIXME(#152635): Float rounding on `i586` does not adhere to IEEE 754
+    /// # #[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))] {
+    /// let min_exact_int = f32::MIN_EXACT_INTEGER;
+    /// assert_eq!(min_exact_int, min_exact_int as f32 as i32);
+    /// assert_eq!(min_exact_int - 1, (min_exact_int - 1) as f32 as i32);
+    /// assert_ne!(min_exact_int - 2, (min_exact_int - 2) as f32 as i32);
+    ///
+    /// // Below `f32::MIN_EXACT_INTEGER`, multiple integers can map to one float value
+    /// assert_eq!((min_exact_int - 1) as f32, (min_exact_int - 2) as f32);
+    /// # }
+    /// ```
+    #[unstable(feature = "float_exact_integer_constants", issue = "152466")]
+    pub const MIN_EXACT_INTEGER: i32 = -Self::MAX_EXACT_INTEGER;
+
     /// Sign bit
     pub(crate) const SIGN_MASK: u32 = 0x8000_0000;
 

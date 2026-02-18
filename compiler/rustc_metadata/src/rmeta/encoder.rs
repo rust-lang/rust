@@ -734,10 +734,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
                 has_alloc_error_handler: tcx.has_alloc_error_handler(LOCAL_CRATE),
                 has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
-                has_default_lib_allocator: ast::attr::contains_name(
-                    attrs,
-                    sym::default_lib_allocator,
-                ),
+                has_default_lib_allocator: find_attr!(attrs, AttributeKind::DefaultLibAllocator),
                 externally_implementable_items,
                 proc_macro_data,
                 debugger_visualizers,

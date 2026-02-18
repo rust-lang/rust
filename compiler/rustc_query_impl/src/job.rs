@@ -10,10 +10,11 @@ use rustc_middle::query::{
     CycleError, QueryInfo, QueryJob, QueryJobId, QueryLatch, QueryStackDeferred, QueryStackFrame,
     QueryWaiter,
 };
+use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, Span};
 
-use crate::QueryCtxt;
+use crate::plumbing::collect_active_jobs_from_all_queries;
 
 /// Map from query job IDs to job information collected by
 /// `collect_active_jobs_from_all_queries`.
@@ -384,7 +385,7 @@ pub fn break_query_cycles<'tcx>(
 }
 
 pub fn print_query_stack<'tcx>(
-    qcx: QueryCtxt<'tcx>,
+    tcx: TyCtxt<'tcx>,
     mut current_query: Option<QueryJobId>,
     dcx: DiagCtxtHandle<'_>,
     limit_frames: Option<usize>,
@@ -397,8 +398,7 @@ pub fn print_query_stack<'tcx>(
     let mut count_total = 0;
 
     // Make use of a partial query job map if we fail to take locks collecting active queries.
-    let job_map: QueryJobMap<'_> = qcx
-        .collect_active_jobs_from_all_queries(false)
+    let job_map: QueryJobMap<'_> = collect_active_jobs_from_all_queries(tcx, false)
         .unwrap_or_else(|partial_job_map| partial_job_map);
 
     if let Some(ref mut file) = file {
@@ -425,7 +425,7 @@ pub fn print_query_stack<'tcx>(
                 file,
                 "#{} [{}] {}",
                 count_total,
-                qcx.tcx.dep_kind_vtable(query_info.frame.dep_kind).name,
+                tcx.dep_kind_vtable(query_info.frame.dep_kind).name,
                 query_extra.description
             );
         }

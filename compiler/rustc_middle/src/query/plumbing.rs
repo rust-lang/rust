@@ -8,12 +8,12 @@ use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_macros::HashStable;
-use rustc_query_system::ich::StableHashingContext;
 use rustc_span::{ErrorGuaranteed, Span};
 pub use sealed::IntoQueryParam;
 
 use crate::dep_graph;
 use crate::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
+use crate::ich::StableHashingContext;
 use crate::queries::{
     ExternProviders, PerQueryVTables, Providers, QueryArenas, QueryCaches, QueryEngine, QueryStates,
 };
@@ -102,9 +102,6 @@ pub enum QueryMode {
 }
 
 /// Stores function pointers and other metadata for a particular query.
-///
-/// Used indirectly by query plumbing in `rustc_query_system` via a trait,
-/// and also used directly by query plumbing in `rustc_query_impl`.
 pub struct QueryVTable<'tcx, C: QueryCache> {
     pub name: &'static str,
     pub eval_always: bool,

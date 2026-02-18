@@ -83,7 +83,7 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
 
     let body = Some(cx.block_expr(call));
     let kind = ItemKind::Fn(Box::new(Fn {
-        defaultness: ast::Defaultness::Final,
+        defaultness: ast::Defaultness::Implicit,
         sig,
         ident: Ident::from_str_and_span(&global_fn_name(ALLOC_ERROR_HANDLER), span),
         generics: Generics::default(),

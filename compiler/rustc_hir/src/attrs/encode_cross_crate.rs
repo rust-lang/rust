@@ -35,6 +35,7 @@ impl AttributeKind {
             CrateType(_) => No,
             CustomMir(_, _, _) => Yes,
             DebuggerVisualizer(..) => No,
+            DefaultLibAllocator => No,
             Deprecation { .. } => Yes,
             DoNotRecommend { .. } => Yes,
             Doc(_) => Yes,

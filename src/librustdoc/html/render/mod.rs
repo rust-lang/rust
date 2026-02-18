@@ -59,14 +59,14 @@ use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{ConstStability, Mutability, RustcVersion, StabilityLevel, StableSince};
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::DUMMY_SP;
 use rustc_span::symbol::{Symbol, sym};
-use rustc_span::{BytePos, DUMMY_SP, FileName};
 use tracing::{debug, info};
 
 pub(crate) use self::context::*;
 pub(crate) use self::span_map::{LinkFromSrc, collect_spans_and_sources};
 pub(crate) use self::write_shared::*;
-use crate::clean::{self, ItemId, RenderedLink};
+use crate::clean::{self, Defaultness, ItemId, RenderedLink};
 use crate::display::{Joined as _, MaybeDisplay as _};
 use crate::error::Error;
 use crate::formats::Impl;
@@ -75,8 +75,8 @@ use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::format::{
     Ending, HrefError, HrefInfo, PrintWithSpace, full_print_fn_decl, href, print_abi_with_space,
-    print_constness_with_space, print_default_space, print_generic_bounds, print_generics,
-    print_impl, print_path, print_type, print_where_clause, visibility_print_with_space,
+    print_constness_with_space, print_generic_bounds, print_generics, print_impl, print_path,
+    print_type, print_where_clause, visibility_print_with_space,
 };
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
@@ -1110,7 +1110,11 @@ fn assoc_method(
     let header = meth.fn_header(tcx).expect("Trying to get header from a non-function item");
     let name = meth.name.as_ref().unwrap();
     let vis = visibility_print_with_space(meth, cx).to_string();
-    let defaultness = print_default_space(meth.is_default());
+    let defaultness = match meth.defaultness().expect("Expected assoc method to have defaultness") {
+        Defaultness::Implicit => "",
+        Defaultness::Final => "final ",
+        Defaultness::Default => "default ",
+    };
     // FIXME: Once https://github.com/rust-lang/rust/issues/143874 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
@@ -1261,7 +1265,7 @@ fn render_assoc_item(
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| match &item.kind {
         clean::StrippedItem(..) => Ok(()),
-        clean::RequiredMethodItem(m) | clean::MethodItem(m, _) => {
+        clean::RequiredMethodItem(m, _) | clean::MethodItem(m, _) => {
             assoc_method(item, &m.generics, &m.decl, link, parent, cx, render_mode).fmt(f)
         }
         clean::RequiredAssocConstItem(generics, ty) => assoc_const(
@@ -1586,7 +1590,7 @@ fn render_deref_methods(
 fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> bool {
     let self_type_opt = match item.kind {
         clean::MethodItem(ref method, _) => method.decl.receiver_type(),
-        clean::RequiredMethodItem(ref method) => method.decl.receiver_type(),
+        clean::RequiredMethodItem(ref method, _) => method.decl.receiver_type(),
         _ => None,
     };
 
@@ -1856,7 +1860,7 @@ fn render_impl(
                 deprecation_class = "";
             }
             match &item.kind {
-                clean::MethodItem(..) | clean::RequiredMethodItem(_) => {
+                clean::MethodItem(..) | clean::RequiredMethodItem(..) => {
                     // Only render when the method is not static or we allow static methods
                     if render_method_item {
                         let id = cx.derive_id(format!("{item_type}.{name}"));
@@ -2034,7 +2038,9 @@ fn render_impl(
         if !impl_.is_negative_trait_impl() {
             for impl_item in &impl_.items {
                 match impl_item.kind {
-                    clean::MethodItem(..) | clean::RequiredMethodItem(_) => methods.push(impl_item),
+                    clean::MethodItem(..) | clean::RequiredMethodItem(..) => {
+                        methods.push(impl_item)
+                    }
                     clean::RequiredAssocTypeItem(..) | clean::AssocTypeItem(..) => {
                         assoc_types.push(impl_item)
                     }
@@ -2779,46 +2785,12 @@ fn render_call_locations<W: fmt::Write>(
         let needs_expansion = line_max - line_min > NUM_VISIBLE_LINES;
         let locations_encoded = serde_json::to_string(&line_ranges).unwrap();
 
-        let source_map = tcx.sess.source_map();
-        let files = source_map.files();
-        let local = tcx.sess.local_crate_source_file().unwrap();
-
-        let get_file_start_pos = || {
-            let crate_src = local.clone().into_local_path()?;
-            let abs_crate_src = crate_src.canonicalize().ok()?;
-            let crate_root = abs_crate_src.parent()?.parent()?;
-            let rel_path = path.strip_prefix(crate_root).ok()?;
-            files
-                .iter()
-                .find(|file| match &file.name {
-                    FileName::Real(real) => real.local_path().map_or(false, |p| p == rel_path),
-                    _ => false,
-                })
-                .map(|file| file.start_pos)
-        };
-
-        // Look for the example file in the source map if it exists, otherwise
-        // return a span to the local crate's source file
-        let Some(file_span) = get_file_start_pos()
-            .or_else(|| {
-                files
-                    .iter()
-                    .find(|file| match &file.name {
-                        FileName::Real(file_name) => file_name == &local,
-                        _ => false,
-                    })
-                    .map(|file| file.start_pos)
-            })
-            .map(|start_pos| {
-                rustc_span::Span::with_root_ctxt(
-                    start_pos + BytePos(byte_min),
-                    start_pos + BytePos(byte_max),
-                )
-            })
-        else {
-            // if the fallback span can't be built, don't render the code for this example
-            return false;
-        };
+        // For scraped examples, we don't need a real span from the SourceMap.
+        // The URL is already provided in ScrapedInfo, and sources::print_src
+        // will use that directly. We use DUMMY_SP as a placeholder.
+        // Note: DUMMY_SP is safe here because href_from_span won't be called
+        // for scraped examples.
+        let file_span = rustc_span::DUMMY_SP;
 
         let mut decoration_info = FxIndexMap::default();
         decoration_info.insert("highlight focus", vec![byte_ranges.remove(0)]);

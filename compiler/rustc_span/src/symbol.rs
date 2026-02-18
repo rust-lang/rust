@@ -1096,6 +1096,7 @@ symbols! {
         fields,
         file,
         file_options,
+        final_associated_functions,
         flags,
         float,
         float_to_int_unchecked,

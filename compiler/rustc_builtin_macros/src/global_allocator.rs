@@ -77,7 +77,7 @@ impl AllocFnFactory<'_, '_> {
         let sig = FnSig { decl, header, span: self.span };
         let body = Some(self.cx.block_expr(result));
         let kind = ItemKind::Fn(Box::new(Fn {
-            defaultness: ast::Defaultness::Final,
+            defaultness: ast::Defaultness::Implicit,
             sig,
             ident: Ident::from_str_and_span(&global_fn_name(method.name), self.span),
             generics: Generics::default(),

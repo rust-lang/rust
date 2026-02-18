@@ -96,7 +96,7 @@ jobs:
         run: |
           rustup update --no-self-update stable
           rustup default stable
-          rustup component add --toolchain stable rust-src clippy rustfmt
+          rustup component add --toolchain stable rust-src rustfmt
           # We also install a nightly rustfmt, because we use `--file-lines` in
           # a test.
           rustup toolchain install nightly --profile minimal --component rustfmt
@@ -127,10 +127,6 @@ jobs:
 
       - name: Run cargo-machete
         run: cargo machete
-
-      - name: Run Clippy
-        if: matrix.os == 'macos-latest'
-        run: cargo clippy --all-targets -- -D clippy::disallowed_macros -D clippy::dbg_macro -D clippy::todo -D clippy::print_stdout -D clippy::print_stderr
 
   analysis-stats:
     if: github.repository == 'rust-lang/rust-analyzer'
@@ -178,6 +174,28 @@ jobs:
 
       - run: cargo fmt -- --check
 
+  clippy:
+    if: github.repository == 'rust-lang/rust-analyzer'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Note that clippy output is currently dependent on whether rust-src is installed,
+      # https://github.com/rust-lang/rust-clippy/issues/14625
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup default stable
+          rustup component add --toolchain stable rust-src clippy
+
+      # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
+      - name: Install Rust Problem Matcher
+        run: echo "::add-matcher::.github/rust.json"
+
+      - run: cargo clippy --all-targets -- -D clippy::disallowed_macros -D clippy::dbg_macro -D clippy::todo -D clippy::print_stdout -D clippy::print_stderr
+
   miri:
     if: github.repository == 'rust-lang/rust-analyzer'
     runs-on: ubuntu-latest
@@ -188,8 +206,11 @@ jobs:
 
       - name: Install Rust toolchain
         run: |
-          rustup update --no-self-update nightly
-          rustup default nightly
+          # FIXME: Pin nightly due to a regression in miri on nightly-2026-02-12.
+          # See https://github.com/rust-lang/miri/issues/4855.
+          # Revert to plain `nightly` once this is fixed upstream.
+          rustup toolchain install nightly-2026-02-10
+          rustup default nightly-2026-02-10
           rustup component add miri
 
       # - name: Cache Dependencies
@@ -309,7 +330,7 @@ jobs:
         run: typos
 
   conclusion:
-    needs: [rust, rust-cross, typescript, typo-check, proc-macro-srv, miri, rustfmt, analysis-stats]
+    needs: [rust, rust-cross, typescript, typo-check, proc-macro-srv, miri, rustfmt, clippy, analysis-stats]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run

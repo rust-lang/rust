@@ -314,6 +314,11 @@ pub fn dyn_compatibility_violations_for_assoc_item(
     trait_def_id: DefId,
     item: ty::AssocItem,
 ) -> Vec<DynCompatibilityViolation> {
+    // `final` assoc functions don't prevent a trait from being dyn-compatible
+    if tcx.defaultness(item.def_id).is_final() {
+        return Vec::new();
+    }
+
     // Any item that has a `Self: Sized` requisite is otherwise exempt from the regulations.
     if tcx.generics_require_sized_self(item.def_id) {
         return Vec::new();

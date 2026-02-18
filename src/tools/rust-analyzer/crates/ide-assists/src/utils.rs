@@ -14,6 +14,7 @@ use ide_db::{
     path_transform::PathTransform,
     syntax_helpers::{node_ext::preorder_expr, prettify_macro_expansion},
 };
+use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
     AstNode, AstToken, Direction, NodeOrToken, SourceFile,
@@ -765,6 +766,11 @@ fn generate_impl_inner(
     });
     let generic_args =
         generic_params.as_ref().map(|params| params.to_generic_args().clone_for_update());
+    let adt_assoc_bounds = trait_
+        .as_ref()
+        .zip(generic_params.as_ref())
+        .and_then(|(trait_, params)| generic_param_associated_bounds(adt, trait_, params));
+
     let ty = make::ty_path(make::ext::ident_path(&adt.name().unwrap().text()));
 
     let cfg_attrs =
@@ -780,13 +786,58 @@ fn generate_impl_inner(
             false,
             trait_,
             ty,
-            None,
+            adt_assoc_bounds,
             adt.where_clause(),
             body,
         ),
         None => make::impl_(cfg_attrs, generic_params, generic_args, ty, adt.where_clause(), body),
     }
     .clone_for_update()
+}
+
+fn generic_param_associated_bounds(
+    adt: &ast::Adt,
+    trait_: &ast::Type,
+    generic_params: &ast::GenericParamList,
+) -> Option<ast::WhereClause> {
+    let in_type_params = |name: &ast::NameRef| {
+        generic_params
+            .generic_params()
+            .filter_map(|param| match param {
+                ast::GenericParam::TypeParam(type_param) => type_param.name(),
+                _ => None,
+            })
+            .any(|param| param.text() == name.text())
+    };
+    let adt_body = match adt {
+        ast::Adt::Enum(e) => e.variant_list().map(|it| it.syntax().clone()),
+        ast::Adt::Struct(s) => s.field_list().map(|it| it.syntax().clone()),
+        ast::Adt::Union(u) => u.record_field_list().map(|it| it.syntax().clone()),
+    };
+    let mut trait_where_clause = adt_body
+        .into_iter()
+        .flat_map(|it| it.descendants())
+        .filter_map(ast::Path::cast)
+        .filter_map(|path| {
+            let qualifier = path.qualifier()?.as_single_segment()?;
+            let qualifier = qualifier
+                .name_ref()
+                .or_else(|| match qualifier.type_anchor()?.ty()? {
+                    ast::Type::PathType(path_type) => path_type.path()?.as_single_name_ref(),
+                    _ => None,
+                })
+                .filter(in_type_params)?;
+            Some((qualifier, path.segment()?.name_ref()?))
+        })
+        .map(|(qualifier, assoc_name)| {
+            let segments = [qualifier, assoc_name].map(make::path_segment);
+            let path = make::path_from_segments(segments, false);
+            let bounds = Some(make::type_bound(trait_.clone()));
+            make::where_pred(either::Either::Right(make::ty_path(path)), bounds)
+        })
+        .unique_by(|it| it.syntax().to_string())
+        .peekable();
+    trait_where_clause.peek().is_some().then(|| make::where_clause(trait_where_clause))
 }
 
 pub(crate) fn add_method_to_adt(

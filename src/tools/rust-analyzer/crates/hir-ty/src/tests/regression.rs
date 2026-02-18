@@ -2363,7 +2363,6 @@ fn test() {
 }
 "#,
         expect![[r#"
-            46..49 'Foo': Foo<N>
             93..97 'self': Foo<N>
             108..125 '{     ...     }': usize
             118..119 'N': usize
@@ -2684,6 +2683,89 @@ pub trait FilterT<F: FilterT<F, V = Self::V> = Self> {
     type V;
 
     fn foo() {}
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_21605() {
+    check_infer(
+        r#"
+//- minicore: fn, coerce_unsized, dispatch_from_dyn, iterator, iterators
+pub struct Filter<'a, 'b, T>
+where
+    T: 'b,
+    'a: 'b,
+{
+    filter_fn: dyn Fn(&'a T) -> bool,
+    t: Option<T>,
+    b: &'b (),
+}
+
+impl<'a, 'b, T> Filter<'a, 'b, T>
+where
+    T: 'b,
+    'a: 'b,
+{
+    pub fn new(filter_fn: dyn Fn(&T) -> bool) -> Self {
+        Self {
+            filter_fn: filter_fn,
+            t: None,
+            b: &(),
+        }
+    }
+}
+
+pub trait FilterExt<T> {
+    type Output;
+    fn filter(&self, filter: &Filter<T>) -> Self::Output;
+}
+
+impl<const N: usize, T> FilterExt<T> for [T; N]
+where
+    T: IntoIterator,
+{
+    type Output = T;
+    fn filter(&self, filter: &Filter<T>) -> Self::Output {
+        let _ = self.into_iter().filter(filter.filter_fn);
+        loop {}
+    }
+}
+"#,
+        expect![[r#"
+            214..223 'filter_fn': dyn Fn(&'? T) -> bool + 'static
+            253..360 '{     ...     }': Filter<'a, 'b, T>
+            263..354 'Self {...     }': Filter<'a, 'b, T>
+            293..302 'filter_fn': dyn Fn(&'? T) -> bool + 'static
+            319..323 'None': Option<T>
+            340..343 '&()': &'? ()
+            341..343 '()': ()
+            421..425 'self': &'? Self
+            427..433 'filter': &'? Filter<'?, '?, T>
+            580..584 'self': &'? [T; N]
+            586..592 'filter': &'? Filter<'?, '?, T>
+            622..704 '{     ...     }': T
+            636..637 '_': Filter<Iter<'?, T>, dyn Fn(&'? T) -> bool + '?>
+            640..644 'self': &'? [T; N]
+            640..656 'self.i...iter()': Iter<'?, T>
+            640..681 'self.i...er_fn)': Filter<Iter<'?, T>, dyn Fn(&'? T) -> bool + '?>
+            664..670 'filter': &'? Filter<'?, '?, T>
+            664..680 'filter...ter_fn': dyn Fn(&'? T) -> bool + 'static
+            691..698 'loop {}': !
+            696..698 '{}': ()
+        "#]],
+    );
+}
+
+#[test]
+fn extern_fns_cannot_have_param_patterns() {
+    check_no_mismatches(
+        r#"
+pub(crate) struct Builder<'a>(&'a ());
+
+unsafe extern "C"  {
+    pub(crate) fn foo<'a>(Builder: &Builder<'a>);
 }
     "#,
     );

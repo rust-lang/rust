@@ -160,6 +160,24 @@ pub(crate) struct ForbiddenDefault {
 }
 
 #[derive(Diagnostic)]
+#[diag("`final` is only allowed on associated functions in traits")]
+pub(crate) struct ForbiddenFinal {
+    #[primary_span]
+    pub span: Span,
+    #[label("`final` because of this")]
+    pub def_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`final` is only allowed on associated functions if they have a body")]
+pub(crate) struct ForbiddenFinalWithoutBody {
+    #[primary_span]
+    pub span: Span,
+    #[label("`final` because of this")]
+    pub def_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("associated constant in `impl` without body")]
 pub(crate) struct AssocConstWithoutBody {
     #[primary_span]

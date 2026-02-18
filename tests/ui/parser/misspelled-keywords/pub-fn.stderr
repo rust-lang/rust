@@ -1,8 +1,8 @@
-error: expected one of `#`, `async`, `auto`, `const`, `default`, `enum`, `extern`, `fn`, `gen`, `impl`, `macro_rules`, `macro`, `mod`, `pub`, `safe`, `static`, `struct`, `trait`, `type`, `unsafe`, or `use`, found `puB`
+error: expected one of `#`, `async`, `auto`, `const`, `default`, `enum`, `extern`, `final`, `fn`, `gen`, `impl`, `macro_rules`, `macro`, `mod`, `pub`, `safe`, `static`, `struct`, `trait`, `type`, `unsafe`, or `use`, found `puB`
   --> $DIR/pub-fn.rs:1:1
    |
 LL | puB fn code() {}
-   | ^^^ expected one of 21 possible tokens
+   | ^^^ expected one of 22 possible tokens
    |
 help: write keyword `pub` in lowercase
    |

@@ -490,6 +490,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
                 let ty = self.resolve_vars_if_possible(ty.value);
                 let guar = match *ty.kind() {
+                    _ if let Some(guar) = self.tainted_by_errors() => guar,
                     ty::Infer(ty::TyVar(_)) => {
                         // We want to get the variable name that the method
                         // is being called on. If it is a method call.

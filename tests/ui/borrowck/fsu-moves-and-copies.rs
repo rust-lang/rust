@@ -1,11 +1,9 @@
 //@ run-pass
 
 #![allow(non_camel_case_types)]
-#![allow(stable_features)]
 // Issue 4691: Ensure that functional-struct-updates operates
 // correctly and moves rather than copy when appropriate.
 
-#![feature(core)]
 
 struct ncint { v: isize }
 fn ncint(v: isize) -> ncint { ncint { v: v } }

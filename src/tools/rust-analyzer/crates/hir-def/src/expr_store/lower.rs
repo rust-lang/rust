@@ -32,8 +32,8 @@ use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
-    AdtId, BlockId, BlockLoc, DefWithBodyId, FunctionId, GenericDefId, ImplId, MacroId,
-    ModuleDefId, ModuleId, TraitId, TypeAliasId, UnresolvedMacro,
+    AdtId, BlockId, BlockLoc, DefWithBodyId, FunctionId, GenericDefId, ImplId, ItemContainerId,
+    MacroId, ModuleDefId, ModuleId, TraitId, TypeAliasId, UnresolvedMacro,
     attrs::AttrFlags,
     db::DefDatabase,
     expr_store::{
@@ -141,9 +141,19 @@ pub(super) fn lower_body(
             source_map_self_param = Some(collector.expander.in_file(AstPtr::new(&self_param_syn)));
         }
 
+        let is_extern = matches!(
+            owner,
+            DefWithBodyId::FunctionId(id)
+                if matches!(id.loc(db).container, ItemContainerId::ExternBlockId(_)),
+        );
+
         for param in param_list.params() {
             if collector.check_cfg(&param) {
-                let param_pat = collector.collect_pat_top(param.pat());
+                let param_pat = if is_extern {
+                    collector.collect_extern_fn_param(param.pat())
+                } else {
+                    collector.collect_pat_top(param.pat())
+                };
                 params.push(param_pat);
             }
         }
@@ -2245,6 +2255,32 @@ impl<'db> ExprCollector<'db> {
                 self.with_labeled_rib(label, hygiene, |this| this.collect_block_opt(expr))
             }
             None => self.collect_block_opt(expr),
+        }
+    }
+
+    fn collect_extern_fn_param(&mut self, pat: Option<ast::Pat>) -> PatId {
+        // `extern` functions cannot have pattern-matched parameters, and furthermore, the identifiers
+        // in their parameters are always interpreted as bindings, even if in a normal function they
+        // won't be, because they would refer to a path pattern.
+        let Some(pat) = pat else { return self.missing_pat() };
+
+        match &pat {
+            ast::Pat::IdentPat(bp) => {
+                // FIXME: Emit an error if `!bp.is_simple_ident()`.
+
+                let name = bp.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
+                let hygiene = bp
+                    .name()
+                    .map(|name| self.hygiene_id_for(name.syntax().text_range()))
+                    .unwrap_or(HygieneId::ROOT);
+                let binding = self.alloc_binding(name, BindingAnnotation::Unannotated, hygiene);
+                let pat =
+                    self.alloc_pat(Pat::Bind { id: binding, subpat: None }, AstPtr::new(&pat));
+                self.add_definition_to_binding(binding, pat);
+                pat
+            }
+            // FIXME: Emit an error.
+            _ => self.missing_pat(),
         }
     }
 

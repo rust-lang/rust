@@ -1,13 +1,12 @@
 //@ run-pass
 #![allow(unused_variables)]
-#![allow(stable_features)]
 #![allow(overflowing_literals)]
 
 //@ needs-subprocess
 //@ ignore-fuchsia must translate zircon signal to SIGILL, FIXME (#58590)
 //@ ignore-backends: gcc
 
-#![feature(repr_simd, target_feature, cfg_target_feature)]
+#![feature(repr_simd)]
 
 #[path = "../../auxiliary/minisimd.rs"]
 mod minisimd;

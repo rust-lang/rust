@@ -26,10 +26,7 @@ use ide_db::{
 use itertools::Itertools;
 use proc_macro_api::{
     MacroDylib, ProcMacroClient,
-    bidirectional_protocol::{
-        msg::{SubRequest, SubResponse},
-        reject_subrequests,
-    },
+    bidirectional_protocol::msg::{SubRequest, SubResponse},
 };
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::{Span, SpanAnchor, SyntaxContext};
@@ -446,7 +443,7 @@ pub fn load_proc_macro(
 ) -> ProcMacroLoadResult {
     let res: Result<Vec<_>, _> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf());
-        let vec = server.load_dylib(dylib, Some(&reject_subrequests)).map_err(|e| {
+        let vec = server.load_dylib(dylib).map_err(|e| {
             ProcMacroLoadingError::ProcMacroSrvError(format!("{e}").into_boxed_str())
         })?;
         if vec.is_empty() {

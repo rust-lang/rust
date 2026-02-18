@@ -15,7 +15,6 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_type_ir::solve::AdtDestructorKind;
 use tracing::{debug, info, trace};
@@ -23,6 +22,7 @@ use tracing::{debug, info, trace};
 use super::{
     AsyncDestructor, Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr,
 };
+use crate::ich::StableHashingContext;
 use crate::mir::interpret::ErrorHandled;
 use crate::ty;
 use crate::ty::util::{Discr, IntTypeExt};

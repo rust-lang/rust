@@ -751,7 +751,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
                 if let Some(lhs_ty) = lhs_ty {
                     self.write_pat_ty(target, lhs_ty);
-                    self.infer_expr_coerce(value, &Expectation::has_type(lhs_ty), ExprIsRead::No);
+                    self.infer_expr_coerce(value, &Expectation::has_type(lhs_ty), ExprIsRead::Yes);
                 } else {
                     let rhs_ty = self.infer_expr(value, &Expectation::none(), ExprIsRead::Yes);
                     let resolver_guard =

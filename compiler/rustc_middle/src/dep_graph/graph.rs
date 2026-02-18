@@ -15,8 +15,6 @@ use rustc_data_structures::{assert_matches, outline};
 use rustc_errors::DiagInner;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
-use rustc_query_system::ich::StableHashingContext;
-use rustc_query_system::query::QuerySideEffect;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
 use tracing::{debug, instrument};
@@ -25,11 +23,29 @@ use {super::debug::EdgeFilter, std::env};
 
 use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
-use super::{DepKind, DepNode, HasDepContext, WorkProductId, read_deps, with_deps};
+use super::{DepKind, DepNode, WorkProductId, read_deps, with_deps};
 use crate::dep_graph::edges::EdgesVec;
+use crate::ich::StableHashingContext;
 use crate::ty::TyCtxt;
 use crate::verify_ich::incremental_verify_ich;
 
+/// Tracks 'side effects' for a particular query.
+/// This struct is saved to disk along with the query result,
+/// and loaded from disk if we mark the query as green.
+/// This allows us to 'replay' changes to global state
+/// that would otherwise only occur if we actually
+/// executed the query method.
+///
+/// Each side effect gets an unique dep node index which is added
+/// as a dependency of the query which had the effect.
+#[derive(Debug, Encodable, Decodable)]
+pub enum QuerySideEffect {
+    /// Stores a diagnostic emitted during query execution.
+    /// This diagnostic will be re-emitted if we mark
+    /// the query as green, as that query will have the side
+    /// effect dep node as a dependency.
+    Diagnostic(DiagInner),
+}
 #[derive(Clone)]
 pub struct DepGraph {
     data: Option<Arc<DepGraphData>>,
@@ -252,17 +268,17 @@ impl DepGraph {
     }
 
     #[inline(always)]
-    pub fn with_task<'tcx, Ctxt: HasDepContext<'tcx>, A: Debug, R>(
+    pub fn with_task<'tcx, A: Debug, R>(
         &self,
-        key: DepNode,
-        cx: Ctxt,
-        arg: A,
-        task: fn(Ctxt, A) -> R,
+        dep_node: DepNode,
+        tcx: TyCtxt<'tcx>,
+        task_arg: A,
+        task_fn: fn(tcx: TyCtxt<'tcx>, task_arg: A) -> R,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
         match self.data() {
-            Some(data) => data.with_task(key, cx, arg, task, hash_result),
-            None => (task(cx, arg), self.next_virtual_depnode_index()),
+            Some(data) => data.with_task(dep_node, tcx, task_arg, task_fn, hash_result),
+            None => (task_fn(tcx, task_arg), self.next_virtual_depnode_index()),
         }
     }
 
@@ -294,33 +310,21 @@ impl DepGraphData {
     /// prevent implicit 'leaks' of tracked state into the task (which
     /// could then be read without generating correct edges in the
     /// dep-graph -- see the [rustc dev guide] for more details on
-    /// the dep-graph). To this end, the task function gets exactly two
-    /// pieces of state: the context `cx` and an argument `arg`. Both
-    /// of these bits of state must be of some type that implements
-    /// `DepGraphSafe` and hence does not leak.
+    /// the dep-graph).
     ///
-    /// The choice of two arguments is not fundamental. One argument
-    /// would work just as well, since multiple values can be
-    /// collected using tuples. However, using two arguments works out
-    /// to be quite convenient, since it is common to need a context
-    /// (`cx`) and some argument (e.g., a `DefId` identifying what
-    /// item to process).
-    ///
-    /// For cases where you need some other number of arguments:
-    ///
-    /// - If you only need one argument, just use `()` for the `arg`
-    ///   parameter.
-    /// - If you need 3+ arguments, use a tuple for the
-    ///   `arg` parameter.
+    /// Therefore, the task function takes a `TyCtxt`, plus exactly one
+    /// additional argument, `task_arg`. The additional argument type can be
+    /// `()` if no argument is needed, or a tuple if multiple arguments are
+    /// needed.
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html
     #[inline(always)]
-    pub fn with_task<'tcx, Ctxt: HasDepContext<'tcx>, A: Debug, R>(
+    pub fn with_task<'tcx, A: Debug, R>(
         &self,
-        key: DepNode,
-        cx: Ctxt,
-        arg: A,
-        task: fn(Ctxt, A) -> R,
+        dep_node: DepNode,
+        tcx: TyCtxt<'tcx>,
+        task_arg: A,
+        task_fn: fn(tcx: TyCtxt<'tcx>, task_arg: A) -> R,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
         // If the following assertion triggers, it can have two reasons:
@@ -328,32 +332,28 @@ impl DepGraphData {
         //    in `DepGraph::try_mark_green()`.
         // 2. Two distinct query keys get mapped to the same `DepNode`
         //    (see for example #48923).
-        self.assert_dep_node_not_yet_allocated_in_current_session(
-            cx.dep_context().sess,
-            &key,
-            || {
-                format!(
-                    "forcing query with already existing `DepNode`\n\
-                 - query-key: {arg:?}\n\
-                 - dep-node: {key:?}"
-                )
-            },
-        );
+        self.assert_dep_node_not_yet_allocated_in_current_session(tcx.sess, &dep_node, || {
+            format!(
+                "forcing query with already existing `DepNode`\n\
+                 - query-key: {task_arg:?}\n\
+                 - dep-node: {dep_node:?}"
+            )
+        });
 
-        let with_deps = |task_deps| with_deps(task_deps, || task(cx, arg));
-        let (result, edges) = if cx.dep_context().is_eval_always(key.kind) {
+        let with_deps = |task_deps| with_deps(task_deps, || task_fn(tcx, task_arg));
+        let (result, edges) = if tcx.is_eval_always(dep_node.kind) {
             (with_deps(TaskDepsRef::EvalAlways), EdgesVec::new())
         } else {
             let task_deps = Lock::new(TaskDeps::new(
                 #[cfg(debug_assertions)]
-                Some(key),
+                Some(dep_node),
                 0,
             ));
             (with_deps(TaskDepsRef::Allow(&task_deps)), task_deps.into_inner().reads)
         };
 
         let dep_node_index =
-            self.hash_result_and_alloc_node(cx.dep_context(), key, edges, &result, hash_result);
+            self.hash_result_and_alloc_node(tcx, dep_node, edges, &result, hash_result);
 
         (result, dep_node_index)
     }
@@ -938,7 +938,7 @@ impl DepGraphData {
 
         // We failed to mark it green, so we try to force the query.
         debug!("trying to force dependency {dep_dep_node:?}");
-        if !tcx.dep_context().try_force_from_dep_node(*dep_dep_node, parent_dep_node_index, frame) {
+        if !tcx.try_force_from_dep_node(*dep_dep_node, parent_dep_node_index, frame) {
             // The DepNode could not be forced.
             debug!("dependency {dep_dep_node:?} could not be forced");
             return None;
@@ -985,10 +985,7 @@ impl DepGraphData {
         let frame = MarkFrame { index: prev_dep_node_index, parent: frame };
 
         // We never try to mark eval_always nodes as green
-        debug_assert!(
-            !tcx.dep_context()
-                .is_eval_always(self.previous.index_to_node(prev_dep_node_index).kind)
-        );
+        debug_assert!(!tcx.is_eval_always(self.previous.index_to_node(prev_dep_node_index).kind));
 
         let prev_deps = self.previous.edge_targets_from(prev_dep_node_index);
 

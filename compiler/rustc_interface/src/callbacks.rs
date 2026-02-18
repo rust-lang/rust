@@ -11,9 +11,8 @@
 
 use std::fmt;
 
-use rustc_errors::{DiagInner, TRACK_DIAGNOSTIC};
-use rustc_middle::dep_graph::dep_node::default_dep_kind_debug;
-use rustc_middle::dep_graph::{DepKind, DepNode, TaskDepsRef};
+use rustc_errors::DiagInner;
+use rustc_middle::dep_graph::TaskDepsRef;
 use rustc_middle::ty::tls;
 
 fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) {
@@ -65,49 +64,10 @@ fn def_id_debug(def_id: rustc_hir::def_id::DefId, f: &mut fmt::Formatter<'_>) ->
     write!(f, ")")
 }
 
-/// This is a callback from `rustc_query_system` as it cannot access the implicit state
-/// in `rustc_middle` otherwise.
-pub fn dep_kind_debug(kind: DepKind, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    tls::with_opt(|opt_tcx| {
-        if let Some(tcx) = opt_tcx {
-            write!(f, "{}", tcx.dep_kind_vtable(kind).name)
-        } else {
-            default_dep_kind_debug(kind, f)
-        }
-    })
-}
-
-/// This is a callback from `rustc_query_system` as it cannot access the implicit state
-/// in `rustc_middle` otherwise.
-pub fn dep_node_debug(node: DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{:?}(", node.kind)?;
-
-    tls::with_opt(|opt_tcx| {
-        if let Some(tcx) = opt_tcx {
-            if let Some(def_id) = node.extract_def_id(tcx) {
-                write!(f, "{}", tcx.def_path_debug_str(def_id))?;
-            } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(node) {
-                write!(f, "{s}")?;
-            } else {
-                write!(f, "{}", node.hash)?;
-            }
-        } else {
-            write!(f, "{}", node.hash)?;
-        }
-        Ok(())
-    })?;
-
-    write!(f, ")")
-}
-
 /// Sets up the callbacks in prior crates which we want to refer to the
 /// TyCtxt in.
 pub fn setup_callbacks() {
     rustc_span::SPAN_TRACK.swap(&(track_span_parent as fn(_)));
     rustc_hir::def_id::DEF_ID_DEBUG.swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
-    rustc_middle::dep_graph::dep_node::DEP_KIND_DEBUG
-        .swap(&(dep_kind_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
-    rustc_middle::dep_graph::dep_node::DEP_NODE_DEBUG
-        .swap(&(dep_node_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
-    TRACK_DIAGNOSTIC.swap(&(track_diagnostic as _));
+    rustc_errors::TRACK_DIAGNOSTIC.swap(&(track_diagnostic as _));
 }

@@ -172,6 +172,9 @@ declare_features! (
     /// Allow anonymous constants from an inline `const` block in pattern position
     (removed, inline_const_pat, "1.88.0", Some(76001),
      Some("removed due to implementation concerns as it requires significant refactorings"), 138492),
+    /// A temporary feature gate used to enable parser extensions needed
+    /// to bootstrap fix for #5723.
+    (removed, issue_5723_bootstrap, "CURRENT_RUSTC_VERSION", None, None),
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (removed, lazy_normalization_consts, "1.56.0", Some(72219), Some("superseded by `generic_const_exprs`"), 88369),
     /// Changes `impl Trait` to capture all lifetimes in scope.

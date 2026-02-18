@@ -893,6 +893,16 @@ pub(crate) enum ImplNotMarkedDefault {
 pub(crate) struct UselessImplItem;
 
 #[derive(Diagnostic)]
+#[diag("cannot override `{$ident}` because it already has a `final` definition in the trait")]
+pub(crate) struct OverridingFinalTraitFunction {
+    #[primary_span]
+    pub impl_span: Span,
+    #[note("`{$ident}` is marked final here")]
+    pub trait_span: Span,
+    pub ident: Ident,
+}
+
+#[derive(Diagnostic)]
 #[diag("not all trait items implemented, missing: `{$missing_items_msg}`", code = E0046)]
 pub(crate) struct MissingTraitItem {
     #[primary_span]
