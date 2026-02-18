@@ -548,6 +548,7 @@ impl<'a> Parser<'a> {
         let mutbl = self.parse_mutability();
         match self.parse_ty_no_plus() {
             Ok(ty) => {
+                let ty = Box::new(ty);
                 err.span_suggestion_verbose(
                     lo.shrink_to_lo(),
                     "you might have meant to write a reference type here",
@@ -555,7 +556,7 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect,
                 );
                 err.emit();
-                Ok(TyKind::Ref(Some(lt), MutTy { ty: Box::new(ty), mutbl }))
+                Ok(TyKind::Ref(Some(lt), MutTy { ty, mutbl }))
             }
             Err(diag) => {
                 diag.cancel();

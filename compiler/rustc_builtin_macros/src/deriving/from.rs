@@ -55,10 +55,10 @@ pub(crate) fn expand_deriving_from(
         _ => cx.dcx().bug("Invalid derive(From) ADT input"),
     };
 
-    let from_type = Ty::AstTy(match field {
+    let from_type = Ty::AstTy(Box::new(match field {
         Ok(ref field) => field.ty.clone(),
-        Err(guar) => Box::new(cx.ty(span, ast::TyKind::Err(guar))),
-    });
+        Err(guar) => cx.ty(span, ast::TyKind::Err(guar)),
+    }));
 
     let path =
         Path::new_(pathvec_std!(convert::From), vec![Box::new(from_type.clone())], PathKind::Std);

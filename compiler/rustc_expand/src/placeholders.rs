@@ -181,7 +181,7 @@ pub(crate) fn placeholder(
             id,
             ident: None,
             span,
-            ty: Box::new(ty()),
+            ty: ty(),
             vis,
             is_placeholder: true,
             safety: Safety::Default,

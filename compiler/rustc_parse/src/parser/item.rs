@@ -2008,7 +2008,7 @@ impl<'a> Parser<'a> {
                 };
                 // Unsafe fields are not supported in tuple structs, as doing so would result in a
                 // parsing ambiguity for `struct X(unsafe fn())`.
-                let ty = match p.parse_ty() {
+                let ty = match p.parse_ty_mut() {
                     Ok(ty) => ty,
                     Err(err) => {
                         if let Some(ref mut snapshot) = snapshot {
@@ -2209,7 +2209,7 @@ impl<'a> Parser<'a> {
             }
         }
         self.expect_field_ty_separator()?;
-        let ty = self.parse_ty()?;
+        let ty = self.parse_ty_mut()?;
         if self.token == token::Colon && self.look_ahead(1, |&t| t != token::Colon) {
             self.dcx()
                 .struct_span_err(self.token.span, "found single colon in a struct field type path")

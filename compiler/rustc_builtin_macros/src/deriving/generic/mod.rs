@@ -596,7 +596,7 @@ impl<'a> TraitDef<'a> {
         cx: &ExtCtxt<'_>,
         type_ident: Ident,
         generics: &Generics,
-        field_tys: Vec<Box<ast::Ty>>,
+        field_tys: Vec<ast::Ty>,
         methods: Vec<Box<ast::AssocItem>>,
         is_packed: bool,
     ) -> Box<ast::Item> {
@@ -794,7 +794,7 @@ impl<'a> TraitDef<'a> {
         // Create the type of `self`.
         let path =
             cx.path_all(type_ident.span.with_ctxt(ctxt), false, vec![type_ident], self_params);
-        let self_type = cx.ty_path(path);
+        let self_ty = Box::new(cx.ty_path(path));
         let rustc_const_unstable =
             cx.path_ident(self.span, Ident::new(sym::rustc_const_unstable, self.span));
 
@@ -855,7 +855,7 @@ impl<'a> TraitDef<'a> {
                     trait_ref,
                 })),
                 constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
-                self_ty: Box::new(self_type),
+                self_ty,
                 items: methods.into_iter().chain(associated_types).collect(),
             }),
         )
@@ -870,7 +870,7 @@ impl<'a> TraitDef<'a> {
         from_scratch: bool,
         is_packed: bool,
     ) -> Box<ast::Item> {
-        let field_tys: Vec<Box<ast::Ty>> =
+        let field_tys: Vec<ast::Ty> =
             struct_def.fields().iter().map(|field| field.ty.clone()).collect();
 
         let methods = self

@@ -177,7 +177,8 @@ pub(crate) fn expand_deriving_coerce_pointee(
     let s_ty = cx.ty_ident(span, Ident::new(sym::__S, span));
     let mut alt_self_params = self_params;
     alt_self_params[pointee_param_idx] = GenericArg::Type(Box::new(s_ty.clone()));
-    let alt_self_type = cx.ty_path(cx.path_all(span, false, vec![name_ident], alt_self_params));
+    let alt_self_type =
+        Box::new(cx.ty_path(cx.path_all(span, false, vec![name_ident], alt_self_params)));
 
     // # Add `Unsize<__S>` bound to `#[pointee]` at the generic parameter location
     //
@@ -322,7 +323,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
     impl_generics.params.insert(pointee_param_idx + 1, extra_param);
 
     // Add the impl blocks for `DispatchFromDyn` and `CoerceUnsized`.
-    let gen_args = vec![GenericArg::Type(Box::new(alt_self_type))];
+    let gen_args = vec![GenericArg::Type(alt_self_type)];
     add_impl_block(impl_generics.clone(), sym::DispatchFromDyn, gen_args.clone());
     add_impl_block(impl_generics.clone(), sym::CoerceUnsized, gen_args);
 }

@@ -71,8 +71,8 @@ impl AllocFnFactory<'_, '_> {
         let mut abi_args = ThinVec::new();
         let args = method.inputs.iter().map(|input| self.arg_ty(input, &mut abi_args)).collect();
         let result = self.call_allocator(method.name, args);
-        let output_ty = self.ret_ty(&method.output);
-        let decl = self.cx.fn_decl(abi_args, ast::FnRetTy::Ty(Box::new(output_ty)));
+        let output_ty = Box::new(self.ret_ty(&method.output));
+        let decl = self.cx.fn_decl(abi_args, ast::FnRetTy::Ty(output_ty));
         let header = FnHeader { safety: Safety::Unsafe(self.span), ..FnHeader::default() };
         let sig = FnSig { decl, header, span: self.span };
         let body = Some(self.cx.block_expr(result));

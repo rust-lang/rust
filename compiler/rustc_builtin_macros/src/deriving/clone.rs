@@ -143,7 +143,7 @@ fn cs_clone_simple(
                 super::assert_ty_bounds(
                     cx,
                     &mut stmts,
-                    field.ty.clone(),
+                    Box::new(field.ty.clone()),
                     field.span,
                     &[sym::clone, sym::AssertParamIsClone],
                 );

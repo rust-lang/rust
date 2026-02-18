@@ -3559,7 +3559,7 @@ pub struct FieldDef {
     pub safety: Safety,
     pub ident: Option<Ident>,
 
-    pub ty: Box<Ty>,
+    pub ty: Ty,
     pub default: Option<AnonConst>,
     pub is_placeholder: bool,
 }
