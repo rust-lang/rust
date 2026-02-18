@@ -204,3 +204,15 @@ pub(crate) struct MismatchedDataLayout<'a> {
 pub(crate) struct FixedX18InvalidArch<'a> {
     pub arch: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(
+    "intrinsic signature mismatch for `{$name}`: expected signature `{$llvm_fn_ty}`, found `{$rust_fn_ty}`"
+)]
+pub(crate) struct IntrinsicSignatureMismatch<'a> {
+    pub name: &'a str,
+    pub llvm_fn_ty: &'a str,
+    pub rust_fn_ty: &'a str,
+    #[primary_span]
+    pub span: Span,
+}
