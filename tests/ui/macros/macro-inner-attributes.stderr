@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `a`
+error[E0433]: cannot find module or crate `a` in this scope
   --> $DIR/macro-inner-attributes.rs:17:5
    |
 LL |     a::bar();
