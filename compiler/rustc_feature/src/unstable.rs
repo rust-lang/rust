@@ -489,7 +489,7 @@ declare_features! (
     /// Allows the use of `#[ffi_pure]` on foreign functions.
     (unstable, ffi_pure, "1.45.0", Some(58329)),
     /// Allows marking trait functions as `final` to prevent overriding impls
-    (unstable, final_associated_functions, "CURRENT_RUSTC_VERSION", Some(1)),
+    (unstable, final_associated_functions, "CURRENT_RUSTC_VERSION", Some(131179)),
     /// Controlling the behavior of fmt::Debug
     (unstable, fmt_debug, "1.82.0", Some(129709)),
     /// Allows using `#[align(...)]` on function items
