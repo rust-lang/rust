@@ -300,6 +300,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let rebased_args = alias.args.rebase_onto(tcx, trait_def_id, impl_substs);
 
                 let impl_item_def_id = leaf_def.item.def_id;
+                if !tcx.check_args_compatible(impl_item_def_id, rebased_args) {
+                    return false;
+                }
                 let impl_assoc_ty = tcx.type_of(impl_item_def_id).instantiate(tcx, rebased_args);
 
                 self.infcx.can_eq(param_env, impl_assoc_ty, concrete)
