@@ -5,7 +5,7 @@
 // Your performance intuition is useless. Run perf.
 
 use crate::error::Error;
-use crate::intrinsics::{unchecked_add, unchecked_mul, unchecked_sub};
+use crate::intrinsics::{self, unchecked_add, unchecked_mul, unchecked_sub};
 use crate::mem::SizedTypeProperties;
 use crate::ptr::{Alignment, NonNull};
 use crate::{assert_unsafe_precondition, fmt, mem};
@@ -250,11 +250,9 @@ impl Layout {
     #[unstable(feature = "layout_for_ptr", issue = "69835")]
     #[must_use]
     #[inline]
-    pub const unsafe fn for_value_raw<T: ?Sized>(t: *const T) -> Self {
+    pub const unsafe fn for_value_raw<T: ?Sized>(ptr: *const T) -> Self {
         // SAFETY: we pass along the prerequisites of these functions to the caller
-        let (size, alignment) = unsafe { (mem::size_of_val_raw(t), Alignment::of_val_raw(t)) };
-        // SAFETY: see rationale in `new` for why this is using the unsafe variant
-        unsafe { Layout::from_size_alignment_unchecked(size, alignment) }
+        unsafe { intrinsics::layout_of_val(ptr) }
     }
 
     /// Creates a `NonNull` that is dangling, but well-aligned for this Layout.
