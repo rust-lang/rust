@@ -2,12 +2,11 @@ use std::any::Any;
 use std::default::Default;
 use std::iter;
 use std::path::Component::Prefix;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 
 use rustc_ast::attr::MarkedAttrs;
-use rustc_ast::token::MetaVarKind;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind, Safety};
@@ -22,14 +21,14 @@ use rustc_hir::limit::Limit;
 use rustc_hir::{Stability, find_attr};
 use rustc_lint_defs::RegisteredTools;
 use rustc_parse::MACRO_ARGUMENTS;
-use rustc_parse::parser::{AllowConstBlockItems, ForceCollect, Parser};
+use rustc_parse::parser::Parser;
 use rustc_session::Session;
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{DUMMY_SP, FileName, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
@@ -1420,81 +1419,4 @@ pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PRe
             _ => Ok(path),
         }
     }
-}
-
-/// If this item looks like a specific enums from `rental`, emit a fatal error.
-/// See #73345 and #83125 for more details.
-/// FIXME(#73933): Remove this eventually.
-fn pretty_printing_compatibility_hack(item: &Item, psess: &ParseSess) {
-    if let ast::ItemKind::Enum(ident, _, enum_def) = &item.kind
-        && ident.name == sym::ProceduralMasqueradeDummyType
-        && let [variant] = &*enum_def.variants
-        && variant.ident.name == sym::Input
-        && let FileName::Real(real) = psess.source_map().span_to_filename(ident.span)
-        && let Some(c) = real
-            .local_path()
-            .unwrap_or(Path::new(""))
-            .components()
-            .flat_map(|c| c.as_os_str().to_str())
-            .find(|c| c.starts_with("rental") || c.starts_with("allsorts-rental"))
-    {
-        let crate_matches = if c.starts_with("allsorts-rental") {
-            true
-        } else {
-            let mut version = c.trim_start_matches("rental-").split('.');
-            version.next() == Some("0")
-                && version.next() == Some("5")
-                && version.next().and_then(|c| c.parse::<u32>().ok()).is_some_and(|v| v < 6)
-        };
-
-        if crate_matches {
-            psess.dcx().emit_fatal(errors::ProcMacroBackCompat {
-                crate_name: "rental".to_string(),
-                fixed_version: "0.5.6".to_string(),
-            });
-        }
-    }
-}
-
-pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, psess: &ParseSess) {
-    let item = match ann {
-        Annotatable::Item(item) => item,
-        Annotatable::Stmt(stmt) => match &stmt.kind {
-            ast::StmtKind::Item(item) => item,
-            _ => return,
-        },
-        _ => return,
-    };
-    pretty_printing_compatibility_hack(item, psess)
-}
-
-pub(crate) fn stream_pretty_printing_compatibility_hack(
-    kind: MetaVarKind,
-    stream: &TokenStream,
-    psess: &ParseSess,
-) {
-    let item = match kind {
-        MetaVarKind::Item => {
-            let mut parser = Parser::new(psess, stream.clone(), None);
-            // No need to collect tokens for this simple check.
-            parser
-                .parse_item(ForceCollect::No, AllowConstBlockItems::No)
-                .expect("failed to reparse item")
-                .expect("an actual item")
-        }
-        MetaVarKind::Stmt => {
-            let mut parser = Parser::new(psess, stream.clone(), None);
-            // No need to collect tokens for this simple check.
-            let stmt = parser
-                .parse_stmt(ForceCollect::No)
-                .expect("failed to reparse")
-                .expect("an actual stmt");
-            match &stmt.kind {
-                ast::StmtKind::Item(item) => item.clone(),
-                _ => return,
-            }
-        }
-        _ => return,
-    };
-    pretty_printing_compatibility_hack(&item, psess)
 }

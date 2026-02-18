@@ -446,18 +446,6 @@ pub(crate) struct GlobDelegationTraitlessQpath {
     pub span: Span,
 }
 
-// This used to be the `proc_macro_back_compat` lint (#83125). It was later
-// turned into a hard error.
-#[derive(Diagnostic)]
-#[diag("using an old version of `{$crate_name}`")]
-#[note(
-    "older versions of the `{$crate_name}` crate no longer compile; please update to `{$crate_name}` v{$fixed_version}, or switch to one of the `{$crate_name}` alternatives"
-)]
-pub(crate) struct ProcMacroBackCompat {
-    pub crate_name: String,
-    pub fixed_version: String,
-}
-
 pub(crate) use metavar_exprs::*;
 mod metavar_exprs {
     use super::*;
