@@ -840,7 +840,7 @@ pub(crate) unsafe fn llvm_optimize(
     // don't need any other artifacts from the previous run. We will embed this artifact into our
     // LLVM-IR host module, to create a `host.o` ObjectFile, which we will write to disk.
     // The last, not yet automated steps uses the `clang-linker-wrapper` to process `host.o`.
-    if !cgcx.target_is_like_gpu {
+    if !cgcx.target_is_like_gpu && matches!(cgcx.lto, Lto::Fat) {
         if let Some(device_path) = config
             .offload
             .iter()
@@ -886,6 +886,34 @@ pub(crate) unsafe fn llvm_optimize(
             // We ignore cgcx.save_temps here and unconditionally always keep our `host.out` artifact.
             // Otherwise, recompiling the host code would fail since we deleted that device artifact
             // in the previous host compilation, which would be confusing at best.
+
+            // New, replace linker-wrapper:
+            // $ llvm-offload-binary host.o --image=file=dev.o,arch=gfx942
+            // $ clang --target=amdgcn-amd-amdhsa -mcpu=gfx942 dev.o -o image -l<libraries>
+            // $ llvm-offload-wrapper --triple=x86_64-unknown-linux -kind=hip image -o out.bc
+            // $ clang --target=x86_64-unknown-linux out.bc -o reg.o
+            // $ ld.lld host.o reg.o -o a.out
+            //let ok = unsafe {
+            //    llvm::LLVMRustBundleImages(
+            //        module.module_llvm.llmod(),
+            //        module.module_llvm.tm.raw(),
+            //        device_out_c.as_ptr(),
+            //    )
+            //};
+            //if !ok || !device_out.exists() {
+            //    dcx.emit_err(crate::errors::OffloadBundleImagesFailed);
+            //}
+
+            dbg!("before both");
+            assert!(out_obj.exists());
+            let output_c = path_to_c_string(&out_obj);
+            let unbundle =
+                unsafe { llvm::LLVMRustUnbundleImages(output_c.as_ptr(), output_c.count_bytes()) };
+            dbg!(&unbundle);
+            dbg!("between both");
+            unsafe { llvm::LLVMRustWrapImages() };
+            dbg!("after both");
+            // call c++
         }
     }
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))
