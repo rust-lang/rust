@@ -1,5 +1,5 @@
 error: the `#[test]` attribute may only be used on a free function
-  --> $DIR/test-on-not-fn.rs:3:1
+  --> $DIR/test-on-not-fn.rs:4:1
    |
 LL | #[test]
    | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
@@ -13,7 +13,7 @@ LL + #[cfg(test)]
    |
 
 error: the `#[test]` attribute may only be used on a free function
-  --> $DIR/test-on-not-fn.rs:6:1
+  --> $DIR/test-on-not-fn.rs:7:1
    |
 LL |   #[test]
    |   ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
@@ -33,7 +33,7 @@ LL + #[cfg(test)]
    |
 
 error: the `#[test]` attribute may only be used on a free function
-  --> $DIR/test-on-not-fn.rs:20:1
+  --> $DIR/test-on-not-fn.rs:21:1
    |
 LL | #[test]
    | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
@@ -47,7 +47,7 @@ LL + #[cfg(test)]
    |
 
 error: the `#[test]` attribute may only be used on a free function
-  --> $DIR/test-on-not-fn.rs:23:1
+  --> $DIR/test-on-not-fn.rs:24:1
    |
 LL | #[test]
    | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
@@ -61,7 +61,7 @@ LL + #[cfg(test)]
    |
 
 error: the `#[test]` attribute may only be used on a free function
-  --> $DIR/test-on-not-fn.rs:26:1
+  --> $DIR/test-on-not-fn.rs:27:1
    |
 LL | #[test]
    | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
@@ -75,7 +75,7 @@ LL + #[cfg(test)]
    |
 
 error: the `#[test]` attribute may only be used on a free function
-  --> $DIR/test-on-not-fn.rs:29:1
+  --> $DIR/test-on-not-fn.rs:30:1
    |
 LL | #[test]
    | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
@@ -89,7 +89,7 @@ LL + #[cfg(test)]
    |
 
 error: the `#[test]` attribute may only be used on a free function
-  --> $DIR/test-on-not-fn.rs:32:1
+  --> $DIR/test-on-not-fn.rs:33:1
    |
 LL | #[test]
    | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
@@ -103,7 +103,7 @@ LL + #[cfg(test)]
    |
 
 error: the `#[test]` attribute may only be used on a free function
-  --> $DIR/test-on-not-fn.rs:35:1
+  --> $DIR/test-on-not-fn.rs:36:1
    |
 LL |   #[test]
    |   ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
@@ -119,7 +119,7 @@ LL + #[cfg(test)]
    |
 
 error: the `#[test]` attribute may only be used on a free function
-  --> $DIR/test-on-not-fn.rs:40:1
+  --> $DIR/test-on-not-fn.rs:41:1
    |
 LL | #[test]
    | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
@@ -133,7 +133,7 @@ LL + #[cfg(test)]
    |
 
 error: the `#[test]` attribute may only be used on a free function
-  --> $DIR/test-on-not-fn.rs:43:1
+  --> $DIR/test-on-not-fn.rs:44:1
    |
 LL |   #[test]
    |   ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
@@ -150,7 +150,7 @@ LL + #[cfg(test)]
    |
 
 error: the `#[test]` attribute may only be used on a free function
-  --> $DIR/test-on-not-fn.rs:50:1
+  --> $DIR/test-on-not-fn.rs:51:1
    |
 LL |   #[test]
    |   ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
@@ -168,7 +168,7 @@ LL + #[cfg(test)]
    |
 
 warning: the `#[test]` attribute may only be used on a free function
-  --> $DIR/test-on-not-fn.rs:61:1
+  --> $DIR/test-on-not-fn.rs:62:1
    |
 LL | #[test]
    | ^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions

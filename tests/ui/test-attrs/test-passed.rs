@@ -4,6 +4,7 @@
 //@ run-pass
 //@ check-run-results
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ reference: attributes.testing.test.success
 
 // Tests the output of the test harness with only passed tests.
 
