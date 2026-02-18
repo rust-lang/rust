@@ -19,7 +19,7 @@ LL |     #[link_section = ".text"]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to functions, inherent methods, provided trait methods, statics, and trait methods in impl blocks
+   = help: `#[link_section]` can be applied to foreign functions, foreign statics, functions, inherent methods, provided trait methods, statics, and trait methods in impl blocks
 
 error: `#[linkage]` attribute cannot be used on required trait methods
   --> $DIR/codegen_attr_on_required_trait_method.rs:14:5

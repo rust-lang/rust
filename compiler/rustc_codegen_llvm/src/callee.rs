@@ -10,6 +10,7 @@ use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_target::spec::{Arch, Env};
 use tracing::debug;
 
+use crate::base;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Value};
 
@@ -151,6 +152,15 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
         }
 
         cx.assume_dso_local(llfn, true);
+
+        // Handle foreign function items (extern declarations)
+        if tcx.is_foreign_item(instance_def_id) {
+            let attrs = tcx.codegen_fn_attrs(instance_def_id);
+            // link_section applies to all targets (e.g., for linker scripts)
+            if attrs.link_section.is_some() {
+                base::set_link_section(llfn, attrs);
+            }
+        }
 
         llfn
     };
