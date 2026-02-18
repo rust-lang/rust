@@ -1,9 +1,6 @@
 //@ run-pass
 #![allow(unused_variables)]
-#![allow(stable_features)]
 // Test a very simple custom DST coercion.
-
-#![feature(core, rc_weak)]
 
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};

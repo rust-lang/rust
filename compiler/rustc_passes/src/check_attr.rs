@@ -246,6 +246,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::CrateName { .. }
                     | AttributeKind::CrateType(..)
                     | AttributeKind::DebuggerVisualizer(..)
+                    | AttributeKind::DefaultLibAllocator
                     // `#[doc]` is actually a lot more than just doc comments, so is checked below
                     | AttributeKind::DocComment {..}
                     | AttributeKind::EiiDeclaration { .. }
@@ -399,7 +400,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::deny
                             | sym::forbid
                             // internal
-                            | sym::default_lib_allocator
                             | sym::rustc_inherit_overflow_checks
                             | sym::rustc_on_unimplemented
                             | sym::rustc_doc_primitive

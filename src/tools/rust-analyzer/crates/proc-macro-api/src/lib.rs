@@ -198,12 +198,8 @@ impl ProcMacroClient {
     }
 
     /// Loads a proc-macro dylib into the server process returning a list of `ProcMacro`s loaded.
-    pub fn load_dylib(
-        &self,
-        dylib: MacroDylib,
-        callback: Option<SubCallback<'_>>,
-    ) -> Result<Vec<ProcMacro>, ServerError> {
-        self.pool.load_dylib(&dylib, callback)
+    pub fn load_dylib(&self, dylib: MacroDylib) -> Result<Vec<ProcMacro>, ServerError> {
+        self.pool.load_dylib(&dylib)
     }
 
     /// Checks if the proc-macro server has exited.

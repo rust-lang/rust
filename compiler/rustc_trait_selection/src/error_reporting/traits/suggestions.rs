@@ -5608,15 +5608,17 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
             None => String::new(),
         };
         if let ty::PredicatePolarity::Positive = trait_predicate.polarity() {
+            // If the trait in question is unstable, mention that fact in the diagnostic.
+            // But if we're building with `-Zforce-unstable-if-unmarked` then _any_ trait
+            // not explicitly marked stable is considered unstable, so the extra text is
+            // unhelpful noise. See <https://github.com/rust-lang/rust/issues/152692>.
+            let mention_unstable = !tcx.sess.opts.unstable_opts.force_unstable_if_unmarked
+                && try { tcx.lookup_stability(trait_predicate.def_id())?.level.is_stable() }
+                    == Some(false);
+            let unstable = if mention_unstable { "nightly-only, unstable " } else { "" };
+
             format!(
-                "{pre_message}the {}trait `{}` is not implemented for{desc} `{}`",
-                if tcx.lookup_stability(trait_predicate.def_id()).map(|s| s.level.is_stable())
-                    == Some(false)
-                {
-                    "nightly-only, unstable "
-                } else {
-                    ""
-                },
+                "{pre_message}the {unstable}trait `{}` is not implemented for{desc} `{}`",
                 trait_predicate.print_modifiers_and_trait_path(),
                 tcx.short_string(trait_predicate.self_ty().skip_binder(), long_ty_path),
             )

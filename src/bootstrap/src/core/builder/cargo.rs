@@ -773,6 +773,10 @@ impl Builder<'_> {
                         .rustc_cmd(compiler)
                         .arg("--target")
                         .arg(target.rustc_target_arg())
+                        // FIXME(#152709): -Zunstable-options is to handle JSON targets.
+                        // Remove when JSON targets are stabilized.
+                        .arg("-Zunstable-options")
+                        .env("RUSTC_BOOTSTRAP", "1")
                         .arg("--print=file-names")
                         .arg("--crate-type=proc-macro")
                         .arg("-")

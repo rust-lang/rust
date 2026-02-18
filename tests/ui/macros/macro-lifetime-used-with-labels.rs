@@ -1,5 +1,4 @@
 //@ run-pass
-#![allow(stable_features)]
 #![allow(unused_labels)]
 #![allow(unreachable_code)]
 

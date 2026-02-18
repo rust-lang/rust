@@ -1,7 +1,11 @@
 use ide_db::ty_filter::TryEnum;
 use syntax::{
     AstNode, T,
-    ast::{self, edit::IndentLevel, edit_in_place::Indent, syntax_factory::SyntaxFactory},
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+        syntax_factory::SyntaxFactory,
+    },
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -64,7 +68,7 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
                 if let_expr_needs_paren(&init) { make.expr_paren(init).into() } else { init };
 
             let block = make.block_expr([], None);
-            block.indent(IndentLevel::from_node(let_stmt.syntax()));
+            let block = block.indent(IndentLevel::from_node(let_stmt.syntax()));
             let if_expr = make.expr_if(
                 make.expr_let(pat, init_expr).into(),
                 block,

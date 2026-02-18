@@ -64,8 +64,6 @@ pub struct EnabledLibFeature {
 }
 
 impl Features {
-    /// `since` should be set for stable features that are nevertheless enabled with a `#[feature]`
-    /// attribute, indicating since when they are stable.
     pub fn set_enabled_lang_feature(&mut self, lang_feat: EnabledLangFeature) {
         self.enabled_lang_features.push(lang_feat);
         self.enabled_features.insert(lang_feat.gate_name);
@@ -494,6 +492,8 @@ declare_features! (
     (unstable, ffi_const, "1.45.0", Some(58328)),
     /// Allows the use of `#[ffi_pure]` on foreign functions.
     (unstable, ffi_pure, "1.45.0", Some(58329)),
+    /// Allows marking trait functions as `final` to prevent overriding impls
+    (unstable, final_associated_functions, "CURRENT_RUSTC_VERSION", Some(1)),
     /// Controlling the behavior of fmt::Debug
     (unstable, fmt_debug, "1.82.0", Some(129709)),
     /// Allows using `#[align(...)]` on function items
@@ -779,8 +779,9 @@ impl Features {
     }
 }
 
-/// Some features are not allowed to be used together at the same time, if
-/// the two are present, produce an error.
+/// Some features are not allowed to be used together at the same time.
+///
+/// If the two are present, produce an error.
 pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
     // Experimental match ergonomics rulesets are incompatible with each other, to simplify the
     // boolean logic required to tell which typing rules to use.

@@ -25,9 +25,6 @@ declare_features! (
     // feature-group-start: for testing purposes
     // -------------------------------------------------------------------------
 
-    /// A temporary feature gate used to enable parser extensions needed
-    /// to bootstrap fix for #5723.
-    (accepted, issue_5723_bootstrap, "1.0.0", None),
     /// These are used to test this portion of the compiler,
     /// they don't actually mean anything.
     (accepted, test_accepted_feature, "1.0.0", None),

@@ -761,6 +761,48 @@ fn coerce_ref_binding() -> ! {
 }
 
 #[test]
+fn diverging_place_match_ref_mut() {
+    check_infer_with_mismatches(
+        r#"
+//- minicore: sized
+fn coerce_ref_mut_binding() -> ! {
+    unsafe {
+        let x: *mut ! = 0 as _;
+        let ref mut _x: () = *x;
+    }
+}
+"#,
+        expect![[r#"
+            33..120 '{     ...   } }': !
+            39..118 'unsafe...     }': !
+            60..61 'x': *mut !
+            72..73 '0': i32
+            72..78 '0 as _': *mut !
+            92..102 'ref mut _x': &'? mut ()
+            109..111 '*x': !
+            110..111 'x': *mut !
+            109..111: expected (), got !
+        "#]],
+    )
+}
+
+#[test]
+fn assign_never_place_no_mismatch() {
+    check_no_mismatches(
+        r#"
+//- minicore: sized
+fn foo() {
+    unsafe {
+        let p: *mut ! = 0 as _;
+        let mut x: () = ();
+        x = *p;
+    }
+}
+"#,
+    );
+}
+
+#[test]
 fn never_place_isnt_diverging() {
     check_infer_with_mismatches(
         r#"

@@ -1,7 +1,6 @@
 use syntax::T;
 use syntax::ast::RangeItem;
-use syntax::ast::edit::IndentLevel;
-use syntax::ast::edit_in_place::Indent;
+use syntax::ast::edit::AstNodeEdit;
 use syntax::ast::syntax_factory::SyntaxFactory;
 use syntax::ast::{self, AstNode, HasName, LetStmt, Pat};
 
@@ -93,7 +92,8 @@ pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'
             );
             let else_arm = make.match_arm(make.wildcard_pat().into(), None, else_expr);
             let match_ = make.expr_match(init, make.match_arm_list([binding_arm, else_arm]));
-            match_.reindent_to(IndentLevel::from_node(let_stmt.syntax()));
+            let match_ = match_.reset_indent();
+            let match_ = match_.indent(let_stmt.indent_level());
 
             if bindings.is_empty() {
                 editor.replace(let_stmt.syntax(), match_.syntax());

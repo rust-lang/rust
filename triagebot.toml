@@ -540,7 +540,6 @@ trigger_files = [
 
 [autolabel."A-query-system"]
 trigger_files = [
-    "compiler/rustc_query_system",
     "compiler/rustc_query_impl",
     "compiler/rustc_macros/src/query.rs"
 ]
@@ -1557,8 +1556,10 @@ dep-bumps = [
 "/compiler/rustc_codegen_llvm/src/debuginfo" =           ["compiler", "debuginfo"]
 "/compiler/rustc_codegen_ssa" =                          ["compiler", "codegen"]
 "/compiler/rustc_middle/src/dep_graph" =                 ["compiler", "incremental", "query-system"]
+"/compiler/rustc_middle/src/ich" =                       ["compiler", "incremental", "query-system"]
 "/compiler/rustc_middle/src/mir" =                       ["compiler", "mir"]
 "/compiler/rustc_middle/src/traits" =                    ["compiler", "types"]
+"/compiler/rustc_middle/src/query" =                     ["compiler", "query-system"]
 "/compiler/rustc_middle/src/ty" =                        ["compiler", "types"]
 "/compiler/rustc_const_eval/src/interpret" =             ["compiler", "mir"]
 "/compiler/rustc_mir_build/src/builder" =                ["compiler", "mir"]
@@ -1567,8 +1568,6 @@ dep-bumps = [
 "/compiler/rustc_parse" =                                ["compiler", "parser"]
 "/compiler/rustc_parse/src/lexer" =                      ["compiler", "lexer"]
 "/compiler/rustc_query_impl" =                           ["compiler", "query-system"]
-"/compiler/rustc_query_system" =                         ["compiler", "query-system"]
-"/compiler/rustc_query_system/src/ich" =                 ["compiler", "incremental", "query-system"]
 "/compiler/rustc_trait_selection" =                      ["compiler", "types"]
 "/compiler/rustc_traits" =                               ["compiler", "types"]
 "/compiler/rustc_type_ir" =                              ["compiler", "types"]

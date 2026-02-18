@@ -3788,6 +3788,17 @@ pub(crate) struct RecoverImportAsUse {
 }
 
 #[derive(Diagnostic)]
+#[diag("{$article} {$descr} cannot be `final`")]
+#[note("only associated functions in traits can be `final`")]
+pub(crate) struct InappropriateFinal {
+    #[primary_span]
+    #[label("`final` because of this")]
+    pub span: Span,
+    pub article: &'static str,
+    pub descr: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag("expected `::`, found `:`")]
 #[note("import paths are delimited using `::`")]
 pub(crate) struct SingleColonImportPath {

@@ -78,7 +78,6 @@ expression: clippy
     - Set({clippy::compiler/rustc_public})
     - Set({clippy::compiler/rustc_public_bridge})
     - Set({clippy::compiler/rustc_query_impl})
-    - Set({clippy::compiler/rustc_query_system})
     - Set({clippy::compiler/rustc_resolve})
     - Set({clippy::compiler/rustc_sanitizers})
     - Set({clippy::compiler/rustc_serialize})

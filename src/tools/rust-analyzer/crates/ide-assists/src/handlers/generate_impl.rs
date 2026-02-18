@@ -1,5 +1,5 @@
 use syntax::{
-    ast::{self, AstNode, HasGenericParams, HasName, edit_in_place::Indent, make},
+    ast::{self, AstNode, HasGenericParams, HasName, edit::AstNodeEdit, make},
     syntax_editor::{Position, SyntaxEditor},
 };
 
@@ -8,10 +8,14 @@ use crate::{
     utils::{self, DefaultMethods, IgnoreAssocItems},
 };
 
-fn insert_impl(editor: &mut SyntaxEditor, impl_: &ast::Impl, nominal: &impl Indent) {
+fn insert_impl(
+    editor: &mut SyntaxEditor,
+    impl_: &ast::Impl,
+    nominal: &impl AstNodeEdit,
+) -> ast::Impl {
     let indent = nominal.indent_level();
 
-    impl_.indent(indent);
+    let impl_ = impl_.indent(indent);
     editor.insert_all(
         Position::after(nominal.syntax()),
         vec![
@@ -20,6 +24,8 @@ fn insert_impl(editor: &mut SyntaxEditor, impl_: &ast::Impl, nominal: &impl Inde
             impl_.syntax().clone().into(),
         ],
     );
+
+    impl_
 }
 
 // Assist: generate_impl
@@ -57,6 +63,8 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
             let impl_ = utils::generate_impl(&nominal);
 
             let mut editor = edit.make_editor(nominal.syntax());
+
+            let impl_ = insert_impl(&mut editor, &impl_, &nominal);
             // Add a tabstop after the left curly brace
             if let Some(cap) = ctx.config.snippet_cap
                 && let Some(l_curly) = impl_.assoc_item_list().and_then(|it| it.l_curly_token())
@@ -65,7 +73,6 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
                 editor.add_annotation(l_curly, tabstop);
             }
 
-            insert_impl(&mut editor, &impl_, &nominal);
             edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -106,6 +113,8 @@ pub(crate) fn generate_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             let impl_ = utils::generate_trait_impl_intransitive(&nominal, make::ty_placeholder());
 
             let mut editor = edit.make_editor(nominal.syntax());
+
+            let impl_ = insert_impl(&mut editor, &impl_, &nominal);
             // Make the trait type a placeholder snippet
             if let Some(cap) = ctx.config.snippet_cap {
                 if let Some(trait_) = impl_.trait_() {
@@ -119,7 +128,6 @@ pub(crate) fn generate_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                 }
             }
 
-            insert_impl(&mut editor, &impl_, &nominal);
             edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -206,6 +214,8 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                 make_impl_(Some(assoc_item_list))
             };
 
+            let impl_ = insert_impl(&mut editor, &impl_, &trait_);
+
             if let Some(cap) = ctx.config.snippet_cap {
                 if let Some(generics) = impl_.trait_().and_then(|it| it.generic_arg_list()) {
                     for generic in generics.generic_args() {
@@ -232,7 +242,6 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                 }
             }
 
-            insert_impl(&mut editor, &impl_, &trait_);
             edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

@@ -1,6 +1,5 @@
 //@ run-pass
-#![allow(stable_features)]
-#![feature(core, core_intrinsics)]
+#![feature(core_intrinsics)]
 
 extern crate core;
 use core::intrinsics::discriminant_value;

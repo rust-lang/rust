@@ -9,8 +9,9 @@ use syntax::{
     Direction, NodeOrToken, SyntaxKind, SyntaxNode, algo,
     ast::{
         self, AstNode, HasAttrs, HasModuleItem, HasVisibility, PathSegmentKind,
-        edit_in_place::Removable, make,
+        edit_in_place::Removable, make, syntax_factory::SyntaxFactory,
     },
+    syntax_editor::{Position, SyntaxEditor},
     ted,
 };
 
@@ -146,6 +147,17 @@ pub fn insert_use(scope: &ImportScope, path: ast::Path, cfg: &InsertUseConfig) {
     insert_use_with_alias_option(scope, path, cfg, None);
 }
 
+/// Insert an import path into the given file/node. A `merge` value of none indicates that no import merging is allowed to occur.
+pub fn insert_use_with_editor(
+    scope: &ImportScope,
+    path: ast::Path,
+    cfg: &InsertUseConfig,
+    syntax_editor: &mut SyntaxEditor,
+    syntax_factory: &SyntaxFactory,
+) {
+    insert_use_with_alias_option_with_editor(scope, path, cfg, None, syntax_editor, syntax_factory);
+}
+
 pub fn insert_use_as_alias(
     scope: &ImportScope,
     path: ast::Path,
@@ -227,6 +239,71 @@ fn insert_use_with_alias_option(
     // either we weren't allowed to merge or there is no import that fits the merge conditions
     // so look for the place we have to insert to
     insert_use_(scope, use_item, cfg.group);
+}
+
+fn insert_use_with_alias_option_with_editor(
+    scope: &ImportScope,
+    path: ast::Path,
+    cfg: &InsertUseConfig,
+    alias: Option<ast::Rename>,
+    syntax_editor: &mut SyntaxEditor,
+    syntax_factory: &SyntaxFactory,
+) {
+    let _p = tracing::info_span!("insert_use_with_alias_option").entered();
+    let mut mb = match cfg.granularity {
+        ImportGranularity::Crate => Some(MergeBehavior::Crate),
+        ImportGranularity::Module => Some(MergeBehavior::Module),
+        ImportGranularity::One => Some(MergeBehavior::One),
+        ImportGranularity::Item => None,
+    };
+    if !cfg.enforce_granularity {
+        let file_granularity = guess_granularity_from_scope(scope);
+        mb = match file_granularity {
+            ImportGranularityGuess::Unknown => mb,
+            ImportGranularityGuess::Item => None,
+            ImportGranularityGuess::Module => Some(MergeBehavior::Module),
+            // We use the user's setting to infer if this is module or item.
+            ImportGranularityGuess::ModuleOrItem => match mb {
+                Some(MergeBehavior::Module) | None => mb,
+                // There isn't really a way to decide between module or item here, so we just pick one.
+                // FIXME: Maybe it is possible to infer based on semantic analysis?
+                Some(MergeBehavior::One | MergeBehavior::Crate) => Some(MergeBehavior::Module),
+            },
+            ImportGranularityGuess::Crate => Some(MergeBehavior::Crate),
+            ImportGranularityGuess::CrateOrModule => match mb {
+                Some(MergeBehavior::Crate | MergeBehavior::Module) => mb,
+                Some(MergeBehavior::One) | None => Some(MergeBehavior::Crate),
+            },
+            ImportGranularityGuess::One => Some(MergeBehavior::One),
+        };
+    }
+
+    let use_tree = syntax_factory.use_tree(path, None, alias, false);
+    if mb == Some(MergeBehavior::One) && use_tree.path().is_some() {
+        use_tree.wrap_in_tree_list();
+    }
+    let use_item = make::use_(None, None, use_tree).clone_for_update();
+    for attr in
+        scope.required_cfgs.iter().map(|attr| attr.syntax().clone_subtree().clone_for_update())
+    {
+        syntax_editor.insert(Position::first_child_of(use_item.syntax()), attr);
+    }
+
+    // merge into existing imports if possible
+    if let Some(mb) = mb {
+        let filter = |it: &_| !(cfg.skip_glob_imports && ast::Use::is_simple_glob(it));
+        for existing_use in
+            scope.as_syntax_node().children().filter_map(ast::Use::cast).filter(filter)
+        {
+            if let Some(merged) = try_merge_imports(&existing_use, &use_item, mb) {
+                syntax_editor.replace(existing_use.syntax(), merged.syntax());
+                return;
+            }
+        }
+    }
+    // either we weren't allowed to merge or there is no import that fits the merge conditions
+    // so look for the place we have to insert to
+    insert_use_with_editor_(scope, use_item, cfg.group, syntax_editor, syntax_factory);
 }
 
 pub fn ast_to_remove_for_path_in_use_stmt(path: &ast::Path) -> Option<Box<dyn Removable>> {
@@ -495,6 +572,127 @@ fn insert_use_(scope: &ImportScope, use_item: ast::Use, group_imports: bool) {
                     make::tokens::blank_line(),
                 );
                 ted::insert(ted::Position::first_child_of(scope_syntax), use_item.syntax());
+            }
+        }
+    }
+}
+
+fn insert_use_with_editor_(
+    scope: &ImportScope,
+    use_item: ast::Use,
+    group_imports: bool,
+    syntax_editor: &mut SyntaxEditor,
+    syntax_factory: &SyntaxFactory,
+) {
+    let scope_syntax = scope.as_syntax_node();
+    let insert_use_tree =
+        use_item.use_tree().expect("`use_item` should have a use tree for `insert_path`");
+    let group = ImportGroup::new(&insert_use_tree);
+    let path_node_iter = scope_syntax
+        .children()
+        .filter_map(|node| ast::Use::cast(node.clone()).zip(Some(node)))
+        .flat_map(|(use_, node)| {
+            let tree = use_.use_tree()?;
+            Some((tree, node))
+        });
+
+    if group_imports {
+        // Iterator that discards anything that's not in the required grouping
+        // This implementation allows the user to rearrange their import groups as this only takes the first group that fits
+        let group_iter = path_node_iter
+            .clone()
+            .skip_while(|(use_tree, ..)| ImportGroup::new(use_tree) != group)
+            .take_while(|(use_tree, ..)| ImportGroup::new(use_tree) == group);
+
+        // track the last element we iterated over, if this is still None after the iteration then that means we never iterated in the first place
+        let mut last = None;
+        // find the element that would come directly after our new import
+        let post_insert: Option<(_, SyntaxNode)> = group_iter
+            .inspect(|(.., node)| last = Some(node.clone()))
+            .find(|(use_tree, _)| use_tree_cmp(&insert_use_tree, use_tree) != Ordering::Greater);
+
+        if let Some((.., node)) = post_insert {
+            cov_mark::hit!(insert_group);
+            // insert our import before that element
+            return syntax_editor.insert(Position::before(node), use_item.syntax());
+        }
+        if let Some(node) = last {
+            cov_mark::hit!(insert_group_last);
+            // there is no element after our new import, so append it to the end of the group
+            return syntax_editor.insert(Position::after(node), use_item.syntax());
+        }
+
+        // the group we were looking for actually doesn't exist, so insert
+
+        let mut last = None;
+        // find the group that comes after where we want to insert
+        let post_group = path_node_iter
+            .inspect(|(.., node)| last = Some(node.clone()))
+            .find(|(use_tree, ..)| ImportGroup::new(use_tree) > group);
+        if let Some((.., node)) = post_group {
+            cov_mark::hit!(insert_group_new_group);
+            syntax_editor.insert(Position::before(&node), use_item.syntax());
+            if let Some(node) = algo::non_trivia_sibling(node.into(), Direction::Prev) {
+                syntax_editor.insert(Position::after(node), syntax_factory.whitespace("\n"));
+            }
+            return;
+        }
+        // there is no such group, so append after the last one
+        if let Some(node) = last {
+            cov_mark::hit!(insert_group_no_group);
+            syntax_editor.insert(Position::after(&node), use_item.syntax());
+            syntax_editor.insert(Position::after(node), syntax_factory.whitespace("\n"));
+            return;
+        }
+    } else {
+        // There exists a group, so append to the end of it
+        if let Some((_, node)) = path_node_iter.last() {
+            cov_mark::hit!(insert_no_grouping_last);
+            syntax_editor.insert(Position::after(node), use_item.syntax());
+            return;
+        }
+    }
+
+    let l_curly = match &scope.kind {
+        ImportScopeKind::File(_) => None,
+        // don't insert the imports before the item list/block expr's opening curly brace
+        ImportScopeKind::Module(item_list) => item_list.l_curly_token(),
+        // don't insert the imports before the item list's opening curly brace
+        ImportScopeKind::Block(block) => block.l_curly_token(),
+    };
+    // there are no imports in this file at all
+    // so put the import after all inner module attributes and possible license header comments
+    if let Some(last_inner_element) = scope_syntax
+        .children_with_tokens()
+        // skip the curly brace
+        .skip(l_curly.is_some() as usize)
+        .take_while(|child| match child {
+            NodeOrToken::Node(node) => is_inner_attribute(node.clone()),
+            NodeOrToken::Token(token) => {
+                [SyntaxKind::WHITESPACE, SyntaxKind::COMMENT, SyntaxKind::SHEBANG]
+                    .contains(&token.kind())
+            }
+        })
+        .filter(|child| child.as_token().is_none_or(|t| t.kind() != SyntaxKind::WHITESPACE))
+        .last()
+    {
+        cov_mark::hit!(insert_empty_inner_attr);
+        syntax_editor.insert(Position::after(&last_inner_element), use_item.syntax());
+        syntax_editor.insert(Position::after(last_inner_element), syntax_factory.whitespace("\n"));
+    } else {
+        match l_curly {
+            Some(b) => {
+                cov_mark::hit!(insert_empty_module);
+                syntax_editor.insert(Position::after(&b), syntax_factory.whitespace("\n"));
+                syntax_editor.insert(Position::after(&b), use_item.syntax());
+            }
+            None => {
+                cov_mark::hit!(insert_empty_file);
+                syntax_editor.insert(
+                    Position::first_child_of(scope_syntax),
+                    syntax_factory.whitespace("\n\n"),
+                );
+                syntax_editor.insert(Position::first_child_of(scope_syntax), use_item.syntax());
             }
         }
     }

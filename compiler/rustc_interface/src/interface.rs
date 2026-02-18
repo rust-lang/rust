@@ -16,7 +16,7 @@ use rustc_parse::lexer::StripTokens;
 use rustc_parse::new_parser_from_source_str;
 use rustc_parse::parser::Recovery;
 use rustc_parse::parser::attr::AllowLeadingUnsafe;
-use rustc_query_impl::{QueryCtxt, print_query_stack};
+use rustc_query_impl::print_query_stack;
 use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
 use rustc_session::parse::ParseSess;
 use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, lint};
@@ -556,7 +556,7 @@ pub fn try_print_query_stack(
     let all_frames = ty::tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
             ty::print::with_no_queries!(print_query_stack(
-                QueryCtxt::new(icx.tcx),
+                icx.tcx,
                 icx.query,
                 dcx,
                 limit_frames,

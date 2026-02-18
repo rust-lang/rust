@@ -1222,11 +1222,11 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 let m = clean_function(cx, sig, trait_item.generics, ParamsSrc::Body(body));
-                MethodItem(m, None)
+                MethodItem(m, Defaultness::from_trait_item(trait_item.defaultness))
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(idents)) => {
                 let m = clean_function(cx, sig, trait_item.generics, ParamsSrc::Idents(idents));
-                RequiredMethodItem(m)
+                RequiredMethodItem(m, Defaultness::from_trait_item(trait_item.defaultness))
             }
             hir::TraitItemKind::Type(bounds, Some(default)) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
@@ -1271,7 +1271,7 @@ pub(crate) fn clean_impl_item<'tcx>(
                     hir::ImplItemImplKind::Inherent { .. } => hir::Defaultness::Final,
                     hir::ImplItemImplKind::Trait { defaultness, .. } => defaultness,
                 };
-                MethodItem(m, Some(defaultness))
+                MethodItem(m, Defaultness::from_impl_item(defaultness))
             }
             hir::ImplItemKind::Type(hir_ty) => {
                 let type_ = clean_ty(hir_ty, cx);
@@ -1353,18 +1353,20 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 }
             }
 
-            let provided = match assoc_item.container {
-                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => true,
-                ty::AssocContainer::Trait => assoc_item.defaultness(tcx).has_value(),
+            let defaultness = assoc_item.defaultness(tcx);
+            let (provided, defaultness) = match assoc_item.container {
+                ty::AssocContainer::Trait => {
+                    (defaultness.has_value(), Defaultness::from_trait_item(defaultness))
+                }
+                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
+                    (true, Defaultness::from_impl_item(defaultness))
+                }
             };
+
             if provided {
-                let defaultness = match assoc_item.container {
-                    ty::AssocContainer::TraitImpl(_) => Some(assoc_item.defaultness(tcx)),
-                    ty::AssocContainer::InherentImpl | ty::AssocContainer::Trait => None,
-                };
                 MethodItem(item, defaultness)
             } else {
-                RequiredMethodItem(item)
+                RequiredMethodItem(item, defaultness)
             }
         }
         ty::AssocKind::Type { .. } => {

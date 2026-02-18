@@ -396,12 +396,10 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         }
 
         let (mod_segments, enum_segment, resolved_segment_idx) = match res {
-            ResolveValueResult::Partial(_, unresolved_segment, _) => {
+            ResolveValueResult::Partial(_, unresolved_segment) => {
                 (segments.take(unresolved_segment - 1), None, unresolved_segment - 1)
             }
-            ResolveValueResult::ValueNs(ValueNs::EnumVariantId(_), _)
-                if prefix_info.enum_variant =>
-            {
+            ResolveValueResult::ValueNs(ValueNs::EnumVariantId(_)) if prefix_info.enum_variant => {
                 (segments.strip_last_two(), segments.len().checked_sub(2), segments.len() - 1)
             }
             ResolveValueResult::ValueNs(..) => (segments.strip_last(), None, segments.len() - 1),
@@ -431,7 +429,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         }
 
         match &res {
-            ResolveValueResult::ValueNs(resolution, _) => {
+            ResolveValueResult::ValueNs(resolution) => {
                 let resolved_segment_idx = self.current_segment_u32();
                 let resolved_segment = self.current_or_prev_segment;
 
@@ -469,7 +467,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                     | ValueNs::ConstId(_) => {}
                 }
             }
-            ResolveValueResult::Partial(resolution, _, _) => {
+            ResolveValueResult::Partial(resolution, _) => {
                 if !self.handle_type_ns_resolution(resolution) {
                     return None;
                 }

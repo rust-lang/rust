@@ -9,9 +9,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{
     HashStable, HashingControls, StableHasher, ToStableHashKey,
 };
-use rustc_query_system::ich::StableHashingContext;
 use tracing::trace;
 
+use crate::ich::StableHashingContext;
 use crate::middle::region;
 use crate::{mir, ty};
 

@@ -58,18 +58,17 @@
 use std::fmt;
 use std::hash::Hash;
 
-use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathHash;
 use rustc_macros::{Decodable, Encodable};
-use rustc_query_system::ich::StableHashingContext;
 use rustc_span::Symbol;
 
 use super::{FingerprintStyle, SerializedDepNodeIndex};
+use crate::ich::StableHashingContext;
 use crate::mir::mono::MonoItem;
-use crate::ty::TyCtxt;
+use crate::ty::{TyCtxt, tls};
 
 /// This serves as an index into arrays built by `make_dep_kind_array`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -114,16 +113,15 @@ impl DepKind {
     pub(crate) const MAX: u16 = DEP_KIND_VARIANTS - 1;
 }
 
-pub fn default_dep_kind_debug(kind: DepKind, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    f.debug_struct("DepKind").field("variant", &kind.variant).finish()
-}
-
-pub static DEP_KIND_DEBUG: AtomicRef<fn(DepKind, &mut fmt::Formatter<'_>) -> fmt::Result> =
-    AtomicRef::new(&(default_dep_kind_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
-
 impl fmt::Debug for DepKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (*DEP_KIND_DEBUG)(*self, f)
+        tls::with_opt(|opt_tcx| {
+            if let Some(tcx) = opt_tcx {
+                write!(f, "{}", tcx.dep_kind_vtable(*self).name)
+            } else {
+                f.debug_struct("DepKind").field("variant", &self.variant).finish()
+            }
+        })
     }
 }
 
@@ -175,16 +173,26 @@ impl DepNode {
     }
 }
 
-pub fn default_dep_node_debug(node: DepNode, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    f.debug_struct("DepNode").field("kind", &node.kind).field("hash", &node.hash).finish()
-}
-
-pub static DEP_NODE_DEBUG: AtomicRef<fn(DepNode, &mut fmt::Formatter<'_>) -> fmt::Result> =
-    AtomicRef::new(&(default_dep_node_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
-
 impl fmt::Debug for DepNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (*DEP_NODE_DEBUG)(*self, f)
+        write!(f, "{:?}(", self.kind)?;
+
+        tls::with_opt(|opt_tcx| {
+            if let Some(tcx) = opt_tcx {
+                if let Some(def_id) = self.extract_def_id(tcx) {
+                    write!(f, "{}", tcx.def_path_debug_str(def_id))?;
+                } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*self) {
+                    write!(f, "{s}")?;
+                } else {
+                    write!(f, "{}", self.hash)?;
+                }
+            } else {
+                write!(f, "{}", self.hash)?;
+            }
+            Ok(())
+        })?;
+
+        write!(f, ")")
     }
 }
 

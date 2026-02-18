@@ -1,8 +1,4 @@
-// Regression test for #135470.
-// Verify that we don't ICE when building vtable entries
-// for a blanket impl involving async and impossible predicates.
-
-//@ check-pass
+//@ known-bug: #135470
 //@ compile-flags: -Copt-level=0
 //@ edition: 2021
 

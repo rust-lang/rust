@@ -821,7 +821,10 @@ impl<'db> CompletionContext<'db> {
             CompleteSemicolon::DoNotComplete
         } else if let Some(term_node) =
             sema.token_ancestors_with_macros(token.clone()).find(|node| {
-                matches!(node.kind(), BLOCK_EXPR | MATCH_ARM | CLOSURE_EXPR | ARG_LIST | PAREN_EXPR)
+                matches!(
+                    node.kind(),
+                    BLOCK_EXPR | MATCH_ARM | CLOSURE_EXPR | ARG_LIST | PAREN_EXPR | ARRAY_EXPR
+                )
             })
         {
             let next_token = iter::successors(token.next_token(), |it| it.next_token())
