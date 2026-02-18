@@ -4567,20 +4567,11 @@ intrinsics:
       unsafe: [neon]
     attr:
       - *neon-stable
-    assert_instr: [st1]
+    assert_instr: [stp]
     types:
-      - ['f64', float64x1x2_t, float64x1_t]
+      - ['f64', float64x1x2_t]
     compose:
-      - LLVMLink:
-          name: 'st2.{neon_type[1]}'
-          arguments:
-            - 'a: {type[2]}'
-            - 'b: {type[2]}'
-            - 'ptr: *mut i8'
-          links:
-            - link: 'llvm.aarch64.neon.st2.v{neon_type[1].lane}{type[0]}.p0'
-              arch: aarch64,arm64ec
-      - FnCall: ['_vst2{neon_type[1].nox}', ['b.0', 'b.1', 'a as _']]
+      - FnCall: [core::ptr::write_unaligned, ['a.cast()', b]]
 
   - name: "vst2{neon_type[1].nox}"
     doc: "Store multiple 2-element structures from two registers"
@@ -4591,19 +4582,10 @@ intrinsics:
       - *neon-stable
     assert_instr: [st2]
     types:
-      - [i64, int64x2x2_t, int64x2_t]
-      - [f64, float64x2x2_t, float64x2_t]
+      - [i64, int64x2x2_t, "2"]
+      - [f64, float64x2x2_t, "2"]
     compose:
-      - LLVMLink:
-          name: 'st2.{neon_type[1]}'
-          arguments:
-            - 'a: {type[2]}'
-            - 'b: {type[2]}'
-            - 'ptr: *mut i8'
-          links:
-            - link: 'llvm.aarch64.neon.st2.v{neon_type[1].lane}{type[0]}.p0'
-              arch: aarch64,arm64ec
-      - FnCall: ['_vst2{neon_type[1].nox}', ['b.0', 'b.1', 'a as _']]
+      - FnCall: ["crate::core_arch::macros::interleaving_store!", [{ Type: "{type[0]}" }, "{type[2]}", "2", a, b], [], true]
 
   - name: "vst2{neon_type[1].lane_nox}"
     doc: "Store multiple 2-element structures from two registers"
@@ -4781,19 +4763,9 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [f64, float64x1x3_t, float64x1_t]
+      - [f64, float64x1x3_t]
     compose:
-      - LLVMLink:
-          name: 'st3.{neon_type[1].nox}'
-          arguments:
-            - 'a: {type[2]}'
-            - 'b: {type[2]}'
-            - 'c: {type[2]}'
-            - 'ptr: *mut i8'
-          links:
-            - link: 'llvm.aarch64.neon.st3.v{neon_type[1].lane}{type[0]}.p0'
-              arch: aarch64,arm64ec
-      - FnCall: ['_vst3{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'a as _']]
+      - FnCall: [core::ptr::write_unaligned, ['a.cast()', b]]
 
   - name: "vst3{neon_type[1].lane_nox}"
     doc: "Store multiple 3-element structures from three registers"
@@ -4860,20 +4832,10 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [i64, int64x2x3_t, int64x2_t]
-      - [f64, float64x2x3_t, float64x2_t]
+      - [i64, int64x2x3_t, "2"]
+      - [f64, float64x2x3_t, "2"]
     compose:
-      - LLVMLink:
-          name: 'st3.{neon_type[1].nox}'
-          arguments:
-            - 'a: {type[2]}'
-            - 'b: {type[2]}'
-            - 'c: {type[2]}'
-            - 'ptr: *mut i8'
-          links:
-            - link: 'llvm.aarch64.neon.st3.v{neon_type[1].lane}{type[0]}.p0'
-              arch: aarch64,arm64ec
-      - FnCall: ['_vst3{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'a as _']]
+      - FnCall: ["crate::core_arch::macros::interleaving_store!", [{ Type: "{type[0]}" }, "{type[2]}", "3", a, b], [], true]
 
   - name: "vst3{neon_type[1].nox}"
     doc: "Store multiple 3-element structures from three registers"
@@ -4995,20 +4957,9 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [f64, float64x1x4_t, float64x1_t]
+      - [f64, float64x1x4_t]
     compose:
-      - LLVMLink:
-          name: 'st4.{neon_type[1].nox}'
-          arguments:
-            - 'a: {type[2]}'
-            - 'b: {type[2]}'
-            - 'c: {type[2]}'
-            - 'd: {type[2]}'
-            - 'ptr: *mut i8'
-          links:
-            - link: 'llvm.aarch64.neon.st4.v{neon_type[1].lane}{type[0]}.p0'
-              arch: aarch64,arm64ec
-      - FnCall: ['_vst4{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'b.3', 'a as _']]
+      - FnCall: [core::ptr::write_unaligned, ['a.cast()', b]]
 
   - name: "vst4{neon_type[1].lane_nox}"
     doc: "Store multiple 4-element structures from four registers"
@@ -5075,21 +5026,10 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [i64, int64x2x4_t, int64x2_t]
-      - [f64, float64x2x4_t, float64x2_t]
+      - [i64, int64x2x4_t, "2"]
+      - [f64, float64x2x4_t, "2"]
     compose:
-      - LLVMLink:
-          name: 'st4.{neon_type[1].nox}'
-          arguments:
-            - 'a: {type[2]}'
-            - 'b: {type[2]}'
-            - 'c: {type[2]}'
-            - 'd: {type[2]}'
-            - 'ptr: *mut i8'
-          links:
-            - link: 'llvm.aarch64.neon.st4.v{neon_type[1].lane}{type[0]}.p0'
-              arch: aarch64,arm64ec
-      - FnCall: ['_vst4{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'b.3', 'a as _']]
+      - FnCall: ["crate::core_arch::macros::interleaving_store!", [{ Type: "{type[0]}" }, "{type[2]}", "4", a, b], [], true]
 
   - name: "vst4{neon_type[1].nox}"
     doc: "Store multiple 4-element structures from four registers"
