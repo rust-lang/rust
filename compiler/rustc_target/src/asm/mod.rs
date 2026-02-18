@@ -614,7 +614,7 @@ impl InlineAsmRegClass {
         allow_experimental_reg: bool,
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
-            Self::X86(r) => r.supported_types(arch),
+            Self::X86(r) => r.supported_types(arch, allow_experimental_reg),
             Self::Arm(r) => r.supported_types(arch),
             Self::AArch64(r) => r.supported_types(arch),
             Self::RiscV(r) => r.supported_types(arch),
