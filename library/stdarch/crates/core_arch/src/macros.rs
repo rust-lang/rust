@@ -187,6 +187,17 @@ macro_rules! simd_masked_store {
     };
 }
 
+/// The first N indices `[0, 1, 2, ...]`.
+pub(crate) const fn identity<const N: usize>() -> [u32; N] {
+    let mut out = [0u32; N];
+    let mut i = 0usize;
+    while i < N {
+        out[i] = i as u32;
+        i += 1;
+    }
+    out
+}
+
 /// The first N even indices `[0, 2, 4, ...]`.
 pub(crate) const fn even<const N: usize>() -> [u32; N] {
     let mut out = [0u32; N];
@@ -277,3 +288,59 @@ macro_rules! deinterleaving_load {
 
 #[allow(unused)]
 pub(crate) use deinterleaving_load;
+
+pub(crate) const fn interleave_mask<const LANES: usize, const N: usize, const K: usize>()
+-> [u32; LANES] {
+    let mut out = [0u32; LANES];
+    let mut j = 0usize;
+    while j < LANES {
+        out[j] = ((j % K) * N + j / K) as u32;
+        j += 1;
+    }
+    out
+}
+
+#[allow(unused)]
+macro_rules! interleaving_store {
+    ($elem:ty, $lanes:literal, 2, $ptr:expr, $v:expr) => {{
+        use $crate::core_arch::macros::interleave_mask;
+        use $crate::core_arch::simd::Simd;
+
+        type W = Simd<$elem, { $lanes * 2 }>;
+        let w: W = simd_shuffle!($v.0, $v.1, interleave_mask::<{ $lanes * 2 }, $lanes, 2>());
+        $crate::ptr::write_unaligned($ptr as *mut W, w);
+    }};
+
+    // N = 3
+    ($elem:ty, $lanes:literal, 3, $ptr:expr, $v:expr) => {{
+        use $crate::core_arch::macros::{identity, interleave_mask};
+        use $crate::core_arch::simd::Simd;
+
+        let v0v1: Simd<$elem, { $lanes * 2 }> =
+            simd_shuffle!($v.0, $v.1, identity::<{ $lanes * 2 }>());
+        let v2v2: Simd<$elem, { $lanes * 2 }> =
+            simd_shuffle!($v.2, $v.2, identity::<{ $lanes * 2 }>());
+
+        type W = Simd<$elem, { $lanes * 3 }>;
+        let w: W = simd_shuffle!(v0v1, v2v2, interleave_mask::<{ $lanes * 3 }, $lanes, 3>());
+        $crate::ptr::write_unaligned($ptr as *mut W, w);
+    }};
+
+    // N = 4
+    ($elem:ty, $lanes:literal, 4, $ptr:expr, $v:expr) => {{
+        use $crate::core_arch::macros::{identity, interleave_mask};
+        use $crate::core_arch::simd::Simd;
+
+        let v0v1: Simd<$elem, { $lanes * 2 }> =
+            simd_shuffle!($v.0, $v.1, identity::<{ $lanes * 2 }>());
+        let v2v3: Simd<$elem, { $lanes * 2 }> =
+            simd_shuffle!($v.2, $v.3, identity::<{ $lanes * 2 }>());
+
+        type W = Simd<$elem, { $lanes * 4 }>;
+        let w: W = simd_shuffle!(v0v1, v2v3, interleave_mask::<{ $lanes * 4 }, $lanes, 4>());
+        $crate::ptr::write_unaligned($ptr as *mut W, w);
+    }};
+}
+
+#[allow(unused)]
+pub(crate) use interleaving_store;
