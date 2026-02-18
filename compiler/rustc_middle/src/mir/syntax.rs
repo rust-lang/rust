@@ -1458,13 +1458,6 @@ pub enum Rvalue<'tcx> {
     /// coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
     Aggregate(Box<AggregateKind<'tcx>>, IndexVec<FieldIdx, Operand<'tcx>>),
 
-    /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
-    ///
-    /// This is different from a normal transmute because dataflow analysis will treat the box as
-    /// initialized but its content as uninitialized. Like other pointer casts, this in general
-    /// affects alias analysis.
-    ShallowInitBox(Operand<'tcx>, Ty<'tcx>),
-
     /// A CopyForDeref is equivalent to a read from a place at the
     /// codegen level, but is treated specially by drop elaboration. When such a read happens, it
     /// is guaranteed (via nature of the mir_opt `Derefer` in rustc_mir_transform/src/deref_separator)

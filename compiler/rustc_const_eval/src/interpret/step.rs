@@ -249,12 +249,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*val, &dest)?;
             }
 
-            ShallowInitBox(ref operand, _) => {
-                let src = self.eval_operand(operand, None)?;
-                let v = self.read_immediate(&src)?;
-                self.write_immediate(*v, &dest)?;
-            }
-
             Cast(cast_kind, ref operand, cast_ty) => {
                 let src = self.eval_operand(operand, None)?;
                 let cast_ty =
