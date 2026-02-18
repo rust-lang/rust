@@ -928,6 +928,10 @@ impl<'a> DiagCtxtHandle<'a> {
         );
         self.inner.borrow_mut().must_produce_diag = Some(Backtrace::capture());
     }
+
+    pub fn disable_must_produce_diag(&self) {
+        self.inner.borrow_mut().must_produce_diag = None;
+    }
 }
 
 // This `impl` block contains only the public diagnostic creation/emission API.

@@ -299,7 +299,6 @@ fn explain_lint_level_source(
 /// for example:
 /// - [`TyCtxt::emit_node_span_lint`]
 /// - [`TyCtxt::node_span_lint`]
-/// - [`TyCtxt::emit_node_lint`]
 /// - [`TyCtxt::node_lint`]
 /// - `LintContext::opt_span_lint`
 #[track_caller]
@@ -327,6 +326,7 @@ pub fn lint_level<'a, D: Diagnostic<'a, ()>>(
             if has_future_breakage {
                 rustc_errors::Level::Allow
             } else {
+                sess.dcx().disable_must_produce_diag();
                 return;
             }
         }
