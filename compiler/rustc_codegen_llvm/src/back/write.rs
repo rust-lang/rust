@@ -817,12 +817,27 @@ pub(crate) unsafe fn llvm_optimize(
         )
     };
 
-    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Device) {
+    if cgcx.target_is_like_gpu
+        && config.offload.contains(&config::Offload::Device)
+        && matches!(cgcx.lto, Lto::Fat)
+    {
         let device_path = cgcx.output_filenames.path(OutputType::Object);
         let device_dir = device_path.parent().unwrap();
         let device_out = device_dir.join("host.out");
+        let image_out = device_dir.join("image");
         let device_out_c = path_to_c_string(device_out.as_path());
         unsafe {
+            write_output_file(
+                dcx,
+                module.module_llvm.tm.raw(),
+                config.no_builtins,
+                module.module_llvm.llmod(),
+                &image_out,
+                None,
+                llvm::FileType::ObjectFile,
+                &cgcx.prof,
+                true,
+            );
             // 1) Bundle device module into offload image host.out (device TM)
             let ok = llvm::LLVMRustBundleImages(
                 module.module_llvm.llmod(),
