@@ -1,3 +1,4 @@
+//@ reference: items.union.field-restrictions
 #![allow(dead_code)]
 
 union U {

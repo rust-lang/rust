@@ -1,4 +1,6 @@
 //@ run-pass
+//@ reference: items.union.field-copy
+//@ reference: items.union.field-manually-drop
 #![allow(dead_code)]
 
 use std::mem::needs_drop;

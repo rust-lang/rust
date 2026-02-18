@@ -1,3 +1,5 @@
+//@ reference: items.union.field-restrictions
+//@ reference: type.union.constraint
 union Test {
     a: A, //~ ERROR field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
     b: B
