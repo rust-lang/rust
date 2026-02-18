@@ -189,10 +189,6 @@ pub fn home_dir() -> Option<PathBuf> {
         .or_else(home_dir_crt)
 }
 
-pub fn exit(code: i32) -> ! {
-    unsafe { c::ExitProcess(code as u32) }
-}
-
 pub fn getpid() -> u32 {
     unsafe { c::GetCurrentProcessId() }
 }
