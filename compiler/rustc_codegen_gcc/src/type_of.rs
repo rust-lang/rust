@@ -288,8 +288,10 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             Float(f) => cx.type_from_float(f),
             Pointer(address_space) => {
                 // If we know the alignment, pick something better than i8.
-                let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset) {
-                    cx.type_pointee_for_align(pointee.align)
+                let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset)
+                    && let Some(align) = pointee.align
+                {
+                    cx.type_pointee_for_align(align)
                 } else {
                     cx.type_i8()
                 };
