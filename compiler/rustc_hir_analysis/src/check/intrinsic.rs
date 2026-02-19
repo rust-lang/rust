@@ -783,6 +783,12 @@ pub(crate) fn check_intrinsic_type(
         sym::simd_shuffle => (3, 0, vec![param(0), param(0), param(1)], param(2)),
         sym::simd_shuffle_const_generic => (2, 1, vec![param(0), param(0)], param(1)),
 
+        sym::sve_tuple_create2 => (2, 0, vec![param(0), param(0)], param(1)),
+        sym::sve_tuple_create3 => (2, 0, vec![param(0), param(0), param(0)], param(1)),
+        sym::sve_tuple_create4 => (2, 0, vec![param(0), param(0), param(0), param(0)], param(1)),
+        sym::sve_tuple_get => (2, 1, vec![param(0)], param(1)),
+        sym::sve_tuple_set => (2, 1, vec![param(0), param(1)], param(0)),
+
         sym::atomic_cxchg | sym::atomic_cxchgweak => (
             1,
             2,
