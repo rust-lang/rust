@@ -213,14 +213,23 @@ impl Layout {
     /// Produces layout describing a record that could be used to
     /// allocate backing structure for `T` (which could be a trait
     /// or other unsized type like a slice).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::alloc::Layout;
+    ///
+    /// let array = [1_u8, 2, 3];
+    /// assert_eq!(Layout::for_value::<[u8]>(&array), Layout::from_size_align(3, 1).unwrap());
+    /// ```
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
     #[must_use]
     #[inline]
     pub const fn for_value<T: ?Sized>(t: &T) -> Self {
-        let (size, alignment) = (size_of_val(t), Alignment::of_val(t));
-        // SAFETY: see rationale in `new` for why this is using the unsafe variant
-        unsafe { Layout::from_size_alignment_unchecked(size, alignment) }
+        // SAFETY: val is a reference, so if it's to a DST it has valid metadata.
+        // (And if `T` is sized there's no requirements on the pointer.)
+        unsafe { Layout::for_value_raw(t) }
     }
 
     /// Produces layout describing a record that could be used to
