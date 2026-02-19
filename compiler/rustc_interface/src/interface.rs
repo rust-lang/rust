@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use rustc_ast::{LitKind, MetaItemKind, token};
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::jobserver::{self, Proxy};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
@@ -19,7 +19,7 @@ use rustc_parse::parser::attr::AllowLeadingUnsafe;
 use rustc_query_impl::print_query_stack;
 use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
 use rustc_session::parse::ParseSess;
-use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, lint};
+use rustc_session::{CompilerIO, EarlyDiagCtxt, Session};
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMapInputs};
 use rustc_span::{FileName, sym};
 use rustc_target::spec::Target;
@@ -332,8 +332,6 @@ pub struct Config {
     /// running rustc without having to save". (See #102759.)
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
 
-    pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
-
     /// This is a callback from the driver that is called when [`ParseSess`] is created.
     pub psess_created: Option<Box<dyn FnOnce(&mut ParseSess) + Send>>,
 
@@ -443,7 +441,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                     output_file: config.output_file,
                     temps_dir,
                 },
-                config.lint_caps,
                 target,
                 util::rustc_version_str().unwrap_or("unknown"),
                 config.ice_file,

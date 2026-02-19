@@ -68,15 +68,7 @@ where
 
         static USING_INTERNAL_FEATURES: AtomicBool = AtomicBool::new(false);
 
-        let sess = build_session(
-            sessopts,
-            io,
-            Default::default(),
-            target,
-            "",
-            None,
-            &USING_INTERNAL_FEATURES,
-        );
+        let sess = build_session(sessopts, io, target, "", None, &USING_INTERNAL_FEATURES);
         let cfg = parse_cfg(sess.dcx(), matches.opt_strs("cfg"));
         let cfg = build_configuration(&sess, cfg);
         f(sess, cfg)

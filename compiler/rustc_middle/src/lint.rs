@@ -114,11 +114,6 @@ pub fn reveal_actual_level(
         cmp::min(level, sess.opts.lint_cap.unwrap_or(Level::Forbid))
     };
 
-    if let Some(driver_level) = sess.driver_lint_caps.get(&lint) {
-        // Ensure that we never exceed driver level.
-        level = cmp::min(*driver_level, level);
-    }
-
     (level, lint_id)
 }
 
