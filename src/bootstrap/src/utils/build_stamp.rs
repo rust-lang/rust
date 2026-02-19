@@ -118,7 +118,7 @@ pub fn clear_if_dirty(builder: &Builder<'_>, dir: &Path, input: &Path) -> bool {
     } else if stamp.path().exists() {
         return cleared;
     }
-    t!(fs::create_dir_all(dir));
+    builder.create_dir(&dir);
     t!(fs::File::create(stamp.path()));
     cleared
 }

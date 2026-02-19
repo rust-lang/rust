@@ -9,7 +9,6 @@
 //! ensure that they're always in place if needed.
 
 use std::fmt::{Display, Formatter};
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
@@ -299,8 +298,8 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target_pair: GccTargetPair)
 
     let Meta { stamp: _, out_dir, install_dir, root } = metadata;
 
-    t!(fs::create_dir_all(out_dir));
-    t!(fs::create_dir_all(install_dir));
+    builder.create_dir(&out_dir);
+    builder.create_dir(&install_dir);
 
     // GCC creates files (e.g. symlinks to the downloaded dependencies)
     // in the source directory, which does not work with our CI/Docker setup, where we mount

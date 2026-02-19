@@ -310,7 +310,7 @@ impl Step for Cargotest {
         // is currently to minimize the length of path on Windows where we otherwise
         // quickly run into path name limit constraints.
         let out_dir = builder.out.join("ct");
-        t!(fs::create_dir_all(&out_dir));
+        builder.create_dir(&out_dir);
 
         let _time = helpers::timeit(builder);
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
@@ -590,7 +590,7 @@ impl Step for Rustfmt {
         );
 
         let dir = testdir(builder, target);
-        t!(fs::create_dir_all(&dir));
+        builder.create_dir(&dir);
         cargo.env("RUSTFMT_TEST_DIR", dir);
 
         cargo.add_rustc_lib_path(builder);
@@ -2798,7 +2798,7 @@ impl Step for ErrorIndex {
         let target_compiler = self.compilers.target_compiler();
 
         let dir = testdir(builder, target_compiler.host);
-        t!(fs::create_dir_all(&dir));
+        builder.create_dir(&dir);
         let output = dir.join("error-index.md");
 
         let mut tool = tool::ErrorIndex::command(builder, self.compilers);
@@ -3738,7 +3738,7 @@ impl Step for RustInstaller {
         let mut cmd = command(builder.src.join("src/tools/rust-installer/test.sh"));
         let tmpdir = testdir(builder, build_compiler.host).join("rust-installer");
         let _ = std::fs::remove_dir_all(&tmpdir);
-        let _ = std::fs::create_dir_all(&tmpdir);
+        builder.create_dir(&tmpdir);
         cmd.current_dir(&tmpdir);
         cmd.env("CARGO_TARGET_DIR", tmpdir.join("cargo-target"));
         cmd.env("CARGO", &builder.initial_cargo);
@@ -3785,7 +3785,7 @@ impl Step for TestHelpers {
         }
 
         let _guard = builder.msg_unstaged(Kind::Build, "test helpers", target);
-        t!(fs::create_dir_all(&dst));
+        builder.create_dir(&dst);
         let mut cfg = cc::Build::new();
 
         // We may have found various cross-compilers a little differently due to our

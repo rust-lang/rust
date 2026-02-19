@@ -106,7 +106,7 @@ fn install_sh(
     let bindir = prefix.join(&builder.config.bindir); // Default in config.rs
 
     let empty_dir = builder.out.join("tmp/empty_dir");
-    t!(fs::create_dir_all(&empty_dir));
+    builder.create_dir(&empty_dir);
 
     let mut cmd = command(SHELL);
     cmd.current_dir(&empty_dir)

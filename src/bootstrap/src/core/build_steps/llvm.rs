@@ -313,7 +313,7 @@ impl Step for Llvm {
         let _guard = builder.msg_unstaged(Kind::Build, "LLVM", target);
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
-        t!(fs::create_dir_all(&out_dir));
+        builder.create_dir(&out_dir);
 
         // https://llvm.org/docs/CMake.html
         let mut cfg = cmake::Config::new(builder.src.join(root));
@@ -1005,7 +1005,7 @@ impl Step for OmpOffload {
         builder.info(&format!("Building OpenMP/Offload for {target}"));
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
-        t!(fs::create_dir_all(&out_dir));
+        builder.create_dir(&out_dir);
 
         builder.config.update_submodule("src/llvm-project");
 
@@ -1189,7 +1189,7 @@ impl Step for Enzyme {
         builder.info(&format!("Building Enzyme for {target}"));
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
-        t!(fs::create_dir_all(&out_dir));
+        builder.create_dir(&out_dir);
 
         let mut cfg = cmake::Config::new(builder.src.join("src/tools/enzyme/enzyme/"));
         // Enzyme devs maintain upstream compatibility, but only fix deprecations when they are about
@@ -1283,7 +1283,7 @@ impl Step for Lld {
 
         let _guard = builder.msg_unstaged(Kind::Build, "LLD", target);
         let _time = helpers::timeit(builder);
-        t!(fs::create_dir_all(&out_dir));
+        builder.create_dir(&out_dir);
 
         let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/lld"));
         let mut ldflags = LdFlags::default();
@@ -1454,7 +1454,7 @@ impl Step for Sanitizers {
             suppressed_compiler_flag_prefixes,
         );
 
-        t!(fs::create_dir_all(&out_dir));
+        builder.create_dir(&out_dir);
         cfg.out_dir(out_dir);
 
         for runtime in &runtimes {
@@ -1592,7 +1592,7 @@ impl Step for CrtBeginEnd {
         }
 
         let _guard = builder.msg_unstaged(Kind::Build, "crtbegin.o and crtend.o", self.target);
-        t!(fs::create_dir_all(&out_dir));
+        builder.create_dir(&out_dir);
 
         let mut cfg = cc::Build::new();
 
@@ -1665,7 +1665,7 @@ impl Step for Libunwind {
         }
 
         let _guard = builder.msg_unstaged(Kind::Build, "libunwind.a", self.target);
-        t!(fs::create_dir_all(&out_dir));
+        builder.create_dir(&out_dir);
 
         let mut cc_cfg = cc::Build::new();
         let mut cpp_cfg = cc::Build::new();

@@ -22,7 +22,7 @@ use crate::core::builder::{
 };
 use crate::core::config::{DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{add_dylib_path, exe, t};
+use crate::utils::helpers::{add_dylib_path, exe};
 use crate::{Compiler, FileType, Kind, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -713,7 +713,7 @@ impl Step for Rustdoc {
         let bin_rustdoc = || {
             let sysroot = builder.sysroot(target_compiler);
             let bindir = sysroot.join("bin");
-            t!(fs::create_dir_all(&bindir));
+            builder.create_dir(&bindir);
             let bin_rustdoc = bindir.join(exe("rustdoc", target_compiler.host));
             let _ = fs::remove_file(&bin_rustdoc);
             bin_rustdoc
@@ -930,7 +930,7 @@ pub(crate) fn copy_lld_artifacts(
     let target = target_compiler.host;
 
     let libdir_bin = builder.sysroot_target_bindir(target_compiler, target);
-    t!(fs::create_dir_all(&libdir_bin));
+    builder.create_dir(&libdir_bin);
 
     let src_exe = exe("lld", target);
     let dst_exe = exe("rust-lld", target);
@@ -941,7 +941,7 @@ pub(crate) fn copy_lld_artifacts(
         FileType::Executable,
     );
     let self_contained_lld_dir = libdir_bin.join("gcc-ld");
-    t!(fs::create_dir_all(&self_contained_lld_dir));
+    builder.create_dir(&self_contained_lld_dir);
 
     for name in crate::LLD_FILE_NAMES {
         builder.copy_link(
@@ -1119,7 +1119,7 @@ impl Step for RustAnalyzerProcMacroSrv {
         // Copy `rust-analyzer-proc-macro-srv` to `<sysroot>/libexec/`
         // so that r-a can use it.
         let libexec_path = builder.sysroot(self.compilers.target_compiler).join("libexec");
-        t!(fs::create_dir_all(&libexec_path));
+        builder.create_dir(&libexec_path);
         builder.copy_link(
             &tool_result.tool_path,
             &libexec_path.join("rust-analyzer-proc-macro-srv"),
@@ -1243,7 +1243,7 @@ impl Step for LibcxxVersionTool {
         // Therefore, we want to avoid recompiling this file unnecessarily.
         if !executable.exists() {
             if !out_dir.exists() {
-                t!(fs::create_dir_all(&out_dir));
+                builder.create_dir(&out_dir);
             }
 
             let compiler = builder.cxx(self.target).unwrap();
@@ -1537,7 +1537,7 @@ fn build_extended_rustc_tool(
         && !add_bins_to_sysroot.is_empty()
     {
         let bindir = builder.sysroot(target_compiler).join("bin");
-        t!(fs::create_dir_all(&bindir));
+        builder.create_dir(&bindir);
 
         for add_bin in add_bins_to_sysroot {
             let bin_destination = bindir.join(exe(add_bin, target_compiler.host));

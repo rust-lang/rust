@@ -279,8 +279,8 @@ fn make_win_dist(plat_root: &Path, target: TargetSelection, builder: &Builder<'_
     //Copy platform tools to platform-specific bin directory
     let plat_target_bin_self_contained_dir =
         plat_root.join("lib/rustlib").join(target).join("bin/self-contained");
-    fs::create_dir_all(&plat_target_bin_self_contained_dir)
-        .expect("creating plat_target_bin_self_contained_dir failed");
+    builder.create_dir(&plat_target_bin_self_contained_dir);
+
     for src in target_tools {
         builder.copy_link_to_folder(&src, &plat_target_bin_self_contained_dir);
     }
@@ -296,8 +296,7 @@ fn make_win_dist(plat_root: &Path, target: TargetSelection, builder: &Builder<'_
     //Copy platform libs to platform-specific lib directory
     let plat_target_lib_self_contained_dir =
         plat_root.join("lib/rustlib").join(target).join("lib/self-contained");
-    fs::create_dir_all(&plat_target_lib_self_contained_dir)
-        .expect("creating plat_target_lib_self_contained_dir failed");
+    builder.create_dir(&plat_target_lib_self_contained_dir);
     for src in target_libs {
         builder.copy_link_to_folder(&src, &plat_target_lib_self_contained_dir);
     }
@@ -334,8 +333,7 @@ fn make_win_llvm_dist(plat_root: &Path, target: TargetSelection, builder: &Build
     //Copy platform libs to platform-specific lib directory
     let plat_target_lib_self_contained_dir =
         plat_root.join("lib/rustlib").join(target).join("lib/self-contained");
-    fs::create_dir_all(&plat_target_lib_self_contained_dir)
-        .expect("creating plat_target_lib_self_contained_dir failed");
+    builder.create_dir(&plat_target_lib_self_contained_dir);
     for src in target_libs {
         builder.copy_link_to_folder(&src, &plat_target_lib_self_contained_dir);
     }
@@ -366,7 +364,7 @@ fn runtime_dll_dist(rust_root: &Path, target: TargetSelection, builder: &Builder
 
     // Copy runtime dlls next to rustc.exe
     let rust_bin_dir = rust_root.join("bin/");
-    fs::create_dir_all(&rust_bin_dir).expect("creating rust_bin_dir failed");
+    builder.create_dir(&rust_bin_dir);
     for src in &rustc_dlls {
         builder.copy_link_to_folder(src, &rust_bin_dir);
     }
@@ -374,7 +372,7 @@ fn runtime_dll_dist(rust_root: &Path, target: TargetSelection, builder: &Builder
     if builder.config.lld_enabled {
         // rust-lld.exe also needs runtime dlls
         let rust_target_bin_dir = rust_root.join("lib/rustlib").join(target).join("bin");
-        fs::create_dir_all(&rust_target_bin_dir).expect("creating rust_target_bin_dir failed");
+        builder.create_dir(&rust_target_bin_dir);
         for src in &rustc_dlls {
             builder.copy_link_to_folder(src, &rust_target_bin_dir);
         }
@@ -518,7 +516,7 @@ impl Step for Rustc {
             let src = builder.sysroot(target_compiler);
 
             // Copy rustc binary
-            t!(fs::create_dir_all(image.join("bin")));
+            builder.create_dir(&image.join("bin"));
             builder.cp_link_r(&src.join("bin"), &image.join("bin"));
 
             // If enabled, copy rustdoc binary
@@ -576,7 +574,7 @@ impl Step for Rustc {
             maybe_install_llvm_runtime(builder, target, image);
 
             let dst_dir = image.join("lib/rustlib").join(target).join("bin");
-            t!(fs::create_dir_all(&dst_dir));
+            builder.create_dir(&dst_dir);
 
             // Copy over lld if it's there
             if builder.config.lld_enabled {
@@ -589,7 +587,7 @@ impl Step for Rustc {
                 );
                 let self_contained_lld_src_dir = src_dir.join("gcc-ld");
                 let self_contained_lld_dst_dir = dst_dir.join("gcc-ld");
-                t!(fs::create_dir(&self_contained_lld_dst_dir));
+                builder.create_dir(&self_contained_lld_dst_dir);
                 for name in crate::LLD_FILE_NAMES {
                     let exe_name = exe(name, target_compiler.host);
                     builder.copy_link(
@@ -620,7 +618,7 @@ impl Step for Rustc {
             }
 
             // Man pages
-            t!(fs::create_dir_all(image.join("share/man/man1")));
+            builder.create_dir(&image.join("share/man/man1"));
             let man_src = builder.src.join("src/doc/man");
             let man_dst = image.join("share/man/man1");
 
@@ -680,12 +678,12 @@ fn generate_target_spec_json_schema(builder: &Builder<'_>, sysroot: &Path) {
     let schema = rustc.run_capture(builder).stdout();
 
     let schema_dir = tmpdir(builder);
-    t!(fs::create_dir_all(&schema_dir));
+    builder.create_dir(&schema_dir);
     let schema_file = schema_dir.join("target-spec-json-schema.json");
     t!(std::fs::write(&schema_file, schema));
 
     let dst = sysroot.join("etc");
-    t!(fs::create_dir_all(&dst));
+    builder.create_dir(&dst);
 
     builder.install(&schema_file, &dst, FileType::Regular);
 }
@@ -709,7 +707,7 @@ impl Step for DebuggerScripts {
         let target = self.target;
         let sysroot = self.sysroot;
         let dst = sysroot.join("lib/rustlib/etc");
-        t!(fs::create_dir_all(&dst));
+        builder.create_dir(&dst);
         let cp_debugger_script = |file: &str| {
             builder.install(&builder.src.join("src/etc/").join(file), &dst, FileType::Regular);
         };
@@ -811,8 +809,8 @@ fn copy_target_libs(
 ) {
     let dst = image.join("lib/rustlib").join(target).join("lib");
     let self_contained_dst = dst.join("self-contained");
-    t!(fs::create_dir_all(&dst));
-    t!(fs::create_dir_all(&self_contained_dst));
+    builder.create_dir(&dst);
+    builder.create_dir(&self_contained_dst);
     for (path, dependency_type) in builder.read_stamp_file(stamp) {
         if dependency_type == DependencyType::TargetSelfContained {
             builder.copy_link(
@@ -1013,7 +1011,7 @@ impl Step for Analysis {
             .join("save-analysis");
 
         // Write a file indicating that this component has been removed.
-        t!(std::fs::create_dir_all(&src));
+        builder.create_dir(&src);
         let mut removed = src.clone();
         removed.push("removed.json");
         let mut f = t!(std::fs::File::create(removed));
@@ -1143,7 +1141,7 @@ fn copy_src_dirs(
     // Copy the directories using our filter
     for item in src_dirs {
         let dst = &dst_dir.join(item);
-        t!(fs::create_dir_all(dst));
+        builder.create_dir(&dst);
         builder
             .cp_link_filtered(&base.join(item), dst, &|path| filter_fn(exclude_dirs, item, path));
     }
@@ -1344,7 +1342,7 @@ fn prepare_source_tarball<'a>(
     // Create the files containing git info, to ensure --version outputs the same.
     let write_git_info = |info: Option<&Info>, path: &Path| {
         if let Some(info) = info {
-            t!(std::fs::create_dir_all(path));
+            builder.create_dir(&path);
             channel::write_commit_hash_file(path, &info.sha);
             channel::write_commit_info_file(path, info);
         }

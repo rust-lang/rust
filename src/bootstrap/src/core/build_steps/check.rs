@@ -17,7 +17,7 @@ use crate::core::builder::{
 };
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
-use crate::{CodegenBackendKind, Compiler, Mode, Subcommand, t};
+use crate::{CodegenBackendKind, Compiler, Mode, Subcommand};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
@@ -184,7 +184,7 @@ impl RmetaSysroot {
         let host_dir = directory.join("host");
         let target_dir = directory.join(target);
         let _ = fs::remove_dir_all(directory);
-        t!(fs::create_dir_all(directory));
+        builder.create_dir(directory);
         add_to_sysroot(builder, &target_dir, &host_dir, &stamp);
 
         Self { host_dir, target_dir }

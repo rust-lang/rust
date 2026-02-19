@@ -50,7 +50,7 @@ fn create_synthetic_target(
 
     let name = format!("{base}-synthetic-{suffix}");
     let path = builder.out.join("synthetic-target-specs").join(format!("{name}.json"));
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    builder.create_dir(&path.parent().unwrap());
 
     if builder.config.dry_run() {
         std::fs::write(&path, b"dry run\n").unwrap();

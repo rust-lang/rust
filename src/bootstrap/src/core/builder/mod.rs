@@ -715,7 +715,7 @@ impl Step for Libdir {
                     )
                 });
                 let _ = fs::remove_dir_all(&sysroot_target_libdir);
-                t!(fs::create_dir_all(&sysroot_target_libdir));
+                builder.create_dir(&sysroot_target_libdir);
             }
 
             if self.compiler.stage == 0 {

@@ -140,7 +140,7 @@ impl<P: Step> Step for RustbookSrc<P> {
         let name = self.name;
         let src = self.src;
         let out = builder.doc_out(target);
-        t!(fs::create_dir_all(&out));
+        builder.create_dir(&out);
 
         let out = out.join(&name);
         let index = out.join("index.html");
@@ -376,7 +376,7 @@ impl Step for Standalone {
         let build_compiler = self.build_compiler;
         let _guard = builder.msg(Kind::Doc, "standalone", None, build_compiler, target);
         let out = builder.doc_out(target);
-        t!(fs::create_dir_all(&out));
+        builder.create_dir(&out);
 
         let version_info = builder.ensure(SharedAssets { target: self.target }).version_info;
 
@@ -485,7 +485,7 @@ impl Step for Releases {
         let build_compiler = self.build_compiler;
         let _guard = builder.msg(Kind::Doc, "releases", None, build_compiler, target);
         let out = builder.doc_out(target);
-        t!(fs::create_dir_all(&out));
+        builder.create_dir(&out);
 
         builder.ensure(Standalone { build_compiler, target });
 
@@ -691,7 +691,7 @@ impl Step for Std {
             DocumentationFormat::Json => builder.json_doc_out(target),
         };
 
-        t!(fs::create_dir_all(&out));
+        builder.create_dir(&out);
 
         if self.format == DocumentationFormat::Html {
             builder.ensure(SharedAssets { target: self.target });
@@ -897,7 +897,7 @@ impl Step for Rustc {
 
         // This is the intended out directory for compiler documentation.
         let out = builder.compiler_doc_out(target);
-        t!(fs::create_dir_all(&out));
+        builder.create_dir(&out);
 
         // Build the standard library, so that proc-macros can use it.
         // (Normally, only the metadata would be necessary, but proc-macros are special since they run at compile-time.)
@@ -968,7 +968,8 @@ impl Step for Rustc {
             // relative links.
             // FIXME: Cargo should probably do this itself.
             let dir_name = krate.replace('-', "_");
-            t!(fs::create_dir_all(out_dir.join(&*dir_name)));
+            builder.create_dir(&out_dir.join(&*dir_name));
+
             cargo.arg("-p").arg(krate);
             if to_open.is_none() {
                 to_open = Some(dir_name);
@@ -1082,7 +1083,7 @@ macro_rules! tool_doc {
 
                 // This is the intended out directory for compiler documentation.
                 let out = builder.compiler_doc_out(target);
-                t!(fs::create_dir_all(&out));
+                builder.create_dir(&out);
 
                 // Build cargo command.
                 let mut cargo = prepare_tool_cargo(
@@ -1127,7 +1128,7 @@ macro_rules! tool_doc {
                 let out_dir = builder.stage_out(build_compiler, mode).join(target).join("doc");
                 $(for krate in $crates {
                     let dir_name = krate.replace("-", "_");
-                    t!(fs::create_dir_all(out_dir.join(&*dir_name)));
+                    builder.create_dir(&out_dir.join(&*dir_name));
                 })?
 
                 // Symlink compiler docs to the output directory of rustdoc documentation.
@@ -1257,7 +1258,7 @@ impl Step for ErrorIndex {
     fn run(self, builder: &Builder<'_>) {
         builder.info(&format!("Documenting error index ({})", self.compilers.target()));
         let out = builder.doc_out(self.compilers.target());
-        t!(fs::create_dir_all(&out));
+        builder.create_dir(&out);
         tool::ErrorIndex::command(builder, self.compilers)
             .arg("html")
             .arg(&out)
@@ -1386,7 +1387,7 @@ impl Step for RustcBook {
     /// "rustbook" is used to convert it to HTML.
     fn run(self, builder: &Builder<'_>) {
         let out_base = builder.md_doc_out(self.target).join("rustc");
-        t!(fs::create_dir_all(&out_base));
+        builder.create_dir(&out_base);
         let out_listing = out_base.join("src/lints");
         builder.cp_link_r(&builder.src.join("src/doc/rustc"), &out_base);
         builder.info(&format!("Generating lint docs ({})", self.target));

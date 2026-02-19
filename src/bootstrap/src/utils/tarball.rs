@@ -199,7 +199,7 @@ impl<'a> Tarball<'a> {
     }
 
     pub(crate) fn image_dir(&self) -> &Path {
-        t!(std::fs::create_dir_all(&self.image_dir));
+        self.builder.create_dir(&self.image_dir);
         &self.image_dir
     }
 
@@ -217,7 +217,7 @@ impl<'a> Tarball<'a> {
             self.image_dir.join(destdir.as_ref())
         };
 
-        t!(std::fs::create_dir_all(&destdir));
+        self.builder.create_dir(&destdir);
         self.builder.install(src.as_ref(), &destdir, file_type);
     }
 
@@ -229,7 +229,7 @@ impl<'a> Tarball<'a> {
         file_type: FileType,
     ) {
         let destdir = self.image_dir.join(destdir.as_ref());
-        t!(std::fs::create_dir_all(&destdir));
+        self.builder.create_dir(&destdir);
         self.builder.copy_link(src.as_ref(), &destdir.join(new_name), file_type);
     }
 
@@ -242,7 +242,7 @@ impl<'a> Tarball<'a> {
     pub(crate) fn add_dir(&self, src: impl AsRef<Path>, dest: impl AsRef<Path>) {
         let dest = self.image_dir.join(dest.as_ref());
 
-        t!(std::fs::create_dir_all(&dest));
+        self.builder.create_dir(&dest);
         self.builder.cp_link_r(src.as_ref(), &dest);
     }
 
@@ -306,7 +306,7 @@ impl<'a> Tarball<'a> {
 
         self.run(|this, cmd| {
             let distdir = distdir(this.builder);
-            t!(std::fs::create_dir_all(&distdir));
+            this.builder.create_dir(&distdir);
             cmd.arg("tarball")
                 .arg("--input")
                 .arg(&dest)
@@ -336,7 +336,7 @@ impl<'a> Tarball<'a> {
     }
 
     fn run(self, build_cli: impl FnOnce(&Tarball<'a>, &mut BootstrapCommand)) -> GeneratedTarball {
-        t!(std::fs::create_dir_all(&self.overlay_dir));
+        self.builder.create_dir(&self.overlay_dir);
         self.builder.create(&self.overlay_dir.join("version"), &self.overlay.version(self.builder));
         if let Some(info) = self.builder.rust_info().info() {
             channel::write_commit_hash_file(&self.overlay_dir, &info.sha);
