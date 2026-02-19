@@ -984,15 +984,36 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let sp = sp
                             .with_lo(BytePos(sp.lo().0 - (current.len() as u32)))
                             .until(ident.span);
-                        (
-                        (Some(errs::AttemptToUseNonConstantValueInConstantWithSuggestion {
-                                span: sp,
-                                suggestion,
-                                current,
-                                type_span,
-                            }), Some(errs::AttemptToUseNonConstantValueInConstantLabelWithSuggestion {span})),
-                            None,
-                        )
+
+                        // Only suggest replacing the binding keyword if this is a simple
+                        // binding.
+                        //
+                        // Note: this approach still incorrectly suggests for irrefutable
+                        // patterns like `if let x = 1 { const { x } }`, since the text
+                        // between `let` and the identifier is just whitespace.
+                        // See tests/ui/consts/non-const-value-in-const-irrefutable-pat-binding.rs
+                        let is_simple_binding =
+                            self.tcx.sess.source_map().span_to_snippet(sp).is_ok_and(|snippet| {
+                                let after_keyword = snippet[current.len()..].trim();
+                                after_keyword.is_empty() || after_keyword == "mut"
+                            });
+
+                        if is_simple_binding {
+                            (
+                            (Some(errs::AttemptToUseNonConstantValueInConstantWithSuggestion {
+                                    span: sp,
+                                    suggestion,
+                                    current,
+                                    type_span,
+                                }), Some(errs::AttemptToUseNonConstantValueInConstantLabelWithSuggestion {span})),
+                                None,
+                            )
+                        } else {
+                            (
+                                (None, Some(errs::AttemptToUseNonConstantValueInConstantLabelWithSuggestion {span})),
+                                None,
+                            )
+                        }
                     }
                     _ => (
                         (None, None),
