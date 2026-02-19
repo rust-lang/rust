@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr;
 
 use rustc_macros::{BlobDecodable, Encodable};
@@ -65,13 +65,65 @@ impl From<StackProtector> for DeniedPartialMitigationLevel {
     }
 }
 
-pub struct DeniedPartialMitigationKindParseError;
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encodable, BlobDecodable)]
-pub struct MitigationCoverage {
-    pub kind: DeniedPartialMitigationKind,
-    pub enabled: bool,
+#[derive(Copy, Clone)]
+struct MitigationStatus {
+    // This is the index of the option in the command line. This is needed because
+    // re-enabling a mitigation resets the partial mitigation status if it's later in the command
+    // line, and this works across `-C` and `-Z` args.
+    //
+    // e.g. `-Z stack-protector=strong` resets `-C allow-partial-mitigations=stack-protector`.
+    index: usize,
+    allowed: Option<bool>,
 }
+
+#[derive(Clone, Default)]
+pub struct MitigationCoverageMap {
+    map: BTreeMap<DeniedPartialMitigationKind, MitigationStatus>,
+}
+
+impl MitigationCoverageMap {
+    fn apply_mitigation(
+        &mut self,
+        kind: DeniedPartialMitigationKind,
+        index: usize,
+        allowed: Option<bool>,
+    ) {
+        self.map
+            .entry(kind)
+            .and_modify(|e| {
+                if index >= e.index {
+                    *e = MitigationStatus { index, allowed }
+                }
+            })
+            .or_insert(MitigationStatus { index, allowed });
+    }
+
+    pub(crate) fn handle_allowdeny_mitigation_option(
+        &mut self,
+        v: Option<&str>,
+        index: usize,
+        allowed: bool,
+    ) -> bool {
+        match v {
+            Some(s) => {
+                for sub in s.split(',') {
+                    match sub.parse() {
+                        Ok(kind) => self.apply_mitigation(kind, index, Some(allowed)),
+                        Err(_) => return false,
+                    }
+                }
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub(crate) fn reset_mitigation(&mut self, kind: DeniedPartialMitigationKind, index: usize) {
+        self.apply_mitigation(kind, index, None);
+    }
+}
+
+pub struct DeniedPartialMitigationKindParseError;
 
 macro_rules! intersperse {
     ($sep:expr, ($first:expr $(, $rest:expr)* $(,)?)) => {
@@ -81,6 +133,7 @@ macro_rules! intersperse {
 
 macro_rules! denied_partial_mitigations {
     ([$self:ident] enum $kind:ident {$(($name:ident, $text:expr, $since:ident, $code:expr)),*}) => {
+        #[allow(non_camel_case_types)]
         #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encodable, BlobDecodable)]
         pub enum DeniedPartialMitigationKind {
             $($name),*
@@ -113,12 +166,13 @@ macro_rules! denied_partial_mitigations {
 
         #[allow(unused)]
         impl DeniedPartialMitigationKind {
-            pub fn enforced_since(&self) -> Edition {
-                match self {
+            pub fn allowed_by_default_at(&self, edition: Edition) -> bool {
+                let enforced_since = match self {
                     // Should change the enforced-since edition of StackProtector to 2015
                     // (all editions) when `-C stack-protector` is stabilized.
                     $(DeniedPartialMitigationKind::$name => Edition::$since),*
-                }
+                };
+                edition < enforced_since
             }
         }
 
@@ -148,8 +202,10 @@ macro_rules! denied_partial_mitigations {
 denied_partial_mitigations! {
     [self]
     enum DeniedPartialMitigationKind {
-        (StackProtector, "stack-protector", EditionFuture, self.stack_protector()),
-        (ControlFlowGuard, "control-flow-guard", EditionFuture, self.opts.cg.control_flow_guard == CFGuard::Checks)
+        // The mitigation name should match the option name in rustc_session::options,
+        // to allow for resetting the mitigation
+        (stack_protector, "stack-protector", EditionFuture, self.stack_protector()),
+        (control_flow_guard, "control-flow-guard", EditionFuture, self.opts.cg.control_flow_guard == CFGuard::Checks)
     }
 }
 
@@ -168,13 +224,17 @@ impl Options {
     ) -> impl Iterator<Item = DeniedPartialMitigationKind> {
         let mut result: BTreeSet<_> = self
             .all_denied_partial_mitigations()
-            .filter(|mitigation| mitigation.enforced_since() > edition)
+            .filter(|mitigation| mitigation.allowed_by_default_at(edition))
             .collect();
-        for mitigation in &self.unstable_opts.allow_partial_mitigations {
-            if mitigation.enabled {
-                result.insert(mitigation.kind);
-            } else {
-                result.remove(&mitigation.kind);
+        for (kind, MitigationStatus { index: _, allowed }) in &self.mitigation_coverage_map.map {
+            match allowed {
+                Some(true) => {
+                    result.insert(*kind);
+                }
+                Some(false) => {
+                    result.remove(kind);
+                }
+                None => {}
             }
         }
         result.into_iter()
