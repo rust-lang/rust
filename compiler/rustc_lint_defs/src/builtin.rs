@@ -123,7 +123,6 @@ declare_lint_pass! {
         UNKNOWN_CRATE_TYPES,
         UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
         UNKNOWN_LINTS,
-        UNKNOWN_LLVM_INTRINSIC,
         UNNAMEABLE_TEST_ITEMS,
         UNNAMEABLE_TYPES,
         UNREACHABLE_CFG_SELECT_PREDICATES,
@@ -5557,37 +5556,6 @@ declare_lint! {
         reason: fcw!(FutureReleaseError #145544),
         report_in_deps: false,
     };
-}
-
-declare_lint! {
-    /// The `unknown_llvm_intrinsic` lint detects usage of unknown LLVM intrinsics.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![feature(link_llvm_intrinsics, abi_unadjusted)]
-    ///
-    /// unsafe extern "unadjusted" {
-    ///     #[link_name = "llvm.abcde"]
-    ///     fn foo();
-    /// }
-    ///
-    /// #[inline(never)]
-    /// pub fn main() {
-    ///     unsafe { foo() }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Linking to an unknown LLVM intrinsic may cause linker errors (in general it's UB),
-    /// so this lint captures those undesirable scenarios.
-    pub UNKNOWN_LLVM_INTRINSIC,
-    Deny,
-    "detects uses of unknown LLVM intrinsics",
-    @feature_gate = link_llvm_intrinsics;
 }
 
 declare_lint! {

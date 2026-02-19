@@ -21,7 +21,7 @@ use rustc_middle::ty::offload_meta::OffloadMetadata;
 use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
-use rustc_session::lint::builtin::{DEPRECATED_LLVM_INTRINSIC, UNKNOWN_LLVM_INTRINSIC};
+use rustc_session::lint::builtin::DEPRECATED_LLVM_INTRINSIC;
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::callconv::PassMode;
@@ -38,7 +38,7 @@ use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
 use crate::errors::{
     AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicSignatureMismatch, IntrinsicWrongArch,
-    OffloadWithoutEnable, OffloadWithoutFatLTO,
+    OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
 };
 use crate::llvm::{self, Metadata, Type, Value};
 use crate::type_of::LayoutLlvmExt;
@@ -1017,17 +1017,17 @@ fn intrinsic_fn<'ll, 'tcx>(
         rust_fn_ty,
     );
 
-    // we can emit diagnostics for local crates only
-    if intrinsic.is_none()
-        && let Some(def_id) = instance.def_id().as_local()
-    {
-        let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        let span = tcx.def_span(def_id);
-
+    if intrinsic.is_none() {
         let mut new_llfn = None;
         let can_upgrade = unsafe { llvm::LLVMRustUpgradeIntrinsicFunction(llfn, &mut new_llfn) };
 
-        if can_upgrade {
+        if !can_upgrade {
+            // This is either plain wrong, or this can be caused by incompatible LLVM versions
+            tcx.dcx().emit_fatal(UnknownIntrinsic { name, span: tcx.def_span(instance.def_id()) });
+        } else if let Some(def_id) = instance.def_id().as_local() {
+            // we can emit diagnostics only for local crates
+            let hir_id = tcx.local_def_id_to_hir_id(def_id);
+
             // not all intrinsics are upgraded to some other intrinsics, most are upgraded to instruction sequences
             let msg = if let Some(new_llfn) = new_llfn {
                 format!(
@@ -1037,13 +1037,9 @@ fn intrinsic_fn<'ll, 'tcx>(
             } else {
                 format!("using deprecated intrinsic `{name}`")
             };
+
             tcx.node_lint(DEPRECATED_LLVM_INTRINSIC, hir_id, |d| {
-                d.primary_message(msg).span(span);
-            });
-        } else {
-            // This is either plain wrong, or this can be caused by incompatible LLVM versions, we let the user decide
-            tcx.node_lint(UNKNOWN_LLVM_INTRINSIC, hir_id, |d| {
-                d.primary_message(format!("invalid LLVM Intrinsic `{name}`")).span(span);
+                d.primary_message(msg).span(tcx.hir_span(hir_id));
             });
         }
     }

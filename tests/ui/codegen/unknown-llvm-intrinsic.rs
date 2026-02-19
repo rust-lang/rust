@@ -6,7 +6,7 @@
 extern "unadjusted" {
     #[link_name = "llvm.abcde"]
     fn foo();
-    //~^ ERROR: invalid LLVM Intrinsic `llvm.abcde`
+    //~^ ERROR: unknown LLVM intrinsic `llvm.abcde`
 }
 
 pub fn main() {

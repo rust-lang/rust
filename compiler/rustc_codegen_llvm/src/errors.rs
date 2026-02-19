@@ -220,6 +220,14 @@ pub(crate) struct IntrinsicSignatureMismatch<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag("unknown LLVM intrinsic `{$name}`")]
+pub(crate) struct UnknownIntrinsic<'a> {
+    pub name: &'a str,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("intrinsic `{$name}` cannot be used with target arch `{$target_arch}`")]
 pub(crate) struct IntrinsicWrongArch<'a> {
     pub name: &'a str,
