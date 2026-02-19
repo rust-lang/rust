@@ -57,8 +57,9 @@ where
                 }
             }
         } else {
-            self.started = true;
-            self.iter.next()
+            let item = self.iter.next();
+            self.started = item.is_some();
+            item
         }
     }
 
@@ -173,8 +174,9 @@ where
                 }
             }
         } else {
-            self.started = true;
-            self.iter.next()
+            let item = self.iter.next();
+            self.started = item.is_some();
+            item
         }
     }
 
