@@ -931,7 +931,7 @@ where
             && self
                 .ecx
                 .probe(|_| ProbeKind::ProjectionCompatibility)
-                .enter(|ecx| -> Result<_, NoSolution> {
+                .enter_ignoring_parent_goals(|ecx| -> Result<_, NoSolution> {
                     let source_projection = ecx.instantiate_binder_with_infer(source_projection);
                     ecx.eq(self.param_env, source_projection.projection_term, target_projection)?;
                     ecx.try_evaluate_added_goals()
