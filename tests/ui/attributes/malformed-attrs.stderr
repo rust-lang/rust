@@ -21,7 +21,7 @@ LL | #[cfg_attr]
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error[E0463]: can't find crate for `wloop`
-  --> $DIR/malformed-attrs.rs:214:1
+  --> $DIR/malformed-attrs.rs:212:1
    |
 LL | extern crate wloop;
    | ^^^^^^^^^^^^^^^^^^^ can't find crate
@@ -125,7 +125,7 @@ LL | #[proc_macro_derive]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error[E0658]: allow_internal_unsafe side-steps the unsafe_code lint
-  --> $DIR/malformed-attrs.rs:219:1
+  --> $DIR/malformed-attrs.rs:217:1
    |
 LL | #[allow_internal_unsafe = 1]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -631,17 +631,8 @@ LL | #[thread_local()]
    | |             didn't expect any arguments here
    | help: must be of the form: `#[thread_local]`
 
-error[E0565]: malformed `no_link` attribute input
-  --> $DIR/malformed-attrs.rs:210:1
-   |
-LL | #[no_link()]
-   | ^^^^^^^^^--^
-   | |        |
-   | |        didn't expect any arguments here
-   | help: must be of the form: `#[no_link]`
-
 error[E0539]: malformed `macro_use` attribute input
-  --> $DIR/malformed-attrs.rs:212:1
+  --> $DIR/malformed-attrs.rs:210:1
    |
 LL | #[macro_use = 1]
    | ^^^^^^^^^^^^---^
@@ -659,7 +650,7 @@ LL + #[macro_use]
    |
 
 error[E0539]: malformed `macro_export` attribute input
-  --> $DIR/malformed-attrs.rs:217:1
+  --> $DIR/malformed-attrs.rs:215:1
    |
 LL | #[macro_export = 18]
    | ^^^^^^^^^^^^^^^----^
@@ -676,7 +667,7 @@ LL + #[macro_export]
    |
 
 error[E0565]: malformed `allow_internal_unsafe` attribute input
-  --> $DIR/malformed-attrs.rs:219:1
+  --> $DIR/malformed-attrs.rs:217:1
    |
 LL | #[allow_internal_unsafe = 1]
    | ^^^^^^^^^^^^^^^^^^^^^^^^---^
@@ -826,7 +817,7 @@ LL | #[automatically_derived = 18]
    = help: `#[automatically_derived]` can only be applied to trait impl blocks
 
 error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
-  --> $DIR/malformed-attrs.rs:226:1
+  --> $DIR/malformed-attrs.rs:224:1
    |
 LL | #[ignore = 1]
    | ^^^^^^^^^^^^^
@@ -845,7 +836,7 @@ LL |     #[coroutine = 63] || {}
    = note: expected unit type `()`
               found coroutine `{coroutine@$DIR/malformed-attrs.rs:115:23: 115:25}`
 
-error: aborting due to 75 previous errors; 8 warnings emitted
+error: aborting due to 74 previous errors; 8 warnings emitted
 
 Some errors have detailed explanations: E0308, E0463, E0539, E0565, E0658, E0805.
 For more information about an error, try `rustc --explain E0308`.
@@ -873,7 +864,7 @@ LL | #[ignore()]
 
 Future breakage diagnostic:
 error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
-  --> $DIR/malformed-attrs.rs:226:1
+  --> $DIR/malformed-attrs.rs:224:1
    |
 LL | #[ignore = 1]
    | ^^^^^^^^^^^^^
