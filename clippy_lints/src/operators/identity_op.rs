@@ -287,7 +287,7 @@ fn is_assoc_fn_without_type_instance<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'
                 ..
             },
         )) = func.kind
-        && let output_ty = cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder().output()
+        && let output_ty = cx.tcx.fn_sig(*def_id).instantiate_identity().skip_binder().output()
         && let ty::Param(ty::ParamTy {
             name: kw::SelfUpper, ..
         }) = output_ty.kind()
