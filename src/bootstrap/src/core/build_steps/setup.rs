@@ -532,6 +532,7 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum EditorKind {
     Emacs,
+    Fresh,
     Helix,
     Vim,
     VsCode,
@@ -543,6 +544,7 @@ impl EditorKind {
     #[cfg(test)]
     pub const ALL: &[EditorKind] = &[
         EditorKind::Emacs,
+        EditorKind::Fresh,
         EditorKind::Helix,
         EditorKind::Vim,
         EditorKind::VsCode,
@@ -552,10 +554,11 @@ impl EditorKind {
     fn prompt_user() -> io::Result<Option<EditorKind>> {
         let prompt_str = "Available editors:
 1. Emacs
-2. Helix
-3. Vim
-4. VS Code
-5. Zed
+2. Fresh
+3. Helix
+4. Vim
+5. VS Code
+6. Zed
 
 Select which editor you would like to set up [default: None]: ";
 
@@ -569,10 +572,11 @@ Select which editor you would like to set up [default: None]: ";
             modified_input.retain(|ch| !ch.is_whitespace());
             match modified_input.as_str() {
                 "1" | "emacs" => return Ok(Some(EditorKind::Emacs)),
-                "2" | "helix" => return Ok(Some(EditorKind::Helix)),
-                "3" | "vim" => return Ok(Some(EditorKind::Vim)),
-                "4" | "vscode" => return Ok(Some(EditorKind::VsCode)),
-                "5" | "zed" => return Ok(Some(EditorKind::Zed)),
+                "2" | "fresh" => return Ok(Some(EditorKind::Fresh)),
+                "3" | "helix" => return Ok(Some(EditorKind::Helix)),
+                "4" | "vim" => return Ok(Some(EditorKind::Vim)),
+                "5" | "vscode" => return Ok(Some(EditorKind::VsCode)),
+                "6" | "zed" => return Ok(Some(EditorKind::Zed)),
                 "" | "none" => return Ok(None),
                 _ => {
                     eprintln!("ERROR: unrecognized option '{}'", input.trim());
@@ -599,6 +603,9 @@ Select which editor you would like to set up [default: None]: ";
                 "54bc48fe1996177f5eef86d7231b33978e6d8b737cb0a899e622b7e975c95308",
                 "08d30e455ceec6e01d9bcef8b9449f2ddd14d278ca8627cdad90e02d9f44e938",
             ],
+            EditorKind::Fresh => {
+                &["d6889a0d5e939467aae0f4ea61b45f5e656d1c5eae56d72716093689ee2cc3e6"]
+            }
             EditorKind::Helix => &[
                 "2d3069b8cf1b977e5d4023965eb6199597755e6c96c185ed5f2854f98b83d233",
                 "6736d61409fbebba0933afd2e4c44ff2f97c1cb36cf0299a7f4a7819b8775040",
@@ -647,6 +654,7 @@ Select which editor you would like to set up [default: None]: ";
     fn settings_short_path(&self) -> PathBuf {
         self.settings_folder().join(match self {
             EditorKind::Emacs => ".dir-locals.el",
+            EditorKind::Fresh => "config.json",
             EditorKind::Helix => "languages.toml",
             EditorKind::Vim => "coc-settings.json",
             EditorKind::VsCode | EditorKind::Zed => "settings.json",
@@ -656,6 +664,7 @@ Select which editor you would like to set up [default: None]: ";
     fn settings_folder(&self) -> PathBuf {
         match self {
             EditorKind::Emacs => PathBuf::new(),
+            EditorKind::Fresh => PathBuf::from(".fresh"),
             EditorKind::Helix => PathBuf::from(".helix"),
             EditorKind::Vim => PathBuf::from(".vim"),
             EditorKind::VsCode => PathBuf::from(".vscode"),
@@ -666,6 +675,7 @@ Select which editor you would like to set up [default: None]: ";
     fn settings_template(&self) -> &'static str {
         match self {
             EditorKind::Emacs => include_str!("../../../../etc/rust_analyzer_eglot.el"),
+            EditorKind::Fresh => include_str!("../../../../etc/rust_analyzer_fresh.json"),
             EditorKind::Helix => include_str!("../../../../etc/rust_analyzer_helix.toml"),
             EditorKind::Vim | EditorKind::VsCode => {
                 include_str!("../../../../etc/rust_analyzer_settings.json")
