@@ -73,5 +73,5 @@ pub unsafe fn dst_metadata(ptr: *const WithTail<dyn std::fmt::Debug>) -> Layout 
 
 // CHECK-LABEL: declare
 
-// CHECK: [[ALIGN_RANGE]] = !{i64 1, i64 -[[#0x7FFFFFFFFFFFFFFF]]
 // CHECK: [[SIZE_RANGE]] = !{i64 0, i64 -[[#0x8000000000000000]]
+// CHECK: [[ALIGN_RANGE]] = !{i64 1, i64 [[#0x20000001]]
