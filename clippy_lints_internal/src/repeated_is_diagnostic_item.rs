@@ -190,7 +190,7 @@ impl<'tcx> LateLintPass<'tcx> for RepeatedIsDiagnosticItem {
                         }))
                         .collect();
 
-                        diag.multipart_suggestion_verbose(
+                        diag.multipart_suggestion(
                             format!("call `{recv_ty}::opt_diag_name`, and reuse the results"),
                             sugg,
                             app,
@@ -234,7 +234,7 @@ impl<'tcx> LateLintPass<'tcx> for RepeatedIsDiagnosticItem {
                         }))
                         .collect();
 
-                        diag.multipart_suggestion_verbose(
+                        diag.multipart_suggestion(
                             "call `TyCtxt::get_diagnostic_name`, and reuse the results",
                             sugg,
                             app,
@@ -437,7 +437,7 @@ fn check_if_chains<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, conds: Vec<&'t
                 }))
                 .collect();
 
-                diag.multipart_suggestion_verbose(
+                diag.multipart_suggestion(
                     format!("call `{recv_ty}::opt_diag_name`, and reuse the results"),
                     sugg,
                     app,
@@ -489,7 +489,7 @@ fn check_if_chains<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, conds: Vec<&'t
                 }))
                 .collect();
 
-                diag.multipart_suggestion_verbose(
+                diag.multipart_suggestion(
                     "call `TyCtxt::get_diagnostic_name`, and reuse the results",
                     sugg,
                     app,

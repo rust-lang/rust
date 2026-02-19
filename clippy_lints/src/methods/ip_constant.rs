@@ -45,7 +45,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, func: &Expr<'_>, args
         }
 
         span_lint_and_then(cx, IP_CONSTANT, expr.span, "hand-coded well-known IP address", |diag| {
-            diag.multipart_suggestion_verbose("use", sugg, Applicability::MachineApplicable);
+            diag.multipart_suggestion("use", sugg, Applicability::MachineApplicable);
         });
     }
 }

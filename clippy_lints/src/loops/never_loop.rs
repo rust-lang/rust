@@ -56,7 +56,7 @@ pub(super) fn check<'tcx>(
                     )];
                     // Make sure to clear up the diverging sites when we remove a loopp.
                     suggestions.extend(break_spans.iter().map(|span| (*span, String::new())));
-                    diag.multipart_suggestion_verbose(
+                    diag.multipart_suggestion(
                         "if you need the first element of the iterator, try writing",
                         suggestions,
                         app,

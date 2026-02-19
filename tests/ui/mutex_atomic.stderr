@@ -2,69 +2,109 @@ error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:8:13
    |
 LL |     let _ = Mutex::new(true);
-   |             ^^^^^^^^^^^^^^^^ help: try: `std::sync::atomic::AtomicBool::new(true)`
+   |             ^^^^^^^^^^^^^^^^
    |
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
    = note: `-D clippy::mutex-atomic` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mutex_atomic)]`
+help: try
+   |
+LL -     let _ = Mutex::new(true);
+LL +     let _ = std::sync::atomic::AtomicBool::new(true);
+   |
 
 error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:11:13
    |
 LL |     let _ = Mutex::new(5usize);
-   |             ^^^^^^^^^^^^^^^^^^ help: try: `std::sync::atomic::AtomicUsize::new(5usize)`
+   |             ^^^^^^^^^^^^^^^^^^
    |
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+help: try
+   |
+LL -     let _ = Mutex::new(5usize);
+LL +     let _ = std::sync::atomic::AtomicUsize::new(5usize);
+   |
 
 error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:14:13
    |
 LL |     let _ = Mutex::new(9isize);
-   |             ^^^^^^^^^^^^^^^^^^ help: try: `std::sync::atomic::AtomicIsize::new(9isize)`
+   |             ^^^^^^^^^^^^^^^^^^
    |
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+help: try
+   |
+LL -     let _ = Mutex::new(9isize);
+LL +     let _ = std::sync::atomic::AtomicIsize::new(9isize);
+   |
 
 error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:21:13
    |
 LL |     let _ = Mutex::new(&mut x as *mut u32);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::sync::atomic::AtomicPtr::new(&mut x as *mut u32)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+help: try
+   |
+LL -     let _ = Mutex::new(&mut x as *mut u32);
+LL +     let _ = std::sync::atomic::AtomicPtr::new(&mut x as *mut u32);
+   |
 
 error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:24:13
    |
 LL |     let _ = Mutex::new(0u32);
-   |             ^^^^^^^^^^^^^^^^ help: try: `std::sync::atomic::AtomicU32::new(0u32)`
+   |             ^^^^^^^^^^^^^^^^
    |
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
    = note: `-D clippy::mutex-integer` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mutex_integer)]`
+help: try
+   |
+LL -     let _ = Mutex::new(0u32);
+LL +     let _ = std::sync::atomic::AtomicU32::new(0u32);
+   |
 
 error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:27:13
    |
 LL |     let _ = Mutex::new(0i32);
-   |             ^^^^^^^^^^^^^^^^ help: try: `std::sync::atomic::AtomicI32::new(0i32)`
+   |             ^^^^^^^^^^^^^^^^
    |
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+help: try
+   |
+LL -     let _ = Mutex::new(0i32);
+LL +     let _ = std::sync::atomic::AtomicI32::new(0i32);
+   |
 
 error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:31:13
    |
 LL |     let _ = Mutex::new(0u8);
-   |             ^^^^^^^^^^^^^^^ help: try: `std::sync::atomic::AtomicU8::new(0u8)`
+   |             ^^^^^^^^^^^^^^^
    |
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+help: try
+   |
+LL -     let _ = Mutex::new(0u8);
+LL +     let _ = std::sync::atomic::AtomicU8::new(0u8);
+   |
 
 error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:34:13
    |
 LL |     let _ = Mutex::new(0i16);
-   |             ^^^^^^^^^^^^^^^^ help: try: `std::sync::atomic::AtomicI16::new(0i16)`
+   |             ^^^^^^^^^^^^^^^^
    |
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+help: try
+   |
+LL -     let _ = Mutex::new(0i16);
+LL +     let _ = std::sync::atomic::AtomicI16::new(0i16);
+   |
 
 error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:37:25
@@ -83,9 +123,14 @@ error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:41:13
    |
 LL |     let _ = Mutex::new(X);
-   |             ^^^^^^^^^^^^^ help: try: `std::sync::atomic::AtomicI64::new(X)`
+   |             ^^^^^^^^^^^^^
    |
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+help: try
+   |
+LL -     let _ = Mutex::new(X);
+LL +     let _ = std::sync::atomic::AtomicI64::new(X);
+   |
 
 error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:53:30
@@ -104,9 +149,14 @@ error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:56:15
    |
 LL |     let mtx = Mutex::new(0);
-   |               ^^^^^^^^^^^^^ help: try: `std::sync::atomic::AtomicI32::new(0)`
+   |               ^^^^^^^^^^^^^
    |
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+help: try
+   |
+LL -     let mtx = Mutex::new(0);
+LL +     let mtx = std::sync::atomic::AtomicI32::new(0);
+   |
 
 error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:60:22
@@ -134,9 +184,14 @@ error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:76:13
    |
 LL |     let _ = Mutex::new(test_expr!(1));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::sync::atomic::AtomicBool::new(test_expr!(1))`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+help: try
+   |
+LL -     let _ = Mutex::new(test_expr!(1));
+LL +     let _ = std::sync::atomic::AtomicBool::new(test_expr!(1));
+   |
 
 error: aborting due to 15 previous errors
 
