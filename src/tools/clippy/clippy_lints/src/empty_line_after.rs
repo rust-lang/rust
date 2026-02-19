@@ -157,8 +157,6 @@ impl Stop {
             sym::must_use |
             // Should be applied to a foreign function or static
             sym::link_name | sym::link_ordinal | sym::link_section |
-            // Should be applied to an `extern crate` item
-            sym::no_link |
             // Should be applied to a free function, impl method or static
             sym::export_name | sym::no_mangle |
             // Should be applied to a `static` variable

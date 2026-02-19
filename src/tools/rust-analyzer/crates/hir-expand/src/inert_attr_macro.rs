@@ -186,7 +186,6 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         DuplicatesOk,
     ),
     ungated!(link_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
-    ungated!(no_link, Normal, template!(Word), WarnFollowing),
     ungated!(repr, Normal, template!(List: "C"), DuplicatesOk, @only_local: true),
     ungated!(export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
     ungated!(link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),

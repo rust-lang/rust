@@ -1,7 +1,7 @@
 //@ run-pass
 //@aux-build:macro_export_inner_module.rs
 
-#[macro_use] #[no_link]
+#[macro_use]
 extern crate macro_export_inner_module;
 
 pub fn main() {
