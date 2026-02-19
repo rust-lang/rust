@@ -26,6 +26,10 @@ runners:
     os: macos-15 # macOS 15 Arm64
     <<: *base-job
 
+  - &job-macos-26
+    os: macos-26 # macOS 26 Arm64
+    <<: *base-job
+
   - &job-windows
     os: windows-2025
     <<: *base-job
@@ -538,7 +542,7 @@ auto:
       # supports the hardware, so only need to test it there.
       MACOSX_DEPLOYMENT_TARGET: 11.0
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
-    <<: *job-macos
+    <<: *job-macos-26
 
   ######################
   #  Windows Builders  #
