@@ -1484,7 +1484,7 @@ pub const fn _mm_move_epi64(a: __m128i) -> __m128i {
     }
 }
 
-/// Converts packed 16-bit integers from `a` and `b` to packed 8-bit integers
+/// Converts packed signed 16-bit integers from `a` and `b` to packed 8-bit integers
 /// using signed saturation.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packs_epi16)
@@ -1493,10 +1493,27 @@ pub const fn _mm_move_epi64(a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(packsswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_packs_epi16(a: __m128i, b: __m128i) -> __m128i {
-    unsafe { transmute(packsswb(a.as_i16x8(), b.as_i16x8())) }
+    unsafe {
+        let max = simd_splat(i16::from(i8::MAX));
+        let min = simd_splat(i16::from(i8::MIN));
+
+        let clamped_a = simd_imax(simd_imin(a.as_i16x8(), max), min)
+            .as_m128i()
+            .as_i8x16();
+        let clamped_b = simd_imax(simd_imin(b.as_i16x8(), max), min)
+            .as_m128i()
+            .as_i8x16();
+
+        // Shuffle the low i8 of each i16 from two concatenated vectors into
+        // the low bits of the result register.
+        const IDXS: [u32; 16] = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30];
+        let result: i8x16 = simd_shuffle!(clamped_a, clamped_b, IDXS);
+
+        result.as_m128i()
+    }
 }
 
-/// Converts packed 32-bit integers from `a` and `b` to packed 16-bit integers
+/// Converts packed signed 32-bit integers from `a` and `b` to packed 16-bit integers
 /// using signed saturation.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packs_epi32)
@@ -1505,10 +1522,23 @@ pub fn _mm_packs_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(packssdw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_packs_epi32(a: __m128i, b: __m128i) -> __m128i {
-    unsafe { transmute(packssdw(a.as_i32x4(), b.as_i32x4())) }
+    unsafe {
+        let max = simd_splat(i32::from(i16::MAX));
+        let min = simd_splat(i32::from(i16::MIN));
+
+        let clamped_a = simd_imax(simd_imin(a.as_i32x4(), max), min);
+        let clamped_b = simd_imax(simd_imin(b.as_i32x4(), max), min);
+
+        let clamped_a: i16x4 = simd_cast(clamped_a);
+        let clamped_b: i16x4 = simd_cast(clamped_b);
+
+        let a: i64 = transmute(clamped_a);
+        let b: i64 = transmute(clamped_b);
+        i64x2::new(a, b).as_m128i()
+    }
 }
 
-/// Converts packed 16-bit integers from `a` and `b` to packed 8-bit integers
+/// Converts packed signed 16-bit integers from `a` and `b` to packed 8-bit integers
 /// using unsigned saturation.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packus_epi16)
@@ -1517,7 +1547,26 @@ pub fn _mm_packs_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(packuswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_packus_epi16(a: __m128i, b: __m128i) -> __m128i {
-    unsafe { transmute(packuswb(a.as_i16x8(), b.as_i16x8())) }
+    unsafe {
+        let max = simd_splat(i16::from(u8::MAX));
+        let min = simd_splat(i16::from(u8::MIN));
+
+        let clamped_a = simd_imax(simd_imin(a.as_i16x8(), max), min)
+            .as_m128i()
+            .as_i8x16();
+        let clamped_b = simd_imax(simd_imin(b.as_i16x8(), max), min)
+            .as_m128i()
+            .as_i8x16();
+
+        // Shuffle the low bytes of each i16 from two concatenated vectors into
+        // the low bits of the result register.
+        // Without `simd_shuffle`, this intrinsic will cause the AVX-512BW
+        // `_mm_mask_packus_epi16` and `_mm_maskz_packus_epi16` tests to fail.
+        const IDXS: [u32; 16] = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30];
+        let result: i8x16 = simd_shuffle!(clamped_a, clamped_b, IDXS);
+
+        result.as_m128i()
+    }
 }
 
 /// Returns the `imm8` element of `a`.
@@ -3217,12 +3266,6 @@ unsafe extern "C" {
     fn cvtps2dq(a: __m128) -> i32x4;
     #[link_name = "llvm.x86.sse2.maskmov.dqu"]
     fn maskmovdqu(a: i8x16, mask: i8x16, mem_addr: *mut i8);
-    #[link_name = "llvm.x86.sse2.packsswb.128"]
-    fn packsswb(a: i16x8, b: i16x8) -> i8x16;
-    #[link_name = "llvm.x86.sse2.packssdw.128"]
-    fn packssdw(a: i32x4, b: i32x4) -> i16x8;
-    #[link_name = "llvm.x86.sse2.packuswb.128"]
-    fn packuswb(a: i16x8, b: i16x8) -> u8x16;
     #[link_name = "llvm.x86.sse2.max.sd"]
     fn maxsd(a: __m128d, b: __m128d) -> __m128d;
     #[link_name = "llvm.x86.sse2.max.pd"]
