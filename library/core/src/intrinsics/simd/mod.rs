@@ -2,6 +2,8 @@
 //!
 //! In this module, a "vector" is any `repr(simd)` type.
 
+pub mod scalable;
+
 use crate::marker::ConstParamTy;
 
 /// Inserts an element into a vector, returning the updated vector.
