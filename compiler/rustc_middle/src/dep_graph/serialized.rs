@@ -90,9 +90,13 @@ const DEP_NODE_WIDTH_BITS: usize = DEP_NODE_SIZE / 2;
 pub struct SerializedDepGraph {
     /// The set of all DepNodes in the graph
     nodes: IndexVec<SerializedDepNodeIndex, DepNode>,
-    /// The set of all Fingerprints in the graph. Each Fingerprint corresponds to
-    /// the DepNode at the same index in the nodes vector.
-    fingerprints: IndexVec<SerializedDepNodeIndex, Fingerprint>,
+    /// A value fingerprint associated with each [`DepNode`] in [`Self::nodes`],
+    /// typically a hash of the value returned by the node's query in the
+    /// previous incremental-compilation session.
+    ///
+    /// Some nodes don't have a meaningful value hash (e.g. queries with `no_hash`),
+    /// so they store a dummy value here instead (e.g. [`Fingerprint::ZERO`]).
+    value_fingerprints: IndexVec<SerializedDepNodeIndex, Fingerprint>,
     /// For each DepNode, stores the list of edges originating from that
     /// DepNode. Encoded as a [start, end) pair indexing into edge_list_data,
     /// which holds the actual DepNodeIndices of the target nodes.
@@ -100,8 +104,8 @@ pub struct SerializedDepGraph {
     /// A flattened list of all edge targets in the graph, stored in the same
     /// varint encoding that we use on disk. Edge sources are implicit in edge_list_indices.
     edge_list_data: Vec<u8>,
-    /// Stores a map from fingerprints to nodes per dep node kind.
-    /// This is the reciprocal of `nodes`.
+    /// For each dep kind, stores a map from key fingerprints back to the index
+    /// of the corresponding node. This is the inverse of `nodes`.
     index: Vec<UnhashMap<PackedFingerprint, SerializedDepNodeIndex>>,
     /// The number of previous compilation sessions. This is used to generate
     /// unique anon dep nodes per session.
@@ -138,12 +142,15 @@ impl SerializedDepGraph {
 
     #[inline]
     pub fn node_to_index_opt(&self, dep_node: &DepNode) -> Option<SerializedDepNodeIndex> {
-        self.index.get(dep_node.kind.as_usize())?.get(&dep_node.hash).cloned()
+        self.index.get(dep_node.kind.as_usize())?.get(&dep_node.key_fingerprint).copied()
     }
 
     #[inline]
-    pub fn fingerprint_by_index(&self, dep_node_index: SerializedDepNodeIndex) -> Fingerprint {
-        self.fingerprints[dep_node_index]
+    pub fn value_fingerprint_for_index(
+        &self,
+        dep_node_index: SerializedDepNodeIndex,
+    ) -> Fingerprint {
+        self.value_fingerprints[dep_node_index]
     }
 
     #[inline]
@@ -212,10 +219,13 @@ impl SerializedDepGraph {
         let graph_bytes = d.len() - (3 * IntEncodedWithFixedSize::ENCODED_SIZE) - d.position();
 
         let mut nodes = IndexVec::from_elem_n(
-            DepNode { kind: DepKind::NULL, hash: PackedFingerprint::from(Fingerprint::ZERO) },
+            DepNode {
+                kind: DepKind::NULL,
+                key_fingerprint: PackedFingerprint::from(Fingerprint::ZERO),
+            },
             node_max,
         );
-        let mut fingerprints = IndexVec::from_elem_n(Fingerprint::ZERO, node_max);
+        let mut value_fingerprints = IndexVec::from_elem_n(Fingerprint::ZERO, node_max);
         let mut edge_list_indices =
             IndexVec::from_elem_n(EdgeHeader { repr: 0, num_edges: 0 }, node_max);
 
@@ -243,7 +253,7 @@ impl SerializedDepGraph {
             assert!(node_header.node().kind != DepKind::NULL && node.kind == DepKind::NULL);
             *node = node_header.node();
 
-            fingerprints[index] = node_header.fingerprint();
+            value_fingerprints[index] = node_header.value_fingerprint();
 
             // If the length of this node's edge list is small, the length is stored in the header.
             // If it is not, we fall back to another decoder call.
@@ -275,7 +285,7 @@ impl SerializedDepGraph {
         let session_count = d.read_u64();
 
         for (idx, node) in nodes.iter_enumerated() {
-            if index[node.kind.as_usize()].insert(node.hash, idx).is_some() {
+            if index[node.kind.as_usize()].insert(node.key_fingerprint, idx).is_some() {
                 // Empty nodes and side effect nodes can have duplicates
                 if node.kind != DepKind::NULL && node.kind != DepKind::SIDE_EFFECT {
                     let name = node.kind.name();
@@ -291,7 +301,7 @@ impl SerializedDepGraph {
 
         Arc::new(SerializedDepGraph {
             nodes,
-            fingerprints,
+            value_fingerprints,
             edge_list_indices,
             edge_list_data,
             index,
@@ -303,8 +313,8 @@ impl SerializedDepGraph {
 /// A packed representation of all the fixed-size fields in a `NodeInfo`.
 ///
 /// This stores in one byte array:
-/// * The `Fingerprint` in the `NodeInfo`
-/// * The `Fingerprint` in `DepNode` that is in this `NodeInfo`
+/// * The value `Fingerprint` in the `NodeInfo`
+/// * The key `Fingerprint` in `DepNode` that is in this `NodeInfo`
 /// * The `DepKind`'s discriminant (a u16, but not all bits are used...)
 /// * The byte width of the encoded edges for this node
 /// * In whatever bits remain, the length of the edge list for this node, if it fits
@@ -323,8 +333,8 @@ struct Unpacked {
     bytes_per_index: usize,
     kind: DepKind,
     index: SerializedDepNodeIndex,
-    hash: PackedFingerprint,
-    fingerprint: Fingerprint,
+    key_fingerprint: PackedFingerprint,
+    value_fingerprint: Fingerprint,
 }
 
 // Bit fields, where
@@ -345,7 +355,7 @@ impl SerializedNodeHeader {
     fn new(
         node: &DepNode,
         index: DepNodeIndex,
-        fingerprint: Fingerprint,
+        value_fingerprint: Fingerprint,
         edge_max_index: u32,
         edge_count: usize,
     ) -> Self {
@@ -363,19 +373,19 @@ impl SerializedNodeHeader {
             head |= (edge_count as u16 + 1) << (Self::KIND_BITS + Self::WIDTH_BITS);
         }
 
-        let hash: Fingerprint = node.hash.into();
+        let hash: Fingerprint = node.key_fingerprint.into();
 
         // Using half-open ranges ensures an unconditional panic if we get the magic numbers wrong.
         let mut bytes = [0u8; 38];
         bytes[..2].copy_from_slice(&head.to_le_bytes());
         bytes[2..6].copy_from_slice(&index.as_u32().to_le_bytes());
         bytes[6..22].copy_from_slice(&hash.to_le_bytes());
-        bytes[22..].copy_from_slice(&fingerprint.to_le_bytes());
+        bytes[22..].copy_from_slice(&value_fingerprint.to_le_bytes());
 
         #[cfg(debug_assertions)]
         {
             let res = Self { bytes };
-            assert_eq!(fingerprint, res.fingerprint());
+            assert_eq!(value_fingerprint, res.value_fingerprint());
             assert_eq!(*node, res.node());
             if let Some(len) = res.len() {
                 assert_eq!(edge_count, len as usize);
@@ -388,8 +398,8 @@ impl SerializedNodeHeader {
     fn unpack(&self) -> Unpacked {
         let head = u16::from_le_bytes(self.bytes[..2].try_into().unwrap());
         let index = u32::from_le_bytes(self.bytes[2..6].try_into().unwrap());
-        let hash = self.bytes[6..22].try_into().unwrap();
-        let fingerprint = self.bytes[22..].try_into().unwrap();
+        let key_fingerprint = self.bytes[6..22].try_into().unwrap();
+        let value_fingerprint = self.bytes[22..].try_into().unwrap();
 
         let kind = head & mask(Self::KIND_BITS) as u16;
         let bytes_per_index = (head >> Self::KIND_BITS) & mask(Self::WIDTH_BITS) as u16;
@@ -400,8 +410,8 @@ impl SerializedNodeHeader {
             bytes_per_index: bytes_per_index as usize + 1,
             kind: DepKind::new(kind),
             index: SerializedDepNodeIndex::from_u32(index),
-            hash: Fingerprint::from_le_bytes(hash).into(),
-            fingerprint: Fingerprint::from_le_bytes(fingerprint),
+            key_fingerprint: Fingerprint::from_le_bytes(key_fingerprint).into(),
+            value_fingerprint: Fingerprint::from_le_bytes(value_fingerprint),
         }
     }
 
@@ -421,14 +431,14 @@ impl SerializedNodeHeader {
     }
 
     #[inline]
-    fn fingerprint(&self) -> Fingerprint {
-        self.unpack().fingerprint
+    fn value_fingerprint(&self) -> Fingerprint {
+        self.unpack().value_fingerprint
     }
 
     #[inline]
     fn node(&self) -> DepNode {
-        let Unpacked { kind, hash, .. } = self.unpack();
-        DepNode { kind, hash }
+        let Unpacked { kind, key_fingerprint, .. } = self.unpack();
+        DepNode { kind, key_fingerprint }
     }
 
     #[inline]
@@ -443,15 +453,20 @@ impl SerializedNodeHeader {
 #[derive(Debug)]
 struct NodeInfo {
     node: DepNode,
-    fingerprint: Fingerprint,
+    value_fingerprint: Fingerprint,
     edges: EdgesVec,
 }
 
 impl NodeInfo {
     fn encode(&self, e: &mut MemEncoder, index: DepNodeIndex) {
-        let NodeInfo { ref node, fingerprint, ref edges } = *self;
-        let header =
-            SerializedNodeHeader::new(node, index, fingerprint, edges.max_index(), edges.len());
+        let NodeInfo { ref node, value_fingerprint, ref edges } = *self;
+        let header = SerializedNodeHeader::new(
+            node,
+            index,
+            value_fingerprint,
+            edges.max_index(),
+            edges.len(),
+        );
         e.write_array(header.bytes);
 
         if header.len().is_none() {
@@ -476,7 +491,7 @@ impl NodeInfo {
         e: &mut MemEncoder,
         node: &DepNode,
         index: DepNodeIndex,
-        fingerprint: Fingerprint,
+        value_fingerprint: Fingerprint,
         prev_index: SerializedDepNodeIndex,
         colors: &DepNodeColorMap,
         previous: &SerializedDepGraph,
@@ -488,7 +503,8 @@ impl NodeInfo {
         let edge_max =
             edges.clone().map(|i| colors.current(i).unwrap().as_u32()).max().unwrap_or(0);
 
-        let header = SerializedNodeHeader::new(node, index, fingerprint, edge_max, edge_count);
+        let header =
+            SerializedNodeHeader::new(node, index, value_fingerprint, edge_max, edge_count);
         e.write_array(header.bytes);
 
         if header.len().is_none() {
@@ -676,12 +692,12 @@ impl EncoderState {
         local: &mut LocalEncoderState,
     ) {
         let node = self.previous.index_to_node(prev_index);
-        let fingerprint = self.previous.fingerprint_by_index(prev_index);
+        let value_fingerprint = self.previous.value_fingerprint_for_index(prev_index);
         let edge_count = NodeInfo::encode_promoted(
             &mut local.encoder,
             node,
             index,
-            fingerprint,
+            value_fingerprint,
             prev_index,
             colors,
             &self.previous,
@@ -857,11 +873,11 @@ impl GraphEncoder {
     pub(crate) fn send_new(
         &self,
         node: DepNode,
-        fingerprint: Fingerprint,
+        value_fingerprint: Fingerprint,
         edges: EdgesVec,
     ) -> DepNodeIndex {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
-        let node = NodeInfo { node, fingerprint, edges };
+        let node = NodeInfo { node, value_fingerprint, edges };
         let mut local = self.status.local.borrow_mut();
         let index = self.status.next_index(&mut *local);
         self.status.bump_index(&mut *local);
@@ -877,12 +893,12 @@ impl GraphEncoder {
         prev_index: SerializedDepNodeIndex,
         colors: &DepNodeColorMap,
         node: DepNode,
-        fingerprint: Fingerprint,
+        value_fingerprint: Fingerprint,
         edges: EdgesVec,
         is_green: bool,
     ) -> DepNodeIndex {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
-        let node = NodeInfo { node, fingerprint, edges };
+        let node = NodeInfo { node, value_fingerprint, edges };
 
         let mut local = self.status.local.borrow_mut();
 

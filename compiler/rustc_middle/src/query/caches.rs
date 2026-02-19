@@ -67,7 +67,7 @@ where
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
         // We may be overwriting another value. This is all right, since the dep-graph
-        // will check that the fingerprint matches.
+        // will check that the value fingerprint matches.
         self.cache.insert(key, (value, index));
     }
 

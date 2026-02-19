@@ -1,10 +1,27 @@
-#![feature(if_let_guard)]
-
 #[deny(irrefutable_let_patterns)]
+
 fn irrefutable_let_guard() {
     match Some(()) {
         Some(x) if let () = x => {}
         //~^ ERROR irrefutable `if let` guard
+        _ => {}
+    }
+}
+
+#[deny(irrefutable_let_patterns)]
+fn trailing_irrefutable_pattern_binding() {
+    match Some(5) {
+        o if let x = 0 => {}
+        //~^ ERROR irrefutable `if let` guard
+        _ => {}
+    }
+}
+
+#[deny(irrefutable_let_patterns)]
+fn trailing_irrefutable_in_let_chain() {
+    match Some(5) {
+        Some(x) if let Some(y) = Some(x) && let z = 0 => {}
+        //~^ ERROR trailing irrefutable pattern in let chain
         _ => {}
     }
 }

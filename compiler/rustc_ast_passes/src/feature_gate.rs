@@ -482,11 +482,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         };
     }
     gate_all!(
-        if_let_guard,
-        "`if let` guards are experimental",
-        "you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`"
-    );
-    gate_all!(
         async_trait_bounds,
         "`async` trait bounds are unstable",
         "use the desugared name of the async trait, such as `AsyncFn`"

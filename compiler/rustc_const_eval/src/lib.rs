@@ -1,9 +1,9 @@
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(assert_matches))]
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(array_try_map)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
-#![feature(if_let_guard)]
 #![feature(never_type)]
 #![feature(slice_ptr_get)]
 #![feature(trait_alias)]

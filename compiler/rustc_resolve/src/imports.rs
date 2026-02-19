@@ -371,6 +371,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // - A glob decl is overwritten by its clone after setting ambiguity in it.
         //   FIXME: avoid this by removing `warn_ambiguity`, or by triggering glob re-fetch
         //   with the same decl in some way.
+        // - A glob decl is overwritten by a glob decl with larger visibility.
+        //   FIXME: avoid this by updating this visibility in place.
         // - A glob decl is overwritten by a glob decl re-fetching an
         //   overwritten decl from other module (the recursive case).
         // Here we are detecting all such re-fetches and overwrite old decls
@@ -384,7 +386,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // FIXME: reenable the asserts when `warn_ambiguity` is removed (#149195).
             // assert_ne!(old_deep_decl, deep_decl);
             // assert!(old_deep_decl.is_glob_import());
-            assert!(!deep_decl.is_glob_import());
+            // FIXME: reenable the assert when visibility is updated in place.
+            // assert!(!deep_decl.is_glob_import());
             if old_glob_decl.ambiguity.get().is_some() && glob_decl.ambiguity.get().is_none() {
                 // Do not lose glob ambiguities when re-fetching the glob.
                 glob_decl.ambiguity.set_unchecked(old_glob_decl.ambiguity.get());
@@ -1042,16 +1045,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 suggestion,
                 module,
                 error_implied_by_parse_error: _,
+                message,
             } => {
                 if no_ambiguity {
                     assert!(import.imported_module.get().is_none());
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            segment: Some(segment_name),
+                            segment: segment_name,
                             label,
                             suggestion,
                             module,
+                            message,
                         },
                     );
                 }

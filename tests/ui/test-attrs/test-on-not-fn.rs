@@ -1,4 +1,5 @@
 //@ compile-flags: --test
+//@ reference: attributes.testing.test.allowed-positions
 
 #[test] //~ ERROR: the `#[test]` attribute may only be used on a free function
 mod test {}

@@ -2,7 +2,7 @@ use std::any::Any;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::{env, io};
 
 use rand::{RngCore, rng};
@@ -161,6 +161,12 @@ pub struct Session {
 
     /// Does the codegen backend support ThinLTO?
     pub thin_lto_supported: bool,
+
+    /// Global per-session counter for MIR optimization pass applications.
+    ///
+    /// Used by `-Zmir-opt-bisect-limit` to assign an index to each
+    /// optimization-pass execution candidate during this compilation.
+    pub mir_opt_bisect_eval_count: AtomicUsize,
 }
 
 #[derive(Clone, Copy)]
@@ -1101,6 +1107,7 @@ pub fn build_session(
         invocation_temp,
         replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
         thin_lto_supported: true,                  // filled by `run_compiler`
+        mir_opt_bisect_eval_count: AtomicUsize::new(0),
     };
 
     validate_commandline_args_with_session_available(&sess);

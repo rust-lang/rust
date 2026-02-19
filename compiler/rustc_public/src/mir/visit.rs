@@ -277,10 +277,6 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(op, location);
                         self.visit_ty_const(constant, location);
                     }
-                    Rvalue::ShallowInitBox(op, ty) => {
-                        self.visit_ty(ty, location);
-                        self.visit_operand(op, location)
-                    }
                     Rvalue::ThreadLocalRef(_) => {}
                     Rvalue::UnaryOp(_, op) | Rvalue::Use(op) => {
                         self.visit_operand(op, location);

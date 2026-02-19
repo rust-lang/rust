@@ -1208,7 +1208,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_intrinsic_const_stable_indirect, Normal,
         template!(Word), WarnFollowing, EncodeCrossCrate::No,  "this is an internal implementation detail",
     ),
-    gated!(
+    rustc_attr!(
         rustc_allow_const_fn_unstable, Normal,
         template!(Word, List: &["feat1, feat2, ..."]), DuplicatesOk, EncodeCrossCrate::No,
         "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"

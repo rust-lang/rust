@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `lib2`
+error[E0433]: cannot find module or crate `lib2` in this scope
   --> $DIR/issue-121103.rs:1:38
    |
 LL | fn main(_: <lib2::GenericType<42> as lib2::TypeFn>::Output) {}
@@ -6,7 +6,7 @@ LL | fn main(_: <lib2::GenericType<42> as lib2::TypeFn>::Output) {}
    |
    = help: you might be missing a crate named `lib2`
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `lib2`
+error[E0433]: cannot find module or crate `lib2` in this scope
   --> $DIR/issue-121103.rs:1:13
    |
 LL | fn main(_: <lib2::GenericType<42> as lib2::TypeFn>::Output) {}

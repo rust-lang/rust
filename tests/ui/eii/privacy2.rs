@@ -13,7 +13,7 @@ fn eii1_impl(x: u64) {
     println!("{x:?}")
 }
 
-#[codegen::eii3] //~ ERROR failed to resolve: could not find `eii3` in `codegen`
+#[codegen::eii3] //~ ERROR cannot find `eii3` in `codegen`
 fn eii3_impl(x: u64) {
     println!("{x:?}")
 }

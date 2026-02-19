@@ -567,13 +567,6 @@ pub enum Rvalue {
     /// [#74836]: https://github.com/rust-lang/rust/issues/74836
     Repeat(Operand, TyConst),
 
-    /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
-    ///
-    /// This is different from a normal transmute because dataflow analysis will treat the box as
-    /// initialized but its content as uninitialized. Like other pointer casts, this in general
-    /// affects alias analysis.
-    ShallowInitBox(Operand, Ty),
-
     /// Creates a pointer/reference to the given thread local.
     ///
     /// The yielded type is a `*mut T` if the static is mutable, otherwise if the static is extern a
@@ -651,7 +644,6 @@ impl Rvalue {
                 }
                 AggregateKind::RawPtr(ty, mutability) => Ok(Ty::new_ptr(ty, mutability)),
             },
-            Rvalue::ShallowInitBox(_, ty) => Ok(Ty::new_box(*ty)),
             Rvalue::CopyForDeref(place) => place.ty(locals),
         }
     }

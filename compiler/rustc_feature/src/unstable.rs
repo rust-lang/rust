@@ -287,10 +287,6 @@ declare_features! (
     (internal, panic_runtime, "1.10.0", Some(32837)),
     /// Allows using pattern types.
     (internal, pattern_types, "1.79.0", Some(123646)),
-    /// Allows using `#[rustc_allow_const_fn_unstable]`.
-    /// This is an attribute on `const fn` for the same
-    /// purpose as `#[allow_internal_unstable]`.
-    (internal, rustc_allow_const_fn_unstable, "1.49.0", Some(69399)),
     /// Allows using compiler's own crates.
     (unstable, rustc_private, "1.0.0", Some(27812)),
     /// Allows using internal rustdoc features like `doc(keyword)`.
@@ -493,7 +489,7 @@ declare_features! (
     /// Allows the use of `#[ffi_pure]` on foreign functions.
     (unstable, ffi_pure, "1.45.0", Some(58329)),
     /// Allows marking trait functions as `final` to prevent overriding impls
-    (unstable, final_associated_functions, "CURRENT_RUSTC_VERSION", Some(1)),
+    (unstable, final_associated_functions, "CURRENT_RUSTC_VERSION", Some(131179)),
     /// Controlling the behavior of fmt::Debug
     (unstable, fmt_debug, "1.82.0", Some(129709)),
     /// Allows using `#[align(...)]` on function items
@@ -522,8 +518,6 @@ declare_features! (
     (unstable, half_open_range_patterns_in_slices, "1.66.0", Some(67264)),
     /// Target features on hexagon.
     (unstable, hexagon_target_feature, "1.27.0", Some(150250)),
-    /// Allows `if let` guard in match arms.
-    (unstable, if_let_guard, "1.47.0", Some(51114)),
     /// Allows `impl Trait` to be used inside associated types (RFC 2515).
     (unstable, impl_trait_in_assoc_type, "1.70.0", Some(63063)),
     /// Allows `impl Trait` in bindings (`let`).

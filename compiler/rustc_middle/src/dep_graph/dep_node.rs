@@ -1,10 +1,10 @@
 //! This module defines the [`DepNode`] type which the compiler uses to represent
 //! nodes in the [dependency graph]. A `DepNode` consists of a [`DepKind`] (which
 //! specifies the kind of thing it represents, like a piece of HIR, MIR, etc.)
-//! and a [`Fingerprint`], a 128-bit hash value, the exact meaning of which
-//! depends on the node's `DepKind`. Together, the kind and the fingerprint
+//! and a "key fingerprint", a 128-bit hash value, the exact meaning of which
+//! depends on the node's `DepKind`. Together, the kind and the key fingerprint
 //! fully identify a dependency node, even across multiple compilation sessions.
-//! In other words, the value of the fingerprint does not depend on anything
+//! In other words, the value of the key fingerprint does not depend on anything
 //! that is specific to a given compilation session, like an unpredictable
 //! interning key (e.g., `NodeId`, `DefId`, `Symbol`) or the numeric value of a
 //! pointer. The concept behind this could be compared to how git commit hashes
@@ -41,17 +41,9 @@
 //!   `DepNode`s could represent global concepts with only one value.
 //! * Whether it is possible, in principle, to reconstruct a query key from a
 //!   given `DepNode`. Many `DepKind`s only require a single `DefId` parameter,
-//!   in which case it is possible to map the node's fingerprint back to the
+//!   in which case it is possible to map the node's key fingerprint back to the
 //!   `DefId` it was computed from. In other cases, too much information gets
-//!   lost during fingerprint computation.
-//!
-//! `make_compile_codegen_unit` and `make_compile_mono_items`, together with
-//! `DepNode::new()`, ensure that only valid `DepNode` instances can be
-//! constructed. For example, the API does not allow for constructing
-//! parameterless `DepNode`s with anything other than a zeroed out fingerprint.
-//! More generally speaking, it relieves the user of the `DepNode` API of
-//! having to know how to compute the expected fingerprint for a given set of
-//! node parameters.
+//!   lost when computing a key fingerprint.
 //!
 //! [dependency graph]: https://rustc-dev-guide.rust-lang.org/query.html
 
@@ -65,7 +57,7 @@ use rustc_hir::definitions::DefPathHash;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::Symbol;
 
-use super::{FingerprintStyle, SerializedDepNodeIndex};
+use super::{KeyFingerprintStyle, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::mir::mono::MonoItem;
 use crate::ty::{TyCtxt, tls};
@@ -125,10 +117,20 @@ impl fmt::Debug for DepKind {
     }
 }
 
+/// Combination of a [`DepKind`] and a key fingerprint that uniquely identifies
+/// a node in the dep graph.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DepNode {
     pub kind: DepKind,
-    pub hash: PackedFingerprint,
+
+    /// This is _typically_ a hash of the query key, but sometimes not.
+    ///
+    /// For example, `anon` nodes have a fingerprint that is derived from their
+    /// dependencies instead of a key.
+    ///
+    /// In some cases the key value can be reconstructed from this fingerprint;
+    /// see [`KeyFingerprintStyle`].
+    pub key_fingerprint: PackedFingerprint,
 }
 
 impl DepNode {
@@ -136,24 +138,23 @@ impl DepNode {
     /// that the DepNode corresponding to the given DepKind actually
     /// does not require any parameters.
     pub fn new_no_params<'tcx>(tcx: TyCtxt<'tcx>, kind: DepKind) -> DepNode {
-        debug_assert_eq!(tcx.fingerprint_style(kind), FingerprintStyle::Unit);
-        DepNode { kind, hash: Fingerprint::ZERO.into() }
+        debug_assert_eq!(tcx.key_fingerprint_style(kind), KeyFingerprintStyle::Unit);
+        DepNode { kind, key_fingerprint: Fingerprint::ZERO.into() }
     }
 
-    pub fn construct<'tcx, Key>(tcx: TyCtxt<'tcx>, kind: DepKind, arg: &Key) -> DepNode
+    pub fn construct<'tcx, Key>(tcx: TyCtxt<'tcx>, kind: DepKind, key: &Key) -> DepNode
     where
         Key: DepNodeKey<'tcx>,
     {
-        let hash = arg.to_fingerprint(tcx);
-        let dep_node = DepNode { kind, hash: hash.into() };
+        let dep_node = DepNode { kind, key_fingerprint: key.to_fingerprint(tcx).into() };
 
         #[cfg(debug_assertions)]
         {
-            if !tcx.fingerprint_style(kind).reconstructible()
+            if !tcx.key_fingerprint_style(kind).reconstructible()
                 && (tcx.sess.opts.unstable_opts.incremental_info
                     || tcx.sess.opts.unstable_opts.query_dep_graph)
             {
-                tcx.dep_graph.register_dep_node_debug_str(dep_node, || arg.to_debug_str(tcx));
+                tcx.dep_graph.register_dep_node_debug_str(dep_node, || key.to_debug_str(tcx));
             }
         }
 
@@ -168,8 +169,8 @@ impl DepNode {
         def_path_hash: DefPathHash,
         kind: DepKind,
     ) -> Self {
-        debug_assert!(tcx.fingerprint_style(kind) == FingerprintStyle::DefPathHash);
-        DepNode { kind, hash: def_path_hash.0.into() }
+        debug_assert!(tcx.key_fingerprint_style(kind) == KeyFingerprintStyle::DefPathHash);
+        DepNode { kind, key_fingerprint: def_path_hash.0.into() }
     }
 }
 
@@ -184,10 +185,10 @@ impl fmt::Debug for DepNode {
                 } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*self) {
                     write!(f, "{s}")?;
                 } else {
-                    write!(f, "{}", self.hash)?;
+                    write!(f, "{}", self.key_fingerprint)?;
                 }
             } else {
-                write!(f, "{}", self.hash)?;
+                write!(f, "{}", self.key_fingerprint)?;
             }
             Ok(())
         })?;
@@ -198,7 +199,7 @@ impl fmt::Debug for DepNode {
 
 /// Trait for query keys as seen by dependency-node tracking.
 pub trait DepNodeKey<'tcx>: fmt::Debug + Sized {
-    fn fingerprint_style() -> FingerprintStyle;
+    fn key_fingerprint_style() -> KeyFingerprintStyle;
 
     /// This method turns a query key into an opaque `Fingerprint` to be used
     /// in `DepNode`.
@@ -212,7 +213,7 @@ pub trait DepNodeKey<'tcx>: fmt::Debug + Sized {
     /// `fingerprint_style()` is not `FingerprintStyle::Opaque`.
     /// It is always valid to return `None` here, in which case incremental
     /// compilation will treat the query as having changed instead of forcing it.
-    fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self>;
+    fn try_recover_key(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self>;
 }
 
 // Blanket impl of `DepNodeKey`, which is specialized by other impls elsewhere.
@@ -221,8 +222,8 @@ where
     T: for<'a> HashStable<StableHashingContext<'a>> + fmt::Debug,
 {
     #[inline(always)]
-    default fn fingerprint_style() -> FingerprintStyle {
-        FingerprintStyle::Opaque
+    default fn key_fingerprint_style() -> KeyFingerprintStyle {
+        KeyFingerprintStyle::Opaque
     }
 
     #[inline(always)]
@@ -243,7 +244,7 @@ where
     }
 
     #[inline(always)]
-    default fn recover(_: TyCtxt<'tcx>, _: &DepNode) -> Option<Self> {
+    default fn try_recover_key(_: TyCtxt<'tcx>, _: &DepNode) -> Option<Self> {
         None
     }
 }
@@ -264,10 +265,11 @@ pub struct DepKindVTable<'tcx> {
     /// cached within one compiler invocation.
     pub is_eval_always: bool,
 
-    /// Indicates whether and how the query key can be recovered from its hashed fingerprint.
+    /// Indicates whether and how a query key can be reconstructed from the
+    /// key fingerprint of a dep node with this [`DepKind`].
     ///
     /// The [`DepNodeKey`] trait determines the fingerprint style for each key type.
-    pub fingerprint_style: FingerprintStyle,
+    pub key_fingerprint_style: KeyFingerprintStyle,
 
     /// The red/green evaluation system will try to mark a specific DepNode in the
     /// dependency graph as green by recursively trying to mark the dependencies of
@@ -279,7 +281,7 @@ pub struct DepKindVTable<'tcx> {
     /// `force_from_dep_node()` implements.
     ///
     /// In the general case, a `DepNode` consists of a `DepKind` and an opaque
-    /// GUID/fingerprint that will uniquely identify the node. This GUID/fingerprint
+    /// "key fingerprint" that will uniquely identify the node. This key fingerprint
     /// is usually constructed by computing a stable hash of the query-key that the
     /// `DepNode` corresponds to. Consequently, it is not in general possible to go
     /// back from hash to query-key (since hash functions are not reversible). For
@@ -293,7 +295,7 @@ pub struct DepKindVTable<'tcx> {
     /// Now, if `force_from_dep_node()` would always fail, it would be pretty useless.
     /// Fortunately, we can use some contextual information that will allow us to
     /// reconstruct query-keys for certain kinds of `DepNode`s. In particular, we
-    /// enforce by construction that the GUID/fingerprint of certain `DepNode`s is a
+    /// enforce by construction that the key fingerprint of certain `DepNode`s is a
     /// valid `DefPathHash`. Since we also always build a huge table that maps every
     /// `DefPathHash` in the current codebase to the corresponding `DefId`, we have
     /// everything we need to re-run the query.
@@ -301,7 +303,7 @@ pub struct DepKindVTable<'tcx> {
     /// Take the `mir_promoted` query as an example. Like many other queries, it
     /// just has a single parameter: the `DefId` of the item it will compute the
     /// validated MIR for. Now, when we call `force_from_dep_node()` on a `DepNode`
-    /// with kind `MirValidated`, we know that the GUID/fingerprint of the `DepNode`
+    /// with kind `mir_promoted`, we know that the key fingerprint of the `DepNode`
     /// is actually a `DefPathHash`, and can therefore just look up the corresponding
     /// `DefId` in `tcx.def_path_hash_to_def_id`.
     pub force_from_dep_node: Option<
@@ -472,8 +474,8 @@ impl DepNode {
     /// refers to something from the previous compilation session that
     /// has been removed.
     pub fn extract_def_id(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
-        if tcx.fingerprint_style(self.kind) == FingerprintStyle::DefPathHash {
-            tcx.def_path_hash_to_def_id(DefPathHash(self.hash.into()))
+        if tcx.key_fingerprint_style(self.kind) == KeyFingerprintStyle::DefPathHash {
+            tcx.def_path_hash_to_def_id(DefPathHash(self.key_fingerprint.into()))
         } else {
             None
         }
@@ -486,10 +488,10 @@ impl DepNode {
     ) -> Result<DepNode, ()> {
         let kind = dep_kind_from_label_string(label)?;
 
-        match tcx.fingerprint_style(kind) {
-            FingerprintStyle::Opaque | FingerprintStyle::HirId => Err(()),
-            FingerprintStyle::Unit => Ok(DepNode::new_no_params(tcx, kind)),
-            FingerprintStyle::DefPathHash => {
+        match tcx.key_fingerprint_style(kind) {
+            KeyFingerprintStyle::Opaque | KeyFingerprintStyle::HirId => Err(()),
+            KeyFingerprintStyle::Unit => Ok(DepNode::new_no_params(tcx, kind)),
+            KeyFingerprintStyle::DefPathHash => {
                 Ok(DepNode::from_def_path_hash(tcx, def_path_hash, kind))
             }
         }

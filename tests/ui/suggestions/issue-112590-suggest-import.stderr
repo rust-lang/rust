@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `fmt`
+error[E0433]: cannot find module or crate `fmt` in this scope
   --> $DIR/issue-112590-suggest-import.rs:3:6
    |
 LL | impl fmt::Debug for S {
@@ -10,7 +10,7 @@ help: consider importing this module
 LL + use std::fmt;
    |
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `fmt`
+error[E0433]: cannot find module or crate `fmt` in this scope
   --> $DIR/issue-112590-suggest-import.rs:4:28
    |
 LL |     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -22,7 +22,7 @@ help: consider importing this module
 LL + use std::fmt;
    |
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `fmt`
+error[E0433]: cannot find module or crate `fmt` in this scope
   --> $DIR/issue-112590-suggest-import.rs:4:51
    |
 LL |     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {

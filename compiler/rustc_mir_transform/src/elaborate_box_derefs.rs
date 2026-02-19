@@ -1,12 +1,8 @@
 //! This pass transforms derefs of Box into a deref of the pointer inside Box.
 //!
 //! Box is not actually a pointer so it is incorrect to dereference it directly.
-//!
-//! `ShallowInitBox` being a device for drop elaboration to understand deferred assignment to box
-//! contents, we do not need this any more on runtime MIR.
 
-use rustc_abi::{FieldIdx, VariantIdx};
-use rustc_index::{IndexVec, indexvec};
+use rustc_abi::FieldIdx;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
@@ -88,68 +84,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
         }
 
         self.super_place(place, context, location);
-    }
-
-    fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
-        self.super_statement(stmt, location);
-
-        let tcx = self.tcx;
-        let source_info = stmt.source_info;
-
-        if let StatementKind::Assign(box (_, ref mut rvalue)) = stmt.kind
-            && let Rvalue::ShallowInitBox(ref mut mutptr_to_u8, pointee) = *rvalue
-            && let ty::Adt(box_adt, box_args) = Ty::new_box(tcx, pointee).kind()
-        {
-            let args = tcx.mk_args(&[pointee.into()]);
-            let (unique_ty, nonnull_ty, ptr_ty) =
-                build_ptr_tys(tcx, pointee, self.unique_def, self.nonnull_def);
-            let adt_kind = |def: ty::AdtDef<'tcx>, args| {
-                Box::new(AggregateKind::Adt(def.did(), VariantIdx::ZERO, args, None, None))
-            };
-            let zst = |ty| {
-                Operand::Constant(Box::new(ConstOperand {
-                    span: source_info.span,
-                    user_ty: None,
-                    const_: Const::zero_sized(ty),
-                }))
-            };
-
-            let constptr = self.patch.new_temp(ptr_ty, source_info.span);
-            self.patch.add_assign(
-                location,
-                constptr.into(),
-                Rvalue::Cast(CastKind::Transmute, mutptr_to_u8.clone(), ptr_ty),
-            );
-
-            let nonnull = self.patch.new_temp(nonnull_ty, source_info.span);
-            self.patch.add_assign(
-                location,
-                nonnull.into(),
-                Rvalue::Aggregate(
-                    adt_kind(self.nonnull_def, args),
-                    indexvec![Operand::Move(constptr.into())],
-                ),
-            );
-
-            let unique = self.patch.new_temp(unique_ty, source_info.span);
-            let phantomdata_ty =
-                self.unique_def.non_enum_variant().fields[FieldIdx::ONE].ty(tcx, args);
-            self.patch.add_assign(
-                location,
-                unique.into(),
-                Rvalue::Aggregate(
-                    adt_kind(self.unique_def, args),
-                    indexvec![Operand::Move(nonnull.into()), zst(phantomdata_ty)],
-                ),
-            );
-
-            let global_alloc_ty =
-                box_adt.non_enum_variant().fields[FieldIdx::ONE].ty(tcx, box_args);
-            *rvalue = Rvalue::Aggregate(
-                adt_kind(*box_adt, box_args),
-                indexvec![Operand::Move(unique.into()), zst(global_alloc_ty)],
-            );
-        }
     }
 }
 

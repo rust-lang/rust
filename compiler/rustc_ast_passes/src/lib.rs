@@ -3,8 +3,8 @@
 //! by `rustc_ast_lowering`.
 
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(box_patterns)]
-#![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(iter_is_partitioned)]
 // tidy-alphabetical-end

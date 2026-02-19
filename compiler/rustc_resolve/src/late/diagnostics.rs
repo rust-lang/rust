@@ -4060,25 +4060,32 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             "instead, you are more likely to want"
                         };
                         let mut owned_sugg = lt.kind == MissingLifetimeKind::Ampersand;
+                        let mut sugg_is_str_to_string = false;
                         let mut sugg = vec![(lt.span, String::new())];
                         if let Some((kind, _span)) = self.diag_metadata.current_function
                             && let FnKind::Fn(_, _, ast::Fn { sig, .. }) = kind
-                            && let ast::FnRetTy::Ty(ty) = &sig.decl.output
                         {
                             let mut lt_finder =
                                 LifetimeFinder { lifetime: lt.span, found: None, seen: vec![] };
-                            lt_finder.visit_ty(&ty);
-
-                            if let [Ty { span, kind: TyKind::Ref(_, mut_ty), .. }] =
-                                &lt_finder.seen[..]
-                            {
-                                // We might have a situation like
-                                // fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()>
-                                // but `lt.span` only points at `'_`, so to suggest `-> Option<()>`
-                                // we need to find a more accurate span to end up with
-                                // fn g<'a>(mut x: impl Iterator<Item = &'_ ()>) -> Option<()>
-                                sugg = vec![(span.with_hi(mut_ty.ty.span.lo()), String::new())];
-                                owned_sugg = true;
+                            for param in &sig.decl.inputs {
+                                lt_finder.visit_ty(&param.ty);
+                            }
+                            if let ast::FnRetTy::Ty(ret_ty) = &sig.decl.output {
+                                lt_finder.visit_ty(ret_ty);
+                                let mut ret_lt_finder =
+                                    LifetimeFinder { lifetime: lt.span, found: None, seen: vec![] };
+                                ret_lt_finder.visit_ty(ret_ty);
+                                if let [Ty { span, kind: TyKind::Ref(_, mut_ty), .. }] =
+                                    &ret_lt_finder.seen[..]
+                                {
+                                    // We might have a situation like
+                                    // fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()>
+                                    // but `lt.span` only points at `'_`, so to suggest `-> Option<()>`
+                                    // we need to find a more accurate span to end up with
+                                    // fn g<'a>(mut x: impl Iterator<Item = &'_ ()>) -> Option<()>
+                                    sugg = vec![(span.with_hi(mut_ty.ty.span.lo()), String::new())];
+                                    owned_sugg = true;
+                                }
                             }
                             if let Some(ty) = lt_finder.found {
                                 if let TyKind::Path(None, path) = &ty.kind {
@@ -4098,6 +4105,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                                         lt.span.with_hi(ty.span.hi()),
                                                         "String".to_string(),
                                                     )];
+                                                    sugg_is_str_to_string = true;
                                                 }
                                                 Some(Res::PrimTy(..)) => {}
                                                 Some(Res::Def(
@@ -4124,6 +4132,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                                         lt.span.with_hi(ty.span.hi()),
                                                         "String".to_string(),
                                                     )];
+                                                    sugg_is_str_to_string = true;
                                                 }
                                                 Res::PrimTy(..) => {}
                                                 Res::Def(
@@ -4158,6 +4167,12 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             }
                         }
                         if owned_sugg {
+                            if let Some(span) =
+                                self.find_ref_prefix_span_for_owned_suggestion(lt.span)
+                                && !sugg_is_str_to_string
+                            {
+                                sugg = vec![(span, String::new())];
+                            }
                             err.multipart_suggestion_verbose(
                                 format!("{pre} to return an owned value"),
                                 sugg,
@@ -4183,6 +4198,23 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
             }
         }
+    }
+
+    fn find_ref_prefix_span_for_owned_suggestion(&self, lifetime: Span) -> Option<Span> {
+        let mut finder = RefPrefixSpanFinder { lifetime, span: None };
+        if let Some(item) = self.diag_metadata.current_item {
+            finder.visit_item(item);
+        } else if let Some((kind, _span)) = self.diag_metadata.current_function
+            && let FnKind::Fn(_, _, ast::Fn { sig, .. }) = kind
+        {
+            for param in &sig.decl.inputs {
+                finder.visit_ty(&param.ty);
+            }
+            if let ast::FnRetTy::Ty(ret_ty) = &sig.decl.output {
+                finder.visit_ty(ret_ty);
+            }
+        }
+        finder.span
     }
 }
 
@@ -4282,6 +4314,26 @@ impl<'ast> Visitor<'ast> for LifetimeFinder<'ast> {
             }
         }
         walk_ty(self, t)
+    }
+}
+
+struct RefPrefixSpanFinder {
+    lifetime: Span,
+    span: Option<Span>,
+}
+
+impl<'ast> Visitor<'ast> for RefPrefixSpanFinder {
+    fn visit_ty(&mut self, t: &'ast Ty) {
+        if self.span.is_some() {
+            return;
+        }
+        if let TyKind::Ref(_, mut_ty) | TyKind::PinnedRef(_, mut_ty) = &t.kind
+            && t.span.lo() == self.lifetime.lo()
+        {
+            self.span = Some(t.span.with_hi(mut_ty.ty.span.lo()));
+            return;
+        }
+        walk_ty(self, t);
     }
 }
 

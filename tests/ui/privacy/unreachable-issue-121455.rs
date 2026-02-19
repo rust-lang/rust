@@ -1,5 +1,6 @@
 fn test(s: &Self::Id) {
-//~^ ERROR failed to resolve: `Self` is only available in impls, traits, and type definitions
+//~^ ERROR: cannot find `Self`
+//~| NOTE: `Self` is only available in impls, traits, and type definitions
     match &s[0..3] {}
 }
 
