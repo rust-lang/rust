@@ -6524,7 +6524,32 @@ pub fn _mm_maskz_maddubs_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackssdw))]
 pub fn _mm512_packs_epi32(a: __m512i, b: __m512i) -> __m512i {
-    unsafe { transmute(vpackssdw(a.as_i32x16(), b.as_i32x16())) }
+    unsafe {
+        let max = simd_splat(i32::from(i16::MAX));
+        let min = simd_splat(i32::from(i16::MIN));
+
+        let clamped_a = simd_imax(simd_imin(a.as_i32x16(), max), min)
+            .as_m512i()
+            .as_i16x32();
+        let clamped_b = simd_imax(simd_imin(b.as_i32x16(), max), min)
+            .as_m512i()
+            .as_i16x32();
+
+        #[rustfmt::skip]
+        const IDXS: [u32; 32] = [
+            00, 02, 04, 06,
+            32, 34, 36, 38,
+            08, 10, 12, 14,
+            40, 42, 44, 46,
+            16, 18, 20, 22,
+            48, 50, 52, 54,
+            24, 26, 28, 30,
+            56, 58, 60, 62,
+        ];
+        let result: i16x32 = simd_shuffle!(clamped_a, clamped_b, IDXS);
+
+        result.as_m512i()
+    }
 }
 
 /// Convert packed signed 32-bit integers from a and b to packed 16-bit integers using signed saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -6619,7 +6644,32 @@ pub fn _mm_maskz_packs_epi32(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpacksswb))]
 pub fn _mm512_packs_epi16(a: __m512i, b: __m512i) -> __m512i {
-    unsafe { transmute(vpacksswb(a.as_i16x32(), b.as_i16x32())) }
+    unsafe {
+        let max = simd_splat(i16::from(i8::MAX));
+        let min = simd_splat(i16::from(i8::MIN));
+
+        let clamped_a = simd_imax(simd_imin(a.as_i16x32(), max), min)
+            .as_m512i()
+            .as_i8x64();
+        let clamped_b = simd_imax(simd_imin(b.as_i16x32(), max), min)
+            .as_m512i()
+            .as_i8x64();
+
+        #[rustfmt::skip]
+        const IDXS: [u32; 64] = [
+            000, 002, 004, 006, 008, 010, 012, 014,
+            064, 066, 068, 070, 072, 074, 076, 078,
+            016, 018, 020, 022, 024, 026, 028, 030,
+            080, 082, 084, 086, 088, 090, 092, 094,
+            032, 034, 036, 038, 040, 042, 044, 046,
+            096, 098, 100, 102, 104, 106, 108, 110,
+            048, 050, 052, 054, 056, 058, 060, 062,
+            112, 114, 116, 118, 120, 122, 124, 126,
+        ];
+        let result: i8x64 = simd_shuffle!(clamped_a, clamped_b, IDXS);
+
+        result.as_m512i()
+    }
 }
 
 /// Convert packed signed 16-bit integers from a and b to packed 8-bit integers using signed saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -6714,7 +6764,32 @@ pub fn _mm_maskz_packs_epi16(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackusdw))]
 pub fn _mm512_packus_epi32(a: __m512i, b: __m512i) -> __m512i {
-    unsafe { transmute(vpackusdw(a.as_i32x16(), b.as_i32x16())) }
+    unsafe {
+        let max = simd_splat(i32::from(u16::MAX));
+        let min = simd_splat(i32::from(u16::MIN));
+
+        let clamped_a = simd_imax(simd_imin(a.as_i32x16(), max), min)
+            .as_m512i()
+            .as_i16x32();
+        let clamped_b = simd_imax(simd_imin(b.as_i32x16(), max), min)
+            .as_m512i()
+            .as_i16x32();
+
+        #[rustfmt::skip]
+        const IDXS: [u32; 32] = [
+            00, 02, 04, 06,
+            32, 34, 36, 38,
+            08, 10, 12, 14,
+            40, 42, 44, 46,
+            16, 18, 20, 22,
+            48, 50, 52, 54,
+            24, 26, 28, 30,
+            56, 58, 60, 62,
+        ];
+        let result: i16x32 = simd_shuffle!(clamped_a, clamped_b, IDXS);
+
+        result.as_m512i()
+    }
 }
 
 /// Convert packed signed 32-bit integers from a and b to packed 16-bit integers using unsigned saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -6809,7 +6884,32 @@ pub fn _mm_maskz_packus_epi32(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpackuswb))]
 pub fn _mm512_packus_epi16(a: __m512i, b: __m512i) -> __m512i {
-    unsafe { transmute(vpackuswb(a.as_i16x32(), b.as_i16x32())) }
+    unsafe {
+        let max = simd_splat(i16::from(u8::MAX));
+        let min = simd_splat(i16::from(u8::MIN));
+
+        let clamped_a = simd_imax(simd_imin(a.as_i16x32(), max), min)
+            .as_m512i()
+            .as_i8x64();
+        let clamped_b = simd_imax(simd_imin(b.as_i16x32(), max), min)
+            .as_m512i()
+            .as_i8x64();
+
+        #[rustfmt::skip]
+        const IDXS: [u32; 64] = [
+            000, 002, 004, 006, 008, 010, 012, 014,
+            064, 066, 068, 070, 072, 074, 076, 078,
+            016, 018, 020, 022, 024, 026, 028, 030,
+            080, 082, 084, 086, 088, 090, 092, 094,
+            032, 034, 036, 038, 040, 042, 044, 046,
+            096, 098, 100, 102, 104, 106, 108, 110,
+            048, 050, 052, 054, 056, 058, 060, 062,
+            112, 114, 116, 118, 120, 122, 124, 126,
+        ];
+        let result: i8x64 = simd_shuffle!(clamped_a, clamped_b, IDXS);
+
+        result.as_m512i()
+    }
 }
 
 /// Convert packed signed 16-bit integers from a and b to packed 8-bit integers using unsigned saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -12605,15 +12705,6 @@ unsafe extern "C" {
     fn vpmaddwd(a: i16x32, b: i16x32) -> i32x16;
     #[link_name = "llvm.x86.avx512.pmaddubs.w.512"]
     fn vpmaddubsw(a: u8x64, b: i8x64) -> i16x32;
-
-    #[link_name = "llvm.x86.avx512.packssdw.512"]
-    fn vpackssdw(a: i32x16, b: i32x16) -> i16x32;
-    #[link_name = "llvm.x86.avx512.packsswb.512"]
-    fn vpacksswb(a: i16x32, b: i16x32) -> i8x64;
-    #[link_name = "llvm.x86.avx512.packusdw.512"]
-    fn vpackusdw(a: i32x16, b: i32x16) -> u16x32;
-    #[link_name = "llvm.x86.avx512.packuswb.512"]
-    fn vpackuswb(a: i16x32, b: i16x32) -> u8x64;
 
     #[link_name = "llvm.x86.avx512.psll.w.512"]
     fn vpsllw(a: i16x32, count: i16x8) -> i16x32;
