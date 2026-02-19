@@ -2315,7 +2315,7 @@ pub const fn _mm256_or_si256(a: __m256i, b: __m256i) -> __m256i {
     unsafe { transmute(simd_or(a.as_i32x8(), b.as_i32x8())) }
 }
 
-/// Converts packed 16-bit integers from `a` and `b` to packed 8-bit integers
+/// Converts packed signed 16-bit integers from `a` and `b` to packed 8-bit integers
 /// using signed saturation
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packs_epi16)
@@ -2324,10 +2324,31 @@ pub const fn _mm256_or_si256(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpacksswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_packs_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(packsswb(a.as_i16x16(), b.as_i16x16())) }
+    unsafe {
+        let max = simd_splat(i16::from(i8::MAX));
+        let min = simd_splat(i16::from(i8::MIN));
+
+        let clamped_a = simd_imax(simd_imin(a.as_i16x16(), max), min)
+            .as_m256i()
+            .as_i8x32();
+        let clamped_b = simd_imax(simd_imin(b.as_i16x16(), max), min)
+            .as_m256i()
+            .as_i8x32();
+
+        #[rustfmt::skip]
+        const IDXS: [u32; 32] = [
+            00, 02, 04, 06, 08, 10, 12, 14, // a-lo i16 to i8 conversions
+            32, 34, 36, 38, 40, 42, 44, 46, // b-lo
+            16, 18, 20, 22, 24, 26, 28, 30, // a-hi
+            48, 50, 52, 54, 56, 58, 60, 62, // b-hi
+        ];
+        let result: i8x32 = simd_shuffle!(clamped_a, clamped_b, IDXS);
+
+        result.as_m256i()
+    }
 }
 
-/// Converts packed 32-bit integers from `a` and `b` to packed 16-bit integers
+/// Converts packed signed 32-bit integers from `a` and `b` to packed 16-bit integers
 /// using signed saturation
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packs_epi32)
@@ -2336,10 +2357,31 @@ pub fn _mm256_packs_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpackssdw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_packs_epi32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(packssdw(a.as_i32x8(), b.as_i32x8())) }
+    unsafe {
+        let max = simd_splat(i32::from(i16::MAX));
+        let min = simd_splat(i32::from(i16::MIN));
+
+        let clamped_a = simd_imax(simd_imin(a.as_i32x8(), max), min)
+            .as_m256i()
+            .as_i16x16();
+        let clamped_b = simd_imax(simd_imin(b.as_i32x8(), max), min)
+            .as_m256i()
+            .as_i16x16();
+
+        #[rustfmt::skip]
+        const IDXS: [u32; 16] = [
+            00, 02, 04, 06, // a-lo i32 to i16 conversions
+            16, 18, 20, 22, // b-lo
+            08, 10, 12, 14, // a-hi
+            24, 26, 28, 30, // b-hi
+        ];
+        let result: i16x16 = simd_shuffle!(clamped_a, clamped_b, IDXS);
+
+        result.as_m256i()
+    }
 }
 
-/// Converts packed 16-bit integers from `a` and `b` to packed 8-bit integers
+/// Converts packed signed 16-bit integers from `a` and `b` to packed 8-bit integers
 /// using unsigned saturation
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packus_epi16)
@@ -2348,10 +2390,31 @@ pub fn _mm256_packs_epi32(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpackuswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_packus_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(packuswb(a.as_i16x16(), b.as_i16x16())) }
+    unsafe {
+        let max = simd_splat(i16::from(u8::MAX));
+        let min = simd_splat(i16::from(u8::MIN));
+
+        let clamped_a = simd_imax(simd_imin(a.as_i16x16(), max), min)
+            .as_m256i()
+            .as_i8x32();
+        let clamped_b = simd_imax(simd_imin(b.as_i16x16(), max), min)
+            .as_m256i()
+            .as_i8x32();
+
+        #[rustfmt::skip]
+        const IDXS: [u32; 32] = [
+            00, 02, 04, 06, 08, 10, 12, 14, // a-lo i16 to u8 conversions
+            32, 34, 36, 38, 40, 42, 44, 46, // b-lo
+            16, 18, 20, 22, 24, 26, 28, 30, // a-hi
+            48, 50, 52, 54, 56, 58, 60, 62, // b-hi
+        ];
+        let result: i8x32 = simd_shuffle!(clamped_a, clamped_b, IDXS);
+
+        result.as_m256i()
+    }
 }
 
-/// Converts packed 32-bit integers from `a` and `b` to packed 16-bit integers
+/// Converts packed signed 32-bit integers from `a` and `b` to packed 16-bit integers
 /// using unsigned saturation
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packus_epi32)
@@ -2360,7 +2423,28 @@ pub fn _mm256_packus_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpackusdw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_packus_epi32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(packusdw(a.as_i32x8(), b.as_i32x8())) }
+    unsafe {
+        let max = simd_splat(i32::from(u16::MAX));
+        let min = simd_splat(i32::from(u16::MIN));
+
+        let clamped_a = simd_imax(simd_imin(a.as_i32x8(), max), min)
+            .as_m256i()
+            .as_i16x16();
+        let clamped_b = simd_imax(simd_imin(b.as_i32x8(), max), min)
+            .as_m256i()
+            .as_i16x16();
+
+        #[rustfmt::skip]
+        const IDXS: [u32; 16] = [
+            00, 02, 04, 06, // a-lo i32 to u16 conversions
+            16, 18, 20, 22, // b-lo
+            08, 10, 12, 14, // a-hi
+            24, 26, 28, 30, // b-hi
+        ];
+        let result: i16x16 = simd_shuffle!(clamped_a, clamped_b, IDXS);
+
+        result.as_m256i()
+    }
 }
 
 /// Permutes packed 32-bit integers from `a` according to the content of `b`.
@@ -3827,14 +3911,6 @@ unsafe extern "C" {
     fn mpsadbw(a: u8x32, b: u8x32, imm8: i8) -> u16x16;
     #[link_name = "llvm.x86.avx2.pmul.hr.sw"]
     fn pmulhrsw(a: i16x16, b: i16x16) -> i16x16;
-    #[link_name = "llvm.x86.avx2.packsswb"]
-    fn packsswb(a: i16x16, b: i16x16) -> i8x32;
-    #[link_name = "llvm.x86.avx2.packssdw"]
-    fn packssdw(a: i32x8, b: i32x8) -> i16x16;
-    #[link_name = "llvm.x86.avx2.packuswb"]
-    fn packuswb(a: i16x16, b: i16x16) -> u8x32;
-    #[link_name = "llvm.x86.avx2.packusdw"]
-    fn packusdw(a: i32x8, b: i32x8) -> u16x16;
     #[link_name = "llvm.x86.avx2.psad.bw"]
     fn psadbw(a: u8x32, b: u8x32) -> u64x4;
     #[link_name = "llvm.x86.avx2.psign.b"]
