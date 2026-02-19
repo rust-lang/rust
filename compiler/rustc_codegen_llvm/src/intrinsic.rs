@@ -3,7 +3,8 @@ use std::ffi::c_uint;
 use std::{assert_matches, ptr};
 
 use rustc_abi::{
-    Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size, WrappingRange,
+    Align, BackendRepr, ExternAbi, Float, HasDataLayout, NumScalableVectors, Primitive, Size,
+    WrappingRange,
 };
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -603,6 +604,115 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let val = self.call_intrinsic("llvm.amdgcn.dispatch.ptr", &[], &[]);
                 // Relying on `LLVMBuildPointerCast` to produce an addrspacecast
                 self.pointercast(val, self.type_ptr())
+            }
+
+            sym::sve_tuple_create2 => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(1),
+                        ..
+                    }
+                );
+                let tuple_ty = self.layout_of(fn_args.type_at(1));
+                assert_matches!(
+                    tuple_ty.backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(2),
+                        ..
+                    }
+                );
+                let ret = self.const_poison(self.backend_type(tuple_ty));
+                let ret = self.insert_value(ret, args[0].immediate(), 0);
+                self.insert_value(ret, args[1].immediate(), 1)
+            }
+
+            sym::sve_tuple_create3 => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(1),
+                        ..
+                    }
+                );
+                let tuple_ty = self.layout_of(fn_args.type_at(1));
+                assert_matches!(
+                    tuple_ty.backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(3),
+                        ..
+                    }
+                );
+                let ret = self.const_poison(self.backend_type(tuple_ty));
+                let ret = self.insert_value(ret, args[0].immediate(), 0);
+                let ret = self.insert_value(ret, args[1].immediate(), 1);
+                self.insert_value(ret, args[2].immediate(), 2)
+            }
+
+            sym::sve_tuple_create4 => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(1),
+                        ..
+                    }
+                );
+                let tuple_ty = self.layout_of(fn_args.type_at(1));
+                assert_matches!(
+                    tuple_ty.backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(4),
+                        ..
+                    }
+                );
+                let ret = self.const_poison(self.backend_type(tuple_ty));
+                let ret = self.insert_value(ret, args[0].immediate(), 0);
+                let ret = self.insert_value(ret, args[1].immediate(), 1);
+                let ret = self.insert_value(ret, args[2].immediate(), 2);
+                self.insert_value(ret, args[3].immediate(), 3)
+            }
+
+            sym::sve_tuple_get => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(2 | 3 | 4 | 5 | 6 | 7 | 8),
+                        ..
+                    }
+                );
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(1)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(1),
+                        ..
+                    }
+                );
+                self.extract_value(
+                    args[0].immediate(),
+                    fn_args.const_at(2).to_leaf().to_i32() as u64,
+                )
+            }
+
+            sym::sve_tuple_set => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(2 | 3 | 4 | 5 | 6 | 7 | 8),
+                        ..
+                    }
+                );
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(1)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(1),
+                        ..
+                    }
+                );
+                self.insert_value(
+                    args[0].immediate(),
+                    args[1].immediate(),
+                    fn_args.const_at(2).to_leaf().to_i32() as u64,
+                )
             }
 
             _ if name.as_str().starts_with("simd_") => {
