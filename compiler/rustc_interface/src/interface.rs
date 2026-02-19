@@ -4,11 +4,10 @@ use std::sync::Arc;
 
 use rustc_ast::{LitKind, MetaItemKind, token};
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::jobserver;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 use rustc_lint::LintStore;
-use rustc_lint_defs::{Level, LintId};
 use rustc_middle::ty;
 use rustc_middle::ty::CurrentGcx;
 use rustc_middle::util::Providers;
@@ -334,8 +333,6 @@ pub struct Config {
     /// running rustc without having to save". (See #102759.)
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
 
-    pub lint_caps: FxHashMap<LintId, Level>,
-
     /// This is a callback from the driver that is called when [`ParseSess`] is created.
     pub psess_created: Option<Box<dyn FnOnce(&mut ParseSess) + Send>>,
 
@@ -445,7 +442,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                     output_file: config.output_file,
                     temps_dir,
                 },
-                config.lint_caps,
                 util::rustc_version_str().unwrap_or("unknown"),
                 config.using_internal_features,
             );
