@@ -2453,7 +2453,14 @@ fn run_rustfmt(
                     let cmd_path = if command.contains(std::path::MAIN_SEPARATOR)
                         || (cfg!(windows) && command.contains('/'))
                     {
-                        snap.config.root_path().join(cmd).into()
+                        let project_root = Utf8PathBuf::from_path_buf(current_dir.clone())
+                            .ok()
+                            .and_then(|p| AbsPathBuf::try_from(p).ok());
+                        let project_root = project_root
+                            .as_ref()
+                            .map(|dir| snap.config.workspace_root_for(dir))
+                            .unwrap_or(snap.config.default_root_path());
+                        project_root.join(cmd).into()
                     } else {
                         cmd
                     };

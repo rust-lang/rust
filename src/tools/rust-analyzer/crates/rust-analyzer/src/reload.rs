@@ -390,7 +390,7 @@ impl GlobalState {
         info!(%cause, "will fetch build data");
         let workspaces = Arc::clone(&self.workspaces);
         let config = self.config.cargo(None);
-        let root_path = self.config.root_path().clone();
+        let root_path = self.config.default_root_path().clone();
 
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
             sender.send(Task::FetchBuildData(BuildDataProgress::Begin)).unwrap();
@@ -883,7 +883,7 @@ impl GlobalState {
                     config,
                     crate::flycheck::FlycheckConfigJson::default(),
                     None,
-                    self.config.root_path().clone(),
+                    self.config.default_root_path().clone(),
                     None,
                     None,
                 )]
