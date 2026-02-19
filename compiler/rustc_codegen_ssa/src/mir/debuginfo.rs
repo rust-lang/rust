@@ -438,8 +438,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if operand.layout.ty.is_scalable_vector()
                     && bx.sess().target.arch == rustc_target::spec::Arch::AArch64
                 {
-                    let (count, element_ty) =
-                        operand.layout.ty.scalable_vector_element_count_and_type(bx.tcx());
+                    let (count, element_ty, _) =
+                        operand.layout.ty.scalable_vector_parts(bx.tcx()).unwrap();
                     // i.e. `<vscale x N x i1>` when `N != 16`
                     if element_ty.is_bool() && count != 16 {
                         return;

@@ -10,8 +10,8 @@ use tracing::{debug, trace};
 
 use crate::{
     AbiAlign, Align, BackendRepr, FieldsShape, HasDataLayout, IndexSlice, IndexVec, Integer,
-    LayoutData, Niche, NonZeroUsize, Primitive, ReprOptions, Scalar, Size, StructKind, TagEncoding,
-    TargetDataLayout, Variants, WrappingRange,
+    LayoutData, Niche, NonZeroUsize, NumScalableVectors, Primitive, ReprOptions, Scalar, Size,
+    StructKind, TagEncoding, TargetDataLayout, Variants, WrappingRange,
 };
 
 mod coroutine;
@@ -204,13 +204,19 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         &self,
         element: F,
         count: u64,
+        number_of_vectors: NumScalableVectors,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
     where
         FieldIdx: Idx,
         VariantIdx: Idx,
         F: AsRef<LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
     {
-        vector_type_layout(SimdVectorKind::Scalable, self.cx.data_layout(), element, count)
+        vector_type_layout(
+            SimdVectorKind::Scalable(number_of_vectors),
+            self.cx.data_layout(),
+            element,
+            count,
+        )
     }
 
     pub fn simd_type<FieldIdx, VariantIdx, F>(
@@ -1526,7 +1532,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
 enum SimdVectorKind {
     /// `#[rustc_scalable_vector]`
-    Scalable,
+    Scalable(NumScalableVectors),
     /// `#[repr(simd, packed)]`
     PackedFixed,
     /// `#[repr(simd)]`
@@ -1559,9 +1565,10 @@ where
     let size =
         elt.size.checked_mul(count, dl).ok_or_else(|| LayoutCalculatorError::SizeOverflow)?;
     let (repr, align) = match kind {
-        SimdVectorKind::Scalable => {
-            (BackendRepr::SimdScalableVector { element, count }, dl.llvmlike_vector_align(size))
-        }
+        SimdVectorKind::Scalable(number_of_vectors) => (
+            BackendRepr::SimdScalableVector { element, count, number_of_vectors },
+            dl.llvmlike_vector_align(size),
+        ),
         // Non-power-of-two vectors have padding up to the next power-of-two.
         // If we're a packed repr, remove the padding while keeping the alignment as close
         // to a vector as possible.
