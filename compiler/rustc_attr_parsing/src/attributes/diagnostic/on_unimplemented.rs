@@ -57,9 +57,13 @@ impl OnUnimplementedParser {
 
 impl<S: Stage> AttributeParser<S> for OnUnimplementedParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[
-        (&[sym::diagnostic, sym::on_unimplemented], template!(Word), |this, cx, args| {
-            this.parse(cx, args, Mode::DiagnosticOnUnimplemented);
-        }),
+        (
+            &[sym::diagnostic, sym::on_unimplemented],
+            template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+            |this, cx, args| {
+                this.parse(cx, args, Mode::DiagnosticOnUnimplemented);
+            },
+        ),
         (
             &[sym::rustc_on_unimplemented],
             template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
@@ -68,6 +72,7 @@ impl<S: Stage> AttributeParser<S> for OnUnimplementedParser {
             },
         ),
     ];
+    //FIXME attribute is not parsed for non-traits but diagnostics are issued in `check_attr.rs`
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {

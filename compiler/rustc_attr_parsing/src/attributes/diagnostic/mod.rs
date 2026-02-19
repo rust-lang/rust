@@ -118,9 +118,9 @@ fn parse_directive_items<'p, S: Stage>(
         }}
 
         macro or_malformed($($code:tt)*) {{
-            let Some(ret) = (try {
-                $($code)*
-            }) else {
+            let Some(ret) = (||{
+                Some($($code)*)
+            })() else {
 
                 malformed!()
             };

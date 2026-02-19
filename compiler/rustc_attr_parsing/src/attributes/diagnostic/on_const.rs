@@ -12,8 +12,10 @@ pub(crate) struct OnConstParser {
 }
 
 impl<S: Stage> AttributeParser<S> for OnConstParser {
-    const ATTRIBUTES: AcceptMapping<Self, S> =
-        &[(&[sym::diagnostic, sym::on_const], template!(Word), |this, cx, args| {
+    const ATTRIBUTES: AcceptMapping<Self, S> = &[(
+        &[sym::diagnostic, sym::on_const],
+        template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+        |this, cx, args| {
             if !cx.features().diagnostic_on_const() {
                 return;
             }
@@ -47,7 +49,10 @@ impl<S: Stage> AttributeParser<S> for OnConstParser {
                 return;
             };
             merge_directives(cx, &mut this.directive, (span, directive));
-        })];
+        },
+    )];
+
+    //FIXME Still checked in `check_attr.rs`
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
