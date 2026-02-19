@@ -1,4 +1,4 @@
-use rustc_abi::{Align, FieldIdx, WrappingRange};
+use rustc_abi::{Align, FIRST_VARIANT, FieldIdx, WrappingRange};
 use rustc_middle::mir::SourceInfo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -157,7 +157,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     sym::size_of_val => llsize,
                     sym::align_of_val => llalign,
                     sym::layout_of_val => {
-                        // Use the builder so we're insulated from the in-memory field order
+                        // The builder insulates us from in-memory order, but double-check declared order
+                        debug_assert!({
+                            let layout_adt = result.layout.ty.ty_adt_def().unwrap();
+                            let layout_fields = layout_adt.variant(FIRST_VARIANT).fields.as_slice();
+                            if let [size, align] = &layout_fields.raw
+                                && size.name == sym::size
+                                && align.name == sym::align
+                            {
+                                true
+                            } else {
+                                false
+                            }
+                        });
+
                         let mut builder = OperandRefBuilder::<'_, Bx::Value>::new(result.layout);
                         builder.insert_imm(FieldIdx::from_u32(0), llsize);
                         builder.insert_imm(FieldIdx::from_u32(1), llalign);

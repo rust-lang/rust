@@ -26,6 +26,9 @@ use crate::{assert_unsafe_precondition, fmt, mem};
 /// requirements, or use the more lenient `Allocator` interface.)
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+// BEWARE! The implemention of the `layout_of_val` intrinsic is coupled to the
+// declared order of these fields.  As a reminder, you'll also get a (debug-only)
+// ICE if you change their names, though you can easily update that expectation.
 #[lang = "alloc_layout"]
 pub struct Layout {
     // size of the requested block of memory, measured in bytes.
@@ -247,6 +250,30 @@ impl Layout {
     ///
     /// [trait object]: ../../book/ch17-02-trait-objects.html
     /// [extern type]: ../../unstable-book/language-features/extern-types.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(layout_for_ptr)]
+    ///
+    /// use std::alloc::Layout;
+    /// use std::ptr;
+    ///
+    /// let arbitrary = ptr::without_provenance::<[u16; 3]>(123456);
+    /// assert_eq!(
+    ///     // SAFETY: for a sized pointee, the function is always sound.
+    ///     unsafe { Layout::for_value_raw(arbitrary) },
+    ///     Layout::from_size_align(6, 2).unwrap(),
+    /// );
+    ///
+    /// let slice = ptr::slice_from_raw_parts(arbitrary, 789);
+    /// assert_eq!(
+    ///     // SAFETY: with a slice pointee, this is sound because the length
+    ///     // is short enough that size in bytes doesn't overflow isize::MAX.
+    ///     unsafe { Layout::for_value_raw(slice) },
+    ///     Layout::from_size_align(6 * 789, 2).unwrap(),
+    /// );
+    /// ```
     #[unstable(feature = "layout_for_ptr", issue = "69835")]
     #[must_use]
     #[inline]
