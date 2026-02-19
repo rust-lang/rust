@@ -45,6 +45,16 @@ fn matches_leading_pipe() {
 }
 
 #[test]
+fn matches_if_let_guard() {
+    use std::assert_matches;
+
+    assert!(
+        matches!(Some(Some(2_i32)), Some(inner) if let Some(value) = inner && value.pow(2) == 4)
+    );
+    assert_matches!(Some(Some(2_i32)), Some(inner) if let Some(value) = inner && value.pow(2) == 4);
+}
+
+#[test]
 fn cfg_select_basic() {
     cfg_select! {
         target_pointer_width = "64" => { fn f0_() -> bool { true }}

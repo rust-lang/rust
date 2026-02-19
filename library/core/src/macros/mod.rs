@@ -192,6 +192,30 @@ pub macro assert_matches {
             }
         }
     },
+    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if let $($let_guards: tt)+ )? $(,)?) => {
+        match $left {
+            $( $pattern )|+ $( if let $($let_guards)+ )? => {}
+            ref left_val => {
+                $crate::panicking::assert_matches_failed(
+                    left_val,
+                    $crate::stringify!($($pattern)|+ $(if let $($let_guards)+)?),
+                    $crate::option::Option::None
+                );
+            }
+        }
+    },
+    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if let $($let_guards: tt)+ )?, $($arg:tt)+) => {
+        match $left {
+            $( $pattern )|+ $( if let $($let_guards)+ )? => {}
+            ref left_val => {
+                $crate::panicking::assert_matches_failed(
+                    left_val,
+                    $crate::stringify!($($pattern)|+ $(if let $($let_guards)+)?),
+                    $crate::option::Option::Some($crate::format_args!($($arg)+))
+                );
+            }
+        }
+    },
 }
 
 /// Selects code at compile-time based on `cfg` predicates.
@@ -432,6 +456,13 @@ macro_rules! matches {
         #[allow(non_exhaustive_omitted_patterns)]
         match $expression {
             $pattern $(if $guard)? => true,
+            _ => false
+        }
+    };
+    ($expression:expr, $pattern:pat $(if let $($let_guards:tt)+)? $(,)?) => {
+        #[allow(non_exhaustive_omitted_patterns)]
+        match $expression {
+            $pattern $(if let $($let_guards)+)? => true,
             _ => false
         }
     };
