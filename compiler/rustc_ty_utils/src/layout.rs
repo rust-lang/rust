@@ -4,8 +4,8 @@ use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
     AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout, Layout,
-    LayoutCalculatorError, LayoutData, Niche, ReprOptions, ScalableElt, Scalar, Size, StructKind,
-    TagEncoding, VariantIdx, Variants, WrappingRange,
+    LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding,
+    VariantIdx, Variants, WrappingRange,
 };
 use rustc_hashes::Hash64;
 use rustc_hir as hir;
@@ -572,30 +572,26 @@ fn layout_of_uncached<'tcx>(
         // ```rust (ignore, example)
         // #[rustc_scalable_vector(3)]
         // struct svuint32_t(u32);
+        //
+        // #[rustc_scalable_vector]
+        // struct svuint32x2_t(svuint32_t, svuint32_t);
         // ```
-        ty::Adt(def, args)
-            if matches!(def.repr().scalable, Some(ScalableElt::ElementCount(..))) =>
-        {
-            let Some(element_ty) = def
-                .is_struct()
-                .then(|| &def.variant(FIRST_VARIANT).fields)
-                .filter(|fields| fields.len() == 1)
-                .map(|fields| fields[FieldIdx::ZERO].ty(tcx, args))
+        ty::Adt(def, _args) if def.repr().scalable() => {
+            let Some((element_count, element_ty, number_of_vectors)) =
+                ty.scalable_vector_parts(tcx)
             else {
                 let guar = tcx
                     .dcx()
-                    .delayed_bug("#[rustc_scalable_vector] was applied to an invalid type");
-                return Err(error(cx, LayoutError::ReferencesError(guar)));
-            };
-            let Some(ScalableElt::ElementCount(element_count)) = def.repr().scalable else {
-                let guar = tcx
-                    .dcx()
-                    .delayed_bug("#[rustc_scalable_vector] was applied to an invalid type");
+                    .delayed_bug("`#[rustc_scalable_vector]` was applied to an invalid type");
                 return Err(error(cx, LayoutError::ReferencesError(guar)));
             };
 
             let element_layout = cx.layout_of(element_ty)?;
-            map_layout(cx.calc.scalable_vector_type(element_layout, element_count as u64))?
+            map_layout(cx.calc.scalable_vector_type(
+                element_layout,
+                element_count as u64,
+                number_of_vectors,
+            ))?
         }
 
         // SIMD vector types.
