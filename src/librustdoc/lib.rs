@@ -1,5 +1,6 @@
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(assert_matches))]
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/"
@@ -9,7 +10,6 @@
 #![feature(box_patterns)]
 #![feature(file_buffered)]
 #![feature(formatting_options)]
-#![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
 #![feature(rustc_private)]

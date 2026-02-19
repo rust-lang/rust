@@ -24,24 +24,22 @@ impl GenmcCtx {
     }
 }
 
+/// Small helper to get the arguments of an intercepted function call.
+fn get_fn_args<'tcx, const N: usize>(
+    instance: ty::Instance<'tcx>,
+    args: &[FnArg<'tcx>],
+) -> InterpResult<'tcx, [OpTy<'tcx>; N]> {
+    let args = MiriInterpCx::copy_fn_args(args); // FIXME: Should `InPlace` arguments be reset to uninit?
+    if let Ok(ops) = args.try_into() {
+        return interp_ok(ops);
+    }
+    panic!("{} is a diagnostic item expected to have {} arguments", instance, N);
+}
+
 // Handling of code intercepted by Miri in GenMC mode, such as assume statement or `std::sync::Mutex`.
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    /// Small helper to get the arguments of an intercepted function call.
-    fn get_fn_args<const N: usize>(
-        &self,
-        instance: ty::Instance<'tcx>,
-        args: &[FnArg<'tcx>],
-    ) -> InterpResult<'tcx, [OpTy<'tcx>; N]> {
-        let this = self.eval_context_ref();
-        let args = this.copy_fn_args(args); // FIXME: Should `InPlace` arguments be reset to uninit?
-        if let Ok(ops) = args.try_into() {
-            return interp_ok(ops);
-        }
-        panic!("{} is a diagnostic item expected to have {} arguments", instance, N);
-    }
-
     /**** Blocking functionality ****/
 
     /// Handle a thread getting blocked by a user assume (not an automatically generated assume).
@@ -202,15 +200,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // NOTE: When adding new intercepted functions here, they must also be added to `fn get_function_kind` in `concurrency/genmc/scheduling.rs`.
         use rustc_span::sym;
         if this.tcx.is_diagnostic_item(sym::sys_mutex_lock, instance.def_id()) {
-            let [mutex] = this.get_fn_args(instance, args)?;
+            let [mutex] = get_fn_args(instance, args)?;
             let mutex = this.deref_pointer(&mutex)?;
             this.intercept_mutex_lock(mutex)?;
         } else if this.tcx.is_diagnostic_item(sym::sys_mutex_try_lock, instance.def_id()) {
-            let [mutex] = this.get_fn_args(instance, args)?;
+            let [mutex] = get_fn_args(instance, args)?;
             let mutex = this.deref_pointer(&mutex)?;
             this.intercept_mutex_try_lock(mutex, dest)?;
         } else if this.tcx.is_diagnostic_item(sym::sys_mutex_unlock, instance.def_id()) {
-            let [mutex] = this.get_fn_args(instance, args)?;
+            let [mutex] = get_fn_args(instance, args)?;
             let mutex = this.deref_pointer(&mutex)?;
             this.intercept_mutex_unlock(mutex)?;
         } else {

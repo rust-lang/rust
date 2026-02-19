@@ -3459,40 +3459,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_match_arm_guard(&mut self) -> PResult<'a, Option<Box<Expr>>> {
-        // Used to check the `if_let_guard` feature mostly by scanning
-        // `&&` tokens.
-        fn has_let_expr(expr: &Expr) -> bool {
-            match &expr.kind {
-                ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
-                    let lhs_rslt = has_let_expr(lhs);
-                    let rhs_rslt = has_let_expr(rhs);
-                    lhs_rslt || rhs_rslt
-                }
-                ExprKind::Let(..) => true,
-                _ => false,
-            }
-        }
         if !self.eat_keyword(exp!(If)) {
             // No match arm guard present.
             return Ok(None);
         }
 
-        let if_span = self.prev_token.span;
         let mut cond = self.parse_match_guard_condition()?;
 
-        let mut checker = CondChecker::new(self, LetChainsPolicy::AlwaysAllowed);
-        checker.visit_expr(&mut cond);
+        CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
 
-        if has_let_expr(&cond) {
-            let span = if_span.to(cond.span);
-            self.psess.gated_spans.gate(sym::if_let_guard, span);
-        }
-
-        Ok(Some(if let Some(guar) = checker.found_incorrect_let_chain {
-            self.mk_expr_err(cond.span, guar)
-        } else {
-            cond
-        }))
+        Ok(Some(cond))
     }
 
     fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (Pat, Option<Box<Expr>>)> {

@@ -2481,7 +2481,8 @@ macro_rules! int_impl {
         ///
         /// Returns a tuple of the addition along with a boolean indicating
         /// whether an arithmetic overflow would occur. If an overflow would have
-        /// occurred then the wrapped value is returned.
+        /// occurred then the wrapped value is returned (negative if overflowed
+        /// above [`MAX`](Self::MAX), non-negative if below [`MIN`](Self::MIN)).
         ///
         /// # Examples
         ///
@@ -2515,6 +2516,9 @@ macro_rules! int_impl {
         ///
         /// The output boolean returned by this method is *not* a carry flag,
         /// and should *not* be added to a more significant word.
+        ///
+        /// If overflow occurred, the wrapped value is returned (negative if overflowed
+        /// above [`MAX`](Self::MAX), non-negative if below [`MIN`](Self::MIN)).
         ///
         /// If the input carry is false, this method is equivalent to
         /// [`overflowing_add`](Self::overflowing_add).
@@ -2583,7 +2587,8 @@ macro_rules! int_impl {
         /// Calculates `self` - `rhs`.
         ///
         /// Returns a tuple of the subtraction along with a boolean indicating whether an arithmetic overflow
-        /// would occur. If an overflow would have occurred then the wrapped value is returned.
+        /// would occur. If an overflow would have occurred then the wrapped value is returned
+        /// (negative if overflowed above [`MAX`](Self::MAX), non-negative if below [`MIN`](Self::MIN)).
         ///
         /// # Examples
         ///
@@ -2618,6 +2623,9 @@ macro_rules! int_impl {
         ///
         /// The output boolean returned by this method is *not* a borrow flag,
         /// and should *not* be subtracted from a more significant word.
+        ///
+        /// If overflow occurred, the wrapped value is returned (negative if overflowed
+        /// above [`MAX`](Self::MAX), non-negative if below [`MIN`](Self::MIN)).
         ///
         /// If the input borrow is false, this method is equivalent to
         /// [`overflowing_sub`](Self::overflowing_sub).

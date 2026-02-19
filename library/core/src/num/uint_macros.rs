@@ -487,8 +487,8 @@ macro_rules! uint_impl {
 
         /// Performs a carry-less multiplication, returning the lower bits.
         ///
-        /// This operation is similar to long multiplication, except that exclusive or is used
-        /// instead of addition. The implementation is equivalent to:
+        /// This operation is similar to long multiplication in base 2, except that exclusive or is
+        /// used instead of addition. The implementation is equivalent to:
         ///
         /// ```no_run
         #[doc = concat!("pub fn carryless_mul(lhs: ", stringify!($SelfT), ", rhs: ", stringify!($SelfT), ") -> ", stringify!($SelfT), "{")]

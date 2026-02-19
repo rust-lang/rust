@@ -509,7 +509,7 @@ fn try_load_from_disk_and_cache_in_memory<'tcx, C: QueryCache, const FLAGS: Quer
             dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
         }
 
-        let prev_fingerprint = dep_graph_data.prev_fingerprint_of(prev_dep_node_index);
+        let prev_fingerprint = dep_graph_data.prev_value_fingerprint_of(prev_dep_node_index);
         // If `-Zincremental-verify-ich` is specified, re-hash results from
         // the cache and make sure that they have the expected fingerprint.
         //
@@ -538,7 +538,7 @@ fn try_load_from_disk_and_cache_in_memory<'tcx, C: QueryCache, const FLAGS: Quer
     // can be forced from `DepNode`.
     debug_assert!(
         !query.will_cache_on_disk_for_key(tcx, key)
-            || !tcx.fingerprint_style(dep_node.kind).reconstructible(),
+            || !tcx.key_fingerprint_style(dep_node.kind).reconstructible(),
         "missing on-disk cache entry for {dep_node:?}"
     );
 

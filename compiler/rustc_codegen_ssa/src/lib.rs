@@ -1,8 +1,8 @@
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(assert_matches))]
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(box_patterns)]
 #![feature(file_buffered)]
-#![feature(if_let_guard)]
 #![feature(negative_impls)]
 #![feature(string_from_utf8_lossy_owned)]
 #![feature(trait_alias)]

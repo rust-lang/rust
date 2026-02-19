@@ -137,7 +137,7 @@ struct MessageWrongType {
 struct InvalidPathFieldAttr {
     #[nonsense]
     //~^ ERROR `#[nonsense]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `nonsense` in this scope
+    //~| ERROR cannot find attribute `nonsense` in this scope
     foo: String,
 }
 

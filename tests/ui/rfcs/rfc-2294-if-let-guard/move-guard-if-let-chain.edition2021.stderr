@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/move-guard-if-let-chain.rs:12:23
+  --> $DIR/move-guard-if-let-chain.rs:14:23
    |
 LL |     let x: Box<_> = Box::new(1);
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
@@ -15,7 +15,7 @@ LL |         (1, 2) if let ref y = x && c => (),
    |                       +++
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/move-guard-if-let-chain.rs:36:23
+  --> $DIR/move-guard-if-let-chain.rs:38:23
    |
 LL |     let x: Box<_> = Box::new(1);
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
@@ -31,7 +31,7 @@ LL |         (1, _) if let ref y = x && c => (),
    |                       +++
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/move-guard-if-let-chain.rs:59:32
+  --> $DIR/move-guard-if-let-chain.rs:61:32
    |
 LL |     let x: Box<_> = Box::new(1);
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
@@ -45,7 +45,7 @@ LL |         (1, _) | (_, 2) if let ref y = x && c => (),
    |                                +++
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/move-guard-if-let-chain.rs:82:16
+  --> $DIR/move-guard-if-let-chain.rs:84:16
    |
 LL |     let x: Box<_> = Box::new(1);
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
@@ -61,7 +61,7 @@ LL |         (1, 2) if let ref y = x && c => false,
    |                       +++
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/move-guard-if-let-chain.rs:103:41
+  --> $DIR/move-guard-if-let-chain.rs:105:41
    |
 LL |     let x: Box<_> = Box::new(1);
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait

@@ -2414,7 +2414,6 @@ ui/rfcs/rfc-2396-target_feature-11/issue-99876.rs
 ui/rfcs/rfc-2497-if-let-chains/issue-88498.rs
 ui/rfcs/rfc-2497-if-let-chains/issue-90722.rs
 ui/rfcs/rfc-2497-if-let-chains/issue-92145.rs
-ui/rfcs/rfc-2497-if-let-chains/issue-93150.rs
 ui/rfcs/rfc-2497-if-let-chains/issue-99938.rs
 ui/rfcs/rfc-2528-type-changing-struct-update/issue-92010-trait-bound-not-satisfied.rs
 ui/rfcs/rfc-2528-type-changing-struct-update/issue-96878.rs

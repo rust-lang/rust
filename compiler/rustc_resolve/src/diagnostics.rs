@@ -32,7 +32,7 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::{BytePos, Ident, Span, Symbol, SyntaxContext, kw, sym};
+use rustc_span::{BytePos, Ident, RemapPathScopeComponents, Span, Symbol, SyntaxContext, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, instrument};
 
@@ -899,9 +899,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix => {
                 self.dcx().create_err(errs::SelfImportOnlyInImportListWithNonEmptyPrefix { span })
             }
-            ResolutionError::FailedToResolve { segment, label, suggestion, module } => {
-                let mut err =
-                    struct_span_code_err!(self.dcx(), span, E0433, "failed to resolve: {label}");
+            ResolutionError::FailedToResolve { segment, label, suggestion, module, message } => {
+                let mut err = struct_span_code_err!(self.dcx(), span, E0433, "{message}");
                 err.span_label(span, label);
 
                 if let Some((suggestions, msg, applicability)) = suggestion {
@@ -909,16 +908,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         err.help(msg);
                         return err;
                     }
-                    err.multipart_suggestion(msg, suggestions, applicability);
+                    err.multipart_suggestion_verbose(msg, suggestions, applicability);
                 }
 
-                if let Some(segment) = segment {
-                    let module = match module {
-                        Some(ModuleOrUniformRoot::Module(m)) if let Some(id) = m.opt_def_id() => id,
-                        _ => CRATE_DEF_ID.to_def_id(),
-                    };
-                    self.find_cfg_stripped(&mut err, &segment, module);
-                }
+                let module = match module {
+                    Some(ModuleOrUniformRoot::Module(m)) if let Some(id) = m.opt_def_id() => id,
+                    _ => CRATE_DEF_ID.to_def_id(),
+                };
+                self.find_cfg_stripped(&mut err, &segment, module);
 
                 err
             }
@@ -1108,10 +1105,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             VisResolutionError::AncestorOnly(span) => {
                 self.dcx().create_err(errs::AncestorOnly(span))
             }
-            VisResolutionError::FailedToResolve(span, label, suggestion) => self.into_struct_error(
-                span,
-                ResolutionError::FailedToResolve { segment: None, label, suggestion, module: None },
-            ),
+            VisResolutionError::FailedToResolve(span, segment, label, suggestion, message) => self
+                .into_struct_error(
+                    span,
+                    ResolutionError::FailedToResolve {
+                        segment,
+                        label,
+                        suggestion,
+                        module: None,
+                        message,
+                    },
+                ),
             VisResolutionError::ExpectedFound(span, path_str, res) => {
                 self.dcx().create_err(errs::ExpectedModuleFound { span, res, path_str })
             }
@@ -2438,13 +2442,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         failed_segment_idx: usize,
         ident: Ident,
         diag_metadata: Option<&DiagMetadata<'_>>,
-    ) -> (String, Option<Suggestion>) {
+    ) -> (String, String, Option<Suggestion>) {
         let is_last = failed_segment_idx == path.len() - 1;
         let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
         let module_res = match module {
             Some(ModuleOrUniformRoot::Module(module)) => module.res(),
             _ => None,
         };
+        let scope = match &path[..failed_segment_idx] {
+            [.., prev] => {
+                if prev.ident.name == kw::PathRoot {
+                    format!("the crate root")
+                } else {
+                    format!("`{}`", prev.ident)
+                }
+            }
+            _ => format!("this scope"),
+        };
+        let message = format!("cannot find `{ident}` in {scope}");
+
         if module_res == self.graph_root.res() {
             let is_mod = |res| matches!(res, Res::Def(DefKind::Mod, _));
             let mut candidates = self.lookup_import_candidates(ident, TypeNS, parent_scope, is_mod);
@@ -2462,6 +2478,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     Path { segments, span: Span::default(), tokens: None }
                 };
                 (
+                    message,
                     String::from("unresolved import"),
                     Some((
                         vec![(ident.span, pprust::path_to_string(&path))],
@@ -2471,6 +2488,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 )
             } else if ident.name == sym::core {
                 (
+                    message,
                     format!("you might be missing crate `{ident}`"),
                     Some((
                         vec![(ident.span, "std".to_string())],
@@ -2479,9 +2497,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     )),
                 )
             } else if ident.name == kw::Underscore {
-                (format!("`_` is not a valid crate or module name"), None)
+                (
+                    "invalid crate or module name `_`".to_string(),
+                    "`_` is not a valid crate or module name".to_string(),
+                    None,
+                )
             } else if self.tcx.sess.is_rust_2015() {
                 (
+                    format!("cannot find module or crate `{ident}` in {scope}"),
                     format!("use of unresolved module or unlinked crate `{ident}`"),
                     Some((
                         vec![(
@@ -2490,8 +2513,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         )],
                         if was_invoked_from_cargo() {
                             format!(
-                                "if you wanted to use a crate named `{ident}`, use `cargo add {ident}` \
-                             to add it to your `Cargo.toml` and import it in your code",
+                                "if you wanted to use a crate named `{ident}`, use `cargo add \
+                                 {ident}` to add it to your `Cargo.toml` and import it in your \
+                                 code",
                             )
                         } else {
                             format!(
@@ -2503,7 +2527,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     )),
                 )
             } else {
-                (format!("could not find `{ident}` in the crate root"), None)
+                (message, format!("could not find `{ident}` in the crate root"), None)
             }
         } else if failed_segment_idx > 0 {
             let parent = path[failed_segment_idx - 1].ident.name;
@@ -2569,15 +2593,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     );
                 };
             }
-            (msg, None)
+            (message, msg, None)
         } else if ident.name == kw::SelfUpper {
             // As mentioned above, `opt_ns` being `None` indicates a module path in import.
             // We can use this to improve a confusing error for, e.g. `use Self::Variant` in an
             // impl
             if opt_ns.is_none() {
-                ("`Self` cannot be used in imports".to_string(), None)
+                (message, "`Self` cannot be used in imports".to_string(), None)
             } else {
                 (
+                    message,
                     "`Self` is only available in impls, traits, and type definitions".to_string(),
                     None,
                 )
@@ -2608,12 +2633,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // }
                 // ```
                 Some(LateDecl::RibDef(Res::Local(id))) => {
-                    Some(*self.pat_span_map.get(&id).unwrap())
+                    Some((*self.pat_span_map.get(&id).unwrap(), "a", "local binding"))
                 }
                 // Name matches item from a local name binding
                 // created by `use` declaration. For example:
                 // ```
-                // pub Foo: &str = "";
+                // pub const Foo: &str = "";
                 //
                 // mod submod {
                 //     use super::Foo;
@@ -2621,18 +2646,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 //                               // binding `Foo`.
                 // }
                 // ```
-                Some(LateDecl::Decl(name_binding)) => Some(name_binding.span),
+                Some(LateDecl::Decl(name_binding)) => Some((
+                    name_binding.span,
+                    name_binding.res().article(),
+                    name_binding.res().descr(),
+                )),
                 _ => None,
             };
-            let suggestion = match_span.map(|span| {
-                (
-                    vec![(span, String::from(""))],
-                    format!("`{ident}` is defined here, but is not a type"),
-                    Applicability::MaybeIncorrect,
-                )
-            });
 
-            (format!("use of undeclared type `{ident}`"), suggestion)
+            let message = format!("cannot find type `{ident}` in {scope}");
+            let label = if let Some((span, article, descr)) = match_span {
+                format!(
+                    "`{ident}` is declared as {article} {descr} at `{}`, not a type",
+                    self.tcx
+                        .sess
+                        .source_map()
+                        .span_to_short_string(span, RemapPathScopeComponents::DIAGNOSTICS)
+                )
+            } else {
+                format!("use of undeclared type `{ident}`")
+            };
+            (message, label, None)
         } else {
             let mut suggestion = None;
             if ident.name == sym::alloc {
@@ -2663,7 +2697,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ignore_import,
             ) {
                 let descr = binding.res().descr();
-                (format!("{descr} `{ident}` is not a crate or module"), suggestion)
+                let message = format!("cannot find module or crate `{ident}` in {scope}");
+                (message, format!("{descr} `{ident}` is not a crate or module"), suggestion)
             } else {
                 let suggestion = if suggestion.is_some() {
                     suggestion
@@ -2685,7 +2720,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         Applicability::MaybeIncorrect,
                     ))
                 };
-                (format!("use of unresolved module or unlinked crate `{ident}`"), suggestion)
+                let message = format!("cannot find module or crate `{ident}` in {scope}");
+                (
+                    message,
+                    format!("use of unresolved module or unlinked crate `{ident}`"),
+                    suggestion,
+                )
             }
         }
     }

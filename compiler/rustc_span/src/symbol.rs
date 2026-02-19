@@ -327,7 +327,6 @@ symbols! {
         Pointer,
         Poll,
         ProcMacro,
-        ProceduralMasqueradeDummyType,
         Range,
         RangeBounds,
         RangeCopy,

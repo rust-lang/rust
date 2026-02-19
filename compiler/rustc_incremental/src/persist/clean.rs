@@ -322,7 +322,7 @@ impl<'tcx> CleanVisitor<'tcx> {
         if let Some(def_id) = dep_node.extract_def_id(self.tcx) {
             format!("{:?}({})", dep_node.kind, self.tcx.def_path_str(def_id))
         } else {
-            format!("{:?}({:?})", dep_node.kind, dep_node.hash)
+            format!("{:?}({:?})", dep_node.kind, dep_node.key_fingerprint)
         }
     }
 

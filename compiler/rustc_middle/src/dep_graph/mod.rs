@@ -30,7 +30,7 @@ mod serialized;
 /// This is mainly for determining whether and how we can reconstruct a key
 /// from the fingerprint.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum FingerprintStyle {
+pub enum KeyFingerprintStyle {
     /// The fingerprint is actually a DefPathHash.
     DefPathHash,
     /// The fingerprint is actually a HirId.
@@ -41,14 +41,14 @@ pub enum FingerprintStyle {
     Opaque,
 }
 
-impl FingerprintStyle {
+impl KeyFingerprintStyle {
     #[inline]
     pub const fn reconstructible(self) -> bool {
         match self {
-            FingerprintStyle::DefPathHash | FingerprintStyle::Unit | FingerprintStyle::HirId => {
-                true
-            }
-            FingerprintStyle::Opaque => false,
+            KeyFingerprintStyle::DefPathHash
+            | KeyFingerprintStyle::Unit
+            | KeyFingerprintStyle::HirId => true,
+            KeyFingerprintStyle::Opaque => false,
         }
     }
 }
@@ -86,8 +86,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline(always)]
-    pub fn fingerprint_style(self, kind: DepKind) -> FingerprintStyle {
-        self.dep_kind_vtable(kind).fingerprint_style
+    pub fn key_fingerprint_style(self, kind: DepKind) -> KeyFingerprintStyle {
+        self.dep_kind_vtable(kind).key_fingerprint_style
     }
 
     /// Try to force a dep node to execute and see if it's green.

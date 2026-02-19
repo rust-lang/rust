@@ -7,8 +7,8 @@ LL | mod not_a_real_file;
    = help: to create the module `not_a_real_file`, create file "$DIR/not_a_real_file.rs" or "$DIR/not_a_real_file/mod.rs"
    = note: if there is a `mod not_a_real_file` elsewhere in the crate already, import it with `use crate::...` instead
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `mod_file_aux`
-  --> $DIR/mod_file_not_exist.rs:5:16
+error[E0433]: cannot find module or crate `mod_file_aux` in this scope
+  --> $DIR/mod_file_not_exist.rs:6:16
    |
 LL |     assert_eq!(mod_file_aux::bar(), 10);
    |                ^^^^^^^^^^^^ use of unresolved module or unlinked crate `mod_file_aux`
