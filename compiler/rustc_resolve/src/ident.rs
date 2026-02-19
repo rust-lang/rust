@@ -1256,7 +1256,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             .tcx
                             .associated_item_def_ids(def_id)
                             .iter()
-                            .map(|field_id| self.tcx.visibility(field_id))
+                            .map(|&field_id| self.tcx.visibility(field_id))
                             .collect();
                         (ctor_res, ctor_vis, field_visibilities)
                     })

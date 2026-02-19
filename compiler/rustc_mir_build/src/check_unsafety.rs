@@ -471,7 +471,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::Call { fun, ty: _, args: _, from_hir_call: _, fn_span: _ } => {
                 let fn_ty = self.thir[fun].ty;
                 let sig = fn_ty.fn_sig(self.tcx);
-                let (callee_features, safe_target_features): (&[_], _) = match fn_ty.kind() {
+                let (callee_features, safe_target_features): (&[_], _) = match *fn_ty.kind() {
                     ty::FnDef(func_id, ..) => {
                         let cg_attrs = self.tcx.codegen_fn_attrs(func_id);
                         (&cg_attrs.target_features, cg_attrs.safe_target_features)

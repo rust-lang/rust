@@ -207,7 +207,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
             if self_ty.is_fn() {
                 let fn_sig = self_ty.fn_sig(self.tcx);
-                let shortname = if let ty::FnDef(def_id, _) = self_ty.kind()
+                let shortname = if let ty::FnDef(def_id, _) = *self_ty.kind()
                     && self.tcx.codegen_fn_attrs(def_id).safe_target_features
                 {
                     "#[target_feature] fn"

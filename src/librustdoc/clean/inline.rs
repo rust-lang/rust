@@ -191,7 +191,7 @@ pub(crate) fn try_inline_glob(
                 .iter()
                 .filter(|child| !child.reexport_chain.is_empty())
                 .filter_map(|child| child.res.opt_def_id())
-                .filter(|def_id| !cx.tcx.is_doc_hidden(def_id))
+                .filter(|&def_id| !cx.tcx.is_doc_hidden(def_id))
                 .collect();
             let attrs = cx.tcx.hir_attrs(import.hir_id());
             let mut items = build_module_items(

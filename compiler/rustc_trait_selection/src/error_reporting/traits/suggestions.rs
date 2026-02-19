@@ -2244,9 +2244,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // First, look for an `WhereClauseInExpr`, which means we can get
         // the uninstantiated predicate list of the called function. And check
         // that the predicate that we failed to satisfy is a `Fn`-like trait.
-        if let ObligationCauseCode::WhereClauseInExpr(def_id, _, _, idx) = cause
+        if let ObligationCauseCode::WhereClauseInExpr(def_id, _, _, idx) = *cause
             && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
-            && let Some(pred) = predicates.predicates.get(*idx)
+            && let Some(pred) = predicates.predicates.get(idx)
             && let ty::ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
             && self.tcx.is_fn_trait(trait_pred.def_id())
         {
@@ -2257,7 +2257,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             // Find another predicate whose self-type is equal to the expected self type,
             // but whose args don't match.
-            let other_pred = predicates.into_iter().enumerate().find(|(other_idx, (pred, _))| {
+            let other_pred = predicates.into_iter().enumerate().find(|&(other_idx, (pred, _))| {
                 match pred.kind().skip_binder() {
                     ty::ClauseKind::Trait(trait_pred)
                         if self.tcx.is_fn_trait(trait_pred.def_id())
@@ -3029,10 +3029,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     let len = impls.len();
                                     let mut types = impls
                                         .iter()
-                                        .map(|t| {
+                                        .map(|&&t| {
                                             with_no_trimmed_paths!(format!(
                                                 "  {}",
-                                                tcx.type_of(*t).instantiate_identity(),
+                                                tcx.type_of(t).instantiate_identity(),
                                             ))
                                         })
                                         .collect::<Vec<_>>();
@@ -3421,7 +3421,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let ty_str = tcx.short_string(ty, err.long_ty_path());
                         format!("required because it appears within the type `{ty_str}`")
                     };
-                    match ty.kind() {
+                    match *ty.kind() {
                         ty::Adt(def, _) => {
                             let msg = msg();
                             match tcx.opt_item_ident(def.did()) {
@@ -4216,11 +4216,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // to an associated type (as seen from `trait_pred`) in the predicate. Like in
             // trait_pred `S: Sum<<Self as Iterator>::Item>` and predicate `i32: Sum<&()>`
             let mut type_diffs = vec![];
-            if let ObligationCauseCode::WhereClauseInExpr(def_id, _, _, idx) = parent_code
+            if let ObligationCauseCode::WhereClauseInExpr(def_id, _, _, idx) = *parent_code
                 && let Some(node_args) = typeck_results.node_args_opt(call_hir_id)
                 && let where_clauses =
                     self.tcx.predicates_of(def_id).instantiate(self.tcx, node_args)
-                && let Some(where_pred) = where_clauses.predicates.get(*idx)
+                && let Some(where_pred) = where_clauses.predicates.get(idx)
             {
                 if let Some(where_pred) = where_pred.as_trait_clause()
                     && let Some(failed_pred) = failed_pred.as_trait_clause()

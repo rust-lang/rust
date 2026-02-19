@@ -1013,12 +1013,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         let src_ty = op.ty(self.body, tcx);
                         let mut src_sig = src_ty.fn_sig(tcx);
-                        if let ty::FnDef(def_id, _) = src_ty.kind()
+                        if let ty::FnDef(def_id, _) = *src_ty.kind()
                             && let ty::FnPtr(_, target_hdr) = *ty.kind()
                             && tcx.codegen_fn_attrs(def_id).safe_target_features
                             && target_hdr.safety.is_safe()
                             && let Some(safe_sig) = tcx.adjust_target_feature_sig(
-                                *def_id,
+                                def_id,
                                 src_sig,
                                 self.body.source.def_id(),
                             )

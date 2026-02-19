@@ -633,13 +633,6 @@ mod sealed {
         }
     }
 
-    impl<'a, P: Copy> IntoQueryParam<P> for &'a P {
-        #[inline(always)]
-        fn into_query_param(self) -> P {
-            *self
-        }
-    }
-
     impl IntoQueryParam<LocalDefId> for OwnerId {
         #[inline(always)]
         fn into_query_param(self) -> LocalDefId {
