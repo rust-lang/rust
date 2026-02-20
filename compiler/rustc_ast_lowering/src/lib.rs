@@ -60,7 +60,7 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
-use rustc_session::parse::add_feature_diagnostics;
+use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
 use smallvec::SmallVec;
@@ -2449,6 +2449,26 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Tup(exprs), span }
             }
             ExprKind::Path(qself, path) => {
+                if let Some(qself) = qself
+                    && path.segments.len() >= 2
+                    && matches!(qself.ty.kind, TyKind::Path(None, _))
+                    && self
+                        .resolver
+                        .get_partial_res(qself.ty.id)
+                        .and_then(|partial_res| partial_res.full_res())
+                        .is_some_and(|res| matches!(res, Res::Def(DefKind::TyParam, _)))
+                    && !self.tcx.features().const_generics_assoc_consts()
+                {
+                    let err = feature_err(
+                        self.tcx.sess,
+                        sym::const_generics_assoc_consts,
+                        expr.span,
+                        "associated const projections in const arguments are experimental",
+                    )
+                    .emit();
+                    return ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Error(err), span };
+                }
+
                 let qpath = self.lower_qpath(
                     expr.id,
                     qself,
