@@ -383,6 +383,7 @@
 #![feature(clone_from_ref)]
 #![feature(get_mut_unchecked)]
 #![feature(io_error_internals)]
+#![feature(io_slice_as_bytes)]
 #![feature(map_try_insert)]
 #![feature(slice_concat_trait)]
 #![feature(thin_box)]
