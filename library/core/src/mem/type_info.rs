@@ -153,7 +153,7 @@ pub struct Trait {
     pub is_auto: bool,
 }
 
-/// Compile-time type information about arrays.
+/// Compile-time type information about structs.
 #[derive(Debug)]
 #[non_exhaustive]
 #[unstable(feature = "type_info", issue = "146922")]
