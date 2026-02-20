@@ -2642,9 +2642,9 @@ impl RawTableInner {
         unsafe { self.ctrl.as_ptr().add(index).cast() }
     }
 
-    /// Gets the slice of all control bytes.
-    fn ctrl_slice(&mut self) -> &mut [Tag] {
-        // SAFETY: We've initialized all control bytes, and have the correct number.
+    /// Gets the slice of all control bytes, as possibily uninitialized tags.
+    fn ctrl_slice(&mut self) -> &mut [mem::MaybeUninit<Tag>] {
+        // SAFETY: We have the correct number of control bytes.
         unsafe { slice::from_raw_parts_mut(self.ctrl.as_ptr().cast(), self.num_ctrl_bytes()) }
     }
 
