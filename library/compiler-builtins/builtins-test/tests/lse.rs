@@ -1,6 +1,6 @@
 #![feature(decl_macro)] // so we can use pub(super)
 #![feature(macro_metavar_expr_concat)]
-#![cfg(target_arch = "aarch64")]
+#![cfg(all(target_arch = "aarch64", feature = "mangled-names"))]
 
 use std::sync::Mutex;
 
