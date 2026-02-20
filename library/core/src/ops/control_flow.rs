@@ -197,7 +197,7 @@ impl<B, C> ControlFlow<B, C> {
         }
     }
 
-    /// Converts the `ControlFlow` into an `Result` which is `Ok` if the
+    /// Converts the `ControlFlow` into a `Result` which is `Ok` if the
     /// `ControlFlow` was `Break` and `Err` if otherwise.
     ///
     /// # Examples
@@ -311,7 +311,7 @@ impl<B, C> ControlFlow<B, C> {
         }
     }
 
-    /// Converts the `ControlFlow` into an `Result` which is `Ok` if the
+    /// Converts the `ControlFlow` into a `Result` which is `Ok` if the
     /// `ControlFlow` was `Continue` and `Err` if otherwise.
     ///
     /// # Examples
