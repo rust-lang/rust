@@ -1,4 +1,6 @@
 //@ needs-asm-support
+//@ reference: asm.ts-args.syntax
+//@ reference: asm.ts-args.one-or-more
 
 use std::arch::{asm, global_asm};
 

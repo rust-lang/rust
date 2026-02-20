@@ -2,6 +2,8 @@
 //@ needs-asm-support
 //@ ignore-nvptx64
 //@ ignore-spirv
+//@ reference: attributes.codegen.naked.unsafe-attribute
+//@ reference: asm.scope.naked_asm
 
 #![crate_type = "lib"]
 
