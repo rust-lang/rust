@@ -4426,7 +4426,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let Finalize { node_id, path_span, .. } = finalize;
         let report_errors = |this: &mut Self, res: Option<Res>| {
             if this.should_report_errs() {
-                let (err, candidates) = this.smart_resolve_report_errors(
+                let (mut err, candidates) = this.smart_resolve_report_errors(
                     path,
                     None,
                     path_span,
@@ -4437,7 +4437,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                 let def_id = this.parent_scope.module.nearest_parent_mod();
                 let instead = res.is_some();
-                let suggestion = if let Some((start, end)) = this.diag_metadata.in_range
+                let (suggestion, const_err) = if let Some((start, end)) =
+                    this.diag_metadata.in_range
                     && path[0].ident.span.lo() == end.span.lo()
                     && !matches!(start.kind, ExprKind::Lit(_))
                 {
@@ -4449,12 +4450,15 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         span = span.with_lo(span.lo() + BytePos(1));
                         sugg = "";
                     }
-                    Some((
-                        span,
-                        "you might have meant to write `.` instead of `..`",
-                        sugg.to_string(),
-                        Applicability::MaybeIncorrect,
-                    ))
+                    (
+                        Some((
+                            span,
+                            "you might have meant to write `.` instead of `..`",
+                            sugg.to_string(),
+                            Applicability::MaybeIncorrect,
+                        )),
+                        None,
+                    )
                 } else if res.is_none()
                     && let PathSource::Type
                     | PathSource::Expr(_)
@@ -4462,8 +4466,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 {
                     this.suggest_adding_generic_parameter(path, source)
                 } else {
-                    None
+                    (None, None)
                 };
+
+                if let Some(const_err) = const_err {
+                    err.cancel();
+                    err = const_err;
+                }
 
                 let ue = UseError {
                     err,

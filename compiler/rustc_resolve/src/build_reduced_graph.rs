@@ -898,7 +898,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
 
             // These items live in both the type and value namespaces.
-            ItemKind::Struct(ident, _, ref vdata) => {
+            ItemKind::Struct(ident, ref generics, ref vdata) => {
                 self.build_reduced_graph_for_struct_variant(
                     vdata.fields(),
                     ident,
@@ -947,6 +947,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         .struct_constructors
                         .insert(local_def_id, (ctor_res, ctor_vis.to_def_id(), ret_fields));
                 }
+                self.r.struct_generics.insert(local_def_id, generics.clone());
             }
 
             ItemKind::Union(ident, _, ref vdata) => {
