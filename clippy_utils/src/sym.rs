@@ -257,7 +257,6 @@ generate! {
     f64_legacy_const_nan,
     f64_legacy_const_neg_infinity,
     f64_legacy_const_radix,
-    field,
     file_options,
     filter,
     filter_map,
