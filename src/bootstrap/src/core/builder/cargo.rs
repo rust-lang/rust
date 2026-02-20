@@ -1029,10 +1029,9 @@ impl Builder<'_> {
         }
 
         // `rustc` needs to know the remapping scheme, in order to know how to reverse it (unremap)
-        // later. Two env vars are set and made available to the compiler
+        // later. The following env var is set and made available to the compiler:
         //
         // - `CFG_VIRTUAL_RUST_SOURCE_BASE_DIR`: `rust-src` remap scheme (`NonCompiler`)
-        // - `CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR`: `rustc-dev` remap scheme (`Compiler`)
         //
         // Keep this scheme in sync with `rustc_metadata::rmeta::decoder`'s
         // `try_to_translate_virtual_to_real`.
@@ -1051,9 +1050,6 @@ impl Builder<'_> {
                 if let Some(ref map_to) =
                     self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::Compiler)
                 {
-                    // Tell the compiler which prefix was used for remapping the compiler it-self
-                    cargo.env("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR", map_to);
-
                     // When building compiler sources, we want to apply the compiler remap scheme.
                     let map = [
                         // Cargo use relative paths for workspace members, so let's remap those.
