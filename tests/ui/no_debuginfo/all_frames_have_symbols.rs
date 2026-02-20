@@ -8,7 +8,8 @@ fn main() {
     let mut has_symbols = 0;
     let btrace = backtrace::Backtrace::force_capture();
     let frames = btrace.frames();
-    for frame in frames {
+    let mut missing_symbol_indices = Vec::new();
+    for (i, frame) in frames.iter().enumerate() {
         let mut any = false;
         for sym in frame.symbols() {
             if sym.name().is_some() {
@@ -20,6 +21,7 @@ fn main() {
             has_symbols += 1;
         } else if !frame.ip().is_null() {
             missing_symbols += 1;
+            missing_symbol_indices.push(i);
         }
     }
 
@@ -28,6 +30,10 @@ fn main() {
     if cfg!(windows) && cfg!(target_env = "gnu") {
         assert!(missing_symbols < has_symbols && has_symbols > 4);
     } else {
+        for i in missing_symbol_indices {
+            eprintln!("missing symbol for frame {i}: {:#?}", frames[i]);
+        }
+        eprintln!("Full erroneous backtrace: {:#?}", btrace);
         assert_eq!(missing_symbols, 0);
     }
 }
