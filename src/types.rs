@@ -1035,6 +1035,14 @@ impl Rewrite for ast::Ty {
                 let pat = pat.rewrite_result(context, shape)?;
                 Ok(format!("{ty} is {pat}"))
             }
+            ast::TyKind::FieldOf(ref ty, ref variant, ref field) => {
+                let ty = ty.rewrite_result(context, shape)?;
+                if let Some(variant) = variant {
+                    Ok(format!("builtin # field_of({ty}, {variant}.{field})"))
+                } else {
+                    Ok(format!("builtin # field_of({ty}, {field})"))
+                }
+            }
             ast::TyKind::UnsafeBinder(ref binder) => {
                 let mut result = String::new();
                 if binder.generic_params.is_empty() {
