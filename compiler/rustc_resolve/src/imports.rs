@@ -1282,6 +1282,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 if i.name == ident.name {
                                     return None;
                                 } // Never suggest the same name
+                                if i.name == kw::Underscore {
+                                    return None;
+                                } // `use _` is never valid
 
                                 let resolution = resolution.borrow();
                                 if let Some(name_binding) = resolution.best_decl() {

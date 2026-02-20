@@ -3,24 +3,12 @@ error[E0432]: unresolved import `X`
    |
 LL | use X as Y;
    |     ^^^^^^ no `X` in the root
-   |
-help: a similar name exists in the module
-   |
-LL - use X as Y;
-LL + use _ as Y;
-   |
 
 error[E0432]: unresolved import `Z`
   --> $DIR/underscore-bindings-disambiguators.rs:26:5
    |
 LL | use Z as W;
    |     ^^^^^^ no `Z` in the root
-   |
-help: a similar name exists in the module
-   |
-LL - use Z as W;
-LL + use _ as W;
-   |
 
 error[E0080]: evaluation panicked: not yet implemented
   --> $DIR/underscore-bindings-disambiguators.rs:19:19
