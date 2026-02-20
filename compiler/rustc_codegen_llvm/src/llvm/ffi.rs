@@ -2376,7 +2376,6 @@ unsafe extern "C" {
         VerifyIR: bool,
         LintIR: bool,
         ThinLTOBuffer: Option<&mut *mut ThinLTOBuffer>,
-        EmitThinLTO: bool,
         EmitThinLTOSummary: bool,
         MergeFunctions: bool,
         UnrollLoops: bool,

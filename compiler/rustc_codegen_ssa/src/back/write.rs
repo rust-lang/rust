@@ -101,7 +101,6 @@ pub struct ModuleConfig {
     pub emit_ir: bool,
     pub emit_asm: bool,
     pub emit_obj: EmitObj,
-    pub emit_thin_lto: bool,
     pub emit_thin_lto_summary: bool,
 
     // Miscellaneous flags. These are mostly copied from command-line
@@ -212,9 +211,6 @@ impl ModuleConfig {
                 false
             ),
             emit_obj,
-            // thin lto summaries prevent fat lto, so do not emit them if fat
-            // lto is requested. See PR #136840 for background information.
-            emit_thin_lto: sess.opts.unstable_opts.emit_thin_lto && sess.lto() != Lto::Fat,
             emit_thin_lto_summary: if_regular!(
                 sess.opts.output_types.contains_key(&OutputType::ThinLinkBitcode),
                 false

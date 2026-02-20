@@ -786,7 +786,6 @@ pub(crate) unsafe fn llvm_optimize(
             config.verify_llvm_ir,
             config.lint_llvm_ir,
             thin_lto_buffer,
-            config.emit_thin_lto,
             config.emit_thin_lto_summary,
             merge_functions,
             unroll_loops,
@@ -1033,7 +1032,7 @@ pub(crate) fn codegen(
                         "LLVM_module_codegen_make_bitcode",
                         &*module.name,
                     );
-                    ThinBuffer::new(llmod, config.emit_thin_lto)
+                    ThinBuffer::new(llmod, cgcx.lto != Lto::Fat)
                 };
                 let data = thin.data();
                 let _timer = prof
