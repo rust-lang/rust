@@ -2323,10 +2323,11 @@ pub const fn _mm256_or_si256(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpacksswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_packs_epi16(a: __m256i, b: __m256i) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_packs_epi16(a: __m256i, b: __m256i) -> __m256i {
     unsafe {
-        let max = simd_splat(i16::from(i8::MAX));
-        let min = simd_splat(i16::from(i8::MIN));
+        let max = simd_splat(i8::MAX as i16);
+        let min = simd_splat(i8::MIN as i16);
 
         let clamped_a = simd_imax(simd_imin(a.as_i16x16(), max), min)
             .as_m256i()
@@ -2356,10 +2357,11 @@ pub fn _mm256_packs_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpackssdw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_packs_epi32(a: __m256i, b: __m256i) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_packs_epi32(a: __m256i, b: __m256i) -> __m256i {
     unsafe {
-        let max = simd_splat(i32::from(i16::MAX));
-        let min = simd_splat(i32::from(i16::MIN));
+        let max = simd_splat(i16::MAX as i32);
+        let min = simd_splat(i16::MIN as i32);
 
         let clamped_a = simd_imax(simd_imin(a.as_i32x8(), max), min)
             .as_m256i()
@@ -2389,10 +2391,11 @@ pub fn _mm256_packs_epi32(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpackuswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_packus_epi16(a: __m256i, b: __m256i) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_packus_epi16(a: __m256i, b: __m256i) -> __m256i {
     unsafe {
-        let max = simd_splat(i16::from(u8::MAX));
-        let min = simd_splat(i16::from(u8::MIN));
+        let max = simd_splat(u8::MAX as i16);
+        let min = simd_splat(u8::MIN as i16);
 
         let clamped_a = simd_imax(simd_imin(a.as_i16x16(), max), min)
             .as_m256i()
@@ -2422,10 +2425,11 @@ pub fn _mm256_packus_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpackusdw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mm256_packus_epi32(a: __m256i, b: __m256i) -> __m256i {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_packus_epi32(a: __m256i, b: __m256i) -> __m256i {
     unsafe {
-        let max = simd_splat(i32::from(u16::MAX));
-        let min = simd_splat(i32::from(u16::MIN));
+        let max = simd_splat(u16::MAX as i32);
+        let min = simd_splat(u16::MIN as i32);
 
         let clamped_a = simd_imax(simd_imin(a.as_i32x8(), max), min)
             .as_m256i()
@@ -5064,7 +5068,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    fn test_mm256_packs_epi16() {
+    const fn test_mm256_packs_epi16() {
         let a = _mm256_set1_epi16(2);
         let b = _mm256_set1_epi16(4);
         let r = _mm256_packs_epi16(a, b);
@@ -5080,7 +5084,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    fn test_mm256_packs_epi32() {
+    const fn test_mm256_packs_epi32() {
         let a = _mm256_set1_epi32(2);
         let b = _mm256_set1_epi32(4);
         let r = _mm256_packs_epi32(a, b);
@@ -5090,7 +5094,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    fn test_mm256_packus_epi16() {
+    const fn test_mm256_packus_epi16() {
         let a = _mm256_set1_epi16(2);
         let b = _mm256_set1_epi16(4);
         let r = _mm256_packus_epi16(a, b);
@@ -5106,7 +5110,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    fn test_mm256_packus_epi32() {
+    const fn test_mm256_packus_epi32() {
         let a = _mm256_set1_epi32(2);
         let b = _mm256_set1_epi32(4);
         let r = _mm256_packus_epi32(a, b);
