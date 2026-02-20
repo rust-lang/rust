@@ -1,82 +1,87 @@
-use crate::marker::PhantomData;
-use crate::slice;
-use crate::sys::c;
+use core::ffi::c_void;
+use core::marker::PhantomData;
+use core::slice;
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+struct iovec {
+    iov_base: *mut c_void,
+    iov_len: usize,
+}
 
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct IoSlice<'a> {
-    vec: c::WSABUF,
+    vec: iovec,
     _p: PhantomData<&'a [u8]>,
 }
 
 impl<'a> IoSlice<'a> {
     #[inline]
     pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
-        assert!(buf.len() <= u32::MAX as usize);
         IoSlice {
-            vec: c::WSABUF { len: buf.len() as u32, buf: buf.as_ptr() as *mut u8 },
+            vec: iovec { iov_base: buf.as_ptr() as *mut u8 as *mut c_void, iov_len: buf.len() },
             _p: PhantomData,
         }
     }
 
     #[inline]
     pub fn advance(&mut self, n: usize) {
-        if (self.vec.len as usize) < n {
+        if self.vec.iov_len < n {
             panic!("advancing IoSlice beyond its length");
         }
 
         unsafe {
-            self.vec.len -= n as u32;
-            self.vec.buf = self.vec.buf.add(n);
+            self.vec.iov_len -= n;
+            self.vec.iov_base = self.vec.iov_base.add(n);
         }
     }
 
     #[inline]
     pub const fn as_slice(&self) -> &'a [u8] {
-        unsafe { slice::from_raw_parts(self.vec.buf, self.vec.len as usize) }
+        unsafe { slice::from_raw_parts(self.vec.iov_base as *mut u8, self.vec.iov_len) }
     }
 }
 
 #[repr(transparent)]
 pub struct IoSliceMut<'a> {
-    vec: c::WSABUF,
+    vec: iovec,
     _p: PhantomData<&'a mut [u8]>,
 }
 
 impl<'a> IoSliceMut<'a> {
     #[inline]
     pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
-        assert!(buf.len() <= u32::MAX as usize);
         IoSliceMut {
-            vec: c::WSABUF { len: buf.len() as u32, buf: buf.as_mut_ptr() },
+            vec: iovec { iov_base: buf.as_mut_ptr() as *mut c_void, iov_len: buf.len() },
             _p: PhantomData,
         }
     }
 
     #[inline]
     pub fn advance(&mut self, n: usize) {
-        if (self.vec.len as usize) < n {
+        if self.vec.iov_len < n {
             panic!("advancing IoSliceMut beyond its length");
         }
 
         unsafe {
-            self.vec.len -= n as u32;
-            self.vec.buf = self.vec.buf.add(n);
+            self.vec.iov_len -= n;
+            self.vec.iov_base = self.vec.iov_base.add(n);
         }
     }
 
     #[inline]
     pub fn as_slice(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts(self.vec.buf, self.vec.len as usize) }
+        unsafe { slice::from_raw_parts(self.vec.iov_base as *mut u8, self.vec.iov_len) }
     }
 
     #[inline]
     pub const fn into_slice(self) -> &'a mut [u8] {
-        unsafe { slice::from_raw_parts_mut(self.vec.buf, self.vec.len as usize) }
+        unsafe { slice::from_raw_parts_mut(self.vec.iov_base as *mut u8, self.vec.iov_len) }
     }
 
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        unsafe { slice::from_raw_parts_mut(self.vec.buf, self.vec.len as usize) }
+        unsafe { slice::from_raw_parts_mut(self.vec.iov_base as *mut u8, self.vec.iov_len) }
     }
 }

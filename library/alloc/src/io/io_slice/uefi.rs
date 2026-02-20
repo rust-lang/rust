@@ -1,8 +1,8 @@
 //! A buffer type used with `Write::write_vectored` for UEFI Networking APIs. Vectored writing to
 //! File is not supported as of UEFI Spec 2.11.
 
-use crate::marker::PhantomData;
-use crate::slice;
+use core::marker::PhantomData;
+use core::slice;
 
 #[derive(Copy, Clone)]
 #[repr(C)]

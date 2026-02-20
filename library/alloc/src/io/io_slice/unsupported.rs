@@ -1,5 +1,3 @@
-use crate::mem;
-
 #[derive(Copy, Clone)]
 pub struct IoSlice<'a>(&'a [u8]);
 
@@ -30,7 +28,7 @@ impl<'a> IoSliceMut<'a> {
 
     #[inline]
     pub fn advance(&mut self, n: usize) {
-        let slice = mem::take(&mut self.0);
+        let slice = core::mem::take(&mut self.0);
         let (_, remaining) = slice.split_at_mut(n);
         self.0 = remaining;
     }
