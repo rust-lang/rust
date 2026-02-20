@@ -263,6 +263,7 @@ impl<B, C> ControlFlow<B, C> {
     #[inline]
     #[stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn break_ok(self) -> Result<B, C> {
         match self {
             ControlFlow::Continue(c) => Err(c),
@@ -374,6 +375,7 @@ impl<B, C> ControlFlow<B, C> {
     #[inline]
     #[stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn continue_ok(self) -> Result<C, B> {
         match self {
             ControlFlow::Continue(c) => Ok(c),
