@@ -766,6 +766,7 @@ symbols! {
         const_for,
         const_format_args,
         const_generics,
+        const_generics_assoc_consts,
         const_generics_defaults,
         const_if_match,
         const_impl_trait,

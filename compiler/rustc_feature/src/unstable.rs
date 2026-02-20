@@ -422,6 +422,8 @@ declare_features! (
     (unstable, const_destruct, "1.85.0", Some(133214)),
     /// Allows `for _ in _` loops in const contexts.
     (unstable, const_for, "1.56.0", Some(87575)),
+    /// Allows associated const projections from type parameters in const-generic arguments.
+    (incomplete, const_generics_assoc_consts, "CURRENT_RUSTC_VERSION", None),
     /// Be more precise when looking for live drops in a const context.
     (unstable, const_precise_live_drops, "1.46.0", Some(73255)),
     /// Allows `impl const Trait for T` syntax.
