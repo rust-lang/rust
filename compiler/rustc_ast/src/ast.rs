@@ -557,6 +557,12 @@ pub struct Crate {
     pub is_placeholder: bool,
 }
 
+impl From<Box<Crate>> for Crate {
+    fn from(krate: Box<Crate>) -> Self {
+        *krate
+    }
+}
+
 /// A semantic representation of a meta item. A meta item is a slightly
 /// restricted form of an attribute -- it can only contain expressions in
 /// certain leaf positions, rather than arbitrary token streams -- that is used

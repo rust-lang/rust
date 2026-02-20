@@ -130,16 +130,16 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
 /// standard library and prelude, and name resolution.
 #[instrument(level = "trace", skip(krate, resolver))]
 fn configure_and_expand(
-    mut krate: ast::Crate,
+    mut krate: Box<ast::Crate>,
     pre_configured_attrs: &[ast::Attribute],
     resolver: &mut Resolver<'_, '_>,
-) -> ast::Crate {
+) -> Box<ast::Crate> {
     let tcx = resolver.tcx();
     let sess = tcx.sess;
     let features = tcx.features();
     let lint_store = unerased_lint_store(tcx.sess);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
-    let lint_check_node = (&krate, pre_configured_attrs);
+    let lint_check_node = (&*krate, pre_configured_attrs);
     pre_expansion_lint(
         sess,
         features,
@@ -785,6 +785,7 @@ fn resolver_for_lowering_raw<'tcx>(
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
+    let krate = Box::new(krate);
     let mut resolver = Resolver::new(
         tcx,
         &pre_configured_attrs,
@@ -792,7 +793,7 @@ fn resolver_for_lowering_raw<'tcx>(
         krate.spans.inject_use_span,
         &arenas,
     );
-    let krate = configure_and_expand(krate, &pre_configured_attrs, &mut resolver);
+    let krate = Arc::new(*configure_and_expand(krate, &pre_configured_attrs, &mut resolver));
 
     // Make sure we don't mutate the cstore from here on.
     tcx.untracked().cstore.freeze();
@@ -803,7 +804,7 @@ fn resolver_for_lowering_raw<'tcx>(
     } = resolver.into_outputs();
 
     let resolutions = tcx.arena.alloc(untracked_resolutions);
-    (tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Arc::new(krate)))), resolutions)
+    (tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, krate))), resolutions)
 }
 
 pub fn write_dep_info(tcx: TyCtxt<'_>) {

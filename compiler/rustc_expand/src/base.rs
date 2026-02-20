@@ -48,15 +48,15 @@ pub enum Annotatable {
     ForeignItem(Box<ast::ForeignItem>),
     Stmt(Box<ast::Stmt>),
     Expr(Box<ast::Expr>),
-    Arm(ast::Arm),
-    ExprField(ast::ExprField),
-    PatField(ast::PatField),
-    GenericParam(ast::GenericParam),
-    Param(ast::Param),
-    FieldDef(ast::FieldDef),
-    Variant(ast::Variant),
-    WherePredicate(ast::WherePredicate),
-    Crate(ast::Crate),
+    Arm(Box<ast::Arm>),
+    ExprField(Box<ast::ExprField>),
+    PatField(Box<ast::PatField>),
+    GenericParam(Box<ast::GenericParam>),
+    Param(Box<ast::Param>),
+    FieldDef(Box<ast::FieldDef>),
+    Variant(Box<ast::Variant>),
+    WherePredicate(Box<ast::WherePredicate>),
+    Crate(Box<ast::Crate>),
 }
 
 impl Annotatable {
@@ -167,9 +167,9 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_stmt(self) -> ast::Stmt {
+    pub fn expect_stmt(self) -> Box<ast::Stmt> {
         match self {
-            Annotatable::Stmt(stmt) => *stmt,
+            Annotatable::Stmt(stmt) => stmt,
             _ => panic!("expected statement"),
         }
     }
@@ -181,63 +181,63 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_arm(self) -> ast::Arm {
+    pub fn expect_arm(self) -> Box<ast::Arm> {
         match self {
             Annotatable::Arm(arm) => arm,
             _ => panic!("expected match arm"),
         }
     }
 
-    pub fn expect_expr_field(self) -> ast::ExprField {
+    pub fn expect_expr_field(self) -> Box<ast::ExprField> {
         match self {
             Annotatable::ExprField(field) => field,
             _ => panic!("expected field"),
         }
     }
 
-    pub fn expect_pat_field(self) -> ast::PatField {
+    pub fn expect_pat_field(self) -> Box<ast::PatField> {
         match self {
             Annotatable::PatField(fp) => fp,
             _ => panic!("expected field pattern"),
         }
     }
 
-    pub fn expect_generic_param(self) -> ast::GenericParam {
+    pub fn expect_generic_param(self) -> Box<ast::GenericParam> {
         match self {
             Annotatable::GenericParam(gp) => gp,
             _ => panic!("expected generic parameter"),
         }
     }
 
-    pub fn expect_param(self) -> ast::Param {
+    pub fn expect_param(self) -> Box<ast::Param> {
         match self {
             Annotatable::Param(param) => param,
             _ => panic!("expected parameter"),
         }
     }
 
-    pub fn expect_field_def(self) -> ast::FieldDef {
+    pub fn expect_field_def(self) -> Box<ast::FieldDef> {
         match self {
             Annotatable::FieldDef(sf) => sf,
             _ => panic!("expected struct field"),
         }
     }
 
-    pub fn expect_variant(self) -> ast::Variant {
+    pub fn expect_variant(self) -> Box<ast::Variant> {
         match self {
             Annotatable::Variant(v) => v,
             _ => panic!("expected variant"),
         }
     }
 
-    pub fn expect_where_predicate(self) -> ast::WherePredicate {
+    pub fn expect_where_predicate(self) -> Box<ast::WherePredicate> {
         match self {
             Annotatable::WherePredicate(wp) => wp,
             _ => panic!("expected where predicate"),
         }
     }
 
-    pub fn expect_crate(self) -> ast::Crate {
+    pub fn expect_crate(self) -> Box<ast::Crate> {
         match self {
             Annotatable::Crate(krate) => krate,
             _ => panic!("expected krate"),
@@ -503,7 +503,7 @@ pub trait MacResult {
         None
     }
 
-    fn make_crate(self: Box<Self>) -> Option<ast::Crate> {
+    fn make_crate(self: Box<Self>) -> Option<Box<ast::Crate>> {
         // Fn-like macros cannot produce a crate.
         unreachable!()
     }
@@ -718,14 +718,14 @@ impl MacResult for DummyResult {
         Some(SmallVec::new())
     }
 
-    fn make_crate(self: Box<DummyResult>) -> Option<ast::Crate> {
-        Some(ast::Crate {
+    fn make_crate(self: Box<DummyResult>) -> Option<Box<ast::Crate>> {
+        Some(Box::new(ast::Crate {
             attrs: Default::default(),
             items: Default::default(),
             spans: Default::default(),
             id: ast::DUMMY_NODE_ID,
             is_placeholder: Default::default(),
-        })
+        }))
     }
 }
 

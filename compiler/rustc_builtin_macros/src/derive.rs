@@ -103,7 +103,7 @@ impl MultiItemModifier for Expander {
 
 // The cheapest `Annotatable` to construct.
 fn dummy_annotatable() -> Annotatable {
-    Annotatable::GenericParam(ast::GenericParam {
+    Annotatable::GenericParam(Box::new(ast::GenericParam {
         id: ast::DUMMY_NODE_ID,
         ident: Ident::dummy(),
         attrs: Default::default(),
@@ -111,7 +111,7 @@ fn dummy_annotatable() -> Annotatable {
         is_placeholder: false,
         kind: GenericParamKind::Lifetime,
         colon_span: None,
-    })
+    }))
 }
 
 fn report_bad_target(

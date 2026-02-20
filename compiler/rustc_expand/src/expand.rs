@@ -279,7 +279,7 @@ ast_fragments! {
         many fn flat_map_where_predicate; fn visit_where_predicate(); fn unreachable_to_string;
         fn make_where_predicates;
     }
-    Crate(ast::Crate) {
+    Crate(Box<ast::Crate>) {
         "crate";
         one fn visit_crate; fn visit_crate; fn unreachable_to_string;
         fn make_crate;
@@ -328,28 +328,28 @@ impl AstFragmentKind {
         let mut items = items.into_iter();
         match self {
             AstFragmentKind::Arms => {
-                AstFragment::Arms(items.map(Annotatable::expect_arm).collect())
+                AstFragment::Arms(items.map(|ann| *ann.expect_arm()).collect())
             }
             AstFragmentKind::ExprFields => {
-                AstFragment::ExprFields(items.map(Annotatable::expect_expr_field).collect())
+                AstFragment::ExprFields(items.map(|ann| *ann.expect_expr_field()).collect())
             }
             AstFragmentKind::PatFields => {
-                AstFragment::PatFields(items.map(Annotatable::expect_pat_field).collect())
+                AstFragment::PatFields(items.map(|ann| *ann.expect_pat_field()).collect())
             }
             AstFragmentKind::GenericParams => {
-                AstFragment::GenericParams(items.map(Annotatable::expect_generic_param).collect())
+                AstFragment::GenericParams(items.map(|ann| *ann.expect_generic_param()).collect())
             }
             AstFragmentKind::Params => {
-                AstFragment::Params(items.map(Annotatable::expect_param).collect())
+                AstFragment::Params(items.map(|ann| *ann.expect_param()).collect())
             }
             AstFragmentKind::FieldDefs => {
-                AstFragment::FieldDefs(items.map(Annotatable::expect_field_def).collect())
+                AstFragment::FieldDefs(items.map(|ann| *ann.expect_field_def()).collect())
             }
             AstFragmentKind::Variants => {
-                AstFragment::Variants(items.map(Annotatable::expect_variant).collect())
+                AstFragment::Variants(items.map(|ann| *ann.expect_variant()).collect())
             }
             AstFragmentKind::WherePredicates => AstFragment::WherePredicates(
-                items.map(Annotatable::expect_where_predicate).collect(),
+                items.map(|ann| *ann.expect_where_predicate()).collect(),
             ),
             AstFragmentKind::Items => {
                 AstFragment::Items(items.map(Annotatable::expect_item).collect())
@@ -367,7 +367,7 @@ impl AstFragmentKind {
                 AstFragment::ForeignItems(items.map(Annotatable::expect_foreign_item).collect())
             }
             AstFragmentKind::Stmts => {
-                AstFragment::Stmts(items.map(Annotatable::expect_stmt).collect())
+                AstFragment::Stmts(items.map(|ann| *ann.expect_stmt()).collect())
             }
             AstFragmentKind::Expr => AstFragment::Expr(
                 items.next().expect("expected exactly one expression").expect_expr(),
@@ -468,7 +468,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         MacroExpander { cx, monotonic }
     }
 
-    pub fn expand_crate(&mut self, krate: ast::Crate) -> ast::Crate {
+    pub fn expand_crate(&mut self, krate: Box<ast::Crate>) -> Box<ast::Crate> {
         let file_path = match self.cx.source_map().span_to_filename(krate.spans.inner_span) {
             FileName::Real(name) => name
                 .into_local_path()
@@ -1159,7 +1159,7 @@ pub fn parse_ast_fragment<'a>(
             RecoverColon::Yes,
             CommaRecoveryMode::LikelyTuple,
         )?)),
-        AstFragmentKind::Crate => AstFragment::Crate(this.parse_crate_mod()?),
+        AstFragmentKind::Crate => AstFragment::Crate(Box::new(this.parse_crate_mod()?)),
         AstFragmentKind::Arms
         | AstFragmentKind::ExprFields
         | AstFragmentKind::PatFields
@@ -1606,7 +1606,7 @@ impl InvocationCollectorNode for Box<ast::ForeignItem> {
 impl InvocationCollectorNode for ast::Variant {
     const KIND: AstFragmentKind = AstFragmentKind::Variants;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::Variant(self)
+        Annotatable::Variant(Box::new(self))
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_variants()
@@ -1619,7 +1619,7 @@ impl InvocationCollectorNode for ast::Variant {
 impl InvocationCollectorNode for ast::WherePredicate {
     const KIND: AstFragmentKind = AstFragmentKind::WherePredicates;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::WherePredicate(self)
+        Annotatable::WherePredicate(Box::new(self))
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_where_predicates()
@@ -1632,7 +1632,7 @@ impl InvocationCollectorNode for ast::WherePredicate {
 impl InvocationCollectorNode for ast::FieldDef {
     const KIND: AstFragmentKind = AstFragmentKind::FieldDefs;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::FieldDef(self)
+        Annotatable::FieldDef(Box::new(self))
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_field_defs()
@@ -1645,7 +1645,7 @@ impl InvocationCollectorNode for ast::FieldDef {
 impl InvocationCollectorNode for ast::PatField {
     const KIND: AstFragmentKind = AstFragmentKind::PatFields;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::PatField(self)
+        Annotatable::PatField(Box::new(self))
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_pat_fields()
@@ -1658,7 +1658,7 @@ impl InvocationCollectorNode for ast::PatField {
 impl InvocationCollectorNode for ast::ExprField {
     const KIND: AstFragmentKind = AstFragmentKind::ExprFields;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::ExprField(self)
+        Annotatable::ExprField(Box::new(self))
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_expr_fields()
@@ -1671,7 +1671,7 @@ impl InvocationCollectorNode for ast::ExprField {
 impl InvocationCollectorNode for ast::Param {
     const KIND: AstFragmentKind = AstFragmentKind::Params;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::Param(self)
+        Annotatable::Param(Box::new(self))
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_params()
@@ -1684,7 +1684,7 @@ impl InvocationCollectorNode for ast::Param {
 impl InvocationCollectorNode for ast::GenericParam {
     const KIND: AstFragmentKind = AstFragmentKind::GenericParams;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::GenericParam(self)
+        Annotatable::GenericParam(Box::new(self))
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_generic_params()
@@ -1697,7 +1697,7 @@ impl InvocationCollectorNode for ast::GenericParam {
 impl InvocationCollectorNode for ast::Arm {
     const KIND: AstFragmentKind = AstFragmentKind::Arms;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::Arm(self)
+        Annotatable::Arm(Box::new(self))
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_arms()
@@ -1781,10 +1781,10 @@ impl InvocationCollectorNode for ast::Stmt {
 }
 
 impl InvocationCollectorNode for ast::Crate {
-    type OutputTy = ast::Crate;
+    type OutputTy = Box<ast::Crate>;
     const KIND: AstFragmentKind = AstFragmentKind::Crate;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::Crate(self)
+        Annotatable::Crate(Box::new(self))
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_crate()

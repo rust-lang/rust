@@ -55,13 +55,13 @@ pub(crate) fn placeholder(
     };
 
     match kind {
-        AstFragmentKind::Crate => AstFragment::Crate(ast::Crate {
+        AstFragmentKind::Crate => AstFragment::Crate(Box::new(ast::Crate {
             attrs: Default::default(),
             items: Default::default(),
             spans: ast::ModSpans { inner_span: span, ..Default::default() },
             id,
             is_placeholder: true,
-        }),
+        })),
         AstFragmentKind::Expr => AstFragment::Expr(expr_placeholder()),
         AstFragmentKind::OptExpr => AstFragment::OptExpr(Some(expr_placeholder())),
         AstFragmentKind::MethodReceiverExpr => AstFragment::MethodReceiverExpr(expr_placeholder()),
@@ -428,7 +428,7 @@ impl MutVisitor for PlaceholderExpander {
 
     fn visit_crate(&mut self, krate: &mut ast::Crate) {
         if krate.is_placeholder {
-            *krate = self.remove(krate.id).make_crate();
+            *krate = *self.remove(krate.id).make_crate();
         } else {
             walk_crate(self, krate)
         }
