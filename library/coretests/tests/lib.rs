@@ -51,7 +51,6 @@
 #![feature(f16)]
 #![feature(f128)]
 #![feature(float_algebraic)]
-#![feature(float_bits_const)]
 #![feature(float_exact_integer_constants)]
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
