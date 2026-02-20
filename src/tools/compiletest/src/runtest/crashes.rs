@@ -5,7 +5,7 @@ impl TestCx<'_> {
         let pm = self.pass_mode();
         let proc_res = self.compile_test(WillExecute::No, self.should_emit_metadata(pm));
 
-        if std::env::var("COMPILETEST_VERBOSE_CRASHES").is_ok() {
+        if crate::util::env_var_is_set("COMPILETEST_VERBOSE_CRASHES") {
             writeln!(self.stderr, "{}", proc_res.status);
             writeln!(self.stderr, "{}", proc_res.stdout);
             writeln!(self.stderr, "{}", proc_res.stderr);

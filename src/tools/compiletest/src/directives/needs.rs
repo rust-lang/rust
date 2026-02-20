@@ -353,7 +353,7 @@ impl CachedNeedsConditions {
         let target = &&*config.target;
         let sanitizers = &config.target_cfg().sanitizers;
         Self {
-            sanitizer_support: std::env::var_os("RUSTC_SANITIZER_SUPPORT").is_some(),
+            sanitizer_support: crate::util::env_var_is_set("RUSTC_SANITIZER_SUPPORT"),
             sanitizer_address: sanitizers.contains(&Sanitizer::Address),
             sanitizer_cfi: sanitizers.contains(&Sanitizer::Cfi),
             sanitizer_dataflow: sanitizers.contains(&Sanitizer::Dataflow),
@@ -424,7 +424,7 @@ fn find_dlltool(config: &Config) -> bool {
 // not available.
 #[cfg(windows)]
 fn has_symlinks() -> bool {
-    if std::env::var_os("CI").is_some() {
+    if crate::util::env_var_is_set("CI") {
         return true;
     }
     let link = std::env::temp_dir().join("RUST_COMPILETEST_SYMLINK_CHECK");

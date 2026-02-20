@@ -248,7 +248,7 @@ pub(crate) fn prepare_conditions(config: &Config) -> PreparedConditions {
     // flag, not an environment variable.
     builder.cond(
         "dist",
-        std::env::var("COMPILETEST_ENABLE_DIST_TESTS").as_deref() == Ok("1"),
+        crate::util::env_var_is_set("COMPILETEST_ENABLE_DIST_TESTS"),
         "when performing tests on dist toolchain",
     );
 

@@ -6,6 +6,24 @@ use camino::{Utf8Path, Utf8PathBuf};
 #[cfg(test)]
 mod tests;
 
+/// Returns `true` if the named environment variable is set to a non-empty value.
+///
+/// This provides consistent handling of "bool-like" environment variables:
+/// any non-empty value is truthy, and an unset or empty value is falsey.
+///
+/// # Panics
+///
+/// Panics if the environment variable's value contains invalid UTF-8.
+pub fn env_var_is_set(name: &str) -> bool {
+    match env::var(name) {
+        Ok(val) => !val.is_empty(),
+        Err(env::VarError::NotPresent) => false,
+        Err(env::VarError::NotUnicode(val)) => {
+            panic!("environment variable `{name}` contains invalid UTF-8: {val:?}");
+        }
+    }
+}
+
 pub fn make_new_path(path: &str) -> String {
     assert!(cfg!(windows));
     // Windows just uses PATH as the library search path, so we have to

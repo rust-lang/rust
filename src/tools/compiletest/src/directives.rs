@@ -1175,7 +1175,7 @@ fn ignore_llvm(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
             .split_whitespace()
             .find(|needed_component| !components.contains(needed_component))
         {
-            if env::var_os("COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS").is_some() {
+            if crate::util::env_var_is_set("COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS") {
                 panic!(
                     "missing LLVM component {missing_component}, \
                     and COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS is set: {path}",

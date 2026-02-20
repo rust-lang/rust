@@ -372,7 +372,7 @@ fn parse_config(args: Vec<String>) -> Config {
     Config {
         bless: matches.opt_present("bless"),
         fail_fast: matches.opt_present("fail-fast")
-            || env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
+            || crate::util::env_var_is_set("RUSTC_TEST_FAIL_FAST"),
 
         host_compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         target_run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
@@ -1145,7 +1145,7 @@ fn early_config_check(config: &Config) {
     }
 
     // `RUST_TEST_NOCAPTURE` is a libtest env var, but we don't callout to libtest.
-    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
+    if crate::util::env_var_is_set("RUST_TEST_NOCAPTURE") {
         warning!("`RUST_TEST_NOCAPTURE` is not supported; use the `--no-capture` flag instead");
     }
 }
