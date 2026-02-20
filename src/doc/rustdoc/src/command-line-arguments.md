@@ -453,6 +453,35 @@ command line options from it. These options are one per line; a blank line indic
 an empty option. The file can use Unix or Windows style line endings, and must be
 encoded as UTF-8.
 
+## `--merge`, `--parts-out-dir` and `--include-parts-dir`: control how rustdoc handles files that combine data from multiple crates
+
+By default, they act like `--merge=shared` is set, and `--parts-out-dir` and `--include-parts-dir`
+are turned off. The `--merge=shared` mode causes rustdoc to load the existing data in the out-dir,
+combine the new crate data into it, and write the result. This is very easy to use in scripts that
+manually invoke rustdoc, but it's also slow, because it performs O(crates) work on
+every crate, meaning it performs O(crates<sup>2</sup>) work.
+
+```console
+$ rustdoc crate1.rs --out-dir=doc
+$ cat doc/search.index/crateNames/*
+rd_("fcrate1")
+$ rustdoc crate2.rs --out-dir=doc
+$ cat doc/search.index/crateNames/*
+rd_("fcrate1fcrate2")
+```
+
+To delay shared-data merging until the end of a build, so that you only have to perform O(crates)
+work, use `--merge=none` on every crate except the last one, which will use `--merge=finalize`.
+
+```console
+$ rustdoc +nightly crate1.rs --merge=none --parts-out-dir=crate1.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+cat: 'doc/search.index/crateNames/*': No such file or directory
+$ rustdoc +nightly crate2.rs --merge=finalize --include-parts-dir=crate1.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+rd_("fcrate1fcrate2")
+```
+
 ## `--passes`: add more rustdoc passes
 
 This flag is **deprecated**.
