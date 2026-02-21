@@ -72,6 +72,8 @@ struct LocalAnalyzer<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> {
     locals: IndexVec<mir::Local, LocalKind>,
 }
 
+const COPY_CONTEXT: PlaceContext = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
+
 impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx> {
     fn define(&mut self, local: mir::Local, location: DefLocation) {
         let fx = self.fx;
@@ -94,6 +96,33 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
         }
     }
 
+    /// Usually the interesting part of places it the underlying local, but it's
+    /// also possible for the [`mir::PlaceElem`]s to mention them. So this visits
+    /// those locals to ensure any non-dominating definitions are handled.
+    fn process_locals_in_projections(
+        &mut self,
+        projections: &[mir::PlaceElem<'tcx>],
+        location: Location,
+    ) {
+        use mir::ProjectionElem::*;
+        for projection in projections {
+            match *projection {
+                // This is currently the only one with a `Local`.
+                Index(local) => self.visit_local(local, COPY_CONTEXT, location),
+
+                // Even the ones here that do indexing or slicing only take
+                // constants, not locals.
+                Deref
+                | Field(..)
+                | ConstantIndex { .. }
+                | Subslice { .. }
+                | Downcast(..)
+                | OpaqueCast(..)
+                | UnwrapUnsafeBinder(..) => {}
+            }
+        }
+    }
+
     fn process_place(
         &mut self,
         place_ref: &mir::PlaceRef<'tcx>,
@@ -101,16 +130,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
         location: Location,
     ) {
         if !place_ref.projection.is_empty() {
-            const COPY_CONTEXT: PlaceContext =
-                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
-
-            // `PlaceElem::Index` is the only variant that can mention other `Local`s,
-            // so check for those up-front before any potential short-circuits.
-            for elem in place_ref.projection {
-                if let mir::PlaceElem::Index(index_local) = *elem {
-                    self.visit_local(index_local, COPY_CONTEXT, location);
-                }
-            }
+            self.process_locals_in_projections(place_ref.projection, location);
 
             // If our local is already memory, nothing can make it *more* memory
             // so we don't need to bother checking the projections further.
@@ -184,6 +204,64 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
         }
 
         self.visit_rvalue(rvalue, location);
+    }
+
+    fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: Location) {
+        fn repr_has_fully_init_scalar_fields(repr: &abi::BackendRepr) -> bool {
+            match repr {
+                abi::BackendRepr::Scalar(scalar) => !matches!(scalar, abi::Scalar::Union { .. }),
+                abi::BackendRepr::ScalarPair(scalar1, scalar2) => {
+                    !matches!(scalar1, abi::Scalar::Union { .. })
+                        && !matches!(scalar2, abi::Scalar::Union { .. })
+                }
+                abi::BackendRepr::Memory { .. }
+                | abi::BackendRepr::SimdVector { .. }
+                | abi::BackendRepr::ScalableVector { .. } => false,
+            }
+        }
+
+        // The general place code needs to worry about more-complex contexts
+        // like inside dereferences. For the common case of copy/move, though,
+        // we often don't even need to look at the projections.
+        if let mir::Rvalue::Use(operand) = rvalue
+            && let Some(place) = operand.place()
+        {
+            if let LocalKind::ZST | LocalKind::Memory = self.locals[place.local] {
+                // If the local already knows it's not SSA, there's no point in looking
+                // at it further, other than to make sure indexing is tracked.
+                return self.process_locals_in_projections(place.projection, location);
+            }
+
+            if place.projection.is_empty() {
+                // No projections? Trivially fine.
+                return self.visit_local(place.local, COPY_CONTEXT, location);
+            }
+
+            if place.is_indirect_first_projection() {
+                // We're reading through a pointer, so any projections end up just being
+                // pointer math, none of which needs to force the pointer to memory.
+                self.process_locals_in_projections(place.projection, location);
+                return self.visit_local(place.local, COPY_CONTEXT, location);
+            }
+
+            let local_ty = self.fx.monomorphized_place_ty(mir::PlaceRef::from(place.local));
+            let local_layout = self.fx.cx.layout_of(local_ty);
+
+            if repr_has_fully_init_scalar_fields(&local_layout.backend_repr) {
+                // For Scalar/ScalarPair, we can handle *every* possible projection.
+                // We could potentially handle union too, but today we don't since as currently
+                // implemented that would lose `noundef` information on things like the payload
+                // of an `Option<u32>`, which can be important for LLVM to optimize it.
+                debug_assert!(
+                    // `Index` would be the only reason we'd need to look at the projections,
+                    // but layout never makes anything indexable Scalar or ScalarPair.
+                    place.projection.iter().all(|p| !matches!(p, mir::PlaceElem::Index(..)))
+                );
+                return self.visit_local(place.local, COPY_CONTEXT, location);
+            }
+        }
+
+        self.super_rvalue(rvalue, location)
     }
 
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
