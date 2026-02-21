@@ -570,6 +570,14 @@ pub(crate) struct InvalidCallee<'tcx> {
 }
 
 #[derive(Diagnostic)]
+#[diag("scalable vector types cannot be initialised using their constructor")]
+pub(crate) struct ScalableVectorCtor<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
 #[diag("cannot cast `{$expr_ty}` to a pointer that {$known_wide ->
     [true] is
     *[false] may be
