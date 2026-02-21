@@ -7,8 +7,8 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt, TypingMode};
 use rustc_session::config::EntryFnType;
-use rustc_span::Span;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
+use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
@@ -16,14 +16,14 @@ use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 use super::check_function_signature;
 use crate::errors;
 
-pub(crate) fn check_for_entry_fn(tcx: TyCtxt<'_>) {
+pub(crate) fn check_for_entry_fn(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     match tcx.entry_fn(()) {
         Some((def_id, EntryFnType::Main { .. })) => check_main_fn_ty(tcx, def_id),
-        _ => {}
+        _ => Ok(()),
     }
 }
 
-fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
+fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) -> Result<(), ErrorGuaranteed> {
     let main_fnsig = tcx.fn_sig(main_def_id).instantiate_identity();
     let main_span = tcx.def_span(main_def_id);
 
@@ -114,7 +114,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     }
 
     if error {
-        return;
+        return Ok(());
     }
 
     // Main should have no WC, so empty param env is OK here.
@@ -125,7 +125,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let return_ty_span = main_fn_return_type_span(tcx, main_def_id).unwrap_or(main_span);
         let Some(return_ty) = return_ty.no_bound_vars() else {
             tcx.dcx().emit_err(errors::MainFunctionReturnTypeGeneric { span: return_ty_span });
-            return;
+            return Ok(());
         };
         let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         let cause = traits::ObligationCause::new(
@@ -138,26 +138,22 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         ocx.register_bound(cause, param_env, norm_return_ty, term_did);
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
         if !errors.is_empty() {
-            infcx.err_ctxt().report_fulfillment_errors(errors);
-            error = true;
+            return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
         }
 
         let region_errors =
-            infcx.resolve_regions(main_diagnostics_def_id, param_env, tcx.mk_type_list(&[]));
+            infcx.resolve_regions(main_diagnostics_def_id, param_env, ty::List::empty());
 
         if !region_errors.is_empty() {
-            infcx.err_ctxt().report_region_errors(main_diagnostics_def_id, &region_errors);
-            error = true;
+            return Err(infcx
+                .err_ctxt()
+                .report_region_errors(main_diagnostics_def_id, &region_errors));
         }
         // now we can take the return type of the given main function
         expected_return_type = norm_return_ty;
     } else {
         // standard () main return type
         expected_return_type = tcx.types.unit;
-    }
-
-    if error {
-        return;
     }
 
     let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig(
@@ -180,23 +176,25 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     )
     .is_err()
     {
-        return;
+        return Ok(());
     }
 
     let main_fn_generics = tcx.generics_of(main_def_id);
     let main_fn_predicates = tcx.predicates_of(main_def_id);
     if main_fn_generics.count() != 0 || !main_fnsig.bound_vars().is_empty() {
         let generics_param_span = main_fn_generics_params_span(tcx, main_def_id);
-        tcx.dcx().emit_err(errors::MainFunctionGenericParameters {
+        return Err(tcx.dcx().emit_err(errors::MainFunctionGenericParameters {
             span: generics_param_span.unwrap_or(main_span),
             label_span: generics_param_span,
-        });
+        }));
     } else if !main_fn_predicates.predicates.is_empty() {
         // generics may bring in implicit predicates, so we skip this check if generics is present.
         let generics_where_clauses_span = main_fn_where_clauses_span(tcx, main_def_id);
-        tcx.dcx().emit_err(errors::WhereClauseOnMain {
+        return Err(tcx.dcx().emit_err(errors::WhereClauseOnMain {
             span: generics_where_clauses_span.unwrap_or(main_span),
             generics_span: generics_where_clauses_span,
-        });
+        }));
     }
+
+    Ok(())
 }

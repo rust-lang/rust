@@ -2342,7 +2342,7 @@ pub(super) fn check_type_wf(tcx: TyCtxt<'_>, (): ()) -> Result<(), ErrorGuarante
         )
         .and(items.par_nested_bodies(|item| tcx.ensure_ok().check_well_formed(item)))
         .and(items.par_opaques(|item| tcx.ensure_ok().check_well_formed(item)));
-    super::entry::check_for_entry_fn(tcx);
+    super::entry::check_for_entry_fn(tcx)?;
 
     res
 }
