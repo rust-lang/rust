@@ -1,0 +1,11 @@
+error: the SIMD type `Simd<u8, 256>` has more elements than the limit 64
+  --> $SRC_DIR/core/src/../../portable-simd/crates/core_simd/src/vector.rs:LL:COL
+
+note: the above error was encountered while instantiating `fn Simd::<u8, 256>::splat`
+  --> $DIR/monomorphize-oversized-unreachable.rs:9:17
+   |
+LL |         let _ = core::simd::Simd::<u8, 256>::splat(0);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

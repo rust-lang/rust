@@ -1,0 +1,8 @@
+error: the type `Foo` has an unknown layout
+  --> $DIR/monomorphize-repr-simd-const-generic.rs:12:1
+   |
+LL | pub unsafe fn foo(a: Foo) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
