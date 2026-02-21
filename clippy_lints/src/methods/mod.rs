@@ -3030,7 +3030,7 @@ declare_clippy_lint! {
     ///     ptr.sub(8);
     /// }
     /// ```
-    #[clippy::version = "1.92.0"]
+    #[clippy::version = "1.94.0"]
     pub PTR_OFFSET_BY_LITERAL,
     pedantic,
     "unneeded pointer offset"
