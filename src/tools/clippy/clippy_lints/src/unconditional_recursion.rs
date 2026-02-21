@@ -335,8 +335,8 @@ impl UnconditionalRecursion {
             let impls = cx.tcx.trait_impls_of(default_trait_id);
             for (ty, impl_def_ids) in impls.non_blanket_impls() {
                 let Some(self_def_id) = ty.def() else { continue };
-                for impl_def_id in impl_def_ids {
-                    if !cx.tcx.is_automatically_derived(*impl_def_id) &&
+                for &impl_def_id in impl_def_ids {
+                    if !cx.tcx.is_automatically_derived(impl_def_id) &&
                         let Some(assoc_item) = cx
                             .tcx
                             .associated_items(impl_def_id)

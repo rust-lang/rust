@@ -1799,7 +1799,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         with_forced_trimmed_paths! {
             if self.tcx.is_lang_item(projection_term.def_id, LangItem::FnOnceOutput) {
-                let (span, closure_span) = if let ty::Closure(def_id, _) = self_ty.kind() {
+                let (span, closure_span) = if let ty::Closure(def_id, _) = *self_ty.kind() {
                     let def_span = self.tcx.def_span(def_id);
                     if let Some(local_def_id) = def_id.as_local()
                         && let node = self.tcx.hir_node_by_def_id(local_def_id)
@@ -2305,7 +2305,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             };
             if candidates.len() < 5 {
                 let spans: Vec<_> =
-                    candidates.iter().map(|(_, def_id)| self.tcx.def_span(def_id)).collect();
+                    candidates.iter().map(|&(_, def_id)| self.tcx.def_span(def_id)).collect();
                 let mut span: MultiSpan = spans.into();
                 for (c, def_id) in &candidates {
                     let msg = if all_traits_equal {
@@ -2317,7 +2317,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             self.tcx.short_string(c.print_only_trait_path(), err.long_ty_path()),
                         )
                     };
-                    span.push_span_label(self.tcx.def_span(def_id), msg);
+                    span.push_span_label(self.tcx.def_span(*def_id), msg);
                 }
                 err.span_help(
                     span,
@@ -2631,16 +2631,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             )
         };
         let trait_name = self.tcx.item_name(trait_def_id);
-        if let Some(other_trait_def_id) = self.tcx.all_traits_including_private().find(|def_id| {
-            trait_def_id != *def_id
+        if let Some(other_trait_def_id) = self.tcx.all_traits_including_private().find(|&def_id| {
+            trait_def_id != def_id
                 && trait_name == self.tcx.item_name(def_id)
-                && trait_has_same_params(*def_id)
+                && trait_has_same_params(def_id)
                 && self.predicate_must_hold_modulo_regions(&Obligation::new(
                     self.tcx,
                     obligation.cause.clone(),
                     obligation.param_env,
                     trait_pred.map_bound(|tr| ty::TraitPredicate {
-                        trait_ref: ty::TraitRef::new(self.tcx, *def_id, tr.trait_ref.args),
+                        trait_ref: ty::TraitRef::new(self.tcx, def_id, tr.trait_ref.args),
                         ..tr
                     }),
                 ))
@@ -3314,7 +3314,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         terr: TypeError<'tcx>,
     ) -> Diag<'a> {
         let self_ty = found_trait_ref.self_ty();
-        let (cause, terr) = if let ty::Closure(def_id, _) = self_ty.kind() {
+        let (cause, terr) = if let ty::Closure(def_id, _) = *self_ty.kind() {
             (
                 ObligationCause::dummy_with_span(self.tcx.def_span(def_id)),
                 TypeError::CyclicTy(self_ty),

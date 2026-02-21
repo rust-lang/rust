@@ -101,7 +101,7 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
     let lifetimes_in_associated_types: FxHashSet<_> = tcx
         .associated_item_def_ids(impl_def_id)
         .iter()
-        .flat_map(|def_id| {
+        .flat_map(|&def_id| {
             let item = tcx.associated_item(def_id);
             match item.kind {
                 ty::AssocKind::Type { .. } => {

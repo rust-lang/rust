@@ -614,7 +614,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     }
                     _ => {
                         let local = &self.body.local_decls[local];
-                        match local.local_info() {
+                        match *local.local_info() {
                             LocalInfo::StaticRef { def_id, .. } => {
                                 let span = self.infcx.tcx.def_span(def_id);
                                 err.span_label(span, format!("this `static` cannot be {acted_on}"));

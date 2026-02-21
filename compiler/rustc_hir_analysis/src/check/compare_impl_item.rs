@@ -1333,7 +1333,7 @@ fn check_region_late_boundedness<'tcx>(
         .iter()
         .map(|param| {
             let (LateEarlyMismatch::EarlyInImpl(impl_param_def_id, ..)
-            | LateEarlyMismatch::LateInImpl(impl_param_def_id, ..)) = param;
+            | LateEarlyMismatch::LateInImpl(impl_param_def_id, ..)) = *param;
             tcx.def_span(impl_param_def_id)
         })
         .collect();
