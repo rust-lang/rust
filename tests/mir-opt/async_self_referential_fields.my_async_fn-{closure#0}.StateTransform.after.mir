@@ -1,0 +1,331 @@
+// MIR for `my_async_fn::{closure#0}` after StateTransform
+/* coroutine_layout = CoroutineLayout {
+    field_tys: {
+        _s0: CoroutineSavedTy {
+            ty: std::pin::UnsafePinned<std::boxed::Box<i32, std::alloc::Global>>,
+            source_info: SourceInfo {
+                span: $DIR/async_self_referential_fields.rs:27:9: 27:10 (#0),
+                scope: scope[0],
+            },
+            ignore_for_traits: false,
+        },
+        _s1: CoroutineSavedTy {
+            ty: &'{erased} std::boxed::Box<i32, std::alloc::Global>,
+            source_info: SourceInfo {
+                span: $DIR/async_self_referential_fields.rs:28:9: 28:10 (#0),
+                scope: scope[1],
+            },
+            ignore_for_traits: false,
+        },
+        _s2: CoroutineSavedTy {
+            ty: Coroutine(
+                DefId(0:15 ~ async_self_referential_fields[ea9b]::inner_async_fn::{closure#0}),
+                [
+                    (),
+                    std::future::ResumeTy,
+                    (),
+                    (),
+                    (),
+                ],
+            ),
+            source_info: SourceInfo {
+                span: $DIR/async_self_referential_fields.rs:29:5: 29:27 (#10),
+                scope: scope[2],
+            },
+            ignore_for_traits: false,
+        },
+    },
+    variant_fields: {
+        Unresumed(0): [],
+        Returned (1): [],
+        Panicked (2): [],
+        Suspend0 (3): [_s0, _s1, _s2],
+    },
+    storage_conflicts: BitMatrix(3x3) {
+        (_s0, _s0),
+        (_s0, _s1),
+        (_s0, _s2),
+        (_s1, _s0),
+        (_s1, _s1),
+        (_s1, _s2),
+        (_s2, _s0),
+        (_s2, _s1),
+        (_s2, _s2),
+    },
+} */
+
+fn my_async_fn::{closure#0}(_1: Pin<&mut {async fn body of my_async_fn()}>, _2: &mut std::task::Context<'_>) -> std::task::Poll<i32> {
+    debug _task_context => _2;
+    let mut _0: std::task::Poll<i32>;
+    let _3: std::boxed::Box<i32>;
+    let _5: ();
+    let mut _6: {async fn body of inner_async_fn()};
+    let mut _7: {async fn body of inner_async_fn()};
+    let mut _9: ();
+    let _10: ();
+    let mut _11: std::task::Poll<()>;
+    let mut _12: std::pin::Pin<&mut {async fn body of inner_async_fn()}>;
+    let mut _13: &mut {async fn body of inner_async_fn()};
+    let mut _14: &mut {async fn body of inner_async_fn()};
+    let mut _15: &mut std::task::Context<'_>;
+    let mut _16: &mut std::task::Context<'_>;
+    let mut _17: &mut std::task::Context<'_>;
+    let mut _18: isize;
+    let mut _20: !;
+    let mut _21: &mut std::task::Context<'_>;
+    let mut _22: ();
+    let _23: &std::boxed::Box<i32>;
+    let mut _24: &std::boxed::Box<i32>;
+    let mut _25: i32;
+    let mut _26: *const i32;
+    let mut _27: i32;
+    let mut _28: u32;
+    let mut _29: &mut {async fn body of my_async_fn()};
+    scope 1 {
+        debug x => (((((*_29) as variant#3).0: std::pin::UnsafePinned<std::boxed::Box<i32>>).0: std::cell::UnsafeCell<std::boxed::Box<i32>>).0: std::boxed::Box<i32>);
+        let _4: &std::boxed::Box<i32>;
+        scope 2 {
+            debug y => (((*_29) as variant#3).1: &std::boxed::Box<i32>);
+            let mut _8: {async fn body of inner_async_fn()};
+            scope 3 {
+                debug __awaitee => (((*_29) as variant#3).2: {async fn body of inner_async_fn()});
+                let _19: ();
+                scope 4 {
+                    debug result => _19;
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _29 = copy (_1.0: &mut {async fn body of my_async_fn()});
+        _28 = discriminant((*_29));
+        switchInt(move _28) -> [0: bb1, 1: bb33, 2: bb32, 3: bb31, otherwise: bb9];
+    }
+
+    bb1: {
+        nop;
+        (((((*_29) as variant#3).0: std::pin::UnsafePinned<std::boxed::Box<i32>>).0: std::cell::UnsafeCell<std::boxed::Box<i32>>).0: std::boxed::Box<i32>) = Box::<i32>::new(const 5_i32) -> [return: bb2, unwind: bb27];
+    }
+
+    bb2: {
+        nop;
+        (((*_29) as variant#3).1: &std::boxed::Box<i32>) = &(((((*_29) as variant#3).0: std::pin::UnsafePinned<std::boxed::Box<i32>>).0: std::cell::UnsafeCell<std::boxed::Box<i32>>).0: std::boxed::Box<i32>);
+        StorageLive(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = inner_async_fn() -> [return: bb3, unwind: bb24];
+    }
+
+    bb3: {
+        _6 = <{async fn body of inner_async_fn()} as IntoFuture>::into_future(move _7) -> [return: bb4, unwind: bb23];
+    }
+
+    bb4: {
+        StorageDead(_7);
+        PlaceMention(_6);
+        nop;
+        (((*_29) as variant#3).2: {async fn body of inner_async_fn()}) = move _6;
+        goto -> bb5;
+    }
+
+    bb5: {
+        StorageLive(_10);
+        StorageLive(_11);
+        StorageLive(_12);
+        StorageLive(_13);
+        StorageLive(_14);
+        _14 = &mut (((*_29) as variant#3).2: {async fn body of inner_async_fn()});
+        _13 = &mut (*_14);
+        _12 = Pin::<&mut {async fn body of inner_async_fn()}>::new_unchecked(move _13) -> [return: bb6, unwind: bb20];
+    }
+
+    bb6: {
+        StorageDead(_13);
+        StorageLive(_15);
+        StorageLive(_16);
+        StorageLive(_17);
+        _17 = copy _2;
+        _16 = move _17;
+        goto -> bb7;
+    }
+
+    bb7: {
+        _15 = &mut (*_16);
+        StorageDead(_17);
+        _11 = <{async fn body of inner_async_fn()} as Future>::poll(move _12, move _15) -> [return: bb8, unwind: bb19];
+    }
+
+    bb8: {
+        StorageDead(_15);
+        StorageDead(_12);
+        PlaceMention(_11);
+        _18 = discriminant(_11);
+        switchInt(move _18) -> [0: bb11, 1: bb10, otherwise: bb9];
+    }
+
+    bb9: {
+        unreachable;
+    }
+
+    bb10: {
+        _10 = const ();
+        StorageDead(_16);
+        StorageDead(_14);
+        StorageDead(_11);
+        StorageDead(_10);
+        StorageLive(_21);
+        StorageLive(_22);
+        _22 = ();
+        _0 = std::task::Poll::<i32>::Pending;
+        StorageDead(_5);
+        StorageDead(_6);
+        StorageDead(_21);
+        StorageDead(_22);
+        discriminant((*_29)) = 3;
+        return;
+    }
+
+    bb11: {
+        StorageLive(_19);
+        _19 = copy ((_11 as Ready).0: ());
+        _5 = copy _19;
+        StorageDead(_19);
+        StorageDead(_16);
+        StorageDead(_14);
+        StorageDead(_11);
+        StorageDead(_10);
+        drop((((*_29) as variant#3).2: {async fn body of inner_async_fn()})) -> [return: bb13, unwind: bb22];
+    }
+
+    bb12: {
+        StorageDead(_22);
+        _2 = move _21;
+        StorageDead(_21);
+        _9 = const ();
+        goto -> bb5;
+    }
+
+    bb13: {
+        nop;
+        goto -> bb14;
+    }
+
+    bb14: {
+        StorageDead(_6);
+        StorageDead(_5);
+        StorageLive(_23);
+        StorageLive(_24);
+        _24 = copy (((*_29) as variant#3).1: &std::boxed::Box<i32>);
+        _23 = std::hint::black_box::<&Box<i32>>(move _24) -> [return: bb15, unwind: bb18];
+    }
+
+    bb15: {
+        StorageDead(_24);
+        StorageDead(_23);
+        StorageLive(_25);
+        _26 = copy (((((((*_29) as variant#3).0: std::pin::UnsafePinned<std::boxed::Box<i32>>).0: std::cell::UnsafeCell<std::boxed::Box<i32>>).0: std::boxed::Box<i32>).0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>) as *const i32 (Transmute);
+        _25 = copy (*_26);
+        _27 = Add(move _25, const 1_i32);
+        StorageDead(_25);
+        nop;
+        drop((((((*_29) as variant#3).0: std::pin::UnsafePinned<std::boxed::Box<i32>>).0: std::cell::UnsafeCell<std::boxed::Box<i32>>).0: std::boxed::Box<i32>)) -> [return: bb16, unwind: bb27];
+    }
+
+    bb16: {
+        nop;
+        goto -> bb29;
+    }
+
+    bb17: {
+        _0 = std::task::Poll::<i32>::Ready(move _27);
+        discriminant((*_29)) = 1;
+        return;
+    }
+
+    bb18 (cleanup): {
+        StorageDead(_24);
+        StorageDead(_23);
+        goto -> bb26;
+    }
+
+    bb19 (cleanup): {
+        StorageDead(_15);
+        StorageDead(_12);
+        StorageDead(_16);
+        goto -> bb21;
+    }
+
+    bb20 (cleanup): {
+        StorageDead(_13);
+        StorageDead(_12);
+        goto -> bb21;
+    }
+
+    bb21 (cleanup): {
+        StorageDead(_14);
+        StorageDead(_11);
+        StorageDead(_10);
+        drop((((*_29) as variant#3).2: {async fn body of inner_async_fn()})) -> [return: bb22, unwind terminate(cleanup)];
+    }
+
+    bb22 (cleanup): {
+        nop;
+        goto -> bb25;
+    }
+
+    bb23 (cleanup): {
+        goto -> bb24;
+    }
+
+    bb24 (cleanup): {
+        StorageDead(_7);
+        goto -> bb25;
+    }
+
+    bb25 (cleanup): {
+        StorageDead(_6);
+        StorageDead(_5);
+        goto -> bb26;
+    }
+
+    bb26 (cleanup): {
+        nop;
+        drop((((((*_29) as variant#3).0: std::pin::UnsafePinned<std::boxed::Box<i32>>).0: std::cell::UnsafeCell<std::boxed::Box<i32>>).0: std::boxed::Box<i32>)) -> [return: bb27, unwind terminate(cleanup)];
+    }
+
+    bb27 (cleanup): {
+        nop;
+        goto -> bb28;
+    }
+
+    bb28 (cleanup): {
+        goto -> bb30;
+    }
+
+    bb29: {
+        goto -> bb17;
+    }
+
+    bb30 (cleanup): {
+        discriminant((*_29)) = 2;
+        resume;
+    }
+
+    bb31: {
+        StorageLive(_5);
+        StorageLive(_6);
+        StorageLive(_21);
+        StorageLive(_22);
+        _21 = move _2;
+        goto -> bb12;
+    }
+
+    bb32: {
+        assert(const false, "`async fn` resumed after panicking") -> [success: bb32, unwind continue];
+    }
+
+    bb33: {
+        assert(const false, "`async fn` resumed after completion") -> [success: bb33, unwind continue];
+    }
+}
