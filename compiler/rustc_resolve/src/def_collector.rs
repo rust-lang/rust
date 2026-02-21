@@ -170,7 +170,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             }
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
             ItemKind::Use(use_tree) => {
-                self.create_def(i.id, None, DefKind::Use, use_tree.span);
+                self.create_def(i.id, None, DefKind::Use, use_tree.span());
                 return visit::walk_item(self, i);
             }
             ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
@@ -261,7 +261,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_nested_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId) {
-        self.create_def(id, None, DefKind::Use, use_tree.span);
+        self.create_def(id, None, DefKind::Use, use_tree.span());
         visit::walk_use_tree(self, use_tree);
     }
 
