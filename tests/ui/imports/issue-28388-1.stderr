@@ -2,7 +2,7 @@ error[E0432]: unresolved import `foo`
   --> $DIR/issue-28388-1.rs:4:5
    |
 LL | use foo::{};
-   |     ^^^^^^^ no `foo` in the root
+   |     ^^^ no `foo` in the root
 
 error: aborting due to 1 previous error
 

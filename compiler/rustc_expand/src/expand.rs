@@ -1440,7 +1440,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
         if let ItemKind::Use(ut) = &self.kind {
             fn collect_use_tree_leaves(ut: &ast::UseTree, idents: &mut Vec<Ident>) {
                 match &ut.kind {
-                    ast::UseTreeKind::Glob => {}
+                    ast::UseTreeKind::Glob(_) => {}
                     ast::UseTreeKind::Simple(_) => idents.push(ut.ident()),
                     ast::UseTreeKind::Nested { items, .. } => {
                         for (ut, _) in items {
