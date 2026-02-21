@@ -4,11 +4,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::fs::{self, Metadata, OpenOptions};
+use crate::fs::{self, Metadata, OpenOptions, Permissions};
 use crate::io::BorrowedCursor;
 use crate::path::Path;
 use crate::sealed::Sealed;
-use crate::sys::{AsInner, AsInnerMut, IntoInner};
+use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::time::SystemTime;
 use crate::{io, sys};
 
@@ -354,6 +354,97 @@ impl OpenOptionsExt for OpenOptions {
     fn freeze_last_write_time(&mut self, freeze: bool) -> &mut Self {
         self.as_inner_mut().freeze_last_write_time(freeze);
         self
+    }
+}
+
+/// Windows-specific extensions to [`fs::Permissions`].
+/// # Examples
+///
+/// ```no_run
+/// use std::fs::{File, Permissions};
+/// use std::io::{ErrorKind, Result as IoResult};
+/// use std::os::windows::fs::PermissionsExt;
+///
+/// fn main() -> IoResult<()> {
+///     let name = "test_file_for_permissions";
+///
+///     // make sure file does not exist
+///     let _ = std::fs::remove_file(name);
+///     assert_eq!(
+///         File::open(name).unwrap_err().kind(),
+///         ErrorKind::NotFound,
+///         "file already exists"
+///     );
+///
+///     // readonly and hidden file attributes that we
+///     // want to add to existing file
+///     let my_file_attr = 0x1 | 0x2;
+///
+///     // create new file with specified permissions
+///     {
+///         let file = File::create(name)?;
+///         let mut permissions = file.metadata()?.permissions();
+///         eprintln!("Current file attributes: {:o}", permissions.file_attributes());
+///
+///         // make sure new permissions are not already set
+///         assert!(
+///             permissions.file_attributes() & my_file_attr != my_file_attr,
+///             "file attributes already set"
+///         );
+///
+///         // or use `set_file_attributes` to construct a new Permissions struct
+///         permissions = Permissions::set_file_attributes(permissions.file_attributes() | my_file_attr);
+///
+///         // write new permissions to file
+///         file.set_permissions(permissions)?;
+///     }
+///
+///     let permissions = File::open(name)?.metadata()?.permissions();
+///     eprintln!("New file attributes: {:o}", permissions.mode());
+///
+///     // assert new file attributes were set
+///     assert_eq!(
+///         permissions.mode() & my_file_attr,
+///         my_file_attr,
+///         "new file attributes not set"
+///     );
+///     Ok(())
+/// }
+/// ```
+///
+/// ```no_run
+/// use std::fs::Permissions;
+/// use std::os::windows::fs::PermissionsExt;
+///
+/// // system and archive file attributes
+/// let my_file_attr = 0x4 | 0x20;
+/// let mut permissions = Permissions::set_file_attributes(my_file_attr);
+/// assert_eq!(permissions.mode(), my_file_attr);
+/// ```
+#[unstable(feature = "windows_permissions_ext", issue = "152956")]
+pub trait PermissionsExt {
+    /// Returns the file attribute bits.
+    #[unstable(feature = "windows_permissions_ext", issue = "152956")]
+    fn file_attributes(&self) -> u32;
+
+    // QUESTION: Should this be renamed as from_file_attributes()?
+    // and modify the signature of set_file_attributes() to take a
+    // &mut self like how unix uses `set_mode()`?
+    // (Note to self: if we do the above, I need to make changes to
+    // the doc comments).
+    /// Sets the file attribute bits.
+    #[unstable(feature = "windows_permissions_ext", issue = "152956")]
+    fn set_file_attributes(mask: u32) -> Self;
+}
+
+#[unstable(feature = "windows_permissions_ext", issue = "152956")]
+impl PermissionsExt for Permissions {
+    fn file_attributes(&self) -> u32 {
+        self.as_inner().file_attributes()
+    }
+
+    fn set_file_attributes(mask: u32) -> Self {
+        Permissions::from_inner(FromInner::from_inner(mask))
     }
 }
 
