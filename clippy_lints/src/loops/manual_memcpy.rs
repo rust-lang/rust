@@ -385,8 +385,8 @@ fn get_details_from_idx<'tcx>(
         ExprKind::Binary(op, lhs, rhs) => match op.node {
             BinOpKind::Add => {
                 let offset_opt = get_start(lhs, starts)
-                    .and_then(|s| get_offset(cx, rhs, starts).map(|o| (s, o)))
-                    .or_else(|| get_start(rhs, starts).and_then(|s| get_offset(cx, lhs, starts).map(|o| (s, o))));
+                    .zip(get_offset(cx, rhs, starts))
+                    .or_else(|| get_start(rhs, starts).zip(get_offset(cx, lhs, starts)));
 
                 offset_opt.map(|(s, o)| (s, Offset::positive(o)))
             },
