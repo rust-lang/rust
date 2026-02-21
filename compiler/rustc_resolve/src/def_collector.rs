@@ -22,13 +22,13 @@ pub(crate) fn collect_definitions(
 ) {
     let invocation_parent = resolver.invocation_parents[&expansion];
     debug!("new fragment to visit with invocation_parent: {invocation_parent:?}");
-    let mut visitor = DefCollector { resolver, expansion, invocation_parent };
+    let mut visitor = DefCollector { r: resolver, expansion, invocation_parent };
     fragment.visit_with(&mut visitor);
 }
 
 /// Creates `DefId`s for nodes in the AST.
 struct DefCollector<'a, 'ra, 'tcx> {
-    resolver: &'a mut Resolver<'ra, 'tcx>,
+    r: &'a mut Resolver<'ra, 'tcx>,
     invocation_parent: InvocationParent,
     expansion: LocalExpnId,
 }
@@ -46,7 +46,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             "create_def(node_id={:?}, def_kind={:?}, parent_def={:?})",
             node_id, def_kind, parent_def
         );
-        self.resolver
+        self.r
             .create_def(
                 parent_def,
                 node_id,
@@ -85,12 +85,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         let index = |this: &Self| {
             index.unwrap_or_else(|| {
                 let node_id = NodeId::placeholder_from_expn_id(this.expansion);
-                this.resolver.placeholder_field_indices[&node_id]
+                this.r.placeholder_field_indices[&node_id]
             })
         };
 
         if field.is_placeholder {
-            let old_index = self.resolver.placeholder_field_indices.insert(field.id, index(self));
+            let old_index = self.r.placeholder_field_indices.insert(field.id, index(self));
             assert!(old_index.is_none(), "placeholder field index is reset for a node ID");
             self.visit_macro_invoc(field.id);
         } else {
@@ -105,7 +105,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         debug!(?self.invocation_parent);
 
         let id = id.placeholder_to_expn_id();
-        let old_parent = self.resolver.invocation_parents.insert(id, self.invocation_parent);
+        let old_parent = self.r.invocation_parents.insert(id, self.invocation_parent);
         assert!(old_parent.is_none(), "parent `LocalDefId` is reset for an invocation");
     }
 }
@@ -144,9 +144,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 // FIXME(jdonszelmann) don't care about tools here maybe? Just parse what we can.
                 // Does that prevents errors from happening? maybe
                 let mut parser = AttributeParser::<'_, Early>::new(
-                    &self.resolver.tcx.sess,
-                    self.resolver.tcx.features(),
-                    self.resolver.tcx().registered_tools(()),
+                    &self.r.tcx.sess,
+                    self.r.tcx.features(),
+                    self.r.tcx().registered_tools(()),
                     Early { emit_errors: ShouldEmit::Nothing },
                 );
                 let attrs = parser.parse_attribute_list(
@@ -162,8 +162,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     },
                 );
 
-                let macro_data =
-                    self.resolver.compile_macro(def, *ident, &attrs, i.span, i.id, edition);
+                let macro_data = self.r.compile_macro(def, *ident, &attrs, i.span, i.id, edition);
                 let macro_kinds = macro_data.ext.macro_kinds();
                 opt_macro_data = Some(macro_data);
                 DefKind::Macro(macro_kinds)
@@ -181,7 +180,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             self.create_def(i.id, i.kind.ident().map(|ident| ident.name), def_kind, i.span);
 
         if let Some(macro_data) = opt_macro_data {
-            self.resolver.new_local_macro(def_id, macro_data);
+            self.r.new_local_macro(def_id, macro_data);
         }
 
         self.with_parent(def_id, |this| {
@@ -384,7 +383,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         // `MgcaDisambiguation::Direct` is set even when MGCA is disabled, so
         // to avoid affecting stable we have to feature gate the not creating
         // anon consts
-        if !self.resolver.tcx.features().min_generic_const_args() {
+        if !self.r.tcx.features().min_generic_const_args() {
             let parent =
                 self.create_def(constant.id, None, DefKind::AnonConst, constant.value.span);
             return self.with_parent(parent, |this| visit::walk_anon_const(this, constant));
@@ -464,7 +463,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             TyKind::MacCall(..) => self.visit_macro_invoc(ty.id),
             TyKind::ImplTrait(opaque_id, _) => {
                 let name = *self
-                    .resolver
+                    .r
                     .impl_trait_names
                     .get(&ty.id)
                     .unwrap_or_else(|| span_bug!(ty.span, "expected this opaque to be named"));
