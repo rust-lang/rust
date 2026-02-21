@@ -6,9 +6,9 @@ use core::array;
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem;
+use core::ptr;
 use core::ptr::NonNull;
 use core::slice;
-use core::{hint, ptr};
 use stdalloc::alloc::{Layout, handle_alloc_error};
 
 #[cfg(test)]
@@ -892,21 +892,15 @@ impl<T, A: Allocator> RawTable<T, A> {
                     old_inner.drop_inner_table::<T, _>(&self.alloc, Self::TABLE_LAYOUT);
                 }
             } else {
-                // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
-                unsafe {
-                    // SAFETY:
-                    // 1. We know for sure that `min_size >= self.table.items`.
-                    // 2. The [`RawTableInner`] must already have properly initialized control bytes since
-                    //    we will never expose RawTable::new_uninitialized in a public API.
-                    if self
-                        .resize(min_size, hasher, Fallibility::Infallible)
-                        .is_err()
-                    {
-                        // SAFETY: The result of calling the `resize` function cannot be an error
-                        // because `fallibility == Fallibility::Infallible.
-                        hint::unreachable_unchecked()
-                    }
-                }
+                // SAFETY:
+                // 1. We know for sure that `min_size >= self.table.items`.
+                // 2. The [`RawTableInner`] must already have properly initialized control bytes since
+                //    we will never expose RawTable::new_uninitialized in a public API.
+                let result = unsafe { self.resize(min_size, hasher, Fallibility::Infallible) };
+
+                // SAFETY: The result of calling the `resize` function cannot be an error
+                // because `fallibility == Fallibility::Infallible.
+                unsafe { result.unwrap_unchecked() };
             }
         }
     }
@@ -916,18 +910,13 @@ impl<T, A: Allocator> RawTable<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub(crate) fn reserve(&mut self, additional: usize, hasher: impl Fn(&T) -> u64) {
         if unlikely(additional > self.table.growth_left) {
-            // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
-            unsafe {
-                // SAFETY: The [`RawTableInner`] must already have properly initialized control
-                // bytes since we will never expose RawTable::new_uninitialized in a public API.
-                if self
-                    .reserve_rehash(additional, hasher, Fallibility::Infallible)
-                    .is_err()
-                {
-                    // SAFETY: All allocation errors will be caught inside `RawTableInner::reserve_rehash`.
-                    hint::unreachable_unchecked()
-                }
-            }
+            // SAFETY: The [`RawTableInner`] must already have properly initialized control
+            // bytes since we will never expose RawTable::new_uninitialized in a public API.
+            let result =
+                unsafe { self.reserve_rehash(additional, hasher, Fallibility::Infallible) };
+
+            // SAFETY: All allocation errors will be caught inside `RawTableInner::reserve_rehash`.
+            unsafe { result.unwrap_unchecked() };
         }
     }
 
@@ -1467,12 +1456,10 @@ impl<T, A: Allocator> RawTable<T, A> {
         let alloc = if self.table.is_empty_singleton() {
             None
         } else {
-            // Avoid `Option::unwrap_or_else` because it bloats LLVM IR.
-            let (layout, ctrl_offset) =
-                match Self::TABLE_LAYOUT.calculate_layout_for(self.table.num_buckets()) {
-                    Some(lco) => lco,
-                    None => unsafe { hint::unreachable_unchecked() },
-                };
+            let (layout, ctrl_offset) = {
+                let option = Self::TABLE_LAYOUT.calculate_layout_for(self.table.num_buckets());
+                unsafe { option.unwrap_unchecked() }
+            };
             Some((
                 unsafe { NonNull::new_unchecked(self.table.ctrl.as_ptr().sub(ctrl_offset).cast()) },
                 layout,
@@ -1598,11 +1585,10 @@ impl RawTableInner {
                     let x = maximum_buckets_in(block.len(), table_layout, Group::WIDTH);
                     debug_assert!(x >= buckets);
                     // Calculate the new ctrl_offset.
-                    let (oversized_layout, oversized_ctrl_offset) =
-                        match table_layout.calculate_layout_for(x) {
-                            Some(lco) => lco,
-                            None => unsafe { hint::unreachable_unchecked() },
-                        };
+                    let (oversized_layout, oversized_ctrl_offset) = {
+                        let option = table_layout.calculate_layout_for(x);
+                        unsafe { option.unwrap_unchecked() }
+                    };
                     debug_assert!(oversized_layout.size() <= block.len());
                     debug_assert!(oversized_ctrl_offset >= ctrl_offset);
                     ctrl_offset = oversized_ctrl_offset;
@@ -1674,12 +1660,11 @@ impl RawTableInner {
     where
         A: Allocator,
     {
-        // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
-        match Self::fallible_with_capacity(alloc, table_layout, capacity, Fallibility::Infallible) {
-            Ok(table_inner) => table_inner,
-            // SAFETY: All allocation errors will be caught inside `RawTableInner::new_uninitialized`.
-            Err(_) => unsafe { hint::unreachable_unchecked() },
-        }
+        let result =
+            Self::fallible_with_capacity(alloc, table_layout, capacity, Fallibility::Infallible);
+
+        // SAFETY: All allocation errors will be caught inside `RawTableInner::new_uninitialized`.
+        unsafe { result.unwrap_unchecked() }
     }
 
     /// Fixes up an insertion index returned by the [`RawTableInner::find_insert_index_in_group`] method.
@@ -3158,10 +3143,9 @@ impl RawTableInner {
             "this function can only be called on non-empty tables"
         );
 
-        // Avoid `Option::unwrap_or_else` because it bloats LLVM IR.
-        let (layout, ctrl_offset) = match table_layout.calculate_layout_for(self.num_buckets()) {
-            Some(lco) => lco,
-            None => unsafe { hint::unreachable_unchecked() },
+        let (layout, ctrl_offset) = {
+            let option = table_layout.calculate_layout_for(self.num_buckets());
+            unsafe { option.unwrap_unchecked() }
         };
         (
             // SAFETY: The caller must uphold the safety contract for `allocation_info` method.
@@ -3312,32 +3296,32 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
         if self.table.is_empty_singleton() {
             Self::new_in(self.alloc.clone())
         } else {
-            unsafe {
-                // Avoid `Result::ok_or_else` because it bloats LLVM IR.
-                //
-                // SAFETY: This is safe as we are taking the size of an already allocated table
-                // and therefore capacity overflow cannot occur, `self.table.num_buckets()` is power
-                // of two and all allocator errors will be caught inside `RawTableInner::new_uninitialized`.
-                let mut new_table = match Self::new_uninitialized(
+            // SAFETY: This is safe as we are taking the size of an already allocated table
+            // and therefore capacity overflow cannot occur, `self.table.num_buckets()` is power
+            // of two and all allocator errors will be caught inside `RawTableInner::new_uninitialized`.
+            let result = unsafe {
+                Self::new_uninitialized(
                     self.alloc.clone(),
                     self.table.num_buckets(),
                     Fallibility::Infallible,
-                ) {
-                    Ok(table) => table,
-                    Err(_) => hint::unreachable_unchecked(),
-                };
+                )
+            };
 
-                // Cloning elements may fail (the clone function may panic). But we don't
-                // need to worry about uninitialized control bits, since:
-                // 1. The number of items (elements) in the table is zero, which means that
-                //    the control bits will not be read by Drop function.
-                // 2. The `clone_from_spec` method will first copy all control bits from
-                //    `self` (thus initializing them). But this will not affect the `Drop`
-                //    function, since the `clone_from_spec` function sets `items` only after
-                //    successfully cloning all elements.
-                new_table.clone_from_spec(self);
-                new_table
-            }
+            // SAFETY: The result of calling the `new_uninitialized` function cannot be an error
+            // because `fallibility == Fallibility::Infallible.
+            let mut new_table = unsafe { result.unwrap_unchecked() };
+
+            // SAFETY:
+            // Cloning elements may fail (the clone function may panic). But we don't
+            // need to worry about uninitialized control bits, since:
+            // 1. The number of items (elements) in the table is zero, which means that
+            //    the control bits will not be read by Drop function.
+            // 2. The `clone_from_spec` method will first copy all control bits from
+            //    `self` (thus initializing them). But this will not affect the `Drop`
+            //    function, since the `clone_from_spec` function sets `items` only after
+            //    successfully cloning all elements.
+            unsafe { new_table.clone_from_spec(self) };
+            new_table
         }
     }
 
@@ -3375,14 +3359,14 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
 
                 // If necessary, resize our table to match the source.
                 if self_.num_buckets() != source.num_buckets() {
-                    let new_inner = match RawTableInner::new_uninitialized(
-                        &self_.alloc,
-                        Self::TABLE_LAYOUT,
-                        source.num_buckets(),
-                        Fallibility::Infallible,
-                    ) {
-                        Ok(table) => table,
-                        Err(_) => hint::unreachable_unchecked(),
+                    let new_inner = {
+                        let result = RawTableInner::new_uninitialized(
+                            &self_.alloc,
+                            Self::TABLE_LAYOUT,
+                            source.num_buckets(),
+                            Fallibility::Infallible,
+                        );
+                        result.unwrap_unchecked()
                     };
                     // Replace the old inner with new uninitialized one. It's ok, since if something gets
                     // wrong `ScopeGuard` will initialize all control bytes and leave empty table.
