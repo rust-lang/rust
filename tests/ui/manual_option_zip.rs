@@ -63,6 +63,10 @@ fn should_not_lint() {
     // the outer param used in the map receiver (cannot extract)
     let opts: Vec<Option<i32>> = vec![Some(1), Some(2)];
     let _ = a.and_then(|a| opts[a as usize].map(|b| (a, b)));
+
+    // n-ary zip where n > 2, which is out of scope for this lint (for now)
+    let c: Option<i32> = Some(3);
+    let _ = a.and_then(|a| b.and_then(|b| c.map(|c| (a, b, c))));
 }
 
 fn get_option() -> Option<i32> {
