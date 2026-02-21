@@ -20,7 +20,7 @@
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant, const_item_rhs_to_expr};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::is_in_const_context;
+use clippy_utils::{is_in_const_context, sym};
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::paths::{PathNS, lookup_path_str};
 use clippy_utils::ty::{get_field_idx_by_name, implements_trait};
@@ -39,7 +39,7 @@ use rustc_middle::ty::{
     TypeckResults, TypingEnv,
 };
 use rustc_session::impl_lint_pass;
-use rustc_span::{DUMMY_SP, sym};
+use rustc_span::DUMMY_SP;
 use std::collections::hash_map::Entry;
 
 declare_clippy_lint! {

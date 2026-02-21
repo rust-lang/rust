@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_note;
-use clippy_utils::expr_or_init;
+use clippy_utils::{expr_or_init, sym};
 use clippy_utils::higher::VecArgs;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self};
-use rustc_span::sym;
 
 use super::ITER_OUT_OF_BOUNDS;
 

@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_utils::SpanlessEq;
+use clippy_utils::{sym, SpanlessEq};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
@@ -11,7 +11,7 @@ use rustc_hir::def_id::DefId;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::symbol::Symbol;
 
 const ACCEPTABLE_METHODS: [Symbol; 5] = [
     sym::binaryheap_iter,
