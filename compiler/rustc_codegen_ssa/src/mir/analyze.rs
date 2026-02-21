@@ -7,7 +7,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, DefLocation, Location, TerminatorKind, traversal};
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::{bug, span_bug};
 use tracing::debug;
 
@@ -26,7 +26,10 @@ pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         .map(|decl| {
             let ty = fx.monomorphize(decl.ty);
             let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
-            if layout.is_zst() { LocalKind::ZST } else { LocalKind::Unused }
+            KindAndLayout {
+                kind: if layout.is_zst() { LocalKind::ZST } else { LocalKind::Unused },
+                layout,
+            }
         })
         .collect();
 
@@ -46,8 +49,8 @@ pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 
     let mut non_ssa_locals = DenseBitSet::new_empty(analyzer.locals.len());
-    for (local, kind) in analyzer.locals.iter_enumerated() {
-        if matches!(kind, LocalKind::Memory) {
+    for (local, info) in analyzer.locals.iter_enumerated() {
+        if matches!(info.kind, LocalKind::Memory) {
             non_ssa_locals.insert(local);
         }
     }
@@ -66,10 +69,16 @@ enum LocalKind {
     SSA(DefLocation),
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+struct KindAndLayout<'tcx> {
+    kind: LocalKind,
+    layout: TyAndLayout<'tcx>,
+}
+
 struct LocalAnalyzer<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> {
     fx: &'a FunctionCx<'b, 'tcx, Bx>,
     dominators: &'a Dominators<mir::BasicBlock>,
-    locals: IndexVec<mir::Local, LocalKind>,
+    locals: IndexVec<mir::Local, KindAndLayout<'tcx>>,
 }
 
 const COPY_CONTEXT: PlaceContext = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
@@ -77,22 +86,20 @@ const COPY_CONTEXT: PlaceContext = PlaceContext::NonMutatingUse(NonMutatingUseCo
 impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx> {
     fn define(&mut self, local: mir::Local, location: DefLocation) {
         let fx = self.fx;
-        let kind = &mut self.locals[local];
-        let decl = &fx.mir.local_decls[local];
-        match *kind {
+        let info = &mut self.locals[local];
+        match info.kind {
             LocalKind::ZST => {}
             LocalKind::Memory => {}
             LocalKind::Unused => {
-                let ty = fx.monomorphize(decl.ty);
-                let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
-                *kind =
+                let layout = info.layout;
+                info.kind =
                     if fx.cx.is_backend_immediate(layout) || fx.cx.is_backend_scalar_pair(layout) {
                         LocalKind::SSA(location)
                     } else {
                         LocalKind::Memory
                     };
             }
-            LocalKind::SSA(_) => *kind = LocalKind::Memory,
+            LocalKind::SSA(_) => info.kind = LocalKind::Memory,
         }
     }
 
@@ -134,7 +141,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
 
             // If our local is already memory, nothing can make it *more* memory
             // so we don't need to bother checking the projections further.
-            if self.locals[place_ref.local] == LocalKind::Memory {
+            if self.locals[place_ref.local].kind == LocalKind::Memory {
                 return;
             }
 
@@ -158,8 +165,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
 
             // Scan through to ensure the only projections are those which
             // `FunctionCx::maybe_codegen_consume_direct` can handle.
-            let base_ty = self.fx.monomorphized_place_ty(mir::PlaceRef::from(place_ref.local));
-            let mut layout = self.fx.cx.layout_of(base_ty);
+            let mut layout = self.locals[place_ref.local].layout;
             for elem in place_ref.projection {
                 layout = match *elem {
                     mir::PlaceElem::Field(fidx, ..) => layout.field(self.fx.cx, fidx.as_usize()),
@@ -171,7 +177,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
                         layout.for_variant(self.fx.cx, vidx)
                     }
                     _ => {
-                        self.locals[place_ref.local] = LocalKind::Memory;
+                        self.locals[place_ref.local].kind = LocalKind::Memory;
                         return;
                     }
                 }
@@ -226,7 +232,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
         if let mir::Rvalue::Use(operand) = rvalue
             && let Some(place) = operand.place()
         {
-            if let LocalKind::ZST | LocalKind::Memory = self.locals[place.local] {
+            if let LocalKind::ZST | LocalKind::Memory = self.locals[place.local].kind {
                 // If the local already knows it's not SSA, there's no point in looking
                 // at it further, other than to make sure indexing is tracked.
                 return self.process_locals_in_projections(place.projection, location);
@@ -244,9 +250,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
                 return self.visit_local(place.local, COPY_CONTEXT, location);
             }
 
-            let local_ty = self.fx.monomorphized_place_ty(mir::PlaceRef::from(place.local));
-            let local_layout = self.fx.cx.layout_of(local_ty);
-
+            let local_layout = self.locals[place.local].layout;
             if repr_has_fully_init_scalar_fields(&local_layout.backend_repr) {
                 // For Scalar/ScalarPair, we can handle *every* possible projection.
                 // We could potentially handle union too, but today we don't since as currently
@@ -292,7 +296,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
                 // which we can treat similar to `Copy` use for the purpose of
                 // whether we can use SSA variables for things.
                 | NonMutatingUseContext::Inspect,
-            ) => match &mut self.locals[local] {
+            ) => match &mut self.locals[local].kind {
                 LocalKind::ZST => {}
                 LocalKind::Memory => {}
                 LocalKind::SSA(def) if def.dominates(location, self.dominators) => {}
@@ -319,17 +323,16 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
                 | NonMutatingUseContext::RawBorrow
                 | NonMutatingUseContext::Projection,
             ) => {
-                self.locals[local] = LocalKind::Memory;
+                self.locals[local].kind = LocalKind::Memory;
             }
 
             PlaceContext::MutatingUse(MutatingUseContext::Drop) => {
-                let kind = &mut self.locals[local];
-                if *kind != LocalKind::Memory {
-                    let ty = self.fx.mir.local_decls[local].ty;
-                    let ty = self.fx.monomorphize(ty);
+                let info = &mut self.locals[local];
+                if info.kind != LocalKind::Memory {
+                    let ty = info.layout.ty;
                     if self.fx.cx.type_needs_drop(ty) {
                         // Only need the place if we're actually dropping it.
-                        *kind = LocalKind::Memory;
+                        info.kind = LocalKind::Memory;
                     }
                 }
             }
