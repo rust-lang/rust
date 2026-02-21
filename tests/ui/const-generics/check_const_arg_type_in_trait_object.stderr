@@ -1,0 +1,47 @@
+error[E0308]: mismatched types
+  --> $DIR/check_const_arg_type_in_trait_object.rs:18:23
+   |
+LL |     anon: &dyn Object<true>,
+   |                       ^^^^ expected `usize`, found `bool`
+
+error: the constant `B` is not of type `usize`
+  --> $DIR/check_const_arg_type_in_trait_object.rs:16:12
+   |
+LL |     param: &dyn Object<B>,
+   |            ^^^^^^^^^^^^^^ expected `usize`, found `bool`
+   |
+note: required by a const generic parameter in `Object`
+  --> $DIR/check_const_arg_type_in_trait_object.rs:9:14
+   |
+LL | trait Object<const N: usize> {}
+   |              ^^^^^^^^^^^^^^ required by this const generic parameter in `Object`
+
+error[E0308]: mismatched types
+  --> $DIR/check_const_arg_type_in_trait_object.rs:26:34
+   |
+LL |     anon: &dyn Object2<Wrap<[(); true]>>,
+   |                                  ^^^^ expected `usize`, found `bool`
+
+error: the constant `B` is not of type `usize`
+  --> $DIR/check_const_arg_type_in_trait_object.rs:24:12
+   |
+LL |     param: &dyn Object2<Wrap<[(); B]>>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
+   |
+   = note: the length of array `[(); B]` must be type `usize`
+
+error: the constant `B` is not of type `usize`
+  --> $DIR/check_const_arg_type_in_trait_object.rs:33:33
+   |
+LL | fn binder<const B: bool>(param: &dyn for<'a> Object3<'a, B>) {}
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
+   |
+note: required by a const generic parameter in `Object3`
+  --> $DIR/check_const_arg_type_in_trait_object.rs:11:28
+   |
+LL | trait Object3<'a: 'static, const N: usize> {}
+   |                            ^^^^^^^^^^^^^^ required by this const generic parameter in `Object3`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
