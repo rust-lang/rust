@@ -31,7 +31,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
-use crate::def_collector::collect_definitions;
+use crate::def_collector::{DefCollector, collect_definitions};
 use crate::diagnostics::StructCtor;
 use crate::imports::{ImportData, ImportKind, OnUnknownData};
 use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
@@ -242,10 +242,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         fragment: &AstFragment,
         parent_scope: ParentScope<'ra>,
     ) -> MacroRulesScopeRef<'ra> {
-        collect_definitions(self, fragment, parent_scope.expansion);
-        let mut visitor = BuildReducedGraphVisitor { r: self, parent_scope };
-        fragment.visit_with(&mut visitor);
-        visitor.parent_scope.macro_rules
+        collect_definitions(self, fragment, parent_scope)
     }
 
     pub(crate) fn build_reduced_graph_external(&self, module: ExternModule<'ra>) {
@@ -364,18 +361,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 }
 
-struct BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
-    r: &'a mut Resolver<'ra, 'tcx>,
-    parent_scope: ParentScope<'ra>,
-}
-
-impl<'ra, 'tcx> AsMut<Resolver<'ra, 'tcx>> for BuildReducedGraphVisitor<'_, 'ra, 'tcx> {
+impl<'ra, 'tcx> AsMut<Resolver<'ra, 'tcx>> for DefCollector<'_, 'ra, 'tcx> {
     fn as_mut(&mut self) -> &mut Resolver<'ra, 'tcx> {
         self.r
     }
 }
 
-impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
+impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     fn res(&self, def_id: impl Into<DefId>) -> Res {
         let def_id = def_id.into();
         Res::Def(self.r.tcx.def_kind(def_id), def_id)
@@ -1387,7 +1379,7 @@ macro_rules! method {
     };
 }
 
-impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
+impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     method!(visit_expr: ast::Expr, ast::ExprKind::MacCall, walk_expr);
     method!(visit_pat: ast::Pat, ast::PatKind::MacCall, walk_pat);
     method!(visit_ty: ast::Ty, ast::TyKind::MacCall, walk_ty);
