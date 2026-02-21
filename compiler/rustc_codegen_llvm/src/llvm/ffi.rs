@@ -1034,6 +1034,8 @@ unsafe extern "C" {
     pub(crate) fn LLVMGetAggregateElement(ConstantVal: &Value, Idx: c_uint) -> Option<&Value>;
     pub(crate) fn LLVMGetConstOpcode(ConstantVal: &Value) -> Opcode;
     pub(crate) fn LLVMIsAConstantExpr(Val: &Value) -> Option<&Value>;
+    pub(crate) fn LLVMConstSub<'a>(LHS: &'a Value, RHS: &'a Value) -> &'a Value;
+    pub(crate) fn LLVMConstTrunc<'a>(ConstantVal: &'a Value, ToType: &'a Type) -> &'a Value;
 
     // Operations on global variables, functions, and aliases (globals)
     pub(crate) fn LLVMIsDeclaration(Global: &Value) -> Bool;
@@ -1063,6 +1065,13 @@ unsafe extern "C" {
     pub(crate) safe fn LLVMSetTailCall(CallInst: &Value, IsTailCall: Bool);
     pub(crate) safe fn LLVMSetTailCallKind(CallInst: &Value, kind: TailCallKind);
     pub(crate) safe fn LLVMSetExternallyInitialized(GlobalVar: &Value, IsExtInit: Bool);
+
+    pub(crate) fn LLVMDSOLocalEquivalent(GlobalVar: &Value) -> &Value;
+    pub(crate) fn LLVMBuildLoadRelative<'a>(
+        Builder: &Builder<'a>,
+        Ptr: &'a Value,
+        ByteOffset: &'a Value,
+    ) -> &'a Value;
 
     // Operations on attributes
     pub(crate) fn LLVMCreateStringAttribute(

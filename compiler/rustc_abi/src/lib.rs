@@ -41,7 +41,7 @@ use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
 use std::num::{NonZeroUsize, ParseIntError};
-use std::ops::{Add, AddAssign, Deref, Mul, RangeFull, RangeInclusive, Sub};
+use std::ops::{Add, AddAssign, Deref, Div, Mul, RangeFull, RangeInclusive, Sub};
 use std::str::FromStr;
 
 use bitflags::bitflags;
@@ -846,6 +846,14 @@ impl Size {
         if bytes < dl.obj_size_bound() { Some(Size::from_bytes(bytes)) } else { None }
     }
 
+    #[inline]
+    pub fn checked_div<C: HasDataLayout>(self, count: u64, cx: &C) -> Option<Size> {
+        let dl = cx.data_layout();
+
+        let bytes = self.bytes().checked_div(count)?;
+        if bytes < dl.obj_size_bound() { Some(Size::from_bytes(bytes)) } else { None }
+    }
+
     /// Truncates `value` to `self` bits and then sign-extends it to 128 bits
     /// (i.e., if it is negative, fill with 1's on the left).
     #[inline]
@@ -929,6 +937,25 @@ impl Mul<u64> for Size {
         match self.bytes().checked_mul(count) {
             Some(bytes) => Size::from_bytes(bytes),
             None => panic!("Size::mul: {} * {} doesn't fit in u64", self.bytes(), count),
+        }
+    }
+}
+
+impl Div<Size> for u64 {
+    type Output = Size;
+    #[inline]
+    fn div(self, size: Size) -> Size {
+        size / self
+    }
+}
+
+impl Div<u64> for Size {
+    type Output = Size;
+    #[inline]
+    fn div(self, count: u64) -> Size {
+        match self.bytes().checked_div(count) {
+            Some(bytes) => Size::from_bytes(bytes),
+            None => panic!("Size::div: {} / {} doesn't fit in u64", self.bytes(), count),
         }
     }
 }

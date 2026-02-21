@@ -293,8 +293,12 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                                 self.const_bitcast(llval, llty)
                             };
                         } else {
-                            let init =
-                                const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
+                            let init = const_alloc_to_llvm(
+                                self,
+                                alloc.inner(),
+                                /*static*/ false,
+                                /*vtable_base*/ None,
+                            );
                             let alloc = alloc.inner();
                             let value = match alloc.mutability {
                                 Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
@@ -326,7 +330,12 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                                 }),
                             )))
                             .unwrap_memory();
-                        let init = const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
+                        let init = const_alloc_to_llvm(
+                            self,
+                            alloc.inner(),
+                            /*static*/ false,
+                            /*vtable_base*/ None,
+                        );
                         self.static_addr_of_impl(init, alloc.inner().align, None)
                     }
                     GlobalAlloc::Static(def_id) => {
@@ -360,7 +369,37 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> Self::Value {
-        const_alloc_to_llvm(self, alloc.inner(), /*static*/ false)
+        const_alloc_to_llvm(self, alloc.inner(), /*static*/ false, /*vtable_base*/ None)
+    }
+
+    fn construct_vtable(
+        &self,
+        vtable_allocation: ConstAllocation<'_>,
+        num_entries: u64,
+    ) -> Self::Value {
+        // When constructing relative vtables, we need to create the global first before creating
+        // the initializer so the initializer has references to the global we will bind it to.
+        // Regular vtables aren't self-referential so we can just create the initializer on its
+        // own.
+        if self.sess().opts.unstable_opts.experimental_relative_rust_abi_vtables {
+            let llty = self.type_array(self.type_i32(), num_entries);
+            let vtable = self.static_addr_of_mut_from_type(
+                llty,
+                self.data_layout().i32_align,
+                Some("vtable"),
+            );
+            let init = const_alloc_to_llvm(
+                self,
+                vtable_allocation.inner(),
+                /*static*/ false,
+                Some(vtable),
+            );
+            self.static_addr_of_impl_for_gv(init, vtable)
+        } else {
+            let vtable_const = self.const_data_from_alloc(vtable_allocation);
+            let align = self.data_layout().pointer_align().abi;
+            self.static_addr_of(vtable_const, align, Some("vtable"))
+        }
     }
 
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {

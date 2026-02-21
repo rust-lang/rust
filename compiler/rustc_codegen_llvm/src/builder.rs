@@ -643,6 +643,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn load_relative(&mut self, ptr: &'ll Value, byte_offset: &'ll Value) -> &'ll Value {
+        unsafe { llvm::LLVMBuildLoadRelative(self.llbuilder, ptr, byte_offset) }
+    }
+
     fn volatile_load(&mut self, ty: &'ll Type, ptr: &'ll Value) -> &'ll Value {
         unsafe {
             let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
