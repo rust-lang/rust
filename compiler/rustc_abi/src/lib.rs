@@ -1036,6 +1036,19 @@ impl Align {
     // LLVM has a maximal supported alignment of 2^29, we inherit that.
     pub const MAX: Align = Align { pow2: 29 };
 
+    /// Either `1 << (pointer_bits - 1)` or [`Align::MAX`], whichever is smaller.
+    #[inline]
+    pub fn max_for_target(tdl: &TargetDataLayout) -> Align {
+        let pointer_bits = tdl.pointer_size().bits();
+        if let Ok(pointer_bits) = u8::try_from(pointer_bits)
+            && pointer_bits <= Align::MAX.pow2
+        {
+            Align { pow2: pointer_bits - 1 }
+        } else {
+            Align::MAX
+        }
+    }
+
     #[inline]
     pub fn from_bits(bits: u64) -> Result<Align, AlignFromBytesError> {
         Align::from_bytes(Size::from_bits(bits).bytes())
