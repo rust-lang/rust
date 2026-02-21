@@ -224,7 +224,7 @@ pub mod boxed;
 #[unstable(feature = "bstr", issue = "134915")]
 pub mod bstr;
 pub mod collections;
-#[cfg(all(not(no_rc), not(no_sync), not(no_global_oom_handling)))]
+#[cfg(not(no_global_oom_handling))]
 pub mod ffi;
 pub mod fmt;
 pub mod intrinsics;
