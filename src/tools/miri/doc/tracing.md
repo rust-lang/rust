@@ -2,6 +2,9 @@
 
 Miri can be traced to understand how much time is spent in its various components (e.g. borrow tracker, data race checker, etc.). When tracing is enabled, running Miri will create a `.json` trace file that can be opened and analyzed in [Perfetto](https://ui.perfetto.dev/). For any questions regarding this documentation you may contact [Stypox](https://rust-lang.zulipchat.com/#narrow/dm/627563-Stypox) on Zulip.
 
+> [!WARNING]
+> Tracing in Miri at the moment is broken due to two bugs in tracing libraries: https://github.com/tokio-rs/tracing/pull/3392 and https://github.com/davidbarsky/tracing-tree/issues/93. Also see https://github.com/rust-lang/miri/issues/4752.
+
 ## Obtaining a trace file
 
 ### From the Miri codebase
@@ -277,9 +280,12 @@ So the solution was to copy-paste [the only file](https://github.com/thoren-d/tr
 
 ### Time measurements
 
-tracing-chrome originally used `std::time::Instant` to measure time, however on some x86/x86_64 Linux systems it might be unbearably slow since the underlying system call (`clock_gettime`) would take ≈1.3µs. Read more [here](https://btorpey.github.io/blog/2014/02/18/clock-sources-in-linux/) about how the Linux kernel chooses the clock source.
+tracing-chrome uses `std::time::Instant` to measure time. On most modern systems this is ok, since the underlying system call (`clock_gettime`) uses very fast hardware counters (e.g. `tsc`) and has a latency of ≈16ns.
 
-Therefore, on x86/x86_64 Linux systems with a CPU that has an invariant TSC counter, we read from that instead to measure time, which takes only ≈13ns. There are unfortunately a lot of caveats to this approach though, as explained [in the code](https://github.com/rust-lang/miri/blob/master/src/bin/log/tracing_chrome_instant.rs) and [in the PR](https://github.com/rust-lang/miri/pull/4524). The most impactful one is that: every thread spawned in Miri that wants to trace something (which requires measuring time) needs to pin itself to a single CPU core (using `sched_setaffinity`).
+On some x86/x86_64 Linux systems, however, `tsc` is not "reliable" and the system thus relies on other timers, e.g. `hpet` which takes ≈1.3µs. Read [here](https://btorpey.github.io/blog/2014/02/18/clock-sources-in-linux/) how the Linux kernel chooses the clock source, and how to check if your system is using `tsc`. If it doesn't use `tsc`, then expect most of the trace time being spent in time measurements, which degrades traces' usefulness... See [here](https://github.com/rust-lang/miri/issues/4563) for some discussion.
+
+> [!WARNING]
+> A (somewhat risky) workaround is to add `tsc=reliable clocksource=tsc hpet=disable` to the kernel boot parameters, which forces it to use `tsc` even if it is unreliable. But this may render the system unstable, so try it at your own risk!
 
 ## Other useful stuff
 
