@@ -1,0 +1,29 @@
+error: this `and_then` invoking `map` in the provided closure can be replaced with `Option::zip`
+  --> tests/ui/manual_option_zip.rs:13:13
+   |
+LL |     let _ = a.and_then(|a| b.map(|b| (a, b)));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `a.zip(b)`
+   |
+   = note: `-D clippy::manual-option-zip` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_option_zip)]`
+
+error: this `and_then` invoking `map` in the provided closure can be replaced with `Option::zip`
+  --> tests/ui/manual_option_zip.rs:19:13
+   |
+LL |     let _ = a.and_then(|a| b.map(|b| (a, b)));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `a.zip(b)`
+
+error: this `and_then` invoking `map` in the provided closure can be replaced with `Option::zip`
+  --> tests/ui/manual_option_zip.rs:24:13
+   |
+LL |     let _ = None::<i32>.and_then(|a| b.map(|b| (a, b)));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `None::<i32>.zip(b)`
+
+error: this `and_then` invoking `map` in the provided closure can be replaced with `Option::zip`
+  --> tests/ui/manual_option_zip.rs:29:13
+   |
+LL |     let _ = a.and_then(|a| get_option().map(|b| (a, b)));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `a.zip(get_option())`
+
+error: aborting due to 4 previous errors
+
