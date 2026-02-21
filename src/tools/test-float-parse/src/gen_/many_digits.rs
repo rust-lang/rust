@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use std::ops::{Range, RangeInclusive};
 
 use rand::distr::{Distribution, Uniform};
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use crate::{Float, Generator, SEED};
@@ -39,7 +39,7 @@ impl<F: Float> Generator<F> for RandDigits<F> {
     }
 
     fn new() -> Self {
-        let rng = ChaCha8Rng::from_seed(SEED);
+        let rng = ChaCha8Rng::from_seed(SEED.0);
         let range = Uniform::try_from(0..10).unwrap();
 
         Self { rng, iter: 0..ITERATIONS, uniform: range, marker: PhantomData }

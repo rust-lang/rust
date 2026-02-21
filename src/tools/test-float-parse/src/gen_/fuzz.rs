@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use std::ops::Range;
 use std::sync::Mutex;
 
-use rand::Rng;
+use rand::RngExt;
 use rand::distr::{Distribution, StandardUniform};
 use rand_chacha::ChaCha8Rng;
 use rand_chacha::rand_core::SeedableRng;
@@ -62,7 +62,7 @@ where
     }
 
     fn new() -> Self {
-        let rng = ChaCha8Rng::from_seed(SEED);
+        let rng = ChaCha8Rng::from_seed(SEED.0);
 
         Self { iter: 0..Self::total_tests(), rng, marker: PhantomData }
     }
