@@ -354,23 +354,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let path_raw = this.read_pointer(path_raw)?;
-        let path = this.read_path_from_c_str(path_raw)?;
-
-        match path::absolute(&path) {
-            Ok(path) => {
-                // "/proc" does not work properly from inside Miri, warn about opening files there.
-                if matches!(
-                    this.tcx.sess.target.os,
-                    Os::Linux | Os::Android | Os::Illumos | Os::Solaris
-                ) && (path == Path::new("/proc") || path.starts_with("/proc/"))
-                {
-                    this.machine.emit_diagnostic(NonHaltingDiagnostic::FileInProcOpened);
-                }
-            }
-            Err(_) => { /* when the path is empty, it is also unrelative to "/proc" issue */ }
-        }
-
         let flag = this.read_scalar(flag)?.to_i32()?;
+
+        let path = this.read_path_from_c_str(path_raw)?;
+        // Files in `/proc` won't work properly.
+        if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android | Os::Illumos | Os::Solaris)
+            && path::absolute(&path).is_ok_and(|path| path.starts_with("/proc"))
+        {
+            this.machine.emit_diagnostic(NonHaltingDiagnostic::FileInProcOpened);
+        }
 
         let mut options = OpenOptions::new();
 
