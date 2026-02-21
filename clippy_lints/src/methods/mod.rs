@@ -2138,7 +2138,7 @@ declare_clippy_lint! {
     /// let b: Option<i32> = Some(2);
     /// let _ = a.zip(b);
     /// ```
-    #[clippy::version = "1.94.0"]
+    #[clippy::version = "1.95.0"]
     pub MANUAL_OPTION_ZIP,
     complexity,
     "manual reimplementation of `Option::zip`"

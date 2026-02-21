@@ -57,7 +57,7 @@ pub(super) fn check<'tcx>(
             cx,
             MANUAL_OPTION_ZIP,
             expr.span,
-            "this `and_then` invoking `map` in the provided closure can be replaced with `Option::zip`",
+            "manual implementation of `Option::zip`",
             "use",
             format!("{recv_snip}.zip({map_recv_snip})"),
             applicability,
