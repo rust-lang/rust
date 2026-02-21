@@ -21,12 +21,11 @@ pub(super) fn check<'tcx>(
     msrv: Msrv,
 ) {
     // Looking for: `a.and_then(|a| b.map(|b| (a, b)))`.
-    if cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Option)
-        && msrv.meets(cx, msrvs::OPTION_ZIP)
-        // `and_then(|a| ...)`
-        && let ExprKind::Closure(&hir::Closure { body: outer_body_id, .. }) = arg.kind
+    // `and_then(|a| ...)`
+    if let ExprKind::Closure(&hir::Closure { body: outer_body_id, .. }) = arg.kind
         && let hir::Body { params: [outer_param], value: outer_value, .. } = cx.tcx.hir_body(outer_body_id)
         && let PatKind::Binding(_, outer_param_id, _, None) = outer_param.pat.kind
+        && cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Option)
         // `b.map(|b| ...)`
         && let ExprKind::MethodCall(method_path, map_recv, [map_arg], _) = peel_blocks(outer_value).kind
         && method_path.ident.name == sym::map
@@ -47,6 +46,8 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Tup([first, second]) = peel_blocks(inner_value).kind
         && first.res_local_id() == Some(outer_param_id)
         && second.res_local_id() == Some(inner_param_id)
+        // `Option.zip()` is available.
+        && msrv.meets(cx, msrvs::OPTION_ZIP)
     {
         let mut applicability = Applicability::MachineApplicable;
         let recv_snip = snippet_with_applicability(cx, recv.span, "_", &mut applicability);
