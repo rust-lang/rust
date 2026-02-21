@@ -13,24 +13,28 @@ use rustc_span::hygiene::LocalExpnId;
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, instrument};
 
-use crate::{ConstArgContext, ImplTraitContext, InvocationParent, Resolver};
+use crate::macros::MacroRulesScopeRef;
+use crate::{ConstArgContext, ImplTraitContext, InvocationParent, ParentScope, Resolver};
 
-pub(crate) fn collect_definitions(
-    resolver: &mut Resolver<'_, '_>,
+pub(crate) fn collect_definitions<'ra>(
+    resolver: &mut Resolver<'ra, '_>,
     fragment: &AstFragment,
-    expansion: LocalExpnId,
-) {
+    parent_scope: ParentScope<'ra>,
+) -> MacroRulesScopeRef<'ra> {
+    let expansion = parent_scope.expansion;
     let invocation_parent = resolver.invocation_parents[&expansion];
     debug!("new fragment to visit with invocation_parent: {invocation_parent:?}");
-    let mut visitor = DefCollector { r: resolver, expansion, invocation_parent };
+    let mut visitor = DefCollector { r: resolver, expansion, invocation_parent, parent_scope };
     fragment.visit_with(&mut visitor);
+    visitor.parent_scope.macro_rules
 }
 
 /// Creates `DefId`s for nodes in the AST.
-struct DefCollector<'a, 'ra, 'tcx> {
-    r: &'a mut Resolver<'ra, 'tcx>,
+pub(crate) struct DefCollector<'a, 'ra, 'tcx> {
+    pub(crate) r: &'a mut Resolver<'ra, 'tcx>,
     invocation_parent: InvocationParent,
     expansion: LocalExpnId,
+    pub(crate) parent_scope: ParentScope<'ra>,
 }
 
 impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
