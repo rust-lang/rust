@@ -4499,6 +4499,7 @@ mod test_map {
     /// CHECKING THAT WE DON'T TRY TO DROP DATA IF THE `ITEMS`
     /// ARE ZERO, EVEN IF WE HAVE `FULL` CONTROL BYTES.
     #[test]
+    #[cfg_attr(target_arch = "wasm32", ignore)]
     fn test_catch_panic_clone_from() {
         use super::{AllocError, Allocator, Global};
         use core::sync::atomic::{AtomicI8, Ordering};
