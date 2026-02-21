@@ -25,14 +25,17 @@ fn should_lint() {
     let a: Option<i32> = Some(1);
     let _ = a.and_then(|a| get_option().map(|b| (a, b)));
     //~^ manual_option_zip
+
+    // tuple order reversed: (inner, outer) instead of (outer, inner)
+    let a: Option<i32> = Some(1);
+    let b: Option<i32> = Some(2);
+    let _ = a.and_then(|a| b.map(|b| (b, a)));
+    //~^ manual_option_zip
 }
 
 fn should_not_lint() {
     let a: Option<i32> = Some(1);
     let b: Option<i32> = Some(2);
-
-    // tuple order reversed: (inner, outer) instead of (outer, inner)
-    let _ = a.and_then(|a| b.map(|b| (b, a)));
 
     // tuple has more than 2 elements
     let _ = a.and_then(|a| b.map(|b| (a, b, 1)));

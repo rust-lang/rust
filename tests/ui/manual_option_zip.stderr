@@ -25,5 +25,11 @@ error: manual implementation of `Option::zip`
 LL |     let _ = a.and_then(|a| get_option().map(|b| (a, b)));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `a.zip(get_option())`
 
-error: aborting due to 4 previous errors
+error: manual implementation of `Option::zip`
+  --> tests/ui/manual_option_zip.rs:32:13
+   |
+LL |     let _ = a.and_then(|a| b.map(|b| (b, a)));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `b.zip(a)`
+
+error: aborting due to 5 previous errors
 

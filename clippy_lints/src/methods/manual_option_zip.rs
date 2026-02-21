@@ -5,7 +5,7 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, ExprKind, PatKind};
+use rustc_hir::{self as hir, ExprKind, HirId, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 use std::ops::ControlFlow;
@@ -42,16 +42,16 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Closure(&hir::Closure { body: inner_body_id, .. }) = map_arg.kind
         && let hir::Body { params: [inner_param], value: inner_value, .. } = cx.tcx.hir_body(inner_body_id)
         && let PatKind::Binding(_, inner_param_id, _, None) = inner_param.pat.kind
-        // `(a, b)` — tuple of outer then inner param.
+        // `(a, b)` or `(b, a)` — tuple of outer and inner param in either order.
         && let ExprKind::Tup([first, second]) = peel_blocks(inner_value).kind
-        && first.res_local_id() == Some(outer_param_id)
-        && second.res_local_id() == Some(inner_param_id)
+        && let Some((zip_recv, zip_arg)) = zip_operands(first, second, outer_param_id, inner_param_id, recv, map_recv)
         // `Option.zip()` is available.
         && msrv.meets(cx, msrvs::OPTION_ZIP)
     {
         let mut applicability = Applicability::MachineApplicable;
-        let recv_snip = snippet_with_applicability(cx, recv.span, "_", &mut applicability);
-        let map_recv_snip = snippet_with_applicability(cx, map_recv.span, "_", &mut applicability);
+        let zip_recv_snip = snippet_with_applicability(cx, zip_recv.span, "_", &mut applicability);
+        let zip_arg_snip = snippet_with_applicability(cx, zip_arg.span, "_", &mut applicability);
+        let suggestion = format!("{zip_recv_snip}.zip({zip_arg_snip})");
 
         span_lint_and_sugg(
             cx,
@@ -59,8 +59,31 @@ pub(super) fn check<'tcx>(
             expr.span,
             "manual implementation of `Option::zip`",
             "use",
-            format!("{recv_snip}.zip({map_recv_snip})"),
+            suggestion,
             applicability,
         );
+    }
+}
+
+/// Given the two tuple elements and the `and_then` receiver / `map` receiver, returns the
+/// `(zip_receiver, zip_argument)` expressions for the `.zip()` suggestion.
+///
+/// For `(outer, inner)` order the zip is `recv.zip(map_recv)`.
+/// For `(inner, outer)` (reversed) the zip is `map_recv.zip(recv)`.
+/// Returns `None` if the tuple elements don't match either order.
+fn zip_operands<'a>(
+    first: &hir::Expr<'_>,
+    second: &hir::Expr<'_>,
+    outer_param_id: HirId,
+    inner_param_id: HirId,
+    recv: &'a hir::Expr<'a>,
+    map_recv: &'a hir::Expr<'a>,
+) -> Option<(&'a hir::Expr<'a>, &'a hir::Expr<'a>)> {
+    if first.res_local_id() == Some(outer_param_id) && second.res_local_id() == Some(inner_param_id) {
+        Some((recv, map_recv))
+    } else if first.res_local_id() == Some(inner_param_id) && second.res_local_id() == Some(outer_param_id) {
+        Some((map_recv, recv))
+    } else {
+        None
     }
 }
