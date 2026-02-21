@@ -1,3 +1,16 @@
+//! Generates lookup tables (LUTs) for "case-mapping": mapping a `char` to its
+//! uppercase or lowercase equivalent(s).
+//!
+//! The first table, `LOWERCASE_TABLE` (respectively `UPPERCASE_TABLE`), is a
+//! sorted array of `(char, u32)` pairs. The case-mapping for a character is
+//! found by binary search.
+//!
+//! If a character expands to multiple characters upon case-folding, the value
+//! in the LUT is actually an index into a second LUT, `LOWERCASE_TABLE_MULTI`
+//! (respectively `UPPERCASE_TABLE_MULTI`). This is signalled by the 22nd bit
+//! of the value being set; since all Unicode code points are less than
+//! 0x110000, this bit is free for us to use.
+
 use std::char;
 use std::collections::BTreeMap;
 use std::fmt::Write;
