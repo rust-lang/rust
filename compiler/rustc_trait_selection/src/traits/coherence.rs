@@ -497,22 +497,19 @@ fn impl_intersection_has_negative_obligation(
 ) -> bool {
     debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
 
-    // N.B. We need to unify impl headers *with* intercrate mode, even if proving negative predicates
-    // do not need intercrate mode enabled.
+    // N.B. We need to unify impl headers *with* `TypingMode::Coherence`,
+    // even if proving negative predicates doesn't need `TypingMode::Coherence`.
     let ref infcx = tcx.infer_ctxt().with_next_trait_solver(true).build(TypingMode::Coherence);
     let root_universe = infcx.universe();
     assert_eq!(root_universe, ty::UniverseIndex::ROOT);
 
     let impl1_header = fresh_impl_header(infcx, impl1_def_id, is_of_trait);
-    let param_env =
-        ty::EarlyBinder::bind(tcx.param_env(impl1_def_id)).instantiate(tcx, impl1_header.impl_args);
-
     let impl2_header = fresh_impl_header(infcx, impl2_def_id, is_of_trait);
 
     // Equate the headers to find their intersection (the general type, with infer vars,
     // that may apply both impls).
     let Some(equate_obligations) =
-        equate_impl_headers(infcx, param_env, &impl1_header, &impl2_header)
+        equate_impl_headers(infcx, ty::ParamEnv::empty(), &impl1_header, &impl2_header)
     else {
         return false;
     };
@@ -530,7 +527,16 @@ fn impl_intersection_has_negative_obligation(
         root_universe,
         (impl1_header.impl_args, impl2_header.impl_args),
     );
-    let param_env = infcx.resolve_vars_if_possible(param_env);
+
+    // Right above we plug inference variables with placeholders,
+    // this gets us new impl1_header_args with the inference variables actually resolved
+    // to those placeholders.
+    let impl1_header_args = infcx.resolve_vars_if_possible(impl1_header.impl_args);
+    // So there are no infer variables left now, except regions which aren't resolved by `resolve_vars_if_possible`.
+    assert!(!impl1_header_args.has_non_region_infer());
+
+    let param_env =
+        ty::EarlyBinder::bind(tcx.param_env(impl1_def_id)).instantiate(tcx, impl1_header_args);
 
     util::elaborate(tcx, tcx.predicates_of(impl2_def_id).instantiate(tcx, impl2_header.impl_args))
         .elaborate_sized()
