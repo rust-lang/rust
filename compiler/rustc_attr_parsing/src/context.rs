@@ -159,6 +159,7 @@ attribute_parsers!(
         Combine<DebuggerViualizerParser>,
         Combine<ForceTargetFeatureParser>,
         Combine<LinkParser>,
+        Combine<RegisterToolParser>,
         Combine<ReprParser>,
         Combine<RustcCleanParser>,
         Combine<RustcLayoutParser>,
