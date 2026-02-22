@@ -259,8 +259,8 @@ fn main() {
         total_bytes += emitter.bytes_used;
     }
     let (conversions, sizes) = case_mapping::generate_case_mapping(&unicode_data);
-    for (name, size) in ["to_lower", "to_upper"].iter().zip(sizes) {
-        table_file.push_str(&format!("// {:16}: {:5} bytes\n", name, size));
+    for (name, (desc, size)) in ["to_lower", "to_upper"].iter().zip(sizes) {
+        table_file.push_str(&format!("// {:16}: {:5} bytes, {desc}\n", name, size,));
         total_bytes += size;
     }
     table_file.push_str(&format!("// {:16}: {:5} bytes\n", "Total", total_bytes));
