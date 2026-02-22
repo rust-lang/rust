@@ -1,8 +1,6 @@
 use std::borrow::Cow;
 use std::fmt::Display;
 
-use rustc_ast::AttrId;
-use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
@@ -12,7 +10,7 @@ use rustc_hir_id::{HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::DefPathHash;
 pub use rustc_span::edition::Edition;
-use rustc_span::{HashStableContext, Ident, Span, Symbol, sym};
+use rustc_span::{AttrId, HashStableContext, Ident, Span, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
@@ -107,12 +105,12 @@ pub enum Applicability {
 pub enum LintExpectationId {
     /// Used for lints emitted during the `EarlyLintPass`. This id is not
     /// hash stable and should not be cached.
-    Unstable { attr_id: AttrId, lint_index: Option<u16> },
+    Unstable { attr_id: AttrId, lint_index: u16 },
     /// The [`HirId`] that the lint expectation is attached to. This id is
     /// stable and can be cached. The additional index ensures that nodes with
     /// several expectations can correctly match diagnostics to the individual
     /// expectation.
-    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16> },
+    Stable { hir_id: HirId, attr_id: AttrId, attr_index: u16, lint_index: u16 },
 }
 
 impl LintExpectationId {
@@ -123,14 +121,14 @@ impl LintExpectationId {
         }
     }
 
-    pub fn get_lint_index(&self) -> Option<u16> {
+    pub fn get_lint_index(&self) -> u16 {
         let (LintExpectationId::Unstable { lint_index, .. }
         | LintExpectationId::Stable { lint_index, .. }) = self;
 
         *lint_index
     }
 
-    pub fn set_lint_index(&mut self, new_lint_index: Option<u16>) {
+    pub fn set_lint_index(&mut self, new_lint_index: u16) {
         let (LintExpectationId::Unstable { lint_index, .. }
         | LintExpectationId::Stable { lint_index, .. }) = self;
 
@@ -142,7 +140,7 @@ impl<Hcx: HashStableContext> HashStable<Hcx> for LintExpectationId {
     #[inline]
     fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         match self {
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
+            LintExpectationId::Stable { hir_id, attr_index, lint_index, .. } => {
                 hir_id.hash_stable(hcx, hasher);
                 attr_index.hash_stable(hcx, hasher);
                 lint_index.hash_stable(hcx, hasher);
@@ -162,7 +160,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for LintExpectationId {
     #[inline]
     fn to_stable_hash_key(&self, hcx: &Hcx) -> Self::KeyType {
         match self {
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
+            LintExpectationId::Stable { hir_id, attr_index, lint_index, .. } => {
                 let (def_path_hash, lint_idx) = hir_id.to_stable_hash_key(hcx);
                 (def_path_hash, lint_idx, *attr_index, *lint_index)
             }
@@ -235,6 +233,17 @@ impl Level {
         }
     }
 
+    pub fn from_symbol(x: Symbol) -> Option<Self> {
+        match x {
+            sym::allow => Some(Level::Allow),
+            sym::deny => Some(Level::Deny),
+            sym::expect => Some(Level::Expect),
+            sym::forbid => Some(Level::Forbid),
+            sym::warn => Some(Level::Warn),
+            _ => None,
+        }
+    }
+
     /// Converts a lower-case string to a level. This will never construct the expect
     /// level as that would require a [`LintExpectationId`].
     pub fn from_str(x: &str) -> Option<Self> {
@@ -244,35 +253,6 @@ impl Level {
             "deny" => Some(Level::Deny),
             "forbid" => Some(Level::Forbid),
             "expect" | _ => None,
-        }
-    }
-
-    /// Converts an `Attribute` to a level.
-    pub fn from_attr(attr: &impl AttributeExt) -> Option<(Self, Option<LintExpectationId>)> {
-        attr.name().and_then(|name| Self::from_symbol(name, || Some(attr.id())))
-    }
-
-    /// Converts a `Symbol` to a level.
-    pub fn from_symbol(
-        s: Symbol,
-        id: impl FnOnce() -> Option<AttrId>,
-    ) -> Option<(Self, Option<LintExpectationId>)> {
-        match s {
-            sym::allow => Some((Level::Allow, None)),
-            sym::expect => {
-                if let Some(attr_id) = id() {
-                    Some((
-                        Level::Expect,
-                        Some(LintExpectationId::Unstable { attr_id, lint_index: None }),
-                    ))
-                } else {
-                    None
-                }
-            }
-            sym::warn => Some((Level::Warn, None)),
-            sym::deny => Some((Level::Deny, None)),
-            sym::forbid => Some((Level::Forbid, None)),
-            _ => None,
         }
     }
 
