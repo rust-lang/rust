@@ -6720,6 +6720,7 @@ mod test_map {
     /// We check that we have a working table if the clone operation from another
     /// thread ended in a panic (when buckets of maps are equal to each other).
     #[test]
+    #[cfg(panic = "unwind")]
     fn test_catch_panic_clone_from_when_len_is_equal() {
         use std::thread;
 
@@ -6785,6 +6786,7 @@ mod test_map {
     /// We check that we have a working table if the clone operation from another
     /// thread ended in a panic (when buckets of maps are not equal to each other).
     #[test]
+    #[cfg(panic = "unwind")]
     fn test_catch_panic_clone_from_when_len_is_not_equal() {
         use std::thread;
 
