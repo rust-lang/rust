@@ -370,7 +370,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Some intrinsics are handled here because they desperately want to avoid introducing
             // unnecessary copies.
             ExprKind::Call { ty, fun, ref args, .. }
-                if let ty::FnDef(def_id, generic_args) = ty.kind()
+                if let ty::FnDef(def_id, generic_args) = *ty.kind()
                     && let Some(intrinsic) = this.tcx.intrinsic(def_id)
                     && matches!(intrinsic.name, sym::write_via_move | sym::write_box_via_move) =>
             {

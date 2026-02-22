@@ -94,7 +94,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
             // While the `impl` blocks themselves are only in `libcore`, the module with `doc`
             // attached is directly included in `libstd` as well.
             if did.is_local() {
-                for def_id in prim.impls(tcx).filter(|def_id| {
+                for def_id in prim.impls(tcx).filter(|&def_id| {
                     // Avoid including impl blocks with filled-in generics.
                     // https://github.com/rust-lang/rust/issues/94937
                     //

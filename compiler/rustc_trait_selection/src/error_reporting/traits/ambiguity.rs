@@ -362,7 +362,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         && self.tcx.trait_of_assoc(*item_id) == Some(*trait_id)
                         && let None = self.tainted_by_errors()
                     {
-                        let assoc_item = self.tcx.associated_item(item_id);
+                        let assoc_item = self.tcx.associated_item(*item_id);
                         let (verb, noun) = match assoc_item.kind {
                             ty::AssocKind::Const { .. } => ("refer to the", "constant"),
                             ty::AssocKind::Fn { .. } => ("call", "function"),
@@ -394,7 +394,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                         let trait_impls = self.tcx.trait_impls_of(data.trait_ref.def_id);
 
-                        if let Some(impl_def_id) =
+                        if let Some(&impl_def_id) =
                             trait_impls.non_blanket_impls().values().flatten().next()
                         {
                             let non_blanket_impl_count =
@@ -418,7 +418,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                         .non_blanket_impls()
                                         .values()
                                         .flatten()
-                                        .map(|id| {
+                                        .map(|&id| {
                                             format!(
                                                 "{}",
                                                 self.tcx.type_of(id).instantiate_identity()

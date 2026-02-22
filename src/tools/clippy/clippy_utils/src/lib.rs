@@ -601,9 +601,9 @@ pub fn is_default_equivalent_call(
             && let StatementKind::Assign(assign) = &block_data.statements[0].kind
             && assign.0.local == RETURN_PLACE
             && let Rvalue::Aggregate(kind, _places) = &assign.1
-            && let AggregateKind::Adt(did, variant_index, _, _, _) = &**kind
+            && let AggregateKind::Adt(did, variant_index, _, _, _) = **kind
             && let def = cx.tcx.adt_def(did)
-            && let variant = &def.variant(*variant_index)
+            && let variant = &def.variant(variant_index)
             && variant.fields.is_empty()
             && let Some((_, did)) = variant.ctor
             && did == repl_def_id
