@@ -109,13 +109,26 @@ pub fn compare_outputs(
             }
         })
         .inspect(|(intrinsic, diffs)| {
-            println!("Difference for intrinsic: {intrinsic}");
+            use std::io::Write;
+
+            let stdout = std::io::stdout();
+            let mut out = stdout.lock();
+
+            writeln!(out, "Difference for intrinsic: {intrinsic}").unwrap();
             diffs.into_iter().for_each(|diff| match diff {
-                diff::Result::Left(c) => println!("C: {c}"),
-                diff::Result::Right(rust) => println!("Rust: {rust}"),
+                diff::Result::Left(c) => {
+                    writeln!(out, "C: {c}").unwrap();
+                }
+                diff::Result::Right(rust) => {
+                    writeln!(out, "Rust: {rust}").unwrap();
+                }
                 _ => (),
             });
-            println!("****************************************************************");
+            writeln!(
+                out,
+                "****************************************************************"
+            )
+            .unwrap();
         })
         .count();
 

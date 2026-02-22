@@ -1,10 +1,10 @@
 /*
- * https://gcc.gnu.org/git/?p=gcc.git;a=blob_plain;f=gcc/config/loongarch/lsxintrin.h;hb=61f1001f2f4ab9128e5eb6e9a4adbbb0f9f0bc75
+ * https://gcc.gnu.org/git/?p=gcc.git;a=blob_plain;f=gcc/config/loongarch/lsxintrin.h;hb=6441eb6dc020faae0672ea724dfdb38c6a9bf6a1
  */
 
 /* LARCH Loongson SX intrinsics include file.
 
-   Copyright (C) 2018-2024 Free Software Foundation, Inc.
+   Copyright (C) 2018-2025 Free Software Foundation, Inc.
 
    This file is part of GCC.
 
@@ -4749,11 +4749,11 @@ __m128i __lsx_vssrln_w_d (__m128i _1, __m128i _2)
 }
 
 /* Assembly instruction format:	vd, vj, vk.  */
-/* Data types in instruction templates:  V16QI, V16QI, V16QI.  */
+/* Data types in instruction templates:  UV16QI, UV16QI, UV16QI.  */
 extern __inline __attribute__((__gnu_inline__, __always_inline__, __artificial__))
 __m128i __lsx_vorn_v (__m128i _1, __m128i _2)
 {
-  return (__m128i)__builtin_lsx_vorn_v ((v16i8)_1, (v16i8)_2);
+  return (__m128i)__builtin_lsx_vorn_v ((v16u8)_1, (v16u8)_2);
 }
 
 /* Assembly instruction format:	vd, i13.  */

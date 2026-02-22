@@ -875,52 +875,6 @@ pub(crate) struct UpperRangeBoundCannotBeMin {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(
-    "leading irrefutable {$count ->
-    [one] pattern
-    *[other] patterns
-} in let chain"
-)]
-#[note(
-    "{$count ->
-    [one] this pattern
-    *[other] these patterns
-} will always match"
-)]
-#[help(
-    "consider moving {$count ->
-    [one] it
-    *[other] them
-} outside of the construct"
-)]
-pub(crate) struct LeadingIrrefutableLetPatterns {
-    pub(crate) count: usize,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(
-    "trailing irrefutable {$count ->
-    [one] pattern
-    *[other] patterns
-} in let chain"
-)]
-#[note(
-    "{$count ->
-    [one] this pattern
-    *[other] these patterns
-} will always match"
-)]
-#[help(
-    "consider moving {$count ->
-    [one] it
-    *[other] them
-} into the body"
-)]
-pub(crate) struct TrailingIrrefutableLetPatterns {
-    pub(crate) count: usize,
-}
-
-#[derive(LintDiagnostic)]
 #[diag("pattern binding `{$name}` is named the same as one of the variants of the type `{$ty_path}`", code = E0170)]
 pub(crate) struct BindingsWithVariantName {
     #[suggestion(

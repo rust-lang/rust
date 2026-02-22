@@ -59,7 +59,7 @@ use rustc_session::Session;
 use tracing::{debug, instrument};
 
 use super::graph::{CurrentDepGraph, DepNodeColorMap};
-use super::query::DepGraphQuery;
+use super::retained::RetainedDepGraph;
 use super::{DepKind, DepNode, DepNodeIndex};
 use crate::dep_graph::edges::EdgesVec;
 
@@ -84,7 +84,7 @@ const DEP_NODE_WIDTH_BITS: usize = DEP_NODE_SIZE / 2;
 
 /// Data for use when recompiling the **current crate**.
 ///
-/// There may be unused indices with DEP_KIND_NULL in this graph due to batch allocation of
+/// There may be unused indices with DepKind::Null in this graph due to batch allocation of
 /// indices to threads.
 #[derive(Debug, Default)]
 pub struct SerializedDepGraph {
@@ -220,7 +220,7 @@ impl SerializedDepGraph {
 
         let mut nodes = IndexVec::from_elem_n(
             DepNode {
-                kind: DepKind::NULL,
+                kind: DepKind::Null,
                 key_fingerprint: PackedFingerprint::from(Fingerprint::ZERO),
             },
             node_max,
@@ -250,7 +250,7 @@ impl SerializedDepGraph {
 
             let node = &mut nodes[index];
             // Make sure there's no duplicate indices in the dep graph.
-            assert!(node_header.node().kind != DepKind::NULL && node.kind == DepKind::NULL);
+            assert!(node_header.node().kind != DepKind::Null && node.kind == DepKind::Null);
             *node = node_header.node();
 
             value_fingerprints[index] = node_header.value_fingerprint();
@@ -287,14 +287,15 @@ impl SerializedDepGraph {
         for (idx, node) in nodes.iter_enumerated() {
             if index[node.kind.as_usize()].insert(node.key_fingerprint, idx).is_some() {
                 // Empty nodes and side effect nodes can have duplicates
-                if node.kind != DepKind::NULL && node.kind != DepKind::SIDE_EFFECT {
-                    let name = node.kind.name();
+                if node.kind != DepKind::Null && node.kind != DepKind::SideEffect {
+                    let kind = node.kind;
                     panic!(
-                    "Error: A dep graph node ({name}) does not have an unique index. \
-                     Running a clean build on a nightly compiler with `-Z incremental-verify-ich` \
-                     can help narrow down the issue for reporting. A clean build may also work around the issue.\n
-                     DepNode: {node:?}"
-                )
+                        "Error: A dep graph node ({kind:?}) does not have an unique index. \
+                         Running a clean build on a nightly compiler with \
+                         `-Z incremental-verify-ich` can help narrow down the issue for reporting. \
+                         A clean build may also work around the issue.\n
+                         DepNode: {node:?}"
+                    )
                 }
             }
         }
@@ -361,7 +362,7 @@ impl SerializedNodeHeader {
     ) -> Self {
         debug_assert_eq!(Self::TOTAL_BITS, Self::LEN_BITS + Self::WIDTH_BITS + Self::KIND_BITS);
 
-        let mut head = node.kind.as_inner();
+        let mut head = node.kind.as_u16();
 
         let free_bytes = edge_max_index.leading_zeros() as usize / 8;
         let bytes_per_index = (DEP_NODE_SIZE - free_bytes).saturating_sub(1);
@@ -408,7 +409,7 @@ impl SerializedNodeHeader {
         Unpacked {
             len: len.checked_sub(1),
             bytes_per_index: bytes_per_index as usize + 1,
-            kind: DepKind::new(kind),
+            kind: DepKind::from_u16(kind),
             index: SerializedDepNodeIndex::from_u32(index),
             key_fingerprint: Fingerprint::from_le_bytes(key_fingerprint).into(),
             value_fingerprint: Fingerprint::from_le_bytes(value_fingerprint),
@@ -614,21 +615,21 @@ impl EncoderState {
         index: DepNodeIndex,
         edge_count: usize,
         edges: impl FnOnce(&Self) -> Vec<DepNodeIndex>,
-        record_graph: &Option<Lock<DepGraphQuery>>,
+        retained_graph: &Option<Lock<RetainedDepGraph>>,
         local: &mut LocalEncoderState,
     ) {
         local.kind_stats[node.kind.as_usize()] += 1;
         local.edge_count += edge_count;
 
-        if let Some(record_graph) = &record_graph {
+        if let Some(retained_graph) = &retained_graph {
             // Call `edges` before the outlined code to allow the closure to be optimized out.
             let edges = edges(self);
 
             // Outline the build of the full dep graph as it's typically disabled and cold.
             outline(move || {
                 // Do not ICE when a query is called from within `with_query`.
-                if let Some(record_graph) = &mut record_graph.try_lock() {
-                    record_graph.push(index, *node, &edges);
+                if let Some(retained_graph) = &mut retained_graph.try_lock() {
+                    retained_graph.push(index, *node, &edges);
                 }
             });
         }
@@ -661,7 +662,7 @@ impl EncoderState {
         &self,
         index: DepNodeIndex,
         node: &NodeInfo,
-        record_graph: &Option<Lock<DepGraphQuery>>,
+        retained_graph: &Option<Lock<RetainedDepGraph>>,
         local: &mut LocalEncoderState,
     ) {
         node.encode(&mut local.encoder, index);
@@ -671,7 +672,7 @@ impl EncoderState {
             index,
             node.edges.len(),
             |_| node.edges[..].to_vec(),
-            record_graph,
+            retained_graph,
             &mut *local,
         );
     }
@@ -687,7 +688,7 @@ impl EncoderState {
         &self,
         index: DepNodeIndex,
         prev_index: SerializedDepNodeIndex,
-        record_graph: &Option<Lock<DepGraphQuery>>,
+        retained_graph: &Option<Lock<RetainedDepGraph>>,
         colors: &DepNodeColorMap,
         local: &mut LocalEncoderState,
     ) {
@@ -713,7 +714,7 @@ impl EncoderState {
                     .map(|i| colors.current(i).unwrap())
                     .collect()
             },
-            record_graph,
+            retained_graph,
             &mut *local,
         );
     }
@@ -844,7 +845,8 @@ impl EncoderState {
 pub(crate) struct GraphEncoder {
     profiler: SelfProfilerRef,
     status: EncoderState,
-    record_graph: Option<Lock<DepGraphQuery>>,
+    /// In-memory copy of the dep graph; only present if `-Zquery-dep-graph` is set.
+    retained_graph: Option<Lock<RetainedDepGraph>>,
 }
 
 impl GraphEncoder {
@@ -854,18 +856,18 @@ impl GraphEncoder {
         prev_node_count: usize,
         previous: Arc<SerializedDepGraph>,
     ) -> Self {
-        let record_graph = sess
+        let retained_graph = sess
             .opts
             .unstable_opts
             .query_dep_graph
-            .then(|| Lock::new(DepGraphQuery::new(prev_node_count)));
+            .then(|| Lock::new(RetainedDepGraph::new(prev_node_count)));
         let status = EncoderState::new(encoder, sess.opts.unstable_opts.incremental_info, previous);
-        GraphEncoder { status, record_graph, profiler: sess.prof.clone() }
+        GraphEncoder { status, retained_graph, profiler: sess.prof.clone() }
     }
 
-    pub(crate) fn with_query(&self, f: impl Fn(&DepGraphQuery)) {
-        if let Some(record_graph) = &self.record_graph {
-            f(&record_graph.lock())
+    pub(crate) fn with_retained_dep_graph(&self, f: impl Fn(&RetainedDepGraph)) {
+        if let Some(retained_graph) = &self.retained_graph {
+            f(&retained_graph.lock())
         }
     }
 
@@ -881,7 +883,7 @@ impl GraphEncoder {
         let mut local = self.status.local.borrow_mut();
         let index = self.status.next_index(&mut *local);
         self.status.bump_index(&mut *local);
-        self.status.encode_node(index, &node, &self.record_graph, &mut *local);
+        self.status.encode_node(index, &node, &self.retained_graph, &mut *local);
         index
     }
 
@@ -913,7 +915,7 @@ impl GraphEncoder {
         }
 
         self.status.bump_index(&mut *local);
-        self.status.encode_node(index, &node, &self.record_graph, &mut *local);
+        self.status.encode_node(index, &node, &self.retained_graph, &mut *local);
         index
     }
 
@@ -941,7 +943,7 @@ impl GraphEncoder {
                 self.status.encode_promoted_node(
                     index,
                     prev_index,
-                    &self.record_graph,
+                    &self.retained_graph,
                     colors,
                     &mut *local,
                 );

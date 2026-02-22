@@ -1,7 +1,6 @@
 use std::iter;
 
 use rustc_abi::{BackendRepr, TagEncoding, Variants, WrappingRange};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{Expr, ExprKind, HirId, LangItem, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
@@ -687,7 +686,7 @@ pub(crate) fn nonnull_optimization_guaranteed<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::AdtDef<'tcx>,
 ) -> bool {
-    find_attr!(tcx.get_all_attrs(def.did()), AttributeKind::RustcNonnullOptimizationGuaranteed)
+    find_attr!(tcx, def.did(), RustcNonnullOptimizationGuaranteed)
 }
 
 /// `repr(transparent)` structs can have a single non-1-ZST field, this function returns that

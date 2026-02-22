@@ -159,48 +159,6 @@ have such implementations.
 `set_arg` calls are handled transparently by diagnostic derives but need to be
 added manually when using diagnostic builder APIs.
 
-### Loading
-
-rustc makes a distinction between the "fallback bundle" for `en-US` that is used
-by default and when another locale is missing a message; and the primary fluent
-bundle which is requested by the user.
-
-Diagnostic emitters implement the `Emitter` trait which has two functions for
-accessing the fallback and primary fluent bundles (`fallback_fluent_bundle` and
-`fluent_bundle` respectively).
-
-`Emitter` also has member functions with default implementations for performing
-translation of a `DiagMessage` using the results of
-`fallback_fluent_bundle` and `fluent_bundle`.
-
-All of the emitters in rustc load the fallback Fluent bundle lazily, only
-reading Fluent resources and parsing them when an error message is first being
-translated (for performance reasons - it doesn't make sense to do this if no
-error is being emitted). `rustc_error_messages::fallback_fluent_bundle` returns
-a `std::lazy::Lazy<FluentBundle>` which is provided to emitters and evaluated
-in the first call to `Emitter::fallback_fluent_bundle`.
-
-The primary Fluent bundle (for the user's desired locale) is expected to be
-returned by `Emitter::fluent_bundle`. This bundle is used preferentially when
-translating messages, the fallback bundle is only used if the primary bundle is
-missing a message or not provided.
-
-There are no locale bundles distributed with the compiler,
-but mechanisms are implemented for loading them.
-
-- `-Ztranslate-additional-ftl` can be used to load a specific resource as the
-  primary bundle for testing purposes.
-- `-Ztranslate-lang` can be provided a language identifier (something like
-  `en-US`) and will load any Fluent resources found in
-  `$sysroot/share/locale/$locale/` directory (both the user provided
-  sysroot and any sysroot candidates).
-
-Primary bundles are not currently loaded lazily and if requested will be loaded
-at the start of compilation regardless of whether an error occurs. Lazily
-loading primary bundles is possible if it can be assumed that loading a bundle
-won't fail. Bundle loading can fail if a requested locale is missing, Fluent
-files are malformed, or a message is duplicated in multiple resources.
-
 [Fluent]: https://projectfluent.org
 [`compiler/rustc_borrowck/messages.ftl`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_borrowck/messages.ftl
 [`compiler/rustc_parse/messages.ftl`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_parse/messages.ftl

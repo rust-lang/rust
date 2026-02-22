@@ -1,0 +1,213 @@
+error[E0284]: type annotations needed
+  --> $DIR/free-to-free.rs:17:15
+   |
+LL |         reuse foo as bar;
+   |               ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_1::foo`
+  --> $DIR/free-to-free.rs:14:48
+   |
+LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
+   |                                                ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse foo::<T, U, N> as bar;
+   |                  +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/free-to-free.rs:29:15
+   |
+LL |         reuse foo as bar;
+   |               ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_2::foo`
+  --> $DIR/free-to-free.rs:26:48
+   |
+LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
+   |                                                ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse foo::<T, U, N> as bar;
+   |                  +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/free-to-free.rs:41:15
+   |
+LL |         reuse foo as bar;
+   |               ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_3::foo`
+  --> $DIR/free-to-free.rs:38:48
+   |
+LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
+   |                                                ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse foo::<T, U, N> as bar;
+   |                  +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/free-to-free.rs:54:15
+   |
+LL |         reuse foo as bar;
+   |               ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_4::foo`
+  --> $DIR/free-to-free.rs:51:40
+   |
+LL |     fn foo<'a, 'b, T: Clone, U: Clone, const N: usize>(_t: &'a T, _u: &'b U) {}
+   |                                        ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse foo::<T, U, N> as bar;
+   |                  +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/free-to-free.rs:67:15
+   |
+LL |         reuse foo as bar;
+   |               ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_5::foo`
+  --> $DIR/free-to-free.rs:64:30
+   |
+LL |     fn foo<'a, 'b, T: Clone, const N: usize, U: Clone>(_t: &'a T, _u: &'b U) {}
+   |                              ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse foo::<T, N, U> as bar;
+   |                  +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/free-to-free.rs:81:9
+   |
+LL |         bar(&"".to_string(), &"".to_string());
+   |         ^^^ cannot infer the value of the const parameter `N` declared on the function `bar`
+   |
+note: required by a const generic parameter in `test_6::check::bar`
+  --> $DIR/free-to-free.rs:76:30
+   |
+LL |     fn foo<'a, 'b, T: Clone, const N: usize, U: Clone>(_t: &'a T, _u: &'b U) {}
+   |                              ^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
+...
+LL |         reuse foo::<String, 1, String> as bar;
+   |                                           --- required by a bound in this function
+help: consider specifying the generic arguments
+   |
+LL |         bar::<String, N, String>(&"".to_string(), &"".to_string());
+   |            +++++++++++++++++++++
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/free-to-free.rs:79:15
+   |
+LL |     fn foo<'a, 'b, T: Clone, const N: usize, U: Clone>(_t: &'a T, _u: &'b U) {}
+   |                    -                         - found this type parameter
+   |                    |
+   |                    found this type parameter
+...
+LL |         reuse foo::<String, 1, String> as bar;
+   |               ^^^
+   |               |
+   |               expected `&String`, found `&T`
+   |               expected `&String`, found `&U`
+   |
+   = note: expected reference `&String`
+              found reference `&'a T`
+   = note: expected reference `&String`
+              found reference `&'b U`
+note: function defined here
+  --> $DIR/free-to-free.rs:76:8
+   |
+LL |     fn foo<'a, 'b, T: Clone, const N: usize, U: Clone>(_t: &'a T, _u: &'b U) {}
+   |        ^^^                                             ---------  ---------
+
+error[E0284]: type annotations needed
+  --> $DIR/free-to-free.rs:108:9
+   |
+LL |         bar(&"".to_string(), &"".to_string());
+   |         ^^^ cannot infer the value of the const parameter `N` declared on the function `bar`
+   |
+note: required by a const generic parameter in `test_8::check::bar`
+  --> $DIR/free-to-free.rs:104:24
+   |
+LL |         fn foo<'a, 'b, const N: usize, T: Clone, U: Clone>(_t: &'a T, _u: &'b U) {}
+   |                        ^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
+LL |
+LL |         reuse foo::<1, String, String> as bar;
+   |                                           --- required by a bound in this function
+help: consider specifying the generic arguments
+   |
+LL |         bar::<N, String, String>(&"".to_string(), &"".to_string());
+   |            +++++++++++++++++++++
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/free-to-free.rs:106:15
+   |
+LL |         fn foo<'a, 'b, const N: usize, T: Clone, U: Clone>(_t: &'a T, _u: &'b U) {}
+   |                                        -         - found this type parameter
+   |                                        |
+   |                                        found this type parameter
+LL |
+LL |         reuse foo::<1, String, String> as bar;
+   |               ^^^
+   |               |
+   |               expected `&String`, found `&T`
+   |               expected `&String`, found `&U`
+   |
+   = note: expected reference `&String`
+              found reference `&'a T`
+   = note: expected reference `&String`
+              found reference `&'b U`
+note: function defined here
+  --> $DIR/free-to-free.rs:104:12
+   |
+LL |         fn foo<'a, 'b, const N: usize, T: Clone, U: Clone>(_t: &'a T, _u: &'b U) {}
+   |            ^^^                                             ---------  ---------
+
+error[E0284]: type annotations needed
+  --> $DIR/free-to-free.rs:123:13
+   |
+LL |             bar(&"".to_string(), &"".to_string());
+   |             ^^^ cannot infer the value of the const parameter `N` declared on the function `bar`
+   |
+note: required by a const generic parameter in `test_9::check::{closure#0}::bar`
+  --> $DIR/free-to-free.rs:119:38
+   |
+LL |             fn foo<'a, 'b, T: Clone, const N: usize, U: Clone>(_t: &'a T, _u: &'b U) {}
+   |                                      ^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
+LL |
+LL |             reuse foo::<String, 1, String> as bar;
+   |                                               --- required by a bound in this function
+help: consider specifying the generic arguments
+   |
+LL |             bar::<String, N, String>(&"".to_string(), &"".to_string());
+   |                +++++++++++++++++++++
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/free-to-free.rs:121:19
+   |
+LL |             fn foo<'a, 'b, T: Clone, const N: usize, U: Clone>(_t: &'a T, _u: &'b U) {}
+   |                            -                         - found this type parameter
+   |                            |
+   |                            found this type parameter
+LL |
+LL |             reuse foo::<String, 1, String> as bar;
+   |                   ^^^
+   |                   |
+   |                   expected `&String`, found `&T`
+   |                   expected `&String`, found `&U`
+   |
+   = note: expected reference `&String`
+              found reference `&'a T`
+   = note: expected reference `&String`
+              found reference `&'b U`
+note: function defined here
+  --> $DIR/free-to-free.rs:119:16
+   |
+LL |             fn foo<'a, 'b, T: Clone, const N: usize, U: Clone>(_t: &'a T, _u: &'b U) {}
+   |                ^^^                                             ---------  ---------
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0284, E0308.
+For more information about an error, try `rustc --explain E0284`.

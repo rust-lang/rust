@@ -264,11 +264,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                             .flatten()
                                     })
                                     .flatten(),
-                                None => self
-                                    .tcx
-                                    .get_all_attrs(*def_id)
-                                    .iter()
-                                    .find(|base_attr| (addition_info.equals)(base_attr)),
+                                None =>
+                                {
+                                    #[allow(deprecated)]
+                                    self.tcx
+                                        .get_all_attrs(*def_id)
+                                        .iter()
+                                        .find(|base_attr| (addition_info.equals)(base_attr))
+                                }
                             };
 
                             if let Some(original_attr) = original_attr {

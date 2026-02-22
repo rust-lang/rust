@@ -1,0 +1,213 @@
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impl-to-free.rs:21:25
+   |
+LL |         reuse to_reuse::foo;
+   |                         ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `to_reuse::foo`
+  --> $DIR/inherent-impl-to-free.rs:16:42
+   |
+LL |         pub fn foo<'a: 'a, 'b: 'b, A, B, const N: usize>() {}
+   |                                          ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse to_reuse::foo::<A, B, N>;
+   |                            +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impl-to-free.rs:28:25
+   |
+LL |         reuse to_reuse::foo;
+   |                         ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `to_reuse::foo`
+  --> $DIR/inherent-impl-to-free.rs:16:42
+   |
+LL |         pub fn foo<'a: 'a, 'b: 'b, A, B, const N: usize>() {}
+   |                                          ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse to_reuse::foo::<A, B, N>;
+   |                            +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impl-to-free.rs:35:25
+   |
+LL |         reuse to_reuse::foo;
+   |                         ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `to_reuse::foo`
+  --> $DIR/inherent-impl-to-free.rs:16:42
+   |
+LL |         pub fn foo<'a: 'a, 'b: 'b, A, B, const N: usize>() {}
+   |                                          ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse to_reuse::foo::<A, B, N>;
+   |                            +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impl-to-free.rs:43:9
+   |
+LL |         X1::<'static, 'static, i32, i32, 1>::bar();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the associated function `bar`
+   |
+note: required by a const generic parameter in `test_1::X1::<'a, 'b, T, E, N>::bar`
+  --> $DIR/inherent-impl-to-free.rs:16:42
+   |
+LL |         pub fn foo<'a: 'a, 'b: 'b, A, B, const N: usize>() {}
+   |                                          ^^^^^^^^^^^^^^ required by this const generic parameter in `X1::<'a, 'b, T, E, N>::bar`
+...
+LL |         reuse to_reuse::foo::<'static, 'static, i32, String, 1> as bar;
+   |                                                                    --- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL |         X1::<'static, 'static, i32, i32, 1>::bar::<A, B, N>();
+   |                                                 +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impl-to-free.rs:47:9
+   |
+LL |         X2::<i32, i32, 1>::bar();
+   |         ^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the associated function `bar`
+   |
+note: required by a const generic parameter in `test_1::X2::<T, E, N>::bar`
+  --> $DIR/inherent-impl-to-free.rs:16:42
+   |
+LL |         pub fn foo<'a: 'a, 'b: 'b, A, B, const N: usize>() {}
+   |                                          ^^^^^^^^^^^^^^ required by this const generic parameter in `X2::<T, E, N>::bar`
+...
+LL |         reuse to_reuse::foo::<'static, 'static, i32, String, 1> as bar;
+   |                                                                    --- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL |         X2::<i32, i32, 1>::bar::<A, B, N>();
+   |                               +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impl-to-free.rs:51:9
+   |
+LL |         X3::bar();
+   |         ^^^^^^^ cannot infer the value of the const parameter `N` declared on the associated function `bar`
+   |
+note: required by a const generic parameter in `test_1::X3::bar`
+  --> $DIR/inherent-impl-to-free.rs:16:42
+   |
+LL |         pub fn foo<'a: 'a, 'b: 'b, A, B, const N: usize>() {}
+   |                                          ^^^^^^^^^^^^^^ required by this const generic parameter in `X3::bar`
+...
+LL |         reuse to_reuse::foo::<'static, 'static, i32, String, 1> as bar;
+   |                                                                    --- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL |         X3::bar::<A, B, N>();
+   |                +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impl-to-free.rs:63:15
+   |
+LL |         reuse foo;
+   |               ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_2::foo`
+  --> $DIR/inherent-impl-to-free.rs:59:18
+   |
+LL |     fn foo<A, B, const N: usize>() {}
+   |                  ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse foo::<A, B, N>;
+   |                  +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impl-to-free.rs:70:15
+   |
+LL |         reuse foo;
+   |               ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_2::foo`
+  --> $DIR/inherent-impl-to-free.rs:59:18
+   |
+LL |     fn foo<A, B, const N: usize>() {}
+   |                  ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse foo::<A, B, N>;
+   |                  +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impl-to-free.rs:77:15
+   |
+LL |         reuse foo;
+   |               ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_2::foo`
+  --> $DIR/inherent-impl-to-free.rs:59:18
+   |
+LL |     fn foo<A, B, const N: usize>() {}
+   |                  ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse foo::<A, B, N>;
+   |                  +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impl-to-free.rs:84:9
+   |
+LL |         X1::<'static, 'static, i32, i32, 1>::bar();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the associated function `bar`
+   |
+note: required by a const generic parameter in `test_2::X1::<'a, 'b, T, E, N>::bar`
+  --> $DIR/inherent-impl-to-free.rs:59:18
+   |
+LL |     fn foo<A, B, const N: usize>() {}
+   |                  ^^^^^^^^^^^^^^ required by this const generic parameter in `X1::<'a, 'b, T, E, N>::bar`
+...
+LL |         reuse foo::<i32, String, 1> as bar;
+   |                                        --- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL |         X1::<'static, 'static, i32, i32, 1>::bar::<A, B, N>();
+   |                                                 +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impl-to-free.rs:88:9
+   |
+LL |         X2::<i32, i32, 1>::bar();
+   |         ^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the associated function `bar`
+   |
+note: required by a const generic parameter in `test_2::X2::<T, E, N>::bar`
+  --> $DIR/inherent-impl-to-free.rs:59:18
+   |
+LL |     fn foo<A, B, const N: usize>() {}
+   |                  ^^^^^^^^^^^^^^ required by this const generic parameter in `X2::<T, E, N>::bar`
+...
+LL |         reuse foo::<i32, String, 1> as bar;
+   |                                        --- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL |         X2::<i32, i32, 1>::bar::<A, B, N>();
+   |                               +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impl-to-free.rs:92:9
+   |
+LL |         X3::bar();
+   |         ^^^^^^^ cannot infer the value of the const parameter `N` declared on the associated function `bar`
+   |
+note: required by a const generic parameter in `test_2::X3::bar`
+  --> $DIR/inherent-impl-to-free.rs:59:18
+   |
+LL |     fn foo<A, B, const N: usize>() {}
+   |                  ^^^^^^^^^^^^^^ required by this const generic parameter in `X3::bar`
+...
+LL |         reuse foo::<i32, String, 1> as bar;
+   |                                        --- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL |         X3::bar::<A, B, N>();
+   |                +++++++++++
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0284`.

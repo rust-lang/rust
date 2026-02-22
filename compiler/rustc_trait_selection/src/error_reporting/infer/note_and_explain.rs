@@ -1,7 +1,6 @@
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{Diag, MultiSpan, pluralize};
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::find_attr;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
@@ -533,7 +532,7 @@ impl<T> Trait<T> for X {
                 }
             }
             TypeError::TargetFeatureCast(def_id) => {
-                let target_spans = find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TargetFeature{attr_span: span, was_forced: false, ..} => *span);
+                let target_spans = find_attr!(tcx, def_id, TargetFeature{attr_span: span, was_forced: false, ..} => *span);
                 diag.note(
                     "functions with `#[target_feature]` can only be coerced to `unsafe` function pointers"
                 );

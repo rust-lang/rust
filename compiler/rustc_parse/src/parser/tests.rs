@@ -13,7 +13,6 @@ use rustc_ast_pretty::pprust::item_to_string;
 use rustc_data_structures::assert_matches;
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::emitter::OutputTheme;
-use rustc_errors::translation::Translator;
 use rustc_errors::{AutoStream, DiagCtxt, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
@@ -42,11 +41,10 @@ fn string_to_parser(psess: &ParseSess, source_str: String) -> Parser<'_> {
 fn create_test_handler(theme: OutputTheme) -> (DiagCtxt, Arc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
     let output = Arc::new(Mutex::new(Vec::new()));
     let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
-    let translator = Translator::new();
     let shared: Box<dyn Write + Send> = Box::new(Shared { data: output.clone() });
     let auto_stream = AutoStream::never(shared);
     let dcx = DiagCtxt::new(Box::new(
-        AnnotateSnippetEmitter::new(auto_stream, translator)
+        AnnotateSnippetEmitter::new(auto_stream)
             .sm(Some(source_map.clone()))
             .diagnostic_width(Some(140))
             .theme(theme),

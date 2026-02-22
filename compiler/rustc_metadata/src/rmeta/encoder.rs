@@ -734,16 +734,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
                 has_alloc_error_handler: tcx.has_alloc_error_handler(LOCAL_CRATE),
                 has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
-                has_default_lib_allocator: find_attr!(attrs, AttributeKind::DefaultLibAllocator),
+                has_default_lib_allocator: find_attr!(attrs, DefaultLibAllocator),
                 externally_implementable_items,
                 proc_macro_data,
                 debugger_visualizers,
-                compiler_builtins: find_attr!(attrs, AttributeKind::CompilerBuiltins),
-                needs_allocator: find_attr!(attrs, AttributeKind::NeedsAllocator),
-                needs_panic_runtime: find_attr!(attrs, AttributeKind::NeedsPanicRuntime),
-                no_builtins: find_attr!(attrs, AttributeKind::NoBuiltins),
-                panic_runtime: find_attr!(attrs, AttributeKind::PanicRuntime),
-                profiler_runtime: find_attr!(attrs, AttributeKind::ProfilerRuntime),
+                compiler_builtins: find_attr!(attrs, CompilerBuiltins),
+                needs_allocator: find_attr!(attrs, NeedsAllocator),
+                needs_panic_runtime: find_attr!(attrs, NeedsPanicRuntime),
+                no_builtins: find_attr!(attrs, NoBuiltins),
+                panic_runtime: find_attr!(attrs, PanicRuntime),
+                profiler_runtime: find_attr!(attrs, ProfilerRuntime),
                 symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
 
                 crate_deps,
@@ -2012,11 +2012,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
                 let attrs = tcx.hir_attrs(proc_macro);
-                let macro_kind = if find_attr!(attrs, AttributeKind::ProcMacro(..)) {
+                let macro_kind = if find_attr!(attrs, ProcMacro(..)) {
                     MacroKind::Bang
-                } else if find_attr!(attrs, AttributeKind::ProcMacroAttribute(..)) {
+                } else if find_attr!(attrs, ProcMacroAttribute(..)) {
                     MacroKind::Attr
-                } else if let Some(trait_name) = find_attr!(attrs, AttributeKind::ProcMacroDerive { trait_name, ..} => trait_name)
+                } else if let Some(trait_name) =
+                    find_attr!(attrs, ProcMacroDerive { trait_name, ..} => trait_name)
                 {
                     name = *trait_name;
                     MacroKind::Derive
@@ -2072,7 +2073,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     name: self.tcx.crate_name(cnum),
                     hash: self.tcx.crate_hash(cnum),
                     host_hash: self.tcx.crate_host_hash(cnum),
-                    kind: self.tcx.dep_kind(cnum),
+                    kind: self.tcx.crate_dep_kind(cnum),
                     extra_filename: self.tcx.extra_filename(cnum).clone(),
                     is_private: self.tcx.is_private_dep(cnum),
                 };

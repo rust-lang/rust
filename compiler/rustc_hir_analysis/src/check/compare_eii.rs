@@ -8,7 +8,7 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, E0806, struct_span_code_err};
-use rustc_hir::attrs::{AttributeKind, EiiImplResolution};
+use rustc_hir::attrs::EiiImplResolution;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, FnSig, HirId, ItemKind, find_attr};
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
@@ -177,9 +177,7 @@ fn check_no_generics<'tcx>(
         // since in that case it looks like a duplicate error: the declaration of the EII already can't contain generics.
         // So, we check here if at least one of the eii impls has ImplResolution::Macro, which indicates it's
         // not generated as part of the declaration.
-        && find_attr!(
-            tcx.get_all_attrs(external_impl),
-            AttributeKind::EiiImpls(impls) if impls.iter().any(|i| matches!(i.resolution, EiiImplResolution::Macro(_)))
+        && find_attr!(tcx, external_impl, EiiImpls(impls) if impls.iter().any(|i| matches!(i.resolution, EiiImplResolution::Macro(_)))
         )
     {
         tcx.dcx().emit_err(EiiWithGenerics {

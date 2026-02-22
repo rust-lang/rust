@@ -50,6 +50,9 @@ case ${TARGET} in
     riscv*)
         export RUSTFLAGS="${RUSTFLAGS} -Ctarget-feature=+zk,+zks,+zbb,+zbc"
         ;;
+    hexagon*)
+        export RUSTFLAGS="${RUSTFLAGS} -Ctarget-feature=+hvxv60,+hvx-length128b"
+        ;;
 esac
 
 echo "RUSTFLAGS=${RUSTFLAGS}"

@@ -12,7 +12,6 @@ use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diag, EmissionGuarantee};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
@@ -22,7 +21,7 @@ use rustc_infer::infer::relate::TypeRelation;
 use rustc_infer::traits::{PredicateObligations, TraitObligation};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
-use rustc_middle::dep_graph::{DepNodeIndex, dep_kinds};
+use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
@@ -1399,7 +1398,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     where
         OP: FnOnce(&mut Self) -> R,
     {
-        self.tcx().dep_graph.with_anon_task(self.tcx(), dep_kinds::TraitSelect, || op(self))
+        self.tcx().dep_graph.with_anon_task(self.tcx(), DepKind::TraitSelect, || op(self))
     }
 
     /// filter_impls filters candidates that have a positive impl for a negative
@@ -1445,7 +1444,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             && let ty::ImplPolarity::Reservation = tcx.impl_polarity(def_id)
         {
             if let Some(intercrate_ambiguity_clauses) = &mut self.intercrate_ambiguity_causes {
-                let message = find_attr!(tcx.get_all_attrs(def_id), AttributeKind::RustcReservationImpl(_, message) => *message);
+                let message = find_attr!(tcx, def_id, RustcReservationImpl(_, message) => *message);
                 if let Some(message) = message {
                     debug!(
                         "filter_reservation_impls: \

@@ -15,7 +15,7 @@ use rustc_data_structures::sync;
 use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, CfgEntry, CollapseMacroDebuginfo, Deprecation};
+use rustc_hir::attrs::{CfgEntry, CollapseMacroDebuginfo, Deprecation};
 use rustc_hir::def::MacroKinds;
 use rustc_hir::limit::Limit;
 use rustc_hir::{Stability, find_attr};
@@ -896,14 +896,13 @@ impl SyntaxExtension {
     /// | yes           | yes | yes           | yes      | yes |
     fn get_collapse_debuginfo(sess: &Session, attrs: &[hir::Attribute], ext: bool) -> bool {
         let flag = sess.opts.cg.collapse_macro_debuginfo;
-        let attr =
-            if let Some(info) = find_attr!(attrs, AttributeKind::CollapseDebugInfo(info) => info) {
-                info.clone()
-            } else if find_attr!(attrs, AttributeKind::RustcBuiltinMacro { .. }) {
-                CollapseMacroDebuginfo::Yes
-            } else {
-                CollapseMacroDebuginfo::Unspecified
-            };
+        let attr = if let Some(info) = find_attr!(attrs, CollapseDebugInfo(info) => info) {
+            info.clone()
+        } else if find_attr!(attrs, RustcBuiltinMacro { .. }) {
+            CollapseMacroDebuginfo::Yes
+        } else {
+            CollapseMacroDebuginfo::Unspecified
+        };
 
         #[rustfmt::skip]
         let collapse_table = [
@@ -918,7 +917,7 @@ impl SyntaxExtension {
     fn get_hide_backtrace(attrs: &[hir::Attribute]) -> bool {
         // FIXME(estebank): instead of reusing `#[rustc_diagnostic_item]` as a proxy, introduce a
         // new attribute purely for this under the `#[diagnostic]` namespace.
-        find_attr!(attrs, AttributeKind::RustcDiagnosticItem(..))
+        find_attr!(attrs, RustcDiagnosticItem(..))
     }
 
     /// Constructs a syntax extension with the given properties
@@ -933,19 +932,17 @@ impl SyntaxExtension {
         attrs: &[hir::Attribute],
         is_local: bool,
     ) -> SyntaxExtension {
-        let allow_internal_unstable =
-            find_attr!(attrs, AttributeKind::AllowInternalUnstable(i, _) => i)
-                .map(|i| i.as_slice())
-                .unwrap_or_default();
-        let allow_internal_unsafe = find_attr!(attrs, AttributeKind::AllowInternalUnsafe(_));
+        let allow_internal_unstable = find_attr!(attrs, AllowInternalUnstable(i, _) => i)
+            .map(|i| i.as_slice())
+            .unwrap_or_default();
+        let allow_internal_unsafe = find_attr!(attrs, AllowInternalUnsafe(_));
 
         let local_inner_macros =
-            *find_attr!(attrs, AttributeKind::MacroExport {local_inner_macros: l, ..} => l)
-                .unwrap_or(&false);
+            *find_attr!(attrs, MacroExport {local_inner_macros: l, ..} => l).unwrap_or(&false);
         let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, !is_local);
         tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
-        let (builtin_name, helper_attrs) = match find_attr!(attrs, AttributeKind::RustcBuiltinMacro { builtin_name, helper_attrs, .. } => (builtin_name, helper_attrs))
+        let (builtin_name, helper_attrs) = match find_attr!(attrs, RustcBuiltinMacro { builtin_name, helper_attrs, .. } => (builtin_name, helper_attrs))
         {
             // Override `helper_attrs` passed above if it's a built-in macro,
             // marking `proc_macro_derive` macros as built-in is not a realistic use case.
@@ -959,10 +956,9 @@ impl SyntaxExtension {
         };
         let hide_backtrace = builtin_name.is_some() || Self::get_hide_backtrace(attrs);
 
-        let stability = find_attr!(attrs, AttributeKind::Stability { stability, .. } => *stability);
+        let stability = find_attr!(attrs, Stability { stability, .. } => *stability);
 
-        if let Some(sp) = find_attr!(attrs, AttributeKind::RustcBodyStability{ span, .. } => *span)
-        {
+        if let Some(sp) = find_attr!(attrs, RustcBodyStability{ span, .. } => *span) {
             sess.dcx().emit_err(errors::MacroBodyStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),
@@ -978,7 +974,7 @@ impl SyntaxExtension {
             stability,
             deprecation: find_attr!(
                 attrs,
-                AttributeKind::Deprecation { deprecation, .. } => *deprecation
+                Deprecation { deprecation, .. } => *deprecation
             ),
             helper_attrs,
             edition,

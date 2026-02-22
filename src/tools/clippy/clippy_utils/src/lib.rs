@@ -89,7 +89,7 @@ use rustc_data_structures::indexmap;
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnindexMap;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
-use rustc_hir::attrs::{AttributeKind, CfgEntry};
+use rustc_hir::attrs::CfgEntry;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefPath, DefPathData};
@@ -1691,7 +1691,7 @@ pub fn has_attr(attrs: &[hir::Attribute], symbol: Symbol) -> bool {
 }
 
 pub fn has_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    find_attr!(cx.tcx.hir_attrs(hir_id), AttributeKind::Repr { .. })
+    find_attr!(cx.tcx.hir_attrs(hir_id), Repr { .. })
 }
 
 pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool {
@@ -1716,7 +1716,7 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
         .any(|(id, _)| {
             find_attr!(
                 tcx.hir_attrs(tcx.local_def_id_to_hir_id(id.def_id)),
-                AttributeKind::AutomaticallyDerived(..)
+                AutomaticallyDerived(..)
             )
         })
 }
@@ -1807,7 +1807,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         _ => None,
     };
 
-    did.is_some_and(|did| find_attr!(cx.tcx.get_all_attrs(did), AttributeKind::MustUse { .. }))
+    did.is_some_and(|did| find_attr!(cx.tcx, did, MustUse { .. }))
 }
 
 /// Checks if a function's body represents the identity function. Looks for bodies of the form:
@@ -2034,11 +2034,11 @@ pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
 }
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
-    find_attr!(cx.tcx.hir_attrs(hir::CRATE_HIR_ID), AttributeKind::NoStd(..))
+    find_attr!(cx.tcx, crate, NoStd(..))
 }
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
-    find_attr!(cx.tcx.hir_attrs(hir::CRATE_HIR_ID), AttributeKind::NoCore(..))
+    find_attr!(cx.tcx, crate, NoCore(..))
 }
 
 /// Check if parent of a hir node is a trait implementation block.
@@ -2318,6 +2318,7 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
         && let Res::Def(_, def_id) = path.res
     {
+        #[allow(deprecated)]
         return cx.tcx.has_attr(def_id, sym::cfg) || cx.tcx.has_attr(def_id, sym::cfg_attr);
     }
     false
@@ -2343,7 +2344,7 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl FnOnce(&
                         // We could also check for the type name `test::TestDescAndFn`
                         && let Res::Def(DefKind::Struct, _) = path.res
                 {
-                    if find_attr!(tcx.hir_attrs(item.hir_id()), AttributeKind::RustcTestMarker(..)) {
+                    if find_attr!(tcx.hir_attrs(item.hir_id()), RustcTestMarker(..)) {
                         names.push(ident.name);
                     }
                 }
@@ -2401,7 +2402,7 @@ pub fn is_test_function(tcx: TyCtxt<'_>, fn_def_id: LocalDefId) -> bool {
 /// This only checks directly applied attributes, to see if a node is inside a `#[cfg(test)]` parent
 /// use [`is_in_cfg_test`]
 pub fn is_cfg_test(tcx: TyCtxt<'_>, id: HirId) -> bool {
-    if let Some(cfgs) = find_attr!(tcx.hir_attrs(id), AttributeKind::CfgTrace(cfgs) => cfgs)
+    if let Some(cfgs) = find_attr!(tcx.hir_attrs(id), CfgTrace(cfgs) => cfgs)
         && cfgs
             .iter()
             .any(|(cfg, _)| matches!(cfg, CfgEntry::NameValue { name: sym::test, .. }))
@@ -2424,11 +2425,11 @@ pub fn is_in_test(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
 
 /// Checks if the item of any of its parents has `#[cfg(...)]` attribute applied.
 pub fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    find_attr!(tcx.get_all_attrs(def_id), AttributeKind::CfgTrace(..))
+    find_attr!(tcx, def_id, CfgTrace(..))
         || find_attr!(
             tcx.hir_parent_iter(tcx.local_def_id_to_hir_id(def_id))
                 .flat_map(|(parent_id, _)| tcx.hir_attrs(parent_id)),
-            AttributeKind::CfgTrace(..)
+            CfgTrace(..)
         )
 }
 

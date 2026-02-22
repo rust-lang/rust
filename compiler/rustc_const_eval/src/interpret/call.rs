@@ -7,7 +7,6 @@ use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
 use rustc_data_structures::assert_matches;
 use rustc_errors::msg;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
@@ -142,12 +141,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // Check if the inner type is one of the NPO-guaranteed ones.
         // For that we first unpeel transparent *structs* (but not unions).
-        let is_npo = |def: AdtDef<'tcx>| {
-            find_attr!(
-                self.tcx.get_all_attrs(def.did()),
-                AttributeKind::RustcNonnullOptimizationGuaranteed
-            )
-        };
+        let is_npo =
+            |def: AdtDef<'tcx>| find_attr!(self.tcx, def.did(), RustcNonnullOptimizationGuaranteed);
         let inner = self.unfold_transparent(inner, /* may_unfold */ |def| {
             // Stop at NPO types so that we don't miss that attribute in the check below!
             def.is_struct() && !is_npo(def)

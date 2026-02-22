@@ -1,5 +1,4 @@
 use rustc_errors::{MultiSpan, msg};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{Body, HirId, Item, ItemKind, Node, Path, TyKind, find_attr};
@@ -243,10 +242,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 )
             }
             ItemKind::Macro(_, _macro, _kinds)
-                if find_attr!(
-                    cx.tcx.get_all_attrs(item.owner_id.def_id),
-                    AttributeKind::MacroExport { .. }
-                ) =>
+                if find_attr!(cx.tcx, item.owner_id.def_id, MacroExport { .. }) =>
             {
                 cx.emit_span_lint(
                     NON_LOCAL_DEFINITIONS,

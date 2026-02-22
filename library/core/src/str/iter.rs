@@ -99,9 +99,6 @@ impl<'a> Iterator for Chars<'a> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.iter.len();
-        // `(len + 3)` can't overflow, because we know that the `slice::Iter`
-        // belongs to a slice in memory which has a maximum length of
-        // `isize::MAX` (that's well below `usize::MAX`).
         (len.div_ceil(4), Some(len))
     }
 
@@ -1528,9 +1525,6 @@ impl<'a> Iterator for EncodeUtf16<'a> {
         // is therefore determined by assuming the remaining bytes contain as
         // many 3-byte sequences as possible. The highest bytes:code units
         // ratio is for 1-byte sequences, so use this for the upper bound.
-        // `(len + 2)` can't overflow, because we know that the `slice::Iter`
-        // belongs to a slice in memory which has a maximum length of
-        // `isize::MAX` (that's well below `usize::MAX`)
         if self.extra == 0 {
             (len.div_ceil(3), Some(len))
         } else {

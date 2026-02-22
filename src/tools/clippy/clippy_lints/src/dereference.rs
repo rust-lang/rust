@@ -3,9 +3,7 @@ use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::ty::{adjust_derefs_manually_drop, implements_trait, is_manually_drop, peel_and_count_ty_refs};
-use clippy_utils::{
-    DefinedTy, ExprUseNode, expr_use_ctxt, get_parent_expr, is_block_like, is_from_proc_macro, is_lint_allowed,
-};
+use clippy_utils::{DefinedTy, ExprUseNode, expr_use_ctxt, get_parent_expr, is_block_like, is_from_proc_macro, is_lint_allowed, sym};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
@@ -19,7 +17,6 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeckResults};
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 

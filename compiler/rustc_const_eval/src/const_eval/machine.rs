@@ -6,7 +6,6 @@ use rustc_abi::{Align, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_errors::msg;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem, find_attr};
 use rustc_middle::mir::AssertMessage;
@@ -441,9 +440,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             // sensitive check here. But we can at least rule out functions that are not const at
             // all. That said, we have to allow calling functions inside a `const trait`. These
             // *are* const-checked!
-            if !ecx.tcx.is_const_fn(def)
-                || find_attr!(ecx.tcx.get_all_attrs(def), AttributeKind::RustcDoNotConstCheck)
-            {
+            if !ecx.tcx.is_const_fn(def) || find_attr!(ecx.tcx, def, RustcDoNotConstCheck) {
                 // We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
                 throw_unsup_format!("calling non-const function `{}`", instance)

@@ -231,8 +231,6 @@ impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> SemiDynamicQueryDispatcher<'t
 trait QueryDispatcherUnerased<'tcx, C: QueryCache, const FLAGS: QueryFlags> {
     type UnerasedValue;
 
-    const NAME: &'static &'static str;
-
     fn query_dispatcher(tcx: TyCtxt<'tcx>) -> SemiDynamicQueryDispatcher<'tcx, C, FLAGS>;
 
     fn restore_val(value: C::Value) -> Self::UnerasedValue;

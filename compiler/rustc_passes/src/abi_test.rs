@@ -1,4 +1,4 @@
-use rustc_hir::attrs::{AttributeKind, RustcAbiAttrKind};
+use rustc_hir::attrs::RustcAbiAttrKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::find_attr;
@@ -18,7 +18,8 @@ pub fn test_abi(tcx: TyCtxt<'_>) {
         return;
     }
     for id in tcx.hir_crate_items(()).definitions() {
-        let Some((attr_span, attr_kind)) = find_attr!(tcx.get_all_attrs(id), AttributeKind::RustcAbi{ attr_span, kind } => (*attr_span, *kind))
+        let Some((attr_span, attr_kind)) =
+            find_attr!(tcx, id, RustcAbi{ attr_span, kind } => (*attr_span, *kind))
         else {
             continue;
         };

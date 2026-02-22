@@ -1,7 +1,7 @@
 use crate::consts::ConstEvalCtxt;
 use crate::macros::macro_backtrace;
 use crate::source::{SpanRange, SpanRangeExt, walk_span_to_context};
-use crate::tokenize_with_text;
+use crate::{sym, tokenize_with_text};
 use rustc_ast::ast;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::{FxHasher, FxIndexMap};
@@ -19,7 +19,7 @@ use rustc_hir::{
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeckResults;
-use rustc_span::{BytePos, ExpnKind, MacroKind, Symbol, SyntaxContext, sym};
+use rustc_span::{BytePos, ExpnKind, MacroKind, Symbol, SyntaxContext};
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::slice;

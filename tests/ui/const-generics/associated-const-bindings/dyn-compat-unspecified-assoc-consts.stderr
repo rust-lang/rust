@@ -5,7 +5,12 @@ LL |     type const K: usize;
    |     ------------------- `K` defined here
 ...
 LL | struct Store(dyn Trait);
-   |                  ^^^^^ help: specify the associated constant: `Trait<K = /* CONST */>`
+   |                  ^^^^^
+   |
+help: specify the associated constant
+   |
+LL | struct Store(dyn Trait<K = /* CONST */>);
+   |                       +++++++++++++++++
 
 error[E0191]: the value of the associated constant `K` in `Trait` must be specified
   --> $DIR/dyn-compat-unspecified-assoc-consts.rs:23:21
@@ -14,7 +19,12 @@ LL |     type const K: usize;
    |     ------------------- `K` defined here
 ...
 LL | type DynTrait = dyn Trait;
-   |                     ^^^^^ help: specify the associated constant: `Trait<K = /* CONST */>`
+   |                     ^^^^^
+   |
+help: specify the associated constant
+   |
+LL | type DynTrait = dyn Trait<K = /* CONST */>;
+   |                          +++++++++++++++++
 
 error[E0191]: the value of the associated constant `K` in `Trait` must be specified
   --> $DIR/dyn-compat-unspecified-assoc-consts.rs:14:16
@@ -23,7 +33,12 @@ LL |     type const K: usize;
    |     ------------------- `K` defined here
 ...
 LL |     let _: dyn Trait;
-   |                ^^^^^ help: specify the associated constant: `Trait<K = /* CONST */>`
+   |                ^^^^^
+   |
+help: specify the associated constant
+   |
+LL |     let _: dyn Trait<K = /* CONST */>;
+   |                     +++++++++++++++++
 
 error: aborting due to 3 previous errors
 

@@ -284,6 +284,10 @@ pub(crate) fn set_comdat(llmod: &Module, llglobal: &Value, name: &CStr) {
     }
 }
 
+pub(crate) fn count_params(llfn: &Value) -> c_uint {
+    LLVMCountParams(llfn)
+}
+
 /// Safe wrapper around `LLVMGetParam`, because segfaults are no fun.
 pub(crate) fn get_param(llfn: &Value, index: c_uint) -> &Value {
     unsafe {

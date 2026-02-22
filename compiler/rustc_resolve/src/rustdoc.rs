@@ -367,7 +367,7 @@ pub fn inner_docs(attrs: &[impl AttributeExt]) -> bool {
 /// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]` or `#[doc(attribute)]`.
 pub fn has_primitive_or_keyword_or_attribute_docs(attrs: &[impl AttributeExt]) -> bool {
     for attr in attrs {
-        if attr.has_name(sym::rustc_doc_primitive) || attr.is_doc_keyword_or_attribute() {
+        if attr.is_rustc_doc_primitive() || attr.is_doc_keyword_or_attribute() {
             return true;
         }
     }

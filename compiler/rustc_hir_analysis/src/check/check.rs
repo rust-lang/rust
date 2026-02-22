@@ -6,10 +6,9 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{EmissionGuarantee, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::ReprAttr::ReprPacked;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::{LangItem, Node, attrs, find_attr, intravisit};
+use rustc_hir::{LangItem, Node, find_attr, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, WellFormedLoc};
 use rustc_lint_defs::builtin::{REPR_TRANSPARENT_NON_ZST_FIELDS, UNSUPPORTED_CALLING_CONVENTIONS};
@@ -79,7 +78,7 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi
 pub fn check_custom_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, fn_sig: FnSig<'_>, fn_sig_span: Span) {
     if fn_sig.abi == ExternAbi::Custom {
         // Function definitions that use `extern "custom"` must be naked functions.
-        if !find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Naked(_)) {
+        if !find_attr!(tcx, def_id, Naked(_)) {
             tcx.dcx().emit_err(crate::errors::AbiCustomClothedFunction {
                 span: fn_sig_span,
                 naked_span: tcx.def_span(def_id).shrink_to_lo(),
@@ -981,12 +980,11 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                         (0, _) => ("const", "consts", None),
                         _ => ("type or const", "types or consts", None),
                     };
-                    let name =
-                        if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::EiiForeignItem) {
-                            "externally implementable items"
-                        } else {
-                            "foreign items"
-                        };
+                    let name = if find_attr!(tcx, def_id, EiiForeignItem) {
+                        "externally implementable items"
+                    } else {
+                        "foreign items"
+                    };
 
                     let span = tcx.def_span(def_id);
                     struct_span_code_err!(
@@ -1373,7 +1371,7 @@ fn check_impl_items_against_trait<'tcx>(
         }
 
         if let Some(missing_items) = must_implement_one_of {
-            let attr_span = find_attr!(tcx.get_all_attrs(trait_ref.def_id), AttributeKind::RustcMustImplementOneOf {attr_span, ..} => *attr_span);
+            let attr_span = find_attr!(tcx, trait_ref.def_id, RustcMustImplementOneOf {attr_span, ..} => *attr_span);
 
             missing_items_must_implement_one_of_err(
                 tcx,
@@ -1556,8 +1554,7 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
 pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
     let repr = def.repr();
     if repr.packed() {
-        if let Some(reprs) = find_attr!(tcx.get_all_attrs(def.did()), attrs::AttributeKind::Repr { reprs, .. } => reprs)
-        {
+        if let Some(reprs) = find_attr!(tcx, def.did(), Repr { reprs, .. } => reprs) {
             for (r, _) in reprs {
                 if let ReprPacked(pack) = r
                     && let Some(repr_pack) = repr.pack
@@ -1724,12 +1721,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited(tcx, typing_env, t)),
             ty::Array(ty, _) => check_unsuited(tcx, typing_env, *ty),
             ty::Adt(def, args) => {
-                if !def.did().is_local()
-                    && !find_attr!(
-                        tcx.get_all_attrs(def.did()),
-                        AttributeKind::RustcPubTransparent(_)
-                    )
-                {
+                if !def.did().is_local() && !find_attr!(tcx, def.did(), RustcPubTransparent(_)) {
                     let non_exhaustive = def.is_variant_list_non_exhaustive()
                         || def.variants().iter().any(ty::VariantDef::is_field_list_non_exhaustive);
                     let has_priv = def.all_fields().any(|f| !f.vis.is_public());
@@ -1800,19 +1792,16 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     def.destructor(tcx); // force the destructor to be evaluated
 
     if def.variants().is_empty() {
-        find_attr!(
-            tcx.get_all_attrs(def_id),
-            attrs::AttributeKind::Repr { reprs, first_span } => {
-                struct_span_code_err!(
-                    tcx.dcx(),
-                    reprs.first().map(|repr| repr.1).unwrap_or(*first_span),
-                    E0084,
-                    "unsupported representation for zero-variant enum"
-                )
-                .with_span_label(tcx.def_span(def_id), "zero-variant enum")
-                .emit();
-            }
-        );
+        find_attr!(tcx, def_id, Repr { reprs, first_span } => {
+            struct_span_code_err!(
+                tcx.dcx(),
+                reprs.first().map(|repr| repr.1).unwrap_or(*first_span),
+                E0084,
+                "unsupported representation for zero-variant enum"
+            )
+            .with_span_label(tcx.def_span(def_id), "zero-variant enum")
+            .emit();
+        });
     }
 
     for v in def.variants() {

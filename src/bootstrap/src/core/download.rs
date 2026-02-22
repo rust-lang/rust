@@ -6,6 +6,7 @@ use std::io::{BufRead, BufReader, BufWriter, ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 
+use build_helper::ci::CiEnv;
 use build_helper::git::PathFreshness;
 use xz2::bufread::XzDecoder;
 
@@ -411,7 +412,13 @@ pub(crate) struct DownloadContext<'a> {
     pub stage0_metadata: &'a build_helper::stage0_parser::Stage0,
     pub llvm_assertions: bool,
     pub bootstrap_cache_path: &'a Option<PathBuf>,
-    pub is_running_on_ci: bool,
+    pub ci_env: CiEnv,
+}
+
+impl<'a> DownloadContext<'a> {
+    pub fn is_running_on_ci(&self) -> bool {
+        self.ci_env.is_running_in_ci()
+    }
 }
 
 impl<'a> AsRef<DownloadContext<'a>> for DownloadContext<'a> {
@@ -432,7 +439,7 @@ impl<'a> From<&'a Config> for DownloadContext<'a> {
             stage0_metadata: &value.stage0_metadata,
             llvm_assertions: value.llvm_assertions,
             bootstrap_cache_path: &value.bootstrap_cache_path,
-            is_running_on_ci: value.is_running_on_ci,
+            ci_env: value.ci_env,
         }
     }
 }
@@ -981,7 +988,7 @@ fn download_file<'a>(
     match url.split_once("://").map(|(proto, _)| proto) {
         Some("http") | Some("https") => download_http_with_retries(
             dwn_ctx.host_target,
-            dwn_ctx.is_running_on_ci,
+            dwn_ctx.is_running_on_ci(),
             dwn_ctx.exec_ctx,
             &tempfile,
             url,

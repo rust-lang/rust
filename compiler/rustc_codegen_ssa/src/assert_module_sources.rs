@@ -28,7 +28,7 @@ use std::fmt;
 
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{DiagArgValue, IntoDiagArg};
-use rustc_hir::attrs::{AttributeKind, CguFields, CguKind};
+use rustc_hir::attrs::{CguFields, CguKind};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir, find_attr};
 use rustc_middle::mir::mono::CodegenUnitNameBuilder;
@@ -89,7 +89,7 @@ struct AssertModuleSource<'tcx> {
 impl<'tcx> AssertModuleSource<'tcx> {
     fn check_attrs(&mut self, attrs: &[hir::Attribute]) {
         for &(span, cgu_fields) in find_attr!(attrs,
-            AttributeKind::RustcCguTestAttr(e) => e)
+            RustcCguTestAttr(e) => e)
         .into_iter()
         .flatten()
         {

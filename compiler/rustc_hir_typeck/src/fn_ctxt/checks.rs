@@ -1994,7 +1994,7 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
                             ),
                         );
                         err.code(self.err_code.to_owned());
-                        err.multipart_suggestion_verbose(
+                        err.multipart_suggestion(
                             "wrap these arguments in parentheses to construct a tuple",
                             vec![
                                 (lo.shrink_to_lo(), "(".to_string()),
@@ -2649,7 +2649,7 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
                 Some(format!("provide the argument{}", if plural { "s" } else { "" }))
             }
             SuggestionText::Remove(plural) => {
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     format!("remove the extra argument{}", if plural { "s" } else { "" }),
                     suggestions,
                     Applicability::HasPlaceholders,

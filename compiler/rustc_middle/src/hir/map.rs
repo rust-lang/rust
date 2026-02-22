@@ -8,7 +8,6 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -369,7 +368,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn hir_rustc_coherence_is_core(self) -> bool {
-        find_attr!(self.hir_krate_attrs(), AttributeKind::RustcCoherenceIsCore(..))
+        find_attr!(self.hir_krate_attrs(), RustcCoherenceIsCore(..))
     }
 
     pub fn hir_get_module(self, module: LocalModDefId) -> (&'tcx Mod<'tcx>, Span, HirId) {

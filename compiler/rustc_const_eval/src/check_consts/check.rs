@@ -7,7 +7,6 @@ use std::ops::Deref;
 
 use rustc_data_structures::assert_matches;
 use rustc_errors::{Diag, ErrorGuaranteed};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem, find_attr};
@@ -216,7 +215,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             return;
         }
 
-        if !find_attr!(tcx.get_all_attrs(def_id), AttributeKind::RustcDoNotConstCheck) {
+        if !find_attr!(tcx, def_id, RustcDoNotConstCheck) {
             self.visit_body(body);
         }
 

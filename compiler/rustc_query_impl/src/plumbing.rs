@@ -14,9 +14,7 @@ use rustc_index::Idx;
 use rustc_middle::bug;
 #[expect(unused_imports, reason = "used by doc comments")]
 use rustc_middle::dep_graph::DepKindVTable;
-use rustc_middle::dep_graph::{
-    self, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex, dep_kinds,
-};
+use rustc_middle::dep_graph::{DepKind, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::on_disk_cache::{
     AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
 };
@@ -123,7 +121,7 @@ pub fn collect_active_jobs_from_all_queries<'tcx>(
     if complete { Ok(job_map_out) } else { Err(job_map_out) }
 }
 
-pub(super) fn try_mark_green<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool {
+pub(super) fn try_mark_green<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool {
     tcx.dep_graph.try_mark_green(tcx, dep_node).is_some()
 }
 
@@ -293,7 +291,7 @@ where
     } else {
         description
     };
-    let span = if vtable.dep_kind == dep_graph::dep_kinds::def_span || reduce_queries {
+    let span = if vtable.dep_kind == DepKind::def_span || reduce_queries {
         // The `def_span` query is used to calculate `default_span`,
         // so exit to avoid infinite recursion.
         None
@@ -301,7 +299,7 @@ where
         Some(key.default_span(tcx))
     };
 
-    let def_kind = if vtable.dep_kind == dep_graph::dep_kinds::def_kind || reduce_queries {
+    let def_kind = if vtable.dep_kind == DepKind::def_kind || reduce_queries {
         // Try to avoid infinite recursion.
         None
     } else {
@@ -461,7 +459,7 @@ pub(crate) fn force_from_dep_node_inner<'tcx, C: QueryCache, const FLAGS: QueryF
     // hit the cache instead of having to go through `force_from_dep_node`.
     // This assertion makes sure, we actually keep applying the solution above.
     debug_assert!(
-        dep_node.kind != dep_kinds::codegen_unit,
+        dep_node.kind != DepKind::codegen_unit,
         "calling force_from_dep_node() on dep_kinds::codegen_unit"
     );
 
@@ -567,7 +565,7 @@ macro_rules! define_queries {
                 QueryVTable {
                     name: stringify!($name),
                     eval_always: is_eval_always!([$($modifiers)*]),
-                    dep_kind: dep_graph::dep_kinds::$name,
+                    dep_kind: dep_graph::DepKind::$name,
                     cycle_error_handling: cycle_error_handling!([$($modifiers)*]),
                     query_state: std::mem::offset_of!(QueryStates<'tcx>, $name),
                     query_cache: std::mem::offset_of!(QueryCaches<'tcx>, $name),
@@ -631,8 +629,6 @@ macro_rules! define_queries {
                 for QueryType<'tcx>
             {
                 type UnerasedValue = queries::$name::Value<'tcx>;
-
-                const NAME: &'static &'static str = &stringify!($name);
 
                 #[inline(always)]
                 fn query_dispatcher(tcx: TyCtxt<'tcx>)

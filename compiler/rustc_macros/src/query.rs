@@ -30,14 +30,28 @@ fn check_attributes(attrs: Vec<Attribute>) -> Result<Vec<Attribute>> {
     attrs.into_iter().map(inner).collect()
 }
 
-/// A compiler query. `query ... { ... }`
+/// Declaration of a compiler query.
+///
+/// ```ignore (illustrative)
+/// /// Doc comment for `my_query`.
+/// //  ^^^^^^^^^^^^^^^^^^^^^^^^^^^              doc_comments
+/// query my_query(key: DefId) -> Value { anon }
+/// //    ^^^^^^^^                               name
+/// //             ^^^                           key_pat
+/// //                  ^^^^^                    key_ty
+/// //                         ^^^^^^^^          return_ty
+/// //                                    ^^^^   modifiers
+/// ```
 struct Query {
     doc_comments: Vec<Attribute>,
-    modifiers: QueryModifiers,
     name: Ident,
-    key: Pat,
-    arg: Type,
-    result: ReturnType,
+
+    /// Parameter name for the key, or an arbitrary irrefutable pattern (e.g. `_`).
+    key_pat: Pat,
+    key_ty: Type,
+    return_ty: ReturnType,
+
+    modifiers: QueryModifiers,
 }
 
 impl Parse for Query {
@@ -47,18 +61,22 @@ impl Parse for Query {
         // Parse the query declaration. Like `query type_of(key: DefId) -> Ty<'tcx>`
         input.parse::<kw::query>()?;
         let name: Ident = input.parse()?;
-        let arg_content;
-        parenthesized!(arg_content in input);
-        let key = Pat::parse_single(&arg_content)?;
-        arg_content.parse::<Token![:]>()?;
-        let arg = arg_content.parse()?;
-        let _ = arg_content.parse::<Option<Token![,]>>()?;
-        let result = input.parse()?;
+
+        // `(key: DefId)`
+        let parens_content;
+        parenthesized!(parens_content in input);
+        let key_pat = Pat::parse_single(&parens_content)?;
+        parens_content.parse::<Token![:]>()?;
+        let key_ty = parens_content.parse::<Type>()?;
+        let _trailing_comma = parens_content.parse::<Option<Token![,]>>()?;
+
+        // `-> Value`
+        let return_ty = input.parse::<ReturnType>()?;
 
         // Parse the query modifiers
-        let content;
-        braced!(content in input);
-        let modifiers = parse_query_modifiers(&content)?;
+        let braces_content;
+        braced!(braces_content in input);
+        let modifiers = parse_query_modifiers(&braces_content)?;
 
         // If there are no doc-comments, give at least some idea of what
         // it does by showing the query description.
@@ -66,7 +84,7 @@ impl Parse for Query {
             doc_comments.push(doc_comment_from_desc(&modifiers.desc.expr_list)?);
         }
 
-        Ok(Query { doc_comments, modifiers, name, key, arg, result })
+        Ok(Query { doc_comments, modifiers, name, key_pat, key_ty, return_ty })
     }
 }
 
@@ -288,7 +306,7 @@ struct HelperTokenStreams {
 }
 
 fn make_helpers_for_query(query: &Query, streams: &mut HelperTokenStreams) {
-    let Query { name, key, modifiers, arg, .. } = &query;
+    let Query { name, key_pat, key_ty, modifiers, .. } = &query;
 
     // Replace span for `name` to make rust-analyzer ignore it.
     let mut erased_name = name.clone();
@@ -301,7 +319,7 @@ fn make_helpers_for_query(query: &Query, streams: &mut HelperTokenStreams) {
         streams.cache_on_disk_if_fns_stream.extend(quote! {
             #[allow(unused_variables, rustc::pass_by_value)]
             #[inline]
-            pub fn #erased_name<'tcx>(#tcx: TyCtxt<'tcx>, #key: &crate::queries::#name::Key<'tcx>) -> bool
+            pub fn #erased_name<'tcx>(#tcx: TyCtxt<'tcx>, #key_pat: &crate::queries::#name::Key<'tcx>) -> bool
             #block
         });
     }
@@ -311,8 +329,8 @@ fn make_helpers_for_query(query: &Query, streams: &mut HelperTokenStreams) {
 
     let desc = quote! {
         #[allow(unused_variables)]
-        pub fn #erased_name<'tcx>(tcx: TyCtxt<'tcx>, key: #arg) -> String {
-            let (#tcx, #key) = (tcx, key);
+        pub fn #erased_name<'tcx>(tcx: TyCtxt<'tcx>, key: #key_ty) -> String {
+            let (#tcx, #key_pat) = (tcx, key);
             format!(#expr_list)
         }
     };
@@ -373,7 +391,7 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
     let mut erased_name = name.clone();
     erased_name.set_span(Span::call_site());
 
-    let result = &query.result;
+    let result = &query.return_ty;
 
     // This dead code exists to instruct rust-analyzer about the link between the `rustc_queries`
     // query names and the corresponding produced provider. The issue is that by nature of this
@@ -417,19 +435,20 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
     }
 
     for query in queries.0 {
-        let Query { name, arg, modifiers, .. } = &query;
-        let result_full = &query.result;
-        let result = match query.result {
+        let Query { doc_comments, name, key_ty, return_ty, modifiers, .. } = &query;
+
+        // Normalize an absent return type into `-> ()` to make macro-rules parsing easier.
+        let return_ty = match return_ty {
             ReturnType::Default => quote! { -> () },
-            _ => quote! { #result_full },
+            ReturnType::Type(..) => quote! { #return_ty },
         };
 
-        let mut attributes = Vec::new();
+        let mut modifiers_out = vec![];
 
         macro_rules! passthrough {
             ( $( $modifier:ident ),+ $(,)? ) => {
                 $( if let Some($modifier) = &modifiers.$modifier {
-                    attributes.push(quote! { (#$modifier) });
+                    modifiers_out.push(quote! { (#$modifier) });
                 }; )+
             }
         }
@@ -452,7 +471,7 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
         // on a synthetic `(cache_on_disk)` modifier that can be inspected by
         // macro-rules macros.
         if modifiers.cache_on_disk_if.is_some() {
-            attributes.push(quote! { (cache_on_disk) });
+            modifiers_out.push(quote! { (cache_on_disk) });
         }
 
         // This uses the span of the query definition for the commas,
@@ -462,12 +481,13 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
         // at the entire `rustc_queries!` invocation, which wouldn't
         // be very useful.
         let span = name.span();
-        let attribute_stream = quote_spanned! {span=> #(#attributes),*};
-        let doc_comments = &query.doc_comments;
+        let modifiers_stream = quote_spanned! { span => #(#modifiers_out),* };
+
         // Add the query to the group
         query_stream.extend(quote! {
             #(#doc_comments)*
-            [#attribute_stream] fn #name(#arg) #result,
+            [#modifiers_stream]
+            fn #name(#key_ty) #return_ty,
         });
 
         if let Some(feedable) = &modifiers.feedable {
@@ -482,7 +502,8 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
                 "Query {name} cannot be both `feedable` and `eval_always`."
             );
             feedable_queries.extend(quote! {
-                [#attribute_stream] fn #name(#arg) #result,
+                [#modifiers_stream]
+                fn #name(#key_ty) #return_ty,
             });
         }
 

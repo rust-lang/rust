@@ -838,7 +838,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     }
 
     with_fn! { with_multipart_suggestion,
-    /// Show a suggestion that has multiple parts to it.
+    /// Show a suggestion that has multiple parts to it, always as its own subdiagnostic.
     /// In other words, multiple changes need to be applied as part of this suggestion.
     pub fn multipart_suggestion(
         &mut self,
@@ -850,25 +850,9 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
             msg,
             suggestion,
             applicability,
-            SuggestionStyle::ShowCode,
-        )
-    } }
-
-    /// Show a suggestion that has multiple parts to it, always as its own subdiagnostic.
-    /// In other words, multiple changes need to be applied as part of this suggestion.
-    pub fn multipart_suggestion_verbose(
-        &mut self,
-        msg: impl Into<DiagMessage>,
-        suggestion: Vec<(Span, String)>,
-        applicability: Applicability,
-    ) -> &mut Self {
-        self.multipart_suggestion_with_style(
-            msg,
-            suggestion,
-            applicability,
             SuggestionStyle::ShowAlways,
         )
-    }
+    } }
 
     /// [`Diag::multipart_suggestion()`] but you can set the [`SuggestionStyle`].
     pub fn multipart_suggestion_with_style(

@@ -1,7 +1,7 @@
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
-use rustc_hir::attrs::AttributeKind;
+use rustc_ast::{Pat, PatKind, Path};
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, HirId, find_attr};
@@ -12,10 +12,10 @@ use rustc_span::{Span, sym};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::lints::{
-    BadOptAccessDiag, DefaultHashTypesDiag, ImplicitSysrootCrateImportDiag, LintPassByHand,
-    NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked, SpanUseEqCtxtDiag,
-    SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind, TypeIrDirectUse,
-    TypeIrInherentUsage, TypeIrTraitUsage,
+    AttributeKindInFindAttr, BadOptAccessDiag, DefaultHashTypesDiag,
+    ImplicitSysrootCrateImportDiag, LintPassByHand, NonGlobImportTypeIrInherent, QueryInstability,
+    QueryUntracked, SpanUseEqCtxtDiag, SymbolInternStringLiteralDiag, TyQualified, TykindDiag,
+    TykindKind, TypeIrDirectUse, TypeIrInherentUsage, TypeIrTraitUsage,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -90,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for QueryStability {
                 ty::Instance::try_resolve(cx.tcx, cx.typing_env(), callee_def_id, generic_args)
         {
             let def_id = instance.def_id();
-            if find_attr!(cx.tcx.get_all_attrs(def_id), AttributeKind::RustcLintQueryInstability) {
+            if find_attr!(cx.tcx, def_id, RustcLintQueryInstability) {
                 cx.emit_span_lint(
                     POTENTIAL_QUERY_INSTABILITY,
                     span,
@@ -105,10 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for QueryStability {
                 );
             }
 
-            if find_attr!(
-                cx.tcx.get_all_attrs(def_id),
-                AttributeKind::RustcLintUntrackedQueryInformation
-            ) {
+            if find_attr!(cx.tcx, def_id, RustcLintUntrackedQueryInformation) {
                 cx.emit_span_lint(
                     UNTRACKED_QUERY_INFORMATION,
                     span,
@@ -153,10 +150,7 @@ fn has_unstable_into_iter_predicate<'tcx>(
         };
         // Does the input type's `IntoIterator` implementation have the
         // `rustc_lint_query_instability` attribute on its `into_iter` method?
-        if find_attr!(
-            cx.tcx.get_all_attrs(instance.def_id()),
-            AttributeKind::RustcLintQueryInstability
-        ) {
+        if find_attr!(cx.tcx, instance.def_id(), RustcLintQueryInstability) {
             return true;
         }
     }
@@ -508,13 +502,13 @@ impl LateLintPass<'_> for BadOptAccess {
         let Some(adt_def) = cx.typeck_results().expr_ty(base).ty_adt_def() else { return };
         // Skip types without `#[rustc_lint_opt_ty]` - only so that the rest of the lint can be
         // avoided.
-        if !find_attr!(cx.tcx.get_all_attrs(adt_def.did()), AttributeKind::RustcLintOptTy) {
+        if !find_attr!(cx.tcx, adt_def.did(), RustcLintOptTy) {
             return;
         }
 
         for field in adt_def.all_fields() {
             if field.name == target.name
-                && let Some(lint_message) = find_attr!(cx.tcx.get_all_attrs(field.did), AttributeKind::RustcLintOptDenyFieldAccess { lint_message, } => lint_message)
+                && let Some(lint_message) = find_attr!(cx.tcx, field.did, RustcLintOptDenyFieldAccess { lint_message, } => lint_message)
             {
                 cx.emit_span_lint(
                     BAD_OPT_ACCESS,
@@ -624,6 +618,97 @@ impl EarlyLintPass for ImplicitSysrootCrateImport {
                     ImplicitSysrootCrateImportDiag { name },
                 );
             }
+        }
+    }
+}
+
+declare_tool_lint! {
+    pub rustc::BAD_USE_OF_FIND_ATTR,
+    Allow,
+    "Forbid `AttributeKind::` as a prefix in `find_attr!` macros.",
+    report_in_external_macro: true
+}
+declare_lint_pass!(BadUseOfFindAttr => [BAD_USE_OF_FIND_ATTR]);
+
+impl EarlyLintPass for BadUseOfFindAttr {
+    fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &rustc_ast::Arm) {
+        fn path_contains_attribute_kind(cx: &EarlyContext<'_>, path: &Path) {
+            for segment in &path.segments {
+                if segment.ident.as_str() == "AttributeKind" {
+                    cx.emit_span_lint(
+                        BAD_USE_OF_FIND_ATTR,
+                        segment.span(),
+                        AttributeKindInFindAttr {},
+                    );
+                }
+            }
+        }
+
+        fn find_attr_kind_in_pat(cx: &EarlyContext<'_>, pat: &Pat) {
+            match &pat.kind {
+                PatKind::Struct(_, path, fields, _) => {
+                    path_contains_attribute_kind(cx, path);
+                    for field in fields {
+                        find_attr_kind_in_pat(cx, &field.pat);
+                    }
+                }
+                PatKind::TupleStruct(_, path, fields) => {
+                    path_contains_attribute_kind(cx, path);
+                    for field in fields {
+                        find_attr_kind_in_pat(cx, &field);
+                    }
+                }
+                PatKind::Or(options) => {
+                    for pat in options {
+                        find_attr_kind_in_pat(cx, pat);
+                    }
+                }
+                PatKind::Path(_, path) => {
+                    path_contains_attribute_kind(cx, path);
+                }
+                PatKind::Tuple(elems) => {
+                    for pat in elems {
+                        find_attr_kind_in_pat(cx, pat);
+                    }
+                }
+                PatKind::Box(pat) => {
+                    find_attr_kind_in_pat(cx, pat);
+                }
+                PatKind::Deref(pat) => {
+                    find_attr_kind_in_pat(cx, pat);
+                }
+                PatKind::Ref(..) => {
+                    find_attr_kind_in_pat(cx, pat);
+                }
+                PatKind::Slice(elems) => {
+                    for pat in elems {
+                        find_attr_kind_in_pat(cx, pat);
+                    }
+                }
+
+                PatKind::Guard(pat, ..) => {
+                    find_attr_kind_in_pat(cx, pat);
+                }
+                PatKind::Paren(pat) => {
+                    find_attr_kind_in_pat(cx, pat);
+                }
+                PatKind::Expr(..)
+                | PatKind::Range(..)
+                | PatKind::MacCall(..)
+                | PatKind::Rest
+                | PatKind::Missing
+                | PatKind::Err(..)
+                | PatKind::Ident(..)
+                | PatKind::Never
+                | PatKind::Wild => {}
+            }
+        }
+
+        if let Some(expn_data) = arm.span.source_callee()
+            && let ExpnKind::Macro(_, name) = expn_data.kind
+            && name.as_str() == "find_attr"
+        {
+            find_attr_kind_in_pat(cx, &arm.pat);
         }
     }
 }

@@ -1,6 +1,5 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_hir::find_attr;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
@@ -62,7 +61,7 @@ pub enum OverlapMode {
 impl OverlapMode {
     pub fn get(tcx: TyCtxt<'_>, trait_id: DefId) -> OverlapMode {
         let with_negative_coherence = tcx.features().with_negative_coherence();
-        let strict_coherence = find_attr!(tcx.get_all_attrs(trait_id), AttributeKind::RustcStrictCoherence(span) => *span);
+        let strict_coherence = find_attr!(tcx, trait_id, RustcStrictCoherence(span) => *span);
 
         if with_negative_coherence {
             if strict_coherence.is_some() { OverlapMode::Strict } else { OverlapMode::WithNegative }

@@ -1143,6 +1143,12 @@ pub(crate) struct ImplicitSysrootCrateImportDiag<'a> {
     pub name: &'a str,
 }
 
+#[derive(LintDiagnostic)]
+#[diag("use of `AttributeKind` in `find_attr!(...)` invocation")]
+#[note("`find_attr!(...)` already imports `AttributeKind::*`")]
+#[help("remove `AttributeKind`")]
+pub(crate) struct AttributeKindInFindAttr {}
+
 // let_underscore.rs
 #[derive(LintDiagnostic)]
 pub(crate) enum NonBindingLet {

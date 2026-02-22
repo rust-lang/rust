@@ -146,7 +146,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
                     && !sess.target.crt_static_allows_dylibs)
             {
                 for &cnum in tcx.crates(()).iter() {
-                    if tcx.dep_kind(cnum).macros_only() {
+                    if tcx.crate_dep_kind(cnum).macros_only() {
                         continue;
                     }
                     let src = tcx.used_crate_source(cnum);
@@ -163,7 +163,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
 
     let all_dylibs = || {
         tcx.crates(()).iter().filter(|&&cnum| {
-            !tcx.dep_kind(cnum).macros_only()
+            !tcx.crate_dep_kind(cnum).macros_only()
                 && (tcx.used_crate_source(cnum).dylib.is_some()
                     || tcx.used_crate_source(cnum).sdylib_interface.is_some())
         })
@@ -241,7 +241,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         let src = tcx.used_crate_source(cnum);
         if src.dylib.is_none()
             && !formats.contains_key(&cnum)
-            && tcx.dep_kind(cnum) == CrateDepKind::Unconditional
+            && tcx.crate_dep_kind(cnum) == CrateDepKind::Unconditional
         {
             assert!(src.rlib.is_some() || src.rmeta.is_some());
             info!("adding staticlib: {}", tcx.crate_name(cnum));
@@ -333,7 +333,7 @@ fn attempt_static(tcx: TyCtxt<'_>, unavailable: &mut Vec<CrateNum>) -> Option<De
         .iter()
         .copied()
         .filter_map(|cnum| {
-            if tcx.dep_kind(cnum).macros_only() {
+            if tcx.crate_dep_kind(cnum).macros_only() {
                 return None;
             }
             let is_rlib = tcx.used_crate_source(cnum).rlib.is_some();
@@ -353,7 +353,7 @@ fn attempt_static(tcx: TyCtxt<'_>, unavailable: &mut Vec<CrateNum>) -> Option<De
     assert_eq!(ret.push(Linkage::Static), LOCAL_CRATE);
     for &cnum in tcx.crates(()) {
         assert_eq!(
-            ret.push(match tcx.dep_kind(cnum) {
+            ret.push(match tcx.crate_dep_kind(cnum) {
                 CrateDepKind::Unconditional => Linkage::Static,
                 CrateDepKind::MacrosOnly | CrateDepKind::Conditional => Linkage::NotLinked,
             }),

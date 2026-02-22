@@ -423,10 +423,8 @@ pub fn print_query_stack<'tcx>(
         if let Some(ref mut file) = file {
             let _ = writeln!(
                 file,
-                "#{} [{}] {}",
-                count_total,
-                tcx.dep_kind_vtable(query_info.frame.dep_kind).name,
-                query_extra.description
+                "#{} [{:?}] {}",
+                count_total, query_info.frame.dep_kind, query_extra.description
             );
         }
 

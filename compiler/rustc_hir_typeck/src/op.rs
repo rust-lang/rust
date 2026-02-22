@@ -465,7 +465,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 && lhs_new_mutbl.is_not()
                                 && rhs_new_mutbl.is_not()
                             {
-                                err.multipart_suggestion_verbose(
+                                err.multipart_suggestion(
                                     "consider reborrowing both sides",
                                     vec![
                                         (lhs_expr.span.shrink_to_lo(), "&*".to_string()),
@@ -826,7 +826,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             lhs_sugg,
                             (rhs_expr.span.shrink_to_lo(), "&".to_owned()),
                         ];
-                        err.multipart_suggestion_verbose(
+                        err.multipart_suggestion(
                             sugg_msg,
                             suggestions,
                             Applicability::MachineApplicable,

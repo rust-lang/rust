@@ -3,7 +3,6 @@ use std::iter;
 use rustc_abi::{CanonAbi, ExternAbi};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey, msg};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem, find_attr};
@@ -526,12 +525,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Unit testing: function items annotated with
                 // `#[rustc_evaluate_where_clauses]` trigger special output
                 // to let us test the trait evaluation system.
-                if self.has_rustc_attrs
-                    && find_attr!(
-                        self.tcx.get_all_attrs(def_id),
-                        AttributeKind::RustcEvaluateWhereClauses
-                    )
-                {
+                if self.has_rustc_attrs && find_attr!(self.tcx, def_id, RustcEvaluateWhereClauses) {
                     let predicates = self.tcx.predicates_of(def_id);
                     let predicates = predicates.instantiate(self.tcx, args);
                     for (predicate, predicate_span) in predicates {
@@ -905,18 +899,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_did: DefId,
         callee_args: GenericArgsRef<'tcx>,
     ) {
-        // FIXME(const_trait_impl): We should be enforcing these effects unconditionally.
-        // This can be done as soon as we convert the standard library back to
-        // using const traits, since if we were to enforce these conditions now,
-        // we'd fail on basically every builtin trait call (i.e. `1 + 2`).
-        if !self.tcx.features().const_trait_impl() {
-            return;
-        }
-
         // If we have `rustc_do_not_const_check`, do not check `[const]` bounds.
-        if self.has_rustc_attrs
-            && find_attr!(self.tcx.get_all_attrs(self.body_id), AttributeKind::RustcDoNotConstCheck)
-        {
+        if self.has_rustc_attrs && find_attr!(self.tcx, self.body_id, RustcDoNotConstCheck) {
             return;
         }
 

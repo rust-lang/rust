@@ -47,7 +47,6 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::spawn;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatorState};
@@ -255,10 +254,10 @@ impl ResolverAstLowering {
             return None;
         }
 
+        // we can use parsed attrs here since for other crates they're already available
         find_attr!(
-            // we can use parsed attrs here since for other crates they're already available
-            tcx.get_all_attrs(def_id),
-            AttributeKind::RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
+            tcx, def_id,
+            RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
         )
         .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
     }

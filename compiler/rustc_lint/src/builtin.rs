@@ -980,15 +980,14 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
         let attrs = cx.tcx.hir_attrs(it.hir_id());
         match it.kind {
             hir::ItemKind::Fn { .. } => {
-                if let Some(attr_span) =
-                    find_attr!(attrs, AttributeKind::ExportName {span, ..} => *span)
-                        .or_else(|| find_attr!(attrs, AttributeKind::NoMangle(span) => *span))
+                if let Some(attr_span) = find_attr!(attrs, ExportName {span, ..} => *span)
+                    .or_else(|| find_attr!(attrs, NoMangle(span) => *span))
                 {
                     self.check_no_mangle_on_generic_fn(cx, attr_span, it.owner_id.def_id);
                 }
             }
             hir::ItemKind::Const(ident, generics, ..) => {
-                if find_attr!(attrs, AttributeKind::NoMangle(..)) {
+                if find_attr!(attrs, NoMangle(..)) {
                     let suggestion =
                         if generics.params.is_empty() && generics.where_clause_span.is_empty() {
                             // account for "pub const" (#45562)
@@ -1014,9 +1013,8 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
         let attrs = cx.tcx.hir_attrs(it.hir_id());
         match it.kind {
             hir::ImplItemKind::Fn { .. } => {
-                if let Some(attr_span) =
-                    find_attr!(attrs, AttributeKind::ExportName {span, ..} => *span)
-                        .or_else(|| find_attr!(attrs, AttributeKind::NoMangle(span) => *span))
+                if let Some(attr_span) = find_attr!(attrs, ExportName {span, ..} => *span)
+                    .or_else(|| find_attr!(attrs, NoMangle(span) => *span))
                 {
                     self.check_no_mangle_on_generic_fn(cx, attr_span, it.owner_id.def_id);
                 }
@@ -1178,7 +1176,7 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         if fn_kind.asyncness().is_async()
             && !cx.tcx.features().async_fn_track_caller()
             // Now, check if the function has the `#[track_caller]` attribute
-            && let Some(attr_span) = find_attr!(cx.tcx.get_all_attrs(def_id), AttributeKind::TrackCaller(span) => *span)
+            && let Some(attr_span) = find_attr!(cx.tcx, def_id, TrackCaller(span) => *span)
         {
             cx.emit_span_lint(
                 UNGATED_ASYNC_FN_TRACK_CALLER,

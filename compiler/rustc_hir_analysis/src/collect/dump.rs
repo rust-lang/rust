@@ -1,13 +1,12 @@
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{find_attr, intravisit};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 
 pub(crate) fn opaque_hidden_types(tcx: TyCtxt<'_>) {
-    if !find_attr!(tcx.get_all_attrs(CRATE_DEF_ID), AttributeKind::RustcHiddenTypeOfOpaques) {
+    if !find_attr!(tcx, crate, RustcHiddenTypeOfOpaques) {
         return;
     }
     for id in tcx.hir_crate_items(()).opaques() {
@@ -28,7 +27,7 @@ pub(crate) fn opaque_hidden_types(tcx: TyCtxt<'_>) {
 
 pub(crate) fn predicates_and_item_bounds(tcx: TyCtxt<'_>) {
     for id in tcx.hir_crate_items(()).owners() {
-        if find_attr!(tcx.get_all_attrs(id), AttributeKind::RustcDumpPredicates) {
+        if find_attr!(tcx, id, RustcDumpPredicates) {
             let preds = tcx.predicates_of(id).instantiate_identity(tcx).predicates;
             let span = tcx.def_span(id);
 
@@ -38,7 +37,7 @@ pub(crate) fn predicates_and_item_bounds(tcx: TyCtxt<'_>) {
             }
             diag.emit();
         }
-        if find_attr!(tcx.get_all_attrs(id), AttributeKind::RustcDumpItemBounds) {
+        if find_attr!(tcx, id, RustcDumpItemBounds) {
             let bounds = tcx.item_bounds(id).instantiate_identity();
             let span = tcx.def_span(id);
 
@@ -54,7 +53,7 @@ pub(crate) fn predicates_and_item_bounds(tcx: TyCtxt<'_>) {
 pub(crate) fn def_parents(tcx: TyCtxt<'_>) {
     for iid in tcx.hir_free_items() {
         let did = iid.owner_id.def_id;
-        if find_attr!(tcx.get_all_attrs(did), AttributeKind::RustcDumpDefParents) {
+        if find_attr!(tcx, did, RustcDumpDefParents) {
             struct AnonConstFinder<'tcx> {
                 tcx: TyCtxt<'tcx>,
                 anon_consts: Vec<LocalDefId>,
@@ -102,9 +101,7 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
     for id in tcx.hir_free_items() {
         let def_id = id.owner_id.def_id;
 
-        let Some(&attr_span) =
-            find_attr!(tcx.get_all_attrs(def_id), AttributeKind::RustcDumpVtable(span) => span)
-        else {
+        let Some(&attr_span) = find_attr!(tcx, def_id, RustcDumpVtable(span) => span) else {
             continue;
         };
 

@@ -588,11 +588,9 @@ macro_rules! define_feedable {
                 let tcx = self.tcx;
                 let erased_value = $name::provided_to_erased(tcx, value);
 
-                let dep_kind: dep_graph::DepKind = dep_graph::dep_kinds::$name;
-
                 $crate::query::inner::query_feed(
                     tcx,
-                    dep_kind,
+                    dep_graph::DepKind::$name,
                     &tcx.query_system.query_vtables.$name,
                     &tcx.query_system.caches.$name,
                     key,

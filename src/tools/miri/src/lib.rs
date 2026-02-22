@@ -17,6 +17,7 @@
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
 #![feature(iter_advance_by)]
+#![feature(macro_metavar_expr)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -87,6 +88,7 @@ mod math;
 mod operator;
 mod provenance_gc;
 mod shims;
+pub mod sym;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
 // Make all those symbols available in the same place as our own.

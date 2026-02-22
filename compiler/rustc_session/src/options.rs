@@ -7,7 +7,7 @@ use rustc_abi::Align;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_errors::{ColorConfig, LanguageIdentifier, TerminalUrl};
+use rustc_errors::{ColorConfig, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
 use rustc_hir::attrs::CollapseMacroDebuginfo;
@@ -790,7 +790,6 @@ mod desc {
     pub(crate) const parse_string: &str = "a string";
     pub(crate) const parse_opt_string: &str = parse_string;
     pub(crate) const parse_string_push: &str = parse_string;
-    pub(crate) const parse_opt_langid: &str = "a language identifier";
     pub(crate) const parse_opt_pathbuf: &str = "a path";
     pub(crate) const parse_list: &str = "a space-separated list of strings";
     pub(crate) const parse_list_with_polarity: &str =
@@ -992,17 +991,6 @@ pub mod parse {
         match v {
             Some(s) => {
                 *slot = Some(s.to_string());
-                true
-            }
-            None => false,
-        }
-    }
-
-    /// Parse an optional language identifier, e.g. `en-US` or `zh-CN`.
-    pub(crate) fn parse_opt_langid(slot: &mut Option<LanguageIdentifier>, v: Option<&str>) -> bool {
-        match v {
-            Some(s) => {
-                *slot = rustc_errors::LanguageIdentifier::from_str(s).ok();
                 true
             }
             None => false,
@@ -2335,8 +2323,6 @@ options! {
         "embed source text in DWARF debug sections (default: no)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
-    emit_thin_lto: bool = (true, parse_bool, [TRACKED],
-        "emit the bc module with thin LTO info (default: yes)"),
     emscripten_wasm_eh: bool = (true, parse_bool, [TRACKED],
         "Use WebAssembly error handling for wasm32-unknown-emscripten"),
     enforce_type_length_limit: bool = (false, parse_bool, [TRACKED],
@@ -2713,15 +2699,6 @@ written to standard error output)"),
         "for every macro invocation, print its name and arguments (default: no)"),
     track_diagnostics: bool = (false, parse_bool, [UNTRACKED],
         "tracks where in rustc a diagnostic was emitted"),
-    // Diagnostics are considered side-effects of a query (see `QuerySideEffect`) and are saved
-    // alongside query results and changes to translation options can affect diagnostics - so
-    // translation options should be tracked.
-    translate_additional_ftl: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
-        "additional fluent translation to preferentially use (for testing translation)"),
-    translate_directionality_markers: bool = (false, parse_bool, [TRACKED],
-        "emit directionality isolation markers in translated diagnostics"),
-    translate_lang: Option<LanguageIdentifier> = (None, parse_opt_langid, [TRACKED],
-        "language identifier for diagnostic output"),
     translate_remapped_path_to_local_path: bool = (true, parse_bool, [TRACKED],
         "translate remapped paths into local paths when possible (default: yes)"),
     trap_unreachable: Option<bool> = (None, parse_opt_bool, [TRACKED],

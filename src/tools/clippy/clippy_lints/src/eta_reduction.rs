@@ -6,7 +6,6 @@ use clippy_utils::usage::{local_used_after_expr, local_used_in};
 use clippy_utils::{get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate};
 use rustc_abi::ExternAbi;
 use rustc_errors::Applicability;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, GenericArgs, Param, PatKind, QPath, Safety, TyKind, find_attr};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
@@ -154,7 +153,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
             let sig = match callee_ty_adjusted.kind() {
                 ty::FnDef(def, _) => {
                     // Rewriting `x(|| f())` to `x(f)` where f is marked `#[track_caller]` moves the `Location`
-                    if find_attr!(cx.tcx.get_all_attrs(*def), AttributeKind::TrackCaller(..)) {
+                    if find_attr!(cx.tcx, *def, TrackCaller(..)) {
                         return;
                     }
 
@@ -262,7 +261,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
         },
         ExprKind::MethodCall(path, self_, args, _) if check_inputs(typeck, body.params, Some(self_), args) => {
             if let Some(method_def_id) = typeck.type_dependent_def_id(body.value.hir_id)
-                && !find_attr!(cx.tcx.get_all_attrs(method_def_id), AttributeKind::TrackCaller(..))
+                && !find_attr!(cx.tcx, method_def_id, TrackCaller(..))
                 && check_sig(closure_sig, cx.tcx.fn_sig(method_def_id).skip_binder().skip_binder())
             {
                 let mut app = Applicability::MachineApplicable;

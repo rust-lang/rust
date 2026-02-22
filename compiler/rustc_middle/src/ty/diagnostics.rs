@@ -572,7 +572,7 @@ pub fn suggest_constraining_type_params<'a>(
         err.span_suggestion_verbose(span, msg, suggestion, applicability);
     } else if suggestions.len() > 1 {
         let post = if unstable_suggestion { " (some of them are unstable traits)" } else { "" };
-        err.multipart_suggestion_verbose(
+        err.multipart_suggestion(
             format!("consider restricting type parameters{post}"),
             suggestions.into_iter().map(|(span, _, suggestion, _)| (span, suggestion)).collect(),
             applicability,

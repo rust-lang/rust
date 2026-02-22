@@ -304,7 +304,7 @@ impl Subdiagnostic for SuggestAnnotations {
             }
         }
 
-        diag.multipart_suggestion_verbose(
+        diag.multipart_suggestion(
             "use `()` annotations to avoid fallback changes",
             suggestions,
             Applicability::MachineApplicable,

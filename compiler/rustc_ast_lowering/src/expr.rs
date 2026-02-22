@@ -7,7 +7,6 @@ use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::msg;
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::{HirId, Target, find_attr};
@@ -805,7 +804,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) {
         if self.tcx.features().async_fn_track_caller()
             && let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)
-            && find_attr!(*attrs, AttributeKind::TrackCaller(_))
+            && find_attr!(*attrs, TrackCaller(_))
         {
             let unstable_span = self.mark_span_with_reason(
                 DesugaringKind::Async,
@@ -1072,8 +1071,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
         let (body_id, closure_kind) = self.with_new_scopes(fn_decl_span, move |this| {
-
-            let mut coroutine_kind = find_attr!(attrs, AttributeKind::Coroutine(_) => hir::CoroutineKind::Coroutine(Movability::Movable));
+            let mut coroutine_kind = find_attr!(attrs, Coroutine(_) => hir::CoroutineKind::Coroutine(Movability::Movable));
 
             // FIXME(contracts): Support contracts on closures?
             let body_id = this.lower_fn_body(decl, None, |this| {

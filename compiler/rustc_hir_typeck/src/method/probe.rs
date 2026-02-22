@@ -6,7 +6,6 @@ use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, ExprKind, HirId, Node, find_attr};
 use rustc_hir_analysis::autoderef::{self, Autoderef};
@@ -891,7 +890,20 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             | ty::Tuple(..) => {
                 self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty, receiver_steps)
             }
-            _ => {}
+            ty::Alias(..)
+            | ty::Bound(..)
+            | ty::Closure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineClosure(..)
+            | ty::CoroutineWitness(..)
+            | ty::Dynamic(..)
+            | ty::Error(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Infer(..)
+            | ty::Pat(..)
+            | ty::Placeholder(..)
+            | ty::UnsafeBinder(..) => {}
         }
     }
 
@@ -2578,7 +2590,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let hir_id = self.fcx.tcx.local_def_id_to_hir_id(local_def_id);
         let attrs = self.fcx.tcx.hir_attrs(hir_id);
 
-        if let Some(d) = find_attr!(attrs, AttributeKind::Doc(d) => d)
+        if let Some(d) = find_attr!(attrs, Doc(d) => d)
             && d.aliases.contains_key(&method.name)
         {
             return true;

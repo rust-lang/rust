@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use rustc_abi::ExternAbi;
 use rustc_attr_parsing::eval_config_entry;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::attrs::{AttributeKind, NativeLibKind, PeImportNameType};
+use rustc_hir::attrs::{NativeLibKind, PeImportNameType};
 use rustc_hir::find_attr;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
@@ -214,10 +214,7 @@ impl<'tcx> Collector<'tcx> {
         }
 
         for attr in
-            find_attr!(self.tcx.get_all_attrs(def_id), AttributeKind::Link(links, _) => links)
-                .iter()
-                .map(|v| v.iter())
-                .flatten()
+            find_attr!(self.tcx, def_id, Link(links, _) => links).iter().map(|v| v.iter()).flatten()
         {
             let dll_imports = match attr.kind {
                 NativeLibKind::RawDylib { .. } => foreign_items
@@ -232,7 +229,8 @@ impl<'tcx> Collector<'tcx> {
                     .collect(),
                 _ => {
                     for &child_item in foreign_items {
-                        if let Some(span) = find_attr!(self.tcx.get_all_attrs(child_item), AttributeKind::LinkOrdinal {span, ..} => *span)
+                        if let Some(span) =
+                            find_attr!(self.tcx, child_item, LinkOrdinal {span, ..} => *span)
                         {
                             sess.dcx().emit_err(errors::LinkOrdinalRawDylib { span });
                         }

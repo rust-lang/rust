@@ -32,7 +32,7 @@ use crate::emitter::{
     should_show_source_code,
 };
 use crate::timings::{TimingRecord, TimingSection};
-use crate::translation::{Translator, to_fluent_args};
+use crate::translation::{format_diag_message, format_diag_messages, to_fluent_args};
 use crate::{CodeSuggestion, MultiSpan, SpanLabel, Subdiag, Suggestions, TerminalUrl};
 
 #[cfg(test)]
@@ -44,8 +44,6 @@ pub struct JsonEmitter {
     dst: IntoDynSyncSend<Box<dyn Write + Send>>,
     #[setters(skip)]
     sm: Option<Arc<SourceMap>>,
-    #[setters(skip)]
-    translator: Translator,
     #[setters(skip)]
     pretty: bool,
     ui_testing: bool,
@@ -63,7 +61,6 @@ impl JsonEmitter {
     pub fn new(
         dst: Box<dyn Write + Send>,
         sm: Option<Arc<SourceMap>>,
-        translator: Translator,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
         color_config: ColorConfig,
@@ -71,7 +68,6 @@ impl JsonEmitter {
         JsonEmitter {
             dst: IntoDynSyncSend(dst),
             sm,
-            translator,
             pretty,
             ui_testing: false,
             ignored_directories_in_source_blocks: Vec::new(),
@@ -179,10 +175,6 @@ impl Emitter for JsonEmitter {
 
     fn should_show_explain(&self) -> bool {
         !self.json_rendered.short()
-    }
-
-    fn translator(&self) -> &Translator {
-        &self.translator
     }
 }
 
@@ -310,7 +302,7 @@ impl Diagnostic {
         let args = to_fluent_args(diag.args.iter());
         let sugg_to_diag = |sugg: &CodeSuggestion| {
             let translated_message =
-                je.translator.translate_message(&sugg.msg, &args).map_err(Report::new).unwrap();
+                format_diag_message(&sugg.msg, &args).map_err(Report::new).unwrap();
             Diagnostic {
                 message: translated_message.to_string(),
                 code: None,
@@ -341,7 +333,7 @@ impl Diagnostic {
             }
         }
 
-        let translated_message = je.translator.translate_messages(&diag.messages, &args);
+        let translated_message = format_diag_messages(&diag.messages, &args);
 
         let code = if let Some(code) = diag.code {
             Some(DiagnosticCode {
@@ -373,7 +365,7 @@ impl Diagnostic {
                 choice => choice,
             },
         );
-        AnnotateSnippetEmitter::new(dst, je.translator.clone())
+        AnnotateSnippetEmitter::new(dst)
             .short_message(je.json_rendered.short)
             .sm(je.sm.clone())
             .diagnostic_width(je.diagnostic_width)
@@ -403,7 +395,7 @@ impl Diagnostic {
         args: &FluentArgs<'_>,
         je: &JsonEmitter,
     ) -> Diagnostic {
-        let translated_message = je.translator.translate_messages(&subdiag.messages, args);
+        let translated_message = format_diag_messages(&subdiag.messages, args);
         Diagnostic {
             message: translated_message.to_string(),
             code: None,
@@ -427,7 +419,7 @@ impl DiagnosticSpan {
             span.is_primary,
             span.label
                 .as_ref()
-                .map(|m| je.translator.translate_message(m, args).unwrap())
+                .map(|m| format_diag_message(m, args).unwrap())
                 .map(|m| m.to_string()),
             suggestion,
             je,

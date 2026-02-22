@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::peel_blocks;
+use clippy_utils::{peel_blocks, sym};
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::{Symbol, sym};
+use rustc_span::Symbol;
 
 use super::OPTION_AS_REF_DEREF;
 

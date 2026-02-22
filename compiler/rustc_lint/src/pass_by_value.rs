@@ -1,4 +1,3 @@
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Res;
 use rustc_hir::{self as hir, AmbigArg, GenericArg, PathSegment, QPath, TyKind, find_attr};
 use rustc_middle::ty;
@@ -43,19 +42,14 @@ impl<'tcx> LateLintPass<'tcx> for PassByValue {
 fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<String> {
     if let TyKind::Path(QPath::Resolved(_, path)) = &ty.kind {
         match path.res {
-            Res::Def(_, def_id)
-                if find_attr!(cx.tcx.get_all_attrs(def_id), AttributeKind::RustcPassByValue(_)) =>
-            {
+            Res::Def(_, def_id) if find_attr!(cx.tcx, def_id, RustcPassByValue(_)) => {
                 let name = cx.tcx.item_ident(def_id);
                 let path_segment = path.segments.last().unwrap();
                 return Some(format!("{}{}", name, gen_args(cx, path_segment)));
             }
             Res::SelfTyAlias { alias_to: did, is_trait_impl: false, .. } => {
                 if let ty::Adt(adt, args) = cx.tcx.type_of(did).instantiate_identity().kind() {
-                    if find_attr!(
-                        cx.tcx.get_all_attrs(adt.did()),
-                        AttributeKind::RustcPassByValue(_)
-                    ) {
+                    if find_attr!(cx.tcx, adt.did(), RustcPassByValue(_)) {
                         return Some(cx.tcx.def_path_str_with_args(adt.did(), args));
                     }
                 }

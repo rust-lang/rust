@@ -34,7 +34,6 @@ use rustc_data_structures::profiling::{
 };
 pub use rustc_errors::catch_fatal_errors;
 use rustc_errors::emitter::stderr_destination;
-use rustc_errors::translation::Translator;
 use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, PResult, markdown};
 use rustc_feature::find_gated_cfg;
 // This avoids a false positive with `-Wunused_crate_dependencies`.
@@ -106,10 +105,6 @@ use crate::session_diagnostics::{
     CantEmitMIR, RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
     RLinkWrongFileType, RlinkCorruptFile, RlinkNotAFile, RlinkUnableToRead, UnstableFeatureUsage,
 };
-
-pub fn default_translator() -> Translator {
-    Translator::new()
-}
 
 /// Exit status code used for successful compilation and help output.
 pub const EXIT_SUCCESS: i32 = 0;
@@ -1525,11 +1520,9 @@ fn report_ice(
     extra_info: fn(&DiagCtxt),
     using_internal_features: &AtomicBool,
 ) {
-    let translator = Translator::new();
     let emitter =
         Box::new(rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter::new(
             stderr_destination(rustc_errors::ColorConfig::Auto),
-            translator,
         ));
     let dcx = rustc_errors::DiagCtxt::new(emitter);
     let dcx = dcx.handle();

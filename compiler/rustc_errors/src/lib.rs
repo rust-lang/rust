@@ -54,9 +54,8 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{DynSend, Lock};
 use rustc_data_structures::{AtomicRef, assert_matches};
 pub use rustc_error_messages::{
-    DiagArg, DiagArgFromDisplay, DiagArgName, DiagArgValue, DiagMessage, FluentBundle, IntoDiagArg,
-    LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, fallback_fluent_bundle,
-    fluent_bundle, into_diag_arg_using_display,
+    DiagArg, DiagArgFromDisplay, DiagArgName, DiagArgValue, DiagMessage, IntoDiagArg,
+    LanguageIdentifier, MultiSpan, SpanLabel, fluent_bundle, into_diag_arg_using_display,
 };
 use rustc_hashes::Hash128;
 use rustc_lint_defs::LintExpectationId;
@@ -71,6 +70,7 @@ use tracing::debug;
 
 use crate::emitter::TimingEvent;
 use crate::timings::TimingRecord;
+use crate::translation::format_diag_message;
 
 pub mod annotate_snippet_emitter_writer;
 pub mod codes;
@@ -479,8 +479,7 @@ impl DiagCtxt {
 
     pub fn make_silent(&self) {
         let mut inner = self.inner.borrow_mut();
-        let translator = inner.emitter.translator().clone();
-        inner.emitter = Box::new(emitter::SilentEmitter { translator });
+        inner.emitter = Box::new(emitter::SilentEmitter {});
     }
 
     pub fn set_emitter(&self, emitter: Box<dyn Emitter + DynSend>) {
@@ -1438,12 +1437,7 @@ impl DiagCtxtInner {
         args: impl Iterator<Item = DiagArg<'a>>,
     ) -> String {
         let args = crate::translation::to_fluent_args(args);
-        self.emitter
-            .translator()
-            .translate_message(&message, &args)
-            .map_err(Report::new)
-            .unwrap()
-            .to_string()
+        format_diag_message(&message, &args).map_err(Report::new).unwrap().to_string()
     }
 
     fn eagerly_translate_for_subdiag(

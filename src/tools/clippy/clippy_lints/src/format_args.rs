@@ -12,7 +12,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_from_proc_macro, is_in_test, trait_ref_of_method};
+use clippy_utils::{is_from_proc_macro, is_in_test, sym, trait_ref_of_method};
 use itertools::Itertools;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
@@ -21,14 +21,13 @@ use rustc_ast::{
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{Expr, ExprKind, LangItem, RustcVersion, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Upcast};
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition::Edition2021;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol};
 use rustc_trait_selection::infer::TyCtxtInferExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause, Selection, SelectionContext};
 
@@ -662,10 +661,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                     };
                     let selection = SelectionContext::new(&infcx).select(&obligation);
                     let derived = if let Ok(Some(Selection::UserDefined(data))) = selection {
-                        find_attr!(
-                            tcx.get_all_attrs(data.impl_def_id),
-                            AttributeKind::AutomaticallyDerived(..)
-                        )
+                        find_attr!(tcx, data.impl_def_id, AutomaticallyDerived(..))
                     } else {
                         false
                     };
