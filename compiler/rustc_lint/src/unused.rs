@@ -4,7 +4,6 @@ use rustc_ast::util::{classify, parser};
 use rustc_ast::{self as ast, ExprKind, FnRetTy, HasAttrs as _, StmtKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{MultiSpan, pluralize};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem, find_attr};
@@ -401,8 +400,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
 
         fn is_def_must_use(cx: &LateContext<'_>, def_id: DefId, span: Span) -> Option<MustUsePath> {
             if let Some(reason) = find_attr!(
-                cx.tcx.get_all_attrs(def_id),
-                AttributeKind::MustUse { reason, .. } => reason
+                cx.tcx, def_id,
+                MustUse { reason, .. } => reason
             ) {
                 // check for #[must_use = "..."]
                 Some(MustUsePath::Def(span, def_id, *reason))

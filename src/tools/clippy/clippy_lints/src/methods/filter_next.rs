@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::path_to_local_with_projections;
+use clippy_utils::{path_to_local_with_projections, sym};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::implements_trait;
 use rustc_ast::{BindingMode, Mutability};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_span::sym;
 
 use super::FILTER_NEXT;
 

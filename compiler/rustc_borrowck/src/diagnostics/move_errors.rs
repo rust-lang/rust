@@ -375,7 +375,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     .source_map()
                     .indentation_before(stmt.span)
                     .unwrap_or_else(|| "    ".to_string());
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "consider cloning the value before moving it into the closure",
                     vec![
                         (
@@ -405,7 +405,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 .source_map()
                 .indentation_before(closure_expr.span)
                 .unwrap_or_else(|| "    ".to_string());
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 "consider cloning the value before moving it into the closure",
                 vec![
                     (

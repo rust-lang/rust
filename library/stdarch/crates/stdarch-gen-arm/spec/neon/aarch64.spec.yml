@@ -3479,10 +3479,10 @@ intrinsics:
 
   - name: "vld1{neon_type[1].no}"
     doc: "Load multiple single-element structures to one, two, three, or four registers"
-    arguments: ["a: {type[0]}"]
+    arguments: ["ptr: {type[0]}"]
     return_type: "{neon_type[1]}"
     attr: [*neon-stable]
-    assert_instr: [ld1]
+    assert_instr: [ld]
     safety:
       unsafe: [neon]
     types:
@@ -3493,11 +3493,12 @@ intrinsics:
       - ["*const f64", float64x1x4_t]
       - ["*const f64", float64x2x4_t]
     compose:
-      - LLVMLink:
-          name: "vld1{neon_type[1].no}"
-          links:
-            - link: "llvm.aarch64.neon.ld1x{neon_type[1].tuple}.v{neon_type[1].lane}f{neon_type[1].base}.p0"
-              arch: aarch64,arm64ec
+      - FnCall:
+          - 'crate::ptr::read_unaligned'
+          - - MethodCall:
+                - ptr
+                - cast
+                - []
 
   - name: "vld2{neon_type[1].lane_nox}"
     doc: Load multiple 2-element structures to two registers
@@ -3698,16 +3699,12 @@ intrinsics:
     types:
       - ["*const f64", float64x1x2_t, f64, float64x1_t]
     compose:
-      - LLVMLink:
-          name: "vld2.{neon_type[1]}"
-          arguments:
-            - "ptr: *const {neon_type[3]}"
-          links:
-            - link: "llvm.aarch64.neon.ld2.v{neon_type[1].lane}{type[2]}.p0"
-              arch: aarch64,arm64ec
       - FnCall:
-          - "_vld2{neon_type[1].nox}"
-          - - "a as _"
+          - 'crate::ptr::read_unaligned'
+          - - MethodCall:
+                - a
+                - cast
+                - []
 
   - name: "vld2{neon_type[1].nox}"
     doc: Load multiple 2-element structures to two registers
@@ -3715,6 +3712,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr: [*neon-stable]
     assert_instr: [ld2]
+    big_endian_inverse: false
     safety:
       unsafe: [neon]
     types:
@@ -4056,20 +4054,19 @@ intrinsics:
     types:
       - ['*const f64', float64x1x3_t, '*const float64x1_t', f64]
     compose:
-      - LLVMLink:
-          name: 'vld3{neon_type[1].nox}'
-          arguments:
-            - 'ptr: {type[2]}'
-          links:
-            - link: 'llvm.aarch64.neon.ld3.v{neon_type[1].lane}{type[3]}.p0'
-              arch: aarch64,arm64ec
-      - FnCall: ['_vld3{neon_type[1].nox}', ['a as _']]
+      - FnCall:
+          - 'crate::ptr::read_unaligned'
+          - - MethodCall:
+                - a
+                - cast
+                - []
 
   - name: "vld3{neon_type[1].nox}"
     doc: Load multiple 3-element structures to three registers
     arguments: ["a: {type[0]}"]
     return_type: "{neon_type[1]}"
     attr: [*neon-stable]
+    big_endian_inverse: false
     safety:
       unsafe: [neon]
     assert_instr: [ld3]
@@ -4201,14 +4198,12 @@ intrinsics:
     types:
       - ['*const f64', float64x1x4_t, f64, '*const float64x1_t']
     compose:
-      - LLVMLink:
-          name: 'vld4{neon_type[1].nox}'
-          arguments:
-            - 'ptr: {type[3]}'
-          links:
-            - link: 'llvm.aarch64.neon.ld4.v{neon_type[1].lane}{type[2]}.p0'
-              arch: aarch64,arm64ec
-      - FnCall: ['_vld4{neon_type[1].nox}', ['a as _']]
+      - FnCall:
+          - 'crate::ptr::read_unaligned'
+          - - MethodCall:
+                - a
+                - cast
+                - []
 
   - name: "vld4{neon_type[1].nox}"
     doc: Load multiple 4-element structures to four registers
@@ -4216,6 +4211,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr: [*neon-stable]
     assert_instr: [ld4]
+    big_endian_inverse: false
     safety:
       unsafe: [neon]
     types:
@@ -4323,6 +4319,7 @@ intrinsics:
       - *neon-stable
     static_defs:
       - "const LANE: i32"
+    big_endian_inverse: false
     safety:
       unsafe: [neon]
     types:
@@ -4372,6 +4369,7 @@ intrinsics:
       - *neon-stable
     static_defs:
       - "const LANE: i32"
+    big_endian_inverse: false
     safety:
       unsafe: [neon]
     types:
@@ -6964,28 +6962,29 @@ intrinsics:
           - FnCall: [simd_shuffle!, [a, a, "{type[3]}"]]
       - FnCall: ["vmovl{neon_type[0].noq}", [a]]
 
-  - name: "vpadd{neon_type.no}"
-    doc: Floating-point add pairwise
-    arguments: ["a: {neon_type}", "b: {neon_type}"]
-    return_type: "{type}"
+  - name: "vpadd{neon_type[0].no}"
+    doc: "Floating-point add pairwise"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
     attr: [*neon-stable]
     assert_instr: [faddp]
     safety: safe
     types:
-      - float32x4_t
-      - float64x2_t
+      - [float32x4_t, "4"]
+      - [float64x2_t, "2"]
     compose:
-      - LLVMLink:
-          name: "faddp.{neon_type}"
-          links:
-            - link: "llvm.aarch64.neon.faddp.{neon_type}"
-              arch: aarch64,arm64ec
+      - Let:
+        - even
+        - FnCall: ["simd_shuffle!", [a, b, "crate::core_arch::macros::even::<{type[1]}>()"]]
+      - Let:
+        - odd
+        - FnCall: ["simd_shuffle!", [a, b, "crate::core_arch::macros::odd::<{type[1]}>()"]]
+      - FnCall: [simd_add, [even, odd]]
 
-
-  - name: "vpadd{neon_type.no}"
+  - name: "vpadd{neon_type[0].no}"
     doc: Floating-point add pairwise
-    arguments: ["a: {neon_type}", "b: {neon_type}"]
-    return_type: "{type}"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
     attr:
       - *neon-fp16
       - *neon-stable-fp16
@@ -6993,14 +6992,15 @@ intrinsics:
     assert_instr: [faddp]
     safety: safe
     types:
-      - float16x8_t
+      - [float16x8_t, "8"]
     compose:
-      - LLVMLink:
-          name: "faddp.{neon_type}"
-          links:
-            - link: "llvm.aarch64.neon.faddp.{neon_type}"
-              arch: aarch64,arm64ec
-
+      - Let:
+        - even
+        - FnCall: ["simd_shuffle!", [a, b, "crate::core_arch::macros::even::<{type[1]}>()"]]
+      - Let:
+        - odd
+        - FnCall: ["simd_shuffle!", [a, b, "crate::core_arch::macros::odd::<{type[1]}>()"]]
+      - FnCall: [simd_add, [even, odd]]
 
   - name: "vpmax{neon_type.no}"
     doc: Floating-point add pairwise
@@ -10166,7 +10166,7 @@ intrinsics:
     attr:
       - *neon-stable
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [sri, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [bfxil, 'N = 2']]}]]
     safety: safe
     types:
       - i64
@@ -12176,6 +12176,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    big_endian_inverse: false
     safety: safe
     types:
       - [uint8x8_t, uint8x8x4_t, uint8x8_t]
@@ -12243,6 +12244,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    big_endian_inverse: false
     safety: safe
     types:
       - [uint8x8x2_t, 'uint8x8_t', 'uint8x8_t']
@@ -12296,7 +12298,7 @@ intrinsics:
     types:
       - [uint8x8x3_t, 'uint8x8_t', 'uint8x16x2', 'uint8x8_t']
       - [poly8x8x3_t, 'uint8x8_t', 'poly8x16x2', 'poly8x8_t']
-    big_endian_inverse: true
+    big_endian_inverse: false
     compose:
       - Let:
           - x
@@ -12348,7 +12350,7 @@ intrinsics:
     types:
       - [uint8x8x4_t, 'uint8x8_t', 'uint8x16x2', 'uint8x8_t']
       - [poly8x8x4_t, 'uint8x8_t', 'poly8x16x2', 'poly8x8_t']
-    big_endian_inverse: true
+    big_endian_inverse: false
     compose:
       - Let:
           - x
@@ -12457,6 +12459,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    big_endian_inverse: false
     safety: safe
     types:
       - [uint8x8_t, 'uint8x8x2_t', uint8x8_t]
@@ -12518,7 +12521,7 @@ intrinsics:
     types:
       - [uint8x8_t, 'uint8x8x3_t', 'uint8x16x2', 'u8x8::splat(24)', 'uint8x8']
       - [poly8x8_t, 'poly8x8x3_t', 'poly8x16x2', 'u8x8::splat(24)', 'poly8x8']
-    big_endian_inverse: true
+    big_endian_inverse: false
     compose:
       - Let:
          - x
@@ -12601,6 +12604,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    big_endian_inverse: false
     safety: safe
     types:
       - ['uint8x16x2_t', uint8x8_t, 'vqtbl2', 'uint8x8_t']
@@ -12637,6 +12641,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    big_endian_inverse: false
     safety: safe
     types:
       - [uint8x8_t, 'uint8x16x2_t', uint8x8_t, 'vqtbx2']
@@ -12660,6 +12665,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    big_endian_inverse: false
     safety: safe
     types:
       - ['int8x8_t', 'int8x16x3_t', uint8x8_t, 'vqtbl3']
@@ -12674,6 +12680,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    big_endian_inverse: false
     safety: safe
     types:
       - ['uint8x8_t', 'uint8x16x3_t', uint8x8_t, 'vqtbl3']
@@ -12711,6 +12718,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    big_endian_inverse: false
     safety: safe
     types:
       - [uint8x8_t, 'uint8x16x3_t', uint8x8_t, 'vqtbx3']
@@ -12735,6 +12743,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    big_endian_inverse: false
     safety: safe
     types:
       - ['int8x16x4_t', uint8x8_t, 'vqtbl4', 'int8x8_t']
@@ -12749,6 +12758,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    big_endian_inverse: false
     safety: safe
     types:
       - ['uint8x16x4_t', uint8x8_t, 'vqtbl4', 'uint8x8_t']
@@ -12787,6 +12797,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    big_endian_inverse: false
     safety: safe
     types:
       - [uint8x8_t, 'uint8x16x4_t', uint8x8_t, 'vqtbx4']
@@ -12851,6 +12862,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    big_endian_inverse: false
     safety: safe
     types:
       - ["vqtbl3", int8x16_t, uint8x8_t, int8x8_t]
@@ -12870,6 +12882,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    big_endian_inverse: false
     safety: safe
     types:
       - ["vqtbl4", int8x16_t, uint8x8_t, int8x8_t]
@@ -13225,26 +13238,6 @@ intrinsics:
             - link: "llvm.aarch64.neon.usqadd.{neon_type[1]}"
               arch: aarch64,arm64ec
 
-  - name: "vpadd{neon_type.no}"
-    doc: "Add Pairwise"
-    arguments: ["a: {neon_type}", "b: {neon_type}"]
-    return_type: "{neon_type}"
-    attr:
-      - *neon-stable
-    assert_instr: [addp]
-    safety: safe
-    types:
-      - int8x16_t
-      - int16x8_t
-      - int32x4_t
-      - int64x2_t
-    compose:
-      - LLVMLink:
-          name: "vpadd{neon_type.no}"
-          links:
-            - link: "llvm.aarch64.neon.addp.{neon_type}"
-              arch: aarch64,arm64ec
-
   - name: "vpadd{neon_type[0].no}"
     doc: "Add Pairwise"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -13254,17 +13247,22 @@ intrinsics:
     assert_instr: [addp]
     safety: safe
     types:
-      - [uint8x16_t, int8x16_t]
-      - [uint16x8_t, int16x8_t]
-      - [uint32x4_t, int32x4_t]
-      - [uint64x2_t, int64x2_t]
+      - [int8x16_t, "16"]
+      - [int16x8_t, "8"]
+      - [int32x4_t, "4"]
+      - [int64x2_t, "2"]
+      - [uint8x16_t, "16"]
+      - [uint16x8_t, "8"]
+      - [uint32x4_t, "4"]
+      - [uint64x2_t, "2"]
     compose:
-      - FnCall:
-          - transmute
-          - - FnCall:
-                - 'vpadd{neon_type[1].no}'
-                - - FnCall: [transmute, [a]]
-                  - FnCall: [transmute, [b]]
+      - Let:
+        - even
+        - FnCall: ["simd_shuffle!", [a, b, "crate::core_arch::macros::even::<{type[1]}>()"]]
+      - Let:
+        - odd
+        - FnCall: ["simd_shuffle!", [a, b, "crate::core_arch::macros::odd::<{type[1]}>()"]]
+      - FnCall: [simd_add, [even, odd]]
 
   - name: "vpaddd_s64"
     doc: "Add pairwise"
@@ -13722,26 +13720,17 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int8x8_t,  'N >= 1 && N <= 8']
-      - [int8x16_t, 'N >= 1 && N <= 8']
-      - [int16x4_t, 'N >= 1 && N <= 16']
-      - [int16x8_t, 'N >= 1 && N <= 16']
-      - [int32x2_t, 'N >= 1 && N <= 32']
-      - [int32x4_t, 'N >= 1 && N <= 32']
-      - [int64x1_t, 'N >= 1 && N <= 64']
-      - [int64x2_t, 'N >= 1 && N <= 64']
+      - [int8x8_t, u8, '8', 'N >= 1 && N <= 8']
+      - [int8x16_t, u8, '16', 'N >= 1 && N <= 8']
+      - [int16x4_t, u16, '4', 'N >= 1 && N <= 16']
+      - [int16x8_t, u16, '8', 'N >= 1 && N <= 16']
+      - [int32x2_t, u32, '2', 'N >= 1 && N <= 32']
+      - [int32x4_t, u32, '4', 'N >= 1 && N <= 32']
+      - [int64x1_t, u64, '1', 'N >= 1 && N <= 64']
+      - [int64x2_t, u64, '2', 'N >= 1 && N <= 64']
     compose:
-      - FnCall: ['static_assert!', ['{type[1]}']]
-      - LLVMLink:
-          name: "vsri{neon_type[0].N}"
-          arguments:
-            - "a: {neon_type[0]}"
-            - "b: {neon_type[0]}"
-            - "n: i32"
-          links:
-            - link: "llvm.aarch64.neon.vsri.{neon_type[0]}"
-              arch: aarch64,arm64ec
-      - FnCall: ["_vsri{neon_type[0].N}", [a, b, N], [], true]
+      - FnCall: ['static_assert!', ['{type[3]}']]
+      - FnCall: ["super::shift_right_and_insert!", ['{type[1]}', '{type[2]}', N, a, b], [], true]
 
   - name: "vsri{neon_type[0].N}"
     doc: "Shift Right and Insert (immediate)"

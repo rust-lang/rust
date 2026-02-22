@@ -243,7 +243,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             vis_span,
             span: self.lower_span(i.span),
             has_delayed_lints: !self.delayed_lints.is_empty(),
-            eii: find_attr!(attrs, AttributeKind::EiiImpls(..) | AttributeKind::EiiDeclaration(..)),
+            eii: find_attr!(attrs, EiiImpls(..) | EiiDeclaration(..)),
         };
         self.arena.alloc(item)
     }
@@ -707,10 +707,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             vis_span,
                             span: this.lower_span(use_tree.span),
                             has_delayed_lints: !this.delayed_lints.is_empty(),
-                            eii: find_attr!(
-                                attrs,
-                                AttributeKind::EiiImpls(..) | AttributeKind::EiiDeclaration(..)
-                            ),
+                            eii: find_attr!(attrs, EiiImpls(..) | EiiDeclaration(..)),
                         };
                         hir::OwnerNode::Item(this.arena.alloc(item))
                     });
@@ -1415,9 +1412,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // create a fake body so that the entire rest of the compiler doesn't have to deal with
             // this as a special case.
             return self.lower_fn_body(decl, contract, |this| {
-                if find_attr!(attrs, AttributeKind::RustcIntrinsic)
-                    || this.tcx.is_sdylib_interface_build()
-                {
+                if find_attr!(attrs, RustcIntrinsic) || this.tcx.is_sdylib_interface_build() {
                     let span = this.lower_span(span);
                     let empty_block = hir::Block {
                         hir_id: this.next_id(),
@@ -1695,7 +1690,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let safety = self.lower_safety(h.safety, default_safety);
 
         // Treat safe `#[target_feature]` functions as unsafe, but also remember that we did so.
-        let safety = if find_attr!(attrs, AttributeKind::TargetFeature { was_forced: false, .. })
+        let safety = if find_attr!(attrs, TargetFeature { was_forced: false, .. })
             && safety.is_safe()
             && !self.tcx.sess.target.is_like_wasm
         {

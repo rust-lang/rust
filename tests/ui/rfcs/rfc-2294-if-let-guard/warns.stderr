@@ -1,5 +1,5 @@
 error: irrefutable `if let` guard pattern
-  --> $DIR/warns.rs:5:20
+  --> $DIR/warns.rs:4:20
    |
 LL |         Some(x) if let () = x => {}
    |                    ^^^^^^^^^^
@@ -13,7 +13,7 @@ LL | #[deny(irrefutable_let_patterns)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: irrefutable `if let` guard pattern
-  --> $DIR/warns.rs:14:14
+  --> $DIR/warns.rs:13:14
    |
 LL |         o if let x = 0 => {}
    |              ^^^^^^^^^
@@ -21,27 +21,13 @@ LL |         o if let x = 0 => {}
    = note: this pattern will always match, so the guard is useless
    = help: consider removing the guard and adding a `let` inside the match arm
 note: the lint level is defined here
-  --> $DIR/warns.rs:11:8
-   |
-LL | #[deny(irrefutable_let_patterns)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: trailing irrefutable pattern in let chain
-  --> $DIR/warns.rs:23:45
-   |
-LL |         Some(x) if let Some(y) = Some(x) && let z = 0 => {}
-   |                                             ^^^^^^^^^
-   |
-   = note: this pattern will always match
-   = help: consider moving it into the body
-note: the lint level is defined here
-  --> $DIR/warns.rs:20:8
+  --> $DIR/warns.rs:10:8
    |
 LL | #[deny(irrefutable_let_patterns)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/warns.rs:32:25
+  --> $DIR/warns.rs:30:25
    |
 LL |         x if let None | None = x => {}
    |                  ----   ^^^^ no value can reach this
@@ -49,10 +35,10 @@ LL |         x if let None | None = x => {}
    |                  matches all the relevant values
    |
 note: the lint level is defined here
-  --> $DIR/warns.rs:29:8
+  --> $DIR/warns.rs:27:8
    |
 LL | #[deny(unreachable_patterns)]
    |        ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

@@ -21,7 +21,7 @@ use tracing::{debug, instrument};
 #[cfg(debug_assertions)]
 use {super::debug::EdgeFilter, std::env};
 
-use super::query::DepGraphQuery;
+use super::retained::RetainedDepGraph;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepKind, DepNode, WorkProductId, read_deps, with_deps};
 use crate::dep_graph::edges::EdgesVec;
@@ -142,7 +142,7 @@ impl DepGraph {
 
         // Instantiate a node with zero dependencies only once for anonymous queries.
         let _green_node_index = current.alloc_new_node(
-            DepNode { kind: DepKind::ANON_ZERO_DEPS, key_fingerprint: current.anon_id_seed.into() },
+            DepNode { kind: DepKind::AnonZeroDeps, key_fingerprint: current.anon_id_seed.into() },
             EdgesVec::new(),
             Fingerprint::ZERO,
         );
@@ -152,7 +152,7 @@ impl DepGraph {
         // Other nodes can use the always-red node as a fake dependency, to
         // ensure that their dependency list will never be all-green.
         let red_node_index = current.alloc_new_node(
-            DepNode { kind: DepKind::RED, key_fingerprint: Fingerprint::ZERO.into() },
+            DepNode { kind: DepKind::Red, key_fingerprint: Fingerprint::ZERO.into() },
             EdgesVec::new(),
             Fingerprint::ZERO,
         );
@@ -191,9 +191,9 @@ impl DepGraph {
         self.data.is_some()
     }
 
-    pub fn with_query(&self, f: impl Fn(&DepGraphQuery)) {
+    pub fn with_retained_dep_graph(&self, f: impl Fn(&RetainedDepGraph)) {
         if let Some(data) = &self.data {
-            data.current.encoder.with_query(f)
+            data.current.encoder.with_retained_dep_graph(f)
         }
     }
 
@@ -680,7 +680,7 @@ impl DepGraphData {
         // Use `send_new` so we get an unique index, even though the dep node is not.
         let dep_node_index = self.current.encoder.send_new(
             DepNode {
-                kind: DepKind::SIDE_EFFECT,
+                kind: DepKind::SideEffect,
                 key_fingerprint: PackedFingerprint::from(Fingerprint::ZERO),
             },
             Fingerprint::ZERO,
@@ -713,7 +713,7 @@ impl DepGraphData {
                 prev_index,
                 &self.colors,
                 DepNode {
-                    kind: DepKind::SIDE_EFFECT,
+                    kind: DepKind::SideEffect,
                     key_fingerprint: PackedFingerprint::from(Fingerprint::ZERO),
                 },
                 Fingerprint::ZERO,

@@ -8,9 +8,8 @@ mod suggestions;
 use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
-use hir::def_id::CRATE_DEF_ID;
 use rustc_errors::DiagCtxtHandle;
-use rustc_hir::attrs::{AttributeKind, DivergingBlockBehavior, DivergingFallbackBehavior};
+use rustc_hir::attrs::{DivergingBlockBehavior, DivergingFallbackBehavior};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, HirId, ItemLocalMap, find_attr};
 use rustc_hir_analysis::hir_ty_lowering::{
@@ -516,5 +515,5 @@ fn parse_never_type_options_attr(
     // Error handling is dubious here (unwraps), but that's probably fine for an internal attribute.
     // Just don't write incorrect attributes <3
 
-    find_attr!(tcx.get_all_attrs(CRATE_DEF_ID), AttributeKind::RustcNeverTypeOptions {fallback, diverging_block_default} => (*fallback, *diverging_block_default)).unwrap_or_default()
+    find_attr!(tcx, crate, RustcNeverTypeOptions {fallback, diverging_block_default} => (*fallback, *diverging_block_default)).unwrap_or_default()
 }

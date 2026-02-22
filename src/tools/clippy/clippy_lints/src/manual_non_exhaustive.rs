@@ -6,7 +6,6 @@ use clippy_utils::source::snippet_indent;
 use itertools::Itertools;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, QPath, TyKind, VariantData, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
@@ -93,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
                         .then_some((v.def_id, v.span))
                 });
                 if let Ok((id, span)) = iter.exactly_one()
-                    && !find_attr!(cx.tcx.hir_attrs(item.hir_id()), AttributeKind::NonExhaustive(..))
+                    && !find_attr!(cx.tcx.hir_attrs(item.hir_id()), NonExhaustive(..))
                 {
                     self.potential_enums.push((item.owner_id.def_id, id, item.span, span));
                 }
@@ -114,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
                         "this seems like a manual implementation of the non-exhaustive pattern",
                         |diag| {
                             if let Some(non_exhaustive_span) =
-                                find_attr!(cx.tcx.hir_attrs(item.hir_id()), AttributeKind::NonExhaustive(span) => *span)
+                                find_attr!(cx.tcx.hir_attrs(item.hir_id()), NonExhaustive(span) => *span)
                             {
                                 diag.span_note(non_exhaustive_span, "the struct is already non-exhaustive");
                             } else {

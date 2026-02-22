@@ -31,24 +31,26 @@ help: give the `break` a value of the expected type
 LL |     [(); loop { break 42 }];
    |                       ++
 
-error[E0015]: cannot use `for` loop on `std::ops::RangeFrom<usize>` in constants
+error[E0277]: the trait bound `std::ops::RangeFrom<usize>: const Iterator` is not satisfied
   --> $DIR/issue-52443.rs:9:21
    |
 LL |     [(); { for _ in 0usize.. {}; 0}];
-   |                     ^^^^^^^^
+   |                     ^^^^^^^^ required by a bound introduced by this call
    |
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+note: trait `Iterator` is implemented but not `const`
+  --> $SRC_DIR/core/src/iter/range.rs:LL:COL
+   = note: required for `std::ops::RangeFrom<usize>` to implement `const IntoIterator`
 
-error[E0015]: cannot use `for` loop on `std::ops::RangeFrom<usize>` in constants
+error[E0277]: the trait bound `std::ops::RangeFrom<usize>: const Iterator` is not satisfied
   --> $DIR/issue-52443.rs:9:21
    |
 LL |     [(); { for _ in 0usize.. {}; 0}];
    |                     ^^^^^^^^
    |
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+note: trait `Iterator` is implemented but not `const`
+  --> $SRC_DIR/core/src/iter/range.rs:LL:COL
 
 error: aborting due to 4 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0015, E0308.
-For more information about an error, try `rustc --explain E0015`.
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

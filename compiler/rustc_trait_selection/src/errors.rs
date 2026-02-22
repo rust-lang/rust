@@ -156,7 +156,7 @@ impl Subdiagnostic for AdjustSignatureBorrow {
         match self {
             AdjustSignatureBorrow::Borrow { to_borrow } => {
                 diag.arg("borrow_len", to_borrow.len());
-                diag.multipart_suggestion_verbose(
+                diag.multipart_suggestion(
                     msg!(
                         "consider adjusting the signature so it borrows its {$borrow_len ->
                             [one] argument
@@ -169,7 +169,7 @@ impl Subdiagnostic for AdjustSignatureBorrow {
             }
             AdjustSignatureBorrow::RemoveBorrow { remove_borrow } => {
                 diag.arg("remove_borrow_len", remove_borrow.len());
-                diag.multipart_suggestion_verbose(
+                diag.multipart_suggestion(
                     msg!(
                         "consider adjusting the signature so it does not borrow its {$remove_borrow_len ->
                             [one] argument
@@ -788,7 +788,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
 
                 visitor.suggestions.push(new_param_suggestion);
             }
-            diag.multipart_suggestion_verbose(
+            diag.multipart_suggestion(
                 msg!(
                     "consider {$is_reuse ->
                         [true] reusing
@@ -2019,7 +2019,7 @@ pub struct AddPreciseCapturingAndParams {
 impl Subdiagnostic for AddPreciseCapturingAndParams {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("new_lifetime", self.new_lifetime);
-        diag.multipart_suggestion_verbose(
+        diag.multipart_suggestion(
             msg!("add a `use<...>` bound to explicitly capture `{$new_lifetime}` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate"),
             self.suggs,
             Applicability::MaybeIncorrect,
@@ -2166,7 +2166,7 @@ impl Subdiagnostic for AddPreciseCapturingForOvercapture {
             // not intended.
             Applicability::MaybeIncorrect
         };
-        diag.multipart_suggestion_verbose(
+        diag.multipart_suggestion(
             msg!("use the precise capturing `use<...>` syntax to make the captures explicit"),
             self.suggs,
             applicability,

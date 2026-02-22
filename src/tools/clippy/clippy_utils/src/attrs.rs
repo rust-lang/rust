@@ -4,7 +4,6 @@ use crate::source::SpanRangeExt;
 use crate::{sym, tokenize_with_text};
 use rustc_ast::attr::AttributeExt;
 use rustc_errors::Applicability;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
 use rustc_lexer::TokenKind;
 use rustc_lint::LateContext;
@@ -95,14 +94,13 @@ pub fn is_doc_hidden(attrs: &[impl AttributeExt]) -> bool {
 /// Checks whether the given ADT, or any of its fields/variants, are marked as `#[non_exhaustive]`
 pub fn has_non_exhaustive_attr(tcx: TyCtxt<'_>, adt: AdtDef<'_>) -> bool {
     adt.is_variant_list_non_exhaustive()
-        || find_attr!(tcx.get_all_attrs(adt.did()), AttributeKind::NonExhaustive(..))
+        || find_attr!(tcx, adt.did(), NonExhaustive(..))
         || adt.variants().iter().any(|variant_def| {
-            variant_def.is_field_list_non_exhaustive()
-                || find_attr!(tcx.get_all_attrs(variant_def.def_id), AttributeKind::NonExhaustive(..))
+            variant_def.is_field_list_non_exhaustive() || find_attr!(tcx, variant_def.def_id, NonExhaustive(..))
         })
         || adt
             .all_fields()
-            .any(|field_def| find_attr!(tcx.get_all_attrs(field_def.did), AttributeKind::NonExhaustive(..)))
+            .any(|field_def| find_attr!(tcx, field_def.did, NonExhaustive(..)))
 }
 
 /// Checks whether the given span contains a `#[cfg(..)]` attribute

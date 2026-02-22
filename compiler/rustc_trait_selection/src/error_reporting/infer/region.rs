@@ -863,7 +863,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             if !suggs.is_empty() {
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     msg,
                     suggs,
                     Applicability::MaybeIncorrect, // Issue #41966

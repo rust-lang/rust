@@ -13,7 +13,6 @@ use ::serde::{Deserialize, Serialize};
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
@@ -1464,7 +1463,7 @@ pub(crate) fn build_index(
                         return None;
                     }
                     let path = if item.ty == ItemType::Macro
-                        && find_attr!(tcx.get_all_attrs(defid), AttributeKind::MacroExport { .. })
+                        && find_attr!(tcx, defid, MacroExport { .. })
                     {
                         // `#[macro_export]` always exports to the crate root.
                         vec![tcx.crate_name(defid.krate)]

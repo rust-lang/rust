@@ -1,0 +1,47 @@
+error[E0282]: type annotations needed
+  --> $DIR/impl-trait-wrong-args-count.rs:23:21
+   |
+LL |     reuse to_reuse::bar;
+   |                     ^^^ cannot infer type of the type parameter `A` declared on the function `bar`
+   |
+help: consider specifying the generic arguments
+   |
+LL |     reuse to_reuse::bar::<A, B>;
+   |                        ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/impl-trait-wrong-args-count.rs:28:21
+   |
+LL |     reuse to_reuse::bar2;
+   |                     ^^^^ cannot infer the value of the const parameter `X` declared on the function `bar2`
+   |
+note: required by a const generic parameter in `bar2`
+  --> $DIR/impl-trait-wrong-args-count.rs:7:35
+   |
+LL |     pub fn bar2<A, B, C, D, E, F, const X: usize, const Y: bool>(x: &super::XX) {}
+   |                                   ^^^^^^^^^^^^^^ required by this const generic parameter in `bar2`
+help: consider specifying the generic arguments
+   |
+LL |     reuse to_reuse::bar2::<A, B, C, D, E, F, X, Y>;
+   |                         ++++++++++++++++++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/impl-trait-wrong-args-count.rs:28:21
+   |
+LL |     reuse to_reuse::bar2;
+   |                     ^^^^ cannot infer the value of the const parameter `Y` declared on the function `bar2`
+   |
+note: required by a const generic parameter in `bar2`
+  --> $DIR/impl-trait-wrong-args-count.rs:7:51
+   |
+LL |     pub fn bar2<A, B, C, D, E, F, const X: usize, const Y: bool>(x: &super::XX) {}
+   |                                                   ^^^^^^^^^^^^^ required by this const generic parameter in `bar2`
+help: consider specifying the generic arguments
+   |
+LL |     reuse to_reuse::bar2::<A, B, C, D, E, F, X, Y>;
+   |                         ++++++++++++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0282, E0284.
+For more information about an error, try `rustc --explain E0282`.

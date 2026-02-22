@@ -236,7 +236,7 @@ impl MultiSugg {
     }
 
     fn emit_verbose(self, err: &mut Diag<'_>) {
-        err.multipart_suggestion_verbose(self.msg, self.patches, self.applicability);
+        err.multipart_suggestion(self.msg, self.patches, self.applicability);
     }
 }
 
@@ -389,7 +389,7 @@ impl<'a> Parser<'a> {
                                 && let Ok(snippet) =
                                     self.psess.source_map().span_to_snippet(generic.span)
                             {
-                                err.multipart_suggestion_verbose(
+                                err.multipart_suggestion(
                                         format!("place the generic parameter name after the {ident_name} name"),
                                         vec![
                                             (self.token.span.shrink_to_hi(), snippet),
@@ -1056,7 +1056,7 @@ impl<'a> Parser<'a> {
                 // and recover.
                 self.eat_to_tokens(&[exp!(CloseParen), exp!(Comma)]);
 
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "you might have meant to open the body of the closure",
                     vec![
                         (prev.span.shrink_to_hi(), " {".to_string()),
@@ -1069,7 +1069,7 @@ impl<'a> Parser<'a> {
             _ if token.kind != token::OpenBrace => {
                 // We don't have a heuristic to correctly identify where the block
                 // should be closed.
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "you might have meant to open the body of the closure",
                     vec![(prev.span.shrink_to_hi(), " {".to_string())],
                     Applicability::HasPlaceholders,

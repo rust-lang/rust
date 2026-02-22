@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeQPath;
-use clippy_utils::{expr_or_init, fn_def_id_with_node_args};
+use clippy_utils::{expr_or_init, fn_def_id_with_node_args, sym};
 use rustc_ast::BinOpKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -14,7 +14,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::{Ident, kw};
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
 use std::ops::ControlFlow;
 

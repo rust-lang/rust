@@ -23,7 +23,6 @@ use rustc_ast::Recovered;
 use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, E0228, ErrorGuaranteed, StashKey};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
@@ -816,11 +815,9 @@ fn lower_variant<'tcx>(
         fields,
         parent_did.to_def_id(),
         recovered,
-        adt_kind == AdtKind::Struct
-            && find_attr!(tcx.get_all_attrs(parent_did), AttributeKind::NonExhaustive(..))
-            || variant_did.is_some_and(|variant_did| {
-                find_attr!(tcx.get_all_attrs(variant_did), AttributeKind::NonExhaustive(..))
-            }),
+        adt_kind == AdtKind::Struct && find_attr!(tcx, parent_did, NonExhaustive(..))
+            || variant_did
+                .is_some_and(|variant_did| find_attr!(tcx, variant_did, NonExhaustive(..))),
     )
 }
 
@@ -895,46 +892,46 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
+    // we do a bunch of find_attr calls here, probably faster to get them from the tcx just once.
+    #[allow(deprecated)]
     let attrs = tcx.get_all_attrs(def_id);
 
-    let paren_sugar = find_attr!(attrs, AttributeKind::RustcParenSugar(_));
+    let paren_sugar = find_attr!(attrs, RustcParenSugar(_));
     if paren_sugar && !tcx.features().unboxed_closures() {
         tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
     }
 
     // Only regular traits can be marker.
-    let is_marker = !is_alias && find_attr!(attrs, AttributeKind::Marker(_));
+    let is_marker = !is_alias && find_attr!(attrs, Marker(_));
 
-    let rustc_coinductive = find_attr!(attrs, AttributeKind::RustcCoinductive(_));
-    let is_fundamental = find_attr!(attrs, AttributeKind::Fundamental);
+    let rustc_coinductive = find_attr!(attrs, RustcCoinductive(_));
+    let is_fundamental = find_attr!(attrs, Fundamental);
 
     let [skip_array_during_method_dispatch, skip_boxed_slice_during_method_dispatch] = find_attr!(
         attrs,
-        AttributeKind::RustcSkipDuringMethodDispatch { array, boxed_slice, span: _ } => [*array, *boxed_slice]
+        RustcSkipDuringMethodDispatch { array, boxed_slice, span: _ } => [*array, *boxed_slice]
     )
     .unwrap_or([false; 2]);
 
-    let specialization_kind =
-        if find_attr!(attrs, AttributeKind::RustcUnsafeSpecializationMarker(_)) {
-            ty::trait_def::TraitSpecializationKind::Marker
-        } else if find_attr!(attrs, AttributeKind::RustcSpecializationTrait(_)) {
-            ty::trait_def::TraitSpecializationKind::AlwaysApplicable
-        } else {
-            ty::trait_def::TraitSpecializationKind::None
-        };
+    let specialization_kind = if find_attr!(attrs, RustcUnsafeSpecializationMarker(_)) {
+        ty::trait_def::TraitSpecializationKind::Marker
+    } else if find_attr!(attrs, RustcSpecializationTrait(_)) {
+        ty::trait_def::TraitSpecializationKind::AlwaysApplicable
+    } else {
+        ty::trait_def::TraitSpecializationKind::None
+    };
 
     let must_implement_one_of = find_attr!(
         attrs,
-        AttributeKind::RustcMustImplementOneOf { fn_names, .. } =>
+        RustcMustImplementOneOf { fn_names, .. } =>
             fn_names
                 .iter()
                 .cloned()
                 .collect::<Box<[_]>>()
     );
 
-    let deny_explicit_impl = find_attr!(attrs, AttributeKind::RustcDenyExplicitImpl(_));
-    let force_dyn_incompatible =
-        find_attr!(attrs, AttributeKind::RustcDynIncompatibleTrait(span) => *span);
+    let deny_explicit_impl = find_attr!(attrs, RustcDenyExplicitImpl(_));
+    let force_dyn_incompatible = find_attr!(attrs, RustcDynIncompatibleTrait(span) => *span);
 
     ty::TraitDef {
         def_id: def_id.to_def_id(),
@@ -1355,8 +1352,7 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader
         .of_trait
         .unwrap_or_else(|| panic!("expected impl trait, found inherent impl on {def_id:?}"));
     let selfty = tcx.type_of(def_id).instantiate_identity();
-    let is_rustc_reservation =
-        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::RustcReservationImpl(..));
+    let is_rustc_reservation = find_attr!(tcx, def_id, RustcReservationImpl(..));
 
     check_impl_constness(tcx, impl_.constness, &of_trait.trait_ref);
 

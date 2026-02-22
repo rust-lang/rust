@@ -1678,3 +1678,7 @@ labels = ["S-waiting-on-concerns"]
 # since the review
 # Documentation at: https://forge.rust-lang.org/triagebot/review-changes-since.html
 [review-changes-since]
+
+# Adds a "View all comments" link on the issue/PR body that shows all the comments of it
+# Documentation at: https://forge.rust-lang.org/triagebot/view-all-comments-link.html
+[view-all-comments-link]

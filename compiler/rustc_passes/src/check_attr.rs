@@ -312,6 +312,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDeprecatedSafe2024 {..}
                     | AttributeKind::RustcDiagnosticItem(..)
                     | AttributeKind::RustcDoNotConstCheck
+                    | AttributeKind::RustcDocPrimitive(..)
                     | AttributeKind::RustcDummy
                     | AttributeKind::RustcDumpDefParents
                     | AttributeKind::RustcDumpItemBounds
@@ -400,16 +401,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::deny
                             | sym::forbid
                             // internal
-                            | sym::rustc_inherit_overflow_checks
                             | sym::rustc_on_unimplemented
-                            | sym::rustc_doc_primitive
                             | sym::rustc_layout
                             | sym::rustc_autodiff
-                            | sym::rustc_capture_analysis
-                            | sym::rustc_mir
+                            | sym::rustc_inherit_overflow_checks
                             // crate-level attrs, are checked below
                             | sym::feature
-                            | sym::register_tool,                            ..
+                            | sym::register_tool,
+                            ..
                         ] => {}
                         [name, rest@..] => {
                             match BUILTIN_ATTRIBUTE_MAP.get(name) {
@@ -568,7 +567,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
 
             if let EiiImplResolution::Macro(eii_macro) = resolution
-                && find_attr!(self.tcx.get_all_attrs(*eii_macro), AttributeKind::EiiDeclaration(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
+                && find_attr!(self.tcx, *eii_macro, EiiDeclaration(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
                 && !impl_marked_unsafe
             {
                 self.dcx().emit_err(errors::EiiImplRequiresUnsafe {
@@ -783,7 +782,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Target::Fn => {
                 // `#[track_caller]` is not valid on weak lang items because they are called via
                 // `extern` declarations and `#[track_caller]` would alter their ABI.
-                if let Some(item) = find_attr!(attrs, AttributeKind::Lang(item, _) => item)
+                if let Some(item) = find_attr!(attrs, Lang(item, _) => item)
                     && item.is_weak()
                 {
                     let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
@@ -795,7 +794,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     });
                 }
 
-                if let Some(impls) = find_attr!(attrs, AttributeKind::EiiImpls(impls) => impls) {
+                if let Some(impls) = find_attr!(attrs, EiiImpls(impls) => impls) {
                     let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
                     for i in impls {
                         let name = match i.resolution {
@@ -854,7 +853,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
             | Target::Fn => {
                 // `#[target_feature]` is not allowed in lang items.
-                if let Some(lang_item) = find_attr!(attrs, AttributeKind::Lang(lang, _) => lang)
+                if let Some(lang_item) = find_attr!(attrs, Lang(lang, _) => lang)
                     // Calling functions with `#[target_feature]` is
                     // not unsafe on WASM, see #84988
                     && !self.tcx.sess.target.is_like_wasm
@@ -1162,7 +1161,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_ffi_pure(&self, attr_span: Span, attrs: &[Attribute]) {
-        if find_attr!(attrs, AttributeKind::FfiConst(_)) {
+        if find_attr!(attrs, FfiConst(_)) {
             // `#[ffi_const]` functions cannot be `#[ffi_pure]`
             self.dcx().emit_err(errors::BothFfiConstAndPure { attr_span });
         }
@@ -1269,7 +1268,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // #[repr(foo)]
         // #[repr(bar, align(8))]
         // ```
-        let (reprs, first_attr_span) = find_attr!(attrs, AttributeKind::Repr { reprs, first_span } => (reprs.as_slice(), Some(*first_span))).unwrap_or((&[], None));
+        let (reprs, first_attr_span) =
+            find_attr!(attrs, Repr { reprs, first_span } => (reprs.as_slice(), Some(*first_span)))
+                .unwrap_or((&[], None));
 
         let mut int_reprs = 0;
         let mut is_explicit_rust = false;
@@ -1414,7 +1415,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // `#[rustc_pass_indirectly_in_non_rustic_abis]`
         if is_transparent
             && let Some(&pass_indirectly_span) =
-                find_attr!(attrs, AttributeKind::RustcPassIndirectlyInNonRusticAbis(span) => span)
+                find_attr!(attrs, RustcPassIndirectlyInNonRusticAbis(span) => span)
         {
             self.dcx().emit_err(errors::TransparentIncompatible {
                 hint_spans: vec![span, pass_indirectly_span],
@@ -1752,7 +1753,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_rustc_pub_transparent(&self, attr_span: Span, span: Span, attrs: &[Attribute]) {
-        if !find_attr!(attrs, AttributeKind::Repr { reprs, .. } => reprs.iter().any(|(r, _)| r == &ReprAttr::ReprTransparent))
+        if !find_attr!(attrs, Repr { reprs, .. } => reprs.iter().any(|(r, _)| r == &ReprAttr::ReprTransparent))
             .unwrap_or(false)
         {
             self.dcx().emit_err(errors::RustcPubTransparent { span, attr_span });
@@ -1762,7 +1763,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_rustc_force_inline(&self, hir_id: HirId, attrs: &[Attribute], target: Target) {
         if let (Target::Closure, None) = (
             target,
-            find_attr!(attrs, AttributeKind::Inline(InlineAttr::Force { attr_span, .. }, _) => *attr_span),
+            find_attr!(attrs, Inline(InlineAttr::Force { attr_span, .. }, _) => *attr_span),
         ) {
             let is_coro = matches!(
                 self.tcx.hir_expect_expr(hir_id).kind,
@@ -1775,8 +1776,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             let parent_span = self.tcx.def_span(parent_did);
 
             if let Some(attr_span) = find_attr!(
-                self.tcx.get_all_attrs(parent_did),
-                AttributeKind::Inline(InlineAttr::Force { attr_span, .. }, _) => *attr_span
+                self.tcx, parent_did,
+                Inline(InlineAttr::Force { attr_span, .. }, _) => *attr_span
             ) && is_coro
             {
                 self.dcx().emit_err(errors::RustcForceInlineCoro { attr_span, span: parent_span });
@@ -1785,9 +1786,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_mix_no_mangle_export(&self, hir_id: HirId, attrs: &[Attribute]) {
-        if let Some(export_name_span) = find_attr!(attrs, AttributeKind::ExportName { span: export_name_span, .. } => *export_name_span)
+        if let Some(export_name_span) =
+            find_attr!(attrs, ExportName { span: export_name_span, .. } => *export_name_span)
             && let Some(no_mangle_span) =
-                find_attr!(attrs, AttributeKind::NoMangle(no_mangle_span) => *no_mangle_span)
+                find_attr!(attrs, NoMangle(no_mangle_span) => *no_mangle_span)
         {
             let no_mangle_attr = if no_mangle_span.edition() >= Edition::Edition2024 {
                 "#[unsafe(no_mangle)]"
@@ -1906,9 +1908,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // In the long run, the checks should be harmonized.
         if let ItemKind::Macro(_, macro_def, _) = item.kind {
             let def_id = item.owner_id.to_def_id();
-            if macro_def.macro_rules
-                && !find_attr!(self.tcx.get_all_attrs(def_id), AttributeKind::MacroExport { .. })
-            {
+            if macro_def.macro_rules && !find_attr!(self.tcx, def_id, MacroExport { .. }) {
                 check_non_exported_macro_for_invalid_attrs(self.tcx, item);
             }
         }
@@ -2098,7 +2098,8 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
 fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) {
     let attrs = tcx.hir_attrs(item.hir_id());
 
-    if let Some(attr_span) = find_attr!(attrs, AttributeKind::Inline(i, span) if !matches!(i, InlineAttr::Force{..}) => *span)
+    if let Some(attr_span) =
+        find_attr!(attrs, Inline(i, span) if !matches!(i, InlineAttr::Force{..}) => *span)
     {
         tcx.dcx().emit_err(errors::NonExportedMacroInvalidAttrs { attr_span });
     }

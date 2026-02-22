@@ -13,8 +13,8 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir::attrs::{AttributeKind, DebuggerVisualizerType, OptimizeAttr};
-use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
+use rustc_hir::attrs::{DebuggerVisualizerType, OptimizeAttr};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ItemId, Target, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -894,7 +894,7 @@ impl CrateInfo {
         let linked_symbols =
             crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
-        let windows_subsystem = find_attr!(tcx.get_all_attrs(CRATE_DEF_ID), AttributeKind::WindowsSubsystem(kind, _) => *kind);
+        let windows_subsystem = find_attr!(tcx, crate, WindowsSubsystem(kind, _) => *kind);
 
         // This list is used when generating the command line to pass through to
         // system linker. The linker expects undefined symbols on the left of the
@@ -911,7 +911,7 @@ impl CrateInfo {
             .rev()
             .copied()
             .filter(|&cnum| {
-                let link = !tcx.dep_kind(cnum).macros_only();
+                let link = !tcx.crate_dep_kind(cnum).macros_only();
                 if link && tcx.is_compiler_builtins(cnum) {
                     compiler_builtins = Some(cnum);
                     return false;

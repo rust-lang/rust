@@ -420,6 +420,7 @@ pub struct ExistentialProjection<I: Interner> {
 
     /// This field exists to prevent the creation of `ExistentialProjection`
     /// without using [`ExistentialProjection::new_from_args`].
+    #[derive_where(skip(Debug))]
     use_existential_projection_new_instead: (),
 }
 

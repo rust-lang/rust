@@ -554,8 +554,8 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         )
     }
 
-    /// `Span` of an item.
-    pub fn span_of_an_item(&self, def_id: DefId) -> Span {
+    /// `Span` of a `DefId`.
+    pub fn span_of_a_def(&self, def_id: DefId) -> Span {
         self.tcx.def_span(def_id)
     }
 

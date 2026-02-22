@@ -16,7 +16,12 @@ error[E0191]: the value of the associated type `Output` in `BitXor<_>` must be s
   --> $DIR/issue-28344.rs:5:17
    |
 LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
-   |                 ^^^^^^ help: specify the associated type: `BitXor::<Output = /* Type */>`
+   |                 ^^^^^^
+   |
+help: specify the associated type
+   |
+LL |     let x: u8 = BitXor::<Output = /* Type */>::bitor(0 as u8, 0 as u8);
+   |                       +++++++++++++++++++++++
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-28344.rs:10:13
@@ -35,7 +40,12 @@ error[E0191]: the value of the associated type `Output` in `BitXor<_>` must be s
   --> $DIR/issue-28344.rs:10:13
    |
 LL |     let g = BitXor::bitor;
-   |             ^^^^^^ help: specify the associated type: `BitXor::<Output = /* Type */>`
+   |             ^^^^^^
+   |
+help: specify the associated type
+   |
+LL |     let g = BitXor::<Output = /* Type */>::bitor;
+   |                   +++++++++++++++++++++++
 
 error: aborting due to 2 previous errors; 2 warnings emitted
 

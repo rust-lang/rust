@@ -9,10 +9,10 @@ use std::{ascii, mem};
 use rustc_ast::join_path_idents;
 use rustc_ast::tokenstream::TokenTree;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
-use rustc_hir::Attribute;
-use rustc_hir::attrs::{AttributeKind, DocAttribute};
+use rustc_hir::attrs::DocAttribute;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
+use rustc_hir::find_attr;
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
@@ -574,10 +574,7 @@ pub(crate) fn has_doc_flag<F: Fn(&DocAttribute) -> bool>(
     did: DefId,
     callback: F,
 ) -> bool {
-    tcx.get_all_attrs(did).iter().any(|attr| match attr {
-        Attribute::Parsed(AttributeKind::Doc(d)) => callback(d),
-        _ => false,
-    })
+    find_attr!(tcx, did, Doc(d) if callback(d))
 }
 
 /// A link to `doc.rust-lang.org` that includes the channel name. Use this instead of manual links

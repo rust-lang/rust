@@ -1340,7 +1340,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 return;
             }
 
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 format!(
                     "consider changing this to be a mutable {pointer_desc}{}{extra}",
                     if is_trait_sig {
@@ -1365,7 +1365,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 if self.infcx.tcx.sess.source_map().is_imported(span) {
                     return;
                 }
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "consider using `get_mut`",
                     vec![(span, suggestion)],
                     Applicability::MaybeIncorrect,

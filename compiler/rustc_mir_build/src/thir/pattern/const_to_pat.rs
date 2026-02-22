@@ -5,7 +5,6 @@ use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Diag, msg};
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
 use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -488,8 +487,7 @@ fn type_has_partial_eq_impl<'tcx>(
     let mut structural_peq = false;
     let mut impl_def_id = None;
     for def_id in tcx.non_blanket_impls_for_ty(partial_eq_trait_id, ty) {
-        automatically_derived =
-            find_attr!(tcx.get_all_attrs(def_id), AttributeKind::AutomaticallyDerived(..));
+        automatically_derived = find_attr!(tcx, def_id, AutomaticallyDerived(..));
         impl_def_id = Some(def_id);
     }
     for _ in tcx.non_blanket_impls_for_ty(structural_partial_eq_trait_id, ty) {

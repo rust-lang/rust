@@ -1,7 +1,7 @@
 use crate::macros::root_macro_call_first_node;
 use crate::res::MaybeResPath;
 use crate::visitors::{Descend, Visitable, for_each_expr, for_each_expr_without_closures};
-use crate::{self as utils, get_enclosing_loop_or_multi_call_closure};
+use crate::{self as utils, get_enclosing_loop_or_multi_call_closure, sym};
 use core::ops::ControlFlow;
 use hir::def::Res;
 use rustc_hir::intravisit::{self, Visitor};
@@ -11,7 +11,6 @@ use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty;
-use rustc_span::sym;
 
 /// Returns a set of mutated local variable IDs, or `None` if mutations could not be determined.
 pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> Option<HirIdSet> {

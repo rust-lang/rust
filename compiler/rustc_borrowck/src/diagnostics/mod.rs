@@ -1511,11 +1511,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                         )
                                     }
                                 };
-                                err.multipart_suggestion_verbose(
-                                    msg,
-                                    sugg,
-                                    Applicability::MaybeIncorrect,
-                                );
+                                err.multipart_suggestion(msg, sugg, Applicability::MaybeIncorrect);
                                 for error in errors {
                                     if let FulfillmentErrorCode::Select(
                                         SelectionError::Unimplemented,

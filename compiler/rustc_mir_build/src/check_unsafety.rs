@@ -5,7 +5,6 @@ use std::ops::Bound;
 use rustc_ast::AsmMacro;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::DiagArgValue;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
@@ -98,7 +97,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             // from an edition before 2024.
             &UnsafeOpKind::CallToUnsafeFunction(Some(id))
                 if !span.at_least_rust_2024()
-                    && let Some(suggestion) = find_attr!(self.tcx.get_all_attrs(id), AttributeKind::RustcDeprecatedSafe2024{suggestion} => suggestion) =>
+                    && let Some(suggestion) = find_attr!(self.tcx, id, RustcDeprecatedSafe2024{suggestion} => suggestion) =>
             {
                 let sm = self.tcx.sess.source_map();
                 let guarantee = format!("that {}", suggestion);
@@ -1146,7 +1145,7 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     // Closures and inline consts are handled by their owner, if it has a body
     assert!(!tcx.is_typeck_child(def.to_def_id()));
     // Also, don't safety check custom MIR
-    if find_attr!(tcx.get_all_attrs(def), AttributeKind::CustomMir(..) => ()).is_some() {
+    if find_attr!(tcx, def, CustomMir(..) => ()).is_some() {
         return;
     }
 

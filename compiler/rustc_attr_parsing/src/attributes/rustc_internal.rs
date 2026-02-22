@@ -854,7 +854,6 @@ impl<S: Stage> CombineAttributeParser<S> for RustcMirParser {
             .collect()
     }
 }
-
 pub(crate) struct RustcNonConstTraitMethodParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNonConstTraitMethodParser {
@@ -1252,24 +1251,6 @@ impl<S: Stage> SingleAttributeParser<S> for RustcDefPath {
     }
 }
 
-pub(crate) struct RustcIntrinsicParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for RustcIntrinsicParser {
-    const PATH: &[Symbol] = &[sym::rustc_intrinsic];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsic;
-}
-
-pub(crate) struct RustcIntrinsicConstStableIndirectParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for RustcIntrinsicConstStableIndirectParser {
-    const PATH: &'static [Symbol] = &[sym::rustc_intrinsic_const_stable_indirect];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsicConstStableIndirect;
-}
-
 pub(crate) struct RustcStrictCoherenceParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcStrictCoherenceParser {
@@ -1318,4 +1299,46 @@ impl<S: Stage> NoArgsAttributeParser<S> for PreludeImportParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Use)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::PreludeImport;
+}
+
+pub(crate) struct RustcDocPrimitiveParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcDocPrimitiveParser {
+    const PATH: &[Symbol] = &[sym::rustc_doc_primitive];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Mod)]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "primitive name");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(nv) = args.name_value() else {
+            cx.expected_name_value(args.span().unwrap_or(cx.attr_span), None);
+            return None;
+        };
+
+        let Some(value_str) = nv.value_as_str() else {
+            cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+            return None;
+        };
+
+        Some(AttributeKind::RustcDocPrimitive(cx.attr_span, value_str))
+    }
+}
+
+pub(crate) struct RustcIntrinsicParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcIntrinsicParser {
+    const PATH: &[Symbol] = &[sym::rustc_intrinsic];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsic;
+}
+
+pub(crate) struct RustcIntrinsicConstStableIndirectParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcIntrinsicConstStableIndirectParser {
+    const PATH: &'static [Symbol] = &[sym::rustc_intrinsic_const_stable_indirect];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsicConstStableIndirect;
 }

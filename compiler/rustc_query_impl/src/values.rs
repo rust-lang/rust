@@ -7,7 +7,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_middle::dep_graph::dep_kinds;
+use rustc_middle::dep_graph::DepKind;
 use rustc_middle::query::CycleError;
 use rustc_middle::query::plumbing::CyclePlaceholder;
 use rustc_middle::ty::{self, Representability, Ty, TyCtxt};
@@ -72,7 +72,7 @@ impl<'tcx> Value<'tcx> for ty::Binder<'_, ty::FnSig<'_>> {
         let err = Ty::new_error(tcx, guar);
 
         let arity = if let Some(info) = cycle_error.cycle.get(0)
-            && info.frame.dep_kind == dep_kinds::fn_sig
+            && info.frame.dep_kind == DepKind::fn_sig
             && let Some(def_id) = info.frame.def_id
             && let Some(node) = tcx.hir_get_if_local(def_id)
             && let Some(sig) = node.fn_sig()
@@ -106,7 +106,7 @@ impl<'tcx> Value<'tcx> for Representability {
         let mut item_and_field_ids = Vec::new();
         let mut representable_ids = FxHashSet::default();
         for info in &cycle_error.cycle {
-            if info.frame.dep_kind == dep_kinds::representability
+            if info.frame.dep_kind == DepKind::representability
                 && let Some(field_id) = info.frame.def_id
                 && let Some(field_id) = field_id.as_local()
                 && let Some(DefKind::Field) = info.frame.info.def_kind
@@ -120,7 +120,7 @@ impl<'tcx> Value<'tcx> for Representability {
             }
         }
         for info in &cycle_error.cycle {
-            if info.frame.dep_kind == dep_kinds::representability_adt_ty
+            if info.frame.dep_kind == DepKind::representability_adt_ty
                 && let Some(def_id) = info.frame.def_id_for_ty_in_cycle
                 && let Some(def_id) = def_id.as_local()
                 && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)
@@ -163,7 +163,7 @@ impl<'tcx> Value<'tcx> for &[ty::Variance] {
             &cycle_error.cycle,
             |cycle| {
                 if let Some(info) = cycle.get(0)
-                    && info.frame.dep_kind == dep_kinds::variances_of
+                    && info.frame.dep_kind == DepKind::variances_of
                     && let Some(def_id) = info.frame.def_id
                 {
                     let n = tcx.generics_of(def_id).own_params.len();
@@ -210,7 +210,7 @@ impl<'tcx, T> Value<'tcx> for Result<T, &'_ ty::layout::LayoutError<'_>> {
         let diag = search_for_cycle_permutation(
             &cycle_error.cycle,
             |cycle| {
-                if cycle[0].frame.dep_kind == dep_kinds::layout_of
+                if cycle[0].frame.dep_kind == DepKind::layout_of
                     && let Some(def_id) = cycle[0].frame.def_id_for_ty_in_cycle
                     && let Some(def_id) = def_id.as_local()
                     && let def_kind = tcx.def_kind(def_id)
@@ -235,7 +235,7 @@ impl<'tcx, T> Value<'tcx> for Result<T, &'_ ty::layout::LayoutError<'_>> {
                         tcx.def_kind_descr(def_kind, def_id.to_def_id()),
                     );
                     for (i, info) in cycle.iter().enumerate() {
-                        if info.frame.dep_kind != dep_kinds::layout_of {
+                        if info.frame.dep_kind != DepKind::layout_of {
                             continue;
                         }
                         let Some(frame_def_id) = info.frame.def_id_for_ty_in_cycle else {

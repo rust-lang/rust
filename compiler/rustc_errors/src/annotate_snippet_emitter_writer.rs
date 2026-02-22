@@ -27,7 +27,7 @@ use crate::emitter::{
     ConfusionType, Destination, MAX_SUGGESTIONS, OutputTheme, detect_confusion_type, is_different,
     normalize_whitespace, should_show_source_code,
 };
-use crate::translation::{Translator, to_fluent_args};
+use crate::translation::{format_diag_message, format_diag_messages, to_fluent_args};
 use crate::{
     CodeSuggestion, DiagInner, DiagMessage, Emitter, ErrCode, Level, MultiSpan, Style, Subdiag,
     SuggestionStyle, TerminalUrl,
@@ -39,8 +39,6 @@ pub struct AnnotateSnippetEmitter {
     #[setters(skip)]
     dst: IntoDynSyncSend<Destination>,
     sm: Option<Arc<SourceMap>>,
-    #[setters(skip)]
-    translator: Translator,
     short_message: bool,
     ui_testing: bool,
     ignored_directories_in_source_blocks: Vec<String>,
@@ -108,10 +106,6 @@ impl Emitter for AnnotateSnippetEmitter {
         !self.short_message
     }
 
-    fn translator(&self) -> &Translator {
-        &self.translator
-    }
-
     fn supports_color(&self) -> bool {
         false
     }
@@ -133,11 +127,10 @@ fn annotation_level_for_level(level: Level) -> annotate_snippets::level::Level<'
 }
 
 impl AnnotateSnippetEmitter {
-    pub fn new(dst: Destination, translator: Translator) -> Self {
+    pub fn new(dst: Destination) -> Self {
         Self {
             dst: IntoDynSyncSend(dst),
             sm: None,
-            translator,
             short_message: false,
             ui_testing: false,
             ignored_directories_in_source_blocks: Vec::new(),
@@ -169,7 +162,7 @@ impl AnnotateSnippetEmitter {
                 .clone()
                 .secondary_title(Cow::Owned(self.pre_style_msgs(msgs, *level, args)))
         } else {
-            annotation_level.clone().primary_title(self.translator.translate_messages(msgs, args))
+            annotation_level.clone().primary_title(format_diag_messages(msgs, args))
         };
 
         if let Some(c) = code {
@@ -185,7 +178,7 @@ impl AnnotateSnippetEmitter {
         // If we don't have span information, emit and exit
         let Some(sm) = self.sm.as_ref() else {
             group = group.elements(children.iter().map(|c| {
-                let msg = self.translator.translate_messages(&c.messages, args).to_string();
+                let msg = format_diag_messages(&c.messages, args).to_string();
                 let level = annotation_level_for_level(c.level);
                 level.message(msg)
             }));
@@ -202,7 +195,7 @@ impl AnnotateSnippetEmitter {
             return;
         };
 
-        let mut file_ann = collect_annotations(args, msp, sm, &self.translator);
+        let mut file_ann = collect_annotations(args, msp, sm);
 
         // Make sure our primary file comes first
         let primary_span = msp.primary_span().unwrap_or_default();
@@ -256,7 +249,7 @@ impl AnnotateSnippetEmitter {
             let msg = if c.messages.iter().any(|(_, style)| style != &crate::Style::NoStyle) {
                 Cow::Owned(self.pre_style_msgs(&c.messages, c.level, args))
             } else {
-                self.translator.translate_messages(&c.messages, args)
+                format_diag_messages(&c.messages, args)
             };
 
             // This is a secondary message with no span info
@@ -270,7 +263,7 @@ impl AnnotateSnippetEmitter {
                 Group::with_title(level.clone().secondary_title(msg)),
             ));
 
-            let mut file_ann = collect_annotations(args, &c.span, sm, &self.translator);
+            let mut file_ann = collect_annotations(args, &c.span, sm);
             let primary_span = c.span.primary_span().unwrap_or_default();
             if !primary_span.is_dummy() {
                 let primary_lo = sm.lookup_char_pos(primary_span.lo());
@@ -308,9 +301,10 @@ impl AnnotateSnippetEmitter {
                     // do not display this suggestion, it is meant only for tools
                 }
                 SuggestionStyle::HideCodeAlways => {
-                    let msg = self
-                        .translator
-                        .translate_messages(&[(suggestion.msg.to_owned(), Style::HeaderMsg)], args);
+                    let msg = format_diag_messages(
+                        &[(suggestion.msg.to_owned(), Style::HeaderMsg)],
+                        args,
+                    );
                     group = group.element(annotate_snippets::Level::HELP.message(msg));
                 }
                 SuggestionStyle::HideCodeInline
@@ -367,9 +361,7 @@ impl AnnotateSnippetEmitter {
                     if substitutions.is_empty() {
                         continue;
                     }
-                    let mut msg = self
-                        .translator
-                        .translate_message(&suggestion.msg, args)
+                    let mut msg = format_diag_message(&suggestion.msg, args)
                         .map_err(Report::new)
                         .unwrap()
                         .to_string();
@@ -555,7 +547,7 @@ impl AnnotateSnippetEmitter {
     ) -> String {
         msgs.iter()
             .filter_map(|(m, style)| {
-                let text = self.translator.translate_message(m, args).map_err(Report::new).unwrap();
+                let text = format_diag_message(m, args).map_err(Report::new).unwrap();
                 let style = style.anstyle(level);
                 if text.is_empty() { None } else { Some(format!("{style}{text}{style:#}")) }
             })
@@ -688,7 +680,6 @@ fn collect_annotations(
     args: &FluentArgs<'_>,
     msp: &MultiSpan,
     sm: &Arc<SourceMap>,
-    translator: &Translator,
 ) -> Vec<(Arc<SourceFile>, Vec<Annotation>)> {
     let mut output: Vec<(Arc<SourceFile>, Vec<Annotation>)> = vec![];
 
@@ -704,9 +695,7 @@ fn collect_annotations(
         let kind = if is_primary { AnnotationKind::Primary } else { AnnotationKind::Context };
 
         let label = label.as_ref().map(|m| {
-            normalize_whitespace(
-                &translator.translate_message(m, args).map_err(Report::new).unwrap(),
-            )
+            normalize_whitespace(&format_diag_message(m, args).map_err(Report::new).unwrap())
         });
 
         let ann = Annotation { kind, span, label };

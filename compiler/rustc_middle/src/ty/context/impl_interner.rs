@@ -13,7 +13,7 @@ use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 use rustc_type_ir::{CollectAndApply, Interner, TypeFoldable, search_graph};
 
-use crate::dep_graph::DepNodeIndex;
+use crate::dep_graph::{DepKind, DepNodeIndex};
 use crate::infer::canonical::CanonicalVarKinds;
 use crate::query::IntoQueryParam;
 use crate::traits::cache::WithDepNode;
@@ -77,7 +77,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
     type DepNodeIndex = DepNodeIndex;
     fn with_cached_task<T>(self, task: impl FnOnce() -> T) -> (T, DepNodeIndex) {
-        self.dep_graph.with_anon_task(self, crate::dep_graph::dep_kinds::TraitSelect, task)
+        self.dep_graph.with_anon_task(self, DepKind::TraitSelect, task)
     }
     type Ty = Ty<'tcx>;
     type Tys = &'tcx List<Ty<'tcx>>;

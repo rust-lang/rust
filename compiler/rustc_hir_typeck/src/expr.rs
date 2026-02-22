@@ -15,7 +15,6 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, Subdiagnostic, listify, pluralize,
     struct_span_code_err,
 };
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -3676,7 +3675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_expr_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>, span: Span) -> Ty<'tcx> {
         if let rustc_ast::AsmMacro::NakedAsm = asm.asm_macro {
-            if !find_attr!(self.tcx.get_all_attrs(self.body_id), AttributeKind::Naked(..)) {
+            if !find_attr!(self.tcx, self.body_id, Naked(..)) {
                 self.tcx.dcx().emit_err(NakedAsmOutsideNakedFn { span });
             }
         }

@@ -290,7 +290,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         });
         if suggestions.len() > 0 {
             suggestions.dedup();
-            diag.multipart_suggestion_verbose(
+            diag.multipart_suggestion(
                 msg!("consider restricting the type parameter to the `'static` lifetime"),
                 suggestions,
                 Applicability::MaybeIncorrect,
@@ -902,7 +902,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 spans_suggs.push((alias_span.shrink_to_hi(), "<'a>".to_string()));
             }
 
-            diag.multipart_suggestion_verbose(
+            diag.multipart_suggestion(
                 format!(
                     "to declare that the trait object {captures}, you can add a lifetime parameter `'a` in the type alias"
                 ),

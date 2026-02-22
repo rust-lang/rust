@@ -3807,7 +3807,6 @@ name = "rustc_error_messages"
 version = "0.0.0"
 dependencies = [
  "fluent-bundle",
- "fluent-syntax",
  "icu_list",
  "icu_locale",
  "intl-memoizer",
@@ -3818,7 +3817,6 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
- "tracing",
  "unic-langid",
 ]
 

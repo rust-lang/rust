@@ -6,7 +6,7 @@ use rustc_abi::{ExternAbi, ScalableElt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, msg, pluralize, struct_span_code_err};
-use rustc_hir::attrs::{AttributeKind, EiiDecl, EiiImpl, EiiImplResolution};
+use rustc_hir::attrs::{EiiDecl, EiiImpl, EiiImplResolution};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -1197,15 +1197,14 @@ fn check_eiis(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // does the function have an EiiImpl attribute? that contains the defid of a *macro*
     // that was used to mark the implementation. This is a two step process.
     for EiiImpl { resolution, span, .. } in
-        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::EiiImpls(impls) => impls)
-            .into_iter()
-            .flatten()
+        find_attr!(tcx, def_id, EiiImpls(impls) => impls).into_iter().flatten()
     {
         let (foreign_item, name) = match resolution {
             EiiImplResolution::Macro(def_id) => {
                 // we expect this macro to have the `EiiMacroFor` attribute, that points to a function
                 // signature that we'd like to compare the function we're currently checking with
-                if let Some(foreign_item) = find_attr!(tcx.get_all_attrs(*def_id), AttributeKind::EiiDeclaration(EiiDecl {foreign_item: t, ..}) => *t)
+                if let Some(foreign_item) =
+                    find_attr!(tcx, *def_id, EiiDeclaration(EiiDecl {foreign_item: t, ..}) => *t)
                 {
                     (foreign_item, tcx.item_name(*def_id))
                 } else {

@@ -1410,7 +1410,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Check that there is explicit type (ie this is not a closure param with inferred type)
                 // so we don't suggest moving something to the type that does not exist
                 hir::Node::Param(hir::Param { ty_span, pat, .. }) if pat.span != *ty_span => {
-                    err.multipart_suggestion_verbose(
+                    err.multipart_suggestion(
                         format!("to take parameter `{binding}` by reference, move `&{pin_and_mut}` to the type"),
                         vec![
                             (pat.span.until(inner.span), "".to_owned()),

@@ -30,7 +30,13 @@ error: unnecessary use of `cloned`
   --> tests/ui/unnecessary_iter_cloned.rs:179:18
    |
 LL |         for c in v.iter().cloned() {
-   |                  ^^^^^^^^^^^^^^^^^ help: remove any references to the binding: `v.iter()`
+   |                  ^^^^^^^^^^^^^^^^^
+   |
+help: remove any references to the binding
+   |
+LL -         for c in v.iter().cloned() {
+LL +         for c in v.iter() {
+   |
 
 error: unnecessary use of `cloned`
   --> tests/ui/unnecessary_iter_cloned.rs:188:18

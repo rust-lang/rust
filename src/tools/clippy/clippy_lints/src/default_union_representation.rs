@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_hir::attrs::{AttributeKind, ReprAttr};
+use rustc_hir::attrs::ReprAttr;
 use rustc_hir::{HirId, Item, ItemKind, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf;
@@ -99,5 +99,5 @@ fn is_zst<'tcx>(cx: &LateContext<'tcx>, field: &FieldDef, args: ty::GenericArgsR
 fn has_c_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     let attrs = cx.tcx.hir_attrs(hir_id);
 
-    find_attr!(attrs, AttributeKind::Repr { reprs, .. } if reprs.iter().any(|(x, _)| *x == ReprAttr::ReprC))
+    find_attr!(attrs, Repr { reprs, .. } if reprs.iter().any(|(x, _)| *x == ReprAttr::ReprC))
 }

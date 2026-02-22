@@ -7,6 +7,6 @@ fn main() {
     //~^ WARN denote infinite loops with
 
     [(); { for _ in 0usize.. {}; 0}];
-    //~^ ERROR cannot use `for`
-    //~| ERROR cannot use `for`
+    //~^ ERROR `std::ops::RangeFrom<usize>: const Iterator` is not satisfied
+    //~| ERROR `std::ops::RangeFrom<usize>: const Iterator` is not satisfied
 }

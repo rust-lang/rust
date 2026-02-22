@@ -1,11 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet_opt;
+use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir};
 use rustc_lint::LateContext;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 pub(super) fn check(cx: &LateContext<'_>, qpath: &hir::QPath<'_>, def_id: DefId) -> bool {
     if cx.tcx.is_diagnostic_item(sym::Cow, def_id)

@@ -10,7 +10,7 @@ use diagnostic_on_const::Foo;
 
 const fn foo() {
     Foo == Foo;
-    //~^ ERROR: cannot call non-const operator in constant functions
+    //~^ ERROR: the trait bound `Foo: [const] PartialEq` is not satisfied
 }
 
 fn main() {}

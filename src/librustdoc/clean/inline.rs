@@ -5,10 +5,9 @@ use std::sync::Arc;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
-use rustc_hir as hir;
-use rustc_hir::Mutability;
 use rustc_hir::def::{DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalModDefId};
+use rustc_hir::{self as hir, Mutability, find_attr};
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};
@@ -220,6 +219,8 @@ pub(crate) fn try_inline_glob(
 }
 
 pub(crate) fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> &'hir [hir::Attribute] {
+    // FIXME: all uses should use `find_attr`!
+    #[allow(deprecated)]
     cx.tcx.get_all_attrs(did)
 }
 
@@ -403,7 +404,7 @@ pub(crate) fn build_impls(
     // * https://github.com/rust-lang/rust/issues/103170 — where it didn't used to get documented
     // * https://github.com/rust-lang/rust/pull/99917 — where the feature got used
     // * https://github.com/rust-lang/rust/issues/53487 — overall tracking issue for Error
-    if tcx.has_attr(did, sym::rustc_has_incoherent_inherent_impls) {
+    if find_attr!(tcx, did, RustcHasIncoherentInherentImpls) {
         let type_ =
             if tcx.is_trait(did) { SimplifiedType::Trait(did) } else { SimplifiedType::Adt(did) };
         for &did in tcx.incoherent_impls(type_).iter() {

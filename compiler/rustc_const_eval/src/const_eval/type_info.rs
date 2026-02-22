@@ -2,12 +2,12 @@ mod adt;
 
 use std::borrow::Cow;
 
-use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_abi::{ExternAbi, FieldIdx, VariantIdx};
 use rustc_ast::Mutability;
 use rustc_hir::LangItem;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, Const, ScalarInt, Ty};
+use rustc_middle::ty::{self, Const, FnHeader, FnSigTys, ScalarInt, Ty, TyCtxt};
 use rustc_span::{Symbol, sym};
 
 use crate::const_eval::CompileTimeMachine;
@@ -188,10 +188,21 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                             self.write_dyn_trait_type_info(dyn_place, *predicates, *region)?;
                             variant
                         }
+                        ty::FnPtr(sig, fn_header) => {
+                            let (variant, variant_place) =
+                                self.downcast(&field_dest, sym::FnPtr)?;
+                            let fn_ptr_place =
+                                self.project_field(&variant_place, FieldIdx::ZERO)?;
+
+                            // FIXME: handle lifetime bounds
+                            let sig = sig.skip_binder();
+
+                            self.write_fn_ptr_type_info(fn_ptr_place, &sig, fn_header)?;
+                            variant
+                        }
                         ty::Foreign(_)
                         | ty::Pat(_, _)
                         | ty::FnDef(..)
-                        | ty::FnPtr(..)
                         | ty::UnsafeBinder(..)
                         | ty::Closure(..)
                         | ty::CoroutineClosure(..)
@@ -399,6 +410,65 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
             }
         }
+        interp_ok(())
+    }
+
+    pub(crate) fn write_fn_ptr_type_info(
+        &mut self,
+        place: impl Writeable<'tcx, CtfeProvenance>,
+        sig: &FnSigTys<TyCtxt<'tcx>>,
+        fn_header: &FnHeader<TyCtxt<'tcx>>,
+    ) -> InterpResult<'tcx> {
+        let FnHeader { safety, c_variadic, abi } = fn_header;
+
+        for (field_idx, field) in
+            place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
+        {
+            let field_place = self.project_field(&place, field_idx)?;
+
+            match field.name {
+                sym::unsafety => {
+                    self.write_scalar(Scalar::from_bool(safety.is_unsafe()), &field_place)?;
+                }
+                sym::abi => match abi {
+                    ExternAbi::C { .. } => {
+                        let (rust_variant, _rust_place) =
+                            self.downcast(&field_place, sym::ExternC)?;
+                        self.write_discriminant(rust_variant, &field_place)?;
+                    }
+                    ExternAbi::Rust => {
+                        let (rust_variant, _rust_place) =
+                            self.downcast(&field_place, sym::ExternRust)?;
+                        self.write_discriminant(rust_variant, &field_place)?;
+                    }
+                    other_abi => {
+                        let (variant, variant_place) = self.downcast(&field_place, sym::Named)?;
+                        let str_place = self.allocate_str_dedup(other_abi.as_str())?;
+                        let str_ref = self.mplace_to_ref(&str_place)?;
+                        let payload = self.project_field(&variant_place, FieldIdx::ZERO)?;
+                        self.write_immediate(*str_ref, &payload)?;
+                        self.write_discriminant(variant, &field_place)?;
+                    }
+                },
+                sym::inputs => {
+                    let inputs = sig.inputs();
+                    self.allocate_fill_and_write_slice_ptr(
+                        field_place,
+                        inputs.len() as _,
+                        |this, i, place| this.write_type_id(inputs[i as usize], &place),
+                    )?;
+                }
+                sym::output => {
+                    let output = sig.output();
+                    self.write_type_id(output, &field_place)?;
+                }
+                sym::variadic => {
+                    self.write_scalar(Scalar::from_bool(*c_variadic), &field_place)?;
+                }
+                other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
+            }
+        }
+
         interp_ok(())
     }
 

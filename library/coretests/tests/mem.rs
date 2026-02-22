@@ -1,3 +1,4 @@
+mod fn_ptr;
 mod type_info;
 
 use core::mem::*;

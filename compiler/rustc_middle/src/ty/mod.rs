@@ -37,7 +37,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
-use rustc_hir::attrs::{AttributeKind, StrippedCfgItem};
+use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::{LangItem, attrs as attr, find_attr};
@@ -1442,10 +1442,7 @@ impl<'tcx> TyCtxt<'tcx> {
             field_shuffle_seed ^= user_seed;
         }
 
-        let attributes = self.get_all_attrs(did);
-        let elt = find_attr!(
-            attributes,
-            AttributeKind::RustcScalableVector { element_count, .. } => element_count
+        let elt = find_attr!(self, did, RustcScalableVector { element_count, .. } => element_count
         )
         .map(|elt| match elt {
             Some(n) => ScalableElt::ElementCount(*n),
@@ -1454,7 +1451,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if elt.is_some() {
             flags.insert(ReprFlags::IS_SCALABLE);
         }
-        if let Some(reprs) = find_attr!(attributes, AttributeKind::Repr { reprs, .. } => reprs) {
+        if let Some(reprs) = find_attr!(self, did, Repr { reprs, .. } => reprs) {
             for (r, _) in reprs {
                 flags.insert(match *r {
                     attr::ReprRust => ReprFlags::empty(),
@@ -1514,7 +1511,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         // See `TyAndLayout::pass_indirectly_in_non_rustic_abis` for details.
-        if find_attr!(attributes, AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)) {
+        if find_attr!(self, did, RustcPassIndirectlyInNonRusticAbis(..)) {
             flags.insert(ReprFlags::PASS_INDIRECTLY_IN_NON_RUSTIC_ABIS);
         }
 
@@ -1711,11 +1708,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Gets all attributes with the given name.
+    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
     pub fn get_attrs(
         self,
         did: impl Into<DefId>,
         attr: Symbol,
     ) -> impl Iterator<Item = &'tcx hir::Attribute> {
+        #[allow(deprecated)]
         self.get_all_attrs(did).iter().filter(move |a: &&hir::Attribute| a.has_name(attr))
     }
 
@@ -1723,6 +1722,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// To see if an item has a specific attribute, you should use
     /// [`rustc_hir::find_attr!`] so you can use matching.
+    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
     pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [hir::Attribute] {
         let did: DefId = did.into();
         if let Some(did) = did.as_local() {
@@ -1745,17 +1745,21 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
     pub fn get_attr(self, did: impl Into<DefId>, attr: Symbol) -> Option<&'tcx hir::Attribute> {
         if cfg!(debug_assertions) && !rustc_feature::is_valid_for_get_attr(attr) {
             let did: DefId = did.into();
             bug!("get_attr: unexpected called with DefId `{:?}`, attr `{:?}`", did, attr);
         } else {
+            #[allow(deprecated)]
             self.get_attrs(did, attr).next()
         }
     }
 
     /// Determines whether an item is annotated with an attribute.
+    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
     pub fn has_attr(self, did: impl Into<DefId>, attr: Symbol) -> bool {
+        #[allow(deprecated)]
         self.get_attrs(did, attr).next().is_some()
     }
 
@@ -1987,10 +1991,7 @@ impl<'tcx> TyCtxt<'tcx> {
             && let Some(def_id) = def_id.as_local()
             && let outer = self.def_span(def_id).ctxt().outer_expn_data()
             && matches!(outer.kind, ExpnKind::Macro(MacroKind::Derive, _))
-            && find_attr!(
-                self.get_all_attrs(outer.macro_def_id.unwrap()),
-                AttributeKind::RustcBuiltinMacro { .. }
-            )
+            && find_attr!(self, outer.macro_def_id.unwrap(), RustcBuiltinMacro { .. })
         {
             true
         } else {
@@ -2000,7 +2001,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Check if the given `DefId` is `#\[automatically_derived\]`.
     pub fn is_automatically_derived(self, def_id: DefId) -> bool {
-        find_attr!(self.get_all_attrs(def_id), AttributeKind::AutomaticallyDerived(..))
+        find_attr!(self, def_id, AutomaticallyDerived(..))
     }
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`

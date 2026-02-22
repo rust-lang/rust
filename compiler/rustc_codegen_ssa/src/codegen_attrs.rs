@@ -230,9 +230,7 @@ fn process_builtin_attrs(
                 for i in impls {
                     let foreign_item = match i.resolution {
                         EiiImplResolution::Macro(def_id) => {
-                            let Some(extern_item) = find_attr!(
-                                tcx.get_all_attrs(def_id),
-                                AttributeKind::EiiDeclaration(target) => target.foreign_item
+                            let Some(extern_item) = find_attr!(tcx, def_id, EiiDeclaration(target) => target.foreign_item
                             ) else {
                                 tcx.dcx().span_delayed_bug(
                                     i.span,
@@ -352,8 +350,7 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
 
     // When `no_builtins` is applied at the crate level, we should add the
     // `no-builtins` attribute to each function to ensure it takes effect in LTO.
-    let crate_attrs = tcx.hir_attrs(rustc_hir::CRATE_HIR_ID);
-    let no_builtins = find_attr!(crate_attrs, AttributeKind::NoBuiltins);
+    let no_builtins = find_attr!(tcx, crate, NoBuiltins);
     if no_builtins {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_BUILTINS;
     }
@@ -483,9 +480,8 @@ fn check_result(
             .map(|features| (features.name.as_str(), true))
             .collect(),
     ) {
-        let span =
-            find_attr!(tcx.get_all_attrs(did), AttributeKind::TargetFeature{attr_span: span, ..} => *span)
-                .unwrap_or_else(|| tcx.def_span(did));
+        let span = find_attr!(tcx, did, TargetFeature{attr_span: span, ..} => *span)
+            .unwrap_or_else(|| tcx.def_span(did));
 
         tcx.dcx()
             .create_err(errors::TargetFeatureDisableOrEnable {
@@ -504,7 +500,7 @@ fn handle_lang_items(
     attrs: &[Attribute],
     codegen_fn_attrs: &mut CodegenFnAttrs,
 ) {
-    let lang_item = find_attr!(attrs, AttributeKind::Lang(lang, _) => lang);
+    let lang_item = find_attr!(attrs, Lang(lang, _) => lang);
 
     // Weak lang items have the same semantics as "std internal" symbols in the
     // sense that they're preserved through all our LTO passes and only
@@ -583,7 +579,8 @@ fn sanitizer_settings_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerFnAttrs 
     };
 
     // Check for a sanitize annotation directly on this def.
-    if let Some((on_set, off_set, rtsan)) = find_attr!(tcx.get_all_attrs(did), AttributeKind::Sanitize {on_set, off_set, rtsan, ..} => (on_set, off_set, rtsan))
+    if let Some((on_set, off_set, rtsan)) =
+        find_attr!(tcx, did, Sanitize {on_set, off_set, rtsan, ..} => (on_set, off_set, rtsan))
     {
         // the on set is the set of sanitizers explicitly enabled.
         // we mask those out since we want the set of disabled sanitizers here
@@ -624,6 +621,7 @@ fn inherited_align<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Align> {
 /// panic, unless we introduced a bug when parsing the autodiff macro.
 //FIXME(jdonszelmann): put in the main loop. No need to have two..... :/ Let's do that when we make autodiff parsed.
 pub fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
+    #[allow(deprecated)]
     let attrs = tcx.get_attrs(id, sym::rustc_autodiff);
 
     let attrs = attrs.filter(|attr| attr.has_name(sym::rustc_autodiff)).collect::<Vec<_>>();

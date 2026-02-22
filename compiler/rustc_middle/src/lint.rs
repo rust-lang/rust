@@ -9,7 +9,7 @@ use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_session::Session;
 use rustc_session::lint::builtin::{self, FORBIDDEN_LINT_GROUPS};
 use rustc_session::lint::{FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId};
-use rustc_span::{DUMMY_SP, Span, Symbol, kw};
+use rustc_span::{DUMMY_SP, ExpnKind, Span, Symbol, kw};
 use tracing::instrument;
 
 use crate::ty::TyCtxt;
@@ -380,7 +380,17 @@ pub fn lint_level(
             // allow individual lints to opt-out from being reported.
             let incompatible = future_incompatible.is_some_and(|f| f.reason.edition().is_none());
 
-            if !incompatible && !lint.report_in_external_macro {
+            // In rustc, for the find_attr macro, we want to always emit this.
+            // This completely circumvents normal lint checking, which usually doesn't happen for macros from other crates.
+            // However, we kind of want that when using find_attr from another rustc crate. So we cheat a little.
+            let is_in_find_attr = sess.enable_internal_lints()
+                && err.span.primary_spans().iter().any(|s| {
+                    s.source_callee().is_some_and(
+                    |i| matches!(i.kind, ExpnKind::Macro(_, name) if name.as_str() == "find_attr")
+                    )
+                });
+
+            if !incompatible && !lint.report_in_external_macro && !is_in_find_attr {
                 err.cancel();
 
                 // Don't continue further, since we don't want to have

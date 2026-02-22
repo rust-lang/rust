@@ -197,7 +197,7 @@ fn generate_item_with_correct_attrs(
             // itself matter), for non-inlined re-exports see #85043.
             let import_is_inline = find_attr!(
                 inline::load_attrs(cx, import_id.to_def_id()),
-                AttributeKind::Doc(d)
+                Doc(d)
                 if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
             ) || (is_glob_import(cx.tcx, import_id)
                 && (cx.document_hidden() || !cx.tcx.is_doc_hidden(def_id)));
@@ -1007,7 +1007,7 @@ fn clean_proc_macro<'tcx>(
         return ProcMacroItem(ProcMacro { kind, helpers: vec![] });
     }
     let attrs = cx.tcx.hir_attrs(item.hir_id());
-    let Some((trait_name, helper_attrs)) = find_attr!(attrs, AttributeKind::ProcMacroDerive { trait_name, helper_attrs, ..} => (*trait_name, helper_attrs))
+    let Some((trait_name, helper_attrs)) = find_attr!(attrs, ProcMacroDerive { trait_name, helper_attrs, ..} => (*trait_name, helper_attrs))
     else {
         return ProcMacroItem(ProcMacro { kind, helpers: vec![] });
     };
@@ -1026,11 +1026,11 @@ fn clean_fn_or_proc_macro<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> ItemKind {
     let attrs = cx.tcx.hir_attrs(item.hir_id());
-    let macro_kind = if find_attr!(attrs, AttributeKind::ProcMacro(..)) {
+    let macro_kind = if find_attr!(attrs, ProcMacro(..)) {
         Some(MacroKind::Bang)
-    } else if find_attr!(attrs, AttributeKind::ProcMacroDerive { .. }) {
+    } else if find_attr!(attrs, ProcMacroDerive { .. }) {
         Some(MacroKind::Derive)
-    } else if find_attr!(attrs, AttributeKind::ProcMacroAttribute(..)) {
+    } else if find_attr!(attrs, ProcMacroAttribute(..)) {
         Some(MacroKind::Attr)
     } else {
         None
@@ -1050,8 +1050,7 @@ fn clean_fn_or_proc_macro<'tcx>(
 /// `rustc_legacy_const_generics`. More information in
 /// <https://github.com/rust-lang/rust/issues/83167>.
 fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attribute]) {
-    let Some(indexes) =
-        find_attr!(attrs, AttributeKind::RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes)
+    let Some(indexes) = find_attr!(attrs, RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes)
     else {
         return;
     };
@@ -3022,7 +3021,7 @@ fn clean_use_statement_inner<'tcx>(
     let attrs = cx.tcx.hir_attrs(import.hir_id());
     let inline_attr = find_attr!(
         attrs,
-        AttributeKind::Doc(d) if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline) => d
+        Doc(d) if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline) => d
     )
     .and_then(|d| d.inline.first());
     let pub_underscore = visibility.is_public() && name == Some(kw::Underscore);

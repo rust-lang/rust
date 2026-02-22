@@ -16,7 +16,6 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, MultiSpan, StashKey, listify, pluralize, struct_span_code_err,
 };
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -854,7 +853,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             err.span_label(span, format!("`{rcvr_ty}` is not an iterator"));
             if !span.in_external_macro(self.tcx.sess.source_map()) {
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "call `.into_iter()` first",
                     vec![(span.shrink_to_lo(), format!("into_iter()."))],
                     Applicability::MaybeIncorrect,
@@ -1581,7 +1580,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 "there is a variant with a similar name",
                 suggestion,
                 Applicability::HasPlaceholders,
@@ -2261,7 +2260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for inherent_method in
                     self.tcx.associated_items(inherent_impl_did).in_definition_order()
                 {
-                    if let Some(candidates) = find_attr!(self.tcx.get_all_attrs(inherent_method.def_id), AttributeKind::RustcConfusables{symbols, ..} => symbols)
+                    if let Some(candidates) = find_attr!(self.tcx, inherent_method.def_id, RustcConfusables{symbols, ..} => symbols)
                         && candidates.contains(&item_name.name)
                         && inherent_method.is_fn()
                     {

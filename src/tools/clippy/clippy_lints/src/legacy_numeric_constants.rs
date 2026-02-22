@@ -1,6 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_from_proc_macro;
+use clippy_utils::{is_from_proc_macro, sym};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
 use hir::def_id::DefId;
@@ -10,7 +10,7 @@ use rustc_hir::{ExprKind, Item, ItemKind, QPath, UseKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
-use rustc_span::{Symbol, sym};
+use rustc_span::Symbol;
 
 declare_clippy_lint! {
     /// ### What it does

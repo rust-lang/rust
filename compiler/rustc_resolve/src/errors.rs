@@ -249,22 +249,6 @@ pub(crate) struct UnreachableLabelWithSimilarNameExists {
 }
 
 #[derive(Diagnostic)]
-#[diag("`self` import can only appear once in an import list", code = E0430)]
-pub(crate) struct SelfImportCanOnlyAppearOnceInTheList {
-    #[primary_span]
-    #[label("can only appear once in an import list")]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`self` import can only appear in an import list with a non-empty prefix", code = E0431)]
-pub(crate) struct SelfImportOnlyInImportListWithNonEmptyPrefix {
-    #[primary_span]
-    #[label("can only appear in an import list with a non-empty prefix")]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("can't capture dynamic environment in a fn item", code = E0434)]
 #[help("use the `|| {\"{\"} ... {\"}\"}` closure form instead")]
 pub(crate) struct CannotCaptureDynamicEnvironmentInFnItem {
@@ -639,13 +623,6 @@ pub(crate) struct MacroExpandedMacroExportsAccessedByAbsolutePaths {
 }
 
 #[derive(Diagnostic)]
-#[diag("`$crate` may not be imported")]
-pub(crate) struct CrateImported {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[macro_use]` is not supported on `extern crate self`")]
 pub(crate) struct MacroUseExternCrateSelf {
     #[primary_span]
@@ -973,11 +950,25 @@ pub(crate) struct ArgumentsMacroUseNotAllowed {
     pub(crate) span: Span,
 }
 
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "try renaming it with a name",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct UnnamedImportSugg {
+    #[suggestion_part(code = "{ident} as name")]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
 #[derive(Diagnostic)]
-#[diag("crate root imports need to be explicitly named: `use crate as name;`")]
-pub(crate) struct UnnamedCrateRootImport {
+#[diag("imports need to be explicitly named")]
+pub(crate) struct UnnamedImport {
     #[primary_span]
     pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) sugg: Option<UnnamedImportSugg>,
 }
 
 #[derive(Diagnostic)]

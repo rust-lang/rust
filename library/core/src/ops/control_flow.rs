@@ -197,7 +197,7 @@ impl<B, C> ControlFlow<B, C> {
         }
     }
 
-    /// Converts the `ControlFlow` into an `Result` which is `Ok` if the
+    /// Converts the `ControlFlow` into a `Result` which is `Ok` if the
     /// `ControlFlow` was `Break` and `Err` if otherwise.
     ///
     /// # Examples
@@ -311,7 +311,7 @@ impl<B, C> ControlFlow<B, C> {
         }
     }
 
-    /// Converts the `ControlFlow` into an `Result` which is `Ok` if the
+    /// Converts the `ControlFlow` into a `Result` which is `Ok` if the
     /// `ControlFlow` was `Continue` and `Err` if otherwise.
     ///
     /// # Examples
@@ -422,9 +422,9 @@ impl<T> ControlFlow<T, T> {
     }
 }
 
-/// These are used only as part of implementing the iterator adapters.
-/// They have mediocre names and non-obvious semantics, so aren't
-/// currently on a path to potential stabilization.
+// These are used only as part of implementing the iterator adapters.
+// They have mediocre names and non-obvious semantics, so aren't
+// currently on a path to potential stabilization.
 impl<R: ops::Try> ControlFlow<R, R::Output> {
     /// Creates a `ControlFlow` from any type implementing `Try`.
     #[inline]

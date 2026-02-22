@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::{is_assert_macro, root_macro_call};
 use clippy_utils::res::MaybeResPath;
 use clippy_utils::{find_binding_init, get_parent_expr, is_inside_always_const_context};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{Expr, HirId, find_attr};
 use rustc_lint::{LateContext, LintContext};
 
@@ -40,7 +39,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, receiver: &Expr<'_
 fn is_under_cfg(cx: &LateContext<'_>, id: HirId) -> bool {
     cx.tcx
         .hir_parent_id_iter(id)
-        .any(|id| find_attr!(cx.tcx.hir_attrs(id), AttributeKind::CfgTrace(..)))
+        .any(|id| find_attr!(cx.tcx.hir_attrs(id), CfgTrace(..)))
 }
 
 /// Similar to [`clippy_utils::expr_or_init`], but does not go up the chain if the initialization

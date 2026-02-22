@@ -197,6 +197,8 @@ impl<'a> Parser<'a> {
 
             if let Defaultness::Default(span) = def {
                 this.dcx().emit_err(errors::DefaultNotFollowedByItem { span });
+            } else if let Defaultness::Final(span) = def {
+                this.dcx().emit_err(errors::FinalNotFollowedByItem { span });
             }
 
             if !attrs_allowed {

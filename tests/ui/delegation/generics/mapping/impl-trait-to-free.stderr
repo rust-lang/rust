@@ -1,0 +1,131 @@
+error[E0284]: type annotations needed
+  --> $DIR/impl-trait-to-free.rs:31:25
+   |
+LL |         reuse to_reuse::foo;
+   |                         ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_1::to_reuse::foo`
+  --> $DIR/impl-trait-to-free.rs:15:42
+   |
+LL |         pub fn foo<'a: 'a, 'b: 'b, A, B, const N: usize>() {}
+   |                                          ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse to_reuse::foo::<A, B, N>;
+   |                            +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/impl-trait-to-free.rs:33:25
+   |
+LL |         reuse to_reuse::bar;
+   |                         ^^^ cannot infer the value of the const parameter `N` declared on the function `bar`
+   |
+note: required by a const generic parameter in `test_1::to_reuse::bar`
+  --> $DIR/impl-trait-to-free.rs:16:42
+   |
+LL |         pub fn bar<'a: 'a, 'b: 'b, A, B, const N: usize>(x: &super::XX) {}
+   |                                          ^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
+help: consider specifying the generic arguments
+   |
+LL |         reuse to_reuse::bar::<A, B, N>;
+   |                            +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/impl-trait-to-free.rs:69:25
+   |
+LL |         reuse to_reuse::foo;
+   |                         ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_2::to_reuse::foo`
+  --> $DIR/impl-trait-to-free.rs:56:26
+   |
+LL |         pub fn foo<A, B, const N: usize>() {}
+   |                          ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse to_reuse::foo::<A, B, N>;
+   |                            +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/impl-trait-to-free.rs:71:25
+   |
+LL |         reuse to_reuse::bar;
+   |                         ^^^ cannot infer the value of the const parameter `N` declared on the function `bar`
+   |
+note: required by a const generic parameter in `test_2::to_reuse::bar`
+  --> $DIR/impl-trait-to-free.rs:57:26
+   |
+LL |         pub fn bar<A, B, const N: usize>(x: &super::X) {}
+   |                          ^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
+help: consider specifying the generic arguments
+   |
+LL |         reuse to_reuse::bar::<A, B, N>;
+   |                            +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/impl-trait-to-free.rs:128:25
+   |
+LL |         reuse to_reuse::foo;
+   |                         ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_4::to_reuse::foo`
+  --> $DIR/impl-trait-to-free.rs:115:42
+   |
+LL |         pub fn foo<'a: 'a, 'b: 'b, A, B, const N: usize>() {}
+   |                                          ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse to_reuse::foo::<A, B, N>;
+   |                            +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/impl-trait-to-free.rs:130:25
+   |
+LL |         reuse to_reuse::bar;
+   |                         ^^^ cannot infer the value of the const parameter `N` declared on the function `bar`
+   |
+note: required by a const generic parameter in `test_4::to_reuse::bar`
+  --> $DIR/impl-trait-to-free.rs:116:42
+   |
+LL |         pub fn bar<'a: 'a, 'b: 'b, A, B, const N: usize>(x: &super::X) {}
+   |                                          ^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
+help: consider specifying the generic arguments
+   |
+LL |         reuse to_reuse::bar::<A, B, N>;
+   |                            +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/impl-trait-to-free.rs:189:25
+   |
+LL |         reuse to_reuse::foo;
+   |                         ^^^ cannot infer the value of the const parameter `N` declared on the function `foo`
+   |
+note: required by a const generic parameter in `test_6::to_reuse::foo`
+  --> $DIR/impl-trait-to-free.rs:176:26
+   |
+LL |         pub fn foo<A, B, const N: usize>() {}
+   |                          ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider specifying the generic arguments
+   |
+LL |         reuse to_reuse::foo::<A, B, N>;
+   |                            +++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/impl-trait-to-free.rs:191:25
+   |
+LL |         reuse to_reuse::bar;
+   |                         ^^^ cannot infer the value of the const parameter `N` declared on the function `bar`
+   |
+note: required by a const generic parameter in `test_6::to_reuse::bar`
+  --> $DIR/impl-trait-to-free.rs:177:26
+   |
+LL |         pub fn bar<A, B, const N: usize>(x: &super::X) {}
+   |                          ^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
+help: consider specifying the generic arguments
+   |
+LL |         reuse to_reuse::bar::<A, B, N>;
+   |                            +++++++++++
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0284`.

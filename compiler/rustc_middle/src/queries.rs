@@ -2179,7 +2179,7 @@ rustc_queries! {
         desc { "computing the uninhabited predicate of `{}`", key }
     }
 
-    query dep_kind(_: CrateNum) -> CrateDepKind {
+    query crate_dep_kind(_: CrateNum) -> CrateDepKind {
         eval_always
         desc { "fetching what a dependency looks like" }
         separate_provide_extern

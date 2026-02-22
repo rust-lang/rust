@@ -535,7 +535,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 if let Some(pat) = finder.parent_pat {
                     sugg.insert(0, (pat.span.shrink_to_lo(), "ref ".to_string()));
                 }
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "borrow this binding in the pattern to avoid moving the value",
                     sugg,
                     Applicability::MachineApplicable,
@@ -1509,7 +1509,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         } else {
             "consider cloning the value if the performance cost is acceptable"
         };
-        err.multipart_suggestion_verbose(msg, sugg, Applicability::MachineApplicable);
+        err.multipart_suggestion(msg, sugg, Applicability::MachineApplicable);
         true
     }
 
@@ -2759,7 +2759,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 .chain(finder.closure_call_changes)
                 .collect();
 
-            err.multipart_suggestion_verbose(
+            err.multipart_suggestion(
                 "try explicitly passing `&Self` into the closure as an argument",
                 sugg,
                 Applicability::MachineApplicable,
@@ -3347,7 +3347,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
                             let addition =
                                 format!("let {}binding = {};\n{}", mutability, s, " ".repeat(p));
-                            err.multipart_suggestion_verbose(
+                            err.multipart_suggestion(
                                 msg,
                                 vec![
                                     (stmt.span.shrink_to_lo(), addition),

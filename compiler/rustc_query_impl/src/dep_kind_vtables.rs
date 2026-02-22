@@ -20,7 +20,6 @@ mod non_query {
                 bug!("force_from_dep_node: encountered {dep_node:?}")
             }),
             try_load_from_on_disk_cache: None,
-            name: &"Null",
         }
     }
 
@@ -34,7 +33,6 @@ mod non_query {
                 bug!("force_from_dep_node: encountered {dep_node:?}")
             }),
             try_load_from_on_disk_cache: None,
-            name: &"Red",
         }
     }
 
@@ -48,7 +46,6 @@ mod non_query {
                 true
             }),
             try_load_from_on_disk_cache: None,
-            name: &"SideEffect",
         }
     }
 
@@ -59,7 +56,6 @@ mod non_query {
             key_fingerprint_style: KeyFingerprintStyle::Opaque,
             force_from_dep_node: Some(|_, _, _| bug!("cannot force an anon node")),
             try_load_from_on_disk_cache: None,
-            name: &"AnonZeroDeps",
         }
     }
 
@@ -70,7 +66,6 @@ mod non_query {
             key_fingerprint_style: KeyFingerprintStyle::Unit,
             force_from_dep_node: None,
             try_load_from_on_disk_cache: None,
-            name: &"TraitSelect",
         }
     }
 
@@ -81,7 +76,6 @@ mod non_query {
             key_fingerprint_style: KeyFingerprintStyle::Opaque,
             force_from_dep_node: None,
             try_load_from_on_disk_cache: None,
-            name: &"CompileCodegenUnit",
         }
     }
 
@@ -92,7 +86,6 @@ mod non_query {
             key_fingerprint_style: KeyFingerprintStyle::Opaque,
             force_from_dep_node: None,
             try_load_from_on_disk_cache: None,
-            name: &"CompileMonoItem",
         }
     }
 
@@ -103,7 +96,6 @@ mod non_query {
             key_fingerprint_style: KeyFingerprintStyle::Unit,
             force_from_dep_node: None,
             try_load_from_on_disk_cache: None,
-            name: &"Metadata",
         }
     }
 }
@@ -131,7 +123,6 @@ where
             key_fingerprint_style,
             force_from_dep_node: None,
             try_load_from_on_disk_cache: None,
-            name: Q::NAME,
         };
     }
 
@@ -145,7 +136,6 @@ where
         try_load_from_on_disk_cache: Some(|tcx, dep_node| {
             try_load_from_on_disk_cache_inner(Q::query_dispatcher(tcx), tcx, dep_node)
         }),
-        name: Q::NAME,
     }
 }
 

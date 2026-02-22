@@ -10,7 +10,6 @@ use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
@@ -381,10 +380,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             && let impl_of = self.tcx.parent(impl_item.owner_id.to_def_id())
             && self.tcx.is_automatically_derived(impl_of)
             && let trait_ref = self.tcx.impl_trait_ref(impl_of).instantiate_identity()
-            && find_attr!(
-                self.tcx.get_all_attrs(trait_ref.def_id),
-                AttributeKind::RustcTrivialFieldReads
-            )
+            && find_attr!(self.tcx, trait_ref.def_id, RustcTrivialFieldReads)
         {
             if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
                 && let Some(adt_def_id) = adt_def.did().as_local()
@@ -726,9 +722,7 @@ fn has_allow_dead_code_or_lang_attr(
 
     if has_allow_expect_dead_code(tcx, def_id) {
         Some(ComesFromAllowExpect::Yes)
-    } else if has_used_like_attr(tcx, def_id)
-        || find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Lang(..))
-    {
+    } else if has_used_like_attr(tcx, def_id) || find_attr!(tcx, def_id, Lang(..)) {
         Some(ComesFromAllowExpect::No)
     } else {
         None

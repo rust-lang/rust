@@ -299,6 +299,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let trait_def_id = alias.trait_def_id(tcx);
                 let rebased_args = alias.args.rebase_onto(tcx, trait_def_id, impl_substs);
 
+                // The impl is erroneous missing a definition for the associated type.
+                // Skipping it since calling `TyCtxt::type_of` on its assoc ty will trigger an ICE.
+                if !leaf_def.item.defaultness(tcx).has_value() {
+                    return false;
+                }
+
                 let impl_item_def_id = leaf_def.item.def_id;
                 if !tcx.check_args_compatible(impl_item_def_id, rebased_args) {
                     return false;

@@ -2521,7 +2521,7 @@ impl<'a> Parser<'a> {
                         ret_span,
                         "explicit return type requires closure body to be enclosed in braces",
                     );
-                    diag.multipart_suggestion_verbose(
+                    diag.multipart_suggestion(
                         "wrap the expression in curly braces",
                         vec![
                             (expr.span.shrink_to_lo(), "{ ".to_string()),

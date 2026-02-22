@@ -5,7 +5,6 @@
 //! it finds operations that are invalid in a certain context.
 
 use rustc_errors::DiagCtxtHandle;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, find_attr};
 use rustc_middle::ty::{self, PolyFnSig, TyCtxt};
@@ -81,9 +80,7 @@ pub fn rustc_allow_const_fn_unstable(
     def_id: LocalDefId,
     feature_gate: Symbol,
 ) -> bool {
-    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
-
-    find_attr!(attrs, AttributeKind::RustcAllowConstFnUnstable(syms, _) if syms.contains(&feature_gate))
+    find_attr!(tcx, def_id, RustcAllowConstFnUnstable(syms, _) if syms.contains(&feature_gate))
 }
 
 /// Returns `true` if the given `def_id` (trait or function) is "safe to expose on stable".

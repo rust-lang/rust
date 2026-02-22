@@ -235,17 +235,14 @@ fn build_clif_sysroot_for_triple(
 
     if let Some(prefix) = env::var_os("CG_CLIF_STDLIB_REMAP_PATH_PREFIX") {
         rustflags.push("--remap-path-prefix".to_owned());
-        rustflags.push(format!(
-            "{}={}",
-            STDLIB_SRC.to_path(dirs).to_str().unwrap(),
-            prefix.to_str().unwrap()
-        ));
+        rustflags.push(format!("library/={}/library", prefix.to_str().unwrap()));
     }
     compiler.rustflags.extend(rustflags);
     let mut build_cmd = STANDARD_LIBRARY.build(&compiler, dirs);
     build_cmd.arg("--release");
     build_cmd.arg("--features").arg("backtrace panic-unwind");
     build_cmd.arg(format!("-Zroot-dir={}", STDLIB_SRC.to_path(dirs).display()));
+    build_cmd.arg("-Zno-embed-metadata");
     build_cmd.env("CARGO_PROFILE_RELEASE_DEBUG", "true");
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     if compiler.triple.contains("apple") {
@@ -260,7 +257,7 @@ fn build_clif_sysroot_for_triple(
     for entry in fs::read_dir(build_dir.join("deps")).unwrap() {
         let entry = entry.unwrap();
         if let Some(ext) = entry.path().extension() {
-            if ext == "rmeta" || ext == "d" || ext == "dSYM" || ext == "clif" {
+            if ext == "d" || ext == "dSYM" || ext == "clif" {
                 continue;
             }
         } else {

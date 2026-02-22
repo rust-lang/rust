@@ -2,10 +2,13 @@ error[E0432]: unresolved import `core`
   --> $DIR/feature-gate-extern_absolute_paths.rs:2:5
    |
 LL | use core::default;
-   |     ^^^^
-   |     |
-   |     you might be missing crate `core`
-   |     help: try using `std` instead of `core`: `std`
+   |     ^^^^ you might be missing crate `core`
+   |
+help: try using `std` instead of `core`
+   |
+LL - use core::default;
+LL + use std::default;
+   |
 
 error[E0433]: cannot find `core` in the crate root
   --> $DIR/feature-gate-extern_absolute_paths.rs:5:19

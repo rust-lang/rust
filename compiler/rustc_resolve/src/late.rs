@@ -2045,7 +2045,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             if let Some(ty) = &self.diag_metadata.current_self_type
                 && let ControlFlow::Break(sp) = AnonRefFinder.visit_ty(ty)
             {
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "add a lifetime to the impl block and use it in the self type and associated \
                      type",
                     vec![
@@ -2060,7 +2060,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 && let Some(of_trait) = &impl_.of_trait
                 && let ControlFlow::Break(sp) = AnonRefFinder.visit_trait_ref(&of_trait.trait_ref)
             {
-                err.multipart_suggestion_verbose(
+                err.multipart_suggestion(
                     "add a lifetime to the impl block and use it in the trait and associated type",
                     vec![
                         (span, "<'a>".to_string()),

@@ -467,7 +467,6 @@ fn parse_source(
     let filename = FileName::anon_source_code(&wrapped_source);
 
     let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
-    let translator = rustc_driver::default_translator();
     let supports_color = match get_stderr_color_choice(ColorConfig::Auto, &std::io::stderr()) {
         ColorChoice::Auto => unreachable!(),
         ColorChoice::AlwaysAnsi | ColorChoice::Always => true,
@@ -476,7 +475,7 @@ fn parse_source(
     info.supports_color = supports_color;
     // Any errors in parsing should also appear when the doctest is compiled for real, so just
     // send all the errors that the parser emits directly into a `Sink` instead of stderr.
-    let emitter = AnnotateSnippetEmitter::new(AutoStream::never(Box::new(io::sink())), translator);
+    let emitter = AnnotateSnippetEmitter::new(AutoStream::never(Box::new(io::sink())));
 
     // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
     let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();

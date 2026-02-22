@@ -7,7 +7,6 @@ use rustc_abi::{
     TagEncoding, VariantIdx, Variants, WrappingRange,
 };
 use rustc_hashes::Hash64;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
 use rustc_index::{Idx as _, IndexVec};
 use rustc_middle::bug;
@@ -624,8 +623,8 @@ fn layout_of_uncached<'tcx>(
 
             // Check for the rustc_simd_monomorphize_lane_limit attribute and check the lane limit
             if let Some(limit) = find_attr!(
-                tcx.get_all_attrs(def.did()),
-                AttributeKind::RustcSimdMonomorphizeLaneLimit(limit) => limit
+                tcx, def.did(),
+                RustcSimdMonomorphizeLaneLimit(limit) => limit
             ) {
                 if !limit.value_within_limit(e_len as usize) {
                     return Err(map_error(

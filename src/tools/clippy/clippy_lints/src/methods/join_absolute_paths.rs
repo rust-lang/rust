@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::expr_or_init;
+use clippy_utils::{expr_or_init, sym};
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet;
 use rustc_ast::ast::LitKind;
@@ -7,7 +7,6 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
-use rustc_span::symbol::sym;
 
 use super::JOIN_ABSOLUTE_PATHS;
 

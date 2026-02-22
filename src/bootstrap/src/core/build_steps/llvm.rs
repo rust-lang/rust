@@ -773,7 +773,15 @@ fn configure_cmake(
         .define("CMAKE_CXX_COMPILER", sanitize_cc(&cxx))
         .define("CMAKE_ASM_COMPILER", sanitize_cc(&cc));
 
-    cfg.build_arg("-j").build_arg(builder.jobs().to_string());
+    // If we are running under a FIFO jobserver, we should not pass -j to CMake; otherwise it
+    // overrides the jobserver settings and can lead to oversubscription.
+    let has_modern_jobserver = env::var("MAKEFLAGS")
+        .map(|flags| flags.contains("--jobserver-auth=fifo:"))
+        .unwrap_or(false);
+
+    if !has_modern_jobserver {
+        cfg.build_arg("-j").build_arg(builder.jobs().to_string());
+    }
     let mut cflags = ccflags.cflags.clone();
     // FIXME(madsmtm): Allow `cmake-rs` to select flags by itself by passing
     // our flags via `.cflag`/`.cxxflag` instead.

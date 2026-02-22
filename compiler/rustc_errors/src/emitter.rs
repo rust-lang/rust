@@ -25,7 +25,7 @@ use rustc_span::{FileName, SourceFile, Span};
 use tracing::{debug, warn};
 
 use crate::timings::TimingRecord;
-use crate::translation::Translator;
+use crate::translation::format_diag_message;
 use crate::{
     CodeSuggestion, DiagInner, DiagMessage, Level, MultiSpan, Style, Subdiag, SuggestionStyle,
 };
@@ -88,8 +88,6 @@ pub trait Emitter {
 
     fn source_map(&self) -> Option<&SourceMap>;
 
-    fn translator(&self) -> &Translator;
-
     /// Formats the substitutions of the primary_span
     ///
     /// There are a lot of conditions to this method, but in short:
@@ -108,11 +106,7 @@ pub trait Emitter {
         fluent_args: &FluentArgs<'_>,
     ) {
         if let Some((sugg, rest)) = suggestions.split_first() {
-            let msg = self
-                .translator()
-                .translate_message(&sugg.msg, fluent_args)
-                .map_err(Report::new)
-                .unwrap();
+            let msg = format_diag_message(&sugg.msg, fluent_args).map_err(Report::new).unwrap();
             if rest.is_empty()
                // ^ if there is only one suggestion
                // don't display multi-suggestions as labels
@@ -383,15 +377,9 @@ impl Emitter for EmitterWithNote {
         diag.sub(Level::Note, self.note.clone(), MultiSpan::new());
         self.emitter.emit_diagnostic(diag);
     }
-
-    fn translator(&self) -> &Translator {
-        self.emitter.translator()
-    }
 }
 
-pub struct SilentEmitter {
-    pub translator: Translator,
-}
+pub struct SilentEmitter;
 
 impl Emitter for SilentEmitter {
     fn source_map(&self) -> Option<&SourceMap> {
@@ -399,10 +387,6 @@ impl Emitter for SilentEmitter {
     }
 
     fn emit_diagnostic(&mut self, _diag: DiagInner) {}
-
-    fn translator(&self) -> &Translator {
-        &self.translator
-    }
 }
 
 /// Maximum number of suggestions to be shown

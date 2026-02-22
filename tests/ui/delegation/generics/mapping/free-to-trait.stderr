@@ -1,0 +1,401 @@
+error[E0284]: type annotations needed
+  --> $DIR/free-to-trait.rs:22:26
+   |
+LL |             reuse Trait::foo as bar;
+   |                          ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_1::Trait::foo`
+  --> $DIR/free-to-trait.rs:15:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |             reuse Trait::foo::<U, M> as bar;
+   |                             ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/free-to-trait.rs:28:26
+   |
+LL |             reuse Trait::foo as bar;
+   |                          ^^^ cannot infer the value of the const parameter `M` declared on the method `foo`
+   |
+note: required by a const generic parameter in `test_1::Trait::foo`
+  --> $DIR/free-to-trait.rs:15:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>(self) {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+help: consider specifying the generic arguments
+   |
+LL |             reuse Trait::foo::<U, M> as bar;
+   |                             ++++++++
+
+error[E0107]: function takes 2 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/free-to-trait.rs:50:9
+   |
+LL |         bar::<'static, u8, String, true>(123);
+   |         ^^^   ------- supplied 1 lifetime argument
+   |         |
+   |         expected 2 lifetime arguments
+   |
+note: function defined here, with 2 lifetime parameters: `'a`, `'b`
+  --> $DIR/free-to-trait.rs:47:48
+   |
+LL |     trait Trait<'a, T, const N: usize>: Sized {
+   |                 --
+LL |         fn foo<'b: 'b, U, const M: bool>(self) {}
+   |                --
+...
+LL |         reuse Trait::<'static, i32, 1>::foo as bar;
+   |                                                ^^^
+help: add missing lifetime argument
+   |
+LL |         bar::<'static, 'static, u8, String, true>(123);
+   |                      +++++++++
+
+error[E0107]: function takes 5 generic arguments but 3 generic arguments were supplied
+  --> $DIR/free-to-trait.rs:50:9
+   |
+LL |         bar::<'static, u8, String, true>(123);
+   |         ^^^            --  ------  ---- supplied 3 generic arguments
+   |         |
+   |         expected 5 generic arguments
+   |
+note: function defined here, with 5 generic parameters: `Self`, `T`, `N`, `U`, `M`
+  --> $DIR/free-to-trait.rs:47:48
+   |
+LL |     trait Trait<'a, T, const N: usize>: Sized {
+   |     -----------------------------------------
+LL |         fn foo<'b: 'b, U, const M: bool>(self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::<'static, i32, 1>::foo as bar;
+   |                                                ^^^
+help: add missing generic arguments
+   |
+LL |         bar::<'static, u8, String, true, U, M>(123);
+   |                                        ++++++
+
+error[E0277]: the trait bound `Self: test_2::Trait<'static, i32, 1>` is not satisfied
+  --> $DIR/free-to-trait.rs:47:41
+   |
+LL |         reuse Trait::<'static, i32, 1>::foo as bar;
+   |                                         ^^^ the trait `test_2::Trait<'static, i32, 1>` is not implemented for `Self`
+
+error[E0107]: function takes 2 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/free-to-trait.rs:68:9
+   |
+LL |         bar::<'static, u8, String, 1>(123);
+   |         ^^^   ------- supplied 1 lifetime argument
+   |         |
+   |         expected 2 lifetime arguments
+   |
+note: function defined here, with 2 lifetime parameters: `'a`, `'b`
+  --> $DIR/free-to-trait.rs:66:51
+   |
+LL |     trait Trait<'a, T, const N: usize>: Sized {
+   |                 --
+LL |         fn foo<'b: 'b, U, const M: bool>(self) {}
+   |                --
+...
+LL |         reuse Trait::foo::<'static, i32, true> as bar;
+   |                                                   ^^^
+help: add missing lifetime argument
+   |
+LL |         bar::<'static, 'static, u8, String, 1>(123);
+   |                      +++++++++
+
+error[E0107]: function takes 5 generic arguments but 3 generic arguments were supplied
+  --> $DIR/free-to-trait.rs:68:9
+   |
+LL |         bar::<'static, u8, String, 1>(123);
+   |         ^^^            --  ------  - supplied 3 generic arguments
+   |         |
+   |         expected 5 generic arguments
+   |
+note: function defined here, with 5 generic parameters: `Self`, `T`, `N`, `U`, `M`
+  --> $DIR/free-to-trait.rs:66:51
+   |
+LL |     trait Trait<'a, T, const N: usize>: Sized {
+   |     -----------------------------------------
+LL |         fn foo<'b: 'b, U, const M: bool>(self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::foo::<'static, i32, true> as bar;
+   |                                                   ^^^
+help: add missing generic arguments
+   |
+LL |         bar::<'static, u8, String, 1, U, M>(123);
+   |                                     ++++++
+
+error[E0107]: function takes 5 generic arguments but 3 generic arguments were supplied
+  --> $DIR/free-to-trait.rs:86:9
+   |
+LL |         bar::<u8, String, 1>(123);
+   |         ^^^   --  ------  - supplied 3 generic arguments
+   |         |
+   |         expected 5 generic arguments
+   |
+note: function defined here, with 5 generic parameters: `Self`, `T`, `N`, `U`, `M`
+  --> $DIR/free-to-trait.rs:84:51
+   |
+LL |     trait Trait<T, const N: usize>: Sized {
+   |     -------------------------------------
+LL |         fn foo<'b: 'b, U, const M: bool>(self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::foo::<'static, i32, true> as bar;
+   |                                                   ^^^
+help: add missing generic arguments
+   |
+LL |         bar::<u8, String, 1, U, M>(123);
+   |                            ++++++
+
+error[E0107]: function takes 4 generic arguments but 2 generic arguments were supplied
+  --> $DIR/free-to-trait.rs:102:9
+   |
+LL |         bar::<u8, 1>(123);
+   |         ^^^   --  - supplied 2 generic arguments
+   |         |
+   |         expected 4 generic arguments
+   |
+note: function defined here, with 4 generic parameters: `Self`, `N`, `U`, `M`
+  --> $DIR/free-to-trait.rs:100:51
+   |
+LL |     trait Trait<const N: usize>: Sized {
+   |     ----------------------------------
+LL |         fn foo<'b: 'b, U, const M: bool>(self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::foo::<'static, i32, true> as bar;
+   |                                                   ^^^
+help: add missing generic arguments
+   |
+LL |         bar::<u8, 1, U, M>(123);
+   |                    ++++++
+
+error[E0107]: function takes 3 generic arguments but 1 generic argument was supplied
+  --> $DIR/free-to-trait.rs:119:9
+   |
+LL |         bar::<u8>(123);
+   |         ^^^   -- supplied 1 generic argument
+   |         |
+   |         expected 3 generic arguments
+   |
+note: function defined here, with 3 generic parameters: `Self`, `U`, `M`
+  --> $DIR/free-to-trait.rs:117:51
+   |
+LL |     trait Trait: Sized {
+   |     ------------------
+LL |         fn foo<'b: 'b, U, const M: bool>(self) {}
+   |                        -  -------------
+...
+LL |         reuse Trait::foo::<'static, i32, true> as bar;
+   |                                                   ^^^
+help: add missing generic arguments
+   |
+LL |         bar::<u8, U, M>(123);
+   |                 ++++++
+
+error[E0107]: function takes 5 generic arguments but 3 generic arguments were supplied
+  --> $DIR/free-to-trait.rs:137:9
+   |
+LL |         bar::<u8, String, true>(123);
+   |         ^^^   --  ------  ---- supplied 3 generic arguments
+   |         |
+   |         expected 5 generic arguments
+   |
+note: function defined here, with 5 generic parameters: `Self`, `T`, `N`, `U`, `M`
+  --> $DIR/free-to-trait.rs:134:48
+   |
+LL |     trait Trait<'a, T, const N: usize>: Sized {
+   |     -----------------------------------------
+LL |         fn foo<U, const M: bool>(self) {}
+   |                -  -------------
+...
+LL |         reuse Trait::<'static, i32, 1>::foo as bar;
+   |                                                ^^^
+help: add missing generic arguments
+   |
+LL |         bar::<u8, String, true, U, M>(123);
+   |                               ++++++
+
+error[E0277]: the trait bound `Self: test_7::Trait<'static, i32, 1>` is not satisfied
+  --> $DIR/free-to-trait.rs:134:41
+   |
+LL |         reuse Trait::<'static, i32, 1>::foo as bar;
+   |                                         ^^^ the trait `test_7::Trait<'static, i32, 1>` is not implemented for `Self`
+
+error[E0107]: function takes 4 generic arguments but 2 generic arguments were supplied
+  --> $DIR/free-to-trait.rs:154:9
+   |
+LL |         bar::<u8, true>(123);
+   |         ^^^   --  ---- supplied 2 generic arguments
+   |         |
+   |         expected 4 generic arguments
+   |
+note: function defined here, with 4 generic parameters: `Self`, `T`, `N`, `M`
+  --> $DIR/free-to-trait.rs:151:48
+   |
+LL |     trait Trait<'a, T, const N: usize>: Sized {
+   |     -----------------------------------------
+LL |         fn foo<const M: bool>(self) {}
+   |                -------------
+...
+LL |         reuse Trait::<'static, i32, 1>::foo as bar;
+   |                                                ^^^
+help: add missing generic arguments
+   |
+LL |         bar::<u8, true, N, M>(123);
+   |                       ++++++
+
+error[E0277]: the trait bound `Self: test_8::Trait<'static, i32, 1>` is not satisfied
+  --> $DIR/free-to-trait.rs:151:41
+   |
+LL |         reuse Trait::<'static, i32, 1>::foo as bar;
+   |                                         ^^^ the trait `test_8::Trait<'static, i32, 1>` is not implemented for `Self`
+
+error[E0107]: function takes 3 generic arguments but 1 generic argument was supplied
+  --> $DIR/free-to-trait.rs:171:9
+   |
+LL |         bar::<u8>(123);
+   |         ^^^   -- supplied 1 generic argument
+   |         |
+   |         expected 3 generic arguments
+   |
+note: function defined here, with 3 generic parameters: `Self`, `T`, `N`
+  --> $DIR/free-to-trait.rs:168:48
+   |
+LL |     trait Trait<'a, T, const N: usize>: Sized {
+   |     -----------------------------------------
+...
+LL |         reuse Trait::<'static, i32, 1>::foo as bar;
+   |                                                ^^^
+help: add missing generic arguments
+   |
+LL |         bar::<u8, T, N>(123);
+   |                 ++++++
+
+error[E0277]: the trait bound `Self: test_9::Trait<'static, i32, 1>` is not satisfied
+  --> $DIR/free-to-trait.rs:168:41
+   |
+LL |         reuse Trait::<'static, i32, 1>::foo as bar;
+   |                                         ^^^ the trait `test_9::Trait<'static, i32, 1>` is not implemented for `Self`
+
+error[E0107]: function takes 3 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/free-to-trait.rs:195:13
+   |
+LL |             bar1::<'static, u8, i32, true>();
+   |             ^^^^   ------- supplied 1 lifetime argument
+   |             |
+   |             expected 3 lifetime arguments
+   |
+note: function defined here, with 3 lifetime parameters: `'b`, `'c`, `'d`
+  --> $DIR/free-to-trait.rs:193:66
+   |
+LL |     trait Trait<'b, 'c, T> {
+   |                 --  --
+LL |         fn foo<'d: 'd, U, const M: bool>() {}
+   |                --
+...
+LL |             reuse <u8 as Trait::<'static, 'static, i32>>::foo as bar1;
+   |                                                                  ^^^^
+help: add missing lifetime arguments
+   |
+LL |             bar1::<'static, 'static, 'static, u8, i32, true>();
+   |                           ++++++++++++++++++
+
+error[E0107]: function takes 4 generic arguments but 3 generic arguments were supplied
+  --> $DIR/free-to-trait.rs:195:13
+   |
+LL |             bar1::<'static, u8, i32, true>();
+   |             ^^^^            --  ---  ---- supplied 3 generic arguments
+   |             |
+   |             expected 4 generic arguments
+   |
+note: function defined here, with 4 generic parameters: `Self`, `T`, `U`, `M`
+  --> $DIR/free-to-trait.rs:193:66
+   |
+LL |     trait Trait<'b, 'c, T> {
+   |     ----------------------
+LL |         fn foo<'d: 'd, U, const M: bool>() {}
+   |                        -  -------------
+...
+LL |             reuse <u8 as Trait::<'static, 'static, i32>>::foo as bar1;
+   |                                                                  ^^^^
+help: add missing generic argument
+   |
+LL |             bar1::<'static, u8, i32, true, M>();
+   |                                          +++
+
+error[E0107]: function takes 4 generic arguments but 1 generic argument was supplied
+  --> $DIR/free-to-trait.rs:200:13
+   |
+LL |             bar2::<u8>();
+   |             ^^^^   -- supplied 1 generic argument
+   |             |
+   |             expected 4 generic arguments
+   |
+note: function defined here, with 4 generic parameters: `Self`, `T`, `U`, `M`
+  --> $DIR/free-to-trait.rs:199:88
+   |
+LL |     trait Trait<'b, 'c, T> {
+   |     ----------------------
+LL |         fn foo<'d: 'd, U, const M: bool>() {}
+   |                        -  -------------
+...
+LL |             reuse <u8 as Trait::<'static, 'static, i32>>::foo::<'static, u32, true> as bar2;
+   |                                                                                        ^^^^
+help: add missing generic arguments
+   |
+LL |             bar2::<u8, T, U, M>();
+   |                      +++++++++
+
+error[E0107]: missing generics for trait `test_10::Trait`
+  --> $DIR/free-to-trait.rs:188:26
+   |
+LL |             reuse <u8 as Trait>::foo as bar;
+   |                          ^^^^^ expected 1 generic argument
+   |
+note: trait defined here, with 1 generic parameter: `T`
+  --> $DIR/free-to-trait.rs:180:11
+   |
+LL |     trait Trait<'b, 'c, T> {
+   |           ^^^^^         -
+help: add missing generic argument
+   |
+LL |             reuse <u8 as Trait<T>>::foo as bar;
+   |                               +++
+
+error[E0284]: type annotations needed
+  --> $DIR/free-to-trait.rs:193:59
+   |
+LL |             reuse <u8 as Trait::<'static, 'static, i32>>::foo as bar1;
+   |                                                           ^^^ cannot infer the value of the const parameter `M` declared on the associated function `foo`
+   |
+note: required by a const generic parameter in `test_10::Trait::foo`
+  --> $DIR/free-to-trait.rs:181:27
+   |
+LL |         fn foo<'d: 'd, U, const M: bool>() {}
+   |                           ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::foo`
+
+error[E0107]: missing generics for trait `test_11::Trait`
+  --> $DIR/free-to-trait.rs:233:25
+   |
+LL |         reuse <usize as Trait>::foo;
+   |                         ^^^^^ expected 2 generic arguments
+   |
+note: trait defined here, with 2 generic parameters: `T`, `P`
+  --> $DIR/free-to-trait.rs:216:11
+   |
+LL |     trait Trait<'a: 'static, T, P>
+   |           ^^^^^              -  -
+help: add missing generic arguments
+   |
+LL |         reuse <usize as Trait<T, P>>::foo;
+   |                              ++++++
+
+error: aborting due to 22 previous errors
+
+Some errors have detailed explanations: E0107, E0277, E0284.
+For more information about an error, try `rustc --explain E0107`.

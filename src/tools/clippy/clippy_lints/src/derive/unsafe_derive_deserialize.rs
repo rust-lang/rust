@@ -1,14 +1,14 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::{is_lint_allowed, paths};
+use clippy_utils::{is_lint_allowed, paths, sym};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn, walk_item};
 use rustc_hir::{self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, HirId, Item, UnsafeSource};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 use super::UNSAFE_DERIVE_DESERIALIZE;
 

@@ -1,6 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::get_parent_expr;
+use clippy_utils::{get_parent_expr, sym};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use rustc_ast::ast::LitKind;
@@ -10,7 +10,7 @@ use rustc_hir::{BinOpKind, Expr, ExprKind, GenericArg, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does

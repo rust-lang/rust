@@ -12,13 +12,11 @@ use rustc_data_structures::jobserver::{self, Acquired};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_errors::emitter::Emitter;
-use rustc_errors::translation::Translator;
 use rustc_errors::{
     Diag, DiagArgMap, DiagCtxt, DiagCtxtHandle, DiagMessage, ErrCode, FatalError, FatalErrorMarker,
     Level, MultiSpan, Style, Suggestions, catch_fatal_errors,
 };
 use rustc_fs_util::link_or_copy;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
 use rustc_incremental::{
     copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
@@ -101,7 +99,6 @@ pub struct ModuleConfig {
     pub emit_ir: bool,
     pub emit_asm: bool,
     pub emit_obj: EmitObj,
-    pub emit_thin_lto: bool,
     pub emit_thin_lto_summary: bool,
 
     // Miscellaneous flags. These are mostly copied from command-line
@@ -212,9 +209,6 @@ impl ModuleConfig {
                 false
             ),
             emit_obj,
-            // thin lto summaries prevent fat lto, so do not emit them if fat
-            // lto is requested. See PR #136840 for background information.
-            emit_thin_lto: sess.opts.unstable_opts.emit_thin_lto && sess.lto() != Lto::Fat,
             emit_thin_lto_summary: if_regular!(
                 sess.opts.output_types.contains_key(&OutputType::ThinLinkBitcode),
                 false
@@ -454,8 +448,7 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
 ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
 
-    let crate_attrs = tcx.hir_attrs(rustc_hir::CRATE_HIR_ID);
-    let no_builtins = find_attr!(crate_attrs, AttributeKind::NoBuiltins);
+    let no_builtins = find_attr!(tcx, crate, NoBuiltins);
 
     let crate_info = CrateInfo::new(tcx, target_cpu);
 
@@ -2041,10 +2034,6 @@ impl Emitter for SharedEmitter {
 
     fn source_map(&self) -> Option<&SourceMap> {
         None
-    }
-
-    fn translator(&self) -> &Translator {
-        panic!("shared emitter attempted to translate a diagnostic");
     }
 }
 

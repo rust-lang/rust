@@ -1,10 +1,10 @@
-use clippy_utils::SpanlessEq;
+use clippy_utils::{sym, SpanlessEq};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Pat, Stmt, StmtKind, UnOp};
 use rustc_lint::LateContext;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 
 use super::MANUAL_WHILE_LET_SOME;

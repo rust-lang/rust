@@ -413,13 +413,16 @@ warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:79:12
    |
 LL |     panic!(v);
-   |     ------ ^
-   |     |
-   |     help: use std::panic::panic_any instead: `std::panic::panic_any`
+   |            ^
    |
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>
    = note: this usage of `panic!()` is deprecated; it will be a hard error in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>
+help: use std::panic::panic_any instead
+   |
+LL -     panic!(v);
+LL +     std::panic::panic_any(v);
+   |
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:80:20

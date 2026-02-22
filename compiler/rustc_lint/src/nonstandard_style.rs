@@ -322,7 +322,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         let crate_ident = if let Some(name) = &cx.tcx.sess.opts.crate_name {
             Some(Ident::from_str(name))
         } else {
-            find_attr!(cx.tcx.hir_attrs(hir::CRATE_HIR_ID), AttributeKind::CrateName{name, name_span,..} => (name, name_span)).map(
+            find_attr!(cx.tcx, crate, CrateName{name, name_span,..} => (name, name_span)).map(
                 |(&name, &span)| {
                     // Discard the double quotes surrounding the literal.
                     let sp = cx
@@ -335,8 +335,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
                             let right = snippet.rfind('"').map(|pos| snippet.len() - pos)?;
 
                             Some(
-                                span
-                                    .with_lo(span.lo() + BytePos(left as u32 + 1))
+                                span.with_lo(span.lo() + BytePos(left as u32 + 1))
                                     .with_hi(span.hi() - BytePos(right as u32)),
                             )
                         })
@@ -370,9 +369,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         match &fk {
             FnKind::Method(ident, sig, ..) => match cx.tcx.associated_item(id).container {
                 AssocContainer::InherentImpl => {
-                    if sig.header.abi != ExternAbi::Rust
-                        && find_attr!(cx.tcx.get_all_attrs(id), AttributeKind::NoMangle(..))
-                    {
+                    if sig.header.abi != ExternAbi::Rust && find_attr!(cx.tcx, id, NoMangle(..)) {
                         return;
                     }
                     self.check_snake_case(cx, "method", ident);
@@ -384,9 +381,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
             },
             FnKind::ItemFn(ident, _, header) => {
                 // Skip foreign-ABI #[no_mangle] functions (Issue #31924)
-                if header.abi != ExternAbi::Rust
-                    && find_attr!(cx.tcx.get_all_attrs(id), AttributeKind::NoMangle(..))
-                {
+                if header.abi != ExternAbi::Rust && find_attr!(cx.tcx, id, NoMangle(..)) {
                     return;
                 }
                 self.check_snake_case(cx, "function", ident);
@@ -551,9 +546,7 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         let attrs = cx.tcx.hir_attrs(it.hir_id());
         match it.kind {
-            hir::ItemKind::Static(_, ident, ..)
-                if !find_attr!(attrs, AttributeKind::NoMangle(..)) =>
-            {
+            hir::ItemKind::Static(_, ident, ..) if !find_attr!(attrs, NoMangle(..)) => {
                 NonUpperCaseGlobals::check_upper_case(
                     cx,
                     "static variable",
