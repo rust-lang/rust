@@ -18,18 +18,18 @@ use rustc_attr_parsing::eval_config_entry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_errors::{DiagCtxtHandle, LintDiagnostic};
+use rustc_errors::DiagCtxtHandle;
 use rustc_fs_util::{TempDirBuilder, fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::attrs::NativeLibKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_macros::LintDiagnostic;
+use rustc_macros::Diagnostic;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
 use rustc_metadata::{
     EncodedMetadata, NativeLibSearchFallback, find_native_static_library,
     walk_native_lib_search_dirs,
 };
 use rustc_middle::bug;
-use rustc_middle::lint::lint_level;
+use rustc_middle::lint::diag_lint_level;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
@@ -662,7 +662,7 @@ fn link_dwarf_object(sess: &Session, cg_results: &CodegenResults, executable_out
     }
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag("{$inner}")]
 /// Translating this is kind of useless. We don't pass translation flags to the linker, so we'd just
 /// end up with inconsistent languages within the same diagnostic.
@@ -938,9 +938,7 @@ fn link_natively(
 
             let level = codegen_results.crate_info.lint_levels.linker_messages;
             let lint = |msg| {
-                lint_level(sess, LINKER_MESSAGES, level, None, |diag| {
-                    LinkerOutput { inner: msg }.decorate_lint(diag)
-                })
+                diag_lint_level(sess, LINKER_MESSAGES, level, None, LinkerOutput { inner: msg });
             };
 
             if !prog.stderr.is_empty() {
