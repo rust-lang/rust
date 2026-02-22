@@ -492,10 +492,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Float(ty::FloatTy::F32) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_double");
                     }
-                    ty::Int(ty::IntTy::I8 | ty::IntTy::I16) | ty::Bool => {
+                    ty::Int(ty::IntTy::I8) | ty::Bool => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_int");
                     }
-                    ty::Uint(ty::UintTy::U8 | ty::UintTy::U16) => {
+                    ty::Uint(ty::UintTy::U8) => {
+                        variadic_error(tcx.sess, arg.span, arg_ty, "c_uint");
+                    }
+                    ty::Int(ty::IntTy::I16) if tcx.sess.target.options.c_int_width > 16 => {
+                        variadic_error(tcx.sess, arg.span, arg_ty, "c_int");
+                    }
+                    ty::Uint(ty::UintTy::U16) if tcx.sess.target.options.c_int_width > 16 => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_uint");
                     }
                     ty::FnDef(..) => {
