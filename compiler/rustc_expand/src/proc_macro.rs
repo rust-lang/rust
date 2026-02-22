@@ -36,15 +36,19 @@ impl base::BangProcMacro for BangProcMacro {
 
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let strategy = exec_strategy(ecx.sess);
-        let server = proc_macro_server::Rustc::new(ecx);
-        self.client.run(&strategy, server, input, proc_macro_backtrace).map_err(|e| {
-            ecx.dcx().emit_err(errors::ProcMacroPanicked {
+        let mut server = proc_macro_server::Rustc::new(ecx);
+        let input = server.ts_rustc_to_pm(input);
+        let output = self.client.run(&strategy, &mut server, input, proc_macro_backtrace);
+
+        match output {
+            Ok(stream) => Ok(server.ts_pm_to_rustc(stream)),
+            Err(e) => Err(ecx.dcx().emit_err(errors::ProcMacroPanicked {
                 span,
                 message: e
                     .as_str()
                     .map(|message| errors::ProcMacroPanickedHelp { message: message.into() }),
-            })
-        })
+            })),
+        }
     }
 }
 
@@ -67,17 +71,20 @@ impl base::AttrProcMacro for AttrProcMacro {
 
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let strategy = exec_strategy(ecx.sess);
-        let server = proc_macro_server::Rustc::new(ecx);
-        self.client.run(&strategy, server, annotation, annotated, proc_macro_backtrace).map_err(
-            |e| {
-                ecx.dcx().emit_err(errors::CustomAttributePanicked {
-                    span,
-                    message: e.as_str().map(|message| errors::CustomAttributePanickedHelp {
-                        message: message.into(),
-                    }),
-                })
-            },
-        )
+        let mut server = proc_macro_server::Rustc::new(ecx);
+        let annotation = server.ts_rustc_to_pm(annotation);
+        let annotated = server.ts_rustc_to_pm(annotated);
+        let output =
+            self.client.run(&strategy, &mut server, annotation, annotated, proc_macro_backtrace);
+        match output {
+            Ok(stream) => Ok(server.ts_pm_to_rustc(stream)),
+            Err(e) => Err(ecx.dcx().emit_err(errors::CustomAttributePanicked {
+                span,
+                message: e
+                    .as_str()
+                    .map(|message| errors::CustomAttributePanickedHelp { message: message.into() }),
+            })),
+        }
     }
 }
 
@@ -195,10 +202,11 @@ fn expand_derive_macro(
 
     let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
     let strategy = exec_strategy(ecx.sess);
-    let server = proc_macro_server::Rustc::new(ecx);
+    let mut server = proc_macro_server::Rustc::new(ecx);
+    let input = server.ts_rustc_to_pm(input);
 
-    match client.run(&strategy, server, input, proc_macro_backtrace) {
-        Ok(stream) => Ok(stream),
+    match client.run(&strategy, &mut server, input, proc_macro_backtrace) {
+        Ok(stream) => Ok(server.ts_pm_to_rustc(stream)),
         Err(e) => {
             let invoc_expn_data = invoc_id.expn_data();
             let span = invoc_expn_data.call_site;

@@ -1,17 +1,73 @@
 //! The proc-macro server token stream implementation.
 
 use core::fmt;
-use std::{mem, sync::Arc};
+use std::{mem, rc::Rc, sync::Arc};
 
 use intern::Symbol;
 use rustc_lexer::{DocStyle, LiteralKind};
 use rustc_proc_macro::Delimiter;
 
-use crate::bridge::{DelimSpan, Group, Ident, LitKind, Literal, Punct, TokenTree};
+use crate::bridge::{
+    DelimSpan, Group as BridgeGroup, Ident, LitKind, Literal, Punct,
+    TokenStream as BridgeTokenStream, TokenTree as BridgeTokenTree,
+};
 
 /// Trait for allowing tests to parse tokenstreams with dynamic span ranges
 pub(crate) trait SpanLike {
     fn derive_ranged(&self, range: std::ops::Range<usize>) -> Self;
+}
+
+#[derive(Clone)]
+pub struct Group<S> {
+    pub delimiter: Delimiter,
+    pub stream: Option<TokenStream<S>>,
+    pub span: DelimSpan<S>,
+}
+
+impl<S: Clone> Group<S> {
+    pub fn from_bridge(g: BridgeGroup<S>) -> Self {
+        Self {
+            delimiter: g.delimiter,
+            stream: g.stream.map(TokenStream::from_bridge),
+            span: g.span,
+        }
+    }
+
+    pub fn into_bridge(self) -> BridgeGroup<S> {
+        BridgeGroup {
+            delimiter: self.delimiter,
+            stream: self.stream.map(TokenStream::into_bridge),
+            span: self.span,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub enum TokenTree<S> {
+    Group(Group<S>),
+    Punct(Punct<S>),
+    Ident(Ident<S>),
+    Literal(Literal<S>),
+}
+
+impl<S: Clone> TokenTree<S> {
+    pub fn from_bridge(t: BridgeTokenTree<S>) -> Self {
+        match t {
+            BridgeTokenTree::Group(x) => Self::Group(Group::from_bridge(x)),
+            BridgeTokenTree::Punct(x) => Self::Punct(x),
+            BridgeTokenTree::Ident(x) => Self::Ident(x),
+            BridgeTokenTree::Literal(x) => Self::Literal(x),
+        }
+    }
+
+    pub fn into_bridge(self) -> BridgeTokenTree<S> {
+        match self {
+            Self::Group(x) => BridgeTokenTree::Group(Group::into_bridge(x)),
+            Self::Punct(x) => BridgeTokenTree::Punct(x),
+            Self::Ident(x) => BridgeTokenTree::Ident(x),
+            Self::Literal(x) => BridgeTokenTree::Literal(x),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -26,6 +82,24 @@ impl<S> Default for TokenStream<S> {
 impl<S> TokenStream<S> {
     pub fn new(tts: Vec<TokenTree<S>>) -> TokenStream<S> {
         TokenStream(Arc::new(tts))
+    }
+
+    pub fn from_bridge(ts: BridgeTokenStream<S>) -> TokenStream<S>
+    where
+        S: Clone,
+    {
+        TokenStream::new(
+            Rc::unwrap_or_clone(ts.trees).into_iter().map(TokenTree::from_bridge).collect(),
+        )
+    }
+
+    pub fn into_bridge(self) -> BridgeTokenStream<S>
+    where
+        S: Clone,
+    {
+        BridgeTokenStream::new(
+            Arc::unwrap_or_clone(self.0).into_iter().map(TokenTree::into_bridge).collect(),
+        )
     }
 
     pub fn is_empty(&self) -> bool {
@@ -630,26 +704,6 @@ fn debug_token_tree<S: fmt::Debug>(
         )?,
     }
     writeln!(f)
-}
-
-impl<S: Copy> TokenStream<S> {
-    /// Push `tt` onto the end of the stream, possibly gluing it to the last
-    /// token. Uses `make_mut` to maximize efficiency.
-    pub(crate) fn push_tree(&mut self, tt: TokenTree<S>) {
-        let vec_mut = Arc::make_mut(&mut self.0);
-        vec_mut.push(tt);
-    }
-
-    /// Push `stream` onto the end of the stream, possibly gluing the first
-    /// token tree to the last token. (No other token trees will be glued.)
-    /// Uses `make_mut` to maximize efficiency.
-    pub(crate) fn push_stream(&mut self, stream: TokenStream<S>) {
-        let vec_mut = Arc::make_mut(&mut self.0);
-
-        let stream_iter = stream.0.iter().cloned();
-
-        vec_mut.extend(stream_iter);
-    }
 }
 
 impl<S> FromIterator<TokenTree<S>> for TokenStream<S> {
