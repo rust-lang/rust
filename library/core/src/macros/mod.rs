@@ -206,8 +206,6 @@ pub macro assert_matches {
 /// # Example
 ///
 /// ```
-/// #![feature(cfg_select)]
-///
 /// cfg_select! {
 ///     unix => {
 ///         fn foo() { /* unix specific functionality */ }
@@ -225,14 +223,12 @@ pub macro assert_matches {
 /// right-hand side:
 ///
 /// ```
-/// #![feature(cfg_select)]
-///
 /// let _some_string = cfg_select! {
 ///     unix => "With great power comes great electricity bills",
 ///     _ => { "Behind every successful diet is an unwatched pizza" }
 /// };
 /// ```
-#[unstable(feature = "cfg_select", issue = "115585")]
+#[stable(feature = "cfg_select", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_diagnostic_item = "cfg_select"]
 #[rustc_builtin_macro]
 pub macro cfg_select($($tt:tt)*) {

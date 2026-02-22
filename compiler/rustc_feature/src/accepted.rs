@@ -102,6 +102,8 @@ declare_features! (
     (accepted, cfg_doctest, "1.40.0", Some(62210)),
     /// Enables `#[cfg(panic = "...")]` config key.
     (accepted, cfg_panic, "1.60.0", Some(77443)),
+    /// Provides a native way to easily manage multiple conditional flags without having to rewrite each clause multiple times.
+    (accepted, cfg_select, "CURRENT_RUSTC_VERSION", Some(115585)),
     /// Allows `cfg(target_abi = "...")`.
     (accepted, cfg_target_abi, "1.78.0", Some(80970)),
     /// Allows `cfg(target_feature = "...")`.
