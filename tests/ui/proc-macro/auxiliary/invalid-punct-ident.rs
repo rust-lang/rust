@@ -20,5 +20,9 @@ pub fn invalid_raw_ident(_: TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn lexer_failure(_: TokenStream) -> TokenStream {
-    "a b ) c".parse().expect("parsing failed without panic")
+    assert_eq!(
+        "a b ) c".parse::<TokenStream>().unwrap_err().to_string(),
+        "unexpected closing delimiter: `)`"
+    );
+    TokenStream::new()
 }
