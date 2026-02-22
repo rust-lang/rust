@@ -494,21 +494,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // There are a few types which get autopromoted when passed via varargs
                 // in C but we just error out instead and require explicit casts.
+                //
+                // We use implementations of VaArgSafe as the source of truth. On some embedded
+                // targets, c_double is f32 and c_int/c_uing are i16/u16, and these types implement
+                // VaArgSafe there. On all other targets, these types do not implement VaArgSafe.
+                //
+                // cfg(bootstrap): change the if let to an unwrap.
                 let arg_ty = self.structurally_resolve_type(arg.span, arg_ty);
+                if let Some(trait_def_id) = tcx.lang_items().va_arg_safe()
+                    && self
+                        .type_implements_trait(trait_def_id, [arg_ty], self.param_env)
+                        .must_apply_modulo_regions()
+                {
+                    continue;
+                }
+
                 match arg_ty.kind() {
                     ty::Float(ty::FloatTy::F32) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_double");
                     }
-                    ty::Int(ty::IntTy::I8) | ty::Bool => {
+                    ty::Int(ty::IntTy::I8 | ty::IntTy::I16) | ty::Bool => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_int");
                     }
-                    ty::Uint(ty::UintTy::U8) => {
-                        variadic_error(tcx.sess, arg.span, arg_ty, "c_uint");
-                    }
-                    ty::Int(ty::IntTy::I16) if tcx.sess.target.options.c_int_width > 16 => {
-                        variadic_error(tcx.sess, arg.span, arg_ty, "c_int");
-                    }
-                    ty::Uint(ty::UintTy::U16) if tcx.sess.target.options.c_int_width > 16 => {
+                    ty::Uint(ty::UintTy::U8 | ty::UintTy::U16) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_uint");
                     }
                     ty::FnDef(..) => {

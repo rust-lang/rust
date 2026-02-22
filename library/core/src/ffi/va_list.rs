@@ -300,6 +300,7 @@ mod sealed {
 // We may unseal this trait in the future, but currently our `va_arg` implementations don't support
 // types with an alignment larger than 8, or with a non-scalar layout. Inline assembly can be used
 // to accept unsupported types in the meantime.
+#[lang = "va_arg_safe"]
 pub unsafe trait VaArgSafe: sealed::Sealed {}
 
 crate::cfg_select! {
