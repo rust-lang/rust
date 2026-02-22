@@ -15,7 +15,7 @@ use rustc_hir::{AttrPath, HirId};
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::lint::{Lint, LintId};
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{AttrId, ErrorGuaranteed, Span, Symbol};
 
 use crate::AttributeParser;
 // Glob imports to avoid big, bitrotty import lists
@@ -445,6 +445,8 @@ pub struct AcceptContext<'f, 'sess, S: Stage> {
 
     /// The name of the attribute we're currently accepting.
     pub(crate) attr_path: AttrPath,
+
+    pub(crate) attr_id: AttrId,
 }
 
 impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {

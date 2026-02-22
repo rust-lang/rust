@@ -212,6 +212,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         if let Some(safety) = attr_safety {
             parser.check_attribute_safety(&attr_path, inner_span, safety, &mut emit_lint)
         }
+        let attr_id = sess.psess.attr_id_generator.mk_attr_id();
         let mut cx: AcceptContext<'_, 'sess, Early> = AcceptContext {
             shared: SharedContext {
                 cx: &mut parser,
@@ -225,6 +226,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             parsed_description,
             template,
             attr_path,
+            attr_id,
         };
         parse_fn(&mut cx, args)
     }
@@ -390,6 +392,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             parsed_description: ParsedDescription::Attribute,
                             template: &accept.template,
                             attr_path: attr_path.clone(),
+                            attr_id: attr.id,
                         };
 
                         (accept.accept_fn)(&mut cx, &args);
