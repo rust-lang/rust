@@ -417,7 +417,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 continue;
             }
 
-            let Some(item_id) = self.associated_item_def_ids(impl_did).first() else {
+            let Some(&item_id) = self.associated_item_def_ids(impl_did).first() else {
                 self.dcx()
                     .span_delayed_bug(self.def_span(impl_did), "Drop impl without drop function");
                 continue;
@@ -435,7 +435,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     .delay_as_bug();
             }
 
-            dtor_candidate = Some(*item_id);
+            dtor_candidate = Some(item_id);
         }
 
         let did = dtor_candidate?;

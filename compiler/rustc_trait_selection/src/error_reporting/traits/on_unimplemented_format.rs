@@ -231,7 +231,7 @@ fn parse_arg<'tcx>(
     is_source_literal: bool,
 ) -> FormatArg {
     let (Ctx::RustcOnUnimplemented { tcx, trait_def_id }
-    | Ctx::DiagnosticOnUnimplemented { tcx, trait_def_id }) = ctx;
+    | Ctx::DiagnosticOnUnimplemented { tcx, trait_def_id }) = *ctx;
 
     let span = slice_span(input_span, arg.position_span.clone(), is_source_literal);
 

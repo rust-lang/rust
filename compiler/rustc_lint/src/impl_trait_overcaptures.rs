@@ -308,7 +308,7 @@ where
                         return true;
                     };
                     // We only computed variance of lifetimes...
-                    debug_assert_matches!(self.tcx.def_kind(def_id), DefKind::LifetimeParam);
+                    debug_assert_matches!(self.tcx.def_kind(*def_id), DefKind::LifetimeParam);
                     let uncaptured = match *kind {
                         ParamKind::Early(name, index) => ty::Region::new_early_param(
                             self.tcx,
@@ -342,7 +342,7 @@ where
 
                     let uncaptured_spans: Vec<_> = uncaptured_args
                         .into_iter()
-                        .map(|(def_id, _)| self.tcx.def_span(def_id))
+                        .map(|(&def_id, _)| self.tcx.def_span(def_id))
                         .collect();
 
                     self.tcx.emit_node_span_lint(

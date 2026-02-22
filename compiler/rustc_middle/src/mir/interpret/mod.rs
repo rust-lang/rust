@@ -309,7 +309,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
 
     pub fn mutability(&self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Mutability {
         // Let's see what kind of memory we are.
-        match self {
+        match *self {
             GlobalAlloc::Static(did) => {
                 let DefKind::Static { safety: _, mutability, nested } = tcx.def_kind(did) else {
                     bug!()
@@ -351,7 +351,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
     ) -> (Size, Align) {
-        match self {
+        match *self {
             GlobalAlloc::Static(def_id) => {
                 let DefKind::Static { nested, .. } = tcx.def_kind(def_id) else {
                     bug!("GlobalAlloc::Static is not a static")

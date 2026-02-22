@@ -440,7 +440,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     }
                 }
 
-                if let ty::FnDef(did, ..) = func.ty(&self.body.local_decls, self.tcx).kind()
+                if let ty::FnDef(did, ..) = *func.ty(&self.body.local_decls, self.tcx).kind()
                     && self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized)
                     && matches!(self.tcx.codegen_fn_attrs(did).inline, InlineAttr::Force { .. })
                 {

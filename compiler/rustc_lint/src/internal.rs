@@ -282,9 +282,9 @@ fn lint_ty_kind_usage(cx: &LateContext<'_>, res: &Res) -> bool {
 }
 
 fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, path: &hir::Path<'_>) -> Option<String> {
-    match &path.res {
+    match path.res {
         Res::Def(_, def_id) => {
-            if let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(*def_id) {
+            if let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(def_id) {
                 return Some(format!("{}{}", name, gen_args(path.segments.last().unwrap())));
             }
         }

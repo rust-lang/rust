@@ -62,7 +62,7 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
         // Go over the modules.
         for &segment in modules {
             let Some(next_item) = find_children(tcx, cur_item, segment)
-                .find(|item| tcx.def_kind(item) == DefKind::Mod)
+                .find(|&item| tcx.def_kind(item) == DefKind::Mod)
             else {
                 continue 'crates;
             };
@@ -72,7 +72,7 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
         match item {
             Some((item_name, namespace)) => {
                 let Some(item) = find_children(tcx, cur_item, item_name)
-                    .find(|item| tcx.def_kind(item).ns() == Some(namespace))
+                    .find(|&item| tcx.def_kind(item).ns() == Some(namespace))
                 else {
                     continue 'crates;
                 };

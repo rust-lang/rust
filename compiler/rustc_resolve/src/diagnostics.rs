@@ -2207,7 +2207,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     })
                 })
                 .collect();
-            if let Some(def_id) = path.get(0)
+            if let Some(&def_id) = path.get(0)
                 && let Some(path) = path_names
             {
                 if let Some(def_id) = def_id.as_local() {

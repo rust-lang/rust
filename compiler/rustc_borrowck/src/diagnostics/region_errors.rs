@@ -926,7 +926,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let tcx = self.infcx.tcx;
 
         let ConstraintCategory::CallArgument(Some(func_ty)) = category else { return };
-        let ty::FnDef(fn_did, args) = func_ty.kind() else { return };
+        let ty::FnDef(fn_did, args) = *func_ty.kind() else { return };
         debug!(?fn_did, ?args);
 
         // Only suggest this on function calls, not closures
@@ -938,7 +938,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let Ok(Some(instance)) = ty::Instance::try_resolve(
             tcx,
             self.infcx.typing_env(self.infcx.param_env),
-            *fn_did,
+            fn_did,
             self.infcx.resolve_vars_if_possible(args),
         ) else {
             return;
