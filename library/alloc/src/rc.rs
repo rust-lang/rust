@@ -289,6 +289,7 @@ struct RcInner<T: ?Sized> {
 }
 
 /// Calculate layout for `RcInner<T>` using the inner value's layout
+#[inline]
 fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
     // Calculate layout using the given value layout.
     // Previously, layout was calculated on the expression
@@ -2518,15 +2519,25 @@ impl<T: Default> Default for Rc<T> {
     /// ```
     #[inline]
     fn default() -> Self {
+        // First create an uninitialized allocation before creating an instance
+        // of `T`. This avoids having `T` on the stack and avoids the need to
+        // codegen a call to the destructor for `T` leading to generally better
+        // codegen. See #131460 for some more details.
+        let mut rc = Rc::new_uninit();
+
+        // SAFETY: this is a freshly allocated `Rc` so it's guaranteed there are
+        // no other strong or weak pointers other than `rc` itself.
         unsafe {
-            Self::from_inner(
-                Box::leak(Box::write(
-                    Box::new_uninit(),
-                    RcInner { strong: Cell::new(1), weak: Cell::new(1), value: T::default() },
-                ))
-                .into(),
-            )
+            let raw = Rc::get_mut_unchecked(&mut rc);
+
+            // Note that `ptr::write` here is used specifically instead of
+            // `MaybeUninit::write` to avoid creating an extra stack copy of `T`
+            // in debug mode. See #136043 for more context.
+            ptr::write(raw.as_mut_ptr(), T::default());
         }
+
+        // SAFETY: this allocation was just initialized above.
+        unsafe { rc.assume_init() }
     }
 }
 
