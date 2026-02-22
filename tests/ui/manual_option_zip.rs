@@ -31,6 +31,19 @@ fn should_lint() {
     let b: Option<i32> = Some(2);
     let _ = a.and_then(|a| b.map(|b| (b, a)));
     //~^ manual_option_zip
+
+    // closure bodies wrapped in blocks
+    let a: Option<i32> = Some(1);
+    let b: Option<i32> = Some(2);
+    #[rustfmt::skip]
+    let _ = a.and_then(|a| { b.map(|b| (a, b)) });
+    //~^ manual_option_zip
+    #[rustfmt::skip]
+    let _ = a.and_then(|a| b.map(|b| { (a, b) }));
+    //~^ manual_option_zip
+    #[rustfmt::skip]
+    let _ = a.and_then(|a| { b.map(|b| { (a, b) }) });
+    //~^ manual_option_zip
 }
 
 fn should_not_lint() {
@@ -46,9 +59,8 @@ fn should_not_lint() {
     // map receiver uses the outer closure parameter
     let _ = a.and_then(|a| a.checked_add(1).map(|b| (a, b)));
 
-    // not Option type (Result)
-    let a: Result<i32, &str> = Ok(1);
-    let _ = a.and_then(|a| Ok((a, 1)));
+    // .map receiver is not an Option type.
+    let _ = a.and_then(|a| NotOption(Some(1)).map(|b| (a, b)));
 
     // closure body is not a map call
     let a: Option<i32> = Some(1);
@@ -64,11 +76,37 @@ fn should_not_lint() {
     let opts: Vec<Option<i32>> = vec![Some(1), Some(2)];
     let _ = a.and_then(|a| opts[a as usize].map(|b| (a, b)));
 
+    // extra statements in outer closure body
+    let _ = a.and_then(|a| {
+        let _x = 1;
+        b.map(|b| (a, b))
+    });
+
+    // extra statements in inner closure body
+    let _ = a.and_then(|a| {
+        b.map(|b| {
+            let _x = 1;
+            (a, b)
+        })
+    });
+
     // n-ary zip where n > 2, which is out of scope for this lint (for now)
     let c: Option<i32> = Some(3);
     let _ = a.and_then(|a| b.and_then(|b| c.map(|c| (a, b, c))));
+
+    // not Option type (Result)
+    let a: Result<i32, &str> = Ok(1);
+    let b: Result<i32, &str> = Ok(2);
+    let _ = a.and_then(|a| b.map(|b| (a, b)));
 }
 
 fn get_option() -> Option<i32> {
     Some(123)
+}
+
+struct NotOption(Option<i32>);
+impl NotOption {
+    fn map<U>(self, f: impl FnOnce(i32) -> U) -> Option<U> {
+        self.0.map(f)
+    }
 }
