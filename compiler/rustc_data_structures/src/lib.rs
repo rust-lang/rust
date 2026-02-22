@@ -47,6 +47,9 @@ use std::fmt;
 #[cfg(not(bootstrap))]
 pub use std::{assert_matches, debug_assert_matches};
 
+// This allows derive macros to reference this crate
+extern crate self as rustc_data_structures;
+
 pub use atomic_ref::AtomicRef;
 pub use ena::{snapshot_vec, undo_log, unify};
 // Re-export `hashbrown::hash_table`, because it's part of our API
