@@ -198,7 +198,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         );
 
         // NOTE: When adding new intercepted functions here, they must also be added to `fn get_function_kind` in `concurrency/genmc/scheduling.rs`.
-        use rustc_span::sym;
         if this.tcx.is_diagnostic_item(sym::sys_mutex_lock, instance.def_id()) {
             let [mutex] = get_fn_args(instance, args)?;
             let mutex = this.deref_pointer(&mutex)?;
