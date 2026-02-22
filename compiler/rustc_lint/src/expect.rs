@@ -30,19 +30,9 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
     let fulfilled_expectations = tcx.dcx().steal_fulfilled_expectation_ids();
 
     // Turn a `LintExpectationId` into a `(AttrId, lint_index)` pair.
-    let canonicalize_id = |expect_id: &LintExpectationId| {
-        match *expect_id {
-            LintExpectationId::Unstable { attr_id, lint_index: Some(lint_index) } => {
-                (attr_id, lint_index)
-            }
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
-                // We are an `eval_always` query, so looking at the attribute's `AttrId` is ok.
-                let attr_id = tcx.hir_attrs(hir_id)[attr_index as usize].id();
-
-                (attr_id, lint_index)
-            }
-            _ => panic!("fulfilled expectations must have a lint index"),
-        }
+    let canonicalize_id = |expect_id: &LintExpectationId| match *expect_id {
+        LintExpectationId::Unstable { attr_id, lint_index, .. } => (attr_id, lint_index),
+        LintExpectationId::Stable { attr_id, lint_index, .. } => (attr_id, lint_index),
     };
 
     let fulfilled_expectations: FxHashSet<_> =
