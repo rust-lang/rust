@@ -243,7 +243,7 @@ let _trace = enter_trace_span!(M, "borrow_tracker", borrow_tracker = "on_stack_p
 
 ### `tracing_separate_thread` parameter
 
-Miri saves traces using the the `tracing_chrome` `tracing::Layer` so that they can be visualized in Perfetto. To instruct `tracing_chrome` to put some spans on a separate trace thread/line than other spans when viewed in Perfetto, you can pass `tracing_separate_thread = tracing::field::Empty` to the tracing macros. This is useful to separate out spans which just indicate the current step or program frame being processed by the interpreter. As explained in [The timeline](#the-timeline), those spans end up under the "Global Legacy Events" track. You should use a value of `tracing::field::Empty` so that other tracing layers (e.g. the logger) will ignore the `tracing_separate_thread` field. For example:
+Miri saves traces using the `tracing_chrome` `tracing::Layer` so that they can be visualized in Perfetto. To instruct `tracing_chrome` to put some spans on a separate trace thread/line than other spans when viewed in Perfetto, you can pass `tracing_separate_thread = tracing::field::Empty` to the tracing macros. This is useful to separate out spans which just indicate the current step or program frame being processed by the interpreter. As explained in [The timeline](#the-timeline), those spans end up under the "Global Legacy Events" track. You should use a value of `tracing::field::Empty` so that other tracing layers (e.g. the logger) will ignore the `tracing_separate_thread` field. For example:
 ```rust
 let _trace = enter_trace_span!(M, step::eval_statement, tracing_separate_thread = tracing::field::Empty);
 ```
