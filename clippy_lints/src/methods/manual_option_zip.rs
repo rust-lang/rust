@@ -5,7 +5,7 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, ExprKind, HirId, PatKind};
+use rustc_hir::{self as hir, Expr, ExprKind, HirId, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 use std::ops::ControlFlow;
@@ -15,9 +15,9 @@ use super::MANUAL_OPTION_ZIP;
 /// Checks for `a.and_then(|a| b.map(|b| (a, b)))` and suggests `a.zip(b)`.
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'tcx>,
-    recv: &'tcx hir::Expr<'_>,
-    arg: &'tcx hir::Expr<'_>,
+    expr: &'tcx Expr<'tcx>,
+    recv: &'tcx Expr<'_>,
+    arg: &'tcx Expr<'_>,
     msrv: Msrv,
 ) {
     // Looking for: `a.and_then(|a| b.map(|b| (a, b)))`.
@@ -72,13 +72,13 @@ pub(super) fn check<'tcx>(
 /// For `(inner, outer)` (reversed) the zip is `map_recv.zip(recv)`.
 /// Returns `None` if the tuple elements don't match either order.
 fn zip_operands<'a>(
-    first: &hir::Expr<'_>,
-    second: &hir::Expr<'_>,
+    first: &Expr<'_>,
+    second: &Expr<'_>,
     outer_param_id: HirId,
     inner_param_id: HirId,
-    recv: &'a hir::Expr<'a>,
-    map_recv: &'a hir::Expr<'a>,
-) -> Option<(&'a hir::Expr<'a>, &'a hir::Expr<'a>)> {
+    recv: &'a Expr<'a>,
+    map_recv: &'a Expr<'a>,
+) -> Option<(&'a Expr<'a>, &'a Expr<'a>)> {
     if first.res_local_id() == Some(outer_param_id) && second.res_local_id() == Some(inner_param_id) {
         Some((recv, map_recv))
     } else if first.res_local_id() == Some(inner_param_id) && second.res_local_id() == Some(outer_param_id) {
