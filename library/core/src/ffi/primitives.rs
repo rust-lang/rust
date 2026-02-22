@@ -32,7 +32,15 @@ type_alias! { "c_longlong.md", c_longlong = i64; }
 type_alias! { "c_ulonglong.md", c_ulonglong = u64; }
 
 type_alias! { "c_float.md", c_float = f32; }
-type_alias! { "c_double.md", c_double = f64; }
+
+crate::cfg_select! {
+    any(target_arch = "avr", target_arch = "msp430") => {
+        type_alias! { "c_double.md", c_double = f32; }
+    }
+    _ => {
+        type_alias! { "c_double.md", c_double = f64; }
+    }
+}
 
 mod c_char_definition {
     crate::cfg_select! {
