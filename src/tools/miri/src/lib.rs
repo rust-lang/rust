@@ -1,6 +1,5 @@
 #![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(abort_unwind)]
-#![feature(cfg_select)]
 #![feature(rustc_private)]
 #![feature(float_gamma)]
 #![feature(float_erf)]
@@ -17,6 +16,7 @@
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
 #![feature(iter_advance_by)]
+#![cfg_attr(bootstrap, feature(cfg_select))]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
