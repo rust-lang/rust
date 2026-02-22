@@ -804,6 +804,17 @@ where
         )
     }
 
+    pub(crate) fn expected_nv_as_last_argument(
+        &self,
+        span: Span,
+        name_value_key: Symbol,
+    ) -> ErrorGuaranteed {
+        self.emit_parse_error(
+            span,
+            AttributeParseErrorReason::ExpectedNameValueAsLastArgument { span, name_value_key },
+        )
+    }
+
     pub(crate) fn warn_empty_attribute(&mut self, span: Span) {
         let attr_path = self.attr_path.clone().to_string();
         let valid_without_list = self.template.word;

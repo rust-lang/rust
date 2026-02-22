@@ -575,6 +575,10 @@ pub(crate) enum AttributeParseErrorReason<'a> {
         list: bool,
     },
     ExpectedIdentifier,
+    ExpectedNameValueAsLastArgument {
+        span: Span,
+        name_value_key: Symbol,
+    },
 }
 
 /// A description of a thing that can be parsed using an attribute parser.
@@ -834,6 +838,12 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             }
             AttributeParseErrorReason::ExpectedIdentifier => {
                 diag.span_label(self.span, "expected a valid identifier here");
+            }
+            AttributeParseErrorReason::ExpectedNameValueAsLastArgument { span, name_value_key } => {
+                diag.span_label(
+                    *span,
+                    format!("expected {name_value_key} = \"...\" to be the last argument"),
+                );
             }
         }
 
