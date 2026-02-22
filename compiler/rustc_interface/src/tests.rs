@@ -637,7 +637,6 @@ fn test_codegen_options_tracking_hash() {
     tracked!(profile_use, Some(PathBuf::from("abc")));
     tracked!(relocation_model, Some(RelocModel::Pic));
     tracked!(relro_level, Some(RelroLevel::Full));
-    tracked!(soft_float, true);
     tracked!(split_debuginfo, Some(SplitDebuginfo::Packed));
     tracked!(symbol_mangling_version, Some(SymbolManglingVersion::V0));
     tracked!(target_cpu, Some(String::from("abc")));
