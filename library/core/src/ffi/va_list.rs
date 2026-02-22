@@ -266,14 +266,17 @@ impl<'f> const Drop for VaList<'f> {
 mod sealed {
     pub trait Sealed {}
 
+    impl Sealed for i16 {}
     impl Sealed for i32 {}
     impl Sealed for i64 {}
     impl Sealed for isize {}
 
+    impl Sealed for u16 {}
     impl Sealed for u32 {}
     impl Sealed for u64 {}
     impl Sealed for usize {}
 
+    impl Sealed for f32 {}
     impl Sealed for f64 {}
 
     impl<T> Sealed for *mut T {}
@@ -299,21 +302,60 @@ mod sealed {
 // to accept unsupported types in the meantime.
 pub unsafe trait VaArgSafe: sealed::Sealed {}
 
-// i8 and i16 are implicitly promoted to c_int in C, and cannot implement `VaArgSafe`.
+crate::cfg_select! {
+    any(target_arch = "avr", target_arch = "msp430") => {
+        // c_int/c_uint are i16/u16 on these targets.
+        //
+        // - i8 is implicitly promoted to c_int in C, and cannot implement `VaArgSafe`.
+        // - u8 is implicitly promoted to c_uint in C, and cannot implement `VaArgSafe`.
+        unsafe impl VaArgSafe for i16 {}
+        unsafe impl VaArgSafe for u16 {}
+    }
+    _ => {
+        // c_int/c_uint are i32/u32 on this target.
+        //
+        // - i8 and i16 are implicitly promoted to c_int in C, and cannot implement `VaArgSafe`.
+        // - u8 and u16 are implicitly promoted to c_uint in C, and cannot implement `VaArgSafe`.
+    }
+}
+
+crate::cfg_select! {
+    target_arch = "avr" => {
+        // c_double is f32 on this target.
+        unsafe impl VaArgSafe for f32 {}
+    }
+    _ => {
+        // c_double is f64 on this target.
+        //
+        // - f32 is implicitly promoted to c_double in C, and cannot implement `VaArgSafe`.
+    }
+}
+
 unsafe impl VaArgSafe for i32 {}
 unsafe impl VaArgSafe for i64 {}
 unsafe impl VaArgSafe for isize {}
 
-// u8 and u16 are implicitly promoted to c_int in C, and cannot implement `VaArgSafe`.
 unsafe impl VaArgSafe for u32 {}
 unsafe impl VaArgSafe for u64 {}
 unsafe impl VaArgSafe for usize {}
 
-// f32 is implicitly promoted to c_double in C, and cannot implement `VaArgSafe`.
 unsafe impl VaArgSafe for f64 {}
 
 unsafe impl<T> VaArgSafe for *mut T {}
 unsafe impl<T> VaArgSafe for *const T {}
+
+// Check that relevant `core::ffi` types implement `VaArgSafe`.
+const _: () = {
+    const fn va_arg_safe_check<T: VaArgSafe>() {}
+
+    va_arg_safe_check::<crate::ffi::c_int>();
+    va_arg_safe_check::<crate::ffi::c_uint>();
+    va_arg_safe_check::<crate::ffi::c_long>();
+    va_arg_safe_check::<crate::ffi::c_ulong>();
+    va_arg_safe_check::<crate::ffi::c_longlong>();
+    va_arg_safe_check::<crate::ffi::c_ulonglong>();
+    va_arg_safe_check::<crate::ffi::c_double>();
+};
 
 impl<'f> VaList<'f> {
     /// Read an argument from the variable argument list, and advance to the next argument.
