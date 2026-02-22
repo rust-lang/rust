@@ -759,6 +759,18 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             AttributeParseErrorReason::ExpectedIdentifier => {
                 diag.span_label(self.span, "expected a valid identifier here");
             }
+            AttributeParseErrorReason::ExpectedNameValueAsLastArgument {
+                span,
+                attr_name,
+                name_value_key,
+            } => {
+                diag.span_label(
+                    span,
+                    format!(
+                        "the name value key `{name_value_key}` must come last in `#[{attr_name}]`"
+                    ),
+                );
+            }
         }
 
         if let Some(link) = self.template.docs {
