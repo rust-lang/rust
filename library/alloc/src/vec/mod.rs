@@ -966,7 +966,10 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         Vec { buf: RawVec::with_capacity_in(capacity, alloc), len: 0 }
     }
+}
 
+#[cfg(not(no_global_oom_handling))]
+impl<T, A: Allocator> Vec<T, A> {
     /// Appends an element to the back of a collection.
     ///
     /// # Panics
