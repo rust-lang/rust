@@ -578,6 +578,8 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         }
     }
 
+    /// Only appropriate for use inside of the compiler
+    /// since the compiler doesn't track levels of tool lints
     fn get_lint_level(&self, lint: &'static Lint) -> LevelAndSource {
         self.tcx.lint_level_at_node(lint, self.last_node_with_lint_attrs)
     }
