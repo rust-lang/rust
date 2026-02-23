@@ -16,7 +16,6 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, MultiSpan, StashKey, listify, pluralize, struct_span_code_err,
 };
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::diagnostic::OnUnimplementedNote;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;

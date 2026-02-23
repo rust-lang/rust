@@ -14,7 +14,6 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, Level, MultiSpan, StashKey, StringPart, Suggestions, msg,
     pluralize, struct_span_code_err,
 };
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::diagnostic::{AppendConstMessage, OnUnimplementedNote};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
@@ -912,7 +911,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         diag.long_ty_path(),
                     );
 
-                    if let Some(command) = find_attr!(self.tcx.get_all_attrs(impl_did), AttributeKind::OnConst {directive, ..} => directive.as_deref()).flatten(){
+                    if let Some(command) = find_attr!(self.tcx, impl_did, OnConst {directive, ..} => directive.as_deref()).flatten(){
                         let note = command.evaluate_directive(
                              predicate.skip_binder().trait_ref,
                             &condition_options,

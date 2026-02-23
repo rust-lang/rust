@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::diagnostic::{ConditionOptions, FormatArgs, OnUnimplementedNote};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::find_attr;
@@ -44,7 +43,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
         let (condition_options, format_args) =
             self.on_unimplemented_components(trait_pred, obligation, long_ty_path);
-        if let Some(command) = find_attr!(self.tcx.get_all_attrs( trait_pred.def_id()), AttributeKind::OnUnimplemented {directive, ..} => directive.as_deref()).flatten() {
+        if let Some(command) = find_attr!(self.tcx, trait_pred.def_id(), OnUnimplemented {directive, ..} => directive.as_deref()).flatten() {
             command.evaluate_directive(
                 trait_pred.skip_binder().trait_ref,
                 &condition_options,
